@@ -1,0 +1,6 @@
+# anvil-serving config (optional). Most things auto-detect; override here as needed.
+claude_logs   = "~/.claude/projects"          # where `profile` reads usage
+hf_extra_roots = []                            # extra HF cache hub dirs to scan for `models sync`
+model_dirs     = []                            # plain (non-HF-cache) model folders
+gpu_index      = 0                             # GPU to pin the serve to
+served_model_name = "local-specialist"

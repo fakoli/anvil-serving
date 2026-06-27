@@ -1,0 +1,21 @@
+services:
+  sglang:
+    image: {image}
+    container_name: sglang
+    restart: unless-stopped
+    shm_size: "16g"
+    ports: ["{port}:{port}"]
+    volumes: ["{model}:/models/local"]
+    deploy: {{resources: {{reservations: {{devices: [{{driver: nvidia, device_ids: ["{gpu}"], capabilities: [gpu]}}]}}}}}}
+    command: >
+      python3 -m sglang.launch_server
+      --model-path /models/local
+      --weight-loader-disable-mmap
+      --kv-cache-dtype {kv}
+{extra_flags}
+      --context-length {ctx}
+      --max-running-requests {maxrun}
+      --mem-fraction-static {memfrac}
+      --enable-metrics
+      --served-model-name {served}
+      --host 0.0.0.0 --port {port}
