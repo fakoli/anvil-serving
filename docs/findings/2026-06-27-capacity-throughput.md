@@ -25,6 +25,20 @@ flat-rate *quota* throttle (429). The runs prove the availability axis. Whether 
 flat-rate quota itself caps during these mega-runs is a separate measurement (see new
 question Q1b).
 
+### External corroboration (Anthropic status page, fetched 2026-06-27)
+
+`status.claude.com/history` (Statuspage API): **20+ Claude API incidents logged in June
+2026** alone (through the 27th), most "elevated error rate" events across Opus 4.8/4.7/4.6,
+Sonnet 4.6, Haiku 4.5. Two overlap the Anvil run windows directly:
+- **Jun 22 — Major**, "Elevated Error Rates for Opus 4.8, 4.7, 4.6, Sonnet 4.6, Haiku 4.5"
+  (overlaps session A, the design/foundation run).
+- **Jun 23 — Critical**, "Elevated error rate across multiple models", 07:08–08:33 PT
+  (overlaps session B, the build run — where the first-party 529s were logged).
+
+So the in-run 529s were the visible edge of provider-acknowledged incidents, not a local
+fluke. **Caveat:** April/May show no incidents because the feed window only covers recent
+history, not because those months were clean. Absence of data, not data of absence.
+
 ## 2. What the documented sessions burned
 
 | Session | Wall-clock | Generated (output) tokens | Total processed (incl. cache) |
