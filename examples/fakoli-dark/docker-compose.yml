@@ -1,0 +1,37 @@
+# SGLang local specialist serve — phase 1 (decision 2 + 3)
+# Pinned to GPU 1 (RTX PRO 6000 96GB); 5090 stays free for gaming.
+# Model: Qwen3.5-35B-A3B AWQ 4-bit (copied from the WSL HF cache into a plain Windows dir).
+# Why AWQ-35B and not Qwen3-Coder-Next-FP8: the FP8 80B (~75GB) hung post-load on this build
+# AND leaves only ~8GB KV. A 4-bit 35B-A3B (~24GB) loads faster and leaves room for real fan-out.
+services:
+  sglang:
+    image: lmsysorg/sglang:latest
+    container_name: sglang
+    restart: unless-stopped
+    shm_size: "16g"
+    ports:
+      - "30000:30000"
+    volumes:
+      - "C:/Users/sdoum/models/qwen35-awq:/models/qwen35-awq"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]   # 1 = RTX PRO 6000 96GB (0 = RTX 5090)
+              capabilities: [gpu]
+    command: >
+      python3 -m sglang.launch_server
+      --model-path /models/qwen35-awq
+      --weight-loader-disable-mmap
+      --kv-cache-dtype fp8_e5m2
+      --reasoning-parser qwen3
+      --tool-call-parser qwen3_coder
+      --language-only
+      --context-length 131072
+      --max-running-requests 16
+      --mem-fraction-static 0.88
+      --cuda-graph-max-bs-decode 8
+      --enable-metrics
+      --served-model-name qwen35-awq-local
+      --host 0.0.0.0 --port 30000

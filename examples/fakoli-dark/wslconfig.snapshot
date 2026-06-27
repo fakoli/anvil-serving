@@ -1,0 +1,5 @@
+[wsl2]
+# Snapshot of the .wslconfig change that fixed the load-time OOM
+memory=64GB   # was unset (defaulted to ~50% host = 46GB) -> OOM-killed during weight load
+swap=16GB     # was 0
+# (custom kernel + networkingMode=mirrored preserved)
