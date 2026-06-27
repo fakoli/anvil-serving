@@ -195,14 +195,27 @@ runnable instead of imagined, and that measurement gates everything downstream.
 
 ## What gates what (open questions the bake-off answers)
 
-- Do the flat-rate pools actually throttle often enough for the capacity premise to hold?
-  (If not, the whole local-overflow thesis weakens — refocus on packet quality + the trust
-  layer.)
+- **Q1 — do the pools throttle enough? PARTLY ANSWERED (2026-06-27).** Yes on the
+  *availability* axis: the runs logged API 529 overloads mid-flight that killed subagents and
+  forced retries. Plus a throughput-equivalence: ~46.8M generated tokens over ~52 h cloud
+  wall-clock would take ~65 h to emit locally at the measured 200 tok/s (less on the 96GB box,
+  unbenchmarked). Capacity is throughput-feasible; quality is not yet proven. See
+  [findings/2026-06-27-capacity-throughput.md](findings/2026-06-27-capacity-throughput.md).
+- **Q1b — quota vs availability (NEW).** 529s prove availability failures; do the flat-rate
+  *quotas* also cap during a mega-run? Measure 429/quota-exhaustion distinctly from 529s.
 - Is the local model's "done" actually done, and does a tighter packet move that number?
 - Does naive spillover suffice, or is a capacity-pool concept (and the bigger anvil-serving
   build) justified by *measured* mis-routing?
 - Is the "people in this boat" segment real? (Cheapest test = publishing the honest
   account, not building a product.)
+- **Q7 — 96GB aggregate throughput (NEW).** Actual sustained aggregate tok/s under
+  concurrent-agent load? The 200 tok/s anchor is the 5090; the 96GB box is unbenchmarked.
+- **Q8 — local prefix-cache hit rate (NEW).** Cloud economics rest on ~95% of tokens being
+  cheap cache reads; does the local serve's prefix cache hit comparably for long, varied agent
+  contexts? Key local-economics variable.
+- **Q9 — concurrency, not just throughput (NEW).** The cloud run compressed wall-clock with
+  ~890 parallel agents. Can local batching match that concurrency, or does serial-ish local
+  execution stretch wall-clock past usefulness even when total throughput suffices?
 
 ---
 
