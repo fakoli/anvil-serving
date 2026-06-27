@@ -36,3 +36,6 @@ Generalization done: hardcoded user paths replaced by env/auto-detect — `ANVIL
 
 ## Run / dev
 `pip install -e .` then `anvil-serving <cmd> --help`. No network needed except `models sync` (fetches HF cards).
+
+## Discovery + self-refinement (researched plan)
+See docs/DISCOVERY-AND-REFINEMENT.md: deterministic core + CLI `analyze` (pluggable OpenAI-compat LLM, optional) for discovery/analysis; a **Claude Agent SDK** outer loop drives an **Optuna x GuideLLM** deterministic tuning inner loop (correctness-preflight gate, held-out validation, human-approval). vLLM Recipes (recipes.vllm.ai) is the catalog to aggregate. Build plan P0-P4 in the doc. No MCP/daemon yet.
