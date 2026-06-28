@@ -46,6 +46,7 @@ Pull only what's mechanically extractable (see findings §1):
 ```python
 {
   "id": "owner/repo", "format": "safetensors|GGUF", "sglang_loadable": True,
+  "sm120_caveat": "FP8-MoE hangs post-load on sm_120 (sglang#16816)" | None,  # str when a Blackwell quant+arch hazard applies, else null
   "context": 262144, "quant": "compressed-tensors", "quant_bits": 4,
   "sampling": {"temperature":1.0,"top_p":0.95,"top_k":20},  # from generation_config.json
   "family": "qwen3", "thinking_default": True,

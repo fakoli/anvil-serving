@@ -39,6 +39,66 @@ def _auto_roots():
     return roots
 ROOTS = _auto_roots()
 
+# --- sm_120 (Blackwell) SGLang loadability hazards -------------------------
+# A safetensors model is normally SGLang-loadable, BUT some quant+arch combos
+# load "successfully" then hang or return silent zeros on sm_120. Encode that
+# judgment as a small table; add a row when a new case appears (don't abstract).
+# Refs: FP8-MoE hang -> sglang#16816 ; NVFP4 GEMM silent zeros ->
+#       flashinfer#2577, vllm#24921.
+SM120_HAZARDS = [
+    # (quant substring, requires_moe, caveat)
+    ("fp8",   True,  "FP8-MoE hangs post-load on sm_120 (sglang#16816)"),
+    ("nvfp4", False, "NVFP4 GEMM broken on sm_120: silent zeros (flashinfer#2577, vllm#24921)"),
+]
+
+# Standard MoE config keys across families: num_experts (generic), num_local_experts
+# (Mixtral / gpt-oss), n_routed_experts (DeepSeek-V3). Plus model_type/arch fallback.
+_MOE_KEYS = ("num_experts", "num_local_experts", "n_routed_experts")
+_MOE_SUBSTRINGS = ("moe", "mixtral", "deepseek", "qwen3_moe", "gpt_oss")
+
+def _is_moe(cfg, txt):
+    if any(isinstance(d, dict) and any(k in d for k in _MOE_KEYS) for d in (cfg, txt)):
+        return True
+    blob = (str(cfg.get("model_type") or "") + " " +
+            " ".join(str(x) for x in (cfg.get("architectures") or []))).lower()
+    return any(s in blob for s in _MOE_SUBSTRINGS)
+
+def _parse_quant(cfg):
+    """Derive (qmethod, qbits, qsig) from cfg's quantization_config.
+
+    qsig folds BOTH the raw quant strings (catches native-fp8 repos whose method
+    is literally 'fp8') AND tokens derived from the quantized WEIGHT spec.
+    compressed-tensors reports quant_method='compressed-tensors',
+    format='float-quantized' and hides the real precision in
+    config_groups[*].weights {num_bits, type}; surface it as fp8/nvfp4.
+    MXFP4 (gpt-oss) is servable via triton, so it is never folded to nvfp4.
+    """
+    quant = cfg.get("quantization_config") or {}     # JSON null -> {} (no AttributeError)
+    qmethod = quant.get("quant_method") or quant.get("format")
+    qbits, qtype = None, ""
+    for g in (quant.get("config_groups") or {}).values():
+        w = (g or {}).get("weights") or {}
+        if w.get("num_bits"):
+            qbits = w["num_bits"]
+            qtype = (w.get("type") or "").lower()
+    qsig = (str(qmethod or "") + " " + str(quant.get("format") or "")).lower()
+    if qbits == 8 and qtype == "float":
+        qsig += " fp8"
+    elif qbits == 4 and "mxfp4" not in qsig and ("float" in qtype or "float" in qsig):
+        qsig += " nvfp4"
+    return qmethod, qbits, qsig
+
+def sm120_hazard(fmt, qsig, cfg, txt):
+    """safetensors quant+arch hazardous on sm_120 -> caveat string, else None."""
+    if fmt != "safetensors":
+        return None
+    q = (qsig or "").lower()
+    moe = _is_moe(cfg, txt)
+    for sub, requires_moe, caveat in SM120_HAZARDS:
+        if sub in q and (moe or not requires_moe):
+            return caveat
+    return None
+
 def dir_size_gb(p):
     blobs = os.path.join(p, "blobs")
     seen, t = set(), 0
@@ -118,14 +178,9 @@ def summarize(owner, repo, model_dir, kind):
     cfg = load_json(os.path.join(snap, "config.json")) if snap else {}
     gen = load_json(os.path.join(snap, "generation_config.json")) if snap else {}
     txt = cfg.get("text_config", {}) if isinstance(cfg.get("text_config"), dict) else {}
-    quant = cfg.get("quantization_config", {})
-    qmethod = quant.get("quant_method") or quant.get("format")
-    qbits = None
-    cg = (quant.get("config_groups") or {})
-    for g in cg.values():
-        w = (g or {}).get("weights") or {}
-        if w.get("num_bits"): qbits = w["num_bits"]
+    qmethod, qbits, qsig = _parse_quant(cfg)
     fmt = detect_format(snap) if snap else "?"
+    sm120 = sm120_hazard(fmt, qsig, cfg, txt)
     s = dict(
         id=f"{owner}/{repo}" if owner else repo,
         owner=owner, repo=repo, local_path=model_dir, source=kind,
@@ -136,7 +191,8 @@ def summarize(owner, repo, model_dir, kind):
         context=cfg.get("max_position_embeddings") or txt.get("max_position_embeddings"),
         quant=qmethod, quant_bits=qbits,
         gen_sampling={k:gen[k] for k in ("temperature","top_p","top_k") if k in gen},
-        sglang_loadable=(fmt=="safetensors"),
+        sglang_loadable=(fmt == "safetensors" and not sm120),
+        sm120_caveat=sm120,
         synced=time.strftime("%Y-%m-%d %H:%M"),
     )
     card = fetch_card(owner, repo) if owner else None
@@ -195,7 +251,10 @@ def write_index(rows):
         ctx = f"{int(ctx)//1024}K" if str(ctx).isdigit() and int(ctx)>=1024 else (ctx or "")
         L.append("| {id} | {fmt} | {ok} | {sz} GB | {ctx} | {q} | {lic} | {th} | {bn} | {src} |".format(
             id=r["id"], fmt=r.get("format","?"),
-            ok=("✅" if r.get("sglang_loadable") else "❌ (llama.cpp)" if r.get("format")=="GGUF" else "?"),
+            ok=("✅" if r.get("sglang_loadable")
+                else "⚠️ sm_120" if r.get("sm120_caveat")
+                else "❌ (llama.cpp)" if r.get("format")=="GGUF"
+                else "?"),
             sz=r.get("size_gb","?"), ctx=ctx,
             q=(f"{r.get('quant') or ''} {r.get('quant_bits') or ''}".strip() or "—"),
             lic=r.get("license") or "—",
@@ -224,5 +283,53 @@ def main():
     print(f"wrote INDEX.md + {len(rows)} summaries to {HERE}")
     print("NEW_MODELS: " + (", ".join(new_ids) if new_ids else "none"))
 
+def _loadable(cfg, fmt="safetensors"):
+    """Mirror summarize()'s decision via the same derivation, for self-check."""
+    _, _, qsig = _parse_quant(cfg)
+    sm120 = sm120_hazard(fmt, qsig, cfg, cfg.get("text_config") or {})
+    return (fmt == "safetensors" and not sm120), sm120
+
+def _selfcheck():
+    # --- REAL derivation path: compressed-tensors hides FP8-ness in the weight
+    #     spec (num_bits=8/type=float), NOT in the method string. ---
+    ct_fp8 = {"quant_method": "compressed-tensors", "format": "float-quantized",
+              "config_groups": {"group_0": {"weights": {"num_bits": 8, "type": "float"}}}}
+    # FP8 + MoE (num_local_experts, Mixtral/gpt-oss style) must NOT be clean-loadable.
+    cfg_fp8_moe = {"quantization_config": ct_fp8, "num_local_experts": 128,
+                   "architectures": ["Qwen3MoeForCausalLM"]}
+    ok, caveat = _loadable(cfg_fp8_moe)
+    assert not ok and caveat, "compressed-tensors FP8 on MoE must caveat (not clean)"
+    # FP8 + MoE via DeepSeek-V3 key n_routed_experts must also caveat.
+    cfg_fp8_ds = {"quantization_config": ct_fp8, "n_routed_experts": 256}
+    ok, caveat = _loadable(cfg_fp8_ds)
+    assert not ok and caveat, "compressed-tensors FP8 on DeepSeek MoE must caveat"
+    # NVFP4 via weight spec (num_bits=4/type=float) caveats on any arch.
+    ct_nvfp4 = {"quantization_config": {"quant_method": "compressed-tensors",
+                "config_groups": {"g": {"weights": {"num_bits": 4, "type": "float"}}}}}
+    ok, caveat = _loadable(ct_nvfp4)
+    assert not ok and caveat, "compressed-tensors NVFP4 must caveat on any arch"
+    # gpt-oss MXFP4 is SERVABLE via triton -> must NOT be flagged.
+    gptoss = {"quantization_config": {"quant_method": "mxfp4"},
+              "model_type": "gpt_oss", "num_local_experts": 128}
+    ok, caveat = _loadable(gptoss)
+    assert ok and caveat is None, "gpt-oss MXFP4 is servable, must not be flagged"
+    # Dense AWQ (int4) stays clean.
+    awq = {"quantization_config": {"quant_method": "awq",
+            "config_groups": {"g": {"weights": {"num_bits": 4, "type": "int"}}}}}
+    ok, caveat = _loadable(awq)
+    assert ok and caveat is None, "dense AWQ (int4) stays clean-loadable"
+    # JSON null quantization_config must not crash.
+    ok, _ = _loadable({"quantization_config": None})
+    assert ok, "null quantization_config -> clean, no AttributeError"
+
+    # --- Legacy string-folding path still holds (native-fp8 repos etc.). ---
+    assert sm120_hazard("safetensors", "fp8", {"num_experts": 128}, {}), "FP8-MoE should caveat"
+    assert sm120_hazard("safetensors", "nvfp4", {}, {}), "NVFP4 caveats on any arch"
+    assert sm120_hazard("safetensors", "fp8", {}, {}) is None, "dense FP8 is fine"
+    assert sm120_hazard("safetensors", "awq", {"num_experts": 128}, {}) is None, "AWQ-MoE clean"
+    assert sm120_hazard("safetensors", "awq", {}, {}) is None, "dense AWQ clean"
+    assert sm120_hazard("GGUF", "fp8", {"num_experts": 128}, {}) is None, "GGUF handled elsewhere"
+
 if __name__ == "__main__":
+    _selfcheck()
     main()
