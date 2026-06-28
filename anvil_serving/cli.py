@@ -10,9 +10,10 @@ def _run_script(name, argv, env=None):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
-        print(__doc__ + "\n  commands: profile | models | deploy | preflight | benchmark | multiplexer"); return 0
+        print(__doc__ + "\n  commands: profile | models | deploy | preflight | benchmark | multiplexer | cache-prune"); return 0
     cmd, rest = argv[0], argv[1:]
     if cmd == "multiplexer": from . import multiplexer; return multiplexer.main(rest)
+    if cmd == "cache-prune": from . import cache_prune; return cache_prune.main(rest)
     if cmd == "preflight":   return _run_script("preflight.py", rest)
     if cmd == "benchmark":   return _run_script("benchmark.py", rest)
     if cmd == "deploy":      from . import deploy; return deploy.main(rest)
