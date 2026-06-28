@@ -1,0 +1,29 @@
+services:
+  sglang:
+    image: lmsysorg/sglang:latest
+    container_name: sglang
+    restart: unless-stopped
+    shm_size: "16g"
+    ports: ["30000:30000"]
+    volumes:
+      - "C:/Users/sdoum/models/qwen3-coder-30b-awq:/models/qwen3-coder-30b-awq"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+    command: >
+      python3 -m sglang.launch_server
+      --model-path /models/qwen3-coder-30b-awq
+      --attention-backend triton
+      --weight-loader-disable-mmap
+      --kv-cache-dtype fp8_e5m2
+      --tool-call-parser qwen3_coder
+      --context-length 131072
+      --max-running-requests 16
+      --mem-fraction-static 0.88
+      --enable-metrics
+      --served-model-name qwen3-coder-local
+      --host 0.0.0.0 --port 30000
