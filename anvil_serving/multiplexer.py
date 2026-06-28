@@ -28,23 +28,153 @@ Exit 0 = --help or --self-check pass; 1 = self-check failure.
 import argparse, io, json, os, threading, time, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-try:
-    from . import deploy
-except Exception:  # allow `python multiplexer.py` direct run
-    deploy = None
-
 # --- REGISTRY TABLE: single source of truth for /v1/models AND the loader ----
-# Columns: name (served /v1 id) | model_path (dir handed to backend) |
-#   est_weight_gb (mmap-off host-RAM cost -> drives the OOM guard) |
-#   gpu | port (per-backend upstream) | extra (passthrough kwargs -> deploy.render)
+# Columns: name (served /v1 id) | engine ('sglang'|'vllm', picks build_cmd branch
+#   + container image) | model_path (dir handed to backend) | est_weight_gb
+#   (mmap-off host-RAM cost -> drives the OOM guard) | gpu | port (per-backend
+#   upstream) | args (engine-native flags spliced verbatim into the launch argv).
+# engine/args are OPTIONAL (read with .get() defaults: engine -> 'sglang', args ->
+# []) so REQUIRED_KEYS stays unchanged and old/minimal registries still validate.
 REGISTRY = [
-    {"name": "coder-35b-awq", "model_path": "/models/qwen3-coder-35b-awq",
-     "est_weight_gb": 24, "gpu": 0, "port": 30000,
-     "extra": {"kv_dtype": "fp8_e5m2", "context": 131072}},
-    {"name": "coder-30b-fp8", "model_path": "/models/qwen3-coder-30b-fp8",
-     "est_weight_gb": 34, "gpu": 0, "port": 30000,
-     "extra": {"kv_dtype": "fp8_e5m2", "context": 131072}},
+    # heavy (gpu 1): qwen3-coder-30b AWQ via SGLang
+    {"name": "qwen3-coder-local", "engine": "sglang",
+     "model_path": "/models/qwen3-coder-30b-awq",
+     "host_path": "C:/Users/sdoum/models/qwen3-coder-30b-awq", "est_weight_gb": 18,
+     "gpu": 1, "port": 30000,
+     "args": ["--attention-backend", "triton", "--tool-call-parser", "qwen3_coder",
+              "--kv-cache-dtype", "fp8_e5m2", "--context-length", "131072",
+              "--mem-fraction-static", "0.9"]},
+    # fast/coding (gpu 0, swaps with qwen3-14b): glm-4.7-flash AWQ via vLLM
+    {"name": "glm-4.7-flash", "engine": "vllm",
+     "model_path": "/models/glm47-flash-awq",
+     "host_path": "C:/Users/sdoum/models/glm47-flash-awq", "est_weight_gb": 12,
+     "gpu": 0, "port": 30001,
+     "args": ["--max-model-len", "65536", "--gpu-memory-utilization", "0.92",
+              "--tool-call-parser", "glm47", "--reasoning-parser", "glm45",
+              "--enable-auto-tool-choice"]},
+    # fast/safe (gpu 0, swaps with glm): qwen3-14b AWQ via SGLang
+    {"name": "qwen3-14b-fast", "engine": "sglang",
+     "model_path": "/models/qwen3-14b-awq",
+     "host_path": "C:/Users/sdoum/models/qwen3-14b-awq", "est_weight_gb": 9,
+     "gpu": 0, "port": 30001,
+     "args": ["--quantization", "awq_marlin", "--attention-backend", "flashinfer",
+              "--reasoning-parser", "qwen3", "--tool-call-parser", "qwen3_coder",
+              "--kv-cache-dtype", "fp8_e5m2", "--context-length", "40960",
+              "--mem-fraction-static", "0.85"]},
 ]
+# NOTE: the two gpu-0 rows (glm-4.7-flash, qwen3-14b-fast) intentionally share
+# upstream port 30001 — they are a single-resident SWAP PAIR (only one is ever
+# resident on GPU 0), so the shared port is correct by design, not a collision.
+# More broadly, per-row gpu/port are INFORMATIONAL under this multiplexer's GLOBAL
+# single-resident model (only ONE backend is ever up at a time) — they document the
+# intended placement, not a guarantee of concurrent residency (review note, not a bug).
+# host_path is the REAL on-host weights dir (C:/Users/sdoum/models/<dir> on this box);
+# it is bind-mounted to the in-container model_path so the engine actually finds the
+# weights (mounting model_path:model_path would create empty dirs -> weights not found).
+# est_weight_gb are 4-bit AWQ footprint ESTIMATES feeding the OOM guard; correct
+# them against real `models sync` facts when available.
+
+# Engine -> container image. The only place engine names map to images; an engine
+# absent here resolves to None so SubprocessBackend.start fails fast (pure guard).
+ENGINE_IMAGE = {
+    "sglang": "lmsysorg/sglang:latest",
+    "vllm": "vllm/vllm-openai:latest",
+}
+
+
+def build_cmd(entry):
+    """PURE: a registry row -> the in-container server argv, dispatched by engine.
+
+    No subprocess, no GPU — docker_run_cmd wraps the result in `docker run`. Kept
+    pure so the self-check can assert engine dispatch by inspecting the returned
+    argv (no real launch).
+
+    argv[0] is the engine BINARY ('vllm' for vllm, 'python3' for sglang); it is NOT
+    re-passed as a positional — docker_run_cmd promotes it to `--entrypoint` so the
+    image's own ENTRYPOINT (vllm/vllm-openai sets ['vllm','serve']) can't shadow and
+    DOUBLE our command into `vllm serve vllm serve ...`.
+
+    Single `if engine=='vllm' else sglang` branch (no plugin/registry-of-engines).
+    The sglang branch bakes in ONLY the always-on defaults (--weight-loader-disable-mmap
+    [gotcha #2], --enable-metrics, --max-running-requests 16); every other flag is
+    per-row via `args`."""
+    name, mp, port = entry["name"], entry["model_path"], entry["port"]
+    args = entry.get("args", [])
+    if isinstance(args, str):
+        args = args.split()
+    common = ["--served-model-name", name, "--host", "0.0.0.0", "--port", str(port)]
+    if entry.get("engine", "sglang") == "vllm":
+        # argv[0]='vllm' -> docker_run_cmd sets --entrypoint vllm, then 'serve <path> ...'
+        return ["vllm", "serve", mp, *args, *common]
+    # sglang (default): argv[0]='python3' -> --entrypoint python3, then the module run.
+    return ["python3", "-m", "sglang.launch_server", "--model-path", mp,
+            "--weight-loader-disable-mmap", "--enable-metrics",
+            "--max-running-requests", "16", *args, *common]
+
+
+def gpu_uuid(index):
+    """IMPURE: map a GPU index -> its stable UUID via nvidia-smi, else None.
+
+    Docker Desktop's WSL2 backend IGNORES `--gpus device=N` (it exposes ALL GPUs),
+    so index pinning does NOT isolate — two serves could land on one card. The proven
+    reliable isolation (examples/fakoli-dark gotcha) is `--gpus all` +
+    CUDA_DEVICE_ORDER=PCI_BUS_ID + CUDA_VISIBLE_DEVICES=<GPU-UUID>. This resolves the
+    UUID so docker_run_cmd can emit that env-var isolation. Returns None if nvidia-smi
+    is missing or the index isn't found (caller then falls back to `--gpus device=`)."""
+    import subprocess
+    try:
+        out = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=index,uuid", "--format=csv,noheader"],
+            stderr=subprocess.DEVNULL, encoding="utf-8")
+    except Exception:
+        return None
+    for line in out.splitlines():
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) == 2 and parts[0].isdigit() and int(parts[0]) == index:
+            return parts[1]
+    return None
+
+
+def docker_run_cmd(entry):
+    """PURE: a registry row -> the full `docker run` argv (no subprocess, no GPU).
+
+    Overrides the image ENTRYPOINT with build_cmd's argv[0] (the engine binary) so an
+    image whose own entrypoint is the API server (vllm/vllm-openai -> ['vllm','serve'])
+    cannot SHADOW and double our command. The result runs `--entrypoint <bin> ... image
+    <rest-of-argv>`, never a stray doubled positional.
+
+    GPU isolation: if the entry carries a resolved `gpu_uuid` (set at launch by
+    SubprocessBackend), emit `--gpus all -e CUDA_DEVICE_ORDER=PCI_BUS_ID
+    -e CUDA_VISIBLE_DEVICES=<uuid>` — the ONLY isolation Docker Desktop's WSL2 backend
+    actually honors (`--gpus device=N` is silently ignored there and exposes ALL GPUs).
+    Without a gpu_uuid, fall back to `--gpus device={gpu}` so the self-check and
+    non-WSL hosts (which DO honor device=) still work.
+
+    Bind mount is host_path -> model_path: the weights live on the HOST at host_path
+    (e.g. C:/Users/sdoum/models/<dir> on this box), while model_path is the in-container
+    path the engine opens. host_path defaults to model_path for minimal/test rows."""
+    image = ENGINE_IMAGE.get(entry.get("engine", "sglang"))
+    if image is None:
+        raise BackendError(
+            f"unknown engine {entry.get('engine')!r} for {entry['name']}")
+    argv = build_cmd(entry)
+    host_path = entry.get("host_path", entry["model_path"])
+    port = entry["port"]
+    uuid = entry.get("gpu_uuid")
+    if uuid:  # reliable isolation: expose all, pin by UUID via CUDA_VISIBLE_DEVICES
+        gpu_flags = ["--gpus", "all",
+                     "-e", "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+                     "-e", f"CUDA_VISIBLE_DEVICES={uuid}"]
+    else:     # fallback (self-check + non-WSL hosts that honor device=N)
+        gpu_flags = ["--gpus", f"device={entry['gpu']}"]
+    return ["docker", "run", "--rm", "--name", f"anvil-{entry['name']}",
+            # promote argv[0] to --entrypoint so the image entrypoint can't shadow it
+            "--entrypoint", argv[0],
+            *gpu_flags,
+            "--shm-size", "16g",
+            "-p", f"{port}:{port}",
+            "-v", f"{host_path}:{entry['model_path']}",
+            image, *argv[1:]]
 
 
 class LoadError(Exception):
@@ -129,31 +259,36 @@ def oom_guard(entry, avail_gb, cap_gb=None, safety=1.15):
 
 # --- INJECTABLE BACKEND SEAM (duck-typed; attr `current`, methods start/stop) -
 class SubprocessBackend:
-    """Default real backend: launch sglang (flags via deploy.render) for an entry,
-    block until its /healthz is up. Idempotent stop. GPU-touching; NOT used in the
-    self-check."""
+    """Default real backend: launch the entry's engine (sglang or vllm) in a
+    `docker run` container (via the pure docker_run_cmd) pinned to its GPU, block
+    until its /health is up. Idempotent stop. GPU-touching; NOT used in the
+    self-check. Only mmap-off + metrics (+ a concurrency cap) are baked into the
+    sglang launch; every other flag is per-row `args`."""
 
-    def __init__(self, render=None, startup_timeout=600):
-        self.render = render or (deploy.render if deploy else None)
+    def __init__(self, startup_timeout=600):
         self.startup_timeout = startup_timeout
         self.current = None
         self._proc = None
 
     def start(self, entry):
-        import subprocess, tempfile
+        import subprocess
         port = entry["port"]
-        if self.render is None:
-            raise BackendError("no renderer available (deploy module not importable)")
-        compose = self.render(entry["model_path"], gpu_index=entry["gpu"],
-                              served_name=entry["name"], port=port,
-                              **entry.get("extra", {}))
-        f = tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8")
-        f.write(compose)
-        f.close()
-        self._compose_file = f.name
+        # Resolve the GPU UUID at launch (IMPURE) and inject it into a COPY of the
+        # entry so the pure docker_run_cmd emits `--gpus all` + CUDA_VISIBLE_DEVICES
+        # isolation — the only pinning Docker Desktop's WSL2 backend actually honors
+        # (`--gpus device=N` is ignored there). None -> docker_run_cmd falls back to
+        # device=N (non-WSL hosts honor that).
+        launch = dict(entry)
+        uuid = gpu_uuid(entry["gpu"])
+        if uuid:
+            launch["gpu_uuid"] = uuid
+        # docker_run_cmd is PURE (and self-checked): it overrides --entrypoint with the
+        # engine binary so the image entrypoint can't shadow/double the command, and
+        # bind-mounts host_path -> model_path. Raises BackendError on unknown engine.
+        cmd = docker_run_cmd(launch)
+        self._container = f"anvil-{entry['name']}"
         self._proc = subprocess.Popen(
-            ["docker", "compose", "-f", f.name, "up"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         base = f"http://127.0.0.1:{port}/v1"
         deadline = time.time() + self.startup_timeout
         while time.time() < deadline:
@@ -171,10 +306,10 @@ class SubprocessBackend:
 
     def stop(self):
         import subprocess
-        cf = getattr(self, "_compose_file", None)
-        if cf:
+        c = getattr(self, "_container", None)
+        if c:
             try:
-                subprocess.call(["docker", "compose", "-f", cf, "down"],
+                subprocess.call(["docker", "rm", "-f", c],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             except Exception:
                 pass
@@ -527,6 +662,79 @@ def _self_check():
         pass
     assert (mux4.resident is None and mux4.backend.current is None), \
         (mux4.resident, mux4.backend.current)  # no half-state, error surfaced
+
+    # --- ENGINE DISPATCH: build_cmd is pure -> assert correct engine by inspecting
+    # argv (no Multiplexer, no backend, no launch). Uses the real REGISTRY.
+    vrow = next(r for r in REGISTRY if r["engine"] == "vllm")
+    vcmd = build_cmd(vrow)
+    assert "vllm" in vcmd and vrow["model_path"] in vcmd, vcmd      # vllm + model path
+    assert "glm47" in vcmd, vcmd                                    # a glm flag spliced
+    assert "sglang.launch_server" not in vcmd, vcmd                 # NOT the wrong engine
+
+    srow = next(r for r in REGISTRY if r["engine"] == "sglang")
+    scmd = build_cmd(srow)
+    assert "sglang.launch_server" in scmd and srow["model_path"] in scmd, scmd
+    assert "qwen3_coder" in scmd, scmd                              # a qwen flag spliced
+    assert "vllm" not in scmd, scmd                                 # NOT the wrong engine
+    assert "--weight-loader-disable-mmap" in scmd, scmd            # gotcha #2 default preserved
+    assert "--max-running-requests" in scmd, scmd                  # concurrency cap restored
+
+    # --- DOCKER ARGV (the bug that timed out every vllm row): the image ENTRYPOINT
+    # MUST be overridden so it can't shadow+double the command. Inspect the FULL argv
+    # positionally (substring-only checks are exactly what let the doubling slip).
+    vdock = docker_run_cmd(vrow)
+    assert "--entrypoint" in vdock, vdock
+    assert vdock[vdock.index("--entrypoint") + 1] == "vllm", vdock  # entrypoint = the binary
+    vimg = vdock.index(ENGINE_IMAGE["vllm"])
+    vpost = vdock[vimg + 1:]                                        # args AFTER the image
+    assert vpost[0] == "serve", vpost                              # 'serve <path> ...'
+    assert "vllm" not in vpost, vpost                              # NOT a doubled 'vllm serve'
+    assert vpost.count("serve") == 1, vpost                        # no stray dup positional
+    assert vpost[1] == vrow["model_path"], vpost                   # model path is the positional
+    # host_path -> model_path bind mount (NOT host==container, which makes empty dirs)
+    assert f"{vrow['host_path']}:{vrow['model_path']}" in vdock, vdock
+
+    sdock = docker_run_cmd(srow)
+    assert sdock[sdock.index("--entrypoint") + 1] == "python3", sdock  # sglang -> python3
+    simg = sdock.index(ENGINE_IMAGE["sglang"])
+    spost = sdock[simg + 1:]
+    assert spost[:2] == ["-m", "sglang.launch_server"], spost     # module run, not doubled
+    assert "python3" not in spost and "vllm" not in spost, spost  # no doubled binary / wrong engine
+    assert f"{srow['host_path']}:{srow['model_path']}" in sdock, sdock
+
+    # unknown engine -> BackendError before any launch (pure guard)
+    try:
+        docker_run_cmd({"name": "x", "engine": "bogus", "model_path": "/m/x",
+                        "gpu": 0, "port": 1})
+        assert False, "expected BackendError for unknown engine"
+    except BackendError:
+        pass
+
+    # both fast-tier rows share gpu 0 -> single-resident swap pair (mixed engines)
+    fast = [r for r in REGISTRY if r["port"] == 30001]
+    assert len(fast) == 2 and {r["gpu"] for r in fast} == {0}, fast
+    assert {r["engine"] for r in fast} == {"vllm", "sglang"}, fast
+
+    # every engine resolves to an image (catches a typo'd engine before any launch)
+    for r in REGISTRY:
+        assert r["engine"] in ENGINE_IMAGE, r["engine"]
+    assert ENGINE_IMAGE.get("bogus") is None                       # unknown-engine guard is pure
+
+    # --- GPU ISOLATION: Docker Desktop WSL2 ignores `--gpus device=N`, so a row with
+    # a resolved gpu_uuid MUST emit `--gpus all` + CUDA_VISIBLE_DEVICES (NOT device=).
+    # Pure: inject a FAKE uuid (no nvidia-smi call in the self-check).
+    iso_row = dict(srow, gpu_uuid="GPU-deadbeef-0000-1111-2222-333344445555")
+    idock = docker_run_cmd(iso_row)
+    gi = idock.index("--gpus")
+    assert idock[gi + 1] == "all", idock                           # expose all, pin via env
+    assert "-e" in idock and f"CUDA_VISIBLE_DEVICES={iso_row['gpu_uuid']}" in idock, idock
+    assert "CUDA_DEVICE_ORDER=PCI_BUS_ID" in idock, idock          # stable index<->UUID order
+    assert f"device={iso_row['gpu']}" not in idock, idock          # the IGNORED form is gone
+
+    # fallback: a row WITHOUT gpu_uuid keeps `--gpus device={gpu}` (self-check + non-WSL)
+    fdock = docker_run_cmd(srow)
+    assert f"device={srow['gpu']}" in fdock, fdock
+    assert "CUDA_VISIBLE_DEVICES" not in " ".join(fdock), fdock    # no env-isolation injected
 
     print("self-check OK")
 
