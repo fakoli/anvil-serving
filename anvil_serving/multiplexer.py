@@ -44,15 +44,16 @@ REGISTRY = [
      "args": ["--attention-backend", "triton", "--tool-call-parser", "qwen3_coder",
               "--kv-cache-dtype", "fp8_e5m2", "--context-length", "131072",
               "--mem-fraction-static", "0.9"]},
-    # fast/coding (gpu 0, swaps with qwen3-14b): glm-4.7-flash AWQ via vLLM
-    {"name": "glm-4.7-flash", "engine": "vllm",
-     "model_path": "/models/glm47-flash-awq",
-     "host_path": "C:/Users/sdoum/models/glm47-flash-awq", "est_weight_gb": 12,
+    # fast/coding (gpu 0, swaps with qwen3-14b): gpt-oss-20b via vLLM (VALIDATED fast pick)
+    {"name": "gpt-oss-20b", "engine": "vllm",
+     "model_path": "/models/gpt-oss-20b",
+     "host_path": "C:/Users/sdoum/models/gpt-oss-20b", "est_weight_gb": 13,
      "gpu": 0, "port": 30001,
-     "args": ["--max-model-len", "65536", "--gpu-memory-utilization", "0.92",
-              "--tool-call-parser", "glm47", "--reasoning-parser", "glm45",
-              "--enable-auto-tool-choice"]},
-    # fast/safe (gpu 0, swaps with glm): qwen3-14b AWQ via SGLang
+     "args": ["--max-model-len", "65536", "--gpu-memory-utilization", "0.90",
+              "--tool-call-parser", "openai", "--enable-auto-tool-choice"]},
+    # GLM-4.7-Flash is PARKED: non-viable on this sm_120 box (SGLang #25331 won't load;
+    # vLLM MLA crash on long-context) -> replaced above by the validated gpt-oss-20b.
+    # fast/safe (gpu 0, swaps with gpt-oss): qwen3-14b AWQ via SGLang
     {"name": "qwen3-14b-fast", "engine": "sglang",
      "model_path": "/models/qwen3-14b-awq",
      "host_path": "C:/Users/sdoum/models/qwen3-14b-awq", "est_weight_gb": 9,
@@ -62,7 +63,7 @@ REGISTRY = [
               "--kv-cache-dtype", "fp8_e5m2", "--context-length", "40960",
               "--mem-fraction-static", "0.85"]},
 ]
-# NOTE: the two gpu-0 rows (glm-4.7-flash, qwen3-14b-fast) intentionally share
+# NOTE: the two gpu-0 rows (gpt-oss-20b, qwen3-14b-fast) intentionally share
 # upstream port 30001 — they are a single-resident SWAP PAIR (only one is ever
 # resident on GPU 0), so the shared port is correct by design, not a collision.
 # More broadly, per-row gpu/port are INFORMATIONAL under this multiplexer's GLOBAL
@@ -668,7 +669,7 @@ def _self_check():
     vrow = next(r for r in REGISTRY if r["engine"] == "vllm")
     vcmd = build_cmd(vrow)
     assert "vllm" in vcmd and vrow["model_path"] in vcmd, vcmd      # vllm + model path
-    assert "glm47" in vcmd, vcmd                                    # a glm flag spliced
+    assert "openai" in vcmd, vcmd                                   # gpt-oss tool-call-parser flag spliced
     assert "sglang.launch_server" not in vcmd, vcmd                 # NOT the wrong engine
 
     srow = next(r for r in REGISTRY if r["engine"] == "sglang")
