@@ -9,10 +9,12 @@ Plus the pin override escape hatch and prefix/case normalization.
 from __future__ import annotations
 
 import pathlib
+from types import MappingProxyType
 
 from anvil_serving.router import classify as classify_mod
-from anvil_serving.router.config import load
+from anvil_serving.router.config import RouterConfig, Tier, load
 from anvil_serving.router.intent import (
+    PRESET_TO_WORK_CLASS,
     Intent,
     parse_model,
     resolve,
@@ -122,10 +124,89 @@ def test_prefix_case_variants_all_resolve_planning():
         assert intent.source == "declared-preset", model
 
 
+def _cloud_tier(tid="cloud"):
+    """A minimal valid cloud Tier for directly-constructed RouterConfigs."""
+    return Tier(
+        id=tid,
+        base_url="https://api.example/v1",
+        dialect="anthropic",
+        context_limit=200000,
+        privacy="cloud",
+        tool_support=True,
+        auth_env="ANTHROPIC_API_KEY",
+    )
+
+
+# ── resolve() never raises on adversarial configs / models (AC2) ─────────────
+def test_empty_tiers_config_does_not_raise():
+    # A directly-constructed empty-tiers config: _safer_tier would IndexError on
+    # config.tiers[-1] if it were not guarded. resolve must still not raise.
+    cfg = RouterConfig(tiers=(), presets=MappingProxyType({}), mapping_version="v")
+    intent = resolve(_req(""), cfg)
+    assert isinstance(intent, Intent)
+    assert intent.source == "inferred"
+    assert intent.decision["safer_tier"] == ""
+
+
+def test_model_whose_str_raises_does_not_raise():
+    class Hostile:
+        def __str__(self):
+            raise RuntimeError("boom")
+
+    intent = resolve(_req(Hostile()), CONFIG)  # must degrade, never raise
+    assert isinstance(intent, Intent)
+    assert intent.source == "inferred"
+    assert intent.decision["normalized"] == ""
+
+
+# ── case-insensitive config matching ─────────────────────────────────────────
+def test_mixed_case_preset_resolves_declared():
+    # Config preset key is "Planning"; parse_model lower-cases the wire token, so
+    # both "planning" and "Planning" must reach the declared-preset branch.
+    cfg = RouterConfig(
+        tiers=(_cloud_tier(),),
+        presets=MappingProxyType({"Planning": ("cloud",)}),
+        mapping_version="v",
+    )
+    for caller in ("planning", "Planning", "anvil/PLANNING"):
+        intent = resolve(_req(caller), cfg)
+        assert intent.source == "declared-preset", caller
+        assert intent.preset == "Planning", caller  # actual-cased config key
+        assert intent.candidate_tiers == ("cloud",), caller
+
+
+def test_custom_preset_outside_taxonomy_has_none_work_class():
+    # A configured preset with no PRESET_TO_WORK_CLASS mapping resolves as a
+    # declared preset but with work_class=None (routing uses preset/tiers).
+    assert "yolo" not in PRESET_TO_WORK_CLASS
+    cfg = RouterConfig(
+        tiers=(_cloud_tier(),),
+        presets=MappingProxyType({"yolo": ("cloud",)}),
+        mapping_version="v",
+    )
+    intent = resolve(_req("yolo"), cfg)
+    assert intent.source == "declared-preset"
+    assert intent.work_class is None
+    assert intent.preset == "yolo"
+    assert intent.candidate_tiers == ("cloud",)
+
+
+# ── conflicting-keyword inference is ambiguous -> safer tier (AC3) ────────────
+def test_conflicting_keywords_route_to_safer_tier():
+    # "review" + "implement" name two classes -> classifier not confident ->
+    # ambiguous -> collapse to the safer (cloud) tier.
+    intent = resolve(_req("", "review and implement the fix"), CONFIG)
+    assert intent.source == "inferred"
+    assert intent.ambiguous is True
+    assert intent.candidate_tiers == ("cloud",)
+    assert intent.decision["safer_tier"] == "cloud"
+
+
 # ── a confident inferred class expands to its preset pool ────────────────────
 def test_confident_inference_uses_preset_pool():
-    # "review this" -> review work class -> review preset -> heavy-local, cloud.
-    intent = resolve(_req("", "please review this design doc"), CONFIG)
+    # A single-class match -> review work class -> review preset -> the pool.
+    # (Phrase avoids a second keyword: "design"/"plan" would make it ambiguous.)
+    intent = resolve(_req("", "please review this pull request"), CONFIG)
     assert intent.source == "inferred"
     assert intent.ambiguous is False
     assert intent.work_class == "review"

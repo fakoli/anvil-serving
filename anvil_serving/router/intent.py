@@ -11,6 +11,14 @@ sources feed it, in precedence order:
 3. **inferred** — anything else (unknown or empty model): hand off to the
    Tier-0 :func:`~anvil_serving.router.classify.classify` heuristics.
 
+Precedence is deliberate: **declared-preset is checked BEFORE pin**, so if a
+config gives a tier an id that collides with a preset name, the *preset* wins
+(presets are the primary wire vocabulary; pinning a same-named tier is a config
+smell). Do not reorder — checking pins first would make a shadowed preset
+unreachable. Preset and tier matching are **case-insensitive** (``parse_model``
+lower-cases the wire token, but config preset keys / tier ids are unconstrained),
+resolving against the actual-cased config key.
+
 Two safety properties this module guarantees:
 
 * :func:`resolve` **never raises** (AC2): an unknown or empty model still yields
@@ -62,9 +70,16 @@ class Intent:
     (``compare=False``) on purpose: the two equivalent inputs ``"planning"`` and
     ``"anvil/planning"`` must compare EQUAL (AC1) even though their decision logs
     differ in the raw model string. It is wrapped read-only via ``MappingProxyType``.
+
+    ``work_class`` is the profile-lookup key. It is always a valid
+    :data:`~anvil_serving.router.classify.WORK_CLASSES` value for *inferred* and
+    *pinned* intents, but may be ``None`` for a **declared custom preset** that
+    has no taxonomy mapping in :data:`PRESET_TO_WORK_CLASS` (routing still works:
+    it uses ``preset`` / ``candidate_tiers``, which are independent of the
+    profile key).
     """
 
-    work_class: str
+    work_class: Optional[str]
     preset: Optional[str]
     source: str  # "declared-preset" | "inferred" | "pinned"
     candidate_tiers: tuple[str, ...]
@@ -80,9 +95,13 @@ def parse_model(model: Optional[str]) -> str:
     """
     if not model:
         return ""
-    if not isinstance(model, str):  # contract says str, but never raise (AC2)
-        model = str(model)
-    token = model.strip().lower()
+    # Contract says str, but resolve() must never raise (AC2): coerce defensively
+    # so even a model object whose ``__str__`` raises degrades to "" rather than
+    # escaping.
+    try:
+        token = str(model).strip().lower()
+    except Exception:
+        return ""
     for prefix in ("anvil/", "anvil:"):
         if token.startswith(prefix):
             token = token[len(prefix):].strip()
@@ -95,8 +114,12 @@ def _safer_tier(config: RouterConfig) -> str:
 
     The first ``privacy == "cloud"`` tier (the always-available safe fallback);
     if there is none, the last declared tier. Used as the sole candidate when an
-    inferred request is ambiguous.
+    inferred request is ambiguous. Returns ``""`` if the config has no tiers, so
+    a directly-constructed empty-tiers :class:`RouterConfig` does not make
+    :func:`resolve` raise (AC2).
     """
+    if not config.tiers:
+        return ""
     for t in config.tiers:
         if t.privacy == "cloud":
             return t.id
@@ -120,18 +143,31 @@ def resolve(request: InternalRequest, config: RouterConfig) -> Intent:
     m = parse_model(getattr(request, "model", None))
     safer = _safer_tier(config)
 
-    if m and m in config.presets:
+    # Case-insensitive lookup tables mapping the normalized (lower-cased) token
+    # back to the ACTUAL-cased config key, so a mixed-case preset/tier id is
+    # reachable. ``parse_model`` already lower-cased ``m``.
+    preset_lc = {p.lower(): p for p in config.presets}
+    tier_lc = {t.id.lower(): t.id for t in config.tiers}
+
+    if m and m in preset_lc:
         # 1. Declared preset: caller named the routing class directly.
-        preset = m
-        work_class = PRESET_TO_WORK_CLASS.get(m, m)
-        candidate_tiers = _candidate_ids(config, m)
+        #    Checked BEFORE pin so a preset shadows a same-named tier id.
+        actual_preset = preset_lc[m]
+        preset = actual_preset
+        # ``None`` for a custom preset outside the taxonomy: routing uses
+        # ``preset`` / ``candidate_tiers``; work_class is only the profile key.
+        # Keyed on the normalized token so a mixed-case spelling of a standard
+        # preset ("Planning") still maps to its taxonomy work class.
+        work_class = PRESET_TO_WORK_CLASS.get(m)
+        candidate_tiers = _candidate_ids(config, actual_preset)
         source = "declared-preset"
         ambiguous = False
-    elif m and any(t.id == m for t in config.tiers):
+    elif m and m in tier_lc:
         # 2. Pinned: caller named a concrete tier id (override escape hatch).
+        actual_tier = tier_lc[m]
         preset = None
         work_class = classify(request).work_class
-        candidate_tiers = (m,)
+        candidate_tiers = (actual_tier,)
         source = "pinned"
         ambiguous = False
     else:
