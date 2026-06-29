@@ -25,6 +25,20 @@ except ImportError:  # pragma: no cover - 3.7 fallback, unused at >=3.9
     from typing_extensions import Protocol, runtime_checkable  # type: ignore
 
 
+class DialectError(Exception):
+    """A dialect rejected a JSON-parseable request (e.g. a missing required
+    field). The front door converts it into an HTTP error with the carried
+    status and error-type, so dialects can speak their own error vocabulary
+    (Anthropic uses ``invalid_request_error``) without importing http.server.
+    """
+
+    def __init__(self, status: int, etype: str, message: str):
+        super().__init__(message)
+        self.status = status
+        self.etype = etype
+        self.message = message
+
+
 @dataclass
 class Message:
     """A single normalized chat message: a role and flattened text content."""

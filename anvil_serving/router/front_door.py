@@ -34,7 +34,7 @@ from .backends import EchoBackend
 from .dialects import Dialect
 from .dialects.anthropic import AnthropicDialect
 from .dialects.openai import OpenAIDialect
-from .internal import Backend
+from .internal import Backend, DialectError
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
 _ROUTES = {
@@ -65,10 +65,21 @@ def _make_handler(backend: Backend):
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "keep-alive")
+            # Reflect the connection intent already computed from the request's
+            # Connection header (RFC 7230 6.1): if the client sent
+            # `Connection: close`, BaseHTTPRequestHandler set close_connection=True
+            # and we must NOT override it back to keep-alive (that would leave a
+            # close-expecting, read-to-EOF client hanging until its own timeout).
+            self.send_header("Connection",
+                             "close" if self.close_connection else "keep-alive")
             self.send_header("Transfer-Encoding", "chunked")
             self.end_headers()
             deltas = backend.generate(request)
+            # Close-on-error contract (M0): the 200 + headers are already sent, so
+            # a backend exception mid-stream cannot become an error status. It
+            # propagates, the socket closes, and the client sees a truncated
+            # stream (IncompleteRead) rather than a hang. This is intentional;
+            # mid-stream verify/fallback is a later task (T008/T009).
             for frame in dialect.stream(request, deltas):
                 if not frame:
                     continue  # never emit a zero-length chunk (would end stream)
@@ -94,7 +105,21 @@ def _make_handler(backend: Backend):
                 self._error(404, "not_found", f"no route {path}")
                 return
 
-            n = int(self.headers.get("Content-Length") or 0)
+            # Request bodies must be length-delimited; we don't decode a chunked
+            # upload, so reject it explicitly rather than silently reading "".
+            if "chunked" in (self.headers.get("Transfer-Encoding") or "").lower():
+                self._error(411, "invalid_request",
+                            "chunked request bodies are unsupported; send Content-Length")
+                return
+            cl = self.headers.get("Content-Length")
+            try:
+                n = int(cl) if cl is not None else 0
+            except (TypeError, ValueError):
+                self._error(400, "invalid_request", f"invalid Content-Length: {cl!r}")
+                return
+            if n < 0:
+                self._error(400, "invalid_request", f"invalid Content-Length: {cl!r}")
+                return
             raw = self.rfile.read(n) if n else b""
             try:
                 body = json.loads(raw or b"{}")
@@ -107,7 +132,10 @@ def _make_handler(backend: Backend):
 
             try:
                 request = dialect.parse_request(body)
-            except Exception as e:  # malformed but JSON-parseable body
+            except DialectError as e:  # dialect-specific rejection (e.g. max_tokens)
+                self._error(e.status, e.etype, e.message)
+                return
+            except Exception as e:  # other malformed but JSON-parseable body
                 self._error(400, "invalid_request", f"bad request: {e}")
                 return
 

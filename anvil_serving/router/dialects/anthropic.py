@@ -21,6 +21,7 @@ import uuid
 from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional
 
 from ..internal import (
+    DialectError,
     InternalRequest,
     estimate_tokens,
     flatten_content,
@@ -53,11 +54,17 @@ class AnthropicDialect:
     def parse_request(self, body: Mapping[str, Any]) -> InternalRequest:
         system_raw = body.get("system")
         system = flatten_content(system_raw) if system_raw is not None else None
+        # max_tokens is REQUIRED by the Anthropic Messages API; reject its
+        # absence with the API's own error type (OpenAI keeps it optional).
+        max_tokens = body.get("max_tokens")
+        if max_tokens is None:
+            raise DialectError(400, "invalid_request_error",
+                               "max_tokens: field required")
         return InternalRequest(
             model=str(body.get("model") or "claude"),
             messages=normalize_messages(body.get("messages")),
             system=system,
-            max_tokens=body.get("max_tokens"),
+            max_tokens=max_tokens,
             temperature=body.get("temperature"),
             stream=bool(body.get("stream", False)),
             dialect=self.name,
