@@ -9,6 +9,13 @@ well-formed, a malformed format. On a check failure the router (T008/T009) falls
 back to the next tier; T007 builds ONLY the checks plus the chain runner — not
 routing, tier selection, fallback, or the streaming commit window.
 
+**Governing principle.** A structural verifier returns ``passed=False`` only
+when it can genuinely *prove* a defect. Input it merely cannot evaluate ("not a
+language I can parse", "not actually a diff") passes; malformed/huge/adversarial
+input yields a fail *verdict*, never a raised exception. A verifier must never
+crash the chain — :func:`run_verifiers` additionally backstops any unforeseen
+exception into a fail verdict.
+
 **Purely local, no I/O.** Every check uses only the stdlib (``json``, ``ast``,
 ``re``); none of them open a socket, make an HTTP request, or call an LLM. That
 property is part of the acceptance gate and is pinned by a test in
@@ -30,7 +37,7 @@ from __future__ import annotations
 import ast
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 try:  # Protocol is stdlib from 3.8+; runtime_checkable lets isinstance() work.
@@ -55,8 +62,10 @@ class ResponseView:
       * ``finish_reason`` — the normalized stop reason. "stop"/"end_turn"/
         "stop_sequence"/"tool_calls" read as a clean stop; "length"/"max_tokens"
         read as truncation. ``None`` means unknown (not penalized).
-      * ``tool_calls`` — each a dict carrying a string ``arguments`` field as the
-        wire carries it (OpenAI-style ``function.arguments`` is also accepted).
+      * ``tool_calls`` — each normally a dict carrying a string ``arguments``
+        field as the wire carries it (OpenAI-style ``function.arguments`` is also
+        accepted). Native Anthropic ``tool_use.input`` arrives already parsed as
+        a dict/list — that is accepted as valid by construction.
       * ``expected_format`` — optional hint, e.g. "json", that the *whole* reply
         is expected to be in that format.
       * ``expected_language`` — optional hint, e.g. "python", used to type an
@@ -105,20 +114,32 @@ class Verifier(Protocol):
 # --------------------------------------------------------------------------- #
 # small local helpers (stdlib only — no I/O)
 # --------------------------------------------------------------------------- #
-# A fenced block: ```lang\n ... \n``` . ``lang`` is optional; body is captured
-# non-greedily up to the next closing fence. Backtick fences only (cheap).
+# A backtick-fenced block, handling both forms and adversarial bodies:
+#   * multi-line: ```lang\n <body> \n``` — the closing fence must follow a
+#     newline (i.e. start its own line), so an inline ``` inside a string in the
+#     body does NOT prematurely close the block.
+#   * single-line: ```lang <body>``` on one line (no newline after the lang tag).
+# Group 1 = lang tag; group 2 = multi-line body; group 3 = single-line body.
 _FENCE_RE = re.compile(
-    r"```[ \t]*([A-Za-z0-9_.+-]*)[ \t]*\r?\n(.*?)```",
+    r"```[ \t]*([A-Za-z0-9_.+-]*)[ \t]*"
+    r"(?:"
+    r"\r?\n(.*?)\r?\n[ \t]*```"   # multi-line body; close ``` at (indented) line start
+    r"|"
+    r"[ \t]*(.*?)```"             # single-line body; close ``` on the same line
+    r")",
     re.DOTALL,
 )
 
 # A unified-diff hunk header, e.g. ``@@ -1,3 +2,4 @@`` (optionally trailing a
 # section heading). ``re.match`` is unanchored at the end on purpose.
 _HUNK_RE = re.compile(r"^@@ -\d+(,\d+)? \+\d+(,\d+)? @@")
+# Same pattern, used to *detect* a real hunk header anywhere in the text.
+_HUNK_SEARCH_RE = re.compile(r"^@@ -\d+(,\d+)? \+\d+(,\d+)? @@", re.MULTILINE)
 
 # Lines that introduce a (possibly new) file in a diff and close any open hunk.
 _DIFF_HEADER_PREFIXES = ("diff ", "--- ", "+++ ", "index ", "Index:")
 
+# Languages we can *actually* parse cheaply — the only ones we will hard-fail on.
 _PARSE_LANGS_PY = {"python", "py", "python3"}
 _PARSE_LANGS_JSON = {"json"}
 
@@ -143,45 +164,44 @@ _REFUSAL_MARKERS = (
 )
 
 
+def _reject_nonspec_constant(token: str) -> Any:
+    """``parse_constant`` hook: reject non-spec JSON (NaN/Infinity/-Infinity).
+
+    ``json.loads`` accepts these by default, but strict downstream parsers (and
+    most tool executors / config loaders) reject them, so for a structural
+    validity gate they must not pass. Raising here makes ``json.loads`` raise.
+    """
+    raise ValueError(f"non-spec JSON constant: {token}")
+
+
+def _strict_json_loads(s: str) -> Any:
+    """``json.loads`` that rejects NaN/Infinity (spec-strict)."""
+    return json.loads(s, parse_constant=_reject_nonspec_constant)
+
+
 def iter_code_blocks(text: str) -> List[Tuple[str, str]]:
     """Return ``(lang_lowercased, body)`` for each backtick-fenced block."""
-    return [(m.group(1).lower(), m.group(2)) for m in _FENCE_RE.finditer(text or "")]
+    out: List[Tuple[str, str]] = []
+    for m in _FENCE_RE.finditer(text or ""):
+        lang = (m.group(1) or "").lower()
+        body = m.group(2) if m.group(2) is not None else (m.group(3) or "")
+        out.append((lang, body))
+    return out
 
 
 def _sole_fenced_body(text: str) -> Optional[str]:
-    """If ``text`` (stripped) is exactly one fenced block, return its body.
+    """If ``text`` (stripped) is *exactly* one fenced block, return its body.
 
-    Used by format checks so an expectation like ``json`` is satisfied whether
-    the caller wrapped the payload in a ```json fence or sent it bare.
+    "Exactly one" means the fence spans the entire stripped text — the match
+    must start at position 0 and consume to the end. A single fence followed by
+    trailing prose (even prose that ends in backticks) is therefore NOT treated
+    as the sole block, so a format check still validates the whole impure output.
     """
-    blocks = iter_code_blocks(text)
-    if len(blocks) != 1:
-        return None
     stripped = (text or "").strip()
-    if stripped.startswith("```") and stripped.endswith("```"):
-        return blocks[0][1]
+    m = _FENCE_RE.match(stripped)
+    if m and m.end() == len(stripped):
+        return m.group(2) if m.group(2) is not None else (m.group(3) or "")
     return None
-
-
-def _balanced_delimiters(text: str) -> bool:
-    """Cheap structural check: are ``()[]{}`` balanced and properly nested?
-
-    A heuristic, **not** a parser — it does not understand strings or comments,
-    so a brace inside a string literal counts. Used only for languages we cannot
-    cheaply parse, where the task calls for a structural sanity check rather than
-    a real parse.
-    """
-    pairs = {")": "(", "]": "[", "}": "{"}
-    opens = set(pairs.values())
-    stack: List[str] = []
-    for ch in text:
-        if ch in opens:
-            stack.append(ch)
-        elif ch in pairs:
-            if not stack or stack[-1] != pairs[ch]:
-                return False
-            stack.pop()
-    return not stack
 
 
 def _tool_arguments(tool_call: Dict[str, Any]) -> Any:
@@ -251,15 +271,21 @@ class NotTruncated:
 
 
 class ToolCallJSONValid:
-    """Every tool call's ``arguments`` must be parseable JSON.
+    """Every tool call's arguments must be valid (parseable / well-structured).
 
-    A truncated or malformed arguments blob is the most common tool-call failure.
-    An absent (``None``) or empty/whitespace arguments value is treated as the
-    no-argument sentinel and accepted. ``score`` is the share of tool calls that
-    parsed.
+    Per tool call:
+      * a non-``dict`` element (e.g. ``None``/``"foo"``/``5``) is a malformed
+        tool call → fail that call gracefully (never raise);
+      * already-parsed ``dict``/``list`` arguments (native Anthropic
+        ``tool_use.input``) are valid by construction;
+      * a string is parsed with strict :func:`json.loads` (NaN/Infinity rejected,
+        and ``RecursionError`` on pathological nesting is caught as a fail);
+      * an absent (``None``) or empty/whitespace string is the no-argument
+        sentinel — accepted *only* when no required keys are expected (otherwise
+        it is missing those keys → fail).
 
-    Optionally, ``required_keys`` maps a tool name to a list of keys that must be
-    present in the parsed arguments object — a cheap shallow structural check, no
+    ``score`` is the share of tool calls that passed. Optionally, ``required_keys``
+    maps a tool name to keys that must be present — a cheap shallow check, no
     external ``jsonschema`` dependency.
     """
 
@@ -276,23 +302,34 @@ class ToolCallJSONValid:
         ok = 0
         problems: List[str] = []
         for i, tc in enumerate(calls):
-            args = _tool_arguments(tc)
+            if not isinstance(tc, dict):
+                problems.append(f"#{i}: tool call is {type(tc).__name__}, not an object")
+                continue
+
             name = _tool_name(tc) or f"#{i}"
-            if args is None or (isinstance(args, str) and not args.strip()):
-                ok += 1  # no-argument call
+            required = list(self.required_keys.get(_tool_name(tc), []))
+            args = _tool_arguments(tc)
+
+            parsed: Any
+            if args is None:
+                parsed = {}                      # no arguments provided
+            elif isinstance(args, (dict, list)):
+                parsed = args                    # already-parsed (Anthropic tool_use.input)
+            elif isinstance(args, str):
+                if not args.strip():
+                    parsed = {}                  # empty no-arg sentinel
+                else:
+                    try:
+                        parsed = _strict_json_loads(args)
+                    except (ValueError, TypeError, RecursionError) as exc:
+                        problems.append(f"{name}: arguments not valid JSON ({exc})")
+                        continue
+            else:
+                problems.append(
+                    f"{name}: arguments is {type(args).__name__}, not a JSON string/object")
                 continue
-            if not isinstance(args, str):
-                problems.append(f"{name}: arguments is {type(args).__name__}, not a JSON string")
-                continue
-            try:
-                parsed = json.loads(args)
-            except (ValueError, TypeError) as exc:
-                problems.append(f"{name}: arguments not valid JSON ({exc})")
-                continue
-            missing = [
-                k for k in self.required_keys.get(_tool_name(tc), [])
-                if not (isinstance(parsed, dict) and k in parsed)
-            ]
+
+            missing = [k for k in required if not (isinstance(parsed, dict) and k in parsed)]
             if missing:
                 problems.append(f"{name}: missing required key(s) {missing}")
                 continue
@@ -305,14 +342,16 @@ class ToolCallJSONValid:
 
 
 class CodeParses:
-    """Fenced code blocks that *should* parse must parse.
+    """Fenced code blocks in a language we can parse must parse.
 
-    ``python``/``py`` blocks are checked with :func:`ast.parse`, ``json`` blocks
-    with :func:`json.loads`. For a block whose language we cannot cheaply parse,
-    a structural check (balanced ``()[]{}``) stands in for a real parser. An
-    untagged block is typed by ``expected_language`` when set, else structurally
-    checked. No fenced blocks → pass. ``score`` is the share of blocks that
-    passed their check.
+    We only hard-fail for languages we can *actually* validate cheaply:
+    ``python``/``py`` via :func:`ast.parse`, ``json`` via strict
+    :func:`json.loads`. For any other (or untagged, with no ``expected_language``)
+    block we cannot prove the code is broken, so it passes — we do not run a
+    brace-counter as a gate (it would false-positive on a ``}`` inside a string or
+    comment). Pathological input that makes the parser raise ``RecursionError``
+    is caught as a fail (unparseable = defect), never propagated. No fenced
+    blocks → pass. ``score`` is the share of blocks that did not fail.
     """
 
     name = "code_parses"
@@ -331,19 +370,17 @@ class CodeParses:
                 try:
                     ast.parse(body)
                     ok += 1
-                except SyntaxError as exc:
-                    problems.append(f"{label}: python does not parse ({exc.msg})")
+                except (SyntaxError, ValueError, RecursionError) as exc:
+                    detail = getattr(exc, "msg", None) or type(exc).__name__
+                    problems.append(f"{label}: python does not parse ({detail})")
             elif effective in _PARSE_LANGS_JSON:
                 try:
-                    json.loads(body)
+                    _strict_json_loads(body)
                     ok += 1
-                except ValueError as exc:
+                except (ValueError, TypeError, RecursionError) as exc:
                     problems.append(f"{label}: json does not parse ({exc})")
             else:
-                if _balanced_delimiters(body):
-                    ok += 1
-                else:
-                    problems.append(f"{label}: unbalanced ()[]{{}} delimiters")
+                ok += 1  # language we cannot cheaply parse — cannot prove a defect
 
         score = ok / len(blocks)
         if problems:
@@ -352,14 +389,16 @@ class CodeParses:
 
 
 class DiffWellFormed:
-    """A unified diff in the text must be structurally well-formed.
+    r"""A unified diff in the text must be structurally well-formed.
 
-    Triggered by a ```diff fence or by ``--- ``/``+++ ``/``@@ `` markers. Hunk
-    headers must match ``^@@ -\\d+(,\\d+)? \\+\\d+(,\\d+)? @@``; body lines must
-    start with ``' '``/``'+'``/``'-'`` (``'\\'`` for the no-newline marker). This
-    is a **structural** well-formedness check only — it deliberately does NOT try
-    to apply the diff to a working tree (that needs files and is not local to the
-    response). No diff present → pass.
+    The text is treated as a diff **only** when it carries a real hunk header
+    (``^@@ -\d+(,\d+)? \+\d+(,\d+)? @@``) or an explicit ```diff fence. Prose
+    that merely starts with ``--- ``/``+++ `` (section dividers, changelog lines)
+    is therefore *not* a diff → pass. When it is a diff: hunk headers must match
+    that pattern and body lines must start with ``' '``/``'+'``/``'-'`` (``'\'``
+    for the no-newline marker). This is a **structural** check only — it
+    deliberately does NOT apply the diff to a working tree (that needs files and
+    is not local to the response). No diff present → pass.
     """
 
     name = "diff_well_formed"
@@ -370,14 +409,12 @@ class DiffWellFormed:
             return VerifyResult(self.name, True, 1.0, "no diff present")
 
         in_hunk = False
-        saw_hunk = False
         for line in diff_text.splitlines():
             if line.startswith("@@"):
                 if not _HUNK_RE.match(line):
                     return VerifyResult(
                         self.name, False, 0.0, f"malformed hunk header: {line!r}")
                 in_hunk = True
-                saw_hunk = True
                 continue
             if not in_hunk:
                 continue  # preamble / file headers before the first hunk
@@ -389,17 +426,17 @@ class DiffWellFormed:
             return VerifyResult(
                 self.name, False, 0.0, f"malformed diff body line: {line!r}")
 
-        if not saw_hunk:
-            return VerifyResult(
-                self.name, False, 0.0, "diff markers present but no valid hunk header")
         return VerifyResult(self.name, True, 1.0, "well-formed unified diff")
 
     @staticmethod
     def _extract_diff(text: str) -> Optional[str]:
+        # An explicit ```diff fence is an unambiguous claim "this is a diff".
         for lang, body in iter_code_blocks(text):
             if lang == "diff":
                 return body
-        if re.search(r"^(--- |\+\+\+ |@@ )", text, re.MULTILINE):
+        # Otherwise, only a *real* hunk header makes this a diff worth checking;
+        # bare ``--- ``/``+++ `` markers (prose) do not.
+        if _HUNK_SEARCH_RE.search(text):
             return text
         return None
 
@@ -407,10 +444,11 @@ class DiffWellFormed:
 class FormatWellFormed:
     """When a whole-response format is expected, the body must be in it.
 
-    For ``expected_format == "json"`` the whole ``text`` (or its single fenced
-    block) must :func:`json.loads`. Other formats are accepted as not-checked for
-    now — the structure generalizes so a new format only needs a branch here.
-    No ``expected_format`` → pass (not applicable).
+    For ``expected_format == "json"`` the whole ``text`` (or its genuinely-sole
+    fenced block) must parse with strict :func:`json.loads` (NaN/Infinity
+    rejected; ``RecursionError`` on pathological nesting caught as a fail). Other
+    formats are accepted as not-checked for now — the structure generalizes so a
+    new format only needs a branch here. No ``expected_format`` → pass.
     """
 
     name = "format_well_formed"
@@ -424,8 +462,8 @@ class FormatWellFormed:
             if body is None:
                 body = response.text or ""
             try:
-                json.loads(body)
-            except (ValueError, TypeError) as exc:
+                _strict_json_loads(body)
+            except (ValueError, TypeError, RecursionError) as exc:
                 return VerifyResult(
                     self.name, False, 0.0, f"expected json, body did not parse ({exc})")
             return VerifyResult(self.name, True, 1.0, "body is valid json")
@@ -485,13 +523,20 @@ def run_verifiers(
         results gathered so far (including the failing one). Useful when a caller
         wants to fall back the moment any structural check trips.
 
-    Pure: no I/O, no mutation of ``response`` or ``verifiers``.
+    Pure: no I/O, no mutation of ``response`` or ``verifiers``. **Contract:** a
+    verifier must never crash the chain — any exception a verifier raises is
+    backstopped into a fail verdict (defense-in-depth on top of each check's own
+    guards), so this always returns one :class:`VerifyResult` per verifier run.
     """
     if mode not in ("all", "first_fail"):
         raise ValueError(f"unknown mode: {mode!r}")
     results: List[VerifyResult] = []
     for v in verifiers:
-        result = v.verify(response)
+        try:
+            result = v.verify(response)
+        except Exception as exc:  # noqa: BLE001 - contract: never let a verifier crash the chain
+            name = getattr(v, "name", v.__class__.__name__)
+            result = VerifyResult(name, False, 0.0, f"verifier error: {type(exc).__name__}")
         results.append(result)
         if mode == "first_fail" and not result.passed:
             break

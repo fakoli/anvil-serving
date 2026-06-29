@@ -112,6 +112,49 @@ def test_tool_call_json_valid_required_keys_shallow_schema():
     assert "content" in bad.reason
 
 
+def test_tool_call_json_valid_non_dict_elements_fail_gracefully():
+    # Review fix #1: adversarial non-dict tool-call elements must NOT crash the
+    # verifier; each is flagged as malformed and the call returns a verdict.
+    r = ToolCallJSONValid().verify(ResponseView(tool_calls=[None, "foo", 5]))
+    assert not r.passed and r.score == 0.0
+    assert r.reason.count("not an object") == 3
+
+
+def test_tool_call_json_valid_pass_already_parsed_object():
+    # Review fix #6: native Anthropic tool_use.input arrives already parsed as a
+    # dict/list (not a JSON string) and is valid by construction.
+    r = ToolCallJSONValid().verify(ResponseView(tool_calls=[
+        {"name": "write", "arguments": {"path": "a", "content": "b"}},
+        {"name": "tags", "arguments": ["x", "y"]},
+    ]))
+    assert r.passed and r.score == 1.0
+    # required_keys still apply to an already-parsed dict.
+    bad = ToolCallJSONValid(required_keys={"write": ["content"]}).verify(
+        ResponseView(tool_calls=[{"name": "write", "arguments": {"path": "a"}}]))
+    assert not bad.passed and "content" in bad.reason
+
+
+def test_tool_call_required_keys_with_empty_args_fails():
+    # Review fix #7: an empty/no-arg sentinel must NOT bypass required keys.
+    schema = {"write": ["path"]}
+    bad = ToolCallJSONValid(required_keys=schema).verify(
+        ResponseView(tool_calls=[{"name": "write", "arguments": ""}]))
+    assert not bad.passed and "path" in bad.reason
+    # ...but empty args are fine when nothing is required for that tool.
+    ok = ToolCallJSONValid().verify(
+        ResponseView(tool_calls=[{"name": "noop", "arguments": ""}]))
+    assert ok.passed
+
+
+def test_tool_call_deeply_nested_json_fails_no_crash():
+    # Review fix #2: pathological nesting makes json.loads raise RecursionError
+    # (not ValueError); the verifier must catch it as a fail, not propagate.
+    deep = "[" * 100000 + "]" * 100000
+    r = ToolCallJSONValid().verify(
+        ResponseView(tool_calls=[{"name": "x", "arguments": deep}]))
+    assert not r.passed and r.score == 0.0
+
+
 # --------------------------------------------------------------------------- #
 # CodeParses
 # --------------------------------------------------------------------------- #
@@ -127,7 +170,7 @@ def test_code_parses_pass_python_and_json():
 
 
 def test_code_parses_pass_unknown_lang_balanced():
-    # A language we cannot cheaply parse: only the structural balance check runs.
+    # A language we cannot cheaply parse: we cannot prove it is broken -> pass.
     r = CodeParses().verify(ResponseView(text="```rust\nfn main() { foo(bar()); }\n```"))
     assert r.passed
 
@@ -138,15 +181,60 @@ def test_code_parses_fail_python_syntax_error():
     assert "python" in r.reason
 
 
-def test_code_parses_fail_unknown_lang_unbalanced():
+def test_code_parses_pass_unknown_lang_unbalanced():
+    # Review fix #4: we MUST NOT hard-fail a language we cannot parse just because
+    # a naive brace-counter trips. Unbalanced-looking rust is unprovable -> pass.
     r = CodeParses().verify(ResponseView(text="```rust\nfn main() { foo(bar(); }\n```"))
-    assert not r.passed
-    assert "unbalanced" in r.reason
+    assert r.passed
+
+
+def test_code_parses_pass_brace_in_string_or_comment():
+    # Review fix #4: a brace inside a string/comment in a non-python/json language
+    # is valid output; the old balanced-delimiter gate false-positived on these.
+    for text in (
+        '```bash\necho "}"\n```',
+        '```js\nconst x = "{";\n```',
+        '```c\n// }\nint main(void) { return 0; }\n```',
+    ):
+        r = CodeParses().verify(ResponseView(text=text))
+        assert r.passed, text
 
 
 def test_code_parses_pass_no_blocks():
     r = CodeParses().verify(ResponseView(text="just prose, no fences"))
     assert r.passed and r.score == 1.0
+
+
+def test_code_parses_inline_backtick_in_string_passes():
+    # Review fix #8: a triple-backtick inside a string in the body must not close
+    # the fence early (which would truncate to an unterminated string and fail).
+    text = '```python\nx = "```"\ny = 1\n```'
+    r = CodeParses().verify(ResponseView(text=text))
+    assert r.passed and r.score == 1.0
+
+
+def test_code_parses_single_line_fence_is_evaluated():
+    # Review fix #9: single-line fenced payloads (no newline after the lang tag)
+    # must be captured and actually parsed — valid passes, invalid fails.
+    ok = CodeParses().verify(ResponseView(text='```json {"a": 1}```'))
+    assert ok.passed and ok.score == 1.0
+    bad = CodeParses().verify(ResponseView(text='```json {"a": }```'))
+    assert not bad.passed and "json" in bad.reason
+
+
+def test_code_parses_fail_nan_json():
+    # Review fix #11: non-spec JSON constants (NaN/Infinity) must be rejected.
+    r = CodeParses().verify(ResponseView(text='```json\n{"x": NaN}\n```'))
+    assert not r.passed
+    assert "json" in r.reason
+
+
+def test_code_parses_deeply_nested_json_fails_no_crash():
+    # Review fix #2: deeply-nested JSON raises RecursionError in json.loads; the
+    # json branch must catch it as a fail rather than crash.
+    deep = "[" * 100000 + "]" * 100000
+    r = CodeParses().verify(ResponseView(text="```json\n" + deep + "\n```"))
+    assert not r.passed and r.score == 0.0
 
 
 # --------------------------------------------------------------------------- #
@@ -178,14 +266,30 @@ def test_diff_well_formed_pass_no_diff():
     assert r.passed and "no diff" in r.reason
 
 
+def test_diff_well_formed_pass_prose_with_dashes():
+    # Review fix #5: prose that merely starts with '--- '/'+++ ' (section
+    # dividers, changelog lines) is NOT a diff and must not be hard-failed.
+    for prose in (
+        "--- Section: Changes ---\n+++ Added feature X\nSome prose here.\n",
+        "Release notes\n--- highlights ---\n- did a thing\n- did another\n",
+    ):
+        r = DiffWellFormed().verify(ResponseView(text=prose))
+        assert r.passed, prose
+        assert "no diff" in r.reason
+
+
 def test_diff_well_formed_fail_bad_hunk_header():
-    bad = "--- a/foo\n+++ b/foo\n@@ -1,3 +1,4 @\n context\n+added\n"  # single trailing @
+    # A ```diff fence is an explicit "this is a diff" claim, so a malformed hunk
+    # header inside it is a provable defect (single trailing '@').
+    bad = "```diff\n--- a/foo\n+++ b/foo\n@@ -1,3 +1,4 @\n context\n+added\n```"
     r = DiffWellFormed().verify(ResponseView(text=bad))
     assert not r.passed and r.score == 0.0
     assert "hunk header" in r.reason
 
 
 def test_diff_well_formed_fail_bad_body_line():
+    # A real hunk header makes this a diff; the un-prefixed body line is provably
+    # malformed.
     bad = (
         "--- a/foo\n+++ b/foo\n@@ -1,2 +1,2 @@\n"
         " context line\n"
@@ -221,6 +325,22 @@ def test_format_well_formed_fail_invalid_json():
         ResponseView(text="Sure! Here you go: {not: valid}", expected_format="json"))
     assert not r.passed and r.score == 0.0
     assert "json" in r.reason
+
+
+def test_format_well_formed_fail_sole_fence_with_trailing_prose():
+    # Review fix #10: a fence followed by trailing prose (even prose ending in
+    # backticks) is NOT the sole block, so the whole impure body is validated and
+    # must fail — not just the inner JSON.
+    text = "```json\n{}\n```\nasdf```"
+    r = FormatWellFormed().verify(ResponseView(text=text, expected_format="json"))
+    assert not r.passed and r.score == 0.0
+
+
+def test_format_well_formed_fail_nan_json():
+    # Review fix #11: NaN/Infinity must be rejected by the format gate too.
+    r = FormatWellFormed().verify(
+        ResponseView(text='{"x": Infinity}', expected_format="json"))
+    assert not r.passed and "json" in r.reason
 
 
 # --------------------------------------------------------------------------- #
@@ -280,6 +400,39 @@ def test_run_verifiers_rejects_unknown_mode():
         run_verifiers(ResponseView(text="x"), default_verifiers(), mode="bogus")
 
 
+class _BoomVerifier:
+    name = "boom"
+
+    def verify(self, response):
+        raise RuntimeError("kaboom")
+
+
+def test_run_verifiers_backstops_a_crashing_verifier():
+    # Review fix #3: ANY exception a verifier raises is backstopped into a fail
+    # verdict so the chain still returns one result per verifier — the contract.
+    results = run_verifiers(ResponseView(text="x"), [_BoomVerifier(), NonEmptyContent()])
+    assert len(results) == 2
+    assert results[0].verifier == "boom"
+    assert not results[0].passed and results[0].score == 0.0
+    assert "verifier error: RuntimeError" in results[0].reason
+    assert results[1].passed  # the chain continued past the crash
+
+
+def test_chain_never_raises_on_adversarial_input():
+    # The whole chain must return results (never raise) on hostile inputs:
+    # non-dict tool calls and pathological nesting.
+    deep = "[" * 100000 + "]" * 100000
+    adversarial = [
+        ResponseView(tool_calls=[None, "foo", 5]),
+        ResponseView(tool_calls=[{"name": "x", "arguments": deep}]),
+        ResponseView(text="```json\n" + deep + "\n```"),
+        ResponseView(text='{"x": NaN}', expected_format="json"),
+    ]
+    for fx in adversarial:
+        results = run_verifiers(fx, default_verifiers(), mode="all")
+        assert len(results) == len(default_verifiers())
+
+
 def test_aggregate_min_score_without_flipping_pass():
     # A passing-but-low RefusalMarker pulls aggregate score down, not pass/fail.
     r = ResponseView(text="I'm unable to do that, but here is an idea.", finish_reason="stop")
@@ -325,6 +478,10 @@ def test_verify_path_makes_no_network_call(monkeypatch):
         ResponseView(text='{"k": 1}', expected_format="json"),
         ResponseView(text="not json", expected_format="json"),
         ResponseView(text="I cannot help with that request."),
+        # adversarial inputs must also stay purely-local (no crash, no I/O):
+        ResponseView(tool_calls=[None, "foo", 5]),
+        ResponseView(tool_calls=[{"name": "w", "arguments": {"already": "parsed"}}]),
+        ResponseView(text="--- Section ---\n+++ prose +++\n"),
     ]
 
     produced = 0
