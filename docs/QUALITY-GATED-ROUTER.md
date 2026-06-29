@@ -184,6 +184,19 @@ SDK; its `before_model_resolve` hook runs *per turn* and can set `modelOverride`
 Claude Code — but its hooks can't alter the outgoing request, so it stays Tier-1 short of a fork. See
 [`findings/2026-06-29-openclaw-hermes-customization.md`](findings/2026-06-29-openclaw-hermes-customization.md).
 
+**Beachhead decision — OpenClaw-first (focus, not couple).** anvil-serving concentrates integration
+*depth* on OpenClaw as the first-class client, because it's the one harness that unlocks per-request
+intent (the `before_model_resolve` hook → the client-side classification pattern in §6), it's
+open-source (we can ship a reference plugin and patch upstream), and one OpenClaw integration reaches
+the many chat surfaces it already bridges. **This is focus, not coupling:** the core router stays
+protocol-standard (Anthropic + OpenAI dialects), so every other harness still gets Tier 0/1 for free,
+and the OpenClaw piece is a **thin, swappable adapter/plugin** — if OpenClaw stalls, the core survives
+and another hook-capable harness takes the beachhead. (Same lesson as not coupling to Anvil:
+integrate at a standard seam, focus effort at one client.) This is anvil-serving's choice and does
+**not** affect Anvil-the-ledger's harness-agnostic mandate — different products, different mandates.
+Risk to manage: OpenClaw is young and our facts are vendor-doc-level (medium confidence) — verify the
+plugin/provider API hands-on before over-investing (the OpenClaw integration spec covers this).
+
 ## 9. Preset vocabulary, discovery, and transparent responses
 
 - **Vocabulary = a closed enum sized to harness slots.** Don't over-design. A handful of presets
