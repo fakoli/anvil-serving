@@ -1,0 +1,12 @@
+{
+  "prdA-backlog": {
+    "frontier": "X",
+    "heavy": "Y",
+    "fast": "Z"
+  },
+  "prdB-multiprd": {
+    "fast": "X",
+    "frontier": "Y",
+    "heavy": "Z"
+  }
+}
