@@ -1,0 +1,199 @@
+"""Router/tier config schema + loader (stdlib-only).
+
+Loads the ``[router]`` block of an anvil-serving TOML config into a frozen,
+validated :class:`RouterConfig`. Every tier names an env-var for its auth
+secret (``auth_env``); the secret literal is never stored here and is never
+read at load time, so a config can be loaded with no secrets present.
+"""
+from __future__ import annotations
+
+import os
+import re
+import tomllib
+from dataclasses import dataclass
+
+VALID_DIALECTS = {"openai", "anthropic"}
+VALID_PRIVACY = {"local", "cloud"}
+
+# An auth reference must be an ENV-VAR NAME, not a secret literal.
+_ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+# Some credential literals are all-caps alphanumeric and so also fit the env-name
+# charset (e.g. an AWS access key id ``AKIA…`` / ``ASIA…``). Reject those shapes
+# explicitly as defense-in-depth so a pasted key id can't masquerade as a name.
+_SECRET_SHAPED_RE = re.compile(r"^(AKIA|ASIA)[0-9A-Z]{16}$")
+
+_REQUIRED_TIER_KEYS = (
+    "id",
+    "base_url",
+    "dialect",
+    "context_limit",
+    "privacy",
+    "tool_support",
+    "auth_env",
+)
+
+
+class ConfigError(ValueError):
+    """Raised for any router-config validation failure."""
+
+
+@dataclass(frozen=True)
+class Tier:
+    """A single serving endpoint the router may route to."""
+
+    id: str
+    base_url: str
+    dialect: str
+    context_limit: int
+    privacy: str
+    tool_support: bool
+    auth_env: str  # NAME of the env var holding the secret, never the secret
+
+
+@dataclass(frozen=True)
+class RouterConfig:
+    """Validated router topology: tiers + preset->candidate mapping."""
+
+    tiers: tuple[Tier, ...]
+    presets: dict[str, tuple[str, ...]]
+    mapping_version: str
+
+    def tier(self, tier_id: str) -> Tier:
+        """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
+        for t in self.tiers:
+            if t.id == tier_id:
+                return t
+        raise ConfigError(f"unknown tier id: {tier_id!r}")
+
+    def candidates(self, preset: str) -> tuple[Tier, ...]:
+        """Resolve a preset's ordered candidate tiers (raises if unknown)."""
+        try:
+            ids = self.presets[preset]
+        except KeyError:
+            raise ConfigError(f"unknown preset: {preset!r}") from None
+        return tuple(self.tier(tid) for tid in ids)
+
+
+def _parse_tier(raw: object) -> Tier:
+    if not isinstance(raw, dict):
+        raise ConfigError(f"tier entry must be a table, got {type(raw).__name__}")
+
+    missing = [k for k in _REQUIRED_TIER_KEYS if k not in raw]
+    if missing:
+        tid = raw.get("id", "<no id>")
+        raise ConfigError(f"tier {tid!r} missing required keys: {', '.join(missing)}")
+
+    tid = raw["id"]
+    if not isinstance(tid, str) or not tid:
+        raise ConfigError(f"tier id must be a non-empty string, got {tid!r}")
+
+    dialect = raw["dialect"]
+    if dialect not in VALID_DIALECTS:
+        raise ConfigError(
+            f"tier {tid!r}: dialect {dialect!r} not in {sorted(VALID_DIALECTS)}"
+        )
+
+    privacy = raw["privacy"]
+    if privacy not in VALID_PRIVACY:
+        raise ConfigError(
+            f"tier {tid!r}: privacy {privacy!r} not in {sorted(VALID_PRIVACY)}"
+        )
+
+    context_limit = raw["context_limit"]
+    # bool is a subclass of int; reject it explicitly.
+    if isinstance(context_limit, bool) or not isinstance(context_limit, int) or context_limit <= 0:
+        raise ConfigError(
+            f"tier {tid!r}: context_limit must be a positive int, got {context_limit!r}"
+        )
+
+    tool_support = raw["tool_support"]
+    if not isinstance(tool_support, bool):
+        raise ConfigError(
+            f"tier {tid!r}: tool_support must be a bool, got {tool_support!r}"
+        )
+
+    base_url = raw["base_url"]
+    if not isinstance(base_url, str) or not base_url:
+        raise ConfigError(f"tier {tid!r}: base_url must be a non-empty string")
+
+    auth_env = raw["auth_env"]
+    if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
+        raise ConfigError(
+            f"tier {tid!r}: auth_env must name an ENV VAR matching "
+            f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret reference, "
+            f"never the secret itself"
+        )
+    if _SECRET_SHAPED_RE.fullmatch(auth_env):
+        raise ConfigError(
+            f"tier {tid!r}: auth_env {auth_env!r} is shaped like a credential "
+            f"literal, not an env-var name; store the env-var NAME, never the secret"
+        )
+
+    return Tier(
+        id=tid,
+        base_url=base_url,
+        dialect=dialect,
+        context_limit=context_limit,
+        privacy=privacy,
+        tool_support=tool_support,
+        auth_env=auth_env,
+    )
+
+
+def load(path: str) -> RouterConfig:
+    """Load + validate the ``[router]`` block of the TOML config at ``path``.
+
+    Never reads ``os.environ`` for a secret and never requires any secret to be
+    set: it only records each tier's ``auth_env`` env-var NAME.
+    """
+    path = os.path.expanduser(path)
+    with open(path, "rb") as f:
+        data = tomllib.load(f)
+
+    router = data.get("router")
+    if not isinstance(router, dict):
+        raise ConfigError(f"no [router] block in {path}")
+
+    raw_tiers = router.get("tiers", [])
+    if not isinstance(raw_tiers, list):
+        raise ConfigError(f"[router].tiers must be a list of tables in {path}")
+
+    tiers: list[Tier] = []
+    seen_ids: set[str] = set()
+    for raw in raw_tiers:
+        tier = _parse_tier(raw)
+        if tier.id in seen_ids:
+            raise ConfigError(f"duplicate tier id: {tier.id!r}")
+        seen_ids.add(tier.id)
+        tiers.append(tier)
+
+    if not tiers:
+        raise ConfigError(f"[router].tiers is empty in {path}")
+
+    raw_presets = router.get("presets", {})
+    if not isinstance(raw_presets, dict):
+        raise ConfigError(f"[router].presets must be a table in {path}")
+
+    presets: dict[str, tuple[str, ...]] = {}
+    for name, cands in raw_presets.items():
+        if not isinstance(cands, list) or not all(isinstance(c, str) for c in cands):
+            raise ConfigError(
+                f"preset {name!r} must be a list of tier-id strings, got {cands!r}"
+            )
+        for cid in cands:
+            if cid not in seen_ids:
+                raise ConfigError(
+                    f"preset {name!r} references unknown tier id: {cid!r}"
+                )
+        presets[name] = tuple(cands)
+
+    mapping_version = router.get("mapping_version")
+    if not isinstance(mapping_version, str) or not mapping_version:
+        raise ConfigError(f"[router].mapping_version must be a non-empty string in {path}")
+
+    return RouterConfig(
+        tiers=tuple(tiers),
+        presets=presets,
+        mapping_version=mapping_version,
+    )
