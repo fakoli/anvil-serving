@@ -370,3 +370,172 @@ def test_empty_classes_means_everything_passes_through():
         )
     )
     assert out == "a b"
+
+
+# --------------------------------------------------------------------------- #
+# fail-safe seams (review): a raising backend / factory / hook must NOT crash the
+# harness — the window falls back (or swallows), preserving no-partial-local.
+# --------------------------------------------------------------------------- #
+class RaisingBackend:
+    """Yields some deltas, then raises — the repo's gotcha #1 shape (a local
+    scheduler that dies mid-generation: OOM-kill / reset connection)."""
+
+    def __init__(self, yield_first: List[str], exc: Exception):
+        self.yield_first = list(yield_first)
+        self.exc = exc
+
+    def generate(self, request: InternalRequest) -> Iterator[str]:
+        for t in self.yield_first:
+            yield t
+        raise self.exc
+
+
+class EagerRaisingBackend:
+    """`generate` raises *before* returning any iterator (eager backend fault)."""
+
+    def __init__(self, exc: Exception):
+        self.exc = exc
+
+    def generate(self, request: InternalRequest) -> Iterator[str]:
+        raise self.exc
+
+
+def test_local_backend_raises_midstream_falls_back_no_partial_local():
+    # Finding 1: a local backend that yields "partial " then raises must NOT
+    # propagate to the harness. Output is EXACTLY the cloud deltas, no local
+    # substring leaks, and on_fallback fires once carrying the error.
+    events: List[FallbackEvent] = []
+    local = RaisingBackend(["partial "], RuntimeError("scheduler died, exit code -9"))
+    cloud = StaticBackend(["CLOUD-A ", "CLOUD-B"])
+    out = collect(
+        stream_with_commit_window(
+            make_request(),
+            work_class="fail-prone",
+            local_backend=local,
+            fallback_backend=cloud,
+            fail_prone_classes=FAIL_PRONE,
+            on_fallback=events.append,
+        )
+    )
+    assert out == "CLOUD-A CLOUD-B"
+    assert "partial" not in out
+    assert len(events) == 1
+    assert events[0].error is not None
+    assert "scheduler died" in events[0].error
+    assert events[0].overflowed is False
+
+
+def test_local_backend_eager_raise_falls_back():
+    # `generate()` raising before yielding any iterator is also caught.
+    out = collect(
+        stream_with_commit_window(
+            make_request(),
+            work_class="fail-prone",
+            local_backend=EagerRaisingBackend(ConnectionResetError("reset")),
+            fallback_backend=StaticBackend(["cloud"]),
+            fail_prone_classes=FAIL_PRONE,
+        )
+    )
+    assert out == "cloud"
+
+
+def test_first_yielded_token_when_local_raises_is_cloud():
+    # Ordering pin for the raise path: even consuming one delta at a time, the
+    # FIRST delta out is already a cloud token — the local "partial" prefix was
+    # buffered and discarded before anything was yielded.
+    local = RaisingBackend(["LOCAL_PARTIAL"], RuntimeError("boom"))
+    cloud = StaticBackend(["CLOUD_FIRST", " rest"])
+    stream = stream_with_commit_window(
+        make_request(),
+        work_class="fail-prone",
+        local_backend=local,
+        fallback_backend=cloud,
+        fail_prone_classes=FAIL_PRONE,
+    )
+    first = next(stream)
+    assert first == "CLOUD_FIRST"
+    assert "LOCAL_PARTIAL" not in (first + collect(stream))
+
+
+def test_response_view_factory_raises_falls_back():
+    # Finding 2: a throwing custom view factory must fail safe (treat as
+    # verify-fail -> fallback), not crash the harness.
+    events: List[FallbackEvent] = []
+
+    def boom_factory(buffered, request):
+        raise ValueError("factory exploded")
+
+    local = StaticBackend(["LOCAL-1 ", "LOCAL-2"])
+    out = collect(
+        stream_with_commit_window(
+            make_request(),
+            work_class="fail-prone",
+            local_backend=local,
+            fallback_backend=StaticBackend(["cloud ", "answer"]),
+            fail_prone_classes=FAIL_PRONE,
+            response_view_factory=boom_factory,
+            on_fallback=events.append,
+        )
+    )
+    assert out == "cloud answer"
+    assert "LOCAL" not in out
+    assert len(events) == 1 and events[0].error is not None
+    assert "factory exploded" in events[0].error
+
+
+def test_on_fallback_hook_raises_fallback_still_delivered():
+    # Finding 3: a throwing logging hook must not turn a recoverable fallback
+    # into a crash — the cloud stream is still delivered in full.
+    def boom_hook(event):
+        raise RuntimeError("hook exploded")
+
+    out = collect(
+        stream_with_commit_window(
+            make_request(),
+            work_class="fail-prone",
+            local_backend=StaticBackend(["bad"]),
+            fallback_backend=StaticBackend(["cloud ", "ok"]),
+            fail_prone_classes=FAIL_PRONE,
+            verifiers=[AlwaysFail()],
+            on_fallback=boom_hook,
+        )
+    )
+    assert out == "cloud ok"
+
+
+def test_fail_prone_classes_bare_str_rejected():
+    # Finding 8: a bare str does substring matching with `in` — reject it loudly.
+    with pytest.raises(TypeError, match="must be a set/collection"):
+        # generator body runs on first iteration, so consume to trigger.
+        collect(
+            stream_with_commit_window(
+                make_request(),
+                work_class="fail-prone",
+                local_backend=StaticBackend(["x"]),
+                fallback_backend=StaticBackend(["y"]),
+                fail_prone_classes="fail-prone",  # bare str footgun
+            )
+        )
+
+
+def test_verifier_that_raises_is_backstopped_to_fallback():
+    # T007 run_verifiers backstops a raising verifier into a fail verdict; the
+    # window therefore falls back rather than crashing.
+    class RaisingVerifier:
+        name = "raiser"
+
+        def verify(self, response):
+            raise RuntimeError("verifier exploded")
+
+    out = collect(
+        stream_with_commit_window(
+            make_request(),
+            work_class="fail-prone",
+            local_backend=StaticBackend(["LOCAL"]),
+            fallback_backend=StaticBackend(["cloud"]),
+            fail_prone_classes=FAIL_PRONE,
+            verifiers=[RaisingVerifier()],
+        )
+    )
+    assert out == "cloud"
+    assert "LOCAL" not in out
