@@ -15,6 +15,11 @@ from .backends import (
     StaticBackend,
     split_into_deltas,
 )
+from .commit_window import (
+    FallbackEvent,
+    build_response_view,
+    stream_with_commit_window,
+)
 from .front_door import make_server, serve
 from .internal import Backend, InternalRequest, Message
 from .secrets import redact_key, redact_prompt, sanitize
@@ -65,4 +70,8 @@ __all__ = [
     "run_verifiers",
     "all_passed",
     "aggregate",
+    # T008 — streaming commit-window (buffer -> verify -> commit-or-fallback)
+    "stream_with_commit_window",
+    "FallbackEvent",
+    "build_response_view",
 ]
