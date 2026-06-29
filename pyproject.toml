@@ -17,4 +17,4 @@ dependencies = []   # stdlib-only by design; optional extras pull in nothing req
 anvil-serving = "anvil_serving.cli:main"
 
 [tool.setuptools]
-packages = ["anvil_serving"]
+packages = ["anvil_serving", "anvil_serving.router", "anvil_serving.router.dialects"]
