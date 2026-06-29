@@ -9,6 +9,11 @@ Intent routing, multiple tiers, and verify/fallback are later milestones.
 from __future__ import annotations
 
 from .backends import EchoBackend, StaticBackend, split_into_deltas
+from .commit_window import (
+    FallbackEvent,
+    build_response_view,
+    stream_with_commit_window,
+)
 from .front_door import make_server, serve
 from .internal import Backend, InternalRequest, Message
 from .verify import (
@@ -52,4 +57,8 @@ __all__ = [
     "run_verifiers",
     "all_passed",
     "aggregate",
+    # T008 — streaming commit-window (buffer -> verify -> commit-or-fallback)
+    "stream_with_commit_window",
+    "FallbackEvent",
+    "build_response_view",
 ]
