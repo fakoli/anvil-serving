@@ -119,6 +119,16 @@ small fixed set of slots per session and do not vary it per work-class within th
 `long-context-retrieval`. Bias ambiguous classifications toward the safer/cloud tier and log for
 calibration. (claude-code-router is the production existence proof for Tier 0+1.)
 
+**Client-side classification (the hook-plugin pattern).** A harness with an in-process
+model-resolution hook can declare per-request intent *itself*, escaping the session-coarse limit
+without any wire-schema change. **OpenClaw** is the live example: its `before_model_resolve` hook
+runs per turn, so a small client plugin classifies the turn and emits an anvil preset id as the
+`modelOverride`. The router then receives a *declared* per-request intent (verbatim in the model
+field) and needs no new field — it just needs a stable preset vocabulary. This is the preferred
+shape where available: push Tier-0 classification to the client (cheaper, better-informed; it sees
+full turn context) and keep the router a clean executor. Closed harnesses (Claude Code, Codex) lack
+the hook, so the router's own Tier-0 classifier remains their floor.
+
 ## 7. Verify-and-fallback (the honest hard part)
 
 Inline LLM-grading every response would defeat the purpose (cost + latency). So **most "quality
@@ -151,8 +161,10 @@ One front door speaking two dialects so it's zero-config for the major harnesses
 
 Verified support grid (full detail + citations in the finding):
 
-| Harness | base_url? | arbitrary model string? | per-request extra fields? | intent slots/session | tier |
+| Harness | base_url? | arbitrary model string? | per-request hook / extra fields | intent slots/session | tier |
 |---|---|---|---|---|---|
+| **OpenClaw** | ✅ per-provider `baseUrl` | ✅ self-allowlisted, verbatim | ✅ **`before_model_resolve` hook → `modelOverride` per turn** (no header/body channel) | per-agent + per-turn override | **1→2 (routing)** |
+| **Hermes Agent** | ✅ `provider: custom`+`base_url` | ✅ verbatim | ❌ over wire (hooks inject user-msg text only) | main + ~11 aux + fallback/MoA/subagents | **1 (rich)** |
 | Claude Code | ✅ env | ✅ (`ANTHROPIC_CUSTOM_MODEL_OPTION` skips validation; sent as-is) | ❌ (only fixed opaque `metadata.user_id`) | ~3–4 (main/haiku/subagent/advisor) | **1** |
 | OpenAI Codex CLI | ✅ config.toml | ✅ free-form | ⚠️ config-level `http_headers`/`query_params` | 1 + subagent | **1 (+2)** |
 | Aider | ✅ env | ✅ `openai/<token>` | ⚠️ config-level | ~3 (main/editor/weak) | **1** |
@@ -165,6 +177,12 @@ Verified support grid (full detail + citations in the finding):
 routing — Cursor mediates through its own backend (Verify-gated), and Amp/Devin can't be repointed
 at a custom endpoint at all. The README's "any OpenAI/Anthropic client" claim must be qualified to
 "any client that allows a custom base URL **and** a free-form model string."
+
+**OpenClaw is the one in-scope client that crosses into per-request routing** (open-source TS Plugin
+SDK; its `before_model_resolve` hook runs *per turn* and can set `modelOverride`/`providerOverride`).
+**Hermes Agent** (open-source MIT) is a clean, *rich* Tier-1 consumer — notably more model slots than
+Claude Code — but its hooks can't alter the outgoing request, so it stays Tier-1 short of a fork. See
+[`findings/2026-06-29-openclaw-hermes-customization.md`](findings/2026-06-29-openclaw-hermes-customization.md).
 
 ## 9. Preset vocabulary, discovery, and transparent responses
 
