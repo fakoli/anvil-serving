@@ -194,8 +194,9 @@ and the OpenClaw piece is a **thin, swappable adapter/plugin** — if OpenClaw s
 and another hook-capable harness takes the beachhead. (Same lesson as not coupling to Anvil:
 integrate at a standard seam, focus effort at one client.) This is anvil-serving's choice and does
 **not** affect Anvil-the-ledger's harness-agnostic mandate — different products, different mandates.
-Risk to manage: OpenClaw is young and our facts are vendor-doc-level (medium confidence) — verify the
-plugin/provider API hands-on before over-investing (the OpenClaw integration spec covers this).
+Risk to manage: OpenClaw is young and the extension surface is churning (medium risk) — verify the
+plugin/provider API hands-on before over-investing. Buildable spec + the validate-first gaps:
+[`OPENCLAW-INTEGRATION-SPEC.md`](OPENCLAW-INTEGRATION-SPEC.md).
 
 ## 9. Preset vocabulary, discovery, and transparent responses
 
