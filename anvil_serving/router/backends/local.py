@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Iterator, List, Sequence
 
-from .internal import InternalRequest
+from ..internal import InternalRequest
 
 
 def split_into_deltas(text: str) -> List[str]:
