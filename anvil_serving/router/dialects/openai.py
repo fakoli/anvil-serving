@@ -107,3 +107,7 @@ class OpenAIDialect:
                 "total_tokens": prompt + completion,
             },
         }
+
+    def render_error(self, status: int, etype: str, message: str) -> Dict[str, Any]:
+        # OpenAI's native error envelope.
+        return {"error": {"type": etype, "message": message}}

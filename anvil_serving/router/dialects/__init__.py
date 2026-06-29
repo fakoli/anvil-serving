@@ -6,6 +6,8 @@ protocol to the router's internal representation in both directions:
 * ``parse_request(body)``  — wire JSON  -> :class:`~anvil_serving.router.internal.InternalRequest`
 * ``stream(request, deltas)`` — internal text deltas -> native SSE ``bytes``
 * ``render(request, text)`` — internal full text -> a non-streamed response dict
+* ``render_error(status, etype, message)`` — an error in the dialect's native
+  envelope (OpenAI ``{"error":{...}}``; Anthropic ``{"type":"error","error":{...}}``)
 
 Two dialects ship in M0: :class:`~anvil_serving.router.dialects.openai.OpenAIDialect`
 (``data:`` / ``[DONE]`` framing) and
@@ -39,6 +41,9 @@ class Dialect(Protocol):
         ...
 
     def render(self, request: InternalRequest, text: str) -> Dict[str, Any]:
+        ...
+
+    def render_error(self, status: int, etype: str, message: str) -> Dict[str, Any]:
         ...
 
 

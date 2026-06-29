@@ -282,6 +282,11 @@ def _raw_roundtrip(host: str, port: int, request_bytes: bytes,
                 data = s.recv(4096)
             except socket.timeout:
                 break
+            except (ConnectionResetError, ConnectionAbortedError):
+                # Windows sends an RST when the server closes with unread bytes
+                # still in its receive buffer; that still means "closed" -> EOF.
+                hit_eof = True
+                break
             if not data:
                 hit_eof = True
                 break
@@ -319,7 +324,8 @@ def test_streaming_honors_connection_close():
 
 
 def test_anthropic_missing_max_tokens_400():
-    """The Anthropic Messages API requires max_tokens; omitting it is a 400."""
+    """The Anthropic Messages API requires max_tokens; omitting it is a 400 in
+    Anthropic's NATIVE error envelope (`{"type":"error","error":{...}}`)."""
     with running_server(StaticBackend(["x"])) as (host, port):
         status, _headers, raw = _post(host, port, "/v1/messages", {
             "model": "claude",
@@ -327,9 +333,10 @@ def test_anthropic_missing_max_tokens_400():
             "stream": True,
         })
     assert status == 400
-    err = json.loads(raw)["error"]
-    assert err["type"] == "invalid_request_error"
-    assert "max_tokens" in err["message"]
+    body = json.loads(raw)
+    assert body["type"] == "error"               # native Anthropic shape
+    assert body["error"]["type"] == "invalid_request_error"
+    assert "max_tokens" in body["error"]["message"]
 
 
 def test_openai_max_tokens_optional():
@@ -377,6 +384,151 @@ def test_chunked_request_body_rejected():
         raw, _eof = _raw_roundtrip(host, port, req, timeout=3.0)
     status_line = raw.split(b"\r\n", 1)[0].decode("latin-1")
     assert " 411 " in status_line, status_line
+
+
+def test_dialect_error_envelopes_are_native():
+    """OpenAI errors are `{"error":{...}}`; Anthropic errors are top-level
+    `{"type":"error","error":{...}}`. Locks the per-dialect shapes directly."""
+    from anvil_serving.router.dialects.anthropic import AnthropicDialect
+    from anvil_serving.router.dialects.openai import OpenAIDialect
+
+    assert OpenAIDialect().render_error(400, "invalid_request_error", "x") == {
+        "error": {"type": "invalid_request_error", "message": "x"},
+    }
+    assert AnthropicDialect().render_error(400, "invalid_request_error", "x") == {
+        "type": "error",
+        "error": {"type": "invalid_request_error", "message": "x"},
+    }
+
+
+# Each value is an HTTP/1.1 request that triggers a pre-body early-return error
+# path on a POOLED keep-alive socket (no `Connection: close`). These bodies are
+# UNDRAINABLE (chunked / unparseable length) -> the server cannot realign the
+# stream, so it MUST close (RFC 7230 3.3.3/6.6).
+_UNDRAINABLE_ERROR_REQUESTS = {
+    "chunked_body": (              # 411 — chunked upload we don't decode
+        b"POST /v1/chat/completions HTTP/1.1\r\n"
+        b"Host: x\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"\r\n"
+        b"5\r\nhello\r\n0\r\n\r\n"
+    ),
+    "bad_content_length": (        # 400 — can't know how many body bytes follow
+        b"POST /v1/chat/completions HTTP/1.1\r\n"
+        b"Host: x\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Content-Length: notanumber\r\n"
+        b"\r\n"
+        b'{"x":"y"}'
+    ),
+}
+
+
+def _pipelined_follow() -> bytes:
+    """A valid streaming POST to pipeline behind a bad request on one socket."""
+    follow_body = json.dumps({
+        "model": "chat",
+        "messages": [{"role": "user", "content": "hi"}],
+        "stream": True,
+    }).encode("utf-8")
+    return (
+        b"POST /v1/chat/completions HTTP/1.1\r\n"
+        b"Host: x\r\n"
+        b"Content-Type: application/json\r\n"
+        + f"Content-Length: {len(follow_body)}\r\n".encode("ascii")
+        + b"\r\n" + follow_body
+    )
+
+
+@pytest.mark.parametrize("name", sorted(_UNDRAINABLE_ERROR_REQUESTS))
+def test_undrainable_framing_error_closes_socket(name):
+    """An undrainable framing error must close the keep-alive socket — otherwise
+    the undecodable body desyncs the stream and a pipelined follow-up is
+    mis-parsed (RFC 7230 3.3.3/6.6)."""
+    bad = _UNDRAINABLE_ERROR_REQUESTS[name]
+    with running_server(StaticBackend(["a", "b"])) as (host, port):
+        raw, hit_eof = _raw_roundtrip(host, port, bad + _pipelined_follow(), timeout=3.0)
+
+    head = raw.split(b"\r\n\r\n", 1)[0].decode("latin-1").lower()
+    assert "connection: close" in head, head
+    assert hit_eof, "server left the keep-alive socket open after a framing error"
+
+
+def test_unknown_route_drains_body_and_keeps_socket_in_sync():
+    """A 404 on a WELL-FRAMED request (valid Content-Length) drains the body and
+    keeps the keep-alive socket in sync, so a pipelined follow-up POST is still
+    served correctly — no desync, no forced close (which would RST-truncate on
+    Windows)."""
+    bad = (
+        b"POST /v1/nope HTTP/1.1\r\n"
+        b"Host: x\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Content-Length: 12\r\n"
+        b"\r\n"
+        b'{"x":"yyyy"}'
+    )
+    with running_server(StaticBackend(["a", "b"])) as (host, port):
+        raw, _eof = _raw_roundtrip(host, port, bad + _pipelined_follow(), timeout=3.0)
+
+    # Two responses came back on ONE socket: the 404, then the streamed 200.
+    assert b" 404 " in raw, raw[:80]
+    assert b"text/event-stream" in raw, "follow-up POST was not served -> desync"
+    assert b"data: [DONE]" in raw
+
+
+def test_http10_streaming_is_close_delimited():
+    """An HTTP/1.0 streaming client (no chunked support) must get raw,
+    close-delimited SSE frames — NO hex chunk-size framing leaking into body."""
+    body = json.dumps({
+        "model": "chat",
+        "messages": [{"role": "user", "content": "hi"}],
+        "stream": True,
+    }).encode("utf-8")
+    with running_server(StaticBackend(["a", "b", "c"])) as (host, port):
+        req = (
+            b"POST /v1/chat/completions HTTP/1.0\r\n"
+            + f"Host: {host}:{port}\r\n".encode("ascii")
+            + b"Content-Type: application/json\r\n"
+            + f"Content-Length: {len(body)}\r\n".encode("ascii")
+            + b"\r\n" + body
+        )
+        raw, hit_eof = _raw_roundtrip(host, port, req, timeout=3.0)
+
+    head, _, sse = raw.partition(b"\r\n\r\n")
+    headl = head.lower()
+    assert b"transfer-encoding" not in headl, head
+    assert b"connection: close" in headl, head
+    # Close-delimited body starts directly with an SSE frame, not a hex size.
+    assert sse.startswith(b"data: "), sse[:48]
+    assert b"data: [DONE]" in sse
+    assert hit_eof
+
+    payloads = [
+        ln[len(b"data: "):]
+        for ln in sse.split(b"\n\n")
+        if ln.startswith(b"data: ") and not ln.startswith(b"data: [DONE]")
+    ]
+    content = "".join(
+        json.loads(p)["choices"][0]["delta"].get("content", "")
+        for p in payloads
+    )
+    assert content == "abc"
+
+
+def test_handler_has_finite_idle_timeout():
+    """The handler must carry a finite idle read timeout so abandoned keep-alive
+    connections can't pin daemon threads forever. Tunable via make_server."""
+    server = make_server("127.0.0.1", 0, StaticBackend(["x"]))
+    try:
+        assert server.RequestHandlerClass.timeout == 120
+    finally:
+        server.server_close()
+    server2 = make_server("127.0.0.1", 0, StaticBackend(["x"]), timeout=5)
+    try:
+        assert server2.RequestHandlerClass.timeout == 5
+    finally:
+        server2.server_close()
 
 
 if __name__ == "__main__":

@@ -16,9 +16,8 @@ Non-streaming: a single ``message`` object with a text content block.
 from __future__ import annotations
 
 import json
-import time
 import uuid
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Mapping
 
 from ..internal import (
     DialectError,
@@ -133,3 +132,7 @@ class AnthropicDialect:
                 "output_tokens": estimate_tokens([text]),
             },
         }
+
+    def render_error(self, status: int, etype: str, message: str) -> Dict[str, Any]:
+        # Anthropic's native error envelope (top-level "type":"error").
+        return {"type": "error", "error": {"type": etype, "message": message}}
