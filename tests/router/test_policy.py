@@ -14,11 +14,14 @@ from __future__ import annotations
 import pathlib
 from types import MappingProxyType
 
+import pytest
+
 from anvil_serving.router.config import load
 from anvil_serving.router.intent import Intent, resolve
 from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.policy import Needs, RoutingDecision, route
 from anvil_serving.router.profile_store import (
+    HIGH_RISK_LOCAL_CLASSES,
     ProfileEntry,
     ProfileStore,
     default_profile,
@@ -89,7 +92,7 @@ def test_ac1_deny_entry_never_routed_direct_store():
     dec = route(intent, CONFIG, profile)
     assert "heavy-local" not in dec.tiers
     assert "heavy-local" in dec.notes["dropped_by_deny"]
-    assert dec.tiers == ("cloud",)  # cloud unmeasured -> allow-with-verify, kept
+    assert dec.tiers == ("cloud",)  # cloud unmeasured -> allow (is_cloud), kept
 
 
 # ── AC2: the pool comes from config, not hard-coded ──────────────────────────
@@ -241,3 +244,160 @@ def test_decision_is_hashable_and_notes_immutable():
         pass
     else:  # pragma: no cover
         raise AssertionError("notes must be a read-only mapping")
+
+
+# ── ProfileStore fail-closed defaults (FIX A/B/C) ─────────────────────────────
+# These exercise the store directly (it has no separate test module; the policy
+# tests already import its symbols). THEME: the deny gate fails closed.
+def test_unmeasured_local_planning_defaults_deny():
+    # An empty store has NO entry for ("gpu0", "planning"): a local tier on the
+    # eval-weak planning class must default to DENY (not allow-with-verify), but
+    # the same pair as a cloud tier (is_cloud=True) stays allow.
+    store = ProfileStore({})
+    assert store.decision("gpu0", "planning") == "deny"
+    assert store.decision("gpu0", "planning", is_cloud=True) == "allow"
+    # multi-file-refactor is the other high-risk local class.
+    assert store.decision("gpu0", "multi-file-refactor") == "deny"
+    assert "planning" in HIGH_RISK_LOCAL_CLASSES
+
+
+def test_unmeasured_local_chat_allow_with_verify():
+    # A non-high-risk class on an unmeasured local tier is use-but-verify, not
+    # deny and not a blind allow.
+    store = ProfileStore({})
+    assert store.decision("gpu0", "chat") == "allow-with-verify"
+    assert store.decision("gpu0", "review") == "allow-with-verify"
+
+
+def test_table_consulted_for_none_workclass():
+    # FIX B: a stored (tier, None) verdict must be honored by decision(), score()
+    # AND entry() — the None short-circuit must not hide the table.
+    store = ProfileStore({("gpu0", None): ProfileEntry("deny", 0.2, 1, None)})
+    assert store.decision("gpu0", None) == "deny"        # not the None->allow default
+    assert store.score("gpu0", None) == 0.2              # not the 0.5 default
+    assert store.entry("gpu0", None).decision == "deny"  # all three agree
+    # A None key with no stored entry still falls back to allow / 0.5.
+    assert store.decision("other", None) == "allow"
+    assert store.score("other", None) == 0.5
+
+
+def test_profile_entry_rejects_bad_decision():
+    # FIX C: a malformed verdict cannot be constructed, so it cannot exist to be
+    # mis-compared by the policy's == "deny" gate.
+    with pytest.raises(ValueError):
+        ProfileEntry("DENY", 0.2, 1, None)      # wrong case
+    with pytest.raises(ValueError):
+        ProfileEntry("deny ", 0.2, 1, None)     # trailing space
+    with pytest.raises(ValueError):
+        ProfileEntry("block", 0.2, 1, None)     # not in the closed set
+    # The three valid verdicts construct fine.
+    for d in ("allow", "allow-with-verify", "deny"):
+        assert ProfileEntry(d, 0.5, 1, None).decision == d
+
+
+def test_score_and_entry_have_coverage():
+    # Seeded pair: entry present, decision/score agree with the seed.
+    e = PROFILE.entry("cloud", "planning")
+    assert e is not None and e.decision == "allow"
+    assert PROFILE.decision("cloud", "planning", is_cloud=True) == "allow"
+    assert PROFILE.score("cloud", "planning") == e.quality_score
+    # Unseeded pair: no entry, score is the 0.5 fallback.
+    assert PROFILE.entry("gpu0", "planning") is None
+    assert PROFILE.score("gpu0", "planning") == 0.5
+    # None work-class, unseeded: no entry, 0.5.
+    assert PROFILE.entry("cloud", None) is None
+    assert PROFILE.score("cloud", None) == 0.5
+
+
+# ── policy: fail-closed wiring, gate visibility, de-dup, robustness ───────────
+def _gpu0_planning_config(tmp_path):
+    """A config with an UNSEEDED local tier 'gpu0' in the planning pool."""
+    body = """\
+[router]
+mapping_version = "test.gpu0"
+
+[[router.tiers]]
+id            = "gpu0"
+base_url      = "http://127.0.0.1:31000/v1"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "GPU0_KEY"
+
+[[router.tiers]]
+id            = "cloud"
+base_url      = "https://api.anthropic.com"
+dialect       = "anthropic"
+context_limit = 200000
+privacy       = "cloud"
+tool_support  = true
+auth_env      = "ANTHROPIC_API_KEY"
+
+[router.presets]
+planning = ["gpu0", "cloud"]
+"""
+    p = tmp_path / "gpu0.toml"
+    p.write_text(body, encoding="utf-8")
+    return load(str(p))
+
+
+def test_unmeasured_local_planning_tier_denied(tmp_path):
+    # Portability: an unseeded local tier in a planning pool is dropped by the
+    # fail-closed default; cloud is kept. The default profile has no 'gpu0' entry.
+    cfg = _gpu0_planning_config(tmp_path)
+    intent = resolve(_req("planning"), cfg)
+    dec = route(intent, cfg, PROFILE)
+    assert "gpu0" not in dec.tiers
+    assert "gpu0" in dec.notes["dropped_by_deny"]
+    assert dec.tiers == ("cloud",)
+
+
+def test_none_workclass_records_gate_off():
+    # FIX D: a custom preset (work_class None) is NOT quality-gated, but that
+    # bypass is auditable in the notes.
+    intent = _intent(None, ("fast-local", "cloud"))
+    dec = route(intent, CONFIG, PROFILE)
+    assert dec.notes["quality_gate"].startswith("off")
+    assert dec.notes["dropped_by_deny"] == ()
+    # A gated (work_class present) request records the gate as on.
+    gated = route(_intent("chat", ("fast-local", "cloud")), CONFIG, PROFILE)
+    assert gated.notes["quality_gate"] == "on"
+
+
+def test_duplicate_pool_id_deduped():
+    # FIX F: a duplicate tier id must not appear twice in the result; the drop is
+    # noted, first-occurrence order is preserved.
+    intent = _intent("chat", ("fast-local", "cloud", "fast-local"))
+    dec = route(intent, CONFIG, PROFILE)
+    assert dec.tiers == ("fast-local", "cloud")
+    assert dec.tiers.count("fast-local") == 1
+    assert "fast-local" in dec.notes["dropped_duplicate"]
+
+
+def test_route_never_raises_on_bad_intent():
+    # FIX E: a malformed Intent (candidate_tiers=None) degrades to an empty
+    # decision instead of raising.
+    bad = Intent(
+        work_class="chat",
+        preset=None,
+        source="test",
+        candidate_tiers=None,  # type: ignore[arg-type]
+        ambiguous=False,
+        decision=MappingProxyType({}),
+    )
+    dec = route(bad, CONFIG, PROFILE)
+    assert isinstance(dec, RoutingDecision)
+    assert dec.tiers == ()
+    assert dec.notes["empty"] is True
+
+
+def test_malformed_verdict_cannot_leak():
+    # The policy gate compares == "deny"; a casing/typo variant can't leak through
+    # because it can't be stored — ProfileEntry validation rejects it at the door.
+    with pytest.raises(ValueError):
+        ProfileStore({("heavy-local", "review"): ProfileEntry("Deny", 0.2, 1, None)})
+    # Only the canonical lowercase "deny" exists, so the gate is trustworthy.
+    profile = ProfileStore({("heavy-local", "review"): ProfileEntry("deny", 0.2, 1, None)})
+    dec = route(_intent("review", ("heavy-local", "cloud")), CONFIG, profile)
+    assert "heavy-local" not in dec.tiers

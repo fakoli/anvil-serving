@@ -112,3 +112,32 @@ def test_cloud_residency_leaves_cost_order():
     dec = route(intent, CONFIG, PROFILE, residency="cloud")
     assert dec.tiers == ("fast-local", "heavy-local", "cloud")
     assert dec.notes["residency_deferred"] == ()
+
+
+# ── HONEST LIMIT: a local-only disjoint pool is NOT bounded (no fallback) ─────
+def test_local_only_pool_can_still_thrash():
+    # The swap bound holds only when the pool has the resident-local tier OR a
+    # cloud / always-available tier to defer the non-resident local behind. A
+    # privacy-strict LOCAL-ONLY pool with disjoint per-class locals (bounded-edit
+    # -> [fast-local], long-context -> [heavy-local]) has nothing to defer behind,
+    # so the non-resident local is still picked and a swap happens every request.
+    # Asserted so the limitation is captured, not hidden (contrast the bounded
+    # cloud-inclusive tests above).
+    resident = None
+    swaps = 0
+    picks = []
+    n = 12
+    for i in range(n):
+        if i % 2 == 0:
+            intent = _intent("bounded-edit", ("fast-local",))   # fast-local: allow
+        else:
+            intent = _intent("long-context", ("heavy-local",))  # heavy-local: allow
+        dec = route(intent, CONFIG, PROFILE, residency=resident)
+        assert dec.tiers, f"step {i}: empty result (deny gate must not strip these)"
+        top = dec.tiers[0]
+        picks.append(top)
+        if top in LOCALS and top != resident:
+            swaps += 1
+            resident = top
+    # One swap per request: the bound does NOT hold for a disjoint local-only pool.
+    assert swaps == n, f"expected unbounded thrash (one swap/request), got {swaps}; picks={picks}"
