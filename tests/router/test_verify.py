@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import http.client
 import socket
+import time
 import urllib.request
 
 import pytest
 
 from anvil_serving.router.verify import (
+    MAX_SCAN_BYTES,
     CodeParses,
     DiffWellFormed,
     FormatWellFormed,
@@ -155,6 +157,17 @@ def test_tool_call_deeply_nested_json_fails_no_crash():
     assert not r.passed and r.score == 0.0
 
 
+def test_tool_call_json_overflow_to_infinity_rejected():
+    # Review-followup fix 2: ``1e999`` overflows to ``inf`` through json's default
+    # float path WITHOUT invoking parse_constant, so the old NaN/Infinity guard
+    # (parse_constant only) let it through. The strict loader must reject any
+    # non-finite number too.
+    r = ToolCallJSONValid().verify(
+        ResponseView(tool_calls=[{"name": "x", "arguments": '{"v": 1e999}'}]))
+    assert not r.passed and r.score == 0.0
+    assert "1e999" in r.reason
+
+
 # --------------------------------------------------------------------------- #
 # CodeParses
 # --------------------------------------------------------------------------- #
@@ -237,6 +250,49 @@ def test_code_parses_deeply_nested_json_fails_no_crash():
     assert not r.passed and r.score == 0.0
 
 
+def test_code_parses_json_overflow_to_infinity_rejected():
+    # Review-followup fix 2: numeric overflow (``1e999`` -> inf) must be rejected
+    # by the json code-block branch too, not just the literal NaN/Infinity tokens.
+    r = CodeParses().verify(ResponseView(text='```json\n{"v": 1e999}\n```'))
+    assert not r.passed
+    assert "json" in r.reason
+
+
+def test_code_parses_fail_unterminated_fence():
+    # Review-followup fix 5: a fence opened but never closed (a response truncated
+    # mid-code-block, finish_reason unknown) used to read as "no fenced code
+    # blocks" and PASS, slipping the truncation past the whole chain. The dangling
+    # opener must now fail.
+    r = CodeParses().verify(
+        ResponseView(text="```python\ndef f(:\n    x = ", finish_reason=None))
+    assert not r.passed and r.score == 0.0
+    assert "unterminated" in r.reason
+
+
+def test_code_parses_complete_blocks_not_flagged_unterminated():
+    # The unterminated-fence check (fix 5) must NOT false-positive on genuinely
+    # complete blocks, including an inline ``` inside a string body, a self-closing
+    # single-line fence, and an inline ``` mention in prose.
+    for text in (
+        "```python\nx = 1\n```",
+        '```python\nx = "```"\ny = 1\n```',   # inline ``` inside a string body
+        '```json {"a": 1}```',                # single-line, self-closing
+        "use ``` to open a code block",       # inline mention, not a line-start opener
+    ):
+        r = CodeParses().verify(ResponseView(text=text))
+        assert r.passed, text
+
+
+def test_code_parses_oversized_text_skipped_not_scanned():
+    # Review-followup fix 1 (defense in depth): text beyond MAX_SCAN_BYTES is not
+    # structurally scanned (a DoS cap on the inline hot path); the structural
+    # check passes (it cannot cheaply prove a defect on a huge blob) while the
+    # cheap finish_reason/empty checks still apply elsewhere.
+    big = "x" * (MAX_SCAN_BYTES + 1)
+    r = CodeParses().verify(ResponseView(text=big))
+    assert r.passed and "too large" in r.reason
+
+
 # --------------------------------------------------------------------------- #
 # DiffWellFormed
 # --------------------------------------------------------------------------- #
@@ -300,6 +356,43 @@ def test_diff_well_formed_fail_bad_body_line():
     assert "body line" in r.reason
 
 
+def test_diff_well_formed_pass_diff_then_trailing_prose():
+    # Review-followup fix 3: a valid hunk followed by a blank line and an
+    # explanatory sentence (the extremely common "<diff>\n\n<explanation>" shape)
+    # must PASS. The old code validated the WHOLE text and hard-failed any
+    # un-prefixed line after the last hunk; now the hunk's declared line counts
+    # bound the region and trailing prose is tolerated (as preamble already is).
+    text = (
+        "--- a/f.py\n"
+        "+++ b/f.py\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-x = 1\n"
+        "+x = 2\n"
+        "\n"
+        "This explains the change.\n"
+    )
+    r = DiffWellFormed().verify(ResponseView(text=text))
+    assert r.passed, r.reason
+
+
+def test_diff_well_formed_fail_fence_without_hunk():
+    # Review-followup fix 4: an explicit ```diff fence that contains no valid hunk
+    # header is a diff claim we can disprove -> fail (the old code returned True
+    # because with zero hunks every line was skipped as preamble).
+    r = DiffWellFormed().verify(
+        ResponseView(text="```diff\nthis is not a diff\njust garbage\n```"))
+    assert not r.passed and r.score == 0.0
+    assert "no valid hunk" in r.reason
+
+
+def test_diff_well_formed_pass_fenced_diff_with_hunk():
+    # Reconciles fix 3 + fix 4: a real fenced diff (a hunk IS present) still
+    # passes — the zero-hunk fail must not catch a legitimate ```diff block.
+    text = "```diff\n--- a/f\n+++ b/f\n@@ -1,1 +1,1 @@\n-a\n+b\n```"
+    r = DiffWellFormed().verify(ResponseView(text=text))
+    assert r.passed, r.reason
+
+
 # --------------------------------------------------------------------------- #
 # FormatWellFormed
 # --------------------------------------------------------------------------- #
@@ -343,6 +436,14 @@ def test_format_well_formed_fail_nan_json():
     assert not r.passed and "json" in r.reason
 
 
+def test_format_well_formed_fail_overflow_to_infinity_json():
+    # Review-followup fix 2: a numeric literal that overflows to inf (``1e999``)
+    # bypasses parse_constant; the format gate must reject it as non-finite.
+    r = FormatWellFormed().verify(
+        ResponseView(text='{"x": 1e999}', expected_format="json"))
+    assert not r.passed and "json" in r.reason
+
+
 # --------------------------------------------------------------------------- #
 # RefusalMarker (heuristic confidence signal — never a hard fail)
 # --------------------------------------------------------------------------- #
@@ -356,6 +457,21 @@ def test_refusal_marker_flags_refusal_without_failing():
     assert r.passed                 # heuristic signal — does NOT hard-fail
     assert r.score < 1.0
     assert "refusal" in r.reason
+
+
+def test_refusal_marker_only_matches_at_opening():
+    # Review-followup fix 7: the score must drop only when the text OPENS with a
+    # refusal phrase (per the docstring), not when one is merely referenced
+    # mid-explanation. The old anywhere-substring match spuriously penalized a
+    # normal answer that mentions a refusal phrase later in the body.
+    mid = RefusalMarker().verify(ResponseView(
+        text="Earlier I said I can't help with X, but here's exactly how to do it."))
+    assert mid.passed and mid.score == 1.0
+    assert "no refusal marker" in mid.reason
+    # A refusal at the very opening (after leading whitespace) still lowers it.
+    opening = RefusalMarker().verify(ResponseView(text="  I can't help with that request."))
+    assert opening.passed and opening.score < 1.0
+    assert "refusal" in opening.reason
 
 
 # --------------------------------------------------------------------------- #
@@ -431,6 +547,41 @@ def test_chain_never_raises_on_adversarial_input():
     for fx in adversarial:
         results = run_verifiers(fx, default_verifiers(), mode="all")
         assert len(results) == len(default_verifiers())
+
+
+def test_fence_regex_no_redos_on_pathological_input():
+    # Review-followup fix 1 (starred): an opening fence followed by a long
+    # lang-tag-like run with no closing fence used to make _FENCE_RE backtrack
+    # O(n^2) — seconds to parse 40-60 KB, and the default chain re-scans the same
+    # text several times, stalling the "near-zero-cost" inline serving hot path.
+    # The bounded lang tag makes the scan linear. This must complete quickly and
+    # not hang. (Revert the {0,40} bound and a single scan alone takes ~5s, the
+    # full chain ~15s — well over the bound below.)
+    patho = ResponseView(text="```" + "a" * 40000, finish_reason="length")
+    start = time.perf_counter()
+    results = run_verifiers(patho, default_verifiers(), mode="all")
+    elapsed = time.perf_counter() - start
+    assert len(results) == len(default_verifiers())
+    assert elapsed < 1.0, f"fence scan took {elapsed:.2f}s — quadratic backtracking regression?"
+
+
+def test_checks_return_fail_verdict_on_non_str_text():
+    # Review-followup fix 6: a non-str text (e.g. bytes) used to raise TypeError
+    # directly inside a text-consuming check (only run_verifiers backstopped it),
+    # breaking the per-check "adversarial input yields a fail verdict, never an
+    # exception" contract for direct callers. Each must now return a fail verdict.
+    for cls in (NonEmptyContent, CodeParses, DiffWellFormed, FormatWellFormed, RefusalMarker):
+        r = cls().verify(ResponseView(text=b"```x code"))
+        assert not r.passed, cls.__name__
+        assert "non-string text" in r.reason, cls.__name__
+    # A non-str finish_reason must likewise not crash NotTruncated (an unknown
+    # reason reads as a clean stop).
+    assert NotTruncated().verify(ResponseView(text="x", finish_reason=5)).passed
+    # And the whole chain stays exception-free with non-str text + finish_reason.
+    results = run_verifiers(
+        ResponseView(text=b"```x", finish_reason=b"length"),
+        default_verifiers(), mode="all")
+    assert len(results) == len(default_verifiers())
 
 
 def test_aggregate_min_score_without_flipping_pass():

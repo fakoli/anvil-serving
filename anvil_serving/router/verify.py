@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import ast
 import json
+import math
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -114,14 +115,30 @@ class Verifier(Protocol):
 # --------------------------------------------------------------------------- #
 # small local helpers (stdlib only — no I/O)
 # --------------------------------------------------------------------------- #
+# Upper bound on the text a scanning check will parse. Beyond it we *skip*
+# structural scanning and pass (we cannot cheaply prove a defect on a multi-
+# hundred-KB blob, and refusing to scan keeps the inline hot path bounded — a
+# defense-in-depth cap on top of the linear-time fence regex below). Measured in
+# characters (== bytes for the typical ASCII payloads we see). The cheap O(1)/
+# O(n) checks (NonEmptyContent, NotTruncated, RefusalMarker, ToolCallJSONValid)
+# still run, so a truncation is still caught via ``finish_reason``.
+MAX_SCAN_BYTES = 256 * 1024
+
 # A backtick-fenced block, handling both forms and adversarial bodies:
 #   * multi-line: ```lang\n <body> \n``` — the closing fence must follow a
 #     newline (i.e. start its own line), so an inline ``` inside a string in the
 #     body does NOT prematurely close the block.
 #   * single-line: ```lang <body>``` on one line (no newline after the lang tag).
 # Group 1 = lang tag; group 2 = multi-line body; group 3 = single-line body.
+#
+# The lang tag is bounded to a realistic length ({0,40}); an *unbounded* ``*``
+# here is a catastrophic-backtracking (ReDoS) vector: on input like ```` ``` ````
+# + a few KB of ``[A-Za-z0-9_.+-]`` with no closing fence, the greedy class
+# backtracks char-by-char while the lazy body re-scans to EOF — O(n²), seconds
+# to parse a 60 KB string. Real language tags are short, so the bound is
+# behavior-neutral for legitimate input while making the scan linear.
 _FENCE_RE = re.compile(
-    r"```[ \t]*([A-Za-z0-9_.+-]*)[ \t]*"
+    r"```[ \t]*([A-Za-z0-9_.+-]{0,40})[ \t]*"
     r"(?:"
     r"\r?\n(.*?)\r?\n[ \t]*```"   # multi-line body; close ``` at (indented) line start
     r"|"
@@ -130,9 +147,16 @@ _FENCE_RE = re.compile(
     re.DOTALL,
 )
 
+# A fence *delimiter* at the start of a line (after optional indent). Used to
+# detect an unterminated/truncated fence: a line-start ``` that is not contained
+# in any *complete* block matched by ``_FENCE_RE`` is a dangling opener.
+_FENCE_DELIM_RE = re.compile(r"(?m)^[ \t]*(```)")
+
 # A unified-diff hunk header, e.g. ``@@ -1,3 +2,4 @@`` (optionally trailing a
-# section heading). ``re.match`` is unanchored at the end on purpose.
-_HUNK_RE = re.compile(r"^@@ -\d+(,\d+)? \+\d+(,\d+)? @@")
+# section heading). ``re.match`` is unanchored at the end on purpose. The count
+# groups (2 = old line count, 4 = new line count) bound each hunk's body region;
+# an omitted count defaults to 1 per the unified-diff convention.
+_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 # Same pattern, used to *detect* a real hunk header anywhere in the text.
 _HUNK_SEARCH_RE = re.compile(r"^@@ -\d+(,\d+)? \+\d+(,\d+)? @@", re.MULTILINE)
 
@@ -174,19 +198,77 @@ def _reject_nonspec_constant(token: str) -> Any:
     raise ValueError(f"non-spec JSON constant: {token}")
 
 
+def _reject_nonfinite_float(token: str) -> float:
+    """``parse_float`` hook: reject numbers that overflow to ``inf`` (or ``nan``).
+
+    ``parse_constant`` only fires for the literal tokens ``NaN``/``Infinity``;
+    a numeric literal such as ``1e999`` parses through the default ``float``
+    path to ``inf`` *without* touching ``parse_constant``. A structural validity
+    gate that claims to reject non-finite values must catch that too, so we parse
+    floats here and reject any non-finite result.
+    """
+    value = float(token)
+    if not math.isfinite(value):
+        raise ValueError(f"non-finite JSON number: {token}")
+    return value
+
+
 def _strict_json_loads(s: str) -> Any:
-    """``json.loads`` that rejects NaN/Infinity (spec-strict)."""
-    return json.loads(s, parse_constant=_reject_nonspec_constant)
+    """``json.loads`` that rejects non-finite values (spec-strict).
+
+    Rejects both the literal NaN/Infinity tokens (``parse_constant``) and numeric
+    literals that overflow to ``inf`` such as ``1e999`` (``parse_float``).
+    """
+    return json.loads(
+        s,
+        parse_constant=_reject_nonspec_constant,
+        parse_float=_reject_nonfinite_float,
+    )
+
+
+def _nonstr_text_failure(verifier_name: str, value: Any) -> Optional[VerifyResult]:
+    """Guard a check against a non-``str`` ``text`` field (contract: never raise).
+
+    ``ResponseView.text`` is typed ``str``, but an adversarial/buggy caller can
+    pass ``bytes`` (or any other type), which would make the ``re``/``str``
+    machinery raise ``TypeError`` *inside* a check — violating the per-check
+    "adversarial input yields a fail verdict, never an exception" contract. A
+    ``None`` text is the documented empty default and is allowed; any other
+    non-``str`` type yields a fail verdict. Returns ``None`` when ``value`` is a
+    valid (``str``/``None``) text, else the fail :class:`VerifyResult`.
+    """
+    if value is None or isinstance(value, str):
+        return None
+    return VerifyResult(verifier_name, False, 0.0, f"non-string text ({type(value).__name__})")
 
 
 def iter_code_blocks(text: str) -> List[Tuple[str, str]]:
-    """Return ``(lang_lowercased, body)`` for each backtick-fenced block."""
+    """Return ``(lang_lowercased, body)`` for each *complete* backtick-fenced block."""
     out: List[Tuple[str, str]] = []
     for m in _FENCE_RE.finditer(text or ""):
         lang = (m.group(1) or "").lower()
         body = m.group(2) if m.group(2) is not None else (m.group(3) or "")
         out.append((lang, body))
     return out
+
+
+def _has_unterminated_fence(text: str) -> bool:
+    """True if a line-start ``` opener is not contained in any *complete* block.
+
+    A code block that was opened with ``` but never closed (the classic
+    truncated/length-starved response that is cut off mid-code) leaves a dangling
+    opener that :func:`iter_code_blocks` cannot match — so the block silently
+    disappears and a truncation slips past. We flag it: every line-start fence
+    delimiter must fall inside a span matched by :data:`_FENCE_RE`; one that does
+    not is a dangling opener. Line-start only (heuristic) so an inline ``` in
+    prose (e.g. "use ``` to format") is not a false positive.
+    """
+    spans = [(m.start(), m.end()) for m in _FENCE_RE.finditer(text or "")]
+    for dm in _FENCE_DELIM_RE.finditer(text or ""):
+        pos = dm.start(1)  # the ``` itself, after any indent
+        if not any(start <= pos < end for start, end in spans):
+            return True
+    return False
 
 
 def _sole_fenced_body(text: str) -> Optional[str]:
@@ -238,6 +320,9 @@ class NonEmptyContent:
     name = "non_empty_content"
 
     def verify(self, response: ResponseView) -> VerifyResult:
+        bad = _nonstr_text_failure(self.name, response.text)
+        if bad is not None:
+            return bad
         has_text = bool((response.text or "").strip())
         has_tools = bool(response.tool_calls)
         if has_text or has_tools:
@@ -258,7 +343,10 @@ class NotTruncated:
     name = "not_truncated"
 
     def verify(self, response: ResponseView) -> VerifyResult:
-        reason = (response.finish_reason or "").strip().lower()
+        fr = response.finish_reason
+        # Guard a non-str finish_reason (contract: never raise). Anything that is
+        # not a known truncation token reads as a clean stop.
+        reason = (fr if isinstance(fr, str) else "").strip().lower()
         if reason in _TRUNCATION_REASONS:
             return VerifyResult(
                 self.name, False, 0.0,
@@ -357,7 +445,21 @@ class CodeParses:
     name = "code_parses"
 
     def verify(self, response: ResponseView) -> VerifyResult:
-        blocks = iter_code_blocks(response.text or "")
+        bad = _nonstr_text_failure(self.name, response.text)
+        if bad is not None:
+            return bad
+        text = response.text or ""
+        if len(text) > MAX_SCAN_BYTES:
+            return VerifyResult(
+                self.name, True, 1.0,
+                f"input too large to scan ({len(text)}B > {MAX_SCAN_BYTES}B); skipped")
+        # A fence opened but never closed = a truncated/malformed code block. The
+        # block itself vanishes from iter_code_blocks (no close to match), so we
+        # must flag the dangling opener here or the truncation slips the chain.
+        if _has_unterminated_fence(text):
+            return VerifyResult(
+                self.name, False, 0.0, "unterminated code fence (truncated code block?)")
+        blocks = iter_code_blocks(text)
         if not blocks:
             return VerifyResult(self.name, True, 1.0, "no fenced code blocks")
 
@@ -394,9 +496,20 @@ class DiffWellFormed:
     The text is treated as a diff **only** when it carries a real hunk header
     (``^@@ -\d+(,\d+)? \+\d+(,\d+)? @@``) or an explicit ```diff fence. Prose
     that merely starts with ``--- ``/``+++ `` (section dividers, changelog lines)
-    is therefore *not* a diff → pass. When it is a diff: hunk headers must match
-    that pattern and body lines must start with ``' '``/``'+'``/``'-'`` (``'\'``
-    for the no-newline marker). This is a **structural** check only — it
+    is therefore *not* a diff → pass — those markers alone are too ambiguous to
+    treat as an explicit claim without false-positiving on prose.
+
+    When it is a diff, validation is scoped to the **hunk region**: each hunk
+    header ``@@ -a,b +c,d @@`` declares ``b`` old-side and ``d`` new-side lines,
+    so we know where the hunk body ends. Body lines must start with
+    ``' '``/``'+'``/``'-'`` (``'\'`` for the no-newline marker); a non-prefixed
+    line *inside* an open hunk is malformed (fail). Once a hunk has consumed its
+    declared lines it is complete, and trailing prose after the last hunk is
+    tolerated (just as preamble before the first hunk already is) — the common
+    "<diff>\n\nThis explains the change." shape must not false-fail.
+
+    An explicit ```diff fence that contains *no* valid hunk header is a diff
+    claim we can disprove → fail. This is a **structural** check only — it
     deliberately does NOT apply the diff to a working tree (that needs files and
     is not local to the response). No diff present → pass.
     """
@@ -404,41 +517,79 @@ class DiffWellFormed:
     name = "diff_well_formed"
 
     def verify(self, response: ResponseView) -> VerifyResult:
-        diff_text = self._extract_diff(response.text or "")
+        bad = _nonstr_text_failure(self.name, response.text)
+        if bad is not None:
+            return bad
+        text = response.text or ""
+        if len(text) > MAX_SCAN_BYTES:
+            return VerifyResult(
+                self.name, True, 1.0,
+                f"input too large to scan ({len(text)}B > {MAX_SCAN_BYTES}B); skipped")
+        diff_text, explicit = self._extract_diff(text)
         if diff_text is None:
             return VerifyResult(self.name, True, 1.0, "no diff present")
 
-        in_hunk = False
+        in_hunk = False           # currently consuming a hunk's declared body
+        old_rem = new_rem = 0      # remaining old-/new-side lines in the open hunk
+        hunks = 0
         for line in diff_text.splitlines():
             if line.startswith("@@"):
-                if not _HUNK_RE.match(line):
+                m = _HUNK_RE.match(line)
+                if not m:
                     return VerifyResult(
                         self.name, False, 0.0, f"malformed hunk header: {line!r}")
-                in_hunk = True
+                hunks += 1
+                old_rem = int(m.group(2)) if m.group(2) is not None else 1
+                new_rem = int(m.group(4)) if m.group(4) is not None else 1
+                in_hunk = old_rem > 0 or new_rem > 0
                 continue
             if not in_hunk:
-                continue  # preamble / file headers before the first hunk
-            if line == "" or line[0] in (" ", "+", "-", "\\"):
-                continue  # context / added / removed / no-newline marker
-            if line.startswith(_DIFF_HEADER_PREFIXES):
-                in_hunk = False  # next file in a multi-file diff
+                # preamble/file headers before the first hunk, or trailing prose
+                # (and inter-hunk file headers) after a hunk has completed.
                 continue
-            return VerifyResult(
-                self.name, False, 0.0, f"malformed diff body line: {line!r}")
+            first = line[:1]
+            if line == "" or first == " ":
+                old_rem -= 1
+                new_rem -= 1
+            elif first == "+":
+                new_rem -= 1
+            elif first == "-":
+                old_rem -= 1
+            elif first == "\\":
+                pass  # "\ No newline at end of file" — counts toward neither side
+            elif line.startswith(_DIFF_HEADER_PREFIXES):
+                in_hunk = False  # next file in a multi-file diff closes this hunk
+                continue
+            else:
+                return VerifyResult(
+                    self.name, False, 0.0, f"malformed diff body line: {line!r}")
+            if old_rem <= 0 and new_rem <= 0:
+                in_hunk = False  # hunk consumed its declared lines; prose may follow
 
+        if explicit and hunks == 0:
+            return VerifyResult(
+                self.name, False, 0.0, "diff claimed (```diff fence) but no valid hunk header")
         return VerifyResult(self.name, True, 1.0, "well-formed unified diff")
 
     @staticmethod
-    def _extract_diff(text: str) -> Optional[str]:
+    def _extract_diff(text: str) -> Tuple[Optional[str], bool]:
+        """Return ``(diff_region, is_explicit_claim)``.
+
+        A ```diff fence is the only *explicit* "this is a diff" claim we trust
+        (bare ``--- ``/``+++ `` markers are indistinguishable from prose section
+        dividers, so treating them as a claim would false-fail prose). Otherwise
+        a real hunk header anywhere makes the whole text a diff worth checking.
+        ``(None, False)`` means "not a diff" → the caller passes.
+        """
         # An explicit ```diff fence is an unambiguous claim "this is a diff".
         for lang, body in iter_code_blocks(text):
             if lang == "diff":
-                return body
+                return body, True
         # Otherwise, only a *real* hunk header makes this a diff worth checking;
         # bare ``--- ``/``+++ `` markers (prose) do not.
         if _HUNK_SEARCH_RE.search(text):
-            return text
-        return None
+            return text, False
+        return None, False
 
 
 class FormatWellFormed:
@@ -454,13 +605,21 @@ class FormatWellFormed:
     name = "format_well_formed"
 
     def verify(self, response: ResponseView) -> VerifyResult:
+        bad = _nonstr_text_failure(self.name, response.text)
+        if bad is not None:
+            return bad
+        text = response.text or ""
+        if len(text) > MAX_SCAN_BYTES:
+            return VerifyResult(
+                self.name, True, 1.0,
+                f"input too large to scan ({len(text)}B > {MAX_SCAN_BYTES}B); skipped")
         fmt = (response.expected_format or "").strip().lower()
         if not fmt:
             return VerifyResult(self.name, True, 1.0, "no expected_format")
         if fmt == "json":
-            body = _sole_fenced_body(response.text or "")
+            body = _sole_fenced_body(text)
             if body is None:
-                body = response.text or ""
+                body = text
             try:
                 _strict_json_loads(body)
             except (ValueError, TypeError, RecursionError) as exc:
@@ -474,9 +633,12 @@ class RefusalMarker:
     """Heuristic confidence signal: lower the score on obvious refusal language.
 
     This is **not** a hard fail — refusing can be the correct answer. It always
-    ``passed=True`` and only lowers ``score`` when the text opens with an obvious
-    refusal/uncertainty marker, so a router can weigh it without blocking. Pure
-    substring matching; documented as a heuristic.
+    ``passed=True`` and only lowers ``score`` when the text *opens* with an
+    obvious refusal/uncertainty marker, so a router can weigh it without blocking.
+    Matched as a prefix of the text's opening (after leading whitespace), NOT
+    anywhere in the body: a refusal phrase merely referenced mid-explanation
+    ("earlier I said I can't help with X, but here's how…") is a normal answer
+    and must not be penalized. Documented as a heuristic.
     """
 
     name = "refusal_marker"
@@ -485,9 +647,15 @@ class RefusalMarker:
     weak_score = 0.2
 
     def verify(self, response: ResponseView) -> VerifyResult:
-        low = (response.text or "").lower()
+        bad = _nonstr_text_failure(self.name, response.text)
+        if bad is not None:
+            return bad
+        # Match only at the OPENING (per the docstring). An anywhere-substring
+        # match spuriously penalizes a legitimate answer that just references a
+        # refusal phrase later in the body.
+        opening = (response.text or "").lstrip().lower()
         for marker in _REFUSAL_MARKERS:
-            if marker in low:
+            if opening.startswith(marker):
                 return VerifyResult(
                     self.name, True, self.weak_score, f"refusal/uncertainty marker: {marker!r}")
         return VerifyResult(self.name, True, 1.0, "no refusal marker")
