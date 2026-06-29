@@ -11,6 +11,22 @@ from __future__ import annotations
 from .backends import EchoBackend, StaticBackend, split_into_deltas
 from .front_door import make_server, serve
 from .internal import Backend, InternalRequest, Message
+from .verify import (
+    CodeParses,
+    DiffWellFormed,
+    FormatWellFormed,
+    NonEmptyContent,
+    NotTruncated,
+    RefusalMarker,
+    ResponseView,
+    ToolCallJSONValid,
+    Verifier,
+    VerifyResult,
+    aggregate,
+    all_passed,
+    default_verifiers,
+    run_verifiers,
+)
 
 __all__ = [
     "make_server",
@@ -21,4 +37,19 @@ __all__ = [
     "EchoBackend",
     "StaticBackend",
     "split_into_deltas",
+    # T007 — cheap inline structural verifiers
+    "ResponseView",
+    "VerifyResult",
+    "Verifier",
+    "NonEmptyContent",
+    "NotTruncated",
+    "ToolCallJSONValid",
+    "CodeParses",
+    "DiffWellFormed",
+    "FormatWellFormed",
+    "RefusalMarker",
+    "default_verifiers",
+    "run_verifiers",
+    "all_passed",
+    "aggregate",
 ]
