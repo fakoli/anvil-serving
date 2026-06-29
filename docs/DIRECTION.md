@@ -139,6 +139,15 @@ abandonment) ([`OPENCLAW-INTEGRATION-SPEC.md:19`](OPENCLAW-INTEGRATION-SPEC.md))
 
 ---
 
+### 2.5 Where it runs (environment)
+
+Two boxes. **Fakoli Mini** is the gateway — **OpenClaw is already installed there** (it bridges chat
+surfaces and is the beachhead client). **fakoli-dark** is the GPU serving box (heavy `:30000`
+qwen3-coder-30b on SGLang + fast `:30001` gpt-oss-20b on vLLM). The anvil-serving **router** sits
+between them: gateway → router → local serves / cloud. Because OpenClaw is already live on Fakoli
+Mini, the validate-first gaps (hook cadence, wire-`model` form) are confirmed against a **real
+install**, not a fresh stand-up.
+
 ## 3. Why this direction — the decision chain (cited evidence)
 
 We did not start here. The original plan (Anvil bake-off task **T013**) was "wire both serving tiers

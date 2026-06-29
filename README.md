@@ -243,6 +243,8 @@ context for the router:
 
 - **heavy** `:30000` — `qwen3-coder-30b` on **SGLang**, RTX PRO 6000 96GB.
 - **fast** `:30001` — `gpt-oss-20b` on **vLLM**, RTX 5090 32GB.
+- **gateway** — **Fakoli Mini** runs **OpenClaw** (already installed), the beachhead harness; the
+  router sits between it and the serves.
 
 It carries the actual compose files, the `.wslconfig` fix snapshot, the model index, the setup
 story ([`SETUP-STORY.md`](examples/fakoli-dark/SETUP-STORY.md)), the decisions log, and the

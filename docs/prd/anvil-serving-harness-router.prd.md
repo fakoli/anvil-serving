@@ -406,7 +406,7 @@ Add `anvil-serving serve --config <path>` that loads the tier config, binds back
 **Likely files:** examples/openclaw/logging-hook/index.ts, examples/openclaw/validate.py
 **Dependencies:** T001, T003
 
-Before building the routing plugin: stand up a pinned OpenClaw, point a custom provider at the front door, and install a **minimal logging-only `before_model_resolve` hook** (a T013 sub-deliverable, resolving the chicken-and-egg with T014). Capture a real outbound request (gap a) and log every hook fire with run/session ids across a multi-turn conversation (gap b). (M2)
+Before building the routing plugin: use the existing OpenClaw install on **Fakoli Mini** (the gateway box — no fresh stand-up; confirm/pin its version), point a custom provider at the front door, and install a **minimal logging-only `before_model_resolve` hook** (a T013 sub-deliverable, resolving the chicken-and-egg with T014). Capture a real outbound request (gap a) and log every hook fire with run/session ids across a multi-turn conversation (gap b). (M2)
 
 **Acceptance criteria:**
 
