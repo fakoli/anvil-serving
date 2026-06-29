@@ -20,7 +20,7 @@ dev = ["pytest"]
 anvil-serving = "anvil_serving.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["anvil_serving*"]   # ship subpackages (e.g. anvil_serving.router) too
+include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and future ones; excludes tests/
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
