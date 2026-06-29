@@ -17,6 +17,17 @@ Credential policy (the gate):
 
 Stdlib-only HTTP: the default transport uses :mod:`urllib.request`. The transport
 is an injectable seam (``transport=``) so tests run hermetically with NO network.
+
+Scope notes (deferred, not this task):
+
+* **Provider model resolution.** ``request.model`` is forwarded verbatim to the
+  provider as a placeholder. Mapping a routing token (e.g. a preset name) to a
+  concrete provider model id (preset -> tier -> provider model) is the routing
+  layer's job (T009/T012); :class:`~anvil_serving.router.config.Tier` carries no
+  provider-model field yet, so there is nothing to prefer over ``request.model``.
+* **Dialect branching.** The per-dialect logic is split across
+  :meth:`CloudBackend._endpoint` / ``_headers`` / ``_build_body`` / ``_extract_text``;
+  a per-dialect adapter object would encapsulate it. Out of scope for T006.
 """
 
 from __future__ import annotations
@@ -34,11 +45,14 @@ from .local import split_into_deltas
 #: transport(url, *, data, headers, timeout) -> response body bytes.
 Transport = Callable[..., bytes]
 
-# Provider-relative path appended to the tier's base_url, per dialect.
-_DIALECT_PATHS = {
-    "openai": "/chat/completions",   # base_url already ends in /v1
-    "anthropic": "/v1/messages",     # base_url is the bare host (api.anthropic.com)
-}
+# Dialects this backend can speak to a cloud provider.
+_SUPPORTED_DIALECTS = ("openai", "anthropic")
+
+# Anthropic's provider-relative endpoint path (base_url is the bare host).
+_ANTHROPIC_PATH = "/v1/messages"
+# OpenAI-compatible servers expose the Chat Completions API under /v1.
+_OPENAI_VERSION_SEGMENT = "/v1"
+_OPENAI_PATH = "/chat/completions"
 
 # Anthropic requires this header; pin the stable Messages API version.
 _ANTHROPIC_VERSION = "2023-06-01"
@@ -118,18 +132,22 @@ class CloudBackend:
                 f"CloudBackend requires a cloud tier; tier {tier.id!r} is "
                 f"privacy={tier.privacy!r}"
             )
-        if tier.dialect not in _DIALECT_PATHS:
+        if tier.dialect not in _SUPPORTED_DIALECTS:
             raise ConfigError(
                 f"tier {tier.id!r}: CloudBackend cannot speak dialect {tier.dialect!r}"
             )
 
         environ: Mapping[str, str] = os.environ if env is None else env
         key = environ.get(tier.auth_env)
-        if not key:  # unset OR empty string -> fail fast, named, typed
+        # Unset, empty, OR whitespace-only (e.g. a trailing-newline key from
+        # `$(cat keyfile)`) -> fail fast, named, typed. A blank key would otherwise
+        # become a `x-api-key: ' '` 401 deep in a request, or make urllib raise an
+        # opaque ValueError on the header value — never the clear startup error.
+        if not key or not key.strip():
             raise MissingCredentialError(tier_id=tier.id, env_var=tier.auth_env)
 
         self._tier = tier
-        self._key = key  # private; never logged, never in __repr__
+        self._key = key.strip()  # private; never logged, never in __repr__
         self._timeout = timeout
         self._transport: Transport = transport or _urlopen_transport
 
@@ -149,7 +167,17 @@ class CloudBackend:
     # request construction (the auth-bearing seam the tests inspect)
     # ------------------------------------------------------------------ #
     def _endpoint(self) -> str:
-        return self._tier.base_url.rstrip("/") + _DIALECT_PATHS[self._tier.dialect]
+        base = self._tier.base_url.rstrip("/")
+        if self._tier.dialect == "anthropic":
+            return base + _ANTHROPIC_PATH
+        # openai-compatible: the Chat Completions API lives under /v1. The config
+        # only checks for a scheme, so base_url may or may not already carry the
+        # /v1 segment; normalize both forms (``https://api.openai.com`` and
+        # ``https://api.openai.com/v1``) to ``…/v1/chat/completions`` so a bare
+        # host doesn't 404 every request.
+        if not base.endswith(_OPENAI_VERSION_SEGMENT):
+            base += _OPENAI_VERSION_SEGMENT
+        return base + _OPENAI_PATH
 
     def _headers(self) -> Dict[str, str]:
         """Outbound headers, including the auth header built from the env key."""
@@ -182,10 +210,18 @@ class CloudBackend:
                 body["temperature"] = request.temperature
             return body
 
-        # openai-compatible
+        # openai-compatible: the system prompt rides as a role=system message.
+        msgs = [{"role": m.role, "content": m.content} for m in request.messages]
+        # Forward request.system faithfully. The OpenAI dialect leaves the system
+        # message IN messages (so it's already present); an Anthropic-origin
+        # request carries the system prompt ONLY on `.system` (no system message),
+        # and dropping it here would silently lose the instruction. Prepend it
+        # unless a system message is already present (avoids duplication).
+        if request.system and not any(m.role == "system" for m in request.messages):
+            msgs.insert(0, {"role": "system", "content": request.system})
         body = {
             "model": request.model,
-            "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+            "messages": msgs,
             "stream": False,
         }
         if request.max_tokens is not None:

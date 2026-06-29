@@ -152,3 +152,64 @@ def test_sanitize_does_not_mutate_input():
     before = _flatten(rec)
     sanitize(rec, calibration=False)
     assert _flatten(rec) == before  # original untouched
+
+
+# ── review fix 4: don't over-redact usage metrics (token COUNTS, not secrets) ──
+def test_usage_metrics_survive_sanitize():
+    rec = {
+        "usage": {"input_tokens": 12, "output_tokens": 34, "total_tokens": 46},
+        "token_count": 46,
+        "tokens": 46,
+        "completion_tokens": 34,
+        "prompt_tokens": 12,
+    }
+    out = sanitize(rec, calibration=False)
+    assert out["usage"]["input_tokens"] == 12
+    assert out["usage"]["output_tokens"] == 34
+    assert out["usage"]["total_tokens"] == 46
+    assert out["token_count"] == 46
+    assert out["tokens"] == 46
+    assert out["completion_tokens"] == 34
+    assert out["prompt_tokens"] == 12
+
+
+# ── review fix 4: but real *_token secret fields ARE still masked ──────────────
+def test_token_secret_fields_are_masked():
+    rec = {
+        "api_token": "abc123-api-token-secretvalue",
+        "access_token": "xyz789-access-token-secretvalue",
+        "auth_token": "auth-token-secretvalue-000",
+        "token": "bare-token-secretvalue-111",
+    }
+    out = sanitize(rec, calibration=False)
+    blob = _flatten(out)
+    for v in rec.values():
+        assert v not in blob          # no secret token value survives
+    for field in rec:
+        assert MASK in out[field]     # each masked
+
+
+# ── review fix 5: broaden keylike scrubbing (GitHub fine-grained PAT, Google) ──
+def test_github_and_google_keys_scrubbed_from_free_text():
+    gh = "github_pat_11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyzABCDEF"
+    goog = "AIzaSyD-1234567890abcdefghijklmnopqrstuv"
+    rec = {"note": f"used {gh} and {goog} in a deploy script"}
+    out = sanitize(rec, calibration=False)
+    blob = _flatten(out)
+    assert gh not in blob
+    assert goog not in blob
+    assert "deploy script" in out["note"]  # surrounding prose retained
+
+
+def test_github_short_prefixes_scrubbed():
+    for tok in ("gho_AAAA1111BBBB2222", "ghs_CCCC3333DDDD4444"):
+        out = sanitize({"note": f"token={tok} end"}, calibration=False)
+        assert tok not in _flatten(out)
+
+
+# ── review fix 6: IGNORECASE so a lowercase `bearer …` is scrubbed ────────────
+def test_lowercase_bearer_scrubbed():
+    rec = {"log": "curl -H 'authorization: bearer abc123def456ghi789'"}
+    out = sanitize(rec, calibration=False)
+    assert "bearer abc123def456ghi789" not in _flatten(out)
+    assert MASK in out["log"]

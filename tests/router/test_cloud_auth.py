@@ -48,6 +48,8 @@ def _openai_cloud_tier() -> Tier:
 
 
 def _request(dialect: str):
+    """An Anthropic-shaped request: system lives ONLY on `.system` (no system
+    message in `messages`), as the Anthropic dialect produces it."""
     from anvil_serving.router.internal import InternalRequest, Message
 
     return InternalRequest(
@@ -56,6 +58,20 @@ def _request(dialect: str):
         system="be terse",
         max_tokens=16,
         dialect=dialect,
+    )
+
+
+def _openai_shaped_request():
+    """An OpenAI-shaped request: the system prompt is a leading role=system
+    message AND mirrored on `.system` (what OpenAIDialect.parse_request yields)."""
+    from anvil_serving.router.internal import InternalRequest, Message
+
+    return InternalRequest(
+        model="some-model",
+        messages=[Message("system", "be terse"), Message("user", "ping")],
+        system="be terse",
+        max_tokens=16,
+        dialect="openai",
     )
 
 
@@ -232,3 +248,91 @@ def test_default_transport_uses_urllib(monkeypatch):
     lower = {k.lower(): v for k, v in captured["headers"].items()}
     assert lower["x-api-key"] == FAKE_KEY
     assert captured["url"] == "https://api.anthropic.com/v1/messages"
+
+
+# ── review fix 1: forward request.system to an OpenAI cloud tier ───────────────
+def _openai_reply() -> bytes:
+    return json.dumps(
+        {"choices": [{"message": {"role": "assistant", "content": "ok"}}]}
+    ).encode()
+
+
+def test_openai_body_includes_system_from_anthropic_shaped_request(monkeypatch):
+    # Anthropic-shaped request (system only on `.system`) routed to an OpenAI
+    # cloud tier MUST carry the system instruction, not silently drop it.
+    monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
+    transport = _CaptureTransport(_openai_reply())
+    backend = CloudBackend(_openai_cloud_tier(), transport=transport)
+
+    list(backend.generate(_request("anthropic")))
+    body = json.loads(transport.calls[0]["data"])
+    roles = [m["role"] for m in body["messages"]]
+
+    assert roles[0] == "system"                       # prepended
+    assert body["messages"][0]["content"] == "be terse"
+    assert roles.count("system") == 1                 # exactly one
+
+
+def test_openai_body_does_not_duplicate_existing_system_message(monkeypatch):
+    # OpenAI-shaped request already has a leading system message; do NOT add a
+    # second one from `.system`.
+    monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
+    transport = _CaptureTransport(_openai_reply())
+    backend = CloudBackend(_openai_cloud_tier(), transport=transport)
+
+    list(backend.generate(_openai_shaped_request()))
+    body = json.loads(transport.calls[0]["data"])
+    roles = [m["role"] for m in body["messages"]]
+
+    assert roles == ["system", "user"]                # not duplicated
+    assert roles.count("system") == 1
+
+
+# ── review fix 2: /v1 endpoint normalization for openai cloud tiers ────────────
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://api.openai.com",       # bare host, no /v1 -> must not 404
+        "https://api.openai.com/v1",    # already /v1
+        "https://api.openai.com/v1/",   # trailing slash
+    ],
+)
+def test_openai_endpoint_normalizes_to_v1(monkeypatch, base_url):
+    monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
+    tier = Tier(
+        id="cloud-oai",
+        base_url=base_url,
+        dialect="openai",
+        context_limit=128000,
+        privacy="cloud",
+        tool_support=True,
+        auth_env=OPENAI_ENV,
+    )
+    transport = _CaptureTransport(_openai_reply())
+    backend = CloudBackend(tier, transport=transport)
+
+    list(backend.generate(_request("openai")))
+    assert transport.calls[0]["url"] == "https://api.openai.com/v1/chat/completions"
+
+
+# ── review fix 3: whitespace / newline keys fail fast (not a blank-auth 401) ───
+@pytest.mark.parametrize("blank", [" ", "   ", "\n", "\t", " \n "])
+def test_whitespace_only_key_raises_missing_credential(monkeypatch, blank):
+    monkeypatch.setenv(ANTHROPIC_ENV, blank)
+    with pytest.raises(MissingCredentialError) as ei:
+        CloudBackend(_anthropic_tier())
+    assert ANTHROPIC_ENV in str(ei.value)   # names the offending env var
+    assert ei.value.env_var == ANTHROPIC_ENV
+
+
+def test_trailing_newline_key_is_stripped_before_header(monkeypatch):
+    # A real key with a trailing newline (the `$(cat keyfile)` case) is usable —
+    # it must be stripped, not rejected, and never reach the header with the \n.
+    monkeypatch.setenv(ANTHROPIC_ENV, FAKE_KEY + "\n")
+    transport = _CaptureTransport(
+        json.dumps({"content": [{"type": "text", "text": "x"}]}).encode()
+    )
+    backend = CloudBackend(_anthropic_tier(), transport=transport)
+    list(backend.generate(_request("anthropic")))
+
+    assert transport.calls[0]["headers"]["x-api-key"] == FAKE_KEY  # no trailing \n

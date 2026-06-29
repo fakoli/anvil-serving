@@ -31,15 +31,44 @@ from typing import Any, Dict, Iterable, List, Mapping
 #: What a redacted secret looks like in output.
 MASK = "[REDACTED]"
 
-# Field NAMES (case-insensitive) whose value is a secret and is always masked,
-# in every mode. Substring match so ``x-api-key`` / ``anthropic_api_key`` hit.
+# Usage/metric field names that must NEVER be redacted — they carry no secret
+# and are the whole point of a metrics record. Checked BEFORE the secret/prompt
+# rules so a substring like ``token`` (in ``output_tokens``) or ``output`` can't
+# clobber the count. Plural ``*_tokens`` / ``token_count`` only; the singular
+# ``token`` field (a real secret) is intentionally NOT here.
+_METRIC_NAME_RE = re.compile(
+    r"(?i)((^|_)tokens$|token_count$|^token_usage$)"
+)
+
+# Field NAMES whose value is a secret and is always masked, in every mode.
+# Word-boundaried (``(?:^|[^a-z0-9]) … (?![a-z0-9])``) so a secret-ish fragment
+# can't catch a metric: ``token`` matches a bare ``token`` field but NOT
+# ``output_tokens`` / ``token_count``; ``access_token`` matches but not
+# ``access_tokens``. Substring-anchored so ``x-api-key`` / ``anthropic_api_key``
+# still hit.
 _SECRET_NAME_RE = re.compile(
-    r"(api[_-]?key|secret|token|authorization|x-api-key|password|bearer|credential)",
-    re.IGNORECASE,
+    r"""(?ix)
+    (?:^|[^a-z0-9])
+    (?:
+        api[_-]?key
+      | apikey
+      | secret
+      | password
+      | passwd
+      | authorization
+      | (?:access|auth|refresh|id|bearer|session|api|client)[_-]token
+      | token
+      | bearer
+      | credentials?
+    )
+    (?![a-z0-9])
+    """,
 )
 
 # Field NAMES (case-insensitive) that carry a full prompt / completion body.
-# Masked to a fingerprint unless calibration capture is opted in.
+# Masked to a fingerprint unless calibration capture is opted in. (The metric
+# guard above runs first, so ``prompt_tokens`` / ``completion_tokens`` are NOT
+# caught here despite the ``prompt`` / ``completion`` substrings.)
 _PROMPT_NAME_RE = re.compile(
     r"(prompt|messages|completion|content|system|input|output|response_text|user_text)",
     re.IGNORECASE,
@@ -47,16 +76,23 @@ _PROMPT_NAME_RE = re.compile(
 
 # Secret-SHAPED substrings to scrub out of any free-text value as defense in
 # depth — even a value under a benign field name (e.g. a stack trace or a copied
-# curl line) must not leak a key. Mirrors the markers the config layer rejects.
+# curl line) must not leak a key. Known prefixes only (no generic high-entropy
+# matcher, to avoid false positives), but IGNORECASE so a lowercase ``bearer …``
+# in a logged header/curl line is still caught.
 _KEYLIKE_RE = re.compile(
     r"""(
-        sk-[A-Za-z0-9._-]{6,}          # OpenAI / Anthropic style
-      | ghp_[A-Za-z0-9]{6,}            # GitHub PAT
-      | xox[baprs]-[A-Za-z0-9-]{6,}    # Slack
-      | (?:AKIA|ASIA)[0-9A-Z]{16}      # AWS access key id
-      | Bearer\s+[A-Za-z0-9._\-]{6,}   # Authorization: Bearer <...>
+        sk-[A-Za-z0-9._-]{6,}              # OpenAI / Anthropic style (sk-, sk-ant-)
+      | sk_live_[A-Za-z0-9]{6,}            # Stripe live secret key
+      | sk_test_[A-Za-z0-9]{6,}            # Stripe test secret key
+      | rk_live_[A-Za-z0-9]{6,}            # Stripe restricted key
+      | github_pat_[A-Za-z0-9_]{6,}        # GitHub fine-grained PAT
+      | gh[oprsu]_[A-Za-z0-9]{6,}          # GitHub tokens (gho_/ghp_/ghr_/ghs_/ghu_)
+      | xox[baprs]-[A-Za-z0-9-]{6,}        # Slack
+      | AIza[A-Za-z0-9_\-]{10,}            # Google API key
+      | (?:AKIA|ASIA)[0-9A-Z]{16}          # AWS access key id
+      | Bearer\s+[A-Za-z0-9._\-]{6,}       # Authorization: Bearer <...>
     )""",
-    re.VERBOSE,
+    re.VERBOSE | re.IGNORECASE,
 )
 
 
@@ -119,9 +155,12 @@ def sanitize(
 
     Rules, applied recursively to nested dicts/lists:
 
+    0. A field whose NAME is a usage metric (``output_tokens``, ``input_tokens``,
+       ``token_count`` …) is NEVER name-redacted — metrics are preserved (its
+       value still recurses so nested strings are scrubbed).
     1. A field whose NAME looks like a secret (``api_key``, ``authorization``,
-       ``x-api-key`` …) -> value masked via :func:`redact_key`. **Always**, in
-       both modes.
+       ``x-api-key``, ``access_token`` …) -> value masked via :func:`redact_key`.
+       **Always**, in both modes.
     2. A field whose NAME looks like a prompt body (``prompt``, ``messages`` …)
        -> :func:`redact_prompt` (fingerprint unless ``calibration``).
     3. Every surviving free-text value has secret-shaped substrings (and any
@@ -157,12 +196,15 @@ def _sanitize_value(
         out: Dict[str, Any] = {}
         for k, v in value.items():
             key = str(k)
+            # A metric/usage field is never name-masked (don't destroy the
+            # counts); its value still recurses so any nested string is scrubbed.
+            is_metric = bool(_METRIC_NAME_RE.search(key))
             out[key] = _sanitize_value(
                 v,
                 calibration,
                 extra,
-                _name_secret=bool(_SECRET_NAME_RE.search(key)),
-                _name_prompt=bool(_PROMPT_NAME_RE.search(key)),
+                _name_secret=(not is_metric) and bool(_SECRET_NAME_RE.search(key)),
+                _name_prompt=(not is_metric) and bool(_PROMPT_NAME_RE.search(key)),
             )
         return out
     if isinstance(value, (list, tuple)):
