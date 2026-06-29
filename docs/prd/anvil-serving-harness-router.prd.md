@@ -24,6 +24,8 @@ v0: `chat/Q&A`, `bounded-edit`, `multi-file-refactor`, `planning/decomposition`,
 no preset is declared the Tier-0 classifier emits a work-class, which the routing policy maps to a
 tier. Profile/validation/promotion (R003/R009/R010) are keyed on work-class.
 
+**Release:** v0.3.0
+
 ## Goals
 
 - One drop-in endpoint any "custom base URL + free-form model string" harness can use today (Tier 0
@@ -65,14 +67,14 @@ tier. Profile/validation/promotion (R003/R009/R010) are keyed on work-class.
   (`planning`, `quick-edit`, `review`, `chat`, `long-context`) accepted both bare and as
   `anvil/<preset>`; a Tier-0 classifier infers the work-class when no preset is declared; a
   `model:`-pin override is honored; ambiguous classifications bias to the safer/cloud tier.
-- R003a (MVP): A per-(model, work-class) **quality profile** maps each class to a decision
-  ∈ {`allow`, `allow-with-verify`, `deny`}, seeded by a **hand-authored static table**, and the routing
-  policy filters the candidate tier pool by hard constraints (context, privacy, tool support) and ranks
-  survivors by the profile.
-- R003b (post-MVP): The profile is keyed on a **serve fingerprint** (model + quant + engine + serve
-  flags), bootstrapped from the shadow-eval harness, right-sized from real usage via `profile`, and
-  continuously **calibrated** from sampled production traffic graded off the hot path; a fingerprint
-  change marks affected rows stale and triggers re-measure.
+- R003: A per-(model, work-class) **quality profile** maps each class to a decision
+  ∈ {`allow`, `allow-with-verify`, `deny`}. **MVP** seeds it with a **hand-authored static table** plus a
+  routing policy that filters the candidate tier pool by hard constraints (context, privacy, tool
+  support) and ranks survivors by the profile. **Post-MVP** the profile is keyed on a **serve
+  fingerprint** (model + quant + engine + serve flags), bootstrapped from the shadow-eval harness,
+  right-sized from real usage via `profile`, and continuously **calibrated** from sampled production
+  traffic graded off the hot path; a fingerprint change marks affected rows stale and triggers
+  re-measure. (MVP vs post-MVP split is tracked in the Milestones section + task tagging.)
 - R004: Cheap **inline structural verification** (empty/truncated content, invalid tool-call JSON,
   unparseable code, non-applying diff, malformed format) plus confidence signals; on
   verify-fail / error / timeout / low-confidence the router **falls back** up the tier chain to cloud.
@@ -126,7 +128,7 @@ tier. Profile/validation/promotion (R003/R009/R010) are keyed on work-class.
 **Requirements:** R002
 
 ### F003: Quality profile & routing policy
-**Requirements:** R003a, R003b, R013
+**Requirements:** R003, R013
 
 ### F004: Verify-and-fallback safety net (incl. streaming commit window)
 **Requirements:** R004
@@ -258,7 +260,7 @@ Expose `/v1/models` listing the preset tokens with human-readable names and desc
 **Likely files:** anvil_serving/router/profile_store.py, anvil_serving/router/policy.py
 **Dependencies:** T002, T003
 
-Implement the per-(model, work-class) table with {allow, allow-with-verify, deny}, seeded hand-authored (R003a). The policy loads the candidate pool from config (T002), filters by hard constraints (context/privacy/tool support), incorporates a tier availability/residency signal (single-resident swap pair, R013), and ranks survivors by the profile. Define the serve-fingerprint composition for later staleness detection (R003b). (M1)
+Implement the per-(model, work-class) table with {allow, allow-with-verify, deny}, seeded hand-authored (R003). The policy loads the candidate pool from config (T002), filters by hard constraints (context/privacy/tool support), incorporates a tier availability/residency signal (single-resident swap pair, R013), and ranks survivors by the profile. Define the serve-fingerprint composition for later staleness detection (R003). (M1)
 
 **Acceptance criteria:**
 
@@ -441,7 +443,7 @@ Build the ~50-line adapter plugin that classifies the user message and returns a
 **Likely files:** anvil_serving/router/profile_bootstrap.py, docs/findings/eval-data/
 **Dependencies:** T005
 
-Generalize the shadow-eval harness to replay representative requests per work-class to each tier, grade against cloud, and emit the profile table — replacing the hand-authored seed (R003b). Provide a `--replay <fixtures>` mode that bootstraps from recorded eval data for CI. (M3)
+Generalize the shadow-eval harness to replay representative requests per work-class to each tier, grade against cloud, and emit the profile table — replacing the hand-authored seed (R003). Provide a `--replay <fixtures>` mode that bootstraps from recorded eval data for CI. (M3)
 
 **Acceptance criteria:**
 
