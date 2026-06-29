@@ -1,0 +1,5 @@
+prd,model,model_id,gen_ok,elapsed_s,completion_tokens,tok_per_s,out_chars,n_tasks,structural_score,features_covered,n_dep_edges,has_dep_cycle,dangling_deps,uncovered_features,judge_decomposition_granularity,judge_requirement_coverage,judge_dependency_correctness,judge_acceptance_verifiability,judge_faithfulness,judge_total_avg_of_25,judge_total_min,judge_total_max
+prdA-backlog,heavy,qwen3-coder-local,True,8.3,1649,198.1,7510,9,100,8/8,2,False,0,,1.5,2.5,1.5,2.0,2.5,10.0,9,11
+prdA-backlog,fast,gpt-oss-20b,True,20.7,5333,257.3,11398,21,100,8/8,13,False,0,,4.5,3.5,2.0,3.5,3.5,17.0,15,19
+prdB-multiprd,heavy,qwen3-coder-local,True,18.0,3407,188.9,12977,19,100,9/9,19,False,0,,3.0,4.0,3.0,3.0,3.5,16.5,16,17
+prdB-multiprd,fast,gpt-oss-20b,True,15.2,3881,255.6,9543,15,92,7/9,3,False,0,F008;F009,4.0,2.0,2.0,3.5,3.5,15.0,14,16
