@@ -10,7 +10,9 @@ from __future__ import annotations
 import os
 import re
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from types import MappingProxyType
+from typing import Mapping
 
 VALID_DIALECTS = {"openai", "anthropic"}
 VALID_PRIVACY = {"local", "cloud"}
@@ -56,7 +58,7 @@ class RouterConfig:
     """Validated router topology: tiers + preset->candidate mapping."""
 
     tiers: tuple[Tier, ...]
-    presets: dict[str, tuple[str, ...]]
+    presets: Mapping[str, tuple[str, ...]] = field(hash=False)
     mapping_version: str
 
     def tier(self, tier_id: str) -> Tier:
@@ -89,13 +91,13 @@ def _parse_tier(raw: object) -> Tier:
         raise ConfigError(f"tier id must be a non-empty string, got {tid!r}")
 
     dialect = raw["dialect"]
-    if dialect not in VALID_DIALECTS:
+    if not isinstance(dialect, str) or dialect not in VALID_DIALECTS:
         raise ConfigError(
             f"tier {tid!r}: dialect {dialect!r} not in {sorted(VALID_DIALECTS)}"
         )
 
     privacy = raw["privacy"]
-    if privacy not in VALID_PRIVACY:
+    if not isinstance(privacy, str) or privacy not in VALID_PRIVACY:
         raise ConfigError(
             f"tier {tid!r}: privacy {privacy!r} not in {sorted(VALID_PRIVACY)}"
         )
@@ -114,8 +116,10 @@ def _parse_tier(raw: object) -> Tier:
         )
 
     base_url = raw["base_url"]
-    if not isinstance(base_url, str) or not base_url:
-        raise ConfigError(f"tier {tid!r}: base_url must be a non-empty string")
+    if not isinstance(base_url, str) or "://" not in base_url:
+        raise ConfigError(
+            f"tier {tid!r}: base_url must be a URL with a scheme (got {base_url!r})"
+        )
 
     auth_env = raw["auth_env"]
     if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
@@ -148,8 +152,13 @@ def load(path: str) -> RouterConfig:
     set: it only records each tier's ``auth_env`` env-var NAME.
     """
     path = os.path.expanduser(path)
-    with open(path, "rb") as f:
-        data = tomllib.load(f)
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except OSError as e:
+        raise ConfigError(f"cannot read router config {path!r}: {e}") from e
+    except tomllib.TOMLDecodeError as e:
+        raise ConfigError(f"invalid TOML in router config {path!r}: {e}") from e
 
     router = data.get("router")
     if not isinstance(router, dict):
@@ -181,6 +190,10 @@ def load(path: str) -> RouterConfig:
             raise ConfigError(
                 f"preset {name!r} must be a list of tier-id strings, got {cands!r}"
             )
+        if not cands:
+            raise ConfigError(f"preset {name!r} has no candidate tiers")
+        if len(set(cands)) != len(cands):
+            raise ConfigError(f"preset {name!r} has duplicate tier ids: {cands}")
         for cid in cands:
             if cid not in seen_ids:
                 raise ConfigError(
@@ -194,6 +207,6 @@ def load(path: str) -> RouterConfig:
 
     return RouterConfig(
         tiers=tuple(tiers),
-        presets=presets,
+        presets=MappingProxyType(presets),
         mapping_version=mapping_version,
     )

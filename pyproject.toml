@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Right-size and run a local LLM serving tier from your own coding-agent usage."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.11"   # stdlib tomllib is 3.11+ (config.py already relies on it)
+requires-python = ">=3.11"   # the router's config loader uses stdlib tomllib (3.11+)
 authors = [{ name = "Sekou Doumbouya" }]
 keywords = ["llm", "sglang", "vllm", "inference", "claude-code", "local-llm", "blackwell"]
 dependencies = []   # stdlib-only by design; optional extras pull in nothing required

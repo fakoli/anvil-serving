@@ -133,6 +133,7 @@ def test_mapping_version_present():
     cfg = load(str(EXAMPLE))
     assert isinstance(cfg.mapping_version, str)
     assert cfg.mapping_version
+    assert cfg.mapping_version == "2026-06-29.0"
 
 
 # ── lookup error paths ────────────────────────────────────────────────────────
@@ -205,6 +206,64 @@ def test_non_positive_context_limit_raises(tmp_path):
     body = _BASE_TIER.replace("context_limit = 32768", "context_limit = 0")
     with pytest.raises(ConfigError):
         load(_write_toml(tmp_path, body))
+
+
+# ── regression: type guards, I/O, presets, URL scheme, immutability ───────────
+def test_non_string_dialect_raises(tmp_path):
+    # An unhashable TOML value (array) must not blow up set-membership.
+    body = _BASE_TIER.replace(
+        'dialect       = "openai"', 'dialect       = ["openai"]'
+    )
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_non_string_privacy_raises(tmp_path):
+    body = _BASE_TIER.replace('privacy       = "local"', 'privacy       = ["local"]')
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_missing_file_raises_configerror():
+    with pytest.raises(ConfigError):
+        load("does/not/exist.toml")
+
+
+def test_malformed_toml_raises_configerror(tmp_path):
+    p = tmp_path / "broken.toml"
+    p.write_text("[router]\nthis is = = broken", encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load(str(p))
+
+
+def test_empty_preset_raises(tmp_path):
+    body = _BASE_TIER + '\n[router.presets]\nchat = []\n'
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_duplicate_candidate_in_preset_raises(tmp_path):
+    body = _BASE_TIER + '\n[router.presets]\nchat = ["fast-local", "fast-local"]\n'
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_base_url_without_scheme_raises(tmp_path):
+    body = _BASE_TIER.replace(
+        'base_url      = "http://127.0.0.1:30001/v1"',
+        'base_url      = "127.0.0.1:30001/v1"',
+    )
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_config_is_hashable_and_presets_immutable():
+    cfg = load(str(EXAMPLE))
+    # The (unhashable) presets mapping is excluded from __hash__; this must work.
+    assert hash(cfg) is not None
+    # MappingProxyType blocks silent mutation of the preset map.
+    with pytest.raises(TypeError):
+        cfg.presets["x"] = 1
 
 
 # ── regression: legacy loader must not choke on the new [router] block ─────────
