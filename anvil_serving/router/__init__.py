@@ -8,9 +8,21 @@ Intent routing, multiple tiers, and verify/fallback are later milestones.
 
 from __future__ import annotations
 
-from .backends import EchoBackend, StaticBackend, split_into_deltas
+from .backends import (
+    CloudBackend,
+    EchoBackend,
+    MissingCredentialError,
+    StaticBackend,
+    split_into_deltas,
+)
+from .commit_window import (
+    FallbackEvent,
+    build_response_view,
+    stream_with_commit_window,
+)
 from .front_door import make_server, serve
 from .internal import Backend, InternalRequest, Message
+from .secrets import redact_key, redact_prompt, sanitize
 from .verify import (
     CodeParses,
     DiffWellFormed,
@@ -37,6 +49,12 @@ __all__ = [
     "EchoBackend",
     "StaticBackend",
     "split_into_deltas",
+    # T006 — cloud-tier credentialed backend + secrets hygiene
+    "CloudBackend",
+    "MissingCredentialError",
+    "redact_key",
+    "redact_prompt",
+    "sanitize",
     # T007 — cheap inline structural verifiers
     "ResponseView",
     "VerifyResult",
@@ -52,4 +70,8 @@ __all__ = [
     "run_verifiers",
     "all_passed",
     "aggregate",
+    # T008 — streaming commit-window (buffer -> verify -> commit-or-fallback)
+    "stream_with_commit_window",
+    "FallbackEvent",
+    "build_response_view",
 ]
