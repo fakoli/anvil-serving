@@ -10,13 +10,15 @@ Coverage:
   * (a) ``serve --help`` exits 0 and documents ``--config``.
   * (b) ``configs/example.toml`` -> a running front door; one request streams a
         correct response, and routing actually composes (a ``chat`` request lands
-        on ``fast-local``; a ``planning`` request is gated to ``cloud``).
+        on ``fast-local``; a ``planning`` request is gated to ``heavy-local`` in
+        the local-only default config — ADR-0001 / advise-and-defer:T001).
   * (c) a drop-in-time smoke: measure + record (print + assert finite) the
         elapsed time from server build/start to the first served response.
   * the QUALITY GATE is never bypassed by availability: when the only gated
-    candidate is unbound (planning with cloud unkeyed), the request gets a
-    503-style error envelope naming the work class + unbound candidates — NOT a
-    response from an out-of-gate local tier.
+    candidate is unbound, the request gets a 503-style error envelope — NOT a
+    response from an out-of-gate tier.
+  * T001: build_server from the local-only example.toml starts with NO cloud
+    credential present and binds zero cloud tiers (ADR-0001).
   * tier -> backend mapping (cloud -> CloudBackend, local -> RelayBackend), the
     local RelayBackend relaying via an injected transport with NO creds, and the
     router-package namespace resolving as intended (no ``serve`` shadow).
@@ -49,7 +51,9 @@ from anvil_serving.router.serve import (
     build_server,
 )
 
-CONFIG = str(Path(__file__).resolve().parents[2] / "configs" / "example.toml")
+_CONFIGS = Path(__file__).resolve().parents[2] / "configs"
+CONFIG = str(_CONFIGS / "example.toml")
+CONFIG_WITH_CLOUD = str(_CONFIGS / "example-with-cloud.toml")
 
 
 # --------------------------------------------------------------------------- #
@@ -106,7 +110,13 @@ def parse_openai_content(raw: bytes) -> str:
 
 def _distinct_backends() -> Dict[str, StaticBackend]:
     """Inject a DISTINCT static backend per tier id so the test can tell which
-    tier actually served (proving the routing composition, not just a passthrough)."""
+    tier actually served (proving the routing composition, not just a passthrough).
+
+    Includes a 'cloud' backend so tests that use example-with-cloud.toml or
+    inject all three tiers can share this helper.  Tests using local-only
+    example.toml will never route to the cloud backend (it has no config tier),
+    so the extra entry is harmless but available for explicit injection.
+    """
     return {
         "fast-local": StaticBackend(["Hel", "lo"]),          # -> "Hello"
         "heavy-local": StaticBackend(["heavy-", "served"]),  # -> "heavy-served"
@@ -115,9 +125,7 @@ def _distinct_backends() -> Dict[str, StaticBackend]:
 
 
 def _local_only_backends() -> Dict[str, StaticBackend]:
-    """Bind ONLY the local tiers — cloud is unbound (the default dev-machine
-    state when ANTHROPIC_API_KEY is unset). Used to prove the quality gate is
-    not bypassed when the only gated candidate (cloud, for planning) is missing."""
+    """Bind ONLY the local tiers (the default: no cloud credential needed)."""
     return {
         "fast-local": StaticBackend(["Hel", "lo"]),          # -> "Hello"
         "heavy-local": StaticBackend(["heavy-", "served"]),  # -> "heavy-served"
@@ -154,9 +162,9 @@ def test_serve_requires_config(capsys):
 # (b) config -> running front door + routing composition
 # --------------------------------------------------------------------------- #
 def test_serve_streams_chat_request_via_fast_local():
-    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_distinct_backends())
-    # The example config binds exactly its three tiers.
-    assert set(httpd.anvil_tiers) == {"fast-local", "heavy-local", "cloud"}
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
+    # Local-only config: exactly two tiers (T001 — no cloud tier in default config).
+    assert set(httpd.anvil_tiers) == {"fast-local", "heavy-local"}
     with running(httpd) as (host, port):
         status, headers, raw = _post(
             host, port, "/v1/chat/completions",
@@ -164,22 +172,37 @@ def test_serve_streams_chat_request_via_fast_local():
         )
     assert status == 200
     assert headers.get("content-type") == "text/event-stream"
-    # "chat" preset -> candidates [fast-local, cloud]; first bound is fast-local.
+    # "chat" preset -> candidates [fast-local, heavy-local]; first bound is fast-local.
     assert parse_openai_content(raw) == "Hello"
 
 
-def test_serve_gates_planning_request_to_cloud():
-    """The quality gate (T005) is wired: planning never routes to a local tier."""
-    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_distinct_backends())
+def test_serve_planning_returns_503_in_local_only_mode():
+    """T001 / ADR-0001 (advise-and-defer): planning is eval-proven unfit for local
+    tiers; the quality profile DENIES all local tiers for planning.
+
+    In local-only mode, a planning request therefore exhausts all gated candidates
+    (none pass the deny filter) and returns a 503 — the intended "defer to harness"
+    signal described in ADR-0001.  OpenClaw's transport failover then routes the
+    request to the harness's native subscription provider.
+
+    This is NOT a failure; the 503 IS the correct behavior in local-only mode.
+    """
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
     with running(httpd) as (host, port):
-        status, _headers, raw = _post(
+        status, headers, raw = _post(
             host, port, "/v1/chat/completions",
             {"model": "planning", "messages": [{"role": "user", "content": "plan it"}],
              "stream": True},
         )
-    assert status == 200
-    # planning -> ["cloud"] only (locals are denied) -> served by the cloud backend.
-    assert parse_openai_content(raw) == "from-cloud"
+    # planning -> ["heavy-local"] in config; profile DENIES heavy-local for planning
+    # -> no gated candidates -> 503 (advise-and-defer: harness re-routes to cloud).
+    assert status == 503, (status, raw)
+    body = json.loads(raw)
+    assert body["error"]["type"] == "service_unavailable"
+    # Internal tier names / work-class must NOT be disclosed to the caller.
+    raw_text = raw.decode("utf-8")
+    assert "planning" not in raw_text
+    assert "heavy-local" not in raw_text
 
 
 def test_serve_non_streaming_request():
@@ -205,13 +228,19 @@ def test_serve_advertises_presets_on_v1_models():
     assert {"chat", "planning", "quick-edit", "review", "long-context"} <= ids
 
 
-def test_serve_skips_cloud_tier_without_creds_but_still_starts():
-    """AC1 without secrets: an unkeyed cloud tier is skipped (not fatal); the
-    local tiers still bind and the front door starts."""
-    # env has NO ANTHROPIC_API_KEY -> CloudBackend construction fails -> skipped.
+def test_serve_local_only_starts_with_no_cloud_creds(monkeypatch):
+    """T001 / AC: build_server from the local-only example.toml starts with NO
+    cloud credential present and binds exactly the local tiers — no crash, no
+    cloud tier (ADR-0001 / advise-and-defer)."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # Local tiers need no credential; build with bare env -> all local tiers bind.
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, env={})
     try:
         assert set(httpd.anvil_tiers) == {"fast-local", "heavy-local"}
+        # Confirm no cloud tier slipped in.
+        from anvil_serving.router.config import load
+        cfg = load(CONFIG)
+        assert all(t.privacy == "local" for t in cfg.tiers)
     finally:
         httpd.server_close()
 
@@ -219,16 +248,19 @@ def test_serve_skips_cloud_tier_without_creds_but_still_starts():
 # --------------------------------------------------------------------------- #
 # MUST-FIX: availability never bypasses the quality gate
 # --------------------------------------------------------------------------- #
-def test_planning_with_cloud_unbound_returns_503_not_local_streaming():
-    """A streaming ``planning`` request whose only gated tier (cloud) is unbound
-    must get a clean 503 error envelope — NOT a 200 served from the
-    out-of-gate ``fast-local`` tier.
+def test_quality_gate_returns_503_when_only_gated_tier_unbound_streaming():
+    """The quality gate is never bypassed by availability.
+
+    Scenario (local-only config): planning -> ["heavy-local"].  Inject ONLY
+    fast-local (heavy-local is absent).  The router must return a clean 503
+    error envelope — NOT a 200 served from out-of-gate fast-local.
 
     The 503 message is intentionally generic (internal tier names and work-class
     identifiers are logged server-side, not disclosed to the caller).
     """
-    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
-    assert set(httpd.anvil_tiers) == {"fast-local", "heavy-local"}
+    fast_only = {"fast-local": StaticBackend(["Hello"])}
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=fast_only)
+    assert "heavy-local" not in httpd.anvil_tiers
     with running(httpd) as (host, port):
         status, headers, raw = _post(
             host, port, "/v1/chat/completions",
@@ -236,21 +268,20 @@ def test_planning_with_cloud_unbound_returns_503_not_local_streaming():
              "stream": True},
         )
     assert status == 503, (status, raw)
-    # An error envelope, NOT a streamed completion from a local tier.
+    # An error envelope, NOT a streamed completion.
     assert headers.get("content-type") == "application/json"
     body = json.loads(raw)
     assert body["error"]["type"] == "service_unavailable"
-    # Internal tier names / work-class must NOT be disclosed to the client
-    # (they are logged to stderr server-side instead).
+    # Internal tier names / work-class must NOT be disclosed to the caller.
     raw_text = raw.decode("utf-8")
-    assert "cloud" not in raw_text        # no tier name in response
     assert "planning" not in raw_text     # no work-class in response
     assert "Hello" not in raw_text        # fast-local did NOT serve it
 
 
-def test_planning_with_cloud_unbound_returns_503_non_streaming():
-    """Non-streaming variant: same quality-gate enforcement, same generic message."""
-    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
+def test_quality_gate_returns_503_when_only_gated_tier_unbound_non_streaming():
+    """Non-streaming variant: same quality-gate enforcement, same generic 503."""
+    fast_only = {"fast-local": StaticBackend(["Hello"])}
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=fast_only)
     with running(httpd) as (host, port):
         status, headers, raw = _post(
             host, port, "/v1/chat/completions",
@@ -259,15 +290,13 @@ def test_planning_with_cloud_unbound_returns_503_non_streaming():
     assert status == 503, (status, raw)
     body = json.loads(raw)
     assert body["error"]["type"] == "service_unavailable"
-    # Generic message — no internal names.
     raw_text = raw.decode("utf-8")
     assert "planning" not in raw_text
-    assert "cloud" not in raw_text
 
 
-def test_gate_allowed_bound_tier_still_serves_when_cloud_unbound():
-    """A class whose gated candidate IS bound still serves normally: ``chat`` ->
-    [fast-local, cloud]; fast-local is bound and gate-allowed -> it serves."""
+def test_gate_allowed_bound_tier_serves_normally():
+    """A class whose gated candidate IS bound serves normally: chat ->
+    [fast-local, heavy-local]; fast-local is bound and gate-allowed -> it serves."""
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
     with running(httpd) as (host, port):
         status, _headers, raw = _post(
@@ -394,10 +423,23 @@ def test_build_backend_for_tier_maps_privacy_to_backend_kind():
     assert isinstance(cloud, CloudBackend) and not isinstance(cloud, RelayBackend)
 
 
-def test_build_backends_skips_unkeyed_cloud_records_reason():
+def test_build_backends_all_local_tiers_bind_without_creds():
+    """T001: local-only config — all tiers are local so build_backends binds all
+    of them with an empty env (no credential needed) and skips nothing."""
     from anvil_serving.router.config import load
 
     config = load(CONFIG)
+    backends, skipped = build_backends(config, env={})
+    assert set(backends) == {"fast-local", "heavy-local"}
+    assert skipped == [], f"expected no skipped tiers, got {skipped}"
+
+
+def test_build_backends_skips_unkeyed_cloud_in_cloud_config():
+    """With example-with-cloud.toml and no ANTHROPIC_API_KEY, the cloud tier is
+    skipped gracefully; local tiers still bind."""
+    from anvil_serving.router.config import load
+
+    config = load(CONFIG_WITH_CLOUD)
     backends, skipped = build_backends(config, env={})
     assert set(backends) == {"fast-local", "heavy-local"}
     skipped_ids = {tid for tid, _reason in skipped}
@@ -493,3 +535,46 @@ def test_warn_if_public_bind_mentions_credentials(capsys):
     _warn_if_public_bind("0.0.0.0")
     err = capsys.readouterr().err
     assert "credential" in err.lower() or "cloud" in err.lower()
+
+
+# --------------------------------------------------------------------------- #
+# T001: build_server with local-only config holds zero cloud tiers (ADR-0001)
+# --------------------------------------------------------------------------- #
+def test_build_server_local_only_config_no_cloud_credential_required():
+    """T001 / AC: build_server from configs/example.toml succeeds with NO cloud
+    credential set and binds ZERO cloud tiers.
+
+    This is the shipped-default smoke: an operator who just installed anvil-serving
+    and has no API key configured must be able to start the router immediately.
+    """
+    # Build with an entirely empty env — no ANTHROPIC_API_KEY, no local keys.
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, env={})
+    try:
+        bound = set(httpd.anvil_tiers)
+        # Both local tiers must bind (they need no credential).
+        assert "fast-local" in bound
+        assert "heavy-local" in bound
+        # No cloud tier must have bound (local-only default).
+        from anvil_serving.router.config import load
+        cfg = load(CONFIG)
+        for tier in cfg.tiers:
+            assert tier.privacy == "local", (
+                f"tier {tier.id!r} has privacy={tier.privacy!r} in the default config; "
+                f"the default must be local-only (T001)"
+            )
+    finally:
+        httpd.server_close()
+
+
+def test_build_server_local_only_config_serves_without_cloud(monkeypatch):
+    """T001: a full request through the local-only config reaches a local backend
+    and returns a 200, with no cloud credential anywhere in the environment."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
+    with running(httpd) as (host, port):
+        status, _headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "chat", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+        )
+    assert status == 200
+    assert parse_openai_content(raw) == "Hello"
