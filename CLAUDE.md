@@ -152,6 +152,24 @@ Cloud credentials go in env vars only — never in config files. The front door 
 9. **Thinking-budget starvation is a real failure mode.** `NonEmptyContent` in `verify.py`
    exists specifically because a local model on a small `max_tokens` budget produces valid
    JSON with an empty `content` array — looks successful, is wrong. The verifier catches this.
+10. **NVFP4 on Blackwell (sm_120) works — and is the preferred local quant.** NVIDIA's
+    `nvidia/*-NVFP4` checkpoints (TensorRT Model Optimizer; native FP4, vs AWQ→Marlin) serve on
+    sm_120 with `vllm/vllm-openai:nightly` via `--quantization modelopt_fp4 --kv-cache-dtype fp8`
+    (selects FlashInfer CUTLASS NVFP4 GEMM + MoE kernels). For Qwen NVFP4 add
+    `--reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder
+    --trust-remote-code`. Still `preflight` the large-prefill path (NVFP4 long-context was rough).
+11. **MSYS mangles docker container paths in Git Bash.** `docker run … --model /model` becomes
+    `C:/Program Files/Git/model` (vLLM then errors `Repo id must be in the form …`). Prefix the
+    docker invocation with `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'` (as
+    `examples/fakoli-dark/serve-fast-*.sh` already do).
+12. **`hf download` lock deadlock.** Concurrent/interrupted downloads to the same `--local-dir`
+    deadlock on `.cache/huggingface/.gitignore.lock` (logs: "Still waiting to acquire lock"). Kill
+    the procs, `rm` that lock file, resume one download — it's resumable; the stall is the lock,
+    not a rate-limit. (Unauthenticated HF works; there is no `HF_TOKEN` in the box's `.env`.)
+13. **Multi-GPU pinning needs `CUDA_DEVICE_ORDER=PCI_BUS_ID`.** Pin by UUID
+    (`-e CUDA_VISIBLE_DEVICES=<GPU-uuid> -e CUDA_DEVICE_ORDER=PCI_BUS_ID`) or the model loads on
+    the wrong card. fakoli-dark: 5090/fast `GPU-04d3b6e7…`, RTX PRO 6000 96 GB/heavy `GPU-d0f446cf…`.
+    Large model pulls go to **`D:`** (empty 4 TB Samsung NVMe), not the OS drive.
 
 ---
 
