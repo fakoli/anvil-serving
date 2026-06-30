@@ -531,5 +531,273 @@ def test_handler_has_finite_idle_timeout():
         server2.server_close()
 
 
+# --------------------------------------------------------------------------- #
+# Harden: resource caps (DoS)
+# --------------------------------------------------------------------------- #
+
+def test_oversized_content_length_413():
+    """A Content-Length > MAX_BODY_BYTES is rejected with 413 without reading the
+    body — no huge allocation, connection closed (body is too large to drain)."""
+    import anvil_serving.router.front_door as fd_mod
+
+    huge_n = fd_mod.MAX_BODY_BYTES + 1
+    with running_server(StaticBackend(["x"])) as (host, port):
+        req = (
+            b"POST /v1/chat/completions HTTP/1.1\r\n"
+            + f"Host: {host}:{port}\r\n".encode("ascii")
+            + b"Content-Type: application/json\r\n"
+            + f"Content-Length: {huge_n}\r\n".encode("ascii")
+            + b"Connection: close\r\n"
+            + b"\r\n"
+            + b"{}"  # tiny actual body — server must NOT read huge_n bytes
+        )
+        raw, hit_eof = _raw_roundtrip(host, port, req, timeout=5.0)
+
+    status_line = raw.split(b"\r\n", 1)[0].decode("latin-1")
+    assert " 413 " in status_line, status_line
+    assert hit_eof, "server must close the connection (too large to drain)"
+
+
+def test_concurrency_cap_503(monkeypatch):
+    """When the concurrency semaphore is exhausted, the next request gets 503."""
+    import threading as th
+    import anvil_serving.router.front_door as fd_mod
+
+    exhausted = th.BoundedSemaphore(1)
+    exhausted.acquire()  # drain the only slot
+    monkeypatch.setattr(fd_mod, "_CONCURRENCY_LIMIT", exhausted)
+
+    with running_server(StaticBackend(["x"])) as (host, port):
+        status, _, raw = _post(host, port, "/v1/chat/completions", {
+            "model": "chat",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+        })
+
+    assert status == 503
+    body = json.loads(raw)
+    assert body["error"]["type"] == "server_busy"
+
+
+# --------------------------------------------------------------------------- #
+# Harden: request smuggling / strict framing
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("bad_cl", ["1_000", "+5", " 5 "])
+def test_non_digit_content_length_400(bad_cl):
+    """Non-ASCII-digit Content-Length values must be rejected with 400.
+    Python's int() is too permissive (accepts underscores, signs, unicode);
+    we require a strict decimal digit string."""
+    with running_server(StaticBackend(["x"])) as (host, port):
+        req = (
+            b"POST /v1/chat/completions HTTP/1.1\r\n"
+            + f"Host: {host}:{port}\r\n".encode("ascii")
+            + b"Content-Type: application/json\r\n"
+            + f"Content-Length: {bad_cl}\r\n".encode("ascii")
+            + b"Connection: close\r\n"
+            + b"\r\n"
+            + b'{"model":"chat","messages":[]}'
+        )
+        raw, _ = _raw_roundtrip(host, port, req, timeout=3.0)
+
+    status_line = raw.split(b"\r\n", 1)[0].decode("latin-1")
+    assert " 400 " in status_line, f"expected 400 for CL={bad_cl!r}: {status_line}"
+
+
+def test_duplicate_content_length_400():
+    """Multiple Content-Length headers must be rejected with 400 (request
+    smuggling prevention, RFC 7230 3.3.2)."""
+    body = b'{"model":"chat","messages":[]}'
+    with running_server(StaticBackend(["x"])) as (host, port):
+        req = (
+            b"POST /v1/chat/completions HTTP/1.1\r\n"
+            + f"Host: {host}:{port}\r\n".encode("ascii")
+            + b"Content-Type: application/json\r\n"
+            + f"Content-Length: {len(body)}\r\n".encode("ascii")
+            + f"Content-Length: {len(body)}\r\n".encode("ascii")  # duplicate
+            + b"Connection: close\r\n"
+            + b"\r\n" + body
+        )
+        raw, _ = _raw_roundtrip(host, port, req, timeout=3.0)
+
+    status_line = raw.split(b"\r\n", 1)[0].decode("latin-1")
+    assert " 400 " in status_line, status_line
+
+
+def test_transfer_encoding_header_rejected_411():
+    """Any Transfer-Encoding header — not just 'chunked' — must be rejected
+    with 411. Catches obfuscated/second TE headers used in smuggling."""
+    with running_server(StaticBackend(["x"])) as (host, port):
+        req = (
+            b"POST /v1/chat/completions HTTP/1.1\r\n"
+            + f"Host: {host}:{port}\r\n".encode("ascii")
+            + b"Content-Type: application/json\r\n"
+            + b"Transfer-Encoding: identity\r\n"  # non-chunked TE still rejected
+            + b"Connection: close\r\n"
+            + b"\r\n"
+        )
+        raw, _ = _raw_roundtrip(host, port, req, timeout=3.0)
+
+    status_line = raw.split(b"\r\n", 1)[0].decode("latin-1")
+    assert " 411 " in status_line, status_line
+
+
+def test_get_with_body_drains_and_keeps_socket_in_sync():
+    """A GET request with a Content-Length body must drain it and keep the
+    keep-alive socket in sync so a pipelined follow-up POST is served
+    correctly — no desync, no forced close."""
+    get_body = b'{"surprise":"body"}'
+    get_req = (
+        b"GET /healthz HTTP/1.1\r\n"
+        b"Host: x\r\n"
+        + f"Content-Length: {len(get_body)}\r\n".encode("ascii")
+        + b"\r\n" + get_body
+    )
+    with running_server(StaticBackend(["a", "b"])) as (host, port):
+        raw, _ = _raw_roundtrip(host, port, get_req + _pipelined_follow(), timeout=3.0)
+
+    # Both responses came back on ONE socket: healthz 200, then streaming 200.
+    assert b'"status"' in raw, "healthz response missing"
+    assert b"text/event-stream" in raw, "follow-up POST was not served -> desync"
+    assert b"data: [DONE]" in raw
+
+
+# --------------------------------------------------------------------------- #
+# Harden: information leakage
+# --------------------------------------------------------------------------- #
+
+def test_503_no_tier_leaks_no_internal_names():
+    """503 from NoAvailableTierError must not expose internal tier names,
+    work-class identifiers, or remediation details to the client."""
+    from anvil_serving.router.internal import NoAvailableTierError
+
+    class TierFailBackend:
+        def generate(self, request):
+            raise NoAvailableTierError(
+                "secret_work_class", ["super-secret-tier-1", "confidential-tier-2"]
+            )
+
+    with running_server(TierFailBackend()) as (host, port):
+        status, _, raw = _post(host, port, "/v1/chat/completions", {
+            "model": "chat",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+        })
+
+    assert status == 503
+    body_text = raw.decode("utf-8")
+    # Internal tier names and work-class must NOT appear in the response.
+    assert "super-secret-tier-1" not in body_text
+    assert "confidential-tier-2" not in body_text
+    assert "secret_work_class" not in body_text
+    # Must still be a valid 503 with an error body.
+    assert json.loads(raw)["error"]["type"] == "service_unavailable"
+
+
+def test_500_backend_error_leaks_no_exception_text():
+    """500 from an unexpected backend exception must not expose the exception
+    message or traceback to the client."""
+
+    class BoomBackend:
+        def generate(self, request):
+            raise RuntimeError("supersecret-internal-error-XYZ-9876")
+
+    with running_server(BoomBackend()) as (host, port):
+        status, _, raw = _post(host, port, "/v1/chat/completions", {
+            "model": "chat",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+        })
+
+    assert status == 500
+    body_text = raw.decode("utf-8")
+    assert "supersecret-internal-error-XYZ-9876" not in body_text
+    assert json.loads(raw)["error"]["type"] == "internal_error"
+
+
+def test_server_header_is_generic():
+    """The Server: response header must not disclose software name or version."""
+    with running_server(StaticBackend(["x"])) as (host, port):
+        _, headers, _ = _post(host, port, "/v1/chat/completions", {
+            "model": "chat",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+        })
+
+    server_hdr = headers.get("server", "")
+    assert "front-door" not in server_hdr.lower(), server_hdr
+    assert "0.1" not in server_hdr, server_hdr
+
+
+# --------------------------------------------------------------------------- #
+# Harden: dialect-aware errors + backend-crash → clean 500
+# --------------------------------------------------------------------------- #
+
+def test_anthropic_framing_error_uses_native_envelope():
+    """A framing error (411 Transfer-Encoding) on /v1/messages must use the
+    native Anthropic error envelope {type:error, error:{...}}, not the generic
+    OpenAI-shaped one."""
+    with running_server(StaticBackend(["x"])) as (host, port):
+        req = (
+            b"POST /v1/messages HTTP/1.1\r\n"
+            + f"Host: {host}:{port}\r\n".encode("ascii")
+            + b"Content-Type: application/json\r\n"
+            + b"Transfer-Encoding: chunked\r\n"
+            + b"Connection: close\r\n"
+            + b"\r\n"
+            + b"0\r\n\r\n"
+        )
+        raw, _ = _raw_roundtrip(host, port, req, timeout=3.0)
+
+    status_line = raw.split(b"\r\n", 1)[0].decode("latin-1")
+    assert " 411 " in status_line, status_line
+    _, _, body_bytes = raw.partition(b"\r\n\r\n")
+    body = json.loads(body_bytes)
+    assert body.get("type") == "error", f"expected native Anthropic envelope: {body}"
+    assert "error" in body
+
+
+def test_anthropic_bad_json_uses_native_envelope():
+    """A bad-JSON body on /v1/messages must return the native Anthropic error
+    envelope {type:error, error:{...}}, not the generic shape."""
+    with running_server(StaticBackend(["x"])) as (host, port):
+        conn = http.client.HTTPConnection(host, port, timeout=10)
+        try:
+            conn.request("POST", "/v1/messages", b"{not valid json}",
+                         {"Content-Type": "application/json"})
+            resp = conn.getresponse()
+            status = resp.status
+            raw = resp.read()
+        finally:
+            conn.close()
+
+    assert status == 400
+    body = json.loads(raw)
+    assert body.get("type") == "error", f"expected native Anthropic envelope: {body}"
+    assert body["error"]["type"] == "invalid_request"
+
+
+def test_streaming_backend_eager_exception_gives_clean_500():
+    """A backend whose generate() raises (before yielding any deltas) must
+    produce a clean 500 — NOT a bare TCP close — and the exception text must
+    not appear in the response body."""
+
+    class EagerFailBackend:
+        def generate(self, request):
+            raise RuntimeError("top-secret-generate-failure-ABC")
+
+    with running_server(EagerFailBackend()) as (host, port):
+        status, _, raw = _post(host, port, "/v1/chat/completions", {
+            "model": "chat",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": True,
+        })
+
+    assert status == 500
+    body_text = raw.decode("utf-8")
+    assert "top-secret-generate-failure-ABC" not in body_text
+    assert json.loads(raw)["error"]["type"] == "internal_error"
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
