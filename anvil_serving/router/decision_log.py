@@ -19,6 +19,7 @@ Stdlib-only; frozen-dataclass house style (mirrors ``config.py`` / ``internal.py
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, List, Mapping, Optional, Tuple
@@ -70,8 +71,11 @@ class DecisionRecord:
     ``error``) — the no-call outcomes contribute nothing. ``fell_back`` is True
     when at least one tier produced output that failed verify and the router
     escalated past it. ``intent`` is the declared-or-inferred intent the caller
-    asked for (the preset id or model) — metadata only, optional, and last so
-    keyword construction without it stays backward-compatible (T010 transparency).
+    asked for — metadata only, optional, and last so keyword construction without
+    it stays backward-compatible (T010 transparency). Producers SHOULD set it to
+    the resolved preset id (the closed config vocabulary), not the raw wire
+    ``model`` string; :func:`decision_line` sanitizes it regardless, so a
+    caller-controlled value can never break or inject into the audit line.
     """
 
     work_class: Optional[str]
@@ -121,28 +125,45 @@ def response_metadata(record: DecisionRecord) -> Mapping[str, Any]:
     )
 
 
+def _safe(token: Optional[str]) -> str:
+    """Render a string field safely for the single-line ``label=value`` grammar.
+
+    Collapses any whitespace/newline run and the ``>`` tier separator to ``_``.
+    This is load-bearing because ``intent`` can be caller-derived (the raw wire
+    ``model`` string): without it, a ``model`` of ``"chat\\nintent=spoofed ..."``
+    would inject a forged second audit line (log injection), and any embedded
+    space would break ``key=value`` parsing. Operator-set tier ids / work_class
+    get the same guarantee. ``None``/empty render as ``-``.
+    """
+    if not token:
+        return "-"
+    return re.sub(r"[\s>]+", "_", str(token))
+
+
 def decision_line(record: DecisionRecord) -> str:
     """A single content-FREE audit line carrying every AC2 field.
 
     Shape::
 
         intent=<i|-> work_class=<wc|-> served=<tier|-> verify=<pass|fail> \
-fell_back=<true|false> tiers=<t1>t2>t3> prompt=<n> completion=<n>
+fell_back=<true|false> tiers=<t1>t2>t3|-> prompt=<n> completion=<n>
 
     ``verify`` is ``pass`` when a tier served (``served_tier`` is set) else
-    ``fail``; ``-`` stands in for a missing intent/work_class/served tier;
-    ``tiers`` joins ``requested_tiers`` with ``>``; the counts are the record's
-    own token totals. Only labels and integers — never message text or a
-    verifier's raw reason (R012).
+    ``fail``; ``-`` stands in for a missing/empty intent/work_class/served/tiers;
+    ``tiers`` joins ``requested_tiers`` with ``>``. Every string field is passed
+    through :func:`_safe` so the line is ALWAYS a single, parseable sequence of
+    ``label=value`` tokens regardless of caller- or operator-supplied content.
+    Only labels and integers — never message text or a verifier's raw reason (R012).
     """
     served = record.served_tier
+    tiers = ">".join(_safe(t) for t in record.requested_tiers) or "-"
     return (
-        f"intent={record.intent or '-'} "
-        f"work_class={record.work_class or '-'} "
-        f"served={served or '-'} "
+        f"intent={_safe(record.intent)} "
+        f"work_class={_safe(record.work_class)} "
+        f"served={_safe(served)} "
         f"verify={'pass' if served is not None else 'fail'} "
         f"fell_back={'true' if record.fell_back else 'false'} "
-        f"tiers={'>'.join(record.requested_tiers)} "
+        f"tiers={tiers} "
         f"prompt={record.total_prompt_tokens} "
         f"completion={record.total_completion_tokens}"
     )

@@ -166,15 +166,16 @@ def test_ac2_decision_line_dashes_for_missing_intent_and_work_class():
 # R012 secrets hygiene: no message/response content in either surface
 # --------------------------------------------------------------------------- #
 def test_no_content_leaks_into_decision_line_or_metadata():
-    # The user's prompt text and a verifier's reason must never appear in the
-    # transparency surface — only labels, tier ids, and integer counts.
-    secret_prompt = "PLEASE-LEAK-MY-SECRET-PROMPT-TEXT"
+    # Content-bearing strings live in AttemptRecord.detail and .verify_reason,
+    # which the transparency helpers must NOT surface. Putting the sentinels in
+    # those real fields makes the non-leak assertions meaningful (not vacuous).
+    secret_detail = "PLEASE-LEAK-MY-SECRET-DETAIL-quicksort-for-acme"
+    secret_reason = "malformed-diff-line-+AWS_SECRET=hunter2"
     rec = DecisionRecord(
         work_class="bounded-edit",
         requested_tiers=("fast-local", "cloud"),
         attempts=(
-            # verify_reason is a content-free verifier NAME (never the raw reason).
-            _attempt("fast-local", "fallback", passed=False, reason="non_empty_content"),
+            AttemptRecord("fast-local", False, secret_reason, 24, 0, "fallback", secret_detail),
             _attempt("cloud", "served", passed=True, reason="verify passed"),
         ),
         served_tier="cloud",
@@ -187,19 +188,85 @@ def test_no_content_leaks_into_decision_line_or_metadata():
     line = decision_line(rec)
     rendered_meta = repr(dict(response_metadata(rec)))
 
-    # The prompt text appears in neither surface.
-    assert secret_prompt not in line
-    assert secret_prompt not in rendered_meta
-    # The verifier reason string is not surfaced either (only labels/integers).
-    assert "non_empty_content" not in line
-    assert "verify passed" not in line
-    assert "non_empty_content" not in rendered_meta
+    # Neither the per-attempt detail nor the verifier reason content is surfaced.
+    for leak in (secret_detail, secret_reason, "verify passed"):
+        assert leak not in line, leak
+        assert leak not in rendered_meta, leak
 
-    # Every space-separated field in the line is `label=value` where value holds
-    # only tier ids ('>' / '-' allowed) or integers — no free text.
+    # Every space-separated field in the line is `label=value` with a non-empty
+    # value — only tier ids ('>' / '-' allowed) or integers, never free text.
     for field in line.split(" "):
         key, _, value = field.partition("=")
         assert key and value, f"malformed audit field: {field!r}"
+
+
+def test_decision_line_sanitizes_intent_log_injection():
+    # intent can be caller-derived (the raw wire model string). A newline/space in
+    # it must NOT inject a second audit line or break the key=value grammar.
+    rec = DecisionRecord(
+        work_class="bounded-edit",
+        requested_tiers=("cloud",),
+        attempts=(),
+        served_tier="cloud",
+        total_prompt_tokens=0,
+        total_completion_tokens=0,
+        fell_back=False,
+        intent="chat\nintent=spoofed served=cloud verify=pass fell_back=false",
+    )
+    line = decision_line(rec)
+    assert "\n" not in line  # single line — no injected second line
+    # Exactly 8 label=value fields, each non-empty (the grammar held).
+    fields = line.split(" ")
+    assert len(fields) == 8, fields
+    for field in fields:
+        key, _, value = field.partition("=")
+        assert key and value, f"malformed: {field!r}"
+    # The spoofed 'served=cloud' from the injection is NOT a separate field: there
+    # is exactly ONE served= field, carrying the real served tier.
+    assert sum(f.startswith("served=") for f in fields) == 1
+
+
+def test_decision_line_empty_tiers_renders_dash():
+    # An exhausted record with NO candidates (route_with_fallback's empty-tiers
+    # path) must render tiers=- (placeholder), not a value-less tiers=.
+    rec = DecisionRecord(
+        work_class=None, requested_tiers=(), attempts=(), served_tier=None,
+        total_prompt_tokens=0, total_completion_tokens=0, fell_back=False,
+    )
+    line = decision_line(rec)
+    assert "tiers=-" in line
+    for field in line.split(" "):
+        key, _, value = field.partition("=")
+        assert key and value, f"malformed: {field!r}"
+
+
+def test_decision_line_sanitizes_operator_tier_id_with_space():
+    # An operator-set tier id containing a space must not break the grammar.
+    rec = DecisionRecord(
+        work_class="chat", requested_tiers=("fast local", "cloud"), attempts=(),
+        served_tier="cloud", total_prompt_tokens=0, total_completion_tokens=0,
+        fell_back=False,
+    )
+    line = decision_line(rec)
+    assert "tiers=fast_local>cloud" in line  # space collapsed to '_'
+    assert len(line.split(" ")) == 8
+
+
+def test_tiers_tried_is_attempts_not_requested_pool():
+    # tiers_tried is what ACTUALLY ran (record.attempts), which can be SHORTER
+    # than the requested candidate pool (e.g. the first tier served).
+    rec = DecisionRecord(
+        work_class="chat",
+        requested_tiers=("fast-local", "heavy-local", "cloud"),  # 3 offered
+        attempts=(_attempt("fast-local", "served", passed=True, reason="verify passed"),),
+        served_tier="fast-local",
+        total_prompt_tokens=24,
+        total_completion_tokens=10,
+        fell_back=False,
+    )
+    meta = response_metadata(rec)
+    assert meta["tiers_tried"] == ("fast-local",)  # only what ran
+    assert meta["tiers_tried"] != rec.requested_tiers  # distinct from the pool
 
 
 # --------------------------------------------------------------------------- #
