@@ -733,6 +733,30 @@ def test_server_header_is_generic():
 # Harden: dialect-aware errors + backend-crash → clean 500
 # --------------------------------------------------------------------------- #
 
+def test_concurrency_cap_503_anthropic_dialect(monkeypatch):
+    """A pre-acquire concurrency 503 on /v1/messages must use the native
+    Anthropic error envelope {type:error, error:{...}}, not the generic shape."""
+    import threading as th
+    import anvil_serving.router.front_door as fd_mod
+
+    exhausted = th.BoundedSemaphore(1)
+    exhausted.acquire()  # drain the only slot
+    monkeypatch.setattr(fd_mod, "_CONCURRENCY_LIMIT", exhausted)
+
+    with running_server(StaticBackend(["x"])) as (host, port):
+        status, _, raw = _post(host, port, "/v1/messages", {
+            "model": "claude",
+            "max_tokens": 100,
+            "messages": [{"role": "user", "content": "hi"}],
+        })
+
+    assert status == 503
+    body = json.loads(raw)
+    # Native Anthropic envelope: top-level "type":"error", not {"error": {...}}
+    assert body.get("type") == "error", f"expected Anthropic envelope, got: {body}"
+    assert body["error"]["type"] == "server_busy"
+
+
 def test_anthropic_framing_error_uses_native_envelope():
     """A framing error (411 Transfer-Encoding) on /v1/messages must use the
     native Anthropic error envelope {type:error, error:{...}}, not the generic
