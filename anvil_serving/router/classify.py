@@ -57,7 +57,12 @@ _LONG_CONTEXT_WORDS = 4000
 # (but as an *ambiguous* match — see :func:`classify`).
 _KEYWORD_PHRASES = (
     ("review", ("review", "critique", "feedback", "audit")),
-    ("planning", ("plan", "design", "architect", "decompose",
+    # "plan"/"plans"/"planning": word-boundary matching means "plan" alone misses
+    # the gerund/plural — the two most natural ways to ask for planning — so list
+    # them explicitly. (Planning is the eval-proven local-weak class that must
+    # reach cloud; missing it silently leaks the work to a local tier.) The
+    # OpenClaw plugin's classify.mjs mirrors this set — keep the two in sync.
+    ("planning", ("plan", "plans", "planning", "design", "architect", "decompose",
                   "break down", "step by step", "roadmap")),
     ("multi-file-refactor", ("refactor", "rename across",
                              "across the codebase", "migrate the")),

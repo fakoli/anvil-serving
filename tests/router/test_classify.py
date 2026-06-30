@@ -88,6 +88,16 @@ def test_keyword_plan():
     assert c.confident is True
 
 
+def test_keyword_planning_gerund_and_plural():
+    # Word-boundary matching missed "planning"/"plans" (the gerund/plural) when
+    # only bare "plan" was listed — the most natural ways to ask for planning,
+    # and planning must reach the cloud tier (eval-proven local-weak).
+    for text in ("Help me with planning the sprint", "We need solid plans for the release"):
+        c = classify(_req(text))
+        assert c.work_class == "planning", text
+        assert c.confident is True, text
+
+
 def test_keyword_refactor():
     c = classify(_req("refactor this module"))
     assert c.work_class == "multi-file-refactor"
