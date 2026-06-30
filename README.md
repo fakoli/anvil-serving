@@ -100,6 +100,25 @@ classifications bias toward the safer/cloud tier and are logged for calibration.
 
 ### Verify-and-fallback
 
+```mermaid
+flowchart LR
+    REQ([request]) --> RES[resolve intent<br/>preset or classify]
+    RES --> POL{quality profile<br/>model x work-class}
+    POL -->|deny| CLOUD[cloud tier]
+    POL -->|allow| LOCAL[local tier]
+    POL -->|allow-with-verify| LV[local tier]
+    LV --> VER{cheap structural verify}
+    VER -->|pass| RET([return to harness])
+    VER -->|fail / timeout / low-confidence| ESC[escalate up tier chain]
+    ESC --> CLOUD
+    LOCAL --> RET
+    CLOUD --> RET
+    classDef gate fill:#0b3b40,stroke:#23b6c4,color:#7fe9f0;
+    classDef cloud fill:#16365e,stroke:#58a6ff,color:#cfe6ff;
+    class POL,VER gate;
+    class CLOUD cloud;
+```
+
 Most "quality control" is **routing done ahead of time** (never send a `deny` work-class to
 local). Verification is a cheap safety net, tiered:
 
