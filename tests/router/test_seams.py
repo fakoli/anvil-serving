@@ -21,7 +21,6 @@ Hermetic, stdlib + pytest only; no network, no GPU.
 from __future__ import annotations
 
 import threading
-from typing import Iterator
 
 import pytest
 
