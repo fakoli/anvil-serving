@@ -286,6 +286,17 @@ class RoutingBackend:
         # a routing failure raises here — the front door catches NoAvailableTierError
         # before committing a streaming 200 and answers a clean 503.
         intent = resolve(request, self._config)
+        # TODO(residency): policy.route() accepts a `residency` kwarg (the currently-
+        # resident local tier id) that enables the AC3 anti-thrash reorder (defers a
+        # non-resident local behind cloud so an alternating fast/heavy workload does
+        # not swap the multiplexer every request). It is not wired here because
+        # RoutingBackend has no residency-tracking mechanism: there is no field,
+        # counter, or tracker that records which local tier last served. Wiring it
+        # requires: (1) a threading-safe `_resident_tier: Optional[str]` field on
+        # RoutingBackend, (2) updating it when a local tier is selected (at route time,
+        # before the backend call), and (3) passing it to route() here and in decide().
+        # The residency reorder is an optimisation (not correctness); without it,
+        # route() defaults to residency=None and leaves the config cost order untouched.
         decision = route(intent, self._config, self._profile)
 
         # Narrow to tiers for which we hold a live backend (preserve gate order).
@@ -374,6 +385,9 @@ class RoutingBackend:
         from .dialects import _new_id
 
         intent = resolve(request, self._config)
+        # TODO(residency): residency not passed here either — see the same note
+        # in generate() above.  decide() should mirror generate() once tracking
+        # is added so /v1/route reflects the real anti-thrash order.
         decision = route(intent, self._config, self._profile)
 
         # Narrow to tiers that are both gated (allow / allow-with-verify) AND
