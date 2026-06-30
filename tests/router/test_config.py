@@ -457,3 +457,89 @@ def test_example_with_cloud_has_metered_cloud_set():
     )
     # planning is the canonical example in the worked example (ADR-0001)
     assert "planning" in cfg.metered_cloud
+
+
+# ── T003: cost_input_per_mtok / cost_output_per_mtok (ADR-0001 / advise-and-defer:T003) ──
+def test_cost_fields_absent_defaults_to_none(tmp_path):
+    """Cost fields absent on a tier → None (no metered billing; e.g. all local tiers)."""
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    t = cfg.tiers[0]
+    assert t.cost_input_per_mtok is None
+    assert t.cost_output_per_mtok is None
+
+
+def test_cost_fields_parse_when_present(tmp_path):
+    """cost_input_per_mtok / cost_output_per_mtok parse as floats when set."""
+    body = _BASE_TIER + "cost_input_per_mtok  = 3.0\ncost_output_per_mtok = 15.0\n"
+    cfg = load(_write_toml(tmp_path, body))
+    t = cfg.tiers[0]
+    assert t.cost_input_per_mtok == pytest.approx(3.0)
+    assert t.cost_output_per_mtok == pytest.approx(15.0)
+
+
+def test_cost_fields_accept_integer_values(tmp_path):
+    """Integer TOML values (e.g. 3 instead of 3.0) are accepted and cast to float."""
+    body = _BASE_TIER + "cost_input_per_mtok  = 3\ncost_output_per_mtok = 15\n"
+    cfg = load(_write_toml(tmp_path, body))
+    t = cfg.tiers[0]
+    assert isinstance(t.cost_input_per_mtok, float)
+    assert t.cost_input_per_mtok == pytest.approx(3.0)
+
+
+def test_cost_fields_accept_zero(tmp_path):
+    """cost_input_per_mtok = 0.0 is valid (free tier / internal endpoint)."""
+    body = _BASE_TIER + "cost_input_per_mtok = 0.0\ncost_output_per_mtok = 0.0\n"
+    cfg = load(_write_toml(tmp_path, body))
+    t = cfg.tiers[0]
+    assert t.cost_input_per_mtok == pytest.approx(0.0)
+    assert t.cost_output_per_mtok == pytest.approx(0.0)
+
+
+def test_cost_input_non_number_raises(tmp_path):
+    """A non-numeric cost_input_per_mtok must raise ConfigError."""
+    body = _BASE_TIER + 'cost_input_per_mtok = "expensive"\n'
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_cost_output_non_number_raises(tmp_path):
+    """A non-numeric cost_output_per_mtok must raise ConfigError."""
+    body = _BASE_TIER + "cost_output_per_mtok = true\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_cost_input_negative_raises(tmp_path):
+    """A negative cost_input_per_mtok must raise ConfigError."""
+    body = _BASE_TIER + "cost_input_per_mtok = -1.0\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_cost_output_negative_raises(tmp_path):
+    """A negative cost_output_per_mtok must raise ConfigError."""
+    body = _BASE_TIER + "cost_output_per_mtok = -0.01\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_local_tiers_in_example_have_no_cost_fields():
+    """Local tiers in the default config carry no cost fields (cost_* == None)."""
+    cfg = load(str(EXAMPLE))
+    for t in cfg.tiers:
+        assert t.cost_input_per_mtok is None, f"tier {t.id!r} unexpectedly has cost_input_per_mtok"
+        assert t.cost_output_per_mtok is None, f"tier {t.id!r} unexpectedly has cost_output_per_mtok"
+
+
+def test_example_with_cloud_has_cost_fields_on_cloud_tier():
+    """example-with-cloud.toml (T003 worked example) sets cost fields on the cloud tier."""
+    cfg = load(str(EXAMPLE_WITH_CLOUD))
+    cloud = next(t for t in cfg.tiers if t.privacy == "cloud")
+    assert cloud.cost_input_per_mtok is not None, (
+        "cloud tier in example-with-cloud.toml must set cost_input_per_mtok (T003 worked example)"
+    )
+    assert cloud.cost_output_per_mtok is not None, (
+        "cloud tier in example-with-cloud.toml must set cost_output_per_mtok (T003 worked example)"
+    )
+    assert cloud.cost_input_per_mtok > 0
+    assert cloud.cost_output_per_mtok > 0

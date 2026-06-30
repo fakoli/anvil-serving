@@ -17,12 +17,14 @@ Hermetic, stdlib-only (pytest is the only test dep); fixtures are built directly
 """
 from __future__ import annotations
 
+import pytest
 
 from anvil_serving.router.backends import StaticBackend
 from anvil_serving.router.config import RouterConfig, Tier
 from anvil_serving.router.decision_log import (
     AttemptRecord,
     DecisionRecord,
+    compute_cost_usd,
     decision_line,
     response_metadata,
     served_model,
@@ -345,3 +347,113 @@ def test_backward_compat_intent_defaults_to_none():
     assert rec.intent is None
     assert response_metadata(rec)["intent"] is None
     assert "intent=-" in decision_line(rec)
+
+
+# --------------------------------------------------------------------------- #
+# T003: cost dimension — cost_usd on DecisionRecord + compute_cost_usd helper
+# --------------------------------------------------------------------------- #
+class _MockTier:
+    """Minimal tier stub for cost-helper tests (no Tier import needed)."""
+
+    def __init__(self, cost_input=None, cost_output=None):
+        self.cost_input_per_mtok = cost_input
+        self.cost_output_per_mtok = cost_output
+
+
+def test_compute_cost_usd_formula():
+    """compute_cost_usd applies the /1M formula correctly."""
+    tier = _MockTier(cost_input=3.0, cost_output=15.0)
+    # 1000 input + 500 output tokens
+    # = (3.0 * 1000 + 15.0 * 500) / 1_000_000
+    # = (3000 + 7500) / 1_000_000 = 0.0105
+    cost = compute_cost_usd(tier, 1_000, 500)
+    assert cost == pytest.approx(0.0105)
+
+
+def test_compute_cost_usd_local_tier_returns_zero():
+    """A tier with no cost fields (local) returns 0.0."""
+    tier = _MockTier()  # both fields None
+    assert compute_cost_usd(tier, 100_000, 5_000) == 0.0
+
+
+def test_compute_cost_usd_partial_fields():
+    """Only input cost set — output contributes 0."""
+    tier = _MockTier(cost_input=3.0, cost_output=None)
+    cost = compute_cost_usd(tier, 1_000_000, 999_999)
+    assert cost == pytest.approx(3.0)  # 3.0 * 1e6 / 1e6
+
+
+def test_decision_record_cost_usd_defaults_to_zero():
+    """DecisionRecord.cost_usd defaults to 0.0 (backward-compat, local tiers)."""
+    rec = DecisionRecord(
+        work_class="chat",
+        requested_tiers=("fast-local",),
+        attempts=(_attempt("fast-local", "served", passed=True, reason="verify passed"),),
+        served_tier="fast-local",
+        total_prompt_tokens=50,
+        total_completion_tokens=20,
+        fell_back=False,
+    )
+    assert rec.cost_usd == 0.0
+
+
+def test_decision_record_local_route_cost_usd_zero():
+    """A local-only route records cost_usd == 0.0."""
+    rec = DecisionRecord(
+        work_class="bounded-edit",
+        requested_tiers=("fast-local",),
+        attempts=(_attempt("fast-local", "served", passed=True, reason="verify passed"),),
+        served_tier="fast-local",
+        total_prompt_tokens=120,
+        total_completion_tokens=90,
+        fell_back=False,
+        cost_usd=0.0,
+    )
+    assert rec.cost_usd == 0.0
+
+
+def test_decision_record_cloud_route_has_nonzero_cost_usd():
+    """A metered-cloud route records a non-zero cost_usd (cost × tokens)."""
+    # Simulate the caller computing cost before building the record.
+    cloud_tier = _MockTier(cost_input=3.0, cost_output=15.0)
+    prompt_tokens = 1_000
+    completion_tokens = 500
+    cost = compute_cost_usd(cloud_tier, prompt_tokens, completion_tokens)
+
+    rec = DecisionRecord(
+        work_class="planning",
+        requested_tiers=("cloud",),
+        attempts=(_attempt("cloud", "served", passed=True, reason="verify passed"),),
+        served_tier="cloud",
+        total_prompt_tokens=prompt_tokens,
+        total_completion_tokens=completion_tokens,
+        fell_back=False,
+        cost_usd=cost,
+    )
+    assert rec.cost_usd > 0.0
+    assert rec.cost_usd == pytest.approx(0.0105)  # (3.0*1000 + 15.0*500) / 1e6
+
+
+def test_cost_usd_recorded_on_fallback_to_cloud():
+    """A fallback-to-cloud record carries the cloud-tier cost (not the failed local cost)."""
+    cloud_tier = _MockTier(cost_input=3.0, cost_output=15.0)
+    prompt_tokens = 24
+    completion_tokens = 10
+    cost = compute_cost_usd(cloud_tier, prompt_tokens, completion_tokens)
+
+    rec = _fell_back_record()
+    # Rebuild with the computed cost.
+    rec_with_cost = DecisionRecord(
+        work_class=rec.work_class,
+        requested_tiers=rec.requested_tiers,
+        attempts=rec.attempts,
+        served_tier=rec.served_tier,
+        total_prompt_tokens=rec.total_prompt_tokens,
+        total_completion_tokens=rec.total_completion_tokens,
+        fell_back=rec.fell_back,
+        intent=rec.intent,
+        cost_usd=cost,
+    )
+    assert rec_with_cost.cost_usd > 0.0
+    assert rec_with_cost.fell_back is True
+    assert rec_with_cost.served_tier == "cloud"

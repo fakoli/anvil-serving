@@ -52,6 +52,10 @@ class Tier:
     tool_support: bool
     auth_env: str  # NAME of the env var holding the secret, never the secret
     model: Optional[str] = None  # concrete provider model id (e.g. "claude-opus-4-20250514")
+    # Cost fields: USD per million tokens.  None = unknown / unset (e.g. all local tiers).
+    # Set these on metered cloud tiers so cost_usd can be computed per-request.
+    cost_input_per_mtok: Optional[float] = None
+    cost_output_per_mtok: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -155,6 +159,28 @@ def _parse_tier(raw: object) -> Tier:
             f"tier {tid!r}: model must be a string or absent, got {tier_model!r}"
         )
 
+    # Optional: cost per million tokens (USD) for metered cloud tiers.
+    # Absent or None -> None (unknown, e.g. all local tiers).
+    # A non-numeric or negative value is a config error.
+    def _parse_cost_field(raw_val: object, field_name: str) -> Optional[float]:
+        if raw_val is None:
+            return None
+        # bool is a subclass of int/float in Python; reject explicitly.
+        if isinstance(raw_val, bool) or not isinstance(raw_val, (int, float)):
+            raise ConfigError(
+                f"tier {tid!r}: {field_name} must be a non-negative number or absent, "
+                f"got {raw_val!r}"
+            )
+        v = float(raw_val)
+        if v < 0:
+            raise ConfigError(
+                f"tier {tid!r}: {field_name} must be >= 0, got {v!r}"
+            )
+        return v
+
+    cost_input = _parse_cost_field(raw.get("cost_input_per_mtok"), "cost_input_per_mtok")
+    cost_output = _parse_cost_field(raw.get("cost_output_per_mtok"), "cost_output_per_mtok")
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -164,6 +190,8 @@ def _parse_tier(raw: object) -> Tier:
         tool_support=tool_support,
         auth_env=auth_env,
         model=tier_model or None,
+        cost_input_per_mtok=cost_input,
+        cost_output_per_mtok=cost_output,
     )
 
 
