@@ -1,8 +1,19 @@
+<div align="center">
+
+![anvil-serving — the quality-gated local-model router for coding harnesses](assets/banner.png)
+
 # anvil-serving
 
-**The quality-gated local-model router for coding harnesses.**
+> **The quality-gated local-model router for coding harnesses.**
 
 > *Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.*
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](CHANGELOG.md)
+[![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
+
+</div>
 
 Point your coding harness (Claude Code, Codex, Aider, Cline, Continue — OpenClaw as the
 near-first-class beachhead) at **one** anvil-serving endpoint. Per request, the router resolves an
@@ -109,6 +120,8 @@ fallback is logged as a profile signal.
 
 ### The quality profile (the moat)
 
+![The quality gate — work proven on a tier stays local; unproven work falls back to cloud, measured per (model, work-class)](assets/explainer-quality-gate.png)
+
 A table keyed `(model, work-class) → {quality_score, sample_n, last_measured, decision}` where
 `decision ∈ {allow, allow-with-verify, deny}`. Hand-seeded for the MVP; later bootstrapped from
 the shadow-eval harness (the planning eval generalized to arbitrary work-classes), right-sized
@@ -117,6 +130,8 @@ graded off the hot path. Keyed on a **serve fingerprint** (model + quant + engin
 so a quant/engine swap marks affected rows stale and triggers re-measure.
 
 ### Architecture
+
+![anvil-serving routing pipeline — resolve → route → verify → fallback, across fast-local / heavy-local / cloud tiers](assets/architecture.png)
 
 ```
           ┌──────────────────── anvil-serving router ───────────────────┐
@@ -351,5 +366,3 @@ What shipped, by milestone:
   [`docs/MODEL-SETTINGS-EXAMPLE.md`](docs/MODEL-SETTINGS-EXAMPLE.md)
 
 MIT licensed.
-</content>
-</invoke>

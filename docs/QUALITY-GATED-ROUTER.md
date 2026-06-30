@@ -65,6 +65,8 @@ richer multi-axis intent does not belong in the string.
 
 ## 4. Architecture
 
+![anvil-serving routing pipeline — resolve → route → verify → fallback, across fast-local / heavy-local / cloud tiers](../assets/architecture.png)
+
 ```
           ┌──────────────────── anvil-serving router ───────────────────┐
 harness → │ front door → resolve intent → route → [verify] → return     │ → harness
@@ -85,6 +87,8 @@ profile). Refreshed on demand and continuously calibrated from sampled productio
 Must add negligible latency and must stream.
 
 ## 5. The quality profile (the moat)
+
+![The quality gate — work proven on a tier stays local; unproven work falls back to cloud, measured per (model, work-class)](../assets/explainer-quality-gate.png)
 
 A table keyed `(model, work-class)` → `{quality_score, sample_n, last_measured, decision}` where
 `decision ∈ {allow, allow-with-verify, deny}`. Populated by:
