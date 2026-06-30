@@ -13,6 +13,17 @@ Source of truth for product framing: **`README.md`** (accurate; rewritten for la
 
 ---
 
+## Cloud tier: opt-in / off by default
+
+The shipped default (`configs/example.toml`) is **local-only**: anvil holds no cloud API key and
+incurs $0 metered API billing. The opt-in metered cloud tier (`configs/example-with-cloud.toml`)
+must be explicitly configured; only work-classes listed in `[router].metered_cloud` are eligible
+to route to a cloud tier. Never add a metered cloud tier silently — it is a billing decision.
+See [ADR-0001](docs/adr/0001-cloud-cost-and-subscription-auth.md) and
+[`docs/PLAN-advise-and-defer.md`](docs/PLAN-advise-and-defer.md).
+
+---
+
 ## Golden rule: call Claude through the Claude Agent SDK, never the raw Anthropic API
 
 Any code that programmatically calls Claude/Anthropic models — product features (the
