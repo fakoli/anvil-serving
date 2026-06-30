@@ -143,8 +143,15 @@ def test_work_class_from_eval_dir():
         "multi-file-refactor",
         "2026-07-01",
     )
-    # No date prefix, unknown slug -> verbatim (deterministic), no date.
+    # A canonical taxonomy token still resolves via the startswith() path even
+    # without a date prefix ("review-eval" -> "review-" -> "review").
     assert pb.work_class_from_eval_dir("review-eval") == ("review", None)
+    # Verbatim fallback: a slug matching NO work-class token has its trailing
+    # descriptor (_SLUG_SUFFIXES) stripped and is returned as-is, with the date.
+    assert pb.work_class_from_eval_dir("2026-06-28-something-capability") == (
+        "something",
+        "2026-06-28",
+    )
 
 
 def test_live_path_is_guarded_and_calls_no_tier():
@@ -156,6 +163,37 @@ def test_live_path_is_guarded_and_calls_no_tier():
     with pytest.raises(pb.LiveBootstrapNotConfigured):
         pb.run_live(confirm_calls_real_tiers=True)  # no endpoints
 
+    # Even with the full confirmation trio, the body is NOT implemented (T016) —
+    # it raises rather than dialing a tier.
+    with pytest.raises(NotImplementedError):
+        pb.run_live(
+            endpoints={"cloud": "http://example.invalid"},
+            confirm_calls_real_tiers=True,
+        )
+
     # The CLI --live branch is also guarded (exit code 2, nothing dialed).
     rc = pb.main(["--live", "--endpoint", "cloud=http://example.invalid"])
     assert rc == 2
+
+
+def test_live_cli_full_trio_exits_cleanly_no_network(monkeypatch):
+    """The full --live trio exits 2 (clean message), never a crash, no socket."""
+
+    # Hard guarantee: any attempt to open a socket during this path is a failure.
+    import socket
+
+    def _no_network(*args, **kwargs):  # pragma: no cover - must never fire
+        raise AssertionError("live CLI path attempted a network connection")
+
+    monkeypatch.setattr(socket, "socket", _no_network)
+    monkeypatch.setattr(socket, "create_connection", _no_network)
+
+    rc = pb.main(
+        [
+            "--live",
+            "--endpoint",
+            "cloud=http://example.invalid",
+            "--i-understand-this-calls-real-tiers",
+        ]
+    )
+    assert rc == 2  # clean exit, not a traceback / exit 1

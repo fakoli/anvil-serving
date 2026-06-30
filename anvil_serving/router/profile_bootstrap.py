@@ -505,8 +505,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 out_path=Path(args.out) if args.out else None,
                 confirm_calls_real_tiers=args.confirm_live,
             )
-        except LiveBootstrapNotConfigured as exc:
-            print(f"--live not configured: {exc}", file=sys.stderr)
+        except (LiveBootstrapNotConfigured, NotImplementedError) as exc:
+            # Both the not-configured guard AND the confirmed-but-unimplemented
+            # body (live calibration lands in T016) exit cleanly, not as a crash.
+            print(f"--live not ready: {exc}", file=sys.stderr)
             return 2
         return 0
 
