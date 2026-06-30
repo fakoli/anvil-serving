@@ -200,11 +200,11 @@ def local_tokens_served(record: Mapping[str, Any]) -> int:
 # --------------------------------------------------------------------------- #
 # aggregation
 # --------------------------------------------------------------------------- #
-def _empty_bucket() -> Dict[str, int]:
-    return {"total": 0, "accepted_local": 0, "silent_failures": 0, "cloud_tokens_saved": 0}
+def _empty_bucket() -> Dict[str, Any]:
+    return {"total": 0, "accepted_local": 0, "silent_failures": 0, "cloud_tokens_saved": 0, "cost_usd": 0.0}
 
 
-def _finalize(bucket: Mapping[str, int]) -> Dict[str, Any]:
+def _finalize(bucket: Mapping[str, Any]) -> Dict[str, Any]:
     """Fold raw counts into the per-class metric block (the three metrics + counts)."""
     total = bucket["total"]
     accepted = bucket["accepted_local"]
@@ -218,6 +218,9 @@ def _finalize(bucket: Mapping[str, int]) -> Dict[str, Any]:
         # failure is possible => rate 0.0 (never a divide-by-zero, never a breach).
         "silent_failure_rate": (sf / accepted) if accepted else 0.0,
         "cloud_tokens_saved": bucket["cloud_tokens_saved"],
+        # Estimated total $ cost for requests in this bucket (metered cloud tiers
+        # only; local tiers contribute 0.0 per request).
+        "cost_usd": bucket["cost_usd"],
     }
 
 
@@ -250,7 +253,7 @@ def aggregate(
     gate ``breaches`` / ``gate_passed`` for ``threshold``. Pure and deterministic
     (no I/O, no clock); work-classes are emitted in sorted order by the caller.
     """
-    per_class: Dict[str, Dict[str, int]] = {}
+    per_class: Dict[str, Dict[str, Any]] = {}
     overall = _empty_bucket()
 
     for record in records:
@@ -259,6 +262,12 @@ def aggregate(
 
         bucket["total"] += 1
         overall["total"] += 1
+
+        # Accumulate per-request cost (0.0 for local tiers; non-zero for metered
+        # cloud tiers that have cost fields configured on the served Tier).
+        record_cost = float(record.get("cost_usd", 0.0) or 0.0)
+        bucket["cost_usd"] += record_cost
+        overall["cost_usd"] += record_cost
 
         if served_locally(record):
             bucket["accepted_local"] += 1

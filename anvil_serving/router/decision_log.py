@@ -86,6 +86,30 @@ class DecisionRecord:
     total_completion_tokens: int
     fell_back: bool
     intent: Optional[str] = None
+    # Estimated $ cost for this request.  0.0 for local tiers (no metered billing).
+    # For metered cloud tiers, compute with :func:`compute_cost_usd` and pass here.
+    cost_usd: float = 0.0
+
+
+# --------------------------------------------------------------------------- #
+# cost estimation (T003; cost dimension)
+# --------------------------------------------------------------------------- #
+def compute_cost_usd(tier: Any, prompt_tokens: int, completion_tokens: int) -> float:
+    """Estimated USD cost for one request served by ``tier``.
+
+    Uses ``tier.cost_input_per_mtok`` and ``tier.cost_output_per_mtok`` (USD per
+    million tokens).  Returns ``0.0`` when either field is ``None`` / unset (which
+    is the case for all local tiers — they have no metered billing).
+
+    Pure computation: never blocks or calls any external service.  Safe to call on
+    the hot path.  Duck-typed so it works with any object that exposes the two cost
+    fields (real :class:`~anvil_serving.router.config.Tier` or a test stub).
+    """
+    cost_in = getattr(tier, "cost_input_per_mtok", None)
+    cost_out = getattr(tier, "cost_output_per_mtok", None)
+    if cost_in is None and cost_out is None:
+        return 0.0
+    return ((cost_in or 0.0) * prompt_tokens + (cost_out or 0.0) * completion_tokens) / 1_000_000
 
 
 # --------------------------------------------------------------------------- #

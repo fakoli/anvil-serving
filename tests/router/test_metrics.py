@@ -421,3 +421,84 @@ def test_gate_still_trips_when_rate_exceeds_valid_threshold(tmp_path, capsys):
     out = capsys.readouterr().out
     assert rc == 1, "gate must exit 1 when the silent-failure rate breaches a valid threshold"
     assert "GATE: FAIL" in out
+
+
+# --------------------------------------------------------------------------- #
+# T003: cost_usd dimension in the metrics surface
+# --------------------------------------------------------------------------- #
+def _cloud_record(work_class="planning", cost_usd=0.0105):
+    """A cloud-served record carrying a non-zero cost_usd (metered billing)."""
+    return {
+        "work_class": work_class,
+        "intent": work_class,
+        "requested_tiers": ["cloud"],
+        "attempts": [
+            {"tier_id": "cloud", "verifier_passed": True, "verify_reason": "verify passed",
+             "prompt_tokens": 1000, "completion_tokens": 500, "outcome": "served", "detail": ""}
+        ],
+        "served_tier": "cloud",
+        "served_tier_privacy": "cloud",
+        "total_prompt_tokens": 1000,
+        "total_completion_tokens": 500,
+        "fell_back": False,
+        "ground_truth": "pass",
+        "cost_usd": cost_usd,
+    }
+
+
+def test_metrics_summary_includes_cost_usd():
+    """The aggregate summary carries a cost_usd key in each per-class and overall block."""
+    records = [_cloud_record("planning", cost_usd=0.0105)]
+    summary = metrics.aggregate(records)
+    assert "cost_usd" in summary["overall"], "overall block missing cost_usd"
+    assert "cost_usd" in summary["work_classes"]["planning"], "per-class block missing cost_usd"
+
+
+def test_metrics_cloud_record_cost_usd_nonzero():
+    """A metered cloud-routed record with cost_usd set contributes to the aggregate."""
+    # cost_usd = (3.0 * 1000 + 15.0 * 500) / 1e6 = 0.0105
+    records = [_cloud_record("planning", cost_usd=0.0105)]
+    summary = metrics.aggregate(records)
+    assert summary["overall"]["cost_usd"] == pytest.approx(0.0105)
+    assert summary["work_classes"]["planning"]["cost_usd"] == pytest.approx(0.0105)
+
+
+def test_metrics_local_record_cost_usd_zero():
+    """Local-only routes carry cost_usd == 0.0 and the aggregate reflects that."""
+    records = [_served_local_record("chat")]   # local record, no cost_usd field
+    summary = metrics.aggregate(records)
+    assert summary["overall"]["cost_usd"] == pytest.approx(0.0)
+    assert summary["work_classes"]["chat"]["cost_usd"] == pytest.approx(0.0)
+
+
+def test_metrics_cost_usd_sums_across_multiple_cloud_requests():
+    """cost_usd is summed over all cloud-served records in the window."""
+    records = [
+        _cloud_record("planning", cost_usd=0.0105),
+        _cloud_record("planning", cost_usd=0.0210),
+        _cloud_record("chat", cost_usd=0.0050),
+    ]
+    summary = metrics.aggregate(records)
+    assert summary["overall"]["cost_usd"] == pytest.approx(0.0105 + 0.0210 + 0.0050)
+    assert summary["work_classes"]["planning"]["cost_usd"] == pytest.approx(0.0105 + 0.0210)
+    assert summary["work_classes"]["chat"]["cost_usd"] == pytest.approx(0.0050)
+
+
+def test_metrics_cost_usd_mixed_local_and_cloud():
+    """Local records contribute 0.0; only cloud records add to cost_usd."""
+    records = [
+        _served_local_record("chat"),                    # no cost_usd -> 0.0
+        _cloud_record("planning", cost_usd=0.0105),     # metered
+    ]
+    summary = metrics.aggregate(records)
+    assert summary["overall"]["cost_usd"] == pytest.approx(0.0105)
+    assert summary["work_classes"]["chat"]["cost_usd"] == pytest.approx(0.0)
+    assert summary["work_classes"]["planning"]["cost_usd"] == pytest.approx(0.0105)
+
+
+def test_committed_fixture_cost_usd_present_in_summary(summary):
+    """The committed fixture's aggregate summary always has cost_usd (may be 0.0
+    since the fixture uses local tiers, but the key must be present)."""
+    assert "cost_usd" in summary["overall"]
+    for _wc, block in summary["work_classes"].items():
+        assert "cost_usd" in block

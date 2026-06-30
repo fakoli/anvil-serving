@@ -49,7 +49,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .config import RouterConfig, Tier
-from .decision_log import AttemptRecord, DecisionLog, DecisionRecord
+from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, compute_cost_usd
 from .internal import Backend, InternalRequest, estimate_tokens
 from .commit_window import build_response_view
 from .verify import Verifier, default_verifiers, run_verifiers
@@ -210,6 +210,20 @@ def route_with_fallback(
     attempt_count = 0
 
     def finalize(served: Optional[str], text: str, exhausted: bool) -> FallbackResult:
+        # Cost dimension (ADR-0001 / advise-and-defer:T003): estimate the $ cost of
+        # the SERVED response from the served tier's cost fields. Pure arithmetic —
+        # never blocks the hot path. 0.0 when nothing served (exhausted) or when the
+        # served tier carries no cost fields (e.g. all local tiers). Resolving the
+        # tier is wrapped defensively so a cost-estimation hiccup can never break a
+        # served response (the served id always resolves in practice — it was used
+        # to build the backend — but cost is best-effort, not load-bearing).
+        cost_usd = 0.0
+        if served is not None:
+            try:
+                served_tier = config.tier(served)
+                cost_usd = compute_cost_usd(served_tier, total_prompt, total_completion)
+            except Exception:  # noqa: BLE001 - cost is best-effort, never fatal
+                cost_usd = 0.0
         record = DecisionRecord(
             work_class=work_class,
             requested_tiers=requested_tiers,
@@ -218,6 +232,7 @@ def route_with_fallback(
             total_prompt_tokens=total_prompt,
             total_completion_tokens=total_completion,
             fell_back=any(a.outcome in ("fallback", "error") for a in attempts),
+            cost_usd=cost_usd,
         )
         if log is not None:
             log.record(record)
