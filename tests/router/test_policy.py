@@ -512,33 +512,101 @@ def test_stale_allow_row_not_routed_direct_via_policy():
     assert store.decision("fast-local", "chat") == "allow-with-verify"
 
 
-# ── FIX #9 (pin bypass of deny filter) ────────────────────────────────────────
-def test_pin_bypasses_deny_filter():
-    """An explicit pin must bypass the deny filter, even for a 'deny' work class.
-
-    Before the fix, pinning a local tier for a planning request would hit the deny
-    filter and yield an empty tiers list (503), silently ignoring the operator's
-    explicit override. The pin is the escape hatch; the deny filter must yield to it.
-    """
-    # planning -> fast-local is 'deny' in the default profile; pinning it should
-    # bypass the deny filter and route to it.
-    intent = _intent("planning", ("fast-local",), source="pinned")
-    assert PROFILE.decision("fast-local", "planning") == "deny"  # precondition
+# ── FIX #9 (reworked): a caller pin is a PREFERENCE within the gate, never a ──
+#    deny BYPASS. intent.source == "pinned" is caller-controlled (the wire
+#    `model` naming a tier id), so a pin must never let an untrusted caller reach
+#    a tier the profile DENIES for the work-class.
+def test_pin_to_allowed_tier_is_honored():
+    """A pin to a tier the gate ALLOWS for the work-class is honored (used directly)."""
+    # fast-local is 'allow' for chat in the default profile.
+    assert PROFILE.decision("fast-local", "chat") == "allow"  # precondition
+    intent = _intent("chat", ("fast-local",), source="pinned")
     dec = route(intent, CONFIG, PROFILE)
 
-    # Pin honored: fast-local is in the result.
-    assert "fast-local" in dec.tiers
+    # Pin honored: the allowed pinned tier is the routed result.
+    assert dec.tiers == ("fast-local",)
     assert "fast-local" not in dec.notes["dropped_by_deny"]
-    # Gate is audited as off-due-to-pin, not silently bypassed.
-    assert "pin" in dec.notes["quality_gate"]
+    # Normal gate (no override redirect occurred).
+    assert dec.notes["quality_gate"] == "on"
 
 
-def test_pin_bypass_recorded_in_notes():
-    """The pin bypass is auditable via notes['quality_gate']."""
+def test_pin_to_denied_tier_routes_to_allowed_tier_not_the_pin():
+    """SECURITY: a pin to a tier the gate DENIES must NOT be served by that tier.
+
+    A caller pinning fast-local for multi-file-refactor (which the profile DENIES
+    for fast-local) must be routed via the work-class's normal gated pool to an
+    ALLOWED tier — never the denied pin. This is the gate-bypass the router exists
+    to prevent, now caller-triggerable via the wire `model` field.
+    """
+    # Precondition: fast-local is denied for multi-file-refactor; the review pool
+    # (the work-class's gated pool) is (heavy-local, cloud), both allowed/avw.
+    assert PROFILE.decision("fast-local", "multi-file-refactor") == "deny"
+    intent = _intent("multi-file-refactor", ("fast-local",), source="pinned")
+    dec = route(intent, CONFIG, PROFILE)
+
+    # The denied pinned tier is NOT in the result.
+    assert "fast-local" not in dec.tiers
+    # Routed via the work-class's gated pool to ALLOWED tiers (review pool).
+    assert dec.tiers == ("heavy-local", "cloud")
+    # The served (first) tier is an allowed tier, not the denied pin.
+    assert dec.tiers[0] == "heavy-local"
+    assert PROFILE.decision("heavy-local", "multi-file-refactor") != "deny"
+    # The override is auditable.
+    assert dec.notes["quality_gate"] == (
+        "pin fast-local denied for multi-file-refactor; routed via gated pool"
+    )
+
+
+def test_pin_to_denied_planning_tier_routes_to_cloud():
+    """A pin to a local tier denied for planning routes to cloud (the gated pool)."""
+    assert PROFILE.decision("fast-local", "planning") == "deny"  # precondition
     intent = _intent("planning", ("fast-local",), source="pinned")
     dec = route(intent, CONFIG, PROFILE)
-    assert dec.notes["quality_gate"].startswith("off")
-    assert "pin" in dec.notes["quality_gate"]
+
+    # fast-local (denied) is not served; the planning gated pool is (cloud,).
+    assert "fast-local" not in dec.tiers
+    assert dec.tiers == ("cloud",)
+    assert "pin fast-local denied for planning" in dec.notes["quality_gate"]
+
+
+def test_pin_to_denied_tier_with_all_denied_pool_yields_clean_empty():
+    """When the work-class's gated pool is ALSO all-denied, the result is empty.
+
+    A pin to a denied tier whose fall-through pool is itself fully denied yields an
+    empty decision (the serve boundary turns this into a clean NoAvailableTierError
+    / 503) — never the denied pinned tier, and never a silent serve.
+    """
+    # A local-only config: planning pool is a single unseeded local tier (denied).
+    body = """\
+[router]
+mapping_version = "test.localonly"
+
+[[router.tiers]]
+id            = "gpu0"
+base_url      = "http://127.0.0.1:31000/v1"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "GPU0_KEY"
+
+[router.presets]
+planning = ["gpu0"]
+"""
+    import tempfile, pathlib
+    d = pathlib.Path(tempfile.mkdtemp())
+    p = d / "localonly.toml"
+    p.write_text(body, encoding="utf-8")
+    cfg = load(str(p))
+
+    # Pin gpu0 for planning: denied; fall-through pool = (gpu0,) -> also denied.
+    intent = _intent("planning", ("gpu0",), source="pinned")
+    dec = route(intent, cfg, PROFILE)
+
+    assert "gpu0" not in dec.tiers
+    assert dec.tiers == ()                 # empty -> clean 503 at the serve boundary
+    assert dec.notes["empty"] is True
+    assert "pin gpu0 denied for planning" in dec.notes["quality_gate"]
 
 
 def test_non_pinned_planning_still_denied():

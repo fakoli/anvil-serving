@@ -235,3 +235,53 @@ def test_c3_avw_fail_non_streaming_falls_back_to_cloud():
     assert record is not None
     assert record.fell_back
     assert record.served_tier == "cloud"
+
+
+# --------------------------------------------------------------------------- #
+# SECURITY (end-to-end): a caller PIN cannot bypass the deny gate
+# --------------------------------------------------------------------------- #
+def test_pin_to_denied_tier_cannot_bypass_gate_via_http():
+    """A caller pinning a tier the gate DENIES for the work-class must NOT be
+    served by that tier over the real HTTP path.
+
+    ``POST {"model":"fast-local", ...}`` is a caller-controlled PIN (the wire
+    ``model`` naming a concrete tier id). For a multi-file-refactor request the
+    profile DENIES fast-local, so the request must be routed via the work-class's
+    gated pool to an ALLOWED tier (heavy-local) — the pinned local's content must
+    never reach the client. This is the exact gate-bypass the router exists to
+    prevent, proven blocked end-to-end through the front door.
+    """
+    from anvil_serving.router.profile_store import default_profile
+
+    backends: Dict[str, StaticBackend] = {
+        # The pinned-but-DENIED tier emits a distinctive poison string.
+        "fast-local": StaticBackend(["POISON-PINNED-LOCAL-OUTPUT"]),
+        "heavy-local": StaticBackend(["heavy-served-allowed"]),
+        "cloud": StaticBackend([CLOUD_CONTENT]),
+    }
+    httpd = build_server(
+        CONFIG, host="127.0.0.1", port=0, backends=backends, profile=default_profile()
+    )
+    with running(httpd) as (host, port):
+        status, headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            # "refactor" alone classifies as multi-file-refactor (confident);
+            # model="fast-local" is the caller's PIN to a tier denied for it.
+            {"model": "fast-local",
+             "messages": [{"role": "user", "content": "refactor the auth module"}]},
+        )
+
+    assert status == 200, (status, raw)
+    body = json.loads(raw)
+    content = body["choices"][0]["message"]["content"]
+
+    # Served by the ALLOWED tier (heavy-local), not the denied pin.
+    assert content == "heavy-served-allowed", f"got {content!r}"
+    # The pinned local's output must never appear anywhere in the HTTP body.
+    assert "POISON-PINNED-LOCAL-OUTPUT" not in raw.decode("utf-8"), (
+        "denied pinned tier's output leaked — the caller pin bypassed the gate"
+    )
+
+    record = httpd.anvil_routing._decision_log.last
+    assert record is not None
+    assert record.served_tier == "heavy-local"
