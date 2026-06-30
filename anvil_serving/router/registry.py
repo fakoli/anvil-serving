@@ -10,13 +10,19 @@ a seam has a real third-party second impl.
 **Failure isolation = fallback (contract rule 1; AC2).** A seam implementation
 runs arbitrary code in the request path, so a throwing/slow one must degrade to a
 fallback trigger, never crash the request. For the verify seam — the one the
-T009 fallback walk gates on — :func:`safe_verify` runs a verifier and converts a
-RAISE (or a latency-budget overrun) into a *failing*
+T009 fallback walk gates on — :func:`safe_verify` runs a verifier and converts
+EVERY fault shape (a RAISE, a ``.name`` that itself raises, a non-VerifyResult
+return, or a latency-budget overrun) into a *failing*
 :class:`~anvil_serving.router.verify.VerifyResult` (``passed=False``, a
-content-free reason). :func:`wrap_verifier` returns a drop-in
-:class:`~anvil_serving.router.verify.Verifier` that does this, so a throwing
-verifier handed to ``route_with_fallback`` simply makes that tier fail verify and
-the router escalates. :func:`safe_call` is the same idea for any data-plane seam.
+content-free reason). The isolation boundary NEVER raises and NEVER hangs: a
+budgeted verifier runs on a **daemon** thread that is *abandoned* (not joined) on
+overrun, so a genuinely-hung verifier can never block interpreter / CLI / pytest
+exit. :func:`wrap_verifier` returns a drop-in
+:class:`~anvil_serving.router.verify.Verifier` that delegates to
+:func:`safe_verify`, so a throwing verifier handed to ``route_with_fallback``
+simply makes that tier fail verify and the router escalates — and it inherits
+every guard, name-raise and bad-return included. :func:`safe_call` is the same
+idea for any data-plane seam.
 
 :func:`default_registry` pre-seeds at least one real implementation for EVERY
 seam in the catalog (AC1), resolved BY NAME.
@@ -26,7 +32,7 @@ Stdlib-only; mirrors the house style of the rest of the router package.
 
 from __future__ import annotations
 
-from concurrent import futures
+import threading
 from types import MappingProxyType
 from typing import Any, Callable, Mapping, Optional
 
@@ -75,10 +81,13 @@ class Registry:
 
     def __init__(self, seam_names: Optional[Any] = None) -> None:
         names = tuple(seam_names) if seam_names is not None else tuple(SEAM_NAMES)
-        self._seams = names
+        # Dedupe (order-preserving) so ``seams`` and the error-message catalogs
+        # match the ``_impls`` buckets EXACTLY — a repeated seam name must not
+        # leave ``seams`` listing a stage twice while ``_impls`` holds one bucket.
+        self._seams = tuple(dict.fromkeys(names))
         # seam -> {name: impl}; one bucket per known seam, created up front so
         # names()/implementations() never KeyError on a valid-but-empty seam.
-        self._impls: dict[str, dict[str, Any]] = {s: {} for s in names}
+        self._impls: dict[str, dict[str, Any]] = {s: {} for s in self._seams}
 
     @property
     def seams(self) -> tuple[str, ...]:
@@ -132,62 +141,114 @@ class Registry:
 # --------------------------------------------------------------------------- #
 # failure isolation (contract rule 1 + 2; AC2)
 # --------------------------------------------------------------------------- #
+def _verifier_name(verifier: Any) -> str:
+    """Resolve a verifier's display name — itself NEVER raising.
+
+    Name resolution is part of the isolation boundary, so it must survive a
+    hostile verifier whose ``name`` is a property that raises (any type). Falls
+    back to the class name, then a constant, so a :class:`VerifyResult` can always
+    be built. A non-string / empty ``name`` also degrades to the class name.
+    """
+    try:
+        n = getattr(verifier, "name", None)
+        return n if isinstance(n, str) and n else type(verifier).__name__
+    except Exception:  # noqa: BLE001 - a .name property may raise ANY type
+        return "verifier"
+
+
+def _run_verify(verifier: Any, response: Any, name: str) -> VerifyResult:
+    """Call ``verifier.verify(response)`` and normalize the outcome — NEVER raises.
+
+    Guards both ends: a RAISE (incl. a missing ``verify`` attribute ->
+    ``AttributeError``) becomes a content-free fail naming only the exception TYPE
+    (R012 — never the raised message body), and a RETURN that is not a
+    :class:`VerifyResult` (a verifier handing back ``None`` / a ``str`` / a tuple)
+    becomes a fail too, so no downstream ``.passed`` / ``.score`` access can
+    ``AttributeError`` on a bad shape.
+    """
+    try:
+        result = verifier.verify(response)
+    except Exception as exc:  # noqa: BLE001 - contract: a seam fault is a fallback trigger
+        return VerifyResult(name, False, 0.0, f"{name} raised: {type(exc).__name__}")
+    if not isinstance(result, VerifyResult):
+        return VerifyResult(
+            name, False, 0.0, f"{name} returned non-VerifyResult: {type(result).__name__}"
+        )
+    return result
+
+
 def safe_verify(
     verifier: Any,
     response: Any,
     *,
     timeout: Optional[float] = None,
 ) -> VerifyResult:
-    """Run ``verifier.verify(response)``; a RAISE or timeout becomes a verify-FAIL.
+    """Run a verifier under FULL fault isolation — never raises, never hangs.
 
-    Failure isolation: a verifier that throws (a buggy/third-party check) or
-    exceeds its latency budget must not crash the request — it becomes a failing
+    Every fault shape a seam impl can present collapses to a failing
     :class:`~anvil_serving.router.verify.VerifyResult` (``passed=False``,
-    ``score=0.0``), which the T009 fallback walk then escalates past. The reason
-    is **content-free** (the verifier name + the exception TYPE / budget) — never
-    the verifier's raw reason or any response text (R012).
+    ``score=0.0``) that the T009 fallback walk escalates past: a ``verify`` that
+    RAISES, a ``.name`` property that itself raises, a non-VerifyResult RETURN, and
+    (with a ``timeout``) a verify that overruns its latency budget or hangs
+    outright. The reason is **content-free** — the verifier name + the exception
+    TYPE / budget only, never the verifier's raw reason or any response text
+    (R012).
 
-    ``timeout`` (seconds) enforces contract rule 2 (latency budget): the verify is
-    run on a worker thread and a budget overrun returns a fail promptly. A verify
-    that ignores cancellation keeps running to completion in the background; the
-    structural verifiers are pure and bounded (``MAX_SCAN_BYTES``), so the leaked
-    work is bounded and the CALLER always returns within the budget. ``None``
-    (default) runs inline with no thread overhead and only catches the RAISE path.
+    ``timeout`` (seconds) enforces contract rule 2 (latency budget). The verify
+    runs on a **daemon** worker thread; on overrun the worker is *abandoned*, not
+    joined, so a genuinely-hung verifier can never block interpreter / CLI /
+    pytest exit (a daemon thread does not keep the process alive). A budgeted
+    verifier SHOULD therefore still be bounded/interruptible: an abandoned worker
+    keeps running with its ``response`` reference, a write-after-return hazard for
+    an *impure* verifier — bound them (the shipped structural checks are pure and
+    ``MAX_SCAN_BYTES``-bounded). ``None`` (default) runs fully-guarded INLINE with
+    no thread overhead.
+
+    Distinguishing a HANG from a verifier that itself raised ``TimeoutError`` is
+    deliberate: the latter completes through :func:`_run_verify` and lands in
+    ``holder`` (reason ``"raised: TimeoutError"``); only a still-running worker
+    (``t.is_alive()``) reports a budget overrun — no ``concurrent.futures``
+    ambiguity where both surface as the same ``TimeoutError``.
     """
-    name = getattr(verifier, "name", verifier.__class__.__name__)
+    name = _verifier_name(verifier)
     if timeout is None:
-        try:
-            return verifier.verify(response)
-        except Exception as exc:  # noqa: BLE001 - contract: a seam fault is a fallback trigger
-            return VerifyResult(name, False, 0.0, f"{name} raised: {type(exc).__name__}")
+        return _run_verify(verifier, response, name)  # fully-guarded inline path
 
-    pool = futures.ThreadPoolExecutor(max_workers=1)
-    fut = pool.submit(verifier.verify, response)
-    try:
-        return fut.result(timeout=timeout)
-    except futures.TimeoutError:
+    holder: dict[str, VerifyResult] = {}
+
+    def _worker() -> None:
+        holder["r"] = _run_verify(verifier, response, name)  # _run_verify never raises
+
+    # DAEMON: a hung worker is abandoned, never joined — it cannot block exit.
+    t = threading.Thread(target=_worker, name=f"safe-verify-{name}", daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        # Real budget overrun: the worker is STILL running (a hang or slow check),
+        # distinct from a verifier that raised TimeoutError (that path completes
+        # and lands in ``holder`` via _run_verify).
         return VerifyResult(name, False, 0.0, f"{name} exceeded {timeout}s latency budget")
-    except Exception as exc:  # noqa: BLE001 - same contract as the inline path
-        return VerifyResult(name, False, 0.0, f"{name} raised: {type(exc).__name__}")
-    finally:
-        # Do NOT block on a runaway worker (wait=False); a hung verify must not
-        # make the budget meaningless. Pure/bounded verifiers finish on their own.
-        pool.shutdown(wait=False)
+    return holder.get("r") or VerifyResult(
+        name, False, 0.0, f"{name}: worker produced no result"
+    )
 
 
 class _SafeVerifier:
     """A :class:`~anvil_serving.router.verify.Verifier` that wraps another in :func:`safe_verify`.
 
     Carries the inner verifier's ``name`` (so the audit trail and
-    ``run_verifiers`` see the real check), and a :meth:`verify` that can never
-    raise. Satisfies the ``Verifier`` Protocol, so it drops straight into the
-    T009 ``route_with_fallback`` verifier chain.
+    ``run_verifiers`` see the real check), and a :meth:`verify` that delegates to
+    :func:`safe_verify` and so can never raise. Because it routes through
+    ``safe_verify`` it inherits EVERY guard — RAISE, a ``.name`` that raises, a
+    non-VerifyResult return, and the latency budget — not just the throw path.
+    Satisfies the ``Verifier`` Protocol, so it drops straight into the T009
+    ``route_with_fallback`` verifier chain.
     """
 
     def __init__(self, inner: Any, *, timeout: Optional[float] = None) -> None:
         self._inner = inner
         self._timeout = timeout
-        self.name = getattr(inner, "name", inner.__class__.__name__)
+        self.name = _verifier_name(inner)  # name resolution that never raises
 
     def verify(self, response: Any) -> VerifyResult:
         return safe_verify(self._inner, response, timeout=self._timeout)

@@ -29,6 +29,7 @@ from anvil_serving.router import internal as internal_mod
 from anvil_serving.router import seams
 from anvil_serving.router import verify as verify_mod
 from anvil_serving.router.backends import StaticBackend
+from anvil_serving.router.classify import Classification
 from anvil_serving.router.config import RouterConfig, Tier
 from anvil_serving.router.decision_log import DecisionLog, DecisionRecord
 from anvil_serving.router.dialects import Dialect as dialects_Dialect
@@ -218,6 +219,201 @@ def test_safe_call_isolates_a_data_plane_seam_fault():
     assert out is sentinel
     # the happy path passes the return value through
     assert safe_call(lambda a, b: a + b, 2, 3, on_error=lambda exc: None) == 5
+
+
+# --------------------------------------------------------------------------- #
+# DIRECT failure-isolation: the boundary must never raise/hang for ANY fault
+# shape. These hit safe_verify / wrap_verifier head-on, NOT through
+# route_with_fallback (whose run_verifiers backstop would mask a wrap_verifier
+# regression) — so a hole in the wrapper itself is caught here.
+# --------------------------------------------------------------------------- #
+def test_safe_verify_isolates_a_raise_directly_at_the_boundary():
+    # The RAISE path, exercised straight through safe_verify (not the fallback
+    # walk): a fail with the ExcType name only — never the message body (R012).
+    result = safe_verify(ThrowingVerifier(), ResponseView(text="x"))
+    assert isinstance(result, VerifyResult)
+    assert result.passed is False and result.score == 0.0
+    assert "RuntimeError" in result.reason
+    assert "blew up" not in result.reason  # no raised-message body leaks (R012)
+
+
+def test_safe_verify_survives_a_name_property_that_raises():
+    # Name resolution is part of the boundary: a `.name` that raises ANY type must
+    # not crash safe_verify. getattr() re-raises a non-AttributeError (the default
+    # only covers a MISSING attr), so it lands on the constant fallback "verifier"
+    # and still returns a fail (here verify also blows up, so the fail is
+    # deterministic) — no exception escapes the boundary.
+    class NameAndVerifyExplode:
+        @property
+        def name(self) -> str:
+            raise RuntimeError("name property exploded")
+
+        def verify(self, response: ResponseView) -> VerifyResult:
+            raise ValueError("verify exploded too")
+
+    result = safe_verify(NameAndVerifyExplode(), ResponseView(text="x"))
+    assert result.passed is False
+    assert result.verifier == "verifier"  # the never-raises constant fallback
+    assert "ValueError" in result.reason
+    assert "exploded" not in result.reason  # neither message body leaks (R012)
+
+
+def test_safe_verify_rejects_a_non_verifyresult_return():
+    # A verifier may return the WRONG TYPE (None / str / tuple). safe_verify must
+    # convert that to a failing VerifyResult, so no downstream .passed/.score
+    # access AttributeErrors on a bad shape.
+    class ReturnsNone:
+        name = "returns_none"
+
+        def verify(self, response: ResponseView):
+            return None
+
+    class ReturnsStr:
+        name = "returns_str"
+
+        def verify(self, response: ResponseView):
+            return "looks fine to me"
+
+    r_none = safe_verify(ReturnsNone(), ResponseView(text="x"))
+    assert r_none.passed is False
+    assert "non-VerifyResult" in r_none.reason and "NoneType" in r_none.reason
+
+    r_str = safe_verify(ReturnsStr(), ResponseView(text="x"))
+    assert r_str.passed is False
+    assert "non-VerifyResult" in r_str.reason and "str" in r_str.reason
+
+
+def test_safe_verify_timeout_mode_isolates_a_missing_verify_method():
+    # The timeout-mode guard: a verifier MISSING .verify entirely (AttributeError
+    # raised INSIDE the worker) must still produce a fail, not a crash.
+    class NoVerifyMethod:
+        name = "no_verify"
+
+    result = safe_verify(NoVerifyMethod(), ResponseView(text="x"), timeout=0.5)
+    assert result.passed is False
+    assert result.verifier == "no_verify"
+    assert "AttributeError" in result.reason
+
+
+def test_safe_verify_abandons_a_genuinely_hung_worker_quickly():
+    # A verify that HANGS forever must return a budget-overrun fail PROMPTLY and
+    # the daemon worker is abandoned (the interpreter-exit test pins that it does
+    # not block exit). Deterministic: the worker blocks on an Event the test only
+    # sets in `finally`, so there is no sleep-timing race.
+    release = threading.Event()
+
+    class HangingVerifier:
+        name = "hanging"
+
+        def verify(self, response: ResponseView) -> VerifyResult:
+            release.wait()  # blocks until the test releases it; daemon = abandoned
+            return VerifyResult(self.name, True, 1.0, "eventually done")
+
+    try:
+        result = safe_verify(HangingVerifier(), ResponseView(text="x"), timeout=0.05)
+        assert result.passed is False
+        assert result.verifier == "hanging"
+        assert "budget" in result.reason
+    finally:
+        release.set()  # release the daemon worker for a clean shutdown
+
+
+def test_safe_verify_distinguishes_a_raised_timeouterror_from_a_budget_overrun():
+    # finding #5: a verifier that itself raises builtin TimeoutError COMPLETES
+    # (it does not hang), so the reason must be "raised: TimeoutError", NOT a
+    # budget overrun — the thread-join model has no concurrent.futures ambiguity
+    # where both would surface as the same TimeoutError.
+    class RaisesTimeoutError:
+        name = "timeout_raiser"
+
+        def verify(self, response: ResponseView) -> VerifyResult:
+            raise TimeoutError("I raised this one myself")
+
+    result = safe_verify(RaisesTimeoutError(), ResponseView(text="x"), timeout=0.5)
+    assert result.passed is False
+    assert "raised: TimeoutError" in result.reason
+    assert "budget" not in result.reason
+    assert "myself" not in result.reason  # no message body (R012)
+
+
+def test_wrap_verifier_inherits_the_bad_return_guard_not_just_the_throw_path():
+    # wrap_verifier delegates to safe_verify, so the WRAPPED verifier inherits the
+    # non-VerifyResult guard too — catchable only by hitting the wrapper directly
+    # (route_with_fallback's own run_verifiers backstop would otherwise mask it).
+    class ReturnsTuple:
+        name = "returns_tuple"
+
+        def verify(self, response: ResponseView):
+            return (True, 1.0, "not a VerifyResult")
+
+    wrapped = wrap_verifier(ReturnsTuple())
+    assert wrapped.name == "returns_tuple"
+    out = wrapped.verify(ResponseView(text="x"))
+    assert isinstance(out, VerifyResult)
+    assert out.passed is False
+    assert "non-VerifyResult" in out.reason and "tuple" in out.reason
+
+
+# --------------------------------------------------------------------------- #
+# SIGNATURE conformance (finding #6): isinstance(runtime_checkable Protocol) only
+# checks attribute NAMES, not signatures — so CALL each adapter seam with its real
+# argument shape and assert the RETURN behaves. A future impl whose method name
+# matches but signature/return does not would fail HERE, where the Protocol
+# isinstance check in AC1 would still pass.
+# --------------------------------------------------------------------------- #
+def _example_config():
+    import pathlib
+
+    from anvil_serving.router.config import load as load_config
+
+    example = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example.toml"
+    return load_config(str(example))
+
+
+def test_adapter_seams_conform_to_signatures_not_just_names():
+    from anvil_serving.router.intent import resolve as resolve_intent
+    from anvil_serving.router.profile_store import default_profile
+
+    reg = default_registry()
+    cfg = _example_config()
+    profile = default_profile()
+    req = make_request("fix the bug")
+
+    # Classifier.classify(request) -> a real Classification with a str work_class.
+    clf = reg.resolve("classifier", "heuristic")
+    classification = clf.classify(req)
+    assert isinstance(classification, Classification)
+    assert isinstance(classification.work_class, str)
+
+    # RoutingPolicy.route(intent, config, profile) -> something with .tiers (a
+    # tuple of tier-id strings). Built from the real intent-resolution args.
+    policy = reg.resolve("routing_policy", "residency-aware")
+    intent = resolve_intent(req, cfg)
+    decision = policy.route(intent, cfg, profile)
+    assert hasattr(decision, "tiers")
+    assert all(isinstance(t, str) for t in decision.tiers)
+
+    # ProfileStore.decision(tier, work_class, is_cloud=...) -> str, both branches.
+    store = reg.resolve("profile_store", "default")
+    d_local = store.decision("fast-local", "planning", is_cloud=False)
+    d_cloud = store.decision("cloud", "planning", is_cloud=True)
+    assert isinstance(d_local, str) and isinstance(d_cloud, str)
+    assert d_local == "deny" and d_cloud == "allow"  # the eval gate, exercised live
+
+    # Observer.observe(record) -> records into the backing log (a real side effect).
+    observer = reg.resolve("observer", "decision_log")
+    rec = DecisionRecord(
+        work_class="chat",
+        requested_tiers=("cloud",),
+        attempts=(),
+        served_tier="cloud",
+        total_prompt_tokens=1,
+        total_completion_tokens=1,
+        fell_back=False,
+    )
+    observer.observe(rec)
+    assert isinstance(observer.log, DecisionLog)
+    assert observer.log.last is rec
 
 
 # --------------------------------------------------------------------------- #
