@@ -63,6 +63,11 @@ context_limit = 200000
 privacy       = "cloud"
 tool_support  = true
 auth_env      = "ANTHROPIC_API_KEY"            # export ANTHROPIC_API_KEY=<your key>
+# Cost dimension (ADR-0001 / advise-and-defer:T003).  USD per million tokens.
+# These reflect Claude Sonnet 4 public pricing at the time of writing; update if
+# your tier / contract differs.  Absent on local tiers → 0.0 per request.
+cost_input_per_mtok  = 3.0     # $3.00 / million input tokens
+cost_output_per_mtok = 15.0    # $15.00 / million output tokens
 
 # preset -> ordered candidate tier pool (filter then rank; planning->cloud is eval-proven)
 # Cloud appears in pools where its quality advantage justifies the metered cost.
