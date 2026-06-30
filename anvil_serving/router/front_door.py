@@ -224,7 +224,19 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # propagates, the socket closes, and the client sees a truncated
             # stream (IncompleteRead) rather than a hang. This is intentional;
             # mid-stream verify/fallback is a later task (T008/T009).
-            frames = dialect.stream(request, deltas)
+            # Resolve the optional structured-fields accessor from the backend
+            # BEFORE building the frame iterator.  The accessor is invoked by
+            # dialect.stream() AFTER all deltas are consumed — so it is safe to
+            # pass a bound method reference here; it does not call through yet.
+            # Backends that don't expose get_last_structured (EchoBackend, tests)
+            # get get_structured=None → dialect falls back to hardcoded defaults
+            # (text-path stays byte-identical, regression-safe) (#42 / #52).
+            _get_structured_fn = getattr(backend, "get_last_structured", None)
+            frames = dialect.stream(
+                request,
+                deltas,
+                get_structured=_get_structured_fn if callable(_get_structured_fn) else None,
+            )
             try:
                 for frame in frames:
                     if not frame:
@@ -586,7 +598,13 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # a traceback.
                 try:
                     text = "".join(backend.generate(request))
-                    payload = dialect.render(request, text)
+                    # Read structured fields AFTER the generator is drained so the
+                    # backend's thread-local is fully populated (#42 / #52).
+                    # Falls through to dialect defaults (structured=None) when the
+                    # backend doesn't expose get_last_structured (text-path safety).
+                    _get_fn = getattr(backend, "get_last_structured", None)
+                    _structured = _get_fn() if callable(_get_fn) else None
+                    payload = dialect.render(request, text, structured=_structured)
                 except NoAvailableTierError as e:
                     # Keyless handoff contract — see the streaming path above for
                     # the full rationale (ADR-0001 §Mechanism, advise-and-defer:T004).

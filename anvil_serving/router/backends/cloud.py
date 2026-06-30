@@ -37,12 +37,13 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import urllib.error
 import urllib.request
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional
 
 from ..config import ConfigError, Tier
-from ..internal import InternalRequest
+from ..internal import InternalRequest, StructuredResult
 from .local import split_into_deltas
 
 #: transport(url, *, data, headers, timeout) -> response body bytes.
@@ -193,6 +194,78 @@ class CloudBackend:
         self._timeout = timeout
         self._max_response_bytes = max_response_bytes
         self._transport: Transport = transport or _urlopen_transport
+        # Per-thread structured-result store: populated during generate() so the
+        # response_view_factory (T012) and the dialect layer (#42) can read
+        # finish_reason + tool_calls after the stream is drained.
+        self._thread_local: threading.local = threading.local()
+
+    # ------------------------------------------------------------------ #
+    # Structured-result side channel (#42 / #52)
+    # ------------------------------------------------------------------ #
+    def get_last_structured(self) -> Optional[StructuredResult]:
+        """Return the structured fields from the most recent ``generate()`` on this thread.
+
+        Thread-safe: ``threading.local`` isolates per-request state so concurrent
+        connections to the same backend never observe each other's result.
+        Returns ``None`` before the first call or when the generate() stream was
+        interrupted before reaching the structured-extraction point.
+        """
+        return getattr(self._thread_local, "last_result", None)
+
+    def _extract_structured(self, raw: bytes) -> StructuredResult:
+        """Extract ``finish_reason`` and normalized ``tool_calls`` from the upstream response.
+
+        Called inside ``generate()`` after the raw body is received, before text
+        extraction. Never raises — parse failures return an empty
+        :class:`~anvil_serving.router.internal.StructuredResult`.
+        """
+        try:
+            data = json.loads(raw or b"{}")
+        except (ValueError, TypeError):
+            return StructuredResult()
+        if not isinstance(data, Mapping):
+            return StructuredResult()
+
+        if self._tier.dialect == "anthropic":
+            finish_reason = data.get("stop_reason")
+            blocks = data.get("content") or []
+            tool_calls: Optional[List[Dict[str, Any]]] = None
+            if isinstance(blocks, list):
+                tc_list = []
+                for b in blocks:
+                    if isinstance(b, Mapping) and b.get("type") == "tool_use":
+                        tc_list.append({
+                            "name": str(b.get("name") or ""),
+                            "id": str(b.get("id") or ""),
+                            "arguments": b.get("input"),  # already-parsed dict
+                        })
+                if tc_list:
+                    tool_calls = tc_list
+            return StructuredResult(finish_reason=finish_reason, tool_calls=tool_calls)
+
+        # openai-compatible
+        choices = data.get("choices") or []
+        if not choices or not isinstance(choices[0], Mapping):
+            return StructuredResult()
+        first = choices[0]
+        finish_reason = first.get("finish_reason")
+        message = first.get("message") or {}
+        raw_tc = message.get("tool_calls") if isinstance(message, Mapping) else None
+        tool_calls = None
+        if isinstance(raw_tc, list):
+            tc_list = []
+            for tc in raw_tc:
+                if not isinstance(tc, Mapping):
+                    continue
+                fn = tc.get("function") or {}
+                tc_list.append({
+                    "name": str(fn.get("name") or ""),
+                    "id": str(tc.get("id") or ""),
+                    "arguments": fn.get("arguments") or "",  # JSON string
+                })
+            if tc_list:
+                tool_calls = tc_list
+        return StructuredResult(finish_reason=finish_reason, tool_calls=tool_calls)
 
     # ------------------------------------------------------------------ #
     # Backend protocol
@@ -234,6 +307,11 @@ class CloudBackend:
                 f"cloud response body exceeded max_response_bytes="
                 f"{self._max_response_bytes} (tier={self._tier.id!r})"
             )
+        # Populate structured side channel BEFORE text extraction so the
+        # thread-local is always set (even if _extract_text() raises). The
+        # response_view_factory and dialect layer read this after the stream
+        # is drained to build a live ResponseView (#42 / #52).
+        self._thread_local.last_result = self._extract_structured(raw)
         text = self._extract_text(raw)
         for delta in split_into_deltas(text):
             yield delta

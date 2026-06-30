@@ -53,8 +53,9 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import sys
+import threading
 from http.server import ThreadingHTTPServer
-from typing import Dict, Iterator, List, Mapping, Optional, Tuple
+from typing import Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from .backends import CloudBackend, MissingCredentialError
 from .backends.cloud import _ANTHROPIC_VERSION, Transport
@@ -63,10 +64,10 @@ from .decision_log import DecisionLog
 from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
 from .front_door import make_server
 from .intent import PRESETS, resolve
-from .internal import Backend, InternalRequest, NoAvailableTierError
+from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult
 from .policy import route
 from .profile_store import ProfileStore, default_profile
-from .verify import default_verifiers
+from .verify import ResponseView, default_verifiers
 
 
 # --------------------------------------------------------------------------- #
@@ -266,6 +267,19 @@ class RoutingBackend:
         # thread-safe (ThreadingHTTPServer spawns one thread per connection).
         # Default cooldown = 60 s, threshold comes from Budget() at call time.
         self._circuit_breaker = CircuitBreaker()
+        # Per-thread structured-result store: set during generate() and read by the
+        # dialect layer after the stream is drained to render real finish_reason /
+        # tool_calls in the response body (#42 / #52).
+        self._thread_local: threading.local = threading.local()
+
+    def get_last_structured(self) -> Optional[StructuredResult]:
+        """Return the structured fields from the last ``generate()`` on this thread.
+
+        Thread-safe: ``threading.local`` isolates per-request state across concurrent
+        connections.  Returns ``None`` until the first call or when no inner backend
+        exposed structured fields.
+        """
+        return getattr(self._thread_local, "last_result", None)
 
     def _tier_verdict(self, tier_id: str, work_class: Optional[str]) -> str:
         """Profile verdict for ``(tier_id, work_class)``: allow / allow-with-verify / deny.
@@ -322,7 +336,20 @@ class RoutingBackend:
         if first_verdict == "allow":
             # Trusted tier: stream its deltas to the client directly.
             # No buffering, no verification — TTFT is preserved.
-            return self._backends[bound_tiers[0]].generate(request)
+            #
+            # Wrap in a thin generator so the inner backend's structured result
+            # (finish_reason / tool_calls) is propagated to our thread-local AFTER
+            # the stream is exhausted — the dialect layer reads it via
+            # get_last_structured() to render the real stop reason / tool calls (#42).
+            inner_backend = self._backends[bound_tiers[0]]
+            self._thread_local.last_result = None  # cleared; set when stream finishes
+
+            def _allow_wrap() -> Iterator[str]:
+                yield from inner_backend.generate(request)
+                _fn = getattr(inner_backend, "get_last_structured", None)
+                self._thread_local.last_result = _fn() if callable(_fn) else None
+
+            return _allow_wrap()
 
         # allow-with-verify: enforce the commit-window guarantee —
         # ZERO partial local tokens may reach the client on a verify-failure.
@@ -334,23 +361,55 @@ class RoutingBackend:
         # same guarantee provided by stream_with_commit_window (T008), applied
         # generically across N candidates.  The decision is appended to
         # self._decision_log for transparency (T010 / AC2).
+        #
+        # #52 — verifiers now live: inject a response_view_factory that reads
+        # finish_reason + tool_calls from the backend's thread-local so
+        # NotTruncated and ToolCallJSONValid fire on real upstream data.
+        _last_backend: List[Optional[Backend]] = [None]
+
+        def _tracking_backend_for(tier: Tier) -> Backend:
+            b = self._backends[tier.id]
+            _last_backend[0] = b
+            return b
+
+        def _structured_view_factory(
+            deltas: Sequence[str], req: InternalRequest
+        ) -> ResponseView:
+            b = _last_backend[0]
+            _fn = getattr(b, "get_last_structured", None) if b else None
+            text = "".join(deltas)
+            if callable(_fn):
+                s = _fn()
+                if s is not None:
+                    return ResponseView(
+                        text=text,
+                        finish_reason=s.finish_reason,
+                        tool_calls=s.tool_calls,
+                    )
+            return ResponseView(text=text)
+
         fb_decision = _FallbackDecision(tiers=bound_tiers, work_class=work_class)
         result = route_with_fallback(
             request,
             fb_decision,
             self._config,
-            backend_for=lambda tier: self._backends[tier.id],
+            backend_for=_tracking_backend_for,
             verifiers=default_verifiers(),
             budget=Budget(),
             log=self._decision_log,
             breaker=self._circuit_breaker,
             verifier_timeout=5.0,
+            response_view_factory=_structured_view_factory,
         )
         if result.exhausted:
             # Every gated, bound candidate failed verify (or was guarded out by the
             # budget / circuit-breaker).  Refuse to serve the last attempt's text
             # — it failed verification and must not reach the client.
             raise NoAvailableTierError(work_class, bound_tiers)
+
+        # Propagate the winning tier's structured fields to our thread-local so
+        # the dialect layer can render real stop_reason / tool_calls (#42).
+        self._thread_local.last_result = result.structured
 
         # Yield the committed response.  route_with_fallback fully buffered the
         # winner before returning; on any verify-FAIL path the local bytes were
