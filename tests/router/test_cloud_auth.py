@@ -336,3 +336,83 @@ def test_trailing_newline_key_is_stripped_before_header(monkeypatch):
     list(backend.generate(_request("anthropic")))
 
     assert transport.calls[0]["headers"]["x-api-key"] == FAKE_KEY  # no trailing \n
+
+
+# ── Fix 3: cloud tier always requires a credential (chore/harden-exposure) ────
+def test_cloud_tier_requires_key_even_with_require_key_false(monkeypatch):
+    """_require_key=False must NOT bypass the cloud credential gate.
+
+    A cloud-privacy tier must always raise MissingCredentialError when the
+    key env var is unset — even when the private opt-out is passed.  This
+    prevents a misconfigured RelayBackend (or other subclass) from silently
+    sending unauthenticated requests to a paid provider.
+    """
+    monkeypatch.delenv(ANTHROPIC_ENV, raising=False)
+    transport = _CaptureTransport(b"{}")
+
+    with pytest.raises(MissingCredentialError) as ei:
+        # The private _require_key=False opt-out is what RelayBackend passes;
+        # a cloud-privacy tier must still reject construction without a key.
+        CloudBackend(_anthropic_tier(), transport=transport, _require_key=False)
+
+    assert ei.value.env_var == ANTHROPIC_ENV
+    assert ei.value.tier_id == "cloud"
+    assert transport.calls == []  # no request was sent
+
+
+def test_local_tier_with_require_key_false_constructs_without_key():
+    """_require_key=False on a LOCAL-privacy tier must still work (RelayBackend).
+
+    Fix 3 must not break the RelayBackend use-case: a local relay that has no
+    auth credential is legitimate and must not raise MissingCredentialError.
+    """
+    from anvil_serving.router.config import Tier
+
+    local = Tier(
+        id="fast-local",
+        base_url="http://127.0.0.1:30001/v1",
+        dialect="openai",
+        context_limit=32768,
+        privacy="local",
+        tool_support=True,
+        auth_env="ANVIL_FAST_LOCAL_KEY",
+    )
+    transport = _CaptureTransport(b"{}")
+    # Must NOT raise even though ANVIL_FAST_LOCAL_KEY is not in the env.
+    backend = CloudBackend(local, env={}, transport=transport, _require_key=False)
+    assert backend._key == ""  # no key resolved — that is expected and fine
+
+
+# ── Fix 4: URLError hostname not leaked in CloudBackendError (chore/harden-exposure) ──
+def test_urlerror_hostname_not_leaked_in_cloudbackenderror(monkeypatch):
+    """A transport that raises URLError with a hostname in the reason must NOT
+    propagate the hostname through to the CloudBackendError message.
+
+    This covers the case where the front door's 500 path would otherwise expose
+    the upstream tier's hostname to the client.
+    """
+    import urllib.error
+    from anvil_serving.router.backends.cloud import CloudBackendError
+
+    UPSTREAM_HOST = "secret-internal-api.corp.example.com"
+
+    def leaking_transport(url, *, data, headers, timeout):
+        # Simulates a URLError whose reason contains the upstream hostname
+        # (e.g. a TLS certificate mismatch or a DNS failure).
+        raise urllib.error.URLError(
+            reason=f"[SSL: CERTIFICATE_VERIFY_FAILED] hostname mismatch: "
+                   f"{UPSTREAM_HOST!r} not in cert"
+        )
+
+    monkeypatch.setenv(ANTHROPIC_ENV, FAKE_KEY)
+    backend = CloudBackend(_anthropic_tier(), transport=leaking_transport)
+
+    with pytest.raises(CloudBackendError) as ei:
+        list(backend.generate(_request("anthropic")))
+
+    err_msg = str(ei.value)
+    assert UPSTREAM_HOST not in err_msg, (
+        f"upstream hostname {UPSTREAM_HOST!r} leaked into CloudBackendError: {err_msg!r}"
+    )
+    # The error IS a CloudBackendError (not URLError propagating uncaught).
+    assert isinstance(ei.value, CloudBackendError)
