@@ -13,6 +13,7 @@ is local-only (T001 / ADR-0001); see test_config.py for local-only default tests
 from __future__ import annotations
 
 import pathlib
+import tempfile
 from types import MappingProxyType
 
 from anvil_serving.router.config import load
@@ -25,6 +26,50 @@ EXAMPLE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example-wit
 CONFIG = load(str(EXAMPLE))
 PROFILE = default_profile()
 LOCALS = local_tier_ids(CONFIG)
+
+# Residency-isolation config: the direct-unit residency tests need cloud to
+# SURVIVE the T002 metered-cloud gate so it can act as the anti-thrash anchor a
+# non-resident local is deferred behind. The metered gate (advise-and-defer:T002)
+# drops a privacy=="cloud" tier for any work-class NOT in metered_cloud — so this
+# config explicitly meters the two work-classes those tests exercise (bounded-edit
+# and review, both quality-allowed for all three tiers). The default
+# example-with-cloud.toml only meters "planning" (whose locals are all denied,
+# leaving no local to test residency with), so it cannot serve this purpose.
+_RES_TOML = """\
+[router]
+mapping_version = "test.residency"
+metered_cloud = ["bounded-edit", "review"]
+
+[[router.tiers]]
+id            = "fast-local"
+base_url      = "http://127.0.0.1:30001/v1"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FAST_LOCAL_KEY"
+
+[[router.tiers]]
+id            = "heavy-local"
+base_url      = "http://127.0.0.1:30000/v1"
+dialect       = "openai"
+context_limit = 131072
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
+
+[[router.tiers]]
+id            = "cloud"
+base_url      = "https://api.anthropic.com"
+dialect       = "anthropic"
+context_limit = 200000
+privacy       = "cloud"
+tool_support  = true
+auth_env      = "ANTHROPIC_API_KEY"
+"""
+_res_path = pathlib.Path(tempfile.mkdtemp()) / "residency.toml"
+_res_path.write_text(_RES_TOML, encoding="utf-8")
+RES_CONFIG = load(str(_res_path))
 
 
 def _req(model, text="hello there"):
@@ -81,12 +126,14 @@ def test_alternating_workload_starting_heavy_also_bounded():
 
 
 # ── direct unit: a resident local defers the OTHER local to last ─────────────
+# These use RES_CONFIG (metered_cloud covers review + bounded-edit) so the cloud
+# anchor survives the T002 metered gate; the work-classes here are all
+# quality-allowed for every tier, isolating the residency reorder.
 def test_resident_fast_defers_heavy_behind_cloud():
-    # Use work_class=None (custom-preset mode) so neither the quality gate nor the
-    # metered-cloud gate filters the pool; this isolates the residency behaviour.
-    # fast-local resident: heavy-local must land LAST, behind fast and cloud.
-    intent = _intent(None, ("fast-local", "heavy-local", "cloud"))
-    dec = route(intent, CONFIG, PROFILE, residency="fast-local")
+    # Heavy-preferring pool (fast-local also present, allow-with-verify for review)
+    # with fast-local resident: heavy-local must land LAST, behind fast and cloud.
+    intent = _intent("review", ("fast-local", "heavy-local", "cloud"))
+    dec = route(intent, RES_CONFIG, PROFILE, residency="fast-local")
     assert dec.tiers[-1] == "heavy-local"
     assert dec.tiers.index("fast-local") < dec.tiers.index("heavy-local")
     assert dec.tiers.index("cloud") < dec.tiers.index("heavy-local")
@@ -94,9 +141,8 @@ def test_resident_fast_defers_heavy_behind_cloud():
 
 
 def test_resident_heavy_defers_fast_behind_cloud():
-    # work_class=None: gates off; pure residency test with cloud as the anchor.
-    intent = _intent(None, ("fast-local", "heavy-local", "cloud"))
-    dec = route(intent, CONFIG, PROFILE, residency="heavy-local")
+    intent = _intent("bounded-edit", ("fast-local", "heavy-local", "cloud"))
+    dec = route(intent, RES_CONFIG, PROFILE, residency="heavy-local")
     assert dec.tiers[-1] == "fast-local"
     assert dec.tiers.index("heavy-local") < dec.tiers.index("fast-local")
     assert dec.tiers.index("cloud") < dec.tiers.index("fast-local")
@@ -106,9 +152,8 @@ def test_resident_heavy_defers_fast_behind_cloud():
 def test_no_residency_leaves_cost_order():
     # No resident local: the first pick loads one model (one unavoidable swap);
     # the cost order (fast -> heavy -> cloud) is left untouched.
-    # work_class=None so the metered-cloud gate does not remove cloud.
-    intent = _intent(None, ("fast-local", "heavy-local", "cloud"))
-    dec = route(intent, CONFIG, PROFILE, residency=None)
+    intent = _intent("bounded-edit", ("fast-local", "heavy-local", "cloud"))
+    dec = route(intent, RES_CONFIG, PROFILE, residency=None)
     assert dec.tiers == ("fast-local", "heavy-local", "cloud")
     assert dec.notes["residency_deferred"] == ()
 
@@ -116,9 +161,8 @@ def test_no_residency_leaves_cost_order():
 def test_cloud_residency_leaves_cost_order():
     # A non-local residency value (e.g. cloud) is not a swap-group member, so the
     # local cost order is preserved.
-    # work_class=None so the metered-cloud gate does not remove cloud.
-    intent = _intent(None, ("fast-local", "heavy-local", "cloud"))
-    dec = route(intent, CONFIG, PROFILE, residency="cloud")
+    intent = _intent("bounded-edit", ("fast-local", "heavy-local", "cloud"))
+    dec = route(intent, RES_CONFIG, PROFILE, residency="cloud")
     assert dec.tiers == ("fast-local", "heavy-local", "cloud")
     assert dec.notes["residency_deferred"] == ()
 

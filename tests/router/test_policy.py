@@ -261,21 +261,25 @@ quick-edit = ["no-tools-local", "cloud"]
 
 # ── None work class skips the deny filter (custom preset trusts the pool) ─────
 def test_none_work_class_skips_deny_filter():
-    intent = _intent(None, ("fast-local", "cloud"))
+    # A local-only pool isolates the deny-filter behaviour from the T002 metered
+    # gate (which now drops a cloud tier for a None work-class too). Both locals
+    # survive: the quality deny-filter is skipped for a None work-class.
+    intent = _intent(None, ("fast-local", "heavy-local"))
     dec = route(intent, CONFIG, PROFILE)
-    assert dec.tiers == ("fast-local", "cloud")
+    assert dec.tiers == ("fast-local", "heavy-local")
     assert dec.notes["dropped_by_deny"] == ()
 
 
 # ── robustness: a pool id absent from config is dropped + noted, never raised ──
 def test_missing_pool_id_dropped_and_noted():
-    # Use work_class=None (custom-preset mode) so neither the quality gate nor the
-    # metered-cloud gate filters cloud; the test isolates the missing-id drop.
-    intent = _intent(None, ("ghost", "cloud"))
+    # work_class="chat" with a local-only fallback so the metered gate doesn't
+    # interfere; the test isolates the missing-id drop (ghost is unknown to config).
+    intent = _intent("chat", ("ghost", "fast-local"))
     dec = route(intent, CONFIG, PROFILE)
     assert "ghost" not in dec.tiers
     assert "ghost" in dec.notes["dropped_missing"]
-    assert dec.tiers == ("cloud",)
+    # chat: fast-local is allow; the unknown id is dropped, leaving the local tier.
+    assert dec.tiers == ("fast-local",)
 
 
 def test_empty_result_allowed_and_noted():
@@ -426,11 +430,11 @@ def test_none_workclass_records_gate_off():
 def test_duplicate_pool_id_deduped():
     # FIX F: a duplicate tier id must not appear twice in the result; the drop is
     # noted, first-occurrence order is preserved.
-    # Use work_class=None (custom-preset mode) so the metered-cloud gate does not
-    # remove cloud, letting this test focus purely on de-duplication.
-    intent = _intent(None, ("fast-local", "cloud", "fast-local"))
+    # A local-only pool (both allow for chat) isolates de-duplication from the
+    # T002 metered gate (which would otherwise drop a cloud tier here).
+    intent = _intent("chat", ("fast-local", "heavy-local", "fast-local"))
     dec = route(intent, CONFIG, PROFILE)
-    assert dec.tiers == ("fast-local", "cloud")
+    assert dec.tiers == ("fast-local", "heavy-local")
     assert dec.tiers.count("fast-local") == 1
     assert "fast-local" in dec.notes["dropped_duplicate"]
 
@@ -694,7 +698,7 @@ def _cloud_config(tmp_path, metered_cloud: list, extra_presets: str = "") -> obj
     """Return a RouterConfig with fast-local + cloud tiers and the given metered_cloud."""
     lines = [
         "[router]",
-        f'mapping_version = "test.mc"',
+        'mapping_version = "test.mc"',
     ]
     if metered_cloud is not None:
         vals = ", ".join(f'"{w}"' for w in metered_cloud)
@@ -773,16 +777,36 @@ def test_metered_gate_planning_only(tmp_path):
     assert "cloud" in dec_chat.notes["dropped_by_metered_gate"]
 
 
-def test_metered_gate_skipped_for_none_work_class(tmp_path):
-    """For a custom preset (work_class=None) the metered gate is skipped —
-    the operator explicitly declared the pool; consistent with quality-gate bypass."""
-    cfg = _cloud_config(tmp_path, metered_cloud=[])  # empty → normally cloud never
+def test_metered_gate_applies_to_none_work_class(tmp_path):
+    """COST-SAFETY (closes the work_class=None bypass): a custom preset
+    (work_class=None) whose pool names a cloud tier must NOT reach it when that
+    cloud is not metered. With metered_cloud=[] the cloud tier is dropped even for
+    a None work-class — a None can never appear in metered_cloud, so the gate
+    fires. Guarantees 'empty map => cloud is never a candidate', custom presets
+    included (ADR-0001 / advise-and-defer:T002)."""
+    cfg = _cloud_config(tmp_path, metered_cloud=[])  # empty → cloud never
 
-    # work_class=None: custom-preset mode — gate skipped, cloud stays
+    # work_class=None: custom-preset mode — the gate STILL applies, cloud dropped,
+    # only the local tier survives.
     intent = _intent(None, ("fast-local", "cloud"))
     dec = route(intent, cfg, PROFILE)
-    assert "cloud" in dec.tiers, "metered gate must be skipped for None work_class"
-    assert dec.notes["dropped_by_metered_gate"] == ()
+    assert "cloud" not in dec.tiers, "cloud must be gated for a None work_class too"
+    assert dec.tiers == ("fast-local",)
+    assert "cloud" in dec.notes["dropped_by_metered_gate"]
+
+
+def test_metered_gate_none_work_class_cloud_only_pool_is_empty(tmp_path):
+    """COST-SAFETY: a custom preset (work_class=None) whose pool is cloud-ONLY,
+    with metered_cloud=[], collapses to an empty decision — the serve boundary
+    turns this into a clean 503 rather than ever reaching the metered tier. This
+    is the closed hole: a custom preset can no longer slip cloud past an empty map."""
+    cfg = _cloud_config(tmp_path, metered_cloud=[])
+
+    intent = _intent(None, ("cloud",))
+    dec = route(intent, cfg, PROFILE)
+    assert dec.tiers == ()  # empty -> clean 503 at the serve boundary
+    assert dec.notes["empty"] is True
+    assert "cloud" in dec.notes["dropped_by_metered_gate"]
 
 
 def test_metered_gate_recorded_in_notes(tmp_path):
