@@ -1116,5 +1116,145 @@ def test_route_session_ids_are_unique(route_local_server):
     assert len(ids) == 5, f"session_ids are not unique: {ids}"
 
 
+# --------------------------------------------------------------------------- #
+# Issue #53 — Front-door HTTP polish
+# --------------------------------------------------------------------------- #
+
+def test_get_on_post_only_route_returns_405():
+    """GET to /v1/chat/completions, /v1/messages, or /v1/route → 405 Method Not
+    Allowed with an Allow: POST header (not 404).  GET to a genuinely unknown
+    path still 404s.  The dialect-native error envelope is used for known
+    dialect routes (/v1/messages → Anthropic shape)."""
+    with running_server(StaticBackend(["x"])) as (host, port):
+        # --- OpenAI dialect route ---
+        conn = http.client.HTTPConnection(host, port, timeout=10)
+        try:
+            conn.request("GET", "/v1/chat/completions")
+            resp = conn.getresponse()
+            assert resp.status == 405, (
+                f"GET /v1/chat/completions: expected 405, got {resp.status}"
+            )
+            hdrs = {k.lower(): v for k, v in resp.getheaders()}
+            assert hdrs.get("allow") == "POST", (
+                f"Allow header wrong: {hdrs.get('allow')!r}"
+            )
+            body = json.loads(resp.read())
+            # OpenAI error envelope: {"error": {...}}
+            assert "error" in body and "type" in body["error"], body
+        finally:
+            conn.close()
+
+        # --- Anthropic dialect route ---
+        conn = http.client.HTTPConnection(host, port, timeout=10)
+        try:
+            conn.request("GET", "/v1/messages")
+            resp = conn.getresponse()
+            assert resp.status == 405, (
+                f"GET /v1/messages: expected 405, got {resp.status}"
+            )
+            hdrs = {k.lower(): v for k, v in resp.getheaders()}
+            assert hdrs.get("allow") == "POST", (
+                f"Allow header wrong: {hdrs.get('allow')!r}"
+            )
+            body = json.loads(resp.read())
+            # Anthropic native error envelope: {"type": "error", "error": {...}}
+            assert body.get("type") == "error", (
+                f"expected Anthropic error envelope on /v1/messages 405: {body}"
+            )
+        finally:
+            conn.close()
+
+        # --- Route-decision endpoint ---
+        conn = http.client.HTTPConnection(host, port, timeout=10)
+        try:
+            conn.request("GET", "/v1/route")
+            resp = conn.getresponse()
+            assert resp.status == 405, (
+                f"GET /v1/route: expected 405, got {resp.status}"
+            )
+            hdrs = {k.lower(): v for k, v in resp.getheaders()}
+            assert hdrs.get("allow") == "POST", (
+                f"Allow header wrong on /v1/route: {hdrs.get('allow')!r}"
+            )
+            resp.read()
+        finally:
+            conn.close()
+
+        # --- Unknown path still 404 ---
+        conn = http.client.HTTPConnection(host, port, timeout=10)
+        try:
+            conn.request("GET", "/v1/nope")
+            resp = conn.getresponse()
+            assert resp.status == 404, (
+                f"GET /v1/nope: expected 404, got {resp.status}"
+            )
+            resp.read()
+        finally:
+            conn.close()
+
+
+def test_413_bounded_drain_no_hang():
+    """After a 413, the bounded drain does not hang waiting for the full oversized
+    body — it takes only what is already in the OS receive buffer (non-blocking).
+
+    Sends a small actual body (256 bytes, far less than MAX_BODY_BYTES) with a
+    huge claimed Content-Length.  The server must send 413, do the bounded drain
+    (gets the 256 bytes immediately), close, and let the client read the 413 —
+    all within the test timeout.  If the drain were unbounded (reading huge_n
+    bytes), this test would hang past the 5-second timeout.
+    """
+    import anvil_serving.router.front_door as fd_mod
+
+    huge_n = fd_mod.MAX_BODY_BYTES + 1
+    partial_body = b"x" * 256  # small — immediately available in OS recv buffer
+
+    with running_server(StaticBackend(["x"])) as (host, port):
+        req = (
+            b"POST /v1/chat/completions HTTP/1.1\r\n"
+            + f"Host: {host}:{port}\r\n".encode("ascii")
+            + b"Content-Type: application/json\r\n"
+            + f"Content-Length: {huge_n}\r\n".encode("ascii")
+            + b"\r\n"
+            + partial_body  # send 256 bytes; server must NOT block on huge_n
+        )
+        raw, hit_eof = _raw_roundtrip(host, port, req, timeout=5.0)
+
+    status_line = raw.split(b"\r\n", 1)[0].decode("latin-1")
+    assert " 413 " in status_line, f"expected 413: {status_line!r}"
+    # Server must have closed (bounded drain did not block).
+    assert hit_eof, "server must close after 413 (bounded drain completed)"
+
+
+def test_get_with_oversized_body_closes_cleanly():
+    """GET with a body that exceeds MAX_BODY_BYTES must close cleanly — the
+    bounded post-response drain gives TCP time to deliver the 200 before RST.
+
+    Also regression-tests that the drain is bounded: if it read the full
+    oversized body, the server would block on the partial_body and not close
+    within the 5-second timeout, causing hit_eof=False.
+    """
+    import anvil_serving.router.front_door as fd_mod
+
+    huge_n = fd_mod.MAX_BODY_BYTES + 1
+    partial_body = b"x" * 256  # small — immediately available in OS recv buffer
+
+    with running_server(StaticBackend(["x"])) as (host, port):
+        req = (
+            b"GET /healthz HTTP/1.1\r\n"
+            + f"Host: {host}:{port}\r\n".encode("ascii")
+            + f"Content-Length: {huge_n}\r\n".encode("ascii")
+            + b"\r\n"
+            + partial_body
+        )
+        raw, hit_eof = _raw_roundtrip(host, port, req, timeout=5.0)
+
+    # The 200 health response must be received (not RST-truncated).
+    assert b'"status"' in raw, (
+        f"health response not received (possible RST-truncation): {raw[:80]!r}"
+    )
+    # Server must have closed (bounded drain completed, did not hang).
+    assert hit_eof, "server must close after oversized GET body"
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
