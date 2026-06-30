@@ -34,7 +34,9 @@ Routing scope — composed vs deferred (the T012 boundary):
 
 * **Composed here:** per-request tier *selection*. ``resolve()`` then ``route()``
   yield an ordered, quality-gated candidate list; :class:`RoutingBackend` picks
-  the FIRST candidate that has a bound backend and delegates to it.
+  the FIRST candidate that has a bound backend and delegates to it. If NO gated
+  candidate is bound it raises ``NoAvailableTierError`` (rendered as a 503) rather
+  than serving from an out-of-gate tier — availability never bypasses the gate.
 * **Deferred to T009:** verify-gated *fallback*. We commit to the first selected
   tier and do NOT retry the next candidate when a response fails verification.
   The retry loop plugs in where the ``# T009:`` comment marks
@@ -52,15 +54,11 @@ from http.server import ThreadingHTTPServer
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple
 
 from .backends import CloudBackend, MissingCredentialError
-from .backends.cloud import (
-    _ANTHROPIC_VERSION,
-    _SUPPORTED_DIALECTS,
-    Transport,
-)
+from .backends.cloud import _ANTHROPIC_VERSION, Transport
 from .config import ConfigError, RouterConfig, Tier, load
 from .front_door import make_server
 from .intent import PRESETS, resolve
-from .internal import Backend, InternalRequest
+from .internal import Backend, InternalRequest, NoAvailableTierError
 from .policy import route
 from .profile_store import ProfileStore, default_profile
 
@@ -83,6 +81,13 @@ class RelayBackend(CloudBackend):
       var IS set we forward it (``Authorization: Bearer`` / ``x-api-key``); if
       not, the relay is unauthenticated.
 
+    Construction delegates to ``CloudBackend.__init__`` with the private
+    ``_require_key=False`` opt-out, so RelayBackend INHERITS the base's attribute
+    set (``_tier`` / ``_key`` / ``_timeout`` / ``_transport``) and the env/transport
+    resolution rather than hand-copying them — a future attribute added to
+    ``CloudBackend.__init__`` carries over automatically. The only override is
+    :meth:`_headers` (auth-optional).
+
     The cloud call is non-streaming upstream; the reply is split into deltas so
     the front door's streaming path stays genuinely multi-chunk (inherited).
     """
@@ -95,23 +100,12 @@ class RelayBackend(CloudBackend):
         transport: Optional[Transport] = None,
         timeout: float = 120.0,
     ):
-        if tier.dialect not in _SUPPORTED_DIALECTS:
-            raise ConfigError(
-                f"tier {tier.id!r}: RelayBackend cannot speak dialect {tier.dialect!r}"
-            )
-        import os
-
-        environ: Mapping[str, str] = os.environ if env is None else env
-        # Optional: a local server typically needs no key. Resolve it if present
-        # (trimmed like CloudBackend), else relay unauthenticated.
-        key = (environ.get(tier.auth_env) or "").strip()
-        self._tier = tier
-        self._key = key  # may be "" -> no auth header (see _headers)
-        self._timeout = timeout
-        # Lazy import keeps the default transport identical to CloudBackend's.
-        from .backends.cloud import _urlopen_transport
-
-        self._transport: Transport = transport or _urlopen_transport
+        # Relay mode: no credential requirement and no cloud-only privacy gate
+        # (local tier). super() resolves the optional key from ``auth_env`` (may
+        # be empty -> no auth header, see _headers) and the default transport.
+        super().__init__(
+            tier, env=env, transport=transport, timeout=timeout, _require_key=False
+        )
 
     def _headers(self) -> Dict[str, str]:
         """Outbound headers; the auth header is included ONLY if a key resolved."""
@@ -172,25 +166,6 @@ def build_backends(
     return backends, skipped
 
 
-def _default_tier_id(
-    config: RouterConfig, backends: Mapping[str, Backend]
-) -> Optional[str]:
-    """The fallback tier when the gated candidate list is empty/unbound.
-
-    Mirrors ``intent._safer_tier``: prefer the first ``cloud`` tier (the
-    always-available safe direction) that actually has a bound backend; else the
-    first tier with a bound backend. ``None`` only if nothing is bound (the
-    caller guarantees a non-empty backend set, so in practice never).
-    """
-    for t in config.tiers:
-        if t.privacy == "cloud" and t.id in backends:
-            return t.id
-    for t in config.tiers:
-        if t.id in backends:
-            return t.id
-    return None
-
-
 # --------------------------------------------------------------------------- #
 # Routing composition (intent T003 + policy T005)
 # --------------------------------------------------------------------------- #
@@ -204,22 +179,24 @@ class RoutingBackend:
        config-derived candidate pool;
     2. :func:`~anvil_serving.router.policy.route` -> an ordered, quality-gated
        tier list (the eval gate, e.g. ``planning`` never routes to a local tier);
-    3. pick the FIRST listed tier that has a bound backend — skipping, e.g., a
-       cloud tier we could not credential — else the configured default
-       (safer) tier.
+    3. pick the FIRST tier in that gated list that ALSO has a bound backend —
+       skipping, e.g., a cloud candidate we could not credential.
 
-    Both ``resolve`` and ``route`` are never-raise public APIs, so this stays a
-    thin composition rather than a re-implementation of routing.
+    **The quality gate is never bypassed by availability.** If NONE of the gated
+    candidates is bound (e.g. ``planning -> ["cloud"]`` but ``ANTHROPIC_API_KEY``
+    is unset, the default dev-machine state, so cloud was skipped at startup),
+    selection does NOT fall back to some other bound-but-out-of-gate tier — that
+    would silently serve a planning request from an eval-proven-unfit local tier.
+    Instead it raises :class:`~anvil_serving.router.internal.NoAvailableTierError`
+    (and logs one stderr line); the front door renders a clean 503. The principle:
+    availability must never override the quality gate.
+
+    Both ``resolve`` and ``route`` are never-raise public APIs, so the SELECTION
+    is a thin composition rather than a re-implementation of routing.
 
     DEFERRED to T009 — verify-gated FALLBACK: we commit to the first selected
     tier and do NOT retry the next candidate when a response fails verification.
     See the ``# T009:`` comment in :meth:`generate` for where that loop plugs in.
-
-    Honest limit: if the *only* candidate for a class is an unbound cloud tier
-    (e.g. ``planning -> ["cloud"]`` with ``ANTHROPIC_API_KEY`` unset) the request
-    falls back to the default tier, which may be a local tier the quality gate
-    would otherwise deny. That degenerate case only arises when cloud is
-    unconfigured; it is logged via the skip warning at startup.
     """
 
     def __init__(
@@ -227,33 +204,46 @@ class RoutingBackend:
         config: RouterConfig,
         backends: Mapping[str, Backend],
         profile: ProfileStore,
-        default_tier_id: Optional[str],
     ):
         self._config = config
         self._backends: Dict[str, Backend] = dict(backends)
         self._profile = profile
-        self._default = default_tier_id
 
     def select_tier(self, request: InternalRequest) -> str:
-        """Resolve + route ``request`` to a single bound tier id (never raises)."""
+        """Resolve + route ``request`` to a single BOUND, gate-allowed tier id.
+
+        Raises :class:`~anvil_serving.router.internal.NoAvailableTierError` when
+        every gated candidate is unbound — it never falls back to an out-of-gate
+        tier (the quality gate must not be bypassed by availability).
+        """
         intent = resolve(request, self._config)
         decision = route(intent, self._config, self._profile)
         for tid in decision.tiers:
             if tid in self._backends:
                 return tid
-        # Gated list empty or every candidate unbound -> the safer default.
-        return self._default if self._default in self._backends else next(
-            iter(self._backends)
+        # Every gate-allowed candidate is unbound (or the gate denied all). Refuse
+        # — do NOT serve from an out-of-gate tier just because it happens to be
+        # bound. Fail loud + typed; the front door turns this into a 503.
+        print(
+            f"[anvil-serving] no bound tier for work_class="
+            f"{decision.work_class!r}: gated candidates {list(decision.tiers)} "
+            f"are unbound; refusing to bypass the quality gate",
+            file=sys.stderr,
+            flush=True,
         )
+        raise NoAvailableTierError(decision.work_class, decision.tiers)
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
-        tier_id = self.select_tier(request)
+        # Select EAGERLY (before returning the delegate's iterator) so a routing
+        # failure surfaces at generate()-call time — the front door catches it
+        # there, before committing a streaming 200, and answers a clean 503.
+        tier_id = self.select_tier(request)  # may raise NoAvailableTierError
         backend = self._backends[tier_id]
         # T009: verify-gated fallback wires in HERE — wrap this delegation in a
         #       loop over the gated candidate list (stream_with_commit_window;
         #       on a FallbackEvent, advance to the next candidate tier). T012
         #       commits to the first selected tier only.
-        yield from backend.generate(request)
+        return backend.generate(request)
 
 
 # --------------------------------------------------------------------------- #
@@ -280,9 +270,8 @@ def build_server(
     bypass real backend construction (hermetic tests inject echo/static
     backends). When ``None``, backends are built from the config via
     :func:`build_backends` (cloud tiers missing creds are skipped with a stderr
-    warning). The bound tier ids, default tier, and routing backend are stashed
-    on the returned server as ``anvil_tiers`` / ``anvil_default_tier`` /
-    ``anvil_routing`` for introspection.
+    warning). The bound tier ids and routing backend are stashed on the returned
+    server as ``anvil_tiers`` / ``anvil_routing`` for introspection.
     """
     config = load(config_path)
 
@@ -302,15 +291,13 @@ def build_server(
     if profile is None:
         profile = default_profile()
 
-    default_tier = _default_tier_id(config, backends)
-    routing = RoutingBackend(config, backends, profile, default_tier)
+    routing = RoutingBackend(config, backends, profile)
 
     # Advertise the canonical intent vocabulary on GET /v1/models (T004): the
     # presets ARE the "models" a harness model picker addresses.
     httpd = make_server(host, port, routing, timeout=timeout, presets=PRESETS)
     # Stash what we bound for introspection (serve()'s banner + tests).
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
-    httpd.anvil_default_tier = default_tier  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
     return httpd
 
@@ -325,11 +312,9 @@ def serve(config_path: str, *, host: str = "127.0.0.1", port: int = 8000) -> Non
     httpd = build_server(config_path, host=host, port=port)
     actual_host, actual_port = httpd.server_address[:2]
     tiers = ", ".join(httpd.anvil_tiers) or "(none)"  # type: ignore[attr-defined]
-    default = httpd.anvil_default_tier  # type: ignore[attr-defined]
     print(
         f"anvil-serving front door on http://{actual_host}:{actual_port}\n"
         f"  tiers bound: {tiers}\n"
-        f"  default tier: {default}\n"
         f"  routes: POST /v1/chat/completions, POST /v1/messages, GET /v1/models",
         flush=True,  # show the banner promptly even when stdout is redirected
     )

@@ -12,7 +12,7 @@ def main(argv=None):
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__ + "\n  commands: profile | models | deploy | preflight | benchmark | multiplexer | cache-prune | score | serve"); return 0
     cmd, rest = argv[0], argv[1:]
-    if cmd == "serve":       from .router import serve as _serve; return _serve.main(rest)
+    if cmd == "serve":       from .router.serve import main as _serve_main; return _serve_main(rest)
     if cmd == "score":       from . import score; return score.main(rest)
     if cmd == "multiplexer": from . import multiplexer; return multiplexer.main(rest)
     if cmd == "cache-prune": from . import cache_prune; return cache_prune.main(rest)

@@ -13,8 +13,13 @@ Coverage:
         on ``fast-local``; a ``planning`` request is gated to ``cloud``).
   * (c) a drop-in-time smoke: measure + record (print + assert finite) the
         elapsed time from server build/start to the first served response.
-  * tier -> backend mapping (cloud -> CloudBackend, local -> RelayBackend) and
-    the local RelayBackend relaying via an injected transport with NO creds.
+  * the QUALITY GATE is never bypassed by availability: when the only gated
+    candidate is unbound (planning with cloud unkeyed), the request gets a
+    503-style error envelope naming the work class + unbound candidates — NOT a
+    response from an out-of-gate local tier.
+  * tier -> backend mapping (cloud -> CloudBackend, local -> RelayBackend), the
+    local RelayBackend relaying via an injected transport with NO creds, and the
+    router-package namespace resolving as intended (no ``serve`` shadow).
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ import json
 import math
 import threading
 import time
+import types
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -34,9 +40,10 @@ from anvil_serving import cli
 from anvil_serving.router import serve as serve_mod
 from anvil_serving.router.backends import CloudBackend, StaticBackend
 from anvil_serving.router.config import Tier
-from anvil_serving.router.internal import InternalRequest, Message
+from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
 from anvil_serving.router.serve import (
     RelayBackend,
+    RoutingBackend,
     build_backend_for_tier,
     build_backends,
     build_server,
@@ -104,6 +111,16 @@ def _distinct_backends() -> Dict[str, StaticBackend]:
         "fast-local": StaticBackend(["Hel", "lo"]),          # -> "Hello"
         "heavy-local": StaticBackend(["heavy-", "served"]),  # -> "heavy-served"
         "cloud": StaticBackend(["from-", "cloud"]),          # -> "from-cloud"
+    }
+
+
+def _local_only_backends() -> Dict[str, StaticBackend]:
+    """Bind ONLY the local tiers — cloud is unbound (the default dev-machine
+    state when ANTHROPIC_API_KEY is unset). Used to prove the quality gate is
+    not bypassed when the only gated candidate (cloud, for planning) is missing."""
+    return {
+        "fast-local": StaticBackend(["Hel", "lo"]),          # -> "Hello"
+        "heavy-local": StaticBackend(["heavy-", "served"]),  # -> "heavy-served"
     }
 
 
@@ -195,10 +212,103 @@ def test_serve_skips_cloud_tier_without_creds_but_still_starts():
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, env={})
     try:
         assert set(httpd.anvil_tiers) == {"fast-local", "heavy-local"}
-        # cloud is gone, so the safer default falls back to the first local tier.
-        assert httpd.anvil_default_tier == "fast-local"
     finally:
         httpd.server_close()
+
+
+# --------------------------------------------------------------------------- #
+# MUST-FIX: availability never bypasses the quality gate
+# --------------------------------------------------------------------------- #
+def test_planning_with_cloud_unbound_returns_503_not_local_streaming():
+    """A streaming ``planning`` request whose only gated tier (cloud) is unbound
+    must get a 503-style error envelope naming the work class + unbound
+    candidates — NOT a 200 served from the out-of-gate ``fast-local`` tier."""
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
+    assert set(httpd.anvil_tiers) == {"fast-local", "heavy-local"}
+    with running(httpd) as (host, port):
+        status, headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "planning", "messages": [{"role": "user", "content": "plan"}],
+             "stream": True},
+        )
+    assert status == 503, (status, raw)
+    # An error envelope, NOT a streamed completion from a local tier.
+    assert headers.get("content-type") == "application/json"
+    body = json.loads(raw)
+    msg = body["error"]["message"]
+    assert "planning" in msg          # the work class is named
+    assert "cloud" in msg             # the unbound gated candidate is named
+    assert "Hello" not in raw.decode("utf-8")  # fast-local did NOT serve it
+
+
+def test_planning_with_cloud_unbound_returns_503_non_streaming():
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
+    with running(httpd) as (host, port):
+        status, headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "planning", "messages": [{"role": "user", "content": "plan"}]},
+        )
+    assert status == 503, (status, raw)
+    body = json.loads(raw)
+    assert body["error"]["type"] == "service_unavailable"
+    assert "planning" in body["error"]["message"]
+
+
+def test_gate_allowed_bound_tier_still_serves_when_cloud_unbound():
+    """A class whose gated candidate IS bound still serves normally: ``chat`` ->
+    [fast-local, cloud]; fast-local is bound and gate-allowed -> it serves."""
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
+    with running(httpd) as (host, port):
+        status, _headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "chat", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+        )
+    assert status == 200
+    assert parse_openai_content(raw) == "Hello"
+
+
+def test_routing_backend_select_tier_raises_when_no_gated_tier_bound():
+    """Unit-level: select_tier RAISES NoAvailableTierError (carrying work_class +
+    candidates) rather than returning an out-of-gate fallback tier."""
+    from anvil_serving.router.config import load
+    from anvil_serving.router.profile_store import default_profile
+
+    config = load(CONFIG)
+    routing = RoutingBackend(config, _local_only_backends(), default_profile())
+    req = InternalRequest(model="planning", messages=[Message("user", "plan")])
+    with pytest.raises(NoAvailableTierError) as exc:
+        routing.select_tier(req)
+    assert exc.value.work_class == "planning"
+    assert "cloud" in exc.value.candidates
+    # And it must NOT have silently picked a bound local tier.
+    assert "fast-local" not in (exc.value.candidates or ())
+
+
+# --------------------------------------------------------------------------- #
+# router-package namespace resolves (no `serve` shadow)
+# --------------------------------------------------------------------------- #
+def test_router_namespace_has_no_serve_shadow():
+    import anvil_serving.router as r
+    from anvil_serving.router import front_door
+
+    # `router.serve` is the T012 SUBMODULE (not the front_door function).
+    assert isinstance(serve_mod, types.ModuleType)
+    assert r.serve is serve_mod
+    # The T012 launcher is exported under a non-colliding name.
+    assert callable(r.serve_config) and r.serve_config is serve_mod.serve
+    # The T001 front-door launcher is still reachable + callable via its module.
+    assert callable(front_door.serve)
+    # make_server is still exported at the package level.
+    assert callable(r.make_server)
+
+
+def test_relay_backend_inherits_cloudbackend_attrs():
+    """Issue-3 fix: RelayBackend delegates to super().__init__ so it inherits the
+    CloudBackend attribute set instead of hand-copying it (future-proof)."""
+    relay = build_backend_for_tier(_local_openai_tier(), env={})
+    for attr in ("_tier", "_key", "_timeout", "_transport"):
+        assert hasattr(relay, attr), attr
+    assert relay._key == ""  # no creds resolved -> empty, auth-optional
 
 
 # --------------------------------------------------------------------------- #

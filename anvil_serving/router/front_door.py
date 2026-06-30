@@ -38,7 +38,7 @@ from .dialects.anthropic import AnthropicDialect
 from .dialects.openai import OpenAIDialect
 from .discovery import models_payload
 from .intent import PRESETS, Preset
-from .internal import Backend, DialectError
+from .internal import Backend, DialectError, NoAvailableTierError
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
 _ROUTES = {
@@ -110,6 +110,21 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             ``multiplexer.relay``).
             """
             chunked = self.request_version == "HTTP/1.1"
+
+            # Resolve the backend's delta stream BEFORE committing a 200 so a
+            # PRE-stream routing failure can still be a real HTTP error. A routing
+            # backend (T012) selects its tier eagerly at generate()-call time, so
+            # if no quality-gated tier is bound for this work class it raises
+            # NoAvailableTierError HERE — before any header is sent — and we
+            # answer a clean 503 instead of a 200 + empty/truncated body. (For a
+            # plain generator backend this call is a no-op: its body runs lazily,
+            # so the M0 mid-stream close-on-error contract below is unchanged.)
+            try:
+                deltas = backend.generate(request)
+            except NoAvailableTierError as e:
+                self._error(503, "service_unavailable", str(e), dialect=dialect)
+                return
+
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
@@ -134,7 +149,6 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # propagates, the socket closes, and the client sees a truncated
             # stream (IncompleteRead) rather than a hang. This is intentional;
             # mid-stream verify/fallback is a later task (T008/T009).
-            deltas = backend.generate(request)
             frames = dialect.stream(request, deltas)
             try:
                 for frame in frames:
@@ -234,11 +248,18 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._write_sse(dialect, request)
             else:
                 # Symmetric with the streaming close-on-error contract: a real
-                # backend can raise here, so surface a clean 500 in the dialect's
-                # native envelope rather than dropping the request with a traceback.
+                # backend can raise here, so surface a clean error in the
+                # dialect's native envelope rather than dropping the request with
+                # a traceback.
                 try:
                     text = "".join(backend.generate(request))
                     payload = dialect.render(request, text)
+                except NoAvailableTierError as e:
+                    # No quality-gated tier is bound for this work class -> 503.
+                    # The router refuses to bypass the gate, so this is a clean
+                    # "service unavailable", not a 500 backend fault.
+                    self._error(503, "service_unavailable", str(e), dialect=dialect)
+                    return
                 except Exception as e:
                     self._error(500, "internal_error",
                                 f"backend error: {e}", dialect=dialect)

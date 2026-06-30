@@ -21,9 +21,14 @@ from .commit_window import (
     stream_with_commit_window,
 )
 from .discovery import models_payload
-from .front_door import make_server, serve
+# NOTE: import ONLY make_server here. The T001 front-door launcher is
+# ``front_door.serve``; importing it as ``serve`` would be SHADOWED below by the
+# ``serve`` SUBMODULE (``from .serve import ...`` rebinds ``router.serve`` to the
+# module), silently breaking the export. Reach the T001 launcher via
+# ``anvil_serving.router.front_door.serve`` or ``python -m anvil_serving.router``.
+from .front_door import make_server
 from .intent import PRESETS, Preset
-from .internal import Backend, InternalRequest, Message
+from .internal import Backend, InternalRequest, Message, NoAvailableTierError
 from .secrets import redact_key, redact_prompt, sanitize
 from .serve import (
     RelayBackend,
@@ -52,10 +57,10 @@ from .verify import (
 
 __all__ = [
     "make_server",
-    "serve",
     "Backend",
     "InternalRequest",
     "Message",
+    "NoAvailableTierError",
     "EchoBackend",
     "StaticBackend",
     "split_into_deltas",
@@ -95,4 +100,6 @@ __all__ = [
     "build_backend_for_tier",
     "RoutingBackend",
     "RelayBackend",
+    # `serve` (the submodule) is intentionally NOT re-exported as a name here; it
+    # is the T012 CLI module, reached as ``anvil_serving.router.serve``.
 ]

@@ -124,8 +124,14 @@ class CloudBackend:
         env: Optional[Mapping[str, str]] = None,
         transport: Optional[Transport] = None,
         timeout: float = 120.0,
+        _require_key: bool = True,
     ):
-        if tier.privacy != "cloud":
+        # ``_require_key`` is a PRIVATE opt-out for the local-relay subclass
+        # (T012 RelayBackend): a privacy=local tier reuses this dialect machinery
+        # but must NOT require a credential and must NOT trip the cloud-only gate
+        # (local vLLM/SGLang servers usually need no auth). It stays True for all
+        # real cloud use, so the fail-fast credential contract below is unchanged.
+        if _require_key and tier.privacy != "cloud":
             # Defensive: this backend authenticates against a remote provider; a
             # local tier should be served by the in-process backends.
             raise ConfigError(
@@ -143,11 +149,12 @@ class CloudBackend:
         # `$(cat keyfile)`) -> fail fast, named, typed. A blank key would otherwise
         # become a `x-api-key: ' '` 401 deep in a request, or make urllib raise an
         # opaque ValueError on the header value — never the clear startup error.
-        if not key or not key.strip():
+        # Skipped when ``_require_key`` is False (relay mode: auth is optional).
+        if _require_key and (not key or not key.strip()):
             raise MissingCredentialError(tier_id=tier.id, env_var=tier.auth_env)
 
         self._tier = tier
-        self._key = key.strip()  # private; never logged, never in __repr__
+        self._key = (key or "").strip()  # private; never logged, never in __repr__
         self._timeout = timeout
         self._transport: Transport = transport or _urlopen_transport
 
