@@ -4,22 +4,23 @@ There are four evals in this repo, with three different invocation styles. This
 verb makes them uniform and fills in the fakoli-dark topology so the common case
 is one line:
 
-  eval preflight [--tier heavy|fast]   correctness gate vs a live endpoint
-  eval benchmark [--tier heavy|fast]   throughput / request-replay vs a live endpoint
-  eval planning  [--offline]           planning-capability bake-off; --offline
-                                       re-grades the committed eval-data
-                                       deterministically (no serves needed)
-  eval bootstrap                       replay the committed eval fixtures into a
-                                       quality profile (no serves needed)
+  eval preflight [--tier heavy|fast] [extra flags...]   correctness gate vs a live endpoint
+  eval benchmark [--tier heavy|fast] [extra flags...]   throughput / request-replay
+  eval planning  [--live]                               planning-capability bake-off
+                                                        (offline re-grade by default)
+  eval bootstrap                                        replay eval fixtures -> quality profile
 
 `preflight`/`benchmark` resolve `--base-url`/`--model` from the serves manifest
 (examples/fakoli-dark/serves.toml), so `eval preflight --tier fast` just works
-when that serve is up — and prints a `serves up` hint when it isn't. stdlib-only.
+when that serve is up — and prints a `serves up` hint when it isn't. Any extra
+flags are passed straight through to the underlying script
+(`eval preflight --tier fast --requests 5`). stdlib-only.
 """
 import argparse
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,34 +30,43 @@ PLANNING_DIR = os.path.join(EVAL_DATA_ROOT, "2026-06-28-planning-capability")
 
 
 def _tiers():
-    """tier name -> {base_url, model, port, health, container} from the manifest."""
+    """tier name -> {base_url, model, port, health, container} from the manifest.
+
+    Lets manifest errors propagate (the caller surfaces them) so a broken manifest
+    is reported as a parse error, not as "no tiers".
+    """
     from . import serves
-    out = {}
-    try:
-        for s in serves.load_manifest(serves.DEFAULT_MANIFEST):
-            if s.get("model"):
-                out[s["name"]] = {
-                    "base_url": "http://127.0.0.1:%s/v1" % s["port"],
-                    "model": s["model"], "port": s["port"],
-                    "health": s.get("health", "/health"), "container": s["container"]}
-    except Exception:
-        pass
-    return out
+    return {s["name"]: {
+                "base_url": "http://127.0.0.1:%s/v1" % s["port"], "model": s["model"],
+                "port": s["port"], "health": s.get("health", "/health"),
+                "container": s["container"]}
+            for s in serves.load_manifest(serves.DEFAULT_MANIFEST) if s.get("model")}
 
 
 def _reachable(port, path, _open=urllib.request.urlopen):
+    """True if the endpoint answers at all (even a non-2xx) within 3s.
+
+    A serve that is up but still loading (503) or under load counts as reachable —
+    only a refused/timed-out connection means "not up".
+    """
     try:
-        with _open("http://127.0.0.1:%s%s" % (port, path), timeout=2):
+        with _open("http://127.0.0.1:%s%s" % (port, path), timeout=3):
             return True
+    except urllib.error.HTTPError:
+        return True  # the server responded -> it is up
     except Exception:
         return False
 
 
-def _run_endpoint_eval(script, a, _call=subprocess.call, _open=urllib.request.urlopen):
+def _run_endpoint_eval(script, a, extra, _call=subprocess.call, _open=urllib.request.urlopen):
     """Shell preflight.py / benchmark.py, defaulting base-url/model from a tier."""
     base_url, model = a.base_url, a.model
     if a.tier:
-        tiers = _tiers()
+        try:
+            tiers = _tiers()
+        except Exception as e:
+            print("cannot read serves manifest: %s" % e, file=sys.stderr)
+            return 2
         if a.tier not in tiers:
             print("unknown tier %r; manifest tiers: %s"
                   % (a.tier, ", ".join(tiers) or "(none)"), file=sys.stderr)
@@ -64,19 +74,21 @@ def _run_endpoint_eval(script, a, _call=subprocess.call, _open=urllib.request.ur
         t = tiers[a.tier]
         base_url = base_url or t["base_url"]
         model = model or t["model"]
-        if not _reachable(t["port"], t["health"], _open=_open):
+        # Gate on reachability ONLY when we're actually targeting the tier's local
+        # endpoint — an explicit --base-url override points elsewhere.
+        if not a.base_url and not _reachable(t["port"], t["health"], _open=_open):
             print("tier %r (%s) is not reachable at %s\n  start it:  anvil-serving serves up %s"
                   % (a.tier, t["container"], base_url, a.tier), file=sys.stderr)
             return 3
     if not base_url or not model:
         print("need --tier, or both --base-url and --model", file=sys.stderr)
         return 2
-    argv = ["--base-url", base_url, "--model", model] + a.extra
+    argv = ["--base-url", base_url, "--model", model] + list(extra)
     return _call([sys.executable, os.path.join(HERE, script)] + argv)
 
 
 def _run_planning(a, _call=subprocess.call):
-    d = a.dir
+    d = os.path.abspath(a.dir)  # absolute so cwd=d doesn't double-join the script path
     rc = 0
     if not a.offline:
         print("[planning] eval_gen.py (LIVE — needs the heavy+fast serves up) ...")
@@ -111,17 +123,17 @@ def main(argv=None):
 
     for name, helptext in (("preflight", "correctness gate vs a live endpoint"),
                            ("benchmark", "throughput / request-replay vs a live endpoint")):
-        sp = sub.add_parser(name, help=helptext)
+        sp = sub.add_parser(name, help=helptext,
+                            description="%s; unknown flags pass through to %s.py." % (helptext, name))
         sp.add_argument("--tier", help="serve tier from the manifest (e.g. heavy, fast); "
                                        "fills --base-url/--model.")
-        sp.add_argument("--base-url", help="override the endpoint base URL.")
+        sp.add_argument("--base-url", help="override the endpoint base URL "
+                                           "(skips the tier reachability gate).")
         sp.add_argument("--model", help="override the served model id.")
-        sp.add_argument("extra", nargs=argparse.REMAINDER,
-                        help="extra args passed through to %s.py (after --)." % name)
 
     spp = sub.add_parser("planning", help="planning-capability bake-off (offline re-grade by default)")
     spp.add_argument("--offline", action="store_true", default=True,
-                     help="re-grade committed eval-data only (default; no serves needed).")
+                     help="re-grade committed eval-data only (the default; no serves needed).")
     spp.add_argument("--live", dest="offline", action="store_false",
                      help="also run eval_gen.py against live serves first.")
     spp.add_argument("--dir", default=PLANNING_DIR, help="eval-data dir (default: %(default)s).")
@@ -134,12 +146,15 @@ def main(argv=None):
     if not argv:
         p.print_help()
         return 0
-    a = p.parse_args(argv)
+    # parse_known_args so preflight/benchmark can pass extra flags through WITHOUT a
+    # `--` separator; other verbs reject unknowns explicitly.
+    a, unknown = p.parse_known_args(argv)
     if a.kind in ("preflight", "benchmark"):
-        # argparse.REMAINDER keeps a leading "--"; drop it for a clean passthrough.
-        if a.extra and a.extra[0] == "--":
-            a.extra = a.extra[1:]
-        return _run_endpoint_eval(a.kind + ".py", a)
+        if unknown and unknown[0] == "--":   # tolerate an explicit separator too
+            unknown = unknown[1:]
+        return _run_endpoint_eval(a.kind + ".py", a, unknown)
+    if unknown:
+        p.error("unrecognized arguments: %s" % " ".join(unknown))
     if a.kind == "planning":
         return _run_planning(a)
     if a.kind == "bootstrap":

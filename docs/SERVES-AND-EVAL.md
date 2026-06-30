@@ -21,11 +21,20 @@ anvil-serving serves up --dry-run     # print what would run, start nothing
 anvil-serving serves --manifest X.toml status   # use a different topology
 ```
 
-`up` is mechanism-aware: a container that already exists but is **stopped** is
-restarted with `docker start` (fast, no reload); a **missing** container is
-created fresh from the manifest's `up` command (a compose file for `heavy`, a
-`docker run` script for `fast`). That handles the real fakoli-dark mix — `sglang`
-via docker-compose and `vllm-gptoss` via raw `docker run` — under one command.
+`up` is mechanism-aware by container state: **running** → left alone; **stopped**
+(exited/created) → restarted with `docker start` (fast, no reload); **paused** →
+`docker unpause`; **missing** → created fresh from the manifest's `up` command (a
+compose file for `heavy`, a `docker run` script for `fast`). A container in an
+exotic state (dead/restarting) is left for you to resolve rather than blindly
+re-created. `down` likewise stops any state that holds the GPU (running/paused/
+restarting), not just `running`.
+
+> **Two notes on `up`:** (1) The manifest `up` is **executed** — it's parsed with
+> `shlex` and run as an argv list (no shell, so paths with spaces are safe and
+> there's no injection sink), but treat the manifest as trusted like a Makefile.
+> (2) The fresh-create command for `fast` is `bash …serve-fast-gptoss-vllm.sh`, so
+> a *first-time* `serves up fast` needs `bash` on PATH (Git Bash / WSL on Windows);
+> an already-created container is just `docker start`ed and needs none of this.
 
 **Manifest entry:**
 ```toml

@@ -11,9 +11,18 @@ each serve's container name, port, health path, and an optional `up` command for
 a *fresh* create. An already-created-but-stopped container is restarted with
 `docker start` (no manifest `up` needed). stdlib-only: `subprocess` to docker,
 `urllib` for the health probe, `tomllib` to read the manifest.
+
+TRUST BOUNDARY: a serve's `up` command from the manifest is EXECUTED. It is parsed
+with `shlex` and run as an argv list (no shell), so `{dir}` paths with spaces are
+safe and there is no shell-injection sink — but pointing `--manifest` at an
+untrusted file still means running whatever programs its `up` lines name. Treat the
+manifest as trusted, like a Makefile. A `bash {dir}/...sh` fresh-create `up` also
+requires `bash` on PATH (Git Bash / WSL on Windows); a stopped container is just
+`docker start`ed and needs none of this.
 """
 import argparse
 import os
+import shlex
 import subprocess
 import sys
 import urllib.request
@@ -27,12 +36,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 DEFAULT_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
 
+# Container states that hold the GPU / are live and must be `docker stop`ped.
+_ACTIVE = ("running", "paused", "restarting", "removing", "unknown")
+# States meaning the container exists but is already stopped (nothing to free).
+_STOPPED = ("exited", "created", "dead")
+
 
 def load_manifest(path):
     """Parse the serves manifest into a list of serve dicts.
 
-    `{dir}` in an `up` command is resolved to the manifest's own directory so
-    relative repo artifacts (compose files, launch scripts) work from anywhere.
+    Each serve's `up` is parsed with `shlex` into an argv list, then `{dir}` is
+    resolved to the manifest's own directory PER TOKEN — so a repo path with
+    spaces stays one argument and there is no shell to inject into.
     """
     if tomllib is None:
         raise RuntimeError("tomllib unavailable (need Python >= 3.11)")
@@ -46,7 +61,9 @@ def load_manifest(path):
             raise ValueError(f"serve entry missing name/container/port: {raw!r}")
         s.setdefault("health", "/health")
         if s.get("up"):
-            s["up"] = s["up"].replace("{dir}", mdir)
+            # split the TEMPLATE (forward-slash, no backslashes) then substitute,
+            # so a backslashed/spaced {dir} never re-splits.
+            s["up"] = [tok.replace("{dir}", mdir) for tok in shlex.split(s["up"])]
         serves.append(s)
     return serves
 
@@ -60,14 +77,20 @@ def _select(serves, names):
 
 
 def docker_state(container, _run=subprocess.run):
-    """'running' | 'exited' | 'created' | 'absent' (docker missing -> 'absent')."""
+    """Container state, distinguishing genuine absence from a docker error.
+
+    Returns the raw docker status (running/exited/created/paused/restarting/...),
+    or 'absent' (no such container), or 'error' (docker missing / daemon down /
+    permission denied — i.e. we could NOT determine state, so callers must not
+    claim success).
+    """
     try:
         r = _run(["docker", "inspect", "-f", "{{.State.Status}}", container],
                  capture_output=True, text=True)
     except FileNotFoundError:
-        return "absent"
+        return "error"  # docker not installed -> cannot manage containers
     if r.returncode != 0:
-        return "absent"
+        return "absent" if "no such" in (r.stderr or "").lower() else "error"
     return (r.stdout or "").strip() or "unknown"
 
 
@@ -114,9 +137,15 @@ def cmd_down(serves, names, _run=subprocess.run):
     rc = 0
     for s in targets:
         st = docker_state(s["container"], _run=_run)
-        if st != "running":
+        if st == "error":
+            print("  %s: cannot determine state (docker missing / daemon down / "
+                  "permission?)" % s["container"])
+            rc = 1
+            continue
+        if st == "absent" or st in _STOPPED:
             print("  %s: %s (nothing to stop)" % (s["container"], st))
             continue
+        # running / paused / restarting / removing / unknown -> stop (frees the GPU)
         r = _run(["docker", "stop", s["container"]], capture_output=True, text=True)
         if r.returncode == 0:
             print("  stopped %s" % s["container"])
@@ -137,24 +166,34 @@ def cmd_up(serves, names, dry_run=False, _run=subprocess.run):
         if st == "running":
             print("  %s: already running" % s["container"])
             continue
-        if st in ("exited", "created"):
-            # Container already exists — restart it (no fresh create needed).
+        if st == "error":
+            print("  %s: cannot determine state (docker missing / daemon down / "
+                  "permission?)" % s["container"])
+            rc = 1
+            continue
+
+        if st == "paused":
+            action, desc = ["docker", "unpause", s["container"]], "unpause %s" % s["container"]
+        elif st in ("exited", "created"):
             action = ["docker", "start", s["container"]]
-            print("  start %s (restart existing container)" % s["container"])
-            if dry_run:
-                continue
-            r = _run(action, capture_output=True, text=True)
-        else:  # absent -> fresh create via the manifest `up` command
+            desc = "start %s (restart existing container)" % s["container"]
+        elif st == "absent":
             up = s.get("up")
             if not up:
                 print("  %s: absent and no `up` command in manifest — start it "
                       "manually (see examples/fakoli-dark/)" % s["name"])
                 rc = 1
                 continue
-            print("  up %s: %s" % (s["name"], up))
-            if dry_run:
-                continue
-            r = _run(up, shell=True, capture_output=True, text=True)
+            action, desc = up, "up %s: %s" % (s["name"], " ".join(up))
+        else:  # restarting / removing / dead / unknown -> don't fresh-create (collision/destroy risk)
+            print("  %s: in state %r — not auto-started; resolve manually" % (s["container"], st))
+            rc = 1
+            continue
+
+        print("  " + desc)
+        if dry_run:
+            continue
+        r = _run(action, capture_output=True, text=True)
         if r.returncode != 0:
             print("  FAILED: %s" % (r.stderr or r.stdout or "").strip())
             rc = 1
@@ -169,7 +208,8 @@ def main(argv=None):
                     "serves manifest). The router connects to these; this manages them.")
     p.add_argument("action", choices=["status", "up", "down"],
                    help="status: show docker + health; up: start (restart if stopped, "
-                        "else run the manifest `up`); down: docker stop the serves.")
+                        "unpause if paused, else run the manifest `up`); down: docker "
+                        "stop the serves.")
     p.add_argument("names", nargs="*",
                    help="serve names/containers to act on (default: all in the manifest).")
     p.add_argument("--manifest", default=DEFAULT_MANIFEST,
