@@ -8,7 +8,7 @@
 
 A quality-gated local-model router (`anvil_serving/router/`) plus a serving substrate
 (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`). The router
-is shipped (v0.3.0). The canonical product description is `README.md`; do not contradict it.
+is shipped (v0.4.0). The canonical product description is `README.md`; do not contradict it.
 
 ## Read before you write
 
