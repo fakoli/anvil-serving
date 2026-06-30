@@ -1,0 +1,1647 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The quality-gated local-model router for coding harnesses. Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.">
+      
+      
+      
+        <link rel="canonical" href="https://fakoli.github.io/anvil-serving/adr/0001-cloud-cost-and-subscription-auth/">
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../template/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>ADR-0001: Cloud cost & subscription auth - anvil-serving</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adr-0001-cloud-cost-subscription-auth-why-anvil-should-not-relay-cloud" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="anvil-serving" class="md-header__button md-logo" aria-label="anvil-serving" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            anvil-serving
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ADR-0001: Cloud cost & subscription auth
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/fakoli/anvil-serving" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    fakoli/anvil-serving
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../QUALITY-GATED-ROUTER/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  How it works
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../MODEL-SETTINGS-EXAMPLE/" class="md-tabs__link">
+          
+  
+  
+  Quickstart
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../PLAN-advise-and-defer/" class="md-tabs__link">
+          
+  
+  
+  Cost model
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../OPENCLAW-INTEGRATION-SPEC/" class="md-tabs__link">
+          
+  
+  
+  OpenClaw integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  ADRs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="anvil-serving" class="md-nav__button md-logo" aria-label="anvil-serving" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    anvil-serving
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/fakoli/anvil-serving" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    fakoli/anvil-serving
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../QUALITY-GATED-ROUTER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quickstart
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../MODEL-SETTINGS-EXAMPLE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SERVES-AND-EVAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serves & eval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost model
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cost model
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PLAN-advise-and-defer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    advise-and-defer plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenClaw integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OpenClaw integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../OPENCLAW-INTEGRATION-SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration spec
+  
+
+    
+  </span>
+  
+  
+    
+  
+  
+    <span class="md-status md-status--buildable-spec"></span>
+  
+
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../OPENCLAW-LIVE-VALIDATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADRs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ADRs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0001: Cloud cost & subscription auth
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0001: Cloud cost & subscription auth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hard-reality-a-subscription-is-not-a-relayable-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hard reality: a subscription is not a relayable API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#considered-driving-claude-p-headless-claude-code-as-the-cloud-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Considered: driving claude -p (headless Claude Code) as the cloud backend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-cost-optimal-architecture-anvil-is-never-in-the-cloud-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The cost-optimal architecture: anvil is never in the cloud path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#downstream-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downstream impact
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Downstream impact">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keep-the-moat-is-untouched" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keep (the moat is untouched)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#give-up-all-acceptable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Give up (all acceptable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hard-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hard constraint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#product-recap-cost-reframed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Product recap (cost-reframed)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mechanism-research-validated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mechanism (research-validated)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-v1route-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /v1/route shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolved-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolved questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hard-reality-a-subscription-is-not-a-relayable-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hard reality: a subscription is not a relayable API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#considered-driving-claude-p-headless-claude-code-as-the-cloud-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Considered: driving claude -p (headless Claude Code) as the cloud backend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-cost-optimal-architecture-anvil-is-never-in-the-cloud-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The cost-optimal architecture: anvil is never in the cloud path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#downstream-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downstream impact
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Downstream impact">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keep-the-moat-is-untouched" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keep (the moat is untouched)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#give-up-all-acceptable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Give up (all acceptable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hard-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hard constraint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#product-recap-cost-reframed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Product recap (cost-reframed)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mechanism-research-validated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mechanism (research-validated)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-v1route-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /v1/route shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolved-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolved questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="adr-0001-cloud-cost-subscription-auth-why-anvil-should-not-relay-cloud">ADR-0001 — Cloud cost &amp; subscription auth: why anvil should not relay cloud<a class="headerlink" href="#adr-0001-cloud-cost-subscription-auth-why-anvil-should-not-relay-cloud" title="Permanent link">&para;</a></h1>
+<ul>
+<li><strong>Status:</strong> <strong>Accepted</strong> (2026-06-30) — advise-and-defer; implementation plan in <code>docs/PLAN-advise-and-defer.md</code>.</li>
+<li><strong>Date:</strong> 2026-06-30</li>
+<li><strong>Context owner:</strong> product direction (cost).</li>
+<li><strong>Supersedes / relates to:</strong> the Agent-SDK golden rule in <code>CLAUDE.md</code>; <code>OPENCLAW-INTEGRATION-SPEC.md</code>; issues #42 (tool-call passthrough), #43 (provider-model resolution).</li>
+</ul>
+<h2 id="problem">Problem<a class="headerlink" href="#problem" title="Permanent link">&para;</a></h2>
+<p>The operating goal is <strong>$0 per-token (metered) API billing</strong> for cloud-served requests. Operators
+who hold flat <strong>subscriptions</strong> (Claude Max, ChatGPT/Codex) want to use those subscriptions — not
+a metered API key — for cloud traffic. Today anvil's cloud tier is a <code>CloudBackend</code> that relays
+harness traffic to <code>api.anthropic.com</code> / <code>api.openai.com</code> using an operator <strong>API key</strong> — i.e.
+metered billing on every cloud-served request.</p>
+<h2 id="the-hard-reality-a-subscription-is-not-a-relayable-api">The hard reality: a subscription is not a relayable API<a class="headerlink" href="#the-hard-reality-a-subscription-is-not-a-relayable-api" title="Permanent link">&para;</a></h2>
+<p>Anthropic and OpenAI deliberately split access into two products:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Subscription (Claude Max, ChatGPT/Codex)</th>
+<th>API (<code>api.*.com</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Billing</td>
+<td>flat fee</td>
+<td>per-token metered</td>
+</tr>
+<tr>
+<td>Access</td>
+<td><strong>only</strong> via their agent apps (Claude Code, Codex CLI, ChatGPT)</td>
+<td>raw HTTP, programmatic</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>app OAuth / device login</td>
+<td><code>*_API_KEY</code></td>
+</tr>
+<tr>
+<td>Shape</td>
+<td>an <strong>agent loop</strong> (own system prompt, tools, turns)</td>
+<td>transparent <code>Messages</code> / <code>ChatCompletions</code></td>
+</tr>
+</tbody>
+</table>
+<p>Consequences:</p>
+<ol>
+<li><strong>There is no supported, ToS-compliant way to relay an arbitrary request on a subscription.</strong>
+   The subscription is reachable only through an agent harness, not a raw endpoint.</li>
+<li>The Claude <strong>Agent SDK</strong> <em>does</em> run on the subscription — but it is an <strong>agent loop</strong>, not a
+   transparent passthrough. Driving a harness's raw request through it loses wire fidelity (C1),
+   loses tool calls (#42), imposes Claude Code's own system prompt/tools, and uses the subscription
+   as an API backend for <em>another</em> harness's traffic — outside its intended use and fragile.</li>
+</ol>
+<p><strong>Therefore: "swap the API key for the subscription inside <code>CloudBackend</code>" is not viable.</strong> The cost
+goal cannot be met by changing how anvil <em>relays</em> cloud.</p>
+<h2 id="considered-driving-claude-p-headless-claude-code-as-the-cloud-backend">Considered: driving <code>claude -p</code> (headless Claude Code) as the cloud backend<a class="headerlink" href="#considered-driving-claude-p-headless-claude-code-as-the-cloud-backend" title="Permanent link">&para;</a></h2>
+<p>A natural idea: <code>claude -p "..." --model opus</code> runs on the <strong>subscription</strong> (Agent SDK under the
+hood) and lets you pick the model — and shims that wrap it behind an OpenAI-compatible endpoint
+exist. So getting subscription-billed Claude output programmatically is <strong>technically possible</strong>. It
+is <strong>not</strong> a viable transparent cloud backend for the router, and the failures land hardest on the
+coding traffic that matters:</p>
+<ol>
+<li><strong>It is an agent, not a completion endpoint.</strong> <code>claude -p</code> runs the full Claude Code agent — its
+   own system prompt, its own tools, its own multi-step loop. The harness's request already carries
+   <em>its own</em> system prompt, messages, and tool definitions; feeding that in yields
+   Claude-Code-<em>doing-the-task</em> (editing files in its sandbox, running bash) and summarizing, not a
+   transparent completion of the harness's request. Two agent contexts collide.</li>
+<li><strong>Tool-calling breaks (fatal for coding turns).</strong> A coding harness sends tool definitions and
+   expects <code>tool_use</code> blocks back that <strong>it</strong> executes against <strong>its</strong> workspace. <code>claude -p</code> runs
+   its <em>own</em> tools internally; the harness never receives the <code>tool_use</code> blocks, so its agent loop
+   is broken. This is #42 made unrecoverable.</li>
+<li><strong>Wire fidelity is lost.</strong> The harness expects Messages / ChatCompletions SSE (<code>tool_use</code>,
+   <code>stop_reason</code>, token counts). <code>claude -p</code> emits Claude Code's own event schema; collapsing "used
+   5 tools, edited 3 files" into one Messages completion is ill-defined.</li>
+<li><strong>Outside intended use / ToS — and a public-product liability.</strong> Using a Max subscription's
+   Claude Code as a programmatic API backend for other traffic is outside its interactive-agent
+   intent. Baking it into a <em>shipped</em> product could get users' accounts flagged.</li>
+<li><strong>Overhead.</strong> A full agent turn (process spawn, system-prompt + tool init) per request is heavy
+   and slow for a serving tier.</li>
+</ol>
+<p><strong>Narrow exception:</strong> pure <strong>text-only, non-tool</strong> requests — planning / reasoning / chat, with
+Claude Code's tools disabled and the system prompt overridden — could be approximated this way. That
+includes the <em>planning</em> work-class (cloud-preferred and text-shaped). For a personal / self-hosted
+box this is a plausible subscription-billed planner; it is still ToS-gray and slow, and is <strong>not</strong>
+appropriate as a shipped default.</p>
+<p><strong>Decisive point:</strong> the subscription you would reach for via <code>claude -p</code> is the <strong>same</strong> one the
+harness already holds. OpenClaw / Claude Code already calls Claude on the subscription,
+protocol-correctly. The clean way to "use the subscription for cloud" is to let the <strong>harness</strong> serve
+cloud (the advise-and-defer design below) — not to have anvil puppet a nested <code>claude -p</code> that breaks
+the protocol. <code>claude -p</code>-as-backend is a redundant, lossy second path to a resource the harness
+already has cleanly.</p>
+<h2 id="the-cost-optimal-architecture-anvil-is-never-in-the-cloud-path">The cost-optimal architecture: anvil is never in the cloud path<a class="headerlink" href="#the-cost-optimal-architecture-anvil-is-never-in-the-cloud-path" title="Permanent link">&para;</a></h2>
+<p>The harness in front of anvil (OpenClaw, and behind it Claude Code / Codex) <strong>already holds the
+subscription</strong> and already talks to the cloud on it. So the fix is not to make anvil's cloud relay
+cheaper — it is to <strong>remove anvil from the cloud path entirely</strong> and let the harness's own
+subscription-authed provider serve cloud.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>        ┌─ local-class  → anvil → free local GPU tiers         ($0, no key)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>harness ┤
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        └─ cloud-class  → harness&#39;s own Claude/Codex provider  (flat subscription)
+</code></pre></div>
+<p>anvil becomes a <strong>local accelerator + routing brain that sits beside the cloud path, not in front of
+it.</strong> The OpenClaw <code>before_model_resolve</code> plugin (which already classifies client-side using the
+shared <code>tier0_keywords.json</code> vocabulary) decides per request: <strong>local → anvil; cloud → the harness's
+native provider.</strong> anvil holds <strong>no cloud API key</strong>; the metered surface is gone from the default
+path.</p>
+<h2 id="downstream-impact">Downstream impact<a class="headerlink" href="#downstream-impact" title="Permanent link">&para;</a></h2>
+<h3 id="keep-the-moat-is-untouched">Keep (the moat is untouched)<a class="headerlink" href="#keep-the-moat-is-untouched" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Local serving (<code>RelayBackend</code> → SGLang/vLLM) — already keyless and free.</li>
+<li>The structural <strong>verify</strong> gate (catches local misses).</li>
+<li>The measured per-(model, work-class) <strong>quality profile</strong> — this <em>is</em> the local-vs-cloud decision
+  engine and remains the product's IP.</li>
+</ul>
+<h3 id="change">Change<a class="headerlink" href="#change" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>CloudBackend</code> (API-key relay) → optional, off by default</strong>, documented as "metered $; only for
+  single-endpoint harnesses that cannot route cloud themselves."</li>
+<li><strong>C4 (verify-and-fallback) is reshaped.</strong> Today anvil falls back to cloud <em>itself</em> mid-request.
+  New model: decide <strong>upfront</strong> from the profile — <code>allow</code> / <code>allow-with-verify</code> serve local;
+  <code>deny</code> defers to the harness's cloud. On the rare local <strong>verify-failure</strong>, anvil returns a
+  <strong>retryable signal</strong> so the harness redoes that one request on its subscription — a latency cost
+  on the uncommon miss, not a metered dollar. (This depends on harness retry/fallback support.)</li>
+<li>The <strong>routing decision</strong> moves client-side (the plugin already has the classifier) or to a cheap
+  anvil "decision" endpoint that returns local-vs-cloud without serving.</li>
+</ul>
+<h3 id="give-up-all-acceptable">Give up (all acceptable)<a class="headerlink" href="#give-up-all-acceptable" title="Permanent link">&para;</a></h3>
+<ul>
+<li>anvil no longer <em>sees</em> cloud responses, so it cannot verify them — but cloud is the <strong>trusted</strong>
+  tier (you escalate there <em>because</em> it is higher quality), so that verification never mattered.</li>
+<li>No unified decision-log/observability for cloud traffic inside anvil (the harness owns it). The
+  plugin can report routing decisions back if observability is wanted.</li>
+<li>Seamless mid-request cloud fallback becomes a <strong>harness retry</strong> on the rare local verify-failure.</li>
+</ul>
+<h3 id="hard-constraint">Hard constraint<a class="headerlink" href="#hard-constraint" title="Permanent link">&para;</a></h3>
+<ul>
+<li>This requires a harness that can do <strong>per-request provider routing with a fallback path</strong>.
+  <strong>OpenClaw can</strong> (the <code>before_model_resolve</code> hook). Raw <strong>Claude Code / Codex pointed at a single
+  base URL cannot</strong> — they send everything to one endpoint. This is precisely why the OpenClaw
+  gateway is the integration point; a single-endpoint harness is the only case that still needs the
+  metered <code>CloudBackend</code> relay.</li>
+</ul>
+<h2 id="product-recap-cost-reframed">Product recap (cost-reframed)<a class="headerlink" href="#product-recap-cost-reframed" title="Permanent link">&para;</a></h2>
+<p><strong>anvil-serving</strong> turns your <strong>free local GPU</strong> into the <em>default</em> for coding-agent traffic. A
+measured quality profile decides, per (model, work-class), what is safe to serve locally; a cheap
+structural verify gate catches local misses. Everything local cannot handle stays on your
+<strong>existing Claude / Codex subscription</strong>. The bill becomes <strong>flat subscription + free GPU, with $0
+metered API</strong>. The moat is not the proxy — it is the <strong>profile</strong> that knows what your local models
+are actually good enough for. The cost goal does not merely survive this design; it <strong>defines</strong> it:
+anvil's job is to shrink the slice that ever needs cloud, and to route that slice through auth you
+already pay for at a flat rate.</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p><strong>Accepted — advise-and-defer.</strong> anvil is a <strong>local-serve + routing brain</strong>; the harness owns cloud
+on its subscription; <strong>no cloud API key in the default path.</strong> Specifics:</p>
+<ul>
+<li><strong>Any cloud tier / <code>CloudBackend</code> is opt-in, OFF by default.</strong> The default config ships local tiers
+  only; anvil never holds a cloud key unless an operator explicitly adds a cloud tier.</li>
+<li><strong>Per-intent metered mapping.</strong> When a cloud tier <em>is</em> configured, nothing is metered unless the
+  operator explicitly maps a specific intent/work-class to it — no global "use cloud" switch.</li>
+<li><strong>Cost dimension.</strong> A configured cloud tier carries cost fields (<code>$/input-tok</code>, <code>$/output-tok</code>),
+  surfaced in the decision log + metrics. An <strong>optional, off-by-default</strong> cost-sync may refresh
+  prices from the free, MIT-licensed <strong>LiteLLM</strong> pricing JSON (<code>urllib</code> GET, cached). Static config
+  is the default; sync is explicitly enabled.</li>
+<li><strong>Decision endpoint.</strong> anvil exposes <strong><code>POST /v1/route</code></strong> — the routing brain, queryable without
+  the serve path.</li>
+</ul>
+<h3 id="mechanism-research-validated">Mechanism (research-validated)<a class="headerlink" href="#mechanism-research-validated" title="Permanent link">&para;</a></h3>
+<p>Keystone fact (<code>docs/OPENCLAW-INTEGRATION-SPEC.md §0/§4</code>, verified vs OpenClaw <code>run.ts</code>): <strong>OpenClaw
+cannot do quality-based fallback</strong> — native failover fires only on <em>transport</em>-class errors
+(auth/429/overloaded/timeout/billing), and there is <strong>no response-swap hook</strong> (the only client-side
+escalation, <code>before_agent_finalize</code>, retries the <em>same</em> model). So "local responded but failed verify
+→ use cloud" MUST live in the router. In the keyless default this composes with the existing machinery:</p>
+<ol>
+<li>The plugin (<code>before_model_resolve</code>) routes <strong><code>deny</code>-class → native cloud upfront</strong>; <strong><code>allow</code> /
+   <code>allow-with-verify</code> → anvil</strong>.</li>
+<li>anvil serves locally; for <code>allow-with-verify</code> it <strong>buffers in the commit-window</strong>, verifies, and
+   on a miss has no cloud tier to escalate to (keyless) → <code>route_with_fallback</code> <strong>exhausts</strong> → anvil
+   returns a <strong>"no available tier" 503</strong> with <strong>nothing streamed</strong> (C3 preserved by the commit-window
+   — an honest <em>availability</em> signal, not a synthetic quality-error).</li>
+<li>OpenClaw's <strong>transport</strong> failover treats the 503 as "overloaded" → re-runs that request on the
+   <strong>native subscription provider</strong>. Local was tried (free); the miss falls to flat-rate cloud; <strong>no
+   API key in anvil.</strong></li>
+</ol>
+<p><strong>Must validate live (currently UNCONFIRMED):</strong> that anvil's exhaustion-503 maps to OpenClaw
+2026.6.6's "overloaded" failover category. If not, emit whatever status OpenClaw classifies as a
+transport-failover trigger. (Plan, Phase 1.)</p>
+<h3 id="post-v1route-shape"><code>POST /v1/route</code> shape<a class="headerlink" href="#post-v1route-shape" title="Permanent link">&para;</a></h3>
+<p>Research finding: a decision-only endpoint is <strong>novel</strong> — no production gateway exposes one; NotDiamond's
+SDK <code>select_model()</code> is the lone precedent. Adopted shape: request = a <code>/v1/chat/completions</code>-shaped
+body + optional <code>signals</code> (<code>work_class</code>, <code>token_estimate</code>, <code>urgency</code>); response = <code>{ tier: local|cloud,
+model, provider, work_class, reason, confidence, session_id }</code>; status 200 (decision, even if <code>cloud</code>),
+400 (malformed), 503 (no suitable tier).</p>
+<h3 id="resolved-questions">Resolved questions<a class="headerlink" href="#resolved-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>OpenClaw fallback:</strong> transport-only, no quality hook → verify stays router-internal; keyless
+  handoff = tier-exhaustion-503 → OpenClaw transport failover (above).</li>
+<li><strong>Decision endpoint:</strong> yes — <code>POST /v1/route</code> (shape above).</li>
+<li><strong>Cost source:</strong> LiteLLM pricing JSON (free/MIT) for the optional sync; static config by default.</li>
+<li><strong>Non-OpenClaw / single-endpoint harnesses (Codex, raw Claude Code):</strong> supported via the opt-in
+  metered cloud tier (they accept the metered $) or by adopting a gateway — documented, not blocked.</li>
+</ul>
+<p><strong>Implementation plan:</strong> <a href="../../PLAN-advise-and-defer/"><code>docs/PLAN-advise-and-defer.md</code></a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

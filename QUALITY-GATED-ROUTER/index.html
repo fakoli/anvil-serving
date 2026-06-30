@@ -1,0 +1,2210 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The quality-gated local-model router for coding harnesses. Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.">
+      
+      
+      
+        <link rel="canonical" href="https://fakoli.github.io/anvil-serving/QUALITY-GATED-ROUTER/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../MODEL-SETTINGS-EXAMPLE/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>How it works - anvil-serving</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#anvil-serving-as-a-harness-product-the-quality-gated-router" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="anvil-serving" class="md-header__button md-logo" aria-label="anvil-serving" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            anvil-serving
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              How it works
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/fakoli/anvil-serving" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    fakoli/anvil-serving
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  How it works
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../MODEL-SETTINGS-EXAMPLE/" class="md-tabs__link">
+          
+  
+  
+  Quickstart
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PLAN-advise-and-defer/" class="md-tabs__link">
+          
+  
+  
+  Cost model
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../OPENCLAW-INTEGRATION-SPEC/" class="md-tabs__link">
+          
+  
+  
+  OpenClaw integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../adr/" class="md-tabs__link">
+          
+  
+  
+  ADRs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="anvil-serving" class="md-nav__button md-logo" aria-label="anvil-serving" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    anvil-serving
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/fakoli/anvil-serving" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    fakoli/anvil-serving
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-thesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Thesis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-this-is-the-wedge-and-not-another-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why this is the wedge (and not "another proxy")
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-intent-addressing-callers-name-a-use-case-not-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Intent addressing: callers name a use-case, not a model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#routing-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Routing topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-v1route-decision-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /v1/route decision flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-quality-profile-the-moat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The quality profile (the moat)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-routing-signal-the-graceful-degradation-tier-ladder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Routing signal: the graceful-degradation tier ladder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-verify-and-fallback-two-modes-contract-c4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Verify-and-fallback: two modes (contract C4)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Verify-and-fallback: two modes (contract C4)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mode-1-keyless-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mode 1 — Keyless (default)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mode-2-opt-in-keyed-metered-cloud-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mode 2 — Opt-in keyed (metered cloud tier)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-tiers-both-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification tiers (both modes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-harness-integration-the-per-harness-reality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Harness integration + the per-harness reality
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-preset-vocabulary-discovery-and-transparent-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Preset vocabulary, discovery, and transparent responses
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-extensibility-plugin-seams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Extensibility / plugin seams
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-reuse-map-most-of-this-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Reuse map — most of this exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-mvp-milestones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. MVP milestones
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-risks-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Risks / open questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-success-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Success metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-config-recipes-how-to-carry-intent-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix — config recipes (how to carry intent today)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quickstart
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MODEL-SETTINGS-EXAMPLE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SERVES-AND-EVAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serves & eval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost model
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cost model
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLAN-advise-and-defer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    advise-and-defer plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenClaw integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OpenClaw integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPENCLAW-INTEGRATION-SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration spec
+  
+
+    
+  </span>
+  
+  
+    
+  
+  
+    <span class="md-status md-status--buildable-spec"></span>
+  
+
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPENCLAW-LIVE-VALIDATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADRs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ADRs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0001-cloud-cost-and-subscription-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0001: Cloud cost & subscription auth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-thesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Thesis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-this-is-the-wedge-and-not-another-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why this is the wedge (and not "another proxy")
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-intent-addressing-callers-name-a-use-case-not-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Intent addressing: callers name a use-case, not a model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#routing-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Routing topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-v1route-decision-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /v1/route decision flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-quality-profile-the-moat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The quality profile (the moat)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-routing-signal-the-graceful-degradation-tier-ladder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Routing signal: the graceful-degradation tier ladder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-verify-and-fallback-two-modes-contract-c4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Verify-and-fallback: two modes (contract C4)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Verify-and-fallback: two modes (contract C4)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mode-1-keyless-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mode 1 — Keyless (default)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mode-2-opt-in-keyed-metered-cloud-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mode 2 — Opt-in keyed (metered cloud tier)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-tiers-both-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification tiers (both modes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-harness-integration-the-per-harness-reality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Harness integration + the per-harness reality
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-preset-vocabulary-discovery-and-transparent-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Preset vocabulary, discovery, and transparent responses
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-extensibility-plugin-seams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Extensibility / plugin seams
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-reuse-map-most-of-this-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Reuse map — most of this exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-mvp-milestones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. MVP milestones
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-risks-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Risks / open questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-success-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Success metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-config-recipes-how-to-carry-intent-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix — config recipes (how to carry intent today)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="anvil-serving-as-a-harness-product-the-quality-gated-router">anvil-serving as a harness product: the quality-gated router<a class="headerlink" href="#anvil-serving-as-a-harness-product-the-quality-gated-router" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status:</strong> shipped (v0.3.0) — design reference, rev 2026-06-29. Sets the product direction for anvil-serving
+as a <strong>harness-facing</strong> tool (Claude Code, Codex, Cline, Aider, Continue, any OpenAI/Anthropic
+client) rather than an anvil-coupled serving tier.
+<strong>Grounded in</strong> (full findings in the companion notes repo <code>fakoli/anvil-serving-notes</code>):
+the integration-point audit (the integration point is the runtime, not anvil),
+the planning-capability eval (local quality is work-class-dependent and <em>measurable</em>), and
+the harness-intent-routing research (what harnesses can actually carry on the wire — verified).</p>
+</blockquote>
+<h2 id="1-thesis">1. Thesis<a class="headerlink" href="#1-thesis" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>anvil-serving is the <strong>workload-aware, correctness-gated local-model router</strong> for coding
+harnesses. <strong>Local where it's been proven, cloud where it hasn't — verified, with automatic
+fallback.</strong></p>
+</blockquote>
+<p>A coding harness points at one anvil-serving endpoint. Per request, anvil-serving decides which
+<strong>tier</strong> (fast-local / heavy-local / cloud) should serve it, based on a <strong>measured per-(model,
+work-class) quality profile</strong>; cheaply <strong>verifies</strong> the result; and <strong>falls back</strong> to the next
+tier (ultimately cloud) when the local answer fails. The harness sees one reliable endpoint and
+never eats a silent local-quality failure mid-run.</p>
+<h2 id="2-why-this-is-the-wedge-and-not-another-proxy">2. Why this is the wedge (and not "another proxy")<a class="headerlink" href="#2-why-this-is-the-wedge-and-not-another-proxy" title="Permanent link">&para;</a></h2>
+<p>Transport is commodity (LiteLLM, claude-code-router, Ollama, OpenRouter). None of them know
+<strong>whether local can actually do <em>this</em> work</strong> — they route by static rules (model name, cost,
+regex). The planning eval is the proof that the missing primitive exists and is buildable:</p>
+<ul>
+<li>local output is ~100% <strong>structurally</strong> valid but ~<strong>2/5</strong> on dependency reasoning — a dumb proxy
+  sends that to local and silently corrupts a long agent run.</li>
+<li>the gap is <strong>per-work-class and measurable</strong>, so routing can be <strong>evidence-based</strong>.</li>
+</ul>
+<p>The defensible asset is therefore <strong>not</strong> the proxy — it's the <strong>quality profile</strong> (per model ×
+work-class, measured on the user's own workload) plus the <strong>verify-and-fallback loop</strong>.
+Competitors can copy transport in a weekend; they can't copy "we measured that <code>gpt-oss-20b</code> is
+safe for bounded edits but unsafe for dependency planning on <em>your</em> repos."</p>
+<h2 id="3-intent-addressing-callers-name-a-use-case-not-a-model">3. Intent addressing: callers name a use-case, not a model<a class="headerlink" href="#3-intent-addressing-callers-name-a-use-case-not-a-model" title="Permanent link">&para;</a></h2>
+<p>The API surface is the product. Callers declare an <strong>intent</strong> (a capability/use-case preset like
+<code>planning</code>, <code>quick-edit</code>, <code>review</code>, <code>chat</code>, <code>long-context</code>) — <strong>not a model name</strong>. The router owns
+intent → (model, tier, params). This is what turns the quality profile from a hidden table into the
+product: the caller says "give me a planning-grade answer, local if it qualifies," and our measured
+knowledge of which model clears that bar <em>is</em> the value. Models become a fungible backend pool;
+clients never change when models churn (re-point an intent centrally instead).</p>
+<p><strong>Decision — the descriptor is a closed enum of named presets, carried in the <code>model</code> field</strong>
+("model-name-as-intent"). Verified rationale (harness-intent-routing findings, <code>fakoli/anvil-serving-notes</code>):
+unmodified harnesses expose exactly one operator-controllable routing channel — the <code>model</code> string,
+which is required in both wire schemas, forwarded verbatim, and free-form (only the <em>genuine</em>
+upstream validates model names; a router behind the base_url may reinterpret them). Shipping
+gateways already do this (OpenRouter slugs, LiteLLM aliases, Cloudflare <code>dynamic/&lt;route&gt;</code>). A single
+flat string can only carry a preset name, so the wire vocabulary <strong>must</strong> be a closed preset enum;
+richer multi-axis intent does not belong in the string.</p>
+<ul>
+<li><strong>Presets are the wire vocabulary; dimensions are the internal expansion.</strong> Each preset resolves
+  internally to hard constraints (context length, privacy=local-only, tool/structured-output
+  support, cost ceiling) that <em>filter</em> the candidate pool, plus a quality intent that <em>ranks</em> the
+  survivors via the profile. <strong>Filter, then rank.</strong></li>
+<li><strong>Keep a <code>model:</code> override escape hatch</strong> — some callers must pin a model (repro, debugging).
+  Intent is the default/recommended surface; pinning stays available.</li>
+</ul>
+<h2 id="4-architecture">4. Architecture<a class="headerlink" href="#4-architecture" title="Permanent link">&para;</a></h2>
+<p><img alt="anvil-serving routing pipeline — resolve → route → verify → fallback, across fast-local / heavy-local / cloud tiers" src="../assets/architecture.png" /></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>          ┌──────────────────── anvil-serving router ───────────────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>harness → │ front door → resolve intent → route → [verify] → return     │ → harness
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>(CC/Codex)│  (Anthropic   (preset in        (filter by    │  on fail ↘          │
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>          │   +OpenAI      model field, else  constraints, │  fall back to       │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>          │   dialects)    infer work-class)  rank by       │  next tier / cloud  │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>          │                                   quality profile)                   │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>          └───────────────────────────────┬──────────────┴────────────────────┘
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                                           ▼
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                fast-local :30001   heavy-local :30000   cloud (Anthropic/OpenAI)
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                  (multiplexer-managed)                    (user&#39;s existing key/sub)
+</code></pre></div>
+<p><strong>Control plane (slow, offline):</strong> <code>profile</code> → shadow-eval → <strong>routing table</strong> (the quality
+profile). Refreshed on demand and continuously calibrated from sampled production traffic.</p>
+<p><strong>Data plane (fast, per-request):</strong> resolve intent → route → optional inline verify → fallback.
+Must add negligible latency and must stream.</p>
+<h3 id="routing-topology">Routing topology<a class="headerlink" href="#routing-topology" title="Permanent link">&para;</a></h3>
+<p>The diagram below shows the full component topology: what modules exist, how they chain, and — most
+importantly — where the <strong>default path</strong> ends (local tiers) vs. the <strong>opt-in</strong> and <strong>escape</strong> branches.</p>
+<pre class="mermaid"><code>flowchart TD
+    H["Harness / Gateway&lt;br/&gt;(Claude Code · Codex · Aider · Cline · OpenClaw)"]
+
+    subgraph ROUTER["anvil-serving router"]
+        FD["front_door&lt;br/&gt;POST /v1/messages&lt;br/&gt;POST /v1/chat/completions&lt;br/&gt;POST /v1/route"]
+        INT["intent.resolve&lt;br/&gt;Tier-1: preset in model field&lt;br/&gt;Tier-0: classify payload"]
+        POL{"policy.route&lt;br/&gt;quality profile gate"}
+        VF["verify + fallback&lt;br/&gt;commit_window · retry cap"]
+        FD --&gt; INT --&gt; POL
+        POL --&gt;|"allow / allow-with-verify"| VF
+    end
+
+    subgraph LOCALBOX["Default path — free GPU, zero metered cost"]
+        FL["fast-local :30001&lt;br/&gt;(multiplexer-managed)"]
+        HL["heavy-local :30000&lt;br/&gt;(multiplexer-managed)"]
+    end
+
+    CLOUD["cloud tier — opt-in only&lt;br/&gt;Anthropic / OpenAI API · metered per-token&lt;br/&gt;(metered_cloud config + API key required)"]
+    SOS["503 exhaustion&lt;br/&gt;gateway transport failover&lt;br/&gt;native subscription provider&lt;br/&gt;flat-rate, zero metered by anvil"]
+    RET([200 to harness])
+
+    H --&gt; FD
+    POL --&gt;|"deny, no local candidate"| SOS
+    VF --&gt; LOCALBOX
+    LOCALBOX --&gt; VF
+    VF --&gt;|"verify passes"| RET
+    VF --&gt;|"all exhausted, keyless default"| SOS
+    POL -.-&gt;|"opt-in keyed, metered_cloud only"| CLOUD
+    CLOUD --&gt; RET
+
+    classDef gateNode fill:#0b3b40,stroke:#23b6c4,color:#7fe9f0;
+    classDef cloudNode fill:#16365e,stroke:#58a6ff,color:#cfe6ff;
+    classDef localNode fill:#0b2b0b,stroke:#23c430,color:#7ff09a;
+    classDef escNode fill:#3b1800,stroke:#c47823,color:#f0c887;
+    class POL,VF gateNode;
+    class CLOUD cloudNode;
+    class FL,HL localNode;
+    class SOS escNode;</code></pre>
+<p>Key reads:
+- <strong>Solid green (local tiers):</strong> the default path — a <code>deny</code>-free, quality-gated request never leaves the GPU box.
+- <strong>Dashed blue arrow → cloud:</strong> only drawn when <code>[router].metered_cloud</code> is set and an API key is present; absent from <code>configs/example.toml</code>.
+- <strong>Amber (503 / escape):</strong> the keyless-default path — anvil exhausts local, returns 503 with no local tokens committed; the upstream gateway (e.g. OpenClaw) treats this as a transport failure and re-runs on its native flat-rate subscription.</p>
+<h3 id="post-v1route-decision-flow"><code>POST /v1/route</code> decision flow<a class="headerlink" href="#post-v1route-decision-flow" title="Permanent link">&para;</a></h3>
+<p><code>POST /v1/route</code> exposes the routing brain as a <strong>decision-only endpoint</strong> — the same <code>intent.resolve</code>
++ <code>policy.route</code> pipeline as the serve path, but it returns a JSON decision and <strong>never calls
+<code>backend.generate</code></strong>. The OpenClaw plugin uses it in authoritative mode; any other client can query it
+to preview tier selection without incurring inference cost.</p>
+<pre class="mermaid"><code>flowchart TD
+    REQ["POST /v1/route&lt;br/&gt;completions-shaped body&lt;br/&gt;+ optional signals.work_class"] --&gt; PARSE["parse body&lt;br/&gt;extract signals override"]
+    PARSE --&gt;|"invalid body"| E400["400 — malformed request"]
+    PARSE --&gt; INT["intent.resolve&lt;br/&gt;(same brain as the serve path)"]
+    INT --&gt; ROUTE{"policy.route&lt;br/&gt;quality profile + metered_cloud gate"}
+    ROUTE --&gt;|"tier found"| DEC["200 routing decision&lt;br/&gt;tier · model · provider · work_class&lt;br/&gt;reason · confidence · session_id&lt;br/&gt;backend.generate never called"]
+    ROUTE --&gt;|"all candidates exhausted"| E503["503 — no suitable tier"]
+    classDef gateNode fill:#0b3b40,stroke:#23b6c4,color:#7fe9f0;
+    classDef okNode fill:#0b2b0b,stroke:#23c430,color:#7ff09a;
+    classDef errNode fill:#3b0b0b,stroke:#c42323,color:#f08080;
+    class INT,ROUTE gateNode;
+    class DEC okNode;
+    class E400,E503 errNode;</code></pre>
+<p>Status codes: <strong>200</strong> (decision made, even when <code>tier: cloud</code>), <strong>400</strong> (malformed / missing <code>model</code>
+field), <strong>503</strong> (no tier survives the quality + metered-cloud gate).</p>
+<h2 id="5-the-quality-profile-the-moat">5. The quality profile (the moat)<a class="headerlink" href="#5-the-quality-profile-the-moat" title="Permanent link">&para;</a></h2>
+<p><img alt="The quality gate — work proven on a tier stays local ($0 metered); unproven work is deferred to the harness's own opt-in cloud subscription; measured per (model, work-class)" src="../assets/explainer-quality-gate.png" /></p>
+<p>A table keyed <code>(model, work-class)</code> → <code>{quality_score, sample_n, last_measured, decision}</code> where
+<code>decision ∈ {allow, allow-with-verify, deny}</code>. Populated by:</p>
+<ol>
+<li><strong>Bootstrap</strong> from the shadow-eval harness already built (eval data in <code>fakoli/anvil-serving-notes</code>):
+   replay representative requests per work-class to each local tier, grade against cloud
+   (deterministic checks + blind/LLM judge), emit the table. Generalize that harness from
+   "planning" to arbitrary work-classes.</li>
+<li><strong>Calibrate</strong> continuously: async-sample a small % of production responses, grade with cloud
+   off the hot path, update scores. The table tracks model/quant/serve changes over time.</li>
+<li><strong>Right-size</strong> from the user's real usage via existing <code>profile</code> (which work-classes dominate
+   <em>their</em> traffic — focus measurement where it matters).</li>
+</ol>
+<p>This is what makes routing <em>evidence-based</em> instead of vibes.</p>
+<h2 id="6-routing-signal-the-graceful-degradation-tier-ladder">6. Routing signal: the graceful-degradation tier ladder<a class="headerlink" href="#6-routing-signal-the-graceful-degradation-tier-ladder" title="Permanent link">&para;</a></h2>
+<p>Intent resolution degrades gracefully to the <strong>highest tier the originating harness can reach</strong>.
+The classifier is <strong>not optional</strong> — it is the universal floor, because most requests arrive on a
+single session model string with no declared intent (verified: harnesses pin the model across a
+small fixed set of slots per session and do not vary it per work-class within the main loop).</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Mechanism</th>
+<th>What it unlocks</th>
+<th>Available on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0 — Infer</strong></td>
+<td>classify work-class from raw payload (token count, <code>thinking</code> flag, tool types, image content, system-prompt fingerprint)</td>
+<td>per-request intent <strong>with no caller cooperation</strong> — the default operating mode</td>
+<td>every harness that reaches the endpoint</td>
+</tr>
+<tr>
+<td><strong>1 — Named presets in <code>model</code> field</strong></td>
+<td>caller/config sets a preset token; router maps preset → tier</td>
+<td>caller-declared <strong>coarse</strong> (session-slot) intent; removes guesswork for those slots</td>
+<td>Claude Code, Codex, Aider, Cline, Continue — <strong>not</strong> Cursor/Amp/Devin</td>
+</tr>
+<tr>
+<td><strong>2 — extra_body / header dimensions</strong></td>
+<td>optional structured hints (budget, latency, verifier policy)</td>
+<td>multi-axis intent beyond the flat string — config-level, not per-request</td>
+<td>Codex, Continue; Aider (config). Not Claude Code/Cursor</td>
+</tr>
+<tr>
+<td><strong>3 — Native intent field</strong></td>
+<td>a first-class per-request intent field</td>
+<td>true per-request multi-axis intent</td>
+<td><strong>none today</strong> — needs a standard/harness change</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Taxonomy v0</strong> (start coarse; the eval shows class matters more than precision):
+<code>chat/Q&amp;A</code>, <code>bounded-edit</code>, <code>multi-file-refactor</code>, <code>planning/decomposition</code>, <code>review/critique</code>,
+<code>long-context-retrieval</code>. Bias ambiguous classifications toward the safer/cloud tier and log for
+calibration. (claude-code-router is the production existence proof for Tier 0+1.)</p>
+<p><strong>Client-side classification (the hook-plugin pattern).</strong> A harness with an in-process
+model-resolution hook can declare per-request intent <em>itself</em>, escaping the session-coarse limit
+without any wire-schema change. <strong>OpenClaw</strong> is the live example: its <code>before_model_resolve</code> hook
+runs per turn, so a small client plugin classifies the turn and emits an anvil preset id as the
+<code>modelOverride</code>. The router then receives a <em>declared</em> per-request intent (verbatim in the model
+field) and needs no new field — it just needs a stable preset vocabulary. This is the preferred
+shape where available: push Tier-0 classification to the client (cheaper, better-informed; it sees
+full turn context) and keep the router a clean executor. Closed harnesses (Claude Code, Codex) lack
+the hook, so the router's own Tier-0 classifier remains their floor.</p>
+<h2 id="7-verify-and-fallback-two-modes-contract-c4">7. Verify-and-fallback: two modes (contract C4)<a class="headerlink" href="#7-verify-and-fallback-two-modes-contract-c4" title="Permanent link">&para;</a></h2>
+<p>Contract C4 has two operating modes depending on whether a metered cloud tier is configured.
+Full rationale: <a href="../adr/0001-cloud-cost-and-subscription-auth/">ADR-0001</a> ·
+<a href="../PLAN-advise-and-defer/"><code>docs/PLAN-advise-and-defer.md</code></a>.</p>
+<h3 id="mode-1-keyless-default">Mode 1 — Keyless (default)<a class="headerlink" href="#mode-1-keyless-default" title="Permanent link">&para;</a></h3>
+<p><strong>The default config (<code>configs/example.toml</code>) holds no cloud API key.</strong> All candidate tiers are
+local; a cloud tier is never in the routing pool.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    participant H as Harness / Gateway
+    participant R as anvil-serving router
+    participant L as local tier
+    H-&gt;&gt;R: request (intent preset in model field)
+    R-&gt;&gt;R: resolve intent, route via quality profile
+    R-&gt;&gt;L: attempt local (buffered in commit window)
+    L--&gt;&gt;R: candidate output
+    R-&gt;&gt;R: cheap structural verify
+    alt verify passes
+        R--&gt;&gt;H: local response (200)
+    else verify fails or all candidates exhausted
+        R--&gt;&gt;H: exhaustion_status (503 by default) — no partial local tokens
+        Note over H: gateway transport failover re-routes&lt;br/&gt;on native subscription provider
+    end</code></pre>
+<p>When an <code>allow-with-verify</code> response fails the structural verify gate, <code>route_with_fallback</code>
+exhausts all candidates (returning <code>FallbackResult(exhausted=True)</code>); the serving layer
+(<code>RoutingBackend.generate</code>) then raises <code>NoAvailableTierError</code>. The front door maps this to
+<strong><code>exhaustion_status</code></strong> (default 503, configurable via <code>[router].exhaustion_status</code> to match the
+gateway's transport-failover trigger). The <strong>commit window</strong> guarantees no partial local tokens
+reach the harness before the error response — the harness sees an unambiguous availability signal,
+not a corrupt partial response.</p>
+<p>For a gateway like OpenClaw that fronts the harness, the 503 triggers native transport failover
+("overloaded" category), which re-runs the request on the gateway's native subscription provider —
+the flat-rate subscription the operator already holds. anvil holds <strong>no cloud key</strong>; the metered
+surface is absent from the default path. <strong>$0 metered API billing.</strong></p>
+<blockquote>
+<p><strong>Live-validation caveat (T005 — pending):</strong> that anvil's exhaustion-503 maps to OpenClaw
+2026.6.6's "overloaded" failover category is confirmed by reading <code>run.ts</code> but has not yet
+been validated against a live OpenClaw install. If it does not trigger failover, set
+<code>[router].exhaustion_status</code> to the status code that does. See Phase 1 in
+<a href="../PLAN-advise-and-defer/"><code>docs/PLAN-advise-and-defer.md</code></a>.</p>
+</blockquote>
+<h3 id="mode-2-opt-in-keyed-metered-cloud-tier">Mode 2 — Opt-in keyed (metered cloud tier)<a class="headerlink" href="#mode-2-opt-in-keyed-metered-cloud-tier" title="Permanent link">&para;</a></h3>
+<p>An operator who explicitly configures a cloud tier and maps specific work-classes to it via
+<code>[router].metered_cloud</code> gets <strong>router-internal escalation</strong>: a verify failure escalates to the
+cloud tier and returns a <strong>200</strong> with the cloud response, without the harness seeing an error.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    participant H as Harness
+    participant R as anvil-serving router
+    participant L as local tier
+    participant C as cloud tier (metered)
+    H-&gt;&gt;R: request (intent preset in model field)
+    R-&gt;&gt;R: resolve intent; metered_cloud gate → cloud is a candidate
+    R-&gt;&gt;L: attempt local (buffered in commit window)
+    L--&gt;&gt;R: candidate output
+    R-&gt;&gt;R: cheap structural verify
+    alt verify passes
+        R--&gt;&gt;H: local response (200)
+    else verify fails or backend error
+        R-&gt;&gt;C: fall back up the tier chain
+        C--&gt;&gt;R: cloud response
+        R--&gt;&gt;H: cloud response (200) — no partial local tokens leaked
+    end</code></pre>
+<p>This mode requires:
+1. A <code>[[router.tiers]]</code> entry with <code>privacy = "cloud"</code> and <code>auth_env</code> naming the API key env var.
+2. <code>[router].metered_cloud = ["work-class", ...]</code> — the <strong>explicit per-intent opt-in list</strong>.
+   Empty/absent = cloud is never a routing candidate, even if a cloud tier is declared.</p>
+<p>See <code>configs/example-with-cloud.toml</code> for the full opt-in config. Cost fields
+(<code>cost_input_per_mtok</code>, <code>cost_output_per_mtok</code>) on the tier drive the decision log + metrics.</p>
+<blockquote>
+<p><strong>Billing note:</strong> routing through a metered cloud tier incurs per-token API billing on every
+cloud-served request. This is <strong>not</strong> the flat-rate subscription — it is the raw
+<code>api.anthropic.com</code> / <code>api.openai.com</code> metered surface. Prefer Mode 1 (keyless + gateway
+transport failover) wherever the gateway supports it; use Mode 2 only for single-endpoint
+harnesses that cannot route cloud themselves.</p>
+</blockquote>
+<h3 id="verification-tiers-both-modes">Verification tiers (both modes)<a class="headerlink" href="#verification-tiers-both-modes" title="Permanent link">&para;</a></h3>
+<p>Inline LLM-grading every response would defeat the purpose (cost + latency). So <strong>most "quality
+control" is routing done ahead of time</strong> (§3–6); verification is a cheap safety net, tiered:</p>
+<ol>
+<li><strong>Prevent (primary):</strong> never send a <code>deny</code> work-class to local. Free; catches the biggest risks
+   (e.g. dependency planning → cloud/gateway, always).</li>
+<li><strong>Cheap structural verify (inline):</strong> near-zero-cost checks that caught real failures in our
+   eval — empty/truncated content (thinking-budget starvation), tool-call JSON that doesn't
+   validate, code that doesn't parse, a diff that doesn't apply, malformed format. Fail → fallback.</li>
+<li><strong>Confidence signals (inline, where available):</strong> logprob/entropy thresholds, refusal/uncertainty
+   markers.</li>
+<li><strong>Async LLM-judge (off hot path):</strong> sampled cloud grading that feeds the profile (§5.2), not a
+   blocking gate.</li>
+</ol>
+<p><strong>Fallback policy:</strong> on verify-fail / error / timeout / low-confidence → retry next candidate in
+the ordered tier list. Guardrails: cap retries, prevent thrash, make fallback idempotent for the
+harness (especially mid-stream — see §13), and <strong>log every fallback</strong> (a fallback is a profile
+signal: that class may need to be downgraded to <code>deny</code>).</p>
+<h2 id="8-harness-integration-the-per-harness-reality">8. Harness integration + the per-harness reality<a class="headerlink" href="#8-harness-integration-the-per-harness-reality" title="Permanent link">&para;</a></h2>
+<p>One front door speaking two dialects so it's zero-config for the major harnesses:
+- <strong>Anthropic Messages API</strong> → Claude Code via <code>ANTHROPIC_BASE_URL</code> / <code>ANTHROPIC_AUTH_TOKEN</code>;
+  honor <code>CLAUDE_CODE_SUBAGENT_MODEL</code> / <code>ANTHROPIC_DEFAULT_HAIKU_MODEL</code> slot semantics.
+- <strong>OpenAI Chat Completions</strong> → Codex / Cline / Aider / Continue / generic clients.
+- Translate dialects + absorb backend quirks (thinking-default models need generous <code>max_tokens</code>
+  and can't take <code>chat_template_kwargs</code> over some paths; the sm_120 engine/quant matrix). <strong>Absorbing
+  this friction is itself a feature.</strong></p>
+<p>Verified support grid (full detail + citations in the finding):</p>
+<table>
+<thead>
+<tr>
+<th>Harness</th>
+<th>base_url?</th>
+<th>arbitrary model string?</th>
+<th>per-request hook / extra fields</th>
+<th>intent slots/session</th>
+<th>tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OpenClaw</strong></td>
+<td>✅ per-provider <code>baseUrl</code></td>
+<td>✅ self-allowlisted, verbatim</td>
+<td>✅ <strong><code>before_model_resolve</code> hook → <code>modelOverride</code> per turn</strong> (no header/body channel)</td>
+<td>per-agent + per-turn override</td>
+<td><strong>1→2 (routing)</strong></td>
+</tr>
+<tr>
+<td><strong>Hermes Agent</strong></td>
+<td>✅ <code>provider: custom</code>+<code>base_url</code></td>
+<td>✅ verbatim</td>
+<td>❌ over wire (hooks inject user-msg text only)</td>
+<td>main + ~11 aux + fallback/MoA/subagents</td>
+<td><strong>1 (rich)</strong></td>
+</tr>
+<tr>
+<td>Claude Code</td>
+<td>✅ env</td>
+<td>✅ (<code>ANTHROPIC_CUSTOM_MODEL_OPTION</code> skips validation; sent as-is)</td>
+<td>❌ (only fixed opaque <code>metadata.user_id</code>)</td>
+<td>~3–4 (main/haiku/subagent/advisor)</td>
+<td><strong>1</strong></td>
+</tr>
+<tr>
+<td>OpenAI Codex CLI</td>
+<td>✅ config.toml</td>
+<td>✅ free-form</td>
+<td>⚠️ config-level <code>http_headers</code>/<code>query_params</code></td>
+<td>1 + subagent</td>
+<td><strong>1 (+2)</strong></td>
+</tr>
+<tr>
+<td>Aider</td>
+<td>✅ env</td>
+<td>✅ <code>openai/&lt;token&gt;</code></td>
+<td>⚠️ config-level</td>
+<td>~3 (main/editor/weak)</td>
+<td><strong>1</strong></td>
+</tr>
+<tr>
+<td>Cline</td>
+<td>✅ field</td>
+<td>✅ free-text</td>
+<td>❓ undocumented</td>
+<td>~1–2</td>
+<td><strong>1</strong></td>
+</tr>
+<tr>
+<td>Continue.dev</td>
+<td>✅ <code>apiBase</code></td>
+<td>✅ free string</td>
+<td>✅ <code>requestOptions.headers</code> (config)</td>
+<td>role-based</td>
+<td><strong>1 (+2)</strong></td>
+</tr>
+<tr>
+<td>Cursor</td>
+<td>⚠️ backend-mediated + Verify gate</td>
+<td>⚠️ fragile</td>
+<td>❌</td>
+<td>server-side auto</td>
+<td><strong>0 / unusable</strong></td>
+</tr>
+<tr>
+<td>Amp / Devin / closed SaaS</td>
+<td>❌ backend-locked</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td><strong>none</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Scope qualification (important):</strong> <strong>Cursor, Amp, and Devin are out of scope</strong> for self-hosted
+routing — Cursor mediates through its own backend (Verify-gated), and Amp/Devin can't be repointed
+at a custom endpoint at all. The README's "any OpenAI/Anthropic client" claim must be qualified to
+"any client that allows a custom base URL <strong>and</strong> a free-form model string."</p>
+<p><strong>OpenClaw is the one in-scope client that crosses into per-request routing</strong> (open-source TS Plugin
+SDK; its <code>before_model_resolve</code> hook runs <em>per turn</em> and can set <code>modelOverride</code>/<code>providerOverride</code>).
+<strong>Hermes Agent</strong> (open-source MIT) is a clean, <em>rich</em> Tier-1 consumer — notably more model slots than
+Claude Code — but its hooks can't alter the outgoing request, so it stays Tier-1 short of a fork
+(OpenClaw/Hermes customization findings in <code>fakoli/anvil-serving-notes</code>).</p>
+<p><strong>Beachhead decision — OpenClaw-first (focus, not couple).</strong> anvil-serving concentrates integration
+<em>depth</em> on OpenClaw as the first-class client, because it's the one harness that unlocks per-request
+intent (the <code>before_model_resolve</code> hook → the client-side classification pattern in §6), it's
+open-source (we can ship a reference plugin and patch upstream), and one OpenClaw integration reaches
+the many chat surfaces it already bridges. <strong>This is focus, not coupling:</strong> the core router stays
+protocol-standard (Anthropic + OpenAI dialects), so every other harness still gets Tier 0/1 for free,
+and the OpenClaw piece is a <strong>thin, swappable adapter/plugin</strong> — if OpenClaw stalls, the core survives
+and another hook-capable harness takes the beachhead. (Same lesson as not coupling to Anvil:
+integrate at a standard seam, focus effort at one client.) This is anvil-serving's choice and does
+<strong>not</strong> affect Anvil-the-ledger's harness-agnostic mandate — different products, different mandates.
+Risk to manage: OpenClaw is young and the extension surface is churning (medium risk) — verify the
+plugin/provider API hands-on before over-investing. Buildable spec + the validate-first gaps:
+<a href="../OPENCLAW-INTEGRATION-SPEC/"><code>OPENCLAW-INTEGRATION-SPEC.md</code></a>.</p>
+<h2 id="9-preset-vocabulary-discovery-and-transparent-responses">9. Preset vocabulary, discovery, and transparent responses<a class="headerlink" href="#9-preset-vocabulary-discovery-and-transparent-responses" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Vocabulary = a closed enum sized to harness slots.</strong> Don't over-design. A handful of presets
+  mapping onto taxonomy v0 (§6) and the slots harnesses actually emit (main / background / subagent).
+  Flat — no multi-axis encoding in the string.</li>
+<li><strong>Discovery via <code>/v1/models</code>.</strong> Serve a <code>/v1/models</code> listing the preset tokens with human-readable
+  names/descriptions, so presets are first-class in the harness UI. Claude Code populates its
+  <code>/model</code> picker from a gateway's <code>/v1/models</code> when <code>CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1</code>;
+  <code>ANTHROPIC_CUSTOM_MODEL_OPTION</code> is the single-entry alternative.</li>
+<li><strong>Transparent response.</strong> The abstraction is on the <em>request</em>; the <em>response</em> stays honest — set
+  the response <code>model</code> to the <strong>real</strong> model/tier that served (OpenRouter does this), and log the
+  <code>(declared-or-inferred intent → tier → verify result → fallback?)</code> decision. Hiding what ran kills
+  debuggability and the local-first trust story.</li>
+<li><strong>Session stickiness + mapping versioning.</strong> Don't swap models mid-conversation unless
+  quality/health forces it (turn-level switch boundaries). The same intent may route differently as
+  the profile recalibrates — surface a mapping version and allow pinning for reproducibility.</li>
+</ul>
+<h2 id="10-extensibility-plugin-seams">10. Extensibility / plugin seams<a class="headerlink" href="#10-extensibility-plugin-seams" title="Permanent link">&para;</a></h2>
+<p>The router is a pipeline, so "plugin architecture" mostly means <strong>naming its stages as typed seams</strong>
+(<code>typing.Protocol</code> + a small in-process registry), not a framework. Split:
+- <strong>Internal seams — now:</strong> Protocols + registry so maintainers drop in implementations without
+  touching the core. Nearly free; good structure for M0–M2. The multiplexer already proves the
+  pattern (per-engine SGLang+vLLM dispatch behind one interface).
+- <strong>Public third-party plugin SDK — defer to M3+:</strong> <code>importlib.metadata</code> entry points (stdlib — no
+  plugin lib, preserves "stdlib-only by design"), a versioned contract, a capability manifest, trust.
+  Publishing a plugin API too early freezes interfaces still in flux.</p>
+<table>
+<thead>
+<tr>
+<th>Seam (<code>Protocol</code>)</th>
+<th>swaps</th>
+<th>plane</th>
+<th>early?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>Intent</code>/preset</strong></td>
+<td>a use-case (its constraints + quality req + candidate pool + verifiers)</td>
+<td>control</td>
+<td><strong>headline extension point</strong></td>
+</tr>
+<tr>
+<td><code>Dialect</code> (front door)</td>
+<td>Anthropic / OpenAI / future protocols</td>
+<td>data</td>
+<td>yes (M0 needs 2)</td>
+</tr>
+<tr>
+<td><code>Classifier</code></td>
+<td>request → work-class</td>
+<td>data</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>RoutingPolicy</code></td>
+<td>(intent, profile, health) → ordered tier list</td>
+<td>data</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>Backend</code></td>
+<td>tier → inference engine</td>
+<td>data</td>
+<td><strong>exists</strong> (multiplexer)</td>
+</tr>
+<tr>
+<td><code>Verifier</code></td>
+<td>response → pass/fail/score (cheap, <strong>chainable</strong>)</td>
+<td>data</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>Grader</code></td>
+<td>async quality grading for calibration</td>
+<td>control</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>ProfileStore</code></td>
+<td>where the quality table lives</td>
+<td>control</td>
+<td>maybe</td>
+</tr>
+<tr>
+<td><code>Observer</code>/hook</td>
+<td>logging, metrics, fallback events</td>
+<td>cross</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Contract rules from day one:</strong> (1) <strong>failure isolation = fallback</strong> — a plugin that throws/times
+out is treated as another fallback trigger (composes with the wedge; wrap + circuit-break); (2)
+<strong>latency budget</strong> — data-plane plugins declare &amp; respect a budget, heavy work goes async; (3)
+<strong>versioned contracts</strong> — registry refuses incompatible plugins (why the public SDK waits); (4)
+<strong>trust</strong> — plugins run arbitrary code in the request path (fine for local-first/own; signing/allowlist
+for third-party). Don't build dynamic loading or a manifest spec until a seam has a real second impl.</p>
+<h2 id="11-reuse-map-most-of-this-exists">11. Reuse map — most of this exists<a class="headerlink" href="#11-reuse-map-most-of-this-exists" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Module</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Right-size from real usage</td>
+<td><code>profile</code></td>
+<td>exists</td>
+</tr>
+<tr>
+<td>Per-model serving facts / sane defaults</td>
+<td><code>models sync</code>, <code>analyze</code></td>
+<td>exists / designed</td>
+</tr>
+<tr>
+<td>Bring up + on-demand model swap on one GPU</td>
+<td><code>multiplexer</code> (multi-engine, single-resident)</td>
+<td>exists</td>
+</tr>
+<tr>
+<td>Correctness gate</td>
+<td><code>preflight</code></td>
+<td>exists</td>
+</tr>
+<tr>
+<td>Throughput / capacity measurement</td>
+<td><code>benchmark</code></td>
+<td>exists</td>
+</tr>
+<tr>
+<td>Per-work-class quality measurement</td>
+<td>shadow-eval harness</td>
+<td><strong>built</strong> (generalize)</td>
+</tr>
+<tr>
+<td><strong>Front door + intent-resolve + route + verify + fallback</strong></td>
+<td>new <code>router</code> module</td>
+<td><strong>the build</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The genuinely-new surface is the router data plane + the quality-profile control plane. The serving
+substrate is already here.</p>
+<h2 id="12-mvp-milestones">12. MVP milestones<a class="headerlink" href="#12-mvp-milestones" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>M0 — front door:</strong> Anthropic + OpenAI endpoints, pass-through to one backend, streaming. Makes
+  anvil-serving drop-in for Claude Code today. Define the <code>Dialect</code> and <code>Backend</code> Protocol seams.</li>
+<li><strong>M1 — Tier 0 + Tier 1 together:</strong> the classifier (Tier 0, the floor) <strong>and</strong> preset parsing from
+  the <code>model</code> field (Tier 1) — <em>not Tier 1 alone</em>, because most traffic arrives without a declared
+  intent. Tier rules over the multiplexer (bounded→fast, long-ctx→heavy, planning/review→cloud);
+  hand-authored table. Serve <code>/v1/models</code> preset discovery.</li>
+<li><strong>M2 — the wedge:</strong> cheap structural verify + verify-gated fallback (streaming commit window;
+  cloud escalation is the opt-in keyed mode — the keyless default returns an exhaustion-503 for
+  gateway handoff) <strong>and transparent responses</strong> (echo the served model/tier). First release
+  delivering the unique promise.</li>
+<li><strong>M3 — measured table + plugin SDK:</strong> generalize the shadow-eval to populate the quality profile
+  per work-class; replace the hand-authored table; add async calibration; expose public plugin entry
+  points. The moat turning on.</li>
+</ul>
+<p>Ship M0–M2 to be <em>useful and unique</em>; M3 makes it <em>defensible</em>.</p>
+<h2 id="13-risks-open-questions">13. Risks / open questions<a class="headerlink" href="#13-risks-open-questions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Per-request granularity is capped by the harness</strong> (verified constraint): a harness configured
+  with one model can't declare different intents per call within the main loop — the <strong>classifier is
+  load-bearing, not optional</strong>. Design around it; don't assume callers can tag every request.</li>
+<li><strong>Classification accuracy</strong> — wrong class → wrong route. Mitigation: coarse taxonomy, bias
+  ambiguous→safer tier, log+calibrate. (Eval shows class matters more than precision.)</li>
+<li><strong>Streaming + mid-stream fallback</strong> — the hardest engineering problem: both APIs stream via SSE
+  (OpenAI data-only chunks; Anthropic named events), and verify-before-deliver fights low-latency
+  streaming. Likely need a short non-streamed "commit window" for fail-prone classes, or speculative
+  buffering. <strong>Spike this early.</strong></li>
+<li><strong>Verify cost/latency</strong> — must stay structural/cheap inline; anything heavier goes async.</li>
+<li><strong>Fallback thrash / cost blowups</strong> — caps, circuit-breakers, per-session budget awareness.</li>
+<li><strong>Stateful agents</strong> — switching tiers mid-conversation must preserve context; turn-level boundaries.</li>
+<li><strong>Profile staleness</strong> — model/quant/serve swaps invalidate rows; key the table on a serve
+  fingerprint and re-measure on change.</li>
+<li><strong>Privacy</strong> — async cloud calibration sends sampled local traffic to a cloud grader; opt-in and
+  redactable (a selling point for the local-first crowd, so get it right).</li>
+</ul>
+<h2 id="14-success-metrics">14. Success metrics<a class="headerlink" href="#14-success-metrics" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>% of agent traffic safely served local</strong> (the capacity/cost win) at a <strong>bounded rework rate</strong>
+  (the quality guarantee) — the two numbers that define the product.</li>
+<li><strong>Silent-failure rate ≈ 0</strong> (verify+fallback catches local misses before the harness does).</li>
+<li><strong>Cloud tokens saved</strong> vs all-cloud, holding accept-rate constant.</li>
+<li><strong>Drop-in time</strong> (minutes from <code>pip install</code> to a harness running through it).</li>
+</ul>
+<h2 id="appendix-config-recipes-how-to-carry-intent-today">Appendix — config recipes (how to carry intent today)<a class="headerlink" href="#appendix-config-recipes-how-to-carry-intent-today" title="Permanent link">&para;</a></h2>
+<p><strong>Claude Code</strong> (intent preset per slot):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_BASE_URL</span><span class="o">=</span><span class="s2">&quot;https://anvil.local&quot;</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_AUTH_TOKEN</span><span class="o">=</span><span class="s2">&quot;…&quot;</span><span class="w">                  </span><span class="c1"># → Authorization header</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_MODEL</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="w">                </span><span class="c1"># main-loop intent, sent verbatim</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_DEFAULT_HAIKU_MODEL</span><span class="o">=</span><span class="s2">&quot;quick-edit&quot;</span><span class="w"> </span><span class="c1"># background/utility intent</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CLAUDE_CODE_SUBAGENT_MODEL</span><span class="o">=</span><span class="s2">&quot;review&quot;</span><span class="w">       </span><span class="c1"># subagent-class intent</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_CUSTOM_MODEL_OPTION</span><span class="o">=</span><span class="s2">&quot;long-context&quot;</span><span class="w">   </span><span class="c1"># optional: surface a preset in /model</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY</span><span class="o">=</span><span class="m">1</span><span class="w">   </span><span class="c1"># optional: enumerate router presets</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># enterprise fleets: add the preset tokens to availableModels if that allowlist is set</span>
+</code></pre></div></p>
+<p><strong>Aider</strong> (preset rides in the model string; <code>openai/</code> prefix forces compat routing):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_BASE</span><span class="o">=</span><span class="s2">&quot;https://anvil.local/v1&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;…&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>aider<span class="w"> </span>--model<span class="w"> </span>openai/planning<span class="w"> </span>--editor-model<span class="w"> </span>openai/quick-edit<span class="w"> </span>--weak-model<span class="w"> </span>openai/chat
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># the &quot;model … not familiar with&quot; warning is cosmetic; routing works</span>
+</code></pre></div></p>
+<p><strong>Cline / Continue.dev</strong> — select "OpenAI Compatible"; Base URL <code>https://anvil.local/v1</code>, Model (ID)
+= a preset token. Continue can attach Tier-2 hints via <code>requestOptions.headers</code>.</p>
+<p><strong>OpenAI Codex CLI</strong> (<code>~/.codex/config.toml</code>) — Tier 1 + optional Tier 2 side-channel:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;planning&quot;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">model_provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;anvil&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">[model_providers.anvil]</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://anvil.local/v1&quot;</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">wire_api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;chat&quot;</span><span class="w">                                  </span><span class="c1"># third-party gateways commonly use &quot;chat&quot; (version-dependent)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">http_headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s2">&quot;x-anvil-intent&quot;</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;planning&quot;</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1"># optional Tier-2 dimension</span>
+</code></pre></div></p>
+<p><strong>Cursor / Amp / Devin</strong> — not supported for self-hosted routing (backend-mediated / backend-locked).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
