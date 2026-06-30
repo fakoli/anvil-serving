@@ -9,7 +9,7 @@ The router is **shipped (v0.3.0)** — 18 tasks, milestones M0-M3, 500+ tests gr
 substrate (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`) also ships
 and right-sizes the local tiers the router routes across.
 
-Source of truth for product framing: **`README.md`** (accurate; rewritten for launch).
+Source of truth for product framing: **`README.md`**.
 
 ---
 

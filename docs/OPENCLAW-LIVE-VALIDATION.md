@@ -1,14 +1,14 @@
 # OpenClaw live-validation runbook
 
-> **✅ DONE (2026-06-30).** All three gaps were run live against OpenClaw **2026.6.6** on Fakoli-Mini.
-> Results + the two bugs the live run caught (wire form needed `providerOverride` + bare model; the
-> manifest needed `configSchema`) are in
+> **✅ DONE (2026-06-30).** All three gaps were run live against OpenClaw **2026.6.6** on the
+> gateway. Results + the two bugs the live run caught (wire form needed `providerOverride` + bare
+> model; the manifest needed `configSchema`) are in
 > [`findings/2026-06-30-openclaw-live-validation.md`](findings/2026-06-30-openclaw-live-validation.md).
 > The steps below remain as the reproducible procedure.
 >
 > **Original status:** the tooling, plugins, and fixtures (T013 + T014) are merged and pass against
-> **synthetic** fixtures. This runbook is the **live** step — run by an operator on the
-> **Fakoli-Mini** box where OpenClaw is installed. It closes the three validate-first gaps from
+> **synthetic** fixtures. This runbook is the **live** step — run by an operator on the gateway box
+> where OpenClaw is installed. It closes the three validate-first gaps from
 > [`OPENCLAW-INTEGRATION-SPEC.md`](OPENCLAW-INTEGRATION-SPEC.md) §0/§3.
 
 ## Why these are "validate-first"
@@ -17,9 +17,10 @@ hook contract, but three facts can only be confirmed against a running gateway. 
 plugin is correct-by-construction but not field-proven.
 
 ## Prerequisites
-- Fakoli-Mini with OpenClaw installed and reachable; the anvil-serving router running and reachable
-  from Fakoli-Mini (`anvil-serving serve --config <cfg>`), and the router's serves up (`docker ps` →
-  `:30000` heavy, `:30001` fast). Use `127.0.0.1`, never `localhost` (Windows IPv6 stall).
+- The gateway box with OpenClaw installed and reachable; the anvil-serving router running and
+  reachable from the gateway (`anvil-serving serve --config <cfg>`), and the router's serves up
+  (`docker ps` → `:30000` heavy, `:30001` fast). Use `127.0.0.1`, never `localhost` (Windows IPv6
+  stall).
 - The reference plugin installed per `plugins/openclaw-anvil-intent-router/README.md` (including the
   **required** `plugins.entries.openclaw-anvil-intent-router.hooks.allowConversationAccess=true` gate
   and the **required** `anvil` provider block with `models[]` for every preset id).
@@ -52,7 +53,7 @@ message**, above the attempt loop.
 ## Gap 3 — `pluginApi` compat floor
 `package.json` pins `compat.pluginApi: ">=2026.4.21"` — the spec's **UNCONFIRMED** estimate for when
 `before_model_resolve` landed.
-1. On Fakoli-Mini, check the installed OpenClaw version and its CHANGELOG/release tags for the
+1. On the gateway, check the installed OpenClaw version and its CHANGELOG/release tags for the
    `before_model_resolve` introduction.
 2. **Acceptance:** pin `compat.pluginApi` to the confirmed floor; if the installed version is older,
    the hook won't fire and the plugin must declare a higher floor (or document the minimum).

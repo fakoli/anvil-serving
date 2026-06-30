@@ -19,9 +19,9 @@ method: "5 source-level facet finders over the OpenClaw repo (docs/ + src/) + ad
 and the custom-provider config are **source-confirmed** and fit anvil's design exactly. Build the
 router-side preset support now; validate two live gaps **before** writing/shipping the plugin.
 
-**Environment (already in place).** OpenClaw is **already installed on Fakoli Mini** (the gateway box);
-fakoli-dark runs the serves (`:30000`/`:30001`). The validate-first gaps below are therefore confirmed
-against a **real, running install** — no fresh stand-up needed.
+**Environment for validation.** The validate-first gaps below should be confirmed against a live
+OpenClaw install. The router serves (`:30000` heavy, `:30001` fast) must be reachable from the
+gateway. Confirming the gaps on a real install eliminates a fresh stand-up for each question.
 
 **Correction to record (vs the prior finding).** The earlier research said `before_model_resolve`
 fires "per agent turn." The source-level dive refines this: it fires **once per run, above the attempt

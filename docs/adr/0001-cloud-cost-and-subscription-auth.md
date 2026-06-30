@@ -7,11 +7,11 @@
 
 ## Problem
 
-The operating goal is **do not pay per-token (metered) API billing** for Claude or Codex/OpenAI. We
-have flat **subscriptions** (Claude Max, ChatGPT/Codex). Today anvil's cloud tier is a
-`CloudBackend` that relays harness traffic to `api.anthropic.com` / `api.openai.com` using an
-operator **API key** — i.e. metered billing on every cloud-served request. We want that to be **$0
-metered**.
+The operating goal is **$0 per-token (metered) API billing** for cloud-served requests. Operators
+who hold flat **subscriptions** (Claude Max, ChatGPT/Codex) want to use those subscriptions — not
+a metered API key — for cloud traffic. Today anvil's cloud tier is a `CloudBackend` that relays
+harness traffic to `api.anthropic.com` / `api.openai.com` using an operator **API key** — i.e.
+metered billing on every cloud-served request.
 
 ## The hard reality: a subscription is not a relayable API
 
