@@ -12,7 +12,7 @@ import re
 import tomllib
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Mapping
+from typing import Mapping, Optional
 
 VALID_DIALECTS = {"openai", "anthropic"}
 VALID_PRIVACY = {"local", "cloud"}
@@ -51,6 +51,7 @@ class Tier:
     privacy: str
     tool_support: bool
     auth_env: str  # NAME of the env var holding the secret, never the secret
+    model: Optional[str] = None  # concrete provider model id (e.g. "claude-opus-4-20250514")
 
 
 @dataclass(frozen=True)
@@ -138,6 +139,14 @@ def _parse_tier(raw: object) -> Tier:
             f"literal, not an env-var name; store the env-var NAME, never the secret"
         )
 
+    # Optional: concrete provider model id to forward upstream instead of the
+    # routing token.  Absent or None -> fall back to request.model at dispatch time.
+    tier_model = raw.get("model")
+    if tier_model is not None and not isinstance(tier_model, str):
+        raise ConfigError(
+            f"tier {tid!r}: model must be a string or absent, got {tier_model!r}"
+        )
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -146,6 +155,7 @@ def _parse_tier(raw: object) -> Tier:
         privacy=privacy,
         tool_support=tool_support,
         auth_env=auth_env,
+        model=tier_model or None,
     )
 
 
