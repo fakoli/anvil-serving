@@ -40,7 +40,7 @@ from anvil_serving import cli
 from anvil_serving.router import serve as serve_mod
 from anvil_serving.router.backends import CloudBackend, StaticBackend
 from anvil_serving.router.config import Tier
-from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
+from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.serve import (
     RelayBackend,
     RoutingBackend,
@@ -278,21 +278,42 @@ def test_gate_allowed_bound_tier_still_serves_when_cloud_unbound():
     assert parse_openai_content(raw) == "Hello"
 
 
-def test_routing_backend_select_tier_raises_when_no_gated_tier_bound():
-    """Unit-level: select_tier RAISES NoAvailableTierError (carrying work_class +
-    candidates) rather than returning an out-of-gate fallback tier."""
+
+# --------------------------------------------------------------------------- #
+# Fix #2: _tier_verdict stale-allow downgrade applies to custom presets too
+# --------------------------------------------------------------------------- #
+def test_tier_verdict_stale_allow_custom_preset_downgrades():
+    """Unit-level: a stale 'allow' entry for (tier, None) — a custom preset key
+    — must be downgraded to 'allow-with-verify' by _tier_verdict, consistent
+    with profile_store.decision().  Before the fix, _tier_verdict short-circuited
+    to 'allow' for work_class=None, bypassing the stale check.
+    """
     from anvil_serving.router.config import load
-    from anvil_serving.router.profile_store import default_profile
+    from anvil_serving.router.profile_store import ProfileEntry, ProfileStore
 
     config = load(CONFIG)
-    routing = RoutingBackend(config, _local_only_backends(), default_profile())
-    req = InternalRequest(model="planning", messages=[Message("user", "plan")])
-    with pytest.raises(NoAvailableTierError) as exc:
-        routing.select_tier(req)
-    assert exc.value.work_class == "planning"
-    assert "cloud" in exc.value.candidates
-    # And it must NOT have silently picked a bound local tier.
-    assert "fast-local" not in (exc.value.candidates or ())
+    stale_profile = ProfileStore({
+        ("fast-local", None): ProfileEntry("allow", 0.8, 5, None, stale=True),
+    })
+    routing = RoutingBackend(config, {}, stale_profile)
+    # A stale allow for (tier, None) must become allow-with-verify.
+    verdict = routing._tier_verdict("fast-local", None)
+    assert verdict == "allow-with-verify", (
+        f"_tier_verdict returned {verdict!r} for stale allow on custom preset; "
+        f"expected 'allow-with-verify'"
+    )
+
+    # Non-stale allow stays allow.
+    fresh_profile = ProfileStore({
+        ("fast-local", None): ProfileEntry("allow", 0.8, 5, None, stale=False),
+    })
+    routing2 = RoutingBackend(config, {}, fresh_profile)
+    assert routing2._tier_verdict("fast-local", None) == "allow"
+
+    # An unmeasured (tier, None) pair also returns allow (default behaviour).
+    empty_profile = ProfileStore({})
+    routing3 = RoutingBackend(config, {}, empty_profile)
+    assert routing3._tier_verdict("fast-local", None) == "allow"
 
 
 # --------------------------------------------------------------------------- #

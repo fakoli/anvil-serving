@@ -30,17 +30,19 @@ protocol-standard front door (T001/T004). The wiring, end to end:
    :data:`~anvil_serving.router.intent.PRESETS` so ``GET /v1/models`` advertises
    the router's intent vocabulary.
 
-Routing scope — composed vs deferred (the T012 boundary):
+Routing scope — composed here (the T012 boundary is complete):
 
 * **Composed here:** per-request tier *selection*. ``resolve()`` then ``route()``
   yield an ordered, quality-gated candidate list; :class:`RoutingBackend` picks
   the FIRST candidate that has a bound backend and delegates to it. If NO gated
   candidate is bound it raises ``NoAvailableTierError`` (rendered as a 503) rather
   than serving from an out-of-gate tier — availability never bypasses the gate.
-* **Deferred to T009:** verify-gated *fallback*. We commit to the first selected
-  tier and do NOT retry the next candidate when a response fails verification.
-  The retry loop plugs in where the ``# T009:`` comment marks
-  :meth:`RoutingBackend.generate` — that is the only routing piece left out.
+* **Verify-gated fallback (T009, wired):** an ``allow`` tier is streamed directly
+  to the client (TTFT preserved); an ``allow-with-verify`` tier goes through
+  :func:`~anvil_serving.router.fallback.route_with_fallback` (buffer → verify chain
+  → commit-or-fallback). If all gated candidates fail verification,
+  :class:`~anvil_serving.router.internal.NoAvailableTierError` is raised and
+  rendered as a 503 — no partial local tokens may reach the client.
 
 Stdlib-only; binds ``127.0.0.1`` (never ``localhost`` — the documented Windows
 IPv6 ~21s stall gotcha).
@@ -241,9 +243,13 @@ class RoutingBackend:
     Both ``resolve`` and ``route`` are never-raise public APIs, so the SELECTION
     is a thin composition rather than a re-implementation of routing.
 
-    DEFERRED to T009 — verify-gated FALLBACK: we commit to the first selected
-    tier and do NOT retry the next candidate when a response fails verification.
-    See the ``# T009:`` comment in :meth:`generate` for where that loop plugs in.
+    **Verify-gated fallback (T009, fully wired):** :meth:`generate` distinguishes
+    ``allow`` tiers (streamed directly, TTFT preserved) from ``allow-with-verify``
+    tiers (fully buffered, then run through the structural verifier chain via
+    :func:`~anvil_serving.router.fallback.route_with_fallback`; on pass the
+    buffered response is committed; on fail the next candidate is tried). If every
+    gated bound candidate fails verify, ``NoAvailableTierError`` is raised before
+    any byte reaches the client.
     """
 
     def __init__(
@@ -265,37 +271,15 @@ class RoutingBackend:
         — from fail-prone (``allow-with-verify``) tiers that must pass the
         structural verifier chain before any byte reaches the client.
         """
-        if work_class is None:
-            return "allow"  # custom preset with no taxonomy key: trust the pool
         try:
             is_cloud = self._config.tier(tier_id).privacy == "cloud"
         except Exception:
             is_cloud = False
+        # Delegate to profile_store.decision() for ALL work_class values, including
+        # None (custom preset). decision() already handles the None-class default
+        # ("allow" when no stored entry) AND applies the stale-allow -> allow-with-verify
+        # downgrade (PR #48) for any stored entry, including (tier, None) ones.
         return self._profile.decision(tier_id, work_class, is_cloud=is_cloud)
-
-    def select_tier(self, request: InternalRequest) -> str:
-        """Resolve + route ``request`` to a single BOUND, gate-allowed tier id.
-
-        Raises :class:`~anvil_serving.router.internal.NoAvailableTierError` when
-        every gated candidate is unbound — it never falls back to an out-of-gate
-        tier (the quality gate must not be bypassed by availability).
-        """
-        intent = resolve(request, self._config)
-        decision = route(intent, self._config, self._profile)
-        for tid in decision.tiers:
-            if tid in self._backends:
-                return tid
-        # Every gate-allowed candidate is unbound (or the gate denied all). Refuse
-        # — do NOT serve from an out-of-gate tier just because it happens to be
-        # bound. Fail loud + typed; the front door turns this into a 503.
-        print(
-            f"[anvil-serving] no bound tier for work_class="
-            f"{decision.work_class!r}: gated candidates {list(decision.tiers)} "
-            f"are unbound; refusing to bypass the quality gate",
-            file=sys.stderr,
-            flush=True,
-        )
-        raise NoAvailableTierError(decision.work_class, decision.tiers)
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
         # Eagerly resolve intent + policy BEFORE returning any iterator so that

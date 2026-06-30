@@ -285,3 +285,138 @@ def test_pin_to_denied_tier_cannot_bypass_gate_via_http():
     record = httpd.anvil_routing._decision_log.last
     assert record is not None
     assert record.served_tier == "heavy-local"
+
+
+# --------------------------------------------------------------------------- #
+# Anthropic dialect: verify-fallback via /v1/messages
+#
+# These mirror the OpenAI tests above but exercise the Anthropic wire form
+# end-to-end through the same RoutingBackend.generate() path.  The dialect
+# difference is: POST /v1/messages with max_tokens; response is named-event SSE
+# (streaming) or an Anthropic message object (non-streaming).
+# --------------------------------------------------------------------------- #
+
+def _parse_anthropic_content(raw: bytes) -> str:
+    """Reassemble assistant text from an Anthropic named-event SSE body."""
+    text = raw.decode("utf-8")
+    pieces = []
+    for block in text.split("\n\n"):
+        lines = [ln for ln in block.split("\n") if ln]
+        etype = None
+        data_str = None
+        for ln in lines:
+            if ln.startswith("event: "):
+                etype = ln[len("event: "):]
+            elif ln.startswith("data: "):
+                data_str = ln[len("data: "):]
+        if etype == "content_block_delta" and data_str:
+            obj = json.loads(data_str)
+            pieces.append(obj.get("delta", {}).get("text", ""))
+    return "".join(pieces)
+
+
+def test_c3_anthropic_avw_fail_delivers_cloud_not_local_streaming():
+    """Anthropic streaming: allow-with-verify local that FAILS verify must
+    deliver ZERO local tokens; the cloud fallback is served via Anthropic SSE."""
+    backends: Dict[str, StaticBackend] = {
+        "fast-local": StaticBackend([LOCAL_FAIL_CONTENT]),
+        "cloud": StaticBackend([CLOUD_CONTENT]),
+    }
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
+    with running(httpd) as (host, port):
+        status, headers, raw = _post(
+            host, port, "/v1/messages",
+            {
+                "model": "chat",
+                "max_tokens": 256,
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": True,
+            },
+        )
+
+    assert status == 200, (status, raw)
+    assert "text/event-stream" in headers.get("content-type", ""), headers
+    content = _parse_anthropic_content(raw)
+
+    # Cloud output must be delivered.
+    assert content == CLOUD_CONTENT, f"expected cloud content, got: {content!r}"
+
+    # No local token may appear anywhere in the HTTP body.
+    raw_text = raw.decode("utf-8")
+    assert "broken_local_fn" not in raw_text, "local token leaked into Anthropic SSE response"
+    assert LOCAL_FAIL_CONTENT not in raw_text, "local content leaked into Anthropic SSE response"
+
+    # Decision log: fallback recorded.
+    record = httpd.anvil_routing._decision_log.last
+    assert record is not None, "no decision record written"
+    assert record.fell_back, "decision log did not record fell_back=True"
+    assert record.served_tier == "cloud"
+
+
+def test_c3_anthropic_avw_pass_delivers_local_streaming():
+    """Anthropic streaming: allow-with-verify local that PASSES verify is
+    committed and delivered via Anthropic SSE; cloud is not reached."""
+    backends: Dict[str, StaticBackend] = {
+        "fast-local": StaticBackend([LOCAL_PASS_CONTENT]),
+        "cloud": StaticBackend([CLOUD_CONTENT]),
+    }
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
+    with running(httpd) as (host, port):
+        status, headers, raw = _post(
+            host, port, "/v1/messages",
+            {
+                "model": "chat",
+                "max_tokens": 256,
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": True,
+            },
+        )
+
+    assert status == 200, (status, raw)
+    content = _parse_anthropic_content(raw)
+
+    # Local output must be committed and delivered.
+    assert content == LOCAL_PASS_CONTENT, f"expected local content, got: {content!r}"
+
+    # Cloud output must not appear.
+    assert CLOUD_CONTENT not in raw.decode("utf-8"), "cloud content unexpectedly appeared"
+
+    # Decision log: no fallback.
+    record = httpd.anvil_routing._decision_log.last
+    assert record is not None
+    assert not record.fell_back, "unexpected fallback recorded"
+    assert record.served_tier == "fast-local"
+
+
+def test_c3_anthropic_avw_fail_non_streaming_falls_back_to_cloud():
+    """Anthropic non-streaming: allow-with-verify local that fails verify must
+    be discarded; the cloud response is delivered in the Anthropic message format."""
+    backends: Dict[str, StaticBackend] = {
+        "fast-local": StaticBackend([LOCAL_FAIL_CONTENT]),
+        "cloud": StaticBackend([CLOUD_CONTENT]),
+    }
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
+    with running(httpd) as (host, port):
+        status, headers, raw = _post(
+            host, port, "/v1/messages",
+            {
+                "model": "chat",
+                "max_tokens": 256,
+                "messages": [{"role": "user", "content": "hi"}],
+                # no "stream" key -> non-streaming Anthropic message response
+            },
+        )
+
+    assert status == 200, (status, raw)
+    assert headers.get("content-type") == "application/json"
+    body = json.loads(raw)
+    # Anthropic non-streaming message format: content is a list of blocks.
+    content = body["content"][0]["text"]
+
+    assert content == CLOUD_CONTENT, f"expected cloud content, got: {content!r}"
+    assert "broken_local_fn" not in raw.decode("utf-8"), "local token leaked"
+
+    record = httpd.anvil_routing._decision_log.last
+    assert record is not None
+    assert record.fell_back
+    assert record.served_tier == "cloud"

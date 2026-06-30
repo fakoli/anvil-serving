@@ -227,30 +227,33 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
-            # Drain any unexpected request body to keep the keep-alive socket in
-            # sync.  GETs are conventionally bodyless; a caller that sends one
-            # leaves bytes on the wire that would desync the connection for the
-            # next pipelined request.  Drain up to MAX_BODY_BYTES; close if the
-            # claimed length exceeds the cap or the header is malformed.
-            cl_get = self.headers.get("Content-Length")
-            if cl_get is not None:
-                if _DIGIT_RE.fullmatch(cl_get):
-                    get_n = int(cl_get)
-                    if 0 < get_n <= MAX_BODY_BYTES:
-                        try:
-                            self.rfile.read(get_n)
-                        except Exception:
-                            self.close_connection = True
-                    elif get_n > MAX_BODY_BYTES:
-                        self.close_connection = True
-                else:
-                    self.close_connection = True
-
+            # Acquire the concurrency semaphore FIRST — before draining any body
+            # bytes — so a flood of GETs with large bodies is gated here, not
+            # outside the limiter (mirrors do_POST).
             if not _CONCURRENCY_LIMIT.acquire(blocking=False):
                 self.close_connection = True
                 self._error(503, "server_busy", "server busy; try again later")
                 return
             try:
+                # Drain any unexpected request body to keep the keep-alive socket
+                # in sync.  GETs are conventionally bodyless; a caller that sends
+                # one leaves bytes on the wire that would desync the connection for
+                # the next pipelined request.  Drain up to MAX_BODY_BYTES; close
+                # if the claimed length exceeds the cap or the header is malformed.
+                cl_get = self.headers.get("Content-Length")
+                if cl_get is not None:
+                    if _DIGIT_RE.fullmatch(cl_get):
+                        get_n = int(cl_get)
+                        if 0 < get_n <= MAX_BODY_BYTES:
+                            try:
+                                self.rfile.read(get_n)
+                            except Exception:
+                                self.close_connection = True
+                        elif get_n > MAX_BODY_BYTES:
+                            self.close_connection = True
+                    else:
+                        self.close_connection = True
+
                 route = self.path.split("?", 1)[0].rstrip("/")
                 if route in ("/healthz", "/health"):
                     self._json(200, {
@@ -273,7 +276,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # so we can send a proper 503 if the server is saturated.
             if not _CONCURRENCY_LIMIT.acquire(blocking=False):
                 self.close_connection = True
-                self._error(503, "server_busy", "server busy; try again later")
+                # self.path is already known here; resolve the dialect so the
+                # 503 envelope speaks the caller's native wire format (Anthropic
+                # vs OpenAI) rather than always the generic shape.
+                _busy_dialect: Optional[Dialect] = _ROUTES.get(
+                    self.path.split("?", 1)[0]
+                )
+                self._error(503, "server_busy", "server busy; try again later",
+                            dialect=_busy_dialect)
                 return
             try:
                 self._post_inner()

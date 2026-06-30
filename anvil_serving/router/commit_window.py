@@ -230,8 +230,11 @@ def stream_with_commit_window(
     **Observability gap (finding 14).** The PASS/commit path forwards the buffered
     deltas but does *not* surface the verifier scores (a low-but-passing score —
     e.g. a ``RefusalMarker`` hit that did not hard-fail — is currently invisible
-    on commit; only the fallback path reports via ``on_fallback``). Richer
-    commit-time observability is deferred to T009/T010.
+    on commit; only the fallback path reports via ``on_fallback``). The serve path
+    now drives :func:`~anvil_serving.router.fallback.route_with_fallback` (T009,
+    wired) which appends to the :class:`~anvil_serving.router.decision_log.DecisionLog`
+    on both commit and fallback; richer per-verifier score reporting on the commit
+    path remains a future improvement.
 
     ``fail_prone_classes`` must be a real collection (set/frozenset/list/...). A
     bare ``str`` is rejected (``in`` on a string is substring matching — a silent
