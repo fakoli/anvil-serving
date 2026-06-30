@@ -50,6 +50,7 @@ _SECRET_NAME_RE = re.compile(
     r"""(?ix)
     (?:^|[^a-z0-9])
     (?:
+        # ── snake / kebab / plain ────────────────────────────────────────────
         api[_-]?key
       | apikey
       | secret
@@ -60,6 +61,18 @@ _SECRET_NAME_RE = re.compile(
       | token
       | bearer
       | credentials?
+      | cookie                  # HTTP Cookie / Set-Cookie headers
+      | private[_-]key          # private_key / private-key
+      | signing[_-]key          # signing_key / signing-key
+      | session                 # bare session field
+
+        # ── camelCase / glued forms ──────────────────────────────────────────
+        # The sensitive keyword appears as a camelCase component; the spelled-out
+        # suffix (Key, Token, Secret) serves as the camelCase word boundary so the
+        # post-boundary lookahead (?![a-z0-9]) passes at the end of the token.
+      | (?:api|access|auth|refresh|client|bearer|session)Token
+      | (?:client|api)Secret
+      | (?:private|signing|api|secret|auth)Key
     )
     (?![a-z0-9])
     """,
@@ -70,7 +83,8 @@ _SECRET_NAME_RE = re.compile(
 # guard above runs first, so ``prompt_tokens`` / ``completion_tokens`` are NOT
 # caught here despite the ``prompt`` / ``completion`` substrings.)
 _PROMPT_NAME_RE = re.compile(
-    r"(prompt|messages|completion|content|system|input|output|response_text|user_text)",
+    r"(prompt|messages|completion|content|system|input|output|response_text|user_text"
+    r"|query|data|text|request|response)",
     re.IGNORECASE,
 )
 
@@ -91,6 +105,7 @@ _KEYLIKE_RE = re.compile(
       | AIza[A-Za-z0-9_\-]{10,}            # Google API key
       | (?:AKIA|ASIA)[0-9A-Z]{16}          # AWS access key id
       | Bearer\s+[A-Za-z0-9._\-]{6,}       # Authorization: Bearer <...>
+      | -----BEGIN\s+(?:\w+\s+)*PRIVATE\s+KEY-----[\s\S]+?-----END\s+(?:\w+\s+)*PRIVATE\s+KEY-----  # PEM private key block
     )""",
     re.VERBOSE | re.IGNORECASE,
 )
