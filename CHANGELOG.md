@@ -6,6 +6,59 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+Advise-and-defer work — on `main`, not yet versioned. These changes complete the
+subscription-first routing story and the production-readiness docs pass.
+
+### Changed
+
+- **Cloud tier is now opt-in, OFF by default.** `configs/example.toml` ships as
+  local-only; anvil holds no cloud API key and incurs **$0 metered API billing** in the
+  default configuration. A cloud tier must be explicitly declared in
+  `configs/example-with-cloud.toml` to unlock it.
+- **Keyless exhaustion handoff replaces mid-request cloud escalation (default path).**
+  When all local candidates are exhausted (verify-failure on an `allow-with-verify` class
+  with no cloud tier configured), anvil returns an **`exhaustion_status`** (503 by
+  default, configurable) with nothing streamed. A gateway like OpenClaw treats this as a
+  transport failure and re-routes the request on its native subscription provider —
+  flat-rate, not metered by anvil. The opt-in keyed `CloudBackend` path still works for
+  single-endpoint harnesses that cannot route cloud themselves.
+- **Contract C4 reshaped into two explicit modes** — *keyless* (exhaustion-503 → gateway
+  transport failover) and *opt-in keyed* (router-internal escalation → 200). Documented
+  in `docs/QUALITY-GATED-ROUTER.md` and `docs/PLAN-advise-and-defer.md`.
+- **Docs and visual assets refreshed** to reflect advise-and-defer terminology (local-only
+  default, opt-in metered cloud, keyless handoff, $0-metered framing). Internal
+  design/planning/findings documents relocated to the private companion repo
+  `fakoli/anvil-serving-notes`; public docs retain the product-facing surface.
+
+### Added
+
+- **Per-intent `metered_cloud` gate.** When a cloud tier *is* configured, no work-class
+  is eligible for it unless explicitly listed in `[router].metered_cloud`. No implicit
+  global "use cloud" switch exists.
+- **Cost dimension.** A configured cloud tier carries `cost_input_per_mtok` /
+  `cost_output_per_mtok` fields (USD per million tokens). Estimated cost is surfaced in
+  the decision log and a `cost_usd` metric on every metered cloud route; local tiers
+  report `0`.
+- **Optional off-by-default cost-sync.** A `[router] cost_sync = true` toggle fetches
+  prices from the free, MIT-licensed LiteLLM pricing JSON (cached at
+  `~/.cache/anvil-serving/prices.json`, 24 h TTL, stdlib `urllib` only). Static config
+  is the default; sync is opt-in. Falls back to static config on any fetch failure.
+- **Configurable `exhaustion_status`.** The HTTP status anvil returns when all local tiers
+  are exhausted is configurable (default 503) so operators can tune the gateway-failover
+  trigger to their gateway's classification.
+- **`POST /v1/route` — the routing-brain endpoint.** Exposes the intent-resolve + routing
+  decision without serving the request. Request: a `completions`-shaped body plus optional
+  `signals` (`work_class`, `token_estimate`, `urgency`). Response:
+  `{ tier, model, provider, work_class, reason, confidence, session_id }`. Status 200
+  (decision, even if `cloud`), 400 (malformed), 503 (no suitable tier). Used by the
+  OpenClaw plugin for upfront routing splits.
+- **OpenClaw plugin upfront routing split.** The `before_model_resolve` hook in
+  `plugins/openclaw-anvil-intent-router/` now routes `deny`-class and cloud-destined
+  work directly to the gateway's native provider (bypassing anvil entirely), and routes
+  `allow` / `allow-with-verify` classes through anvil. Uses the shared
+  `tier0_keywords.json` classifier vocabulary; optionally calls `/v1/route` for the
+  authoritative decision.
+
 ## [0.3.0] - 2026-06-30
 
 First public release. anvil-serving is now a **quality-gated local-model router for coding
@@ -66,8 +119,7 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
   is a representative fixture, not a live capture.
 - **Most promotion verdicts are seed/expected.** Per-work-class promotion decisions in the
   shipped profile are hand-seeded and pending real-traffic calibration; only `planning` rests on
-  hard eval data
-  ([`docs/findings/2026-06-28-planning-capability-eval.md`](docs/findings/2026-06-28-planning-capability-eval.md)).
+  hard eval data (in the companion notes repo `fakoli/anvil-serving-notes`).
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
