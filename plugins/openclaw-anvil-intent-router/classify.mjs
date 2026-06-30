@@ -1,7 +1,13 @@
 // classify.mjs — the SINGLE SOURCE OF TRUTH for the intent heuristic.
 //
-// Tier-0 keyword taxonomy MIRRORS anvil_serving/router/classify.py — keep in sync
-// (a shared vocabulary source is the durable fix; tracked as a follow-up).
+// Tier-0 keyword VOCABULARY now lives in one canonical data file,
+// ./tier0_keywords.json — a byte-identical bundled copy of
+// anvil_serving/router/tier0_keywords.json (the plugin ships its own copy
+// because, installed into ~/.openclaw, it cannot read the Python package at
+// runtime). BOTH this module and classify.py BUILD their keyword regexes FROM
+// that JSON, and tests/router/test_keyword_parity.py fails if the two copies
+// drift — so the two classifiers can no longer silently diverge (they did once;
+// found in T014 review). The keyword LITERALS are no longer hand-written here.
 //
 // This plain-ESM module holds the real `classify` used by BOTH the plugin
 // (`index.ts`, which imports it) and the fixture generator (`make-fixture.mjs`).
@@ -15,9 +21,10 @@
 //   * word-boundary keyword matching, NOT substring (so the planning rule fires
 //     on "plan"/"plans"/"planning" but NOT on "explaining"/"planet", and "fix"
 //     does not fire on "prefix"/"fixture", "change" not on "exchange", etc.);
-//   * the keyword phrase sets + their precedence order are a 1:1 MIRROR of
-//     classify.py's `_KEYWORD_PHRASES` / `_KEYWORD_RULES`, re-mapped from the
-//     router's WORK_CLASSES onto this plugin's CLOSED preset enum:
+//   * the keyword phrase sets + their precedence order are loaded from the
+//     shared ./tier0_keywords.json (a byte-identical copy of the router's
+//     canonical taxonomy), then re-mapped from the router's WORK_CLASSES onto
+//     this plugin's CLOSED preset enum:
 //        review              -> "review"
 //        planning            -> "planning"
 //        multi-file-refactor -> "review"      (multi-file reasoning -> review pool)
@@ -31,11 +38,8 @@
 //     must match anvil_serving.router.intent.PRESETS — it becomes the wire model
 //     `anvil/<preset>`;
 //   * NEVER throws — any failure degrades to the safe default "chat".
-//
-// KNOWN forward-divergence (intentional, tracked): the planning rule here matches
-// the gerund/plural via `plan(ning|s)?`, whereas classify.py's bare `\bplan\b`
-// does NOT match "planning"/"plans". The router has the SAME gap and should be
-// fixed in a follow-up PR so the two stay in lockstep.
+
+import { readFileSync } from "node:fs";
 
 // The closed preset enum = anvil's wire vocabulary (must match the router's
 // PRESETS and validate.py's WIRE_FORM_RE).
@@ -59,25 +63,63 @@ const MANY_ATTACHMENTS = 4;
 // is not an enumerated media kind. (docs/OPENCLAW-INTEGRATION-SPEC.md §0)
 const MEDIA_KINDS = new Set(["image", "video", "audio", "document"]);
 
-// Word-boundary keyword sets — a 1:1 MIRROR of classify.py's `_KEYWORD_PHRASES`
-// (same phrases, same precedence). Each regex is `\b(?:phrase|...)\b`, built the
-// same way the router builds its per-class rules, so multi-word phrases ("break
-// down", "step by step", "across the codebase", "rename across", "migrate the",
-// "add a", "update the") match as phrases with a single literal space — exactly
-// as re.escape produces them on the Python side. Intent words win over
-// file-scope/edit words: see the precedence order in `classify`.
-//
-// review:       review | critique | feedback | audit
-const REVIEW_RE = /\b(?:review|critique|feedback|audit)\b/;
-// planning:     plan(ning|s)? | design | architect | decompose | roadmap | break down | step by step
-//               (the `(?:ning|s)?` is the intentional forward-fix over classify.py — see header.)
-const PLANNING_RE = /\b(?:plan(?:ning|s)?|design|architect|decompose|roadmap|break down|step by step)\b/;
-// multi-file-refactor -> review pool:  refactor | rename across | across the codebase | migrate the
-const MULTIFILE_RE = /\b(?:refactor|rename across|across the codebase|migrate the)\b/;
-// bounded-edit -> quick-edit:  edit | fix | change | implement | patch | add a | update the
-//               (bare "rename" is intentionally ABSENT — it lives only in the multi-file
-//                "rename across" phrase; bare "update" is absent so "give me an update" stays chat.)
-const QUICK_EDIT_RE = /\b(?:edit|fix|change|implement|patch|add a|update the)\b/;
+// Map a ROUTER work-class (the JSON keys) onto this plugin's CLOSED preset enum.
+// multi-file-refactor folds into the review pool; bounded-edit -> quick-edit.
+const WORK_CLASS_TO_PRESET = {
+  review: "review",
+  planning: "planning",
+  "multi-file-refactor": "review",
+  "bounded-edit": "quick-edit",
+};
+
+// Hardcoded fallback — a verbatim mirror of tier0_keywords.json, used ONLY if
+// the bundled file is missing/unreadable so the plugin never fails to load.
+// (test_keyword_parity.py guards this against drift from the canonical JSON.)
+const FALLBACK_PHRASES = [
+  ["review", ["review", "critique", "feedback", "audit"]],
+  ["planning", ["plan", "plans", "planning", "design", "architect", "decompose", "break down", "step by step", "roadmap"]],
+  ["multi-file-refactor", ["refactor", "rename across", "across the codebase", "migrate the"]],
+  ["bounded-edit", ["edit", "fix", "change", "add a", "update the", "implement", "patch"]],
+];
+
+// Escape regex metacharacters so phrases match literally. Spaces are NOT special
+// in a JS regex (and Python's re.escape only backslash-escapes the space, which
+// still matches a literal space), so multi-word phrases ("break down", "across
+// the codebase", "migrate the", "add a", "update the") keep their single literal
+// space and match identically on both sides.
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Load the canonical keyword taxonomy from the co-located bundled JSON and build
+// one word-boundary regex per work-class, in priority order, paired with the
+// preset it maps to. Same construction as classify.py's `_KEYWORD_RULES`
+// (`\b(?:phrase|...)\b`). Keys beginning with "_" are metadata and skipped.
+// Falls back to FALLBACK_PHRASES on ANY error — module load must never throw.
+function loadKeywordRules() {
+  let entries;
+  try {
+    const url = new URL("./tier0_keywords.json", import.meta.url);
+    const data = JSON.parse(readFileSync(url, "utf8"));
+    entries = Object.entries(data).filter(([k]) => !String(k).startsWith("_"));
+    if (entries.length === 0) entries = FALLBACK_PHRASES;
+  } catch {
+    entries = FALLBACK_PHRASES;
+  }
+  return entries.map(([workClass, phrases]) => {
+    const list = Array.isArray(phrases) ? phrases : [];
+    const alt = list.map(escapeRegex).join("|");
+    return {
+      preset: WORK_CLASS_TO_PRESET[workClass] ?? "chat",
+      // Empty phrase list -> a regex that never matches (defensive; the
+      // canonical JSON never ships an empty class).
+      re: alt ? new RegExp("\\b(?:" + alt + ")\\b") : /(?!)/,
+    };
+  });
+}
+
+// Ordered [{ preset, re }, ...] — the intent rules in classify.py's precedence.
+const KEYWORD_RULES = loadKeywordRules();
 
 /**
  * Classify one turn's prompt (+ attachment kinds) into an anvil preset.
@@ -116,11 +158,12 @@ export function classify(prompt, attachments) {
     //    A short text turn carrying a video/audio/document/image must NOT be "chat".
     if (atts.some((a) => a && MEDIA_KINDS.has(a.kind))) return "review";
 
-    // 4-7. intent keywords (word-boundary; order = classify.py's precedence).
-    if (REVIEW_RE.test(p)) return "review";
-    if (PLANNING_RE.test(p)) return "planning";
-    if (MULTIFILE_RE.test(p)) return "review"; // refactor / across the codebase
-    if (QUICK_EDIT_RE.test(p)) return "quick-edit";
+    // 4-7. intent keywords (word-boundary; order = classify.py's precedence,
+    //      sourced from tier0_keywords.json). First match wins; review and
+    //      multi-file-refactor both map to "review", bounded-edit to "quick-edit".
+    for (const rule of KEYWORD_RULES) {
+      if (rule.re.test(p)) return rule.preset;
+    }
 
     // 8. safe default.
     return "chat";
