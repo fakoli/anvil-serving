@@ -39,6 +39,34 @@ class DialectError(Exception):
         self.message = message
 
 
+class NoAvailableTierError(Exception):
+    """No quality-gated tier is BOUND to serve a request's work class.
+
+    Raised by the routing backend (T012) when every tier in the gated/allowed
+    candidate list is unbound — e.g. the only tier the quality gate permits for
+    ``planning`` is a cloud tier whose credential env var is unset, so it was
+    skipped at startup. The router does NOT fall back to an out-of-gate tier:
+    availability must never silently override the quality gate, so it raises this
+    instead, and the front door renders it as a clean 503 dialect error envelope
+    (defined here, alongside :class:`DialectError`, so the front door can catch it
+    without importing the routing layer — which would be a cycle).
+
+    Carries the ``work_class`` and the gated ``candidates`` for the operator.
+    """
+
+    def __init__(self, work_class: Optional[str], candidates: Sequence[str]):
+        self.work_class = work_class
+        self.candidates = tuple(candidates)
+        cands = list(self.candidates)
+        super().__init__(
+            f"no quality-gated tier available for work_class={work_class!r}: "
+            f"gated candidates {cands} are unbound. Configure that tier's "
+            f"credentials/endpoint (set its auth_env, or make the local "
+            f"base_url reachable); the router refuses to bypass the quality "
+            f"gate by serving from a tier the gate did not allow."
+        )
+
+
 @dataclass
 class Message:
     """A single normalized chat message: a role and flattened text content."""
