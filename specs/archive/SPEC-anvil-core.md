@@ -1,3 +1,5 @@
+> **ARCHIVED — pre-pivot design history.** This spec was written before the repo pivoted to the quality-gated router product. It describes a planned `anvil_core` refactor that was never implemented; the shipped product is `anvil_serving/router/`.
+
 # SPEC: anvil_core
 
 **Status:** spec only — no code yet. **Reference:** `docs/DISCOVERY-AND-REFINEMENT.md` (findings + verdict).
