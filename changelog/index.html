@@ -995,7 +995,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#040-2026-06-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.4.0 - 2026-06-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.4.0 - 2026-06-30">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1014,6 +1025,17 @@
     <span class="md-ellipsis">
       
         Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
       
     </span>
   </a>
@@ -1107,7 +1129,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#040-2026-06-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.4.0 - 2026-06-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.4.0 - 2026-06-30">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1126,6 +1159,17 @@
     <span class="md-ellipsis">
       
         Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
       
     </span>
   </a>
@@ -1200,9 +1244,13 @@
 <p>All notable changes to this project are documented here. The format is based on
 <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>, and this project adheres to
 <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
-<h2 id="unreleased"><a href="https://github.com/fakoli/anvil-serving/compare/v0.3.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
-<p>Advise-and-defer work — on <code>main</code>, not yet versioned. These changes complete the
-subscription-first routing story and the production-readiness docs pass.</p>
+<h2 id="unreleased"><a href="https://github.com/fakoli/anvil-serving/compare/v0.4.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<p><em>Nothing yet.</em></p>
+<h2 id="040-2026-06-30"><a href="https://github.com/fakoli/anvil-serving/compare/v0.3.0...v0.4.0">0.4.0</a> - 2026-06-30<a class="headerlink" href="#040-2026-06-30" title="Permanent link">&para;</a></h2>
+<p>Advise-and-defer — the subscription-first routing pivot — plus the launch-hardening pass.
+anvil is now <strong>local-serve + routing brain</strong>: the harness owns cloud on its subscription and
+no cloud API key sits in the default path ($0 metered API by default). This release also closes
+the six post-launch hardening issues (#42, #45, #46, #47, #52, #53).</p>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Cloud tier is now opt-in, OFF by default.</strong> <code>configs/example.toml</code> ships as
@@ -1223,6 +1271,9 @@ subscription-first routing story and the production-readiness docs pass.</p>
   default, opt-in metered cloud, keyless handoff, $0-metered framing). Internal
   design/planning/findings documents relocated to the private companion repo
   <code>fakoli/anvil-serving-notes</code>; public docs retain the product-facing surface.</li>
+<li><strong>Internal maintainability (#46).</strong> <code>RelayBackend</code> decoupled into the backends package;
+  dialect/privacy magic strings replaced with named constants; a dialect parity test pins both
+  dialects' surface. Behavior-preserving — no wire change.</li>
 </ul>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
@@ -1252,6 +1303,27 @@ subscription-first routing story and the production-readiness docs pass.</p>
   <code>allow</code> / <code>allow-with-verify</code> classes through anvil. Uses the shared
   <code>tier0_keywords.json</code> classifier vocabulary; optionally calls <code>/v1/route</code> for the
   authoritative decision.</li>
+<li><strong>Tool-call passthrough + live structured verifiers (#42, #52).</strong> <code>tool_calls</code> / <code>tool_use</code>
+  and the real <code>finish_reason</code> / <code>stop_reason</code> now flow through the backends, dialects, and
+  verifiers (streaming and non-streaming) — a coding harness's tool-calling turn is preserved
+  end-to-end, and the <code>NotTruncated</code> / <code>ToolCallJSONValid</code> verifiers run live on the serve path
+  (previously inert). The text path is byte-identical.</li>
+</ul>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Fallback-path hardening (#45, #52).</strong> Seam isolation (a hung verifier is bounded by a
+  latency budget; a raising observer/log or response-view factory can no longer crash a served
+  request), 32 MiB drain byte-caps (local + cloud) against runaway responses, and a
+  <strong>session-scoped, thread-safe circuit breaker with cooldown + half-open decay</strong> so a transient
+  blip can't permanently disable a tier.</li>
+<li><strong>Front-door HTTP polish (#53).</strong> A <code>GET</code> to a POST-only route returns <code>405</code> + <code>Allow: POST</code>
+  (not <code>404</code>); a bounded non-blocking drain after a <code>413</code> avoids a connection-reset race;
+  <code>do_GET</code> body-handling keeps the socket in sync.</li>
+<li><strong>Concurrency + correctness hygiene (#47).</strong> <code>DecisionLog</code> is guarded by a lock (it is written
+  from <code>ThreadingHTTPServer</code> request threads); a structurally-malformed cloud response now
+  surfaces a sanitized error instead of being masked as an empty completion.</li>
+<li><strong><code>benchmark</code> context-clamp + <code>--no-thinking</code> (#78).</strong> Right-sizes the replayed request
+  distribution and avoids thinking-budget starvation during benchmarks.</li>
 </ul>
 <h2 id="030-2026-06-30"><a href="https://github.com/fakoli/anvil-serving/releases/tag/v0.3.0">0.3.0</a> - 2026-06-30<a class="headerlink" href="#030-2026-06-30" title="Permanent link">&para;</a></h2>
 <p>First public release. anvil-serving is now a <strong>quality-gated local-model router for coding
