@@ -165,8 +165,15 @@ def route(
         # 2. Profile-deny filter (AC1), fail-closed. Resolved WITH each tier's
         #    privacy so an unmeasured local on a high-risk class denies while
         #    cloud stays allowed. Skipped (gate "off") for a None work class
-        #    (FIX D: custom preset trusts the config pool — no taxonomy key).
-        if work_class is not None:
+        #    (FIX D: custom preset trusts the config pool — no taxonomy key) or
+        #    for an EXPLICIT PIN (FIX #9: the operator deliberately chose a tier;
+        #    the deny filter must honor that rather than yielding a 503).
+        source = getattr(intent, "source", None)
+        if source == "pinned":
+            # Explicit pin: operator override — bypass the deny filter entirely.
+            # The quality gate is audited so the bypass is not silent.
+            quality_gate = "off: explicit pin"
+        elif work_class is not None:
             quality_gate = "on"
             kept = []
             for tid in survivors:

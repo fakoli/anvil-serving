@@ -113,6 +113,20 @@ class FallbackResult:
     exhausted: bool
 
 
+def _safe_passed(result: object) -> bool:
+    """Return the ``passed`` flag, or ``False`` for a non-:class:`VerifyResult`.
+
+    Seam-isolation contract: a verifier that RETURNS a non-VerifyResult (rather
+    than raising) is treated as a verify FAILURE, not a crash.  Guards
+    :func:`route_with_fallback` against ``AttributeError: 'NoneType' object has
+    no attribute 'passed'`` when an injected verifier misbehaves.
+    """
+    try:
+        return bool(result.passed)
+    except AttributeError:
+        return False
+
+
 def _first_failing_reason(results: Sequence) -> str:
     """Name of the first hard-failing verifier (for the audit trail).
 
@@ -122,8 +136,11 @@ def _first_failing_reason(results: Sequence) -> str:
     must never land in the metadata-only decision log.
     """
     for r in results:
-        if not r.passed:
-            return r.verifier
+        try:
+            if not r.passed:
+                return getattr(r, "verifier", "non-VerifyResult")
+        except AttributeError:
+            return "non-VerifyResult from verifier"
     return "verify failed"
 
 
@@ -200,7 +217,7 @@ def route_with_fallback(
             served_tier=served,
             total_prompt_tokens=total_prompt,
             total_completion_tokens=total_completion,
-            fell_back=any(a.outcome == "fallback" for a in attempts),
+            fell_back=any(a.outcome in ("fallback", "error") for a in attempts),
         )
         if log is not None:
             log.record(record)
@@ -299,7 +316,7 @@ def route_with_fallback(
 
         view = make_view(deltas, request)
         results = run_verifiers(view, verifiers, mode="all")
-        passed = all(r.passed for r in results)
+        passed = all(_safe_passed(r) for r in results)
 
         if passed:
             breaker[tier_id] = 0  # clean run resets the consecutive-failure count
