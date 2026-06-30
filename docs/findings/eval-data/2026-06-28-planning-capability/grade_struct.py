@@ -7,6 +7,9 @@ No judgment: every check here is mechanical and reproducible.
 import re, os, glob, json
 
 OUT = os.path.dirname(os.path.abspath(__file__))
+OUTPUTS = os.path.join(OUT, "outputs")
+GRADING = os.path.join(OUT, "grading")
+os.makedirs(GRADING, exist_ok=True)
 
 VALID_FEATURES = {
     "prdA-backlog": {f"F00{i}" for i in range(1, 9)},          # F001-F008
@@ -146,13 +149,13 @@ def grade(pid, label, text):
     return r
 
 rows = []
-for fn in sorted(glob.glob(f"{OUT}/out_*.md")):
+for fn in sorted(glob.glob(f"{OUTPUTS}/out_*.md")):
     base = os.path.basename(fn)[4:-3]   # strip out_ and .md
     pid, label = base.split("__")
     with open(fn, encoding="utf-8") as f:
         rows.append(grade(pid, label, f.read()))
 
-with open(f"{OUT}/grade_struct.json", "w", encoding="utf-8") as f:
+with open(f"{GRADING}/grade_struct.json", "w", encoding="utf-8") as f:
     json.dump(rows, f, indent=2)
 
 # print compact scoreboard
