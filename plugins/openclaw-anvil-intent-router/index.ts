@@ -2,9 +2,16 @@
 // intent-router plugin for anvil-serving (T014).
 //
 // Purpose: classify the current turn (prompt text + attachment kinds) into one
-// of anvil's CLOSED presets and emit `{ modelOverride: "anvil/<preset>" }`, so
-// OpenClaw routes the run to the anvil provider's matching preset model. It also
-// appends a decision-log line per fire (for the AC1 fixture + live assertion).
+// of anvil's CLOSED presets and emit `{ providerOverride: "anvil", modelOverride:
+// "<preset>" }`, so OpenClaw routes the run to the anvil provider's matching preset
+// model. It also appends a decision-log line per fire (for the AC1 fixture + live
+// assertion).
+//
+// LIVE-CONFIRMED on OpenClaw 2026.6.6 (Fakoli-Mini, 2026-06-30): a lone
+// `modelOverride: "anvil/<preset>"` is resolved as `<defaultProvider>/anvil/<preset>`
+// (e.g. `openai/anvil/planning`) → `model_not_found`. The provider MUST be named
+// separately via `providerOverride`; the wire then carries the BARE preset
+// (`model: "planning"`). See docs/findings/2026-06-30-openclaw-live-validation.md.
 //
 // REQUIRED GATE: a non-bundled plugin using `before_model_resolve` MUST be
 // granted conversation access in ~/.openclaw/openclaw.json:
@@ -59,10 +66,14 @@ export default definePluginEntry({
           const promptText = String(event?.prompt ?? "");
           // classify NEVER throws; default "chat" is the safe floor.
           const preset: AnvilPreset = classify(promptText, event?.attachments);
-          // Wire ref = "anvil/<preset>" (the OpenClaw selection string; satisfies
-          // validate.py's WIRE_FORM_RE ^(anvil/)?<preset>$). The "anvil/" prefix
-          // already names the provider, so no separate providerOverride is needed.
-          const modelOverride = `anvil/${preset}`;
+          // Route to the anvil provider by NAMING IT (providerOverride) and putting
+          // the BARE preset in modelOverride. LIVE-CONFIRMED (OpenClaw 2026.6.6):
+          // OpenClaw forwards the bare preset on the wire (model="planning"); a lone
+          // "anvil/<preset>" in modelOverride is mis-resolved under the default
+          // provider. Bare preset satisfies validate.py's WIRE_FORM_RE
+          // ^(anvil/)?<preset>$ and the anvil front door accepts it.
+          const providerOverride = "anvil";
+          const modelOverride = preset;
 
           const record = {
             ts: new Date().toISOString(),
@@ -70,6 +81,7 @@ export default definePluginEntry({
             sessionKey: String((ctx as { sessionKey?: string })?.sessionKey ?? "unknown-session"),
             source: "openclaw",
             intent: preset,
+            providerOverride,
             modelOverride,
             prompt_chars: promptText.length,
           };
@@ -79,7 +91,7 @@ export default definePluginEntry({
             // NEVER break a run because a logging write failed.
           }
 
-          return { modelOverride };
+          return { providerOverride, modelOverride };
         } catch {
           // Anything unexpected -> no override; let OpenClaw resolve normally.
           return {};

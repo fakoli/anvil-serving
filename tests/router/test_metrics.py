@@ -375,3 +375,49 @@ def test_main_reports_io_error_as_exit_2(capsys):
     rc = metrics.main(["--replay", str(FIXTURE.parent / "does-not-exist.jsonl")])
     assert rc == 2
     assert "error:" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------- #
+# threshold bounds validation (Bug fix: values > 1.0 silently defeated the gate)
+# --------------------------------------------------------------------------- #
+def test_threshold_above_one_is_rejected(capsys):
+    """--silent-failure-threshold 2.0 must be rejected before any replay is run."""
+    with pytest.raises(SystemExit) as exc:
+        metrics.main(["--replay", str(FIXTURE), "--silent-failure-threshold", "2.0"])
+    assert exc.value.code != 0
+
+
+def test_threshold_negative_is_rejected(capsys):
+    """--silent-failure-threshold -0.1 must be rejected (negative rate is not a fraction)."""
+    with pytest.raises(SystemExit) as exc:
+        metrics.main(["--replay", str(FIXTURE), "--silent-failure-threshold", "-0.1"])
+    assert exc.value.code != 0
+
+
+def test_threshold_zero_point_zero_one_is_accepted(capsys):
+    """A normal threshold of 0.01 (the default) must still be accepted and work."""
+    rc = metrics.main(["--replay", str(FIXTURE), "--silent-failure-threshold", "0.01"])
+    assert rc == 0   # committed fixture is below 1%
+    assert "GATE: PASS" in capsys.readouterr().out
+
+
+def test_threshold_type_raises_argument_type_error_for_out_of_range():
+    """_threshold_type raises ArgumentTypeError for values outside [0, 1]."""
+    import argparse
+    with pytest.raises(argparse.ArgumentTypeError):
+        metrics._threshold_type("1.5")
+    with pytest.raises(argparse.ArgumentTypeError):
+        metrics._threshold_type("-0.01")
+
+
+def test_gate_still_trips_when_rate_exceeds_valid_threshold(tmp_path, capsys):
+    """The gate must trip for a normal in-range threshold when the rate breaches it."""
+    bad = [
+        _served_local_record("chat", ground_truth="fail"),   # 1/2 = 50% silent-failure
+        _served_local_record("chat", ground_truth="pass"),
+    ]
+    bad_fixture = _write_jsonl(tmp_path / "bad50.jsonl", bad)
+    rc = metrics.main(["--replay", str(bad_fixture), "--silent-failure-threshold", "0.10"])
+    out = capsys.readouterr().out
+    assert rc == 1, "gate must exit 1 when the silent-failure rate breaches a valid threshold"
+    assert "GATE: FAIL" in out
