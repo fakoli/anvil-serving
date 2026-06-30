@@ -333,3 +333,47 @@ def test_inflight_grade_does_not_clear_stale_set_after_submit():
     # ... but it did NOT clear the staleness the F1 change set (it measured F0).
     assert entry.stale is True
     assert entry.fingerprint == fp1
+
+
+# ── FIX sweep#10: _coerce_grade clamps out-of-range scores ───────────────────
+def test_coerce_grade_clamps_score_above_one():
+    """A grader returning 5.0 (e.g. a 0-5 scale) is clamped to 1.0."""
+    store = default_profile()
+    cal = Calibrator(store, grader=lambda s: Grade(score=5.0), enabled=True, sample_rate=1.0)
+    try:
+        cal.observe({"p": "x"}, {"c": "y"}, "review", "fast-local")
+        assert cal.drain(timeout=5)
+        assert cal.errors == 0  # should NOT error — clamp, not crash
+        e = store.entry("fast-local", "review")
+        assert e.quality_score <= 1.0, f"score {e.quality_score!r} exceeds 1.0"
+    finally:
+        cal.close()
+
+
+def test_coerce_grade_clamps_score_below_zero():
+    """A grader returning -1.0 is clamped to 0.0."""
+    store = default_profile()
+    cal = Calibrator(store, grader=lambda s: Grade(score=-1.0), enabled=True, sample_rate=1.0)
+    try:
+        cal.observe({"p": "x"}, {"c": "y"}, "review", "fast-local")
+        assert cal.drain(timeout=5)
+        assert cal.errors == 0
+        e = store.entry("fast-local", "review")
+        assert e.quality_score >= 0.0, f"score {e.quality_score!r} is below 0.0"
+    finally:
+        cal.close()
+
+
+def test_coerce_grade_bare_float_clamped():
+    """A bare float (not Grade) that is out-of-range is also clamped."""
+    store = default_profile()
+    # score=2.0 should clamp to 1.0
+    cal = Calibrator(store, grader=lambda s: 2.0, enabled=True, sample_rate=1.0)
+    try:
+        cal.observe({"p": "x"}, {"c": "y"}, "review", "fast-local")
+        assert cal.drain(timeout=5)
+        assert cal.errors == 0
+        e = store.entry("fast-local", "review")
+        assert e.quality_score <= 1.0
+    finally:
+        cal.close()
