@@ -148,11 +148,11 @@ sequenceDiagram
     L-->>R: candidate output
     R->>R: cheap structural verify
     alt verify passes
-        R-->>H: local response (served tier reported)
-    else verify fails / error / timeout / low-confidence
+        R-->>H: local response
+    else verify fails or backend error
         R->>C: fall back up the tier chain
         C-->>R: response
-        R-->>H: cloud response (fallback flagged, no partial tokens leaked)
+        R-->>H: cloud response (no partial local tokens leaked)
     end
 ```
 
