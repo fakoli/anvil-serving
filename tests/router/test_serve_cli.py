@@ -420,3 +420,55 @@ def test_relay_backend_forwards_key_when_present():
     )
     list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
     assert captured["headers"].get("Authorization") == "Bearer local-secret"
+
+
+# --------------------------------------------------------------------------- #
+# Fix 1: public-bind warning (chore/harden-exposure)
+# --------------------------------------------------------------------------- #
+from anvil_serving.router.serve import _warn_if_public_bind  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "127.0.0.1",   # IPv4 loopback
+        "::1",         # IPv6 loopback
+    ],
+)
+def test_warn_if_public_bind_loopback_is_silent(host, capsys):
+    """Loopback addresses must NOT emit a warning."""
+    _warn_if_public_bind(host)
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "0.0.0.0",           # wildcard
+        "::",                # IPv6 wildcard
+        "",                  # empty string -> wildcard
+        "192.168.1.10",      # LAN IP
+        "10.0.0.1",          # private but non-loopback
+        "example.com",       # DNS name — cannot confirm loopback
+    ],
+)
+def test_warn_if_public_bind_non_loopback_emits_warning(host, capsys):
+    """Non-loopback / wildcard / DNS hosts must emit a prominent stderr warning."""
+    _warn_if_public_bind(host)
+    err = capsys.readouterr().err
+    assert "WARNING" in err
+    assert "authentication" in err.lower()
+
+
+def test_warn_if_public_bind_warning_names_the_host(capsys):
+    """The warning should name the host so the operator knows what was bound."""
+    _warn_if_public_bind("0.0.0.0")
+    err = capsys.readouterr().err
+    assert "0.0.0.0" in err
+
+
+def test_warn_if_public_bind_mentions_credentials(capsys):
+    """The warning must mention credential exposure so the risk is unambiguous."""
+    _warn_if_public_bind("0.0.0.0")
+    err = capsys.readouterr().err
+    assert "credential" in err.lower() or "cloud" in err.lower()

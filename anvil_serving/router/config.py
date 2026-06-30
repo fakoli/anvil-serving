@@ -116,9 +116,13 @@ def _parse_tier(raw: object) -> Tier:
         )
 
     base_url = raw["base_url"]
-    if not isinstance(base_url, str) or "://" not in base_url:
+    if not isinstance(base_url, str) or not base_url.lower().startswith(
+        ("http://", "https://")
+    ):
         raise ConfigError(
-            f"tier {tid!r}: base_url must be a URL with a scheme (got {base_url!r})"
+            f"tier {tid!r}: base_url must be an http:// or https:// URL "
+            f"(got {base_url!r}); file://, ftp://, and other schemes are "
+            f"rejected to prevent SSRF and local-file access"
         )
 
     auth_env = raw["auth_env"]
