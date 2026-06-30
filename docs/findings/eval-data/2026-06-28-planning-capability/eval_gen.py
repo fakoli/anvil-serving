@@ -9,6 +9,11 @@ import json, time, urllib.request, urllib.error, os
 from types import SimpleNamespace as NS
 
 OUT = os.path.dirname(os.path.abspath(__file__))
+PROMPTS = os.path.join(OUT, "prompts")
+OUTPUTS = os.path.join(OUT, "outputs")
+GRADING = os.path.join(OUT, "grading")
+for _d in (PROMPTS, OUTPUTS, GRADING):
+    os.makedirs(_d, exist_ok=True)
 
 # ---- VERBATIM system prompt (anvil llm_planner.py:395-504) ----
 SYSTEM_PROMPT = """\
@@ -299,13 +304,13 @@ def call(url, model, system, user, max_tokens=8192):
 manifest = []
 for pid, prd in PRDS.items():
     user = build_user_prompt(prd, prd.features, prd.requirements)
-    with open(f"{OUT}/prompt_{pid}.txt", "w", encoding="utf-8") as f:
+    with open(f"{PROMPTS}/prompt_{pid}.txt", "w", encoding="utf-8") as f:
         f.write("=== SYSTEM ===\n" + SYSTEM_PROMPT + "\n\n=== USER ===\n" + user)
     for label, url, model in TARGETS:
         print(f"[gen] {pid} / {label} ({model}) ...", flush=True)
         try:
             content, usage, dt = call(url, model, SYSTEM_PROMPT, user)
-            fn = f"{OUT}/out_{pid}__{label}.md"
+            fn = f"{OUTPUTS}/out_{pid}__{label}.md"
             with open(fn, "w", encoding="utf-8") as f:
                 f.write(content)
             ct = usage.get("completion_tokens")
@@ -319,7 +324,7 @@ for pid, prd in PRDS.items():
             print(f"   !! ERROR: {e}", flush=True)
         manifest.append(rec)
 
-with open(f"{OUT}/gen_manifest.json", "w", encoding="utf-8") as f:
+with open(f"{GRADING}/gen_manifest.json", "w", encoding="utf-8") as f:
     json.dump(manifest, f, indent=2)
 print("\nDONE. Manifest:")
 print(json.dumps(manifest, indent=2))
