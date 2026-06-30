@@ -135,6 +135,27 @@ the hook, so the router's own Tier-0 classifier remains their floor.
 
 ## 7. Verify-and-fallback (the honest hard part)
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant H as Harness
+    participant R as anvil-serving router
+    participant L as local tier
+    participant C as cloud tier
+    H->>R: request (intent preset in model field)
+    R->>R: resolve intent, route via quality profile
+    R->>L: attempt local (buffered in commit window)
+    L-->>R: candidate output
+    R->>R: cheap structural verify
+    alt verify passes
+        R-->>H: local response (served tier reported)
+    else verify fails / error / timeout / low-confidence
+        R->>C: fall back up the tier chain
+        C-->>R: response
+        R-->>H: cloud response (fallback flagged, no partial tokens leaked)
+    end
+```
+
 Inline LLM-grading every response would defeat the purpose (cost + latency). So **most "quality
 control" is routing done ahead of time** (§3–6); verification is a cheap safety net, tiered:
 
