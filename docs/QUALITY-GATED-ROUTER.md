@@ -27,7 +27,7 @@ never eats a silent local-quality failure mid-run.
 
 Transport is commodity (LiteLLM, claude-code-router, Ollama, OpenRouter). None of them know
 **whether local can actually do *this* work** — they route by static rules (model name, cost,
-regex). Our planning eval is the proof that the missing primitive exists and is buildable:
+regex). The planning eval is the proof that the missing primitive exists and is buildable:
 
 - local output is ~100% **structurally** valid but ~**2/5** on dependency reasoning — a dumb proxy
   sends that to local and silently corrupts a long agent run.
