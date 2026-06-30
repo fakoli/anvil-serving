@@ -1,3 +1,5 @@
+> **ARCHIVED — pre-pivot design history.** This spec was written before the repo pivoted to the quality-gated router product. It describes a planned anvil-refiner agent that was never built; the router (`anvil_serving/router/`) is what shipped instead.
+
 # SPEC: anvil refiner — Claude Agent SDK stub
 
 **Status:** spec only — no code yet. **Depends on:** `SPEC-anvil-core.md`, `docs/DISCOVERY-AND-REFINEMENT.md`.
