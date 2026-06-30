@@ -133,7 +133,60 @@ shape where available: push Tier-0 classification to the client (cheaper, better
 full turn context) and keep the router a clean executor. Closed harnesses (Claude Code, Codex) lack
 the hook, so the router's own Tier-0 classifier remains their floor.
 
-## 7. Verify-and-fallback (the honest hard part)
+## 7. Verify-and-fallback: two modes (contract C4)
+
+Contract C4 has two operating modes depending on whether a metered cloud tier is configured.
+Full rationale: [ADR-0001](adr/0001-cloud-cost-and-subscription-auth.md) ·
+[`docs/PLAN-advise-and-defer.md`](PLAN-advise-and-defer.md).
+
+### Mode 1 — Keyless (default)
+
+**The default config (`configs/example.toml`) holds no cloud API key.** All candidate tiers are
+local; a cloud tier is never in the routing pool.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant H as Harness / Gateway
+    participant R as anvil-serving router
+    participant L as local tier
+    H->>R: request (intent preset in model field)
+    R->>R: resolve intent, route via quality profile
+    R->>L: attempt local (buffered in commit window)
+    L-->>R: candidate output
+    R->>R: cheap structural verify
+    alt verify passes
+        R-->>H: local response (200)
+    else verify fails or all candidates exhausted
+        R-->>H: exhaustion_status (503 by default) — no partial local tokens
+        Note over H: gateway transport failover re-routes<br/>on native subscription provider
+    end
+```
+
+When an `allow-with-verify` response fails the structural verify gate, `route_with_fallback`
+exhausts all candidates (returning `FallbackResult(exhausted=True)`); the serving layer
+(`RoutingBackend.generate`) then raises `NoAvailableTierError`. The front door maps this to
+**`exhaustion_status`** (default 503, configurable via `[router].exhaustion_status` to match the
+gateway's transport-failover trigger). The **commit window** guarantees no partial local tokens
+reach the harness before the error response — the harness sees an unambiguous availability signal,
+not a corrupt partial response.
+
+For a gateway like OpenClaw that fronts the harness, the 503 triggers native transport failover
+("overloaded" category), which re-runs the request on the gateway's native subscription provider —
+the flat-rate subscription the operator already holds. anvil holds **no cloud key**; the metered
+surface is absent from the default path. **$0 metered API billing.**
+
+> **Live-validation caveat (T005 — pending):** that anvil's exhaustion-503 maps to OpenClaw
+> 2026.6.6's "overloaded" failover category is confirmed by reading `run.ts` but has not yet
+> been validated against a live OpenClaw install. If it does not trigger failover, set
+> `[router].exhaustion_status` to the status code that does. See Phase 1 in
+> [`docs/PLAN-advise-and-defer.md`](PLAN-advise-and-defer.md).
+
+### Mode 2 — Opt-in keyed (metered cloud tier)
+
+An operator who explicitly configures a cloud tier and maps specific work-classes to it via
+`[router].metered_cloud` gets **router-internal escalation**: a verify failure escalates to the
+cloud tier and returns a **200** with the cloud response, without the harness seeing an error.
 
 ```mermaid
 sequenceDiagram
@@ -141,26 +194,42 @@ sequenceDiagram
     participant H as Harness
     participant R as anvil-serving router
     participant L as local tier
-    participant C as cloud tier
+    participant C as cloud tier (metered)
     H->>R: request (intent preset in model field)
-    R->>R: resolve intent, route via quality profile
+    R->>R: resolve intent; metered_cloud gate → cloud is a candidate
     R->>L: attempt local (buffered in commit window)
     L-->>R: candidate output
     R->>R: cheap structural verify
     alt verify passes
-        R-->>H: local response
+        R-->>H: local response (200)
     else verify fails or backend error
         R->>C: fall back up the tier chain
-        C-->>R: response
-        R-->>H: cloud response (no partial local tokens leaked)
+        C-->>R: cloud response
+        R-->>H: cloud response (200) — no partial local tokens leaked
     end
 ```
+
+This mode requires:
+1. A `[[router.tiers]]` entry with `privacy = "cloud"` and `auth_env` naming the API key env var.
+2. `[router].metered_cloud = ["work-class", ...]` — the **explicit per-intent opt-in list**.
+   Empty/absent = cloud is never a routing candidate, even if a cloud tier is declared.
+
+See `configs/example-with-cloud.toml` for the full opt-in config. Cost fields
+(`cost_input_per_mtok`, `cost_output_per_mtok`) on the tier drive the decision log + metrics.
+
+> **Billing note:** routing through a metered cloud tier incurs per-token API billing on every
+> cloud-served request. This is **not** the flat-rate subscription — it is the raw
+> `api.anthropic.com` / `api.openai.com` metered surface. Prefer Mode 1 (keyless + gateway
+> transport failover) wherever the gateway supports it; use Mode 2 only for single-endpoint
+> harnesses that cannot route cloud themselves.
+
+### Verification tiers (both modes)
 
 Inline LLM-grading every response would defeat the purpose (cost + latency). So **most "quality
 control" is routing done ahead of time** (§3–6); verification is a cheap safety net, tiered:
 
 1. **Prevent (primary):** never send a `deny` work-class to local. Free; catches the biggest risks
-   (e.g. dependency planning → cloud, always).
+   (e.g. dependency planning → cloud/gateway, always).
 2. **Cheap structural verify (inline):** near-zero-cost checks that caught real failures in our
    eval — empty/truncated content (thinking-budget starvation), tool-call JSON that doesn't
    validate, code that doesn't parse, a diff that doesn't apply, malformed format. Fail → fallback.
@@ -169,8 +238,8 @@ control" is routing done ahead of time** (§3–6); verification is a cheap safe
 4. **Async LLM-judge (off hot path):** sampled cloud grading that feeds the profile (§5.2), not a
    blocking gate.
 
-**Fallback policy:** on verify-fail / error / timeout / low-confidence → retry next tier up
-(fast→heavy→cloud). Guardrails: cap retries, prevent thrash, make fallback idempotent for the
+**Fallback policy:** on verify-fail / error / timeout / low-confidence → retry next candidate in
+the ordered tier list. Guardrails: cap retries, prevent thrash, make fallback idempotent for the
 harness (especially mid-stream — see §13), and **log every fallback** (a fallback is a profile
 signal: that class may need to be downgraded to `deny`).
 
