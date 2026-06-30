@@ -101,5 +101,8 @@ __all__ = [
     "RoutingBackend",
     "RelayBackend",
     # `serve` (the submodule) is intentionally NOT re-exported as a name here; it
-    # is the T012 CLI module, reached as ``anvil_serving.router.serve``.
+    # is the T012 CLI module, reached as ``anvil_serving.router.serve``. Likewise
+    # the T005 ``profile_store`` and T015 ``profile_bootstrap`` modules are reached
+    # directly (``anvil_serving.router.profile_bootstrap``) — the latter is also a
+    # ``python -m`` entry point, so re-exporting it here would double-load it.
 ]
