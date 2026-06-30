@@ -1,9 +1,14 @@
 # OpenClaw live-validation runbook
 
-> **Status:** the tooling, plugins, and fixtures (T013 + T014) are merged and pass against
-> **synthetic** fixtures. This runbook is the remaining **live** step — it MUST be run by an operator
-> on the **Fakoli-Mini** box where OpenClaw is installed; it cannot be completed from a dev sandbox
-> with no gateway. It closes the three validate-first gaps from
+> **✅ DONE (2026-06-30).** All three gaps were run live against OpenClaw **2026.6.6** on Fakoli-Mini.
+> Results + the two bugs the live run caught (wire form needed `providerOverride` + bare model; the
+> manifest needed `configSchema`) are in
+> [`findings/2026-06-30-openclaw-live-validation.md`](findings/2026-06-30-openclaw-live-validation.md).
+> The steps below remain as the reproducible procedure.
+>
+> **Original status:** the tooling, plugins, and fixtures (T013 + T014) are merged and pass against
+> **synthetic** fixtures. This runbook is the **live** step — run by an operator on the
+> **Fakoli-Mini** box where OpenClaw is installed. It closes the three validate-first gaps from
 > [`OPENCLAW-INTEGRATION-SPEC.md`](OPENCLAW-INTEGRATION-SPEC.md) §0/§3.
 
 ## Why these are "validate-first"
