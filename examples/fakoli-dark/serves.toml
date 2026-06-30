@@ -1,0 +1,26 @@
+# Declarative serves manifest for the fakoli-dark topology.
+#
+# `anvil-serving serves {status|up|down}` reads this. It is the single source of
+# truth for "which model containers exist, on which ports" — the gap that made
+# stopping/starting the serves a manual `docker` chore.
+#
+# These two serves back the router tiers in configs/example.toml
+# (heavy-local -> :30000, fast-local -> :30001). `{dir}` resolves to this file's
+# directory. A stopped-but-existing container is restarted with `docker start`;
+# the `up` command is only used to CREATE a fresh container from scratch.
+
+[[serve]]
+name = "heavy"                 # heavy coder tier (qwen35-awq on the 96 GB card)
+container = "sglang"
+port = 30000
+model = "qwen35-awq-local"     # served-model-name (used by `anvil-serving eval`)
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml up -d"
+
+[[serve]]
+name = "fast"                  # fast tier (gpt-oss-20b on the RTX 5090)
+container = "vllm-gptoss"
+port = 30001
+model = "gpt-oss-20b"          # served-model-name (used by `anvil-serving eval`)
+health = "/health"
+up = "bash {dir}/serve-fast-gptoss-vllm.sh"

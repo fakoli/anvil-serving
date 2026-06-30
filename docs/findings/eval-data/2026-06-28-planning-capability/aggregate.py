@@ -4,8 +4,10 @@ grades + de-anonymized blind-judge scores into machine-readable CSV/JSON.
 import json, os, csv, glob, statistics as st
 
 OUT = os.path.dirname(os.path.abspath(__file__))
+# Committed eval artifacts live in subdirs; grading/ holds the json/csv.
+GRADING = os.path.join(OUT, "grading")
 def load(p):
-    with open(os.path.join(OUT, p), encoding="utf-8") as f: return json.load(f)
+    with open(os.path.join(GRADING, p), encoding="utf-8") as f: return json.load(f)
 
 gen = {(r["prd"], r["model"]): r for r in load("gen_manifest.json")}
 struct = {(r["prd"], r["model"]): r for r in load("grade_struct.json")}
@@ -17,7 +19,7 @@ DIMS = ["decomposition_granularity","requirement_coverage","dependency_correctne
 
 # de-anonymize judge files -> list of {prd, judge, model, scores..., total}
 judge_rows = []
-for jf in sorted(glob.glob(os.path.join(OUT, "judge_*.json"))):
+for jf in sorted(glob.glob(os.path.join(GRADING, "judge_*.json"))):
     j = json.load(open(jf, encoding="utf-8"))
     pid = j["prd"]; jn = j["judge"]
     for letter, c in j["candidates"].items():
@@ -54,7 +56,7 @@ for model in model_agg:
 fields = ["prd","model","model_id","gen_ok","elapsed_s","completion_tokens","tok_per_s","out_chars",
           "n_tasks","structural_score","features_covered","n_dep_edges","has_dep_cycle","dangling_deps",
           "uncovered_features"] + ["judge_"+d for d in DIMS] + ["judge_total_avg_of_25","judge_total_min","judge_total_max"]
-with open(os.path.join(OUT,"metrics_long.csv"),"w",newline="",encoding="utf-8") as f:
+with open(os.path.join(GRADING,"metrics_long.csv"),"w",newline="",encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=fields); w.writeheader()
     for (pid, model), g in gen.items():
         s = struct[(pid,model)]; ja = judge_agg[(pid,model)]
@@ -71,7 +73,7 @@ with open(os.path.join(OUT,"metrics_long.csv"),"w",newline="",encoding="utf-8") 
         })
 
 # ---- write judge_dimensions_long.csv (prd x model x judge x dimension) ----
-with open(os.path.join(OUT,"judge_dimensions_long.csv"),"w",newline="",encoding="utf-8") as f:
+with open(os.path.join(GRADING,"judge_dimensions_long.csv"),"w",newline="",encoding="utf-8") as f:
     w = csv.writer(f); w.writerow(["prd","model","judge","dimension","score"])
     for r in judge_rows:
         for d in DIMS: w.writerow([r["prd"],r["model"],r["judge"],d,r[d]])
@@ -89,7 +91,7 @@ for pid in anon:
 bundle = {"per_prd_model_judge_avg": {f"{k[0]}|{k[1]}": v for k,v in judge_agg.items()},
           "per_model_overall": model_agg, "inter_judge_agreement": agreement,
           "anon_map": anon, "raw_judge_rows": judge_rows}
-with open(os.path.join(OUT,"aggregate.json"),"w",encoding="utf-8") as f:
+with open(os.path.join(GRADING,"aggregate.json"),"w",encoding="utf-8") as f:
     json.dump(bundle, f, indent=2)
 
 # ---- console summary ----
