@@ -1,0 +1,7 @@
+{
+  "_comment": "Canonical Tier-0 keyword taxonomy. SINGLE SOURCE OF TRUTH. Consumed by BOTH anvil_serving/router/classify.py (the router) and plugins/openclaw-anvil-intent-router/classify.mjs (the OpenClaw plugin), which keeps a byte-identical bundled copy because the standalone-distributed plugin cannot read the Python package at runtime. Keys are ROUTER work-classes in PRIORITY ORDER (review > planning > multi-file-refactor > bounded-edit); each maps to its ordered keyword phrase list, matched with word-boundary regex. The plugin re-maps these work-classes onto its preset enum (multi-file-refactor -> review pool; bounded-edit -> quick-edit). Edit HERE, then re-copy this file verbatim into the plugin directory; tests/router/test_keyword_parity.py fails if the two copies drift. Keys beginning with '_' are metadata and ignored by both classifiers.",
+  "review": ["review", "critique", "feedback", "audit"],
+  "planning": ["plan", "plans", "planning", "design", "architect", "decompose", "break down", "step by step", "roadmap"],
+  "multi-file-refactor": ["refactor", "rename across", "across the codebase", "migrate the"],
+  "bounded-edit": ["edit", "fix", "change", "add a", "update the", "implement", "patch"]
+}
