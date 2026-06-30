@@ -155,6 +155,11 @@ class ProfileStore:
         """
         e = self._table.get((tier_id, work_class))
         if e is not None:
+            # FIX: a stale row must not be trusted as 'allow'; downgrade to
+            # 'allow-with-verify' so the live verify gate runs. A stale 'deny'
+            # remains deny (fail-closed). The row is re-earned by a fresh grade.
+            if e.stale and e.decision == "allow":
+                return "allow-with-verify"
             return e.decision
         if work_class is None:
             return _DEFAULT_NONE_CLASS
@@ -244,7 +249,7 @@ class ProfileStore:
             prev = self._table.get((tier_id, work_class))
             if prev is None:
                 entry = ProfileEntry(
-                    decision=decision if decision is not None else _DEFAULT_UNKNOWN,
+                    decision=decision if decision is not None else _seed_decision(work_class),
                     quality_score=round(float(score), 4),
                     sample_n=max(1, int(weight)),
                     last_measured=last_measured,
@@ -252,9 +257,15 @@ class ProfileStore:
                     fingerprint=None,
                 )
             else:
-                new_n = prev.sample_n + int(weight)
+                # Clamp weight to >= 0 so a negative weight can't subtract from the
+                # running mean and corrupt it. A zero-or-negative weight is treated
+                # as a no-op for the score, but we still advance sample_n by at
+                # least 1 (the observation happened; clamping new_n avoids
+                # ZeroDivisionError even if prev.sample_n were somehow 0).
+                w = max(0, int(weight))
+                new_n = max(1, prev.sample_n + w)
                 new_score = round(
-                    (prev.quality_score * prev.sample_n + float(score) * int(weight))
+                    (prev.quality_score * prev.sample_n + float(score) * w)
                     / new_n,
                     4,
                 )
@@ -309,6 +320,24 @@ class ProfileStore:
                     changed.append(work_class)
                 # else: identical identity -> leave the row exactly as is.
         return sorted(changed, key=lambda wc: wc or "")
+
+
+def _seed_decision(work_class: Optional[str]) -> str:
+    """Fail-closed default decision for a brand-new row with no explicit decision.
+
+    Mirrors :meth:`ProfileStore.decision` with ``is_cloud=False`` (conservative:
+    assume local, since ``record_grade`` does not receive the tier's privacy).
+    This ensures ``record_grade`` on a NEW unmeasured pair produces the SAME trust
+    verdict as ``decision()`` — fail-closed ``deny`` for high-risk local classes,
+    ``allow-with-verify`` otherwise.  A brand-new row for ``planning`` therefore
+    gets the same ``deny`` the gate would give it, not a permissive
+    ``allow-with-verify``.
+    """
+    if work_class is None:
+        return _DEFAULT_NONE_CLASS
+    if work_class in HIGH_RISK_LOCAL_CLASSES:
+        return _DEFAULT_HIGH_RISK_LOCAL
+    return _DEFAULT_UNKNOWN
 
 
 def _seed_entry(tier_id: str, decision: str) -> ProfileEntry:

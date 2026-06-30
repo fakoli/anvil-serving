@@ -40,7 +40,7 @@ from types import MappingProxyType
 from typing import Any, Mapping, Optional
 
 from .config import RouterConfig
-from .intent import Intent
+from .intent import Intent, WORK_CLASS_TO_PRESET
 from .profile_store import ProfileStore
 
 
@@ -77,6 +77,27 @@ class RoutingDecision:
 def local_tier_ids(config: RouterConfig) -> frozenset[str]:
     """Ids of the ``privacy == "local"`` tiers — the single-resident swap group (R013)."""
     return frozenset(t.id for t in config.tiers if t.privacy == "local")
+
+
+def _work_class_pool(config: RouterConfig, work_class: str) -> tuple[str, ...]:
+    """The work-class's normal gated candidate pool (preset-derived).
+
+    Mirrors ``intent.resolve``'s *inferred* path: map the work-class to its preset
+    (:data:`~anvil_serving.router.intent.WORK_CLASS_TO_PRESET`) and read that
+    preset's configured candidate pool. Used when a caller PIN is denied by the
+    quality gate and the request must fall through to the work-class's allowed
+    tiers, rather than serve the denied pin or silently 503. Returns ``()`` when
+    the work-class has no preset mapping or the preset is absent from the config —
+    the caller then gets a clean ``NoAvailableTierError`` (503), the same as any
+    genuinely-unroutable request. Never raises.
+    """
+    preset = WORK_CLASS_TO_PRESET.get(work_class)
+    if preset is None or preset not in config.presets:
+        return ()
+    try:
+        return tuple(t.id for t in config.candidates(preset))
+    except Exception:
+        return ()
 
 
 def route(
@@ -120,9 +141,39 @@ def route(
     """
     try:
         work_class = getattr(intent, "work_class", None)
+        source = getattr(intent, "source", None)
         # FIX E: tolerate a malformed Intent (missing/None candidate_tiers).
         pool = tuple(getattr(intent, "candidate_tiers", None) or ())  # AC2: config-derived.
         valid_ids = {t.id for t in config.tiers}
+
+        # FIX #9 (reworked): a caller PIN is a PREFERENCE within the gate, NEVER a
+        # gate OVERRIDE. ``intent.source == "pinned"`` is set from the caller's wire
+        # ``model`` field naming a concrete tier id (intent.resolve), so trusting it
+        # past the deny gate would let an untrusted caller pick a tier the quality
+        # profile DENIES for this work-class — the exact bypass the gate exists to
+        # prevent. So: if the pinned tier is DENIED for the work-class, drop the pin
+        # and fall through to the work-class's normal gated candidate pool, so an
+        # ALLOWED tier serves the request (a denied pin can never reach a denied
+        # tier; nor does it silently 503 — the original #9 complaint). If the gate
+        # ALLOWS the pin, the deny filter below keeps it untouched (pin honored).
+        pin_override_note: Optional[str] = None
+        if source == "pinned" and work_class is not None and pool:
+            pinned = pool[0]
+            try:
+                pinned_is_cloud = config.tier(pinned).privacy == "cloud"
+            except Exception:
+                pinned_is_cloud = False
+            if (
+                pinned in valid_ids
+                and profile.decision(pinned, work_class, is_cloud=pinned_is_cloud)
+                == "deny"
+            ):
+                # Redirect to the work-class's gated pool (may itself be all-denied,
+                # yielding an empty result -> a clean 503 at the serve boundary).
+                pool = _work_class_pool(config, work_class)
+                pin_override_note = (
+                    f"pin {pinned} denied for {work_class}; routed via gated pool"
+                )
 
         dropped_missing: list[str] = []
         dropped_duplicate: list[str] = []
@@ -164,8 +215,10 @@ def route(
 
         # 2. Profile-deny filter (AC1), fail-closed. Resolved WITH each tier's
         #    privacy so an unmeasured local on a high-risk class denies while
-        #    cloud stays allowed. Skipped (gate "off") for a None work class
-        #    (FIX D: custom preset trusts the config pool — no taxonomy key).
+        #    cloud stays allowed. Skipped (gate "off") only for a None work class
+        #    (FIX D: custom preset trusts the config pool — no taxonomy key). A
+        #    PIN is NOT exempt: it is subjected to the deny filter like any other
+        #    tier (a denied pin was already redirected to the gated pool above).
         if work_class is not None:
             quality_gate = "on"
             kept = []
@@ -183,6 +236,10 @@ def route(
             survivors = kept
         else:
             quality_gate = "off: custom preset has no work-class"
+        # A denied caller pin was redirected to the gated pool: surface that in the
+        # audit trail (the deny filter above ran normally on the redirected pool).
+        if pin_override_note is not None:
+            quality_gate = pin_override_note
 
         # 3. Order: preserve the pool's config cost order (fast -> heavy -> cloud).
         ordered = survivors
