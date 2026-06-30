@@ -65,6 +65,8 @@ richer multi-axis intent does not belong in the string.
 
 ## 4. Architecture
 
+![anvil-serving routing pipeline — resolve → route → verify → fallback, across fast-local / heavy-local / cloud tiers](../assets/architecture.png)
+
 ```
           ┌──────────────────── anvil-serving router ───────────────────┐
 harness → │ front door → resolve intent → route → [verify] → return     │ → harness
@@ -85,6 +87,8 @@ profile). Refreshed on demand and continuously calibrated from sampled productio
 Must add negligible latency and must stream.
 
 ## 5. The quality profile (the moat)
+
+![The quality gate — work proven on a tier stays local; unproven work falls back to cloud, measured per (model, work-class)](../assets/explainer-quality-gate.png)
 
 A table keyed `(model, work-class)` → `{quality_score, sample_n, last_measured, decision}` where
 `decision ∈ {allow, allow-with-verify, deny}`. Populated by:
@@ -130,6 +134,27 @@ full turn context) and keep the router a clean executor. Closed harnesses (Claud
 the hook, so the router's own Tier-0 classifier remains their floor.
 
 ## 7. Verify-and-fallback (the honest hard part)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant H as Harness
+    participant R as anvil-serving router
+    participant L as local tier
+    participant C as cloud tier
+    H->>R: request (intent preset in model field)
+    R->>R: resolve intent, route via quality profile
+    R->>L: attempt local (buffered in commit window)
+    L-->>R: candidate output
+    R->>R: cheap structural verify
+    alt verify passes
+        R-->>H: local response
+    else verify fails or backend error
+        R->>C: fall back up the tier chain
+        C-->>R: response
+        R-->>H: cloud response (no partial local tokens leaked)
+    end
+```
 
 Inline LLM-grading every response would defeat the purpose (cost + latency). So **most "quality
 control" is routing done ahead of time** (§3–6); verification is a cheap safety net, tiered:
