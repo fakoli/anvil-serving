@@ -5,7 +5,11 @@ anvil/bin/src/anvil/planning/llm_planner.py:395, plus a faithful copy of
 _build_user_prompt) for two real anvil PRDs, then calls the live local
 OpenAI-compatible endpoints. Frontier baseline is produced separately by an agent.
 """
-import json, time, urllib.request, urllib.error, os
+import json
+import time
+import urllib.request
+import urllib.error
+import os
 from types import SimpleNamespace as NS
 
 OUT = os.path.dirname(os.path.abspath(__file__))

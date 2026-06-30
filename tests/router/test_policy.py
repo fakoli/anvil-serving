@@ -593,7 +593,8 @@ auth_env      = "GPU0_KEY"
 [router.presets]
 planning = ["gpu0"]
 """
-    import tempfile, pathlib
+    import tempfile
+    import pathlib
     d = pathlib.Path(tempfile.mkdtemp())
     p = d / "localonly.toml"
     p.write_text(body, encoding="utf-8")

@@ -17,7 +17,6 @@ Hermetic, stdlib-only (pytest is the only test dep); fixtures are built directly
 """
 from __future__ import annotations
 
-from typing import Iterator
 
 from anvil_serving.router.backends import StaticBackend
 from anvil_serving.router.config import RouterConfig, Tier
