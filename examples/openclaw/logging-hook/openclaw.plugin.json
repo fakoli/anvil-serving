@@ -1,0 +1,4 @@
+{
+  "id": "anvil-fire-logger",
+  "activation": { "onStartup": true }
+}
