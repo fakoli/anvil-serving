@@ -56,11 +56,19 @@ class Tier:
 
 @dataclass(frozen=True)
 class RouterConfig:
-    """Validated router topology: tiers + preset->candidate mapping."""
+    """Validated router topology: tiers + preset->candidate mapping.
+
+    ``metered_cloud`` lists the work-classes (R002 taxonomy keys) that are
+    permitted to use a ``privacy == "cloud"`` tier.  **Default empty** — an
+    absent or empty list means a cloud tier is NEVER a routing candidate,
+    regardless of what preset pools include it (ADR-0001 / advise-and-defer:T002).
+    The gate is enforced by :func:`~anvil_serving.router.policy.route`.
+    """
 
     tiers: tuple[Tier, ...]
     presets: Mapping[str, tuple[str, ...]] = field(hash=False)
     mapping_version: str
+    metered_cloud: tuple[str, ...] = ()
 
     def tier(self, tier_id: str) -> Tier:
         """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
@@ -219,8 +227,20 @@ def load(path: str) -> RouterConfig:
     if not isinstance(mapping_version, str) or not mapping_version:
         raise ConfigError(f"[router].mapping_version must be a non-empty string in {path}")
 
+    # ``metered_cloud``: optional list of work-class strings.  Absent → empty →
+    # cloud is NEVER a candidate (ADR-0001 / advise-and-defer:T002).
+    raw_metered = router.get("metered_cloud", [])
+    if not isinstance(raw_metered, list) or not all(
+        isinstance(w, str) for w in raw_metered
+    ):
+        raise ConfigError(
+            f"[router].metered_cloud must be a list of strings in {path}"
+        )
+    metered_cloud: tuple[str, ...] = tuple(raw_metered)
+
     return RouterConfig(
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
         mapping_version=mapping_version,
+        metered_cloud=metered_cloud,
     )

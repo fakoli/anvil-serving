@@ -82,9 +82,10 @@ def test_alternating_workload_starting_heavy_also_bounded():
 
 # ── direct unit: a resident local defers the OTHER local to last ─────────────
 def test_resident_fast_defers_heavy_behind_cloud():
-    # Heavy-preferring pool (fast-local also present, allow-with-verify for review)
-    # with fast-local resident: heavy-local must land LAST, behind fast and cloud.
-    intent = _intent("review", ("fast-local", "heavy-local", "cloud"))
+    # Use work_class=None (custom-preset mode) so neither the quality gate nor the
+    # metered-cloud gate filters the pool; this isolates the residency behaviour.
+    # fast-local resident: heavy-local must land LAST, behind fast and cloud.
+    intent = _intent(None, ("fast-local", "heavy-local", "cloud"))
     dec = route(intent, CONFIG, PROFILE, residency="fast-local")
     assert dec.tiers[-1] == "heavy-local"
     assert dec.tiers.index("fast-local") < dec.tiers.index("heavy-local")
@@ -93,7 +94,8 @@ def test_resident_fast_defers_heavy_behind_cloud():
 
 
 def test_resident_heavy_defers_fast_behind_cloud():
-    intent = _intent("bounded-edit", ("fast-local", "heavy-local", "cloud"))
+    # work_class=None: gates off; pure residency test with cloud as the anchor.
+    intent = _intent(None, ("fast-local", "heavy-local", "cloud"))
     dec = route(intent, CONFIG, PROFILE, residency="heavy-local")
     assert dec.tiers[-1] == "fast-local"
     assert dec.tiers.index("heavy-local") < dec.tiers.index("fast-local")
@@ -104,7 +106,8 @@ def test_resident_heavy_defers_fast_behind_cloud():
 def test_no_residency_leaves_cost_order():
     # No resident local: the first pick loads one model (one unavoidable swap);
     # the cost order (fast -> heavy -> cloud) is left untouched.
-    intent = _intent("bounded-edit", ("fast-local", "heavy-local", "cloud"))
+    # work_class=None so the metered-cloud gate does not remove cloud.
+    intent = _intent(None, ("fast-local", "heavy-local", "cloud"))
     dec = route(intent, CONFIG, PROFILE, residency=None)
     assert dec.tiers == ("fast-local", "heavy-local", "cloud")
     assert dec.notes["residency_deferred"] == ()
@@ -113,7 +116,8 @@ def test_no_residency_leaves_cost_order():
 def test_cloud_residency_leaves_cost_order():
     # A non-local residency value (e.g. cloud) is not a swap-group member, so the
     # local cost order is preserved.
-    intent = _intent("bounded-edit", ("fast-local", "heavy-local", "cloud"))
+    # work_class=None so the metered-cloud gate does not remove cloud.
+    intent = _intent(None, ("fast-local", "heavy-local", "cloud"))
     dec = route(intent, CONFIG, PROFILE, residency="cloud")
     assert dec.tiers == ("fast-local", "heavy-local", "cloud")
     assert dec.notes["residency_deferred"] == ()
