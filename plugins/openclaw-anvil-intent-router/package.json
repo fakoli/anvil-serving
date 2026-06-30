@@ -1,0 +1,13 @@
+{
+  "name": "openclaw-anvil-intent-router",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Reference OpenClaw before_model_resolve plugin for anvil-serving (T014): classifies a turn into an anvil preset and emits modelOverride anvil/<preset>. Routing adapter only; the router core stays OpenClaw-free.",
+  "type": "module",
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "compat": {
+      "pluginApi": ">=2026.4.21"
+    }
+  }
+}

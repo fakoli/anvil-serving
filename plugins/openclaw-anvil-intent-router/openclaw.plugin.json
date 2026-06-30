@@ -1,0 +1,4 @@
+{
+  "id": "openclaw-anvil-intent-router",
+  "activation": { "onStartup": true }
+}
