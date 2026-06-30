@@ -1,6 +1,6 @@
 # ADR-0001 — Cloud cost & subscription auth: why anvil should not relay cloud
 
-- **Status:** Proposed — analysis captured, **decision deferred** (no implementation committed).
+- **Status:** **Accepted** (2026-06-30) — advise-and-defer; implementation plan in `docs/PLAN-advise-and-defer.md`.
 - **Date:** 2026-06-30
 - **Context owner:** product direction (cost).
 - **Supersedes / relates to:** the Agent-SDK golden rule in `CLAUDE.md`; `OPENCLAW-INTEGRATION-SPEC.md`; issues #42 (tool-call passthrough), #43 (provider-model resolution).
@@ -140,22 +140,57 @@ already pay for at a flat rate.
 
 ## Decision
 
-**Deferred.** This ADR records the reality and the recommended direction; the pivot is not yet
-committed. Options on the table:
+**Accepted — advise-and-defer.** anvil is a **local-serve + routing brain**; the harness owns cloud
+on its subscription; **no cloud API key in the default path.** Specifics:
 
-1. **Pivot to advise-and-defer (recommended):** anvil = local serve + routing brain; the harness
-   owns cloud on its subscription; no cloud API key in the default path. Requires plugin routing
-   changes, making `CloudBackend` opt-in, and reshaping C4. Land an implementation plan first.
-2. **Document only (this ADR):** capture the analysis, decide later.
-3. **Keep the relay, opt-in + minimize:** leave `CloudBackend` in place but off by default and
-   clearly marked metered; rely on maximizing local quality to shrink the cloud slice. Smallest
-   change, but still pays metered $ on the residual cloud traffic.
+- **Any cloud tier / `CloudBackend` is opt-in, OFF by default.** The default config ships local tiers
+  only; anvil never holds a cloud key unless an operator explicitly adds a cloud tier.
+- **Per-intent metered mapping.** When a cloud tier *is* configured, nothing is metered unless the
+  operator explicitly maps a specific intent/work-class to it — no global "use cloud" switch.
+- **Cost dimension.** A configured cloud tier carries cost fields (`$/input-tok`, `$/output-tok`),
+  surfaced in the decision log + metrics. An **optional, off-by-default** cost-sync may refresh
+  prices from the free, MIT-licensed **LiteLLM** pricing JSON (`urllib` GET, cached). Static config
+  is the default; sync is explicitly enabled.
+- **Decision endpoint.** anvil exposes **`POST /v1/route`** — the routing brain, queryable without
+  the serve path.
 
-## Open questions for the implementation phase (when/if option 1 is chosen)
-- Does OpenClaw expose a per-request **fallback** path (try anvil-local, on a signal use the native
-  provider) — or only a single provider selection per request? (Determines whether mid-request
-  verify-fail can defer, or whether the decision must be fully upfront.)
-- Codex/Claude-Code-direct (non-OpenClaw) users: documented as "needs the gateway, or accepts the
-  metered relay." Is that acceptable for the launch audience?
-- Should anvil expose a standalone **decision endpoint** (`POST /route` → local|cloud + reason) so
-  non-OpenClaw harnesses can integrate the routing brain without the serve path?
+### Mechanism (research-validated)
+
+Keystone fact (`docs/OPENCLAW-INTEGRATION-SPEC.md §0/§4`, verified vs OpenClaw `run.ts`): **OpenClaw
+cannot do quality-based fallback** — native failover fires only on *transport*-class errors
+(auth/429/overloaded/timeout/billing), and there is **no response-swap hook** (the only client-side
+escalation, `before_agent_finalize`, retries the *same* model). So "local responded but failed verify
+→ use cloud" MUST live in the router. In the keyless default this composes with the existing machinery:
+
+1. The plugin (`before_model_resolve`) routes **`deny`-class → native cloud upfront**; **`allow` /
+   `allow-with-verify` → anvil**.
+2. anvil serves locally; for `allow-with-verify` it **buffers in the commit-window**, verifies, and
+   on a miss has no cloud tier to escalate to (keyless) → `route_with_fallback` **exhausts** → anvil
+   returns a **"no available tier" 503** with **nothing streamed** (C3 preserved by the commit-window
+   — an honest *availability* signal, not a synthetic quality-error).
+3. OpenClaw's **transport** failover treats the 503 as "overloaded" → re-runs that request on the
+   **native subscription provider**. Local was tried (free); the miss falls to flat-rate cloud; **no
+   API key in anvil.**
+
+**Must validate live (currently UNCONFIRMED):** that anvil's exhaustion-503 maps to OpenClaw
+2026.6.6's "overloaded" failover category. If not, emit whatever status OpenClaw classifies as a
+transport-failover trigger. (Plan, Phase 1.)
+
+### `POST /v1/route` shape
+
+Research finding: a decision-only endpoint is **novel** — no production gateway exposes one; NotDiamond's
+SDK `select_model()` is the lone precedent. Adopted shape: request = a `/v1/chat/completions`-shaped
+body + optional `signals` (`work_class`, `token_estimate`, `urgency`); response = `{ tier: local|cloud,
+model, provider, work_class, reason, confidence, session_id }`; status 200 (decision, even if `cloud`),
+400 (malformed), 503 (no suitable tier).
+
+### Resolved questions
+
+- **OpenClaw fallback:** transport-only, no quality hook → verify stays router-internal; keyless
+  handoff = tier-exhaustion-503 → OpenClaw transport failover (above).
+- **Decision endpoint:** yes — `POST /v1/route` (shape above).
+- **Cost source:** LiteLLM pricing JSON (free/MIT) for the optional sync; static config by default.
+- **Non-OpenClaw / single-endpoint harnesses (Codex, raw Claude Code):** supported via the opt-in
+  metered cloud tier (they accept the metered $) or by adopting a gateway — documented, not blocked.
+
+**Implementation plan:** [`docs/PLAN-advise-and-defer.md`](../PLAN-advise-and-defer.md).
