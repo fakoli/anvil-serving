@@ -20,7 +20,8 @@ Stdlib-only; frozen-dataclass house style (mirrors ``config.py`` / ``internal.py
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from types import MappingProxyType
+from typing import Any, List, Mapping, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -68,7 +69,9 @@ class DecisionRecord:
     attempts that actually called a backend (``served`` / ``fallback`` /
     ``error``) — the no-call outcomes contribute nothing. ``fell_back`` is True
     when at least one tier produced output that failed verify and the router
-    escalated past it.
+    escalated past it. ``intent`` is the declared-or-inferred intent the caller
+    asked for (the preset id or model) — metadata only, optional, and last so
+    keyword construction without it stays backward-compatible (T010 transparency).
     """
 
     work_class: Optional[str]
@@ -78,6 +81,71 @@ class DecisionRecord:
     total_prompt_tokens: int
     total_completion_tokens: int
     fell_back: bool
+    intent: Optional[str] = None
+
+
+# --------------------------------------------------------------------------- #
+# transparency surface (T010; QGR §9; R012 metadata-only)
+# --------------------------------------------------------------------------- #
+# A dialect uses these to make a routed response *name what actually ran* and to
+# emit a content-free audit line. They read only the record's existing metadata
+# fields — tier ids, the fallback flag, token COUNTS — and never any message
+# text, response content, or a verifier's raw reason string (R012).
+def served_model(record: DecisionRecord) -> Optional[str]:
+    """The real tier id that served, or ``None`` if exhausted.
+
+    What a dialect sets as the response ``model`` so the response names the tier
+    that actually ran (QGR §9 transparency), not the abstract intent the caller
+    asked for.
+    """
+    return record.served_tier
+
+
+def response_metadata(record: DecisionRecord) -> Mapping[str, Any]:
+    """The transparent-response block a dialect attaches to a routed reply.
+
+    A read-only mapping naming the ACTUAL served tier and whether a fallback
+    occurred (AC1): ``served_tier``, ``fell_back``, ``work_class``, ``intent``,
+    ``tiers_tried`` (the tier id of each attempt, in order), and ``exhausted``
+    (no tier served). Metadata only — no prompt, response, or secret.
+    """
+    return MappingProxyType(
+        {
+            "served_tier": record.served_tier,
+            "fell_back": record.fell_back,
+            "work_class": record.work_class,
+            "intent": record.intent,
+            "tiers_tried": tuple(a.tier_id for a in record.attempts),
+            "exhausted": record.served_tier is None,
+        }
+    )
+
+
+def decision_line(record: DecisionRecord) -> str:
+    """A single content-FREE audit line carrying every AC2 field.
+
+    Shape::
+
+        intent=<i|-> work_class=<wc|-> served=<tier|-> verify=<pass|fail> \
+fell_back=<true|false> tiers=<t1>t2>t3> prompt=<n> completion=<n>
+
+    ``verify`` is ``pass`` when a tier served (``served_tier`` is set) else
+    ``fail``; ``-`` stands in for a missing intent/work_class/served tier;
+    ``tiers`` joins ``requested_tiers`` with ``>``; the counts are the record's
+    own token totals. Only labels and integers — never message text or a
+    verifier's raw reason (R012).
+    """
+    served = record.served_tier
+    return (
+        f"intent={record.intent or '-'} "
+        f"work_class={record.work_class or '-'} "
+        f"served={served or '-'} "
+        f"verify={'pass' if served is not None else 'fail'} "
+        f"fell_back={'true' if record.fell_back else 'false'} "
+        f"tiers={'>'.join(record.requested_tiers)} "
+        f"prompt={record.total_prompt_tokens} "
+        f"completion={record.total_completion_tokens}"
+    )
 
 
 class DecisionLog:
