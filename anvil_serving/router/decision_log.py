@@ -20,6 +20,7 @@ Stdlib-only; frozen-dataclass house style (mirrors ``config.py`` / ``internal.py
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, List, Mapping, Optional, Tuple
@@ -200,24 +201,36 @@ class DecisionLog:
     returns an immutable snapshot (a tuple copy, so a caller cannot mutate the
     internal list); :attr:`last` is the most recent record or ``None``. No
     secrets are stored — see the module docstring.
+
+    **Thread-safety.** The router runs under :class:`~http.server.ThreadingHTTPServer`,
+    so :meth:`record` and :attr:`last`/:attr:`records`/:meth:`__len__` can be called
+    concurrently from per-request handler threads. A :class:`threading.Lock` guards
+    every mutation *and* every read that iterates ``_records``. The lock is held only
+    for the minimal critical section (the list operation itself); no expensive work
+    is done under it.
     """
 
     def __init__(self) -> None:
         self._records: List[DecisionRecord] = []
+        self._lock = threading.Lock()
 
     def record(self, record: DecisionRecord) -> None:
-        """Append ``record`` to the log."""
-        self._records.append(record)
+        """Append ``record`` to the log (thread-safe)."""
+        with self._lock:
+            self._records.append(record)
 
     @property
     def records(self) -> Tuple[DecisionRecord, ...]:
-        """Immutable snapshot of all recorded decisions, oldest first."""
-        return tuple(self._records)
+        """Immutable snapshot of all recorded decisions, oldest first (thread-safe)."""
+        with self._lock:
+            return tuple(self._records)
 
     @property
     def last(self) -> Optional[DecisionRecord]:
-        """The most recently recorded decision, or ``None`` if the log is empty."""
-        return self._records[-1] if self._records else None
+        """The most recently recorded decision, or ``None`` if the log is empty (thread-safe)."""
+        with self._lock:
+            return self._records[-1] if self._records else None
 
     def __len__(self) -> int:
-        return len(self._records)
+        with self._lock:
+            return len(self._records)

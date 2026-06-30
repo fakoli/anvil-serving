@@ -273,6 +273,20 @@ class CloudBackend:
         return body
 
     def _extract_text(self, raw: bytes) -> str:
+        """Extract the completion text from the provider's response bytes.
+
+        Distinguishes two kinds of absent text:
+
+        * **Structurally malformed** — a required field is absent or has the wrong
+          type (e.g. ``"choices"`` key missing, ``choices[0]`` is not an object,
+          ``"message"`` absent).  These raise :class:`CloudBackendError` rather
+          than silently returning ``""`` so the verify gate sees an error/fallback
+          instead of a spurious empty answer.  The structural detail is printed to
+          stderr; the exception carries a sanitised, client-safe message.
+        * **Legitimately empty** — the provider returned a well-formed response
+          with no text content (e.g. ``"choices": []``, or ``"content": ""``).
+          These return ``""`` — a valid completion with zero tokens.
+        """
         try:
             data = json.loads(raw or b"{}")
         except (ValueError, TypeError) as e:
@@ -280,8 +294,26 @@ class CloudBackend:
         if not isinstance(data, Mapping):
             raise CloudBackendError("cloud provider returned a non-object body")
 
+        def _malformed(detail: str) -> CloudBackendError:
+            print(
+                f"[anvil-serving] cloud tier {self._tier.id!r}: malformed response: {detail}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return CloudBackendError(
+                f"cloud provider returned a malformed response "
+                f"(tier={self._tier.id!r}; see stderr for detail)"
+            )
+
         if self._tier.dialect == "anthropic":
-            blocks = data.get("content") or []
+            if "content" not in data:
+                raise _malformed("'content' field absent") from None
+            blocks = data["content"]
+            if not isinstance(blocks, list):
+                raise _malformed(
+                    f"'content' is not a list (got {type(blocks).__name__!r})"
+                ) from None
+            # blocks == [] is a valid empty completion; filter for text blocks only.
             parts: List[str] = [
                 str(b.get("text") or "")
                 for b in blocks
@@ -290,12 +322,24 @@ class CloudBackend:
             return "".join(parts)
 
         # openai-compatible
-        choices = data.get("choices") or []
-        if choices and isinstance(choices[0], Mapping):
-            message = choices[0].get("message") or {}
-            if isinstance(message, Mapping):
-                return str(message.get("content") or "")
-        return ""
+        if "choices" not in data:
+            raise _malformed("'choices' field absent") from None
+        choices = data["choices"]
+        if not isinstance(choices, list):
+            raise _malformed(f"'choices' is not a list (got {type(choices).__name__!r})") from None
+        if not choices:
+            return ""  # valid: server returned an empty candidate set (legitimately empty)
+        first = choices[0]
+        if not isinstance(first, Mapping):
+            raise _malformed(f"choices[0] is not an object (got {type(first).__name__!r})") from None
+        if "message" not in first:
+            raise _malformed("choices[0] missing 'message' field") from None
+        message = first["message"]
+        if not isinstance(message, Mapping):
+            raise _malformed(
+                f"choices[0].message is not an object (got {type(message).__name__!r})"
+            ) from None
+        return str(message.get("content") or "")
 
     def __repr__(self) -> str:  # never leak the key
         return (
