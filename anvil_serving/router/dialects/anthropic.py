@@ -16,7 +16,6 @@ Non-streaming: a single ``message`` object with a text content block.
 from __future__ import annotations
 
 import json
-import uuid
 from typing import Any, Dict, Iterable, Iterator, List, Mapping
 
 from ..internal import (
@@ -26,10 +25,7 @@ from ..internal import (
     flatten_content,
     normalize_messages,
 )
-
-
-def _new_id() -> str:
-    return "msg_" + uuid.uuid4().hex[:24]
+from . import _new_id
 
 
 def _event(etype: str, data: Dict[str, Any]) -> bytes:
@@ -71,7 +67,7 @@ class AnthropicDialect:
         )
 
     def stream(self, request: InternalRequest, deltas: Iterable[str]) -> Iterator[bytes]:
-        msg_id = _new_id()
+        msg_id = _new_id("msg_")
         model = request.model
         input_tokens = _input_tokens(request)
 
@@ -120,7 +116,7 @@ class AnthropicDialect:
         # output_tokens here counts the whole reply; the streamed path counts
         # deltas. Both are deterministic estimates, not a real tokenizer.
         return {
-            "id": _new_id(),
+            "id": _new_id("msg_"),
             "type": "message",
             "role": "assistant",
             "model": request.model,
