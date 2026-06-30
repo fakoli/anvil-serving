@@ -12,12 +12,15 @@ still resolves: the local backends are re-exported here from :mod:`.local`.
 * :mod:`.local`  — ``StaticBackend`` / ``EchoBackend`` (no network, no GPU).
 * :mod:`.cloud`  — ``CloudBackend`` (outbound Anthropic / OpenAI-compatible call,
   auth resolved from the per-tier ``auth_env`` env var; stdlib-only HTTP).
+* :mod:`.relay` — ``RelayBackend`` (a ``CloudBackend`` subclass for LOCAL tiers;
+  reuses the dialect machinery but makes auth optional).
 """
 
 from __future__ import annotations
 
 from .cloud import CloudBackend, MissingCredentialError
 from .local import EchoBackend, StaticBackend, split_into_deltas
+from .relay import RelayBackend
 
 __all__ = [
     "EchoBackend",
@@ -25,4 +28,5 @@ __all__ = [
     "split_into_deltas",
     "CloudBackend",
     "MissingCredentialError",
+    "RelayBackend",
 ]

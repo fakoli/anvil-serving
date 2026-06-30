@@ -57,9 +57,13 @@ import threading
 from http.server import ThreadingHTTPServer
 from typing import Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from .backends import CloudBackend, MissingCredentialError
-from .backends.cloud import _ANTHROPIC_VERSION, Transport
-from .config import ConfigError, RouterConfig, Tier, load
+# RelayBackend now lives in .backends.relay (#46); it is imported (and so
+# re-exported from this module's namespace) here because build_backend_for_tier
+# constructs it, and to keep the ``anvil_serving.router.serve.RelayBackend``
+# import path stable for existing callers.
+from .backends import CloudBackend, MissingCredentialError, RelayBackend
+from .backends.cloud import Transport
+from .config import ConfigError, PRIVACY_CLOUD, RouterConfig, Tier, load
 from .decision_log import DecisionLog
 from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
 from .front_door import make_server
@@ -116,60 +120,6 @@ def _emit_public_bind_warning(host: str) -> None:
 # --------------------------------------------------------------------------- #
 # Tier -> Backend
 # --------------------------------------------------------------------------- #
-class RelayBackend(CloudBackend):
-    """Relay an :class:`~anvil_serving.router.internal.InternalRequest` to a
-    LOCAL tier's OpenAI/Anthropic-compatible endpoint.
-
-    Reuses :class:`~anvil_serving.router.backends.cloud.CloudBackend`'s tested
-    dialect machinery (``_endpoint`` / ``_build_body`` / ``_extract_text`` /
-    ``generate``) by subclassing it, and changes only the credential policy:
-
-    * It serves a ``privacy == "local"`` tier (CloudBackend refuses non-cloud
-      tiers by design — it authenticates against a remote provider).
-    * **Auth is optional.** A local vLLM/SGLang server usually needs none, so a
-      missing ``auth_env`` is NOT fatal here (unlike CloudBackend). If the env
-      var IS set we forward it (``Authorization: Bearer`` / ``x-api-key``); if
-      not, the relay is unauthenticated.
-
-    Construction delegates to ``CloudBackend.__init__`` with the private
-    ``_require_key=False`` opt-out, so RelayBackend INHERITS the base's attribute
-    set (``_tier`` / ``_key`` / ``_timeout`` / ``_transport``) and the env/transport
-    resolution rather than hand-copying them — a future attribute added to
-    ``CloudBackend.__init__`` carries over automatically. The only override is
-    :meth:`_headers` (auth-optional).
-
-    The cloud call is non-streaming upstream; the reply is split into deltas so
-    the front door's streaming path stays genuinely multi-chunk (inherited).
-    """
-
-    def __init__(
-        self,
-        tier: Tier,
-        *,
-        env: Optional[Mapping[str, str]] = None,
-        transport: Optional[Transport] = None,
-        timeout: float = 120.0,
-    ):
-        # Relay mode: no credential requirement and no cloud-only privacy gate
-        # (local tier). super() resolves the optional key from ``auth_env`` (may
-        # be empty -> no auth header, see _headers) and the default transport.
-        super().__init__(
-            tier, env=env, transport=transport, timeout=timeout, _require_key=False
-        )
-
-    def _headers(self) -> Dict[str, str]:
-        """Outbound headers; the auth header is included ONLY if a key resolved."""
-        headers = {"Content-Type": "application/json"}
-        if self._tier.dialect == "anthropic":
-            headers["anthropic-version"] = _ANTHROPIC_VERSION
-            if self._key:
-                headers["x-api-key"] = self._key
-        else:  # openai-compatible
-            if self._key:
-                headers["Authorization"] = f"Bearer {self._key}"
-        return headers
-
-
 def build_backend_for_tier(
     tier: Tier,
     *,
@@ -184,7 +134,7 @@ def build_backend_for_tier(
     * otherwise (``local``) -> :class:`RelayBackend` (urllib relay to ``base_url``;
       auth optional).
     """
-    if tier.privacy == "cloud":
+    if tier.privacy == PRIVACY_CLOUD:
         return CloudBackend(tier, env=env, transport=transport, timeout=timeout)
     return RelayBackend(tier, env=env, transport=transport, timeout=timeout)
 
@@ -290,7 +240,7 @@ class RoutingBackend:
         structural verifier chain before any byte reaches the client.
         """
         try:
-            is_cloud = self._config.tier(tier_id).privacy == "cloud"
+            is_cloud = self._config.tier(tier_id).privacy == PRIVACY_CLOUD
         except Exception:
             is_cloud = False
         # Delegate to profile_store.decision() for ALL work_class values, including
