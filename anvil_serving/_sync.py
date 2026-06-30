@@ -12,7 +12,13 @@ recommended sampling, benchmarks, serving notes), and writes:
 Runs on the host (WSL python): sees /home/<user>/.cache + /mnt/c/... + the internet.
 Stdlib only. Public models need no token; set HF_TOKEN env for gated ones.
 """
-import os, re, json, glob, sys, time, urllib.request, urllib.error
+import os
+import re
+import json
+import glob
+import time
+import urllib.request
+import urllib.error
 
 HERE = os.environ.get("ANVIL_MODELS_OUT") or os.path.join(os.getcwd(), "model-library")
 CARDS = os.path.join(HERE, "cards")
@@ -147,7 +153,7 @@ def fetch_card(owner, repo):
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return r.read().decode("utf-8", "replace")
-    except Exception as e:
+    except Exception:
         return None
 
 def parse_frontmatter(card):

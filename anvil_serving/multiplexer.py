@@ -25,7 +25,14 @@ Usage:
 
 Exit 0 = --help or --self-check pass; 1 = self-check failure.
 """
-import argparse, io, json, os, threading, time, urllib.request, urllib.error
+import argparse
+import io
+import json
+import os
+import threading
+import time
+import urllib.request
+import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # --- REGISTRY TABLE: single source of truth for /v1/models AND the loader ----

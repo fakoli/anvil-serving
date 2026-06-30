@@ -1,10 +1,4 @@
-"""anvil-serving router package.
-
-M0 ships the protocol-standard front door (T001): one HTTP server speaking both
-the Anthropic Messages and OpenAI Chat Completions dialects, streaming back in
-each caller's native SSE framing, passing through to one injectable backend.
-Intent routing, multiple tiers, and verify/fallback are later milestones.
-"""
+"""anvil-serving router — quality-gated local-model router with automatic fallback and per-(model, work-class) quality profiling."""
 
 from __future__ import annotations
 

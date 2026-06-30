@@ -7,7 +7,11 @@ inference server: per-call context size, generation length, concurrency, through
 
 Stdlib only. Reads ~/.claude/projects/**/*.jsonl. Writes JSON to stdout (or --out).
 """
-import json, os, re, sys, glob
+import json
+import os
+import re
+import sys
+import glob
 from collections import Counter, defaultdict
 from datetime import datetime
 
@@ -52,7 +56,9 @@ def main():
     sess_summ = []                       # (duration_h, asst_turns, out_tokens)
     n_sessions = 0
 
-    g = lambda pat, txt: (re.search(pat, txt, re.S).group(1) if re.search(pat, txt, re.S) else None)
+    def g(pat, txt):
+        m = re.search(pat, txt, re.S)
+        return m.group(1) if m else None
 
     for f in files:
         n_sessions += 1

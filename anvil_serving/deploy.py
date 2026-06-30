@@ -1,5 +1,6 @@
 """Render a tuned SGLang docker-compose for a given GPU + model (the hard-won defaults baked in)."""
-import os, argparse
+import os
+import argparse
 
 TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "templates", "docker-compose.yml.tmpl")
 
