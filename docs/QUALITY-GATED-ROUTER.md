@@ -164,7 +164,8 @@ sequenceDiagram
 ```
 
 When an `allow-with-verify` response fails the structural verify gate, `route_with_fallback`
-exhausts all candidates and raises `NoAvailableTierError`. The front door maps this to
+exhausts all candidates (returning `FallbackResult(exhausted=True)`); the serving layer
+(`RoutingBackend.generate`) then raises `NoAvailableTierError`. The front door maps this to
 **`exhaustion_status`** (default 503, configurable via `[router].exhaustion_status` to match the
 gateway's transport-failover trigger). The **commit window** guarantees no partial local tokens
 reach the harness before the error response — the harness sees an unambiguous availability signal,
