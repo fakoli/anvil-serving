@@ -10,9 +10,11 @@ from __future__ import annotations
 import os
 import re
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Mapping, Optional
+
+from .prices import fetch_prices
 
 VALID_DIALECTS = {"openai", "anthropic"}
 VALID_PRIVACY = {"local", "cloud"}
@@ -82,6 +84,10 @@ class RouterConfig:
     mapping_version: str
     metered_cloud: tuple[str, ...] = ()
     exhaustion_status: int = 503
+    # ADR-0001 / advise-and-defer:T006 — off by default (no network in default mode).
+    # When True, tiers with unset cost fields have them filled from the LiteLLM pricing
+    # JSON after loading; static config values always win (never overwritten).
+    cost_sync: bool = False
 
     def tier(self, tier_id: str) -> Tier:
         """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
@@ -293,10 +299,32 @@ def load(path: str) -> RouterConfig:
         )
     exhaustion_status: int = raw_exhaustion_status
 
+    # ``cost_sync`` (ADR-0001 / advise-and-defer:T006): opt-in, off by default.
+    # When True, tiers with unset cost fields are filled from the LiteLLM pricing
+    # JSON after loading; a network fetch only happens if the local cache is stale.
+    # Static config values always win (explicit costs are never overwritten).
+    raw_cost_sync = router.get("cost_sync", False)
+    if not isinstance(raw_cost_sync, bool):
+        raise ConfigError(
+            f"[router].cost_sync must be a boolean (true/false) in {path}"
+        )
+    cost_sync: bool = raw_cost_sync
+
+    if cost_sync:
+        filled: list[Tier] = []
+        for t in tiers:
+            model_key = t.model or t.id
+            inp, out = fetch_prices(model_key)
+            cost_in = t.cost_input_per_mtok if t.cost_input_per_mtok is not None else inp
+            cost_out = t.cost_output_per_mtok if t.cost_output_per_mtok is not None else out
+            filled.append(replace(t, cost_input_per_mtok=cost_in, cost_output_per_mtok=cost_out))
+        tiers = filled
+
     return RouterConfig(
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
         mapping_version=mapping_version,
         metered_cloud=metered_cloud,
         exhaustion_status=exhaustion_status,
+        cost_sync=cost_sync,
     )
