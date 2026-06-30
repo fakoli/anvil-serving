@@ -15,6 +15,7 @@ from anvil_serving.router import classify as classify_mod
 from anvil_serving.router.config import RouterConfig, Tier, load
 from anvil_serving.router.intent import (
     PRESET_TO_WORK_CLASS,
+    PRESETS,
     Intent,
     parse_model,
     resolve,
@@ -47,6 +48,27 @@ def test_ac1_planning_alias_equal():
         assert intent.candidate_tiers == ("cloud",)
         assert intent.source == "declared-preset"
         assert intent.ambiguous is False
+
+
+def test_ac1_every_preset_bare_and_prefixed_resolve_equal():
+    """AC1 generalized (T013 criterion 1): for EVERY canonical preset, the bare
+    wire form and the ``anvil/<preset>`` form resolve to the SAME Intent — the
+    front door accepts both wire forms. Iterating ``PRESETS`` (the canonical
+    registry) also guards against a preset being added to the enum but not wired
+    into the example config."""
+    for p in PRESETS:
+        assert p.id in CONFIG.presets, f"{p.id!r} missing from example.toml presets"
+        bare = resolve(_req(p.id), CONFIG)
+        prefixed = resolve(_req(f"anvil/{p.id}"), CONFIG)
+        # decision is compare=False, so equality ignores the differing raw input.
+        assert bare == prefixed, p.id
+        assert bare.preset == prefixed.preset == p.id, p.id
+        assert bare.source == prefixed.source == "declared-preset", p.id
+        assert bare.candidate_tiers == prefixed.candidate_tiers, p.id
+        # the audit record still preserves the two distinct raw wire strings.
+        assert bare.decision["model_in"] == p.id
+        assert prefixed.decision["model_in"] == f"anvil/{p.id}"
+        assert bare.decision["normalized"] == prefixed.decision["normalized"] == p.id
 
 
 def test_ac1_decision_logs_differ_even_though_equal():
