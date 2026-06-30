@@ -60,6 +60,6 @@ message**, above the attempt loop.
 
 ## Record the outcome
 Append the captured request, the fire-cadence log, and the confirmed `pluginApi` floor to a dated
-finding under `docs/findings/`, and update `plugins/openclaw-anvil-intent-router/README.md` + its
+finding in the companion notes repo (`fakoli/anvil-serving-notes`), and update `plugins/openclaw-anvil-intent-router/README.md` + its
 `package.json` to the confirmed values. Once all three pass live, the OpenClaw beachhead is
 field-proven, not just source-verified.

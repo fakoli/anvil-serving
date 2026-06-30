@@ -46,7 +46,7 @@ subscription provider, with no partial local tokens.
   triggers OpenClaw's native failover ("overloaded" category) → the request re-runs on the native
   provider. Capture the real request/response. If 503 does **not** trip it, find the status OpenClaw
   classifies as a transport-failover trigger and emit that on exhaustion (configurable
-  `exhaustion_status`, default 503). Record the result in `docs/findings/`.
+  `exhaustion_status`, default 503). Record the result in the companion notes repo (`fakoli/anvil-serving-notes`).
 - Make the exhaustion status + body explicit and documented (it is now a *contract* with the gateway,
   not an internal detail).
 
