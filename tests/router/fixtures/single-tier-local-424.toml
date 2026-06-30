@@ -1,0 +1,19 @@
+# Test fixture: single-tier local-only config with exhaustion_status = 424.
+# Used by T004 tests to prove exhaustion_status is configurable: an operator
+# can set [router].exhaustion_status to match whatever HTTP status their
+# gateway classifies as a transport-failover trigger (ADR-0001 §Mechanism).
+[router]
+mapping_version   = "test-single-tier-local-424"
+exhaustion_status = 424
+
+[[router.tiers]]
+id            = "fast-local"
+base_url      = "http://127.0.0.1:30001/v1"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FAST_LOCAL_KEY"
+
+[router.presets]
+chat = ["fast-local"]

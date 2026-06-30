@@ -63,12 +63,21 @@ class RouterConfig:
     absent or empty list means a cloud tier is NEVER a routing candidate,
     regardless of what preset pools include it (ADR-0001 / advise-and-defer:T002).
     The gate is enforced by :func:`~anvil_serving.router.policy.route`.
+
+    ``exhaustion_status`` is the HTTP status returned when ALL quality-gated
+    tiers are exhausted (no available tier).  Default 503 is the **keyless
+    handoff signal** (ADR-0001 §Mechanism, advise-and-defer:T004): OpenClaw's
+    transport failover classifies 503 as "overloaded" and re-runs the request
+    on the native subscription provider — pending live validation in T005.
+    Operators may override to match a different gateway's transport-failover
+    trigger via ``[router].exhaustion_status``.
     """
 
     tiers: tuple[Tier, ...]
     presets: Mapping[str, tuple[str, ...]] = field(hash=False)
     mapping_version: str
     metered_cloud: tuple[str, ...] = ()
+    exhaustion_status: int = 503
 
     def tier(self, tier_id: str) -> Tier:
         """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
@@ -238,9 +247,28 @@ def load(path: str) -> RouterConfig:
         )
     metered_cloud: tuple[str, ...] = tuple(raw_metered)
 
+    # ``exhaustion_status``: HTTP status code returned when ALL quality-gated
+    # tiers are exhausted (ADR-0001 §Mechanism, advise-and-defer:T004).
+    # Default 503 is the keyless handoff signal — OpenClaw's transport failover
+    # classifies it as "overloaded" and re-runs the request on the native
+    # subscription provider.  Configurable so operators can match a different
+    # gateway's transport-failover trigger if 503 does not map to it.
+    raw_exhaustion_status = router.get("exhaustion_status", 503)
+    if (
+        isinstance(raw_exhaustion_status, bool)
+        or not isinstance(raw_exhaustion_status, int)
+        or not (100 <= raw_exhaustion_status <= 599)
+    ):
+        raise ConfigError(
+            f"[router].exhaustion_status must be an HTTP status integer "
+            f"(100-599, default 503) in {path}"
+        )
+    exhaustion_status: int = raw_exhaustion_status
+
     return RouterConfig(
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
         mapping_version=mapping_version,
         metered_cloud=metered_cloud,
+        exhaustion_status=exhaustion_status,
     )
