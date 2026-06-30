@@ -28,7 +28,7 @@ What actually happened (include the decision-log entry or traceback if you have 
 
 ## Environment
 
-- anvil-serving version: <!-- e.g. 0.3.0 -->
+- anvil-serving version: <!-- e.g. 0.4.0 -->
 - Python version: <!-- e.g. 3.11 -->
 - OS: <!-- e.g. Windows 11 / Ubuntu 24.04 -->
 - Harness: <!-- e.g. Claude Code, Aider, Codex, OpenClaw -->
