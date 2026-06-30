@@ -4,7 +4,10 @@ _TASK_HEADING_RE, and the SYSTEM prompt's STRICT rules).
 
 No judgment: every check here is mechanical and reproducible.
 """
-import re, os, glob, json
+import re
+import os
+import glob
+import json
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 OUTPUTS = os.path.join(OUT, "outputs")
@@ -54,7 +57,6 @@ def section_bullets(block, header):
 
 def grade(pid, label, text):
     valid_feats = VALID_FEATURES[pid]
-    raw = text
     text = strip_fences(text)
     r = {"prd": pid, "model": label}
     # parseable?

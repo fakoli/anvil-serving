@@ -61,7 +61,8 @@ def make_request(text: str = "implement the feature now") -> InternalRequest:
 
 # Every attempt fails verify -> escalation is always forced.
 FAILING = StaticBackend([""])
-ALWAYS_FAILING = lambda tier: FAILING
+def ALWAYS_FAILING(tier):
+    return FAILING
 
 REAL_OUTCOMES = ("served", "fallback", "error")
 
