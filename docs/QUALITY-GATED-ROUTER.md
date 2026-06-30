@@ -297,6 +297,31 @@ See `configs/example-with-cloud.toml` for the full opt-in config. Cost fields
 > transport failover) wherever the gateway supports it; use Mode 2 only for single-endpoint
 > harnesses that cannot route cloud themselves.
 
+### The `allow`-path tradeoff: latency vs. error quality
+
+The quality profile assigns each `(model, work-class)` pair one of three decisions:
+`allow`, `allow-with-verify`, or `deny`. This decision carries an inherent latency
+vs. error-quality tradeoff for any request that reaches a local tier:
+
+- **`allow` (fast-path):** tokens are streamed directly to the harness as they arrive —
+  no commit window, minimum latency. If the backend fails mid-stream (dropped connection,
+  OOM-kill, truncated output), partial tokens have already been written. There is no
+  clean fallback: the harness sees a truncated stream rather than an unambiguous HTTP
+  error.
+
+- **`allow-with-verify`:** the response is buffered in the commit window before any
+  token is released to the harness. Verification runs on the buffered output. A failure
+  — whether a backend error or a failed verifier — triggers a clean fallback with zero
+  partial tokens delivered (the C3 guarantee). The harness sees either a complete,
+  verified response or an unambiguous exhaustion status (503 by default).
+
+This asymmetry is inherent to the `allow` fast-path's latency benefit. It is a deliberate
+per-(model, work-class) decision: use `allow` only where a tier is proven reliable enough
+that mid-stream failure is operationally acceptable; use `allow-with-verify` where clean
+fallback matters — structured output that downstream tooling must parse, multi-file edits,
+or any class where a partial result is worse than no result. The quality profile's
+calibration loop (§5) provides the evidence base for that decision.
+
 ### Verification tiers (both modes)
 
 Inline LLM-grading every response would defeat the purpose (cost + latency). So **most "quality
