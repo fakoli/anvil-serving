@@ -23,8 +23,9 @@ Stdlib-only; mirrors the frozen-dataclass style of ``config.py`` / ``intent.py``
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Mapping, Optional, Tuple
+import threading
+from dataclasses import dataclass, replace
+from typing import List, Mapping, Optional, Tuple
 
 # The closed set of per-(tier, work-class) verdicts.
 DECISIONS = ("allow", "allow-with-verify", "deny")
@@ -74,12 +75,23 @@ class ProfileEntry:
 
     ``last_measured`` is ``None`` for a hand-authored seed entry; a later
     self-refinement loop fills it with an ISO timestamp when it measures.
+
+    ``stale`` / ``fingerprint`` are the T016 staleness fields (both ADDITIVE,
+    defaulted so every T005/T015 construction site keeps working untouched):
+    ``fingerprint`` records the serve identity (see
+    :func:`~anvil_serving.router.fingerprint.serve_fingerprint`) the row was last
+    associated with, and ``stale`` is ``True`` once that identity changed under
+    the row — a signal for routing to DISTRUST the row until it is re-measured.
+    They are managed by :meth:`ProfileStore.apply_fingerprint` /
+    :meth:`ProfileStore.record_grade`, never by the seed/replay paths.
     """
 
     decision: str
     quality_score: float  # 0.0-1.0; advisory for the MVP
     sample_n: int
     last_measured: Optional[str]  # None for hand-authored seeds
+    stale: bool = False  # T016: serve identity changed -> distrust until re-measured
+    fingerprint: Optional[str] = None  # T016: serve identity this row was measured under
 
     def __post_init__(self) -> None:
         if self.decision not in DECISIONS:
@@ -90,22 +102,35 @@ class ProfileEntry:
 
 
 class ProfileStore:
-    """An immutable lookup over ``(tier_id, work_class) -> ProfileEntry``.
+    """A lookup over ``(tier_id, work_class) -> ProfileEntry``.
 
-    The backing table is copied in and kept private — there is no mutable
-    accessor. Lookups apply the fail-closed defaults documented on the module:
-    the table is consulted FIRST for any key, then a ``None`` work class is
-    ``allow``, a cloud tier is ``allow``, an unmeasured *local* tier on a
-    high-risk class is ``deny``, and any other unmeasured pair is
-    ``allow-with-verify``. :meth:`entry`, :meth:`decision`, and :meth:`score`
-    therefore never disagree for a stored key.
+    The backing table is copied in and kept private. The READ surface
+    (:meth:`entry`/:meth:`decision`/:meth:`score`) is what routing consults; it
+    applies the fail-closed defaults documented on the module: the table is
+    consulted FIRST for any key, then a ``None`` work class is ``allow``, a cloud
+    tier is ``allow``, an unmeasured *local* tier on a high-risk class is
+    ``deny``, and any other unmeasured pair is ``allow-with-verify``.
+    :meth:`entry`, :meth:`decision`, and :meth:`score` therefore never disagree
+    for a stored key.
+
+    T016 adds a small, *thread-safe* WRITE surface used off the hot path by the
+    async calibration sampler and the serve-fingerprint staleness check:
+    :meth:`record_grade` (fold a fresh quality grade into a row) and
+    :meth:`apply_fingerprint` (stamp/compare a serve identity, marking rows
+    stale on a change). Both take an internal :class:`threading.Lock` so
+    concurrent background grades cannot corrupt an entry; the read methods are
+    single ``dict.get`` lookups (atomic under the GIL) and stay lock-free.
     """
 
-    __slots__ = ("_table",)
+    __slots__ = ("_table", "_lock")
 
     def __init__(self, entries: Mapping[Tuple[str, Optional[str]], ProfileEntry]):
         # Copy so a later mutation of the caller's dict can't leak in.
         self._table = dict(entries)
+        # Guards the read-modify-write of record_grade / apply_fingerprint so
+        # concurrent calibration grades (each a background thread) can't race a
+        # lost update onto a shared row.
+        self._lock = threading.Lock()
 
     def entry(self, tier_id: str, work_class: Optional[str]) -> Optional[ProfileEntry]:
         """Return the stored entry for the pair, or ``None`` if unmeasured."""
@@ -147,6 +172,143 @@ class ProfileStore:
         """
         e = self._table.get((tier_id, work_class))
         return e.quality_score if e is not None else _DEFAULT_SCORE
+
+    # --- T016 write surface (thread-safe; off the hot path) -------------------
+
+    def is_stale(self, tier_id: str, work_class: Optional[str]) -> bool:
+        """``True`` if the stored row exists and is flagged stale.
+
+        Unmeasured pairs (no stored row) are NOT stale — they fall through to the
+        fail-closed defaults of :meth:`decision`, which already distrust the risky
+        ones. Staleness only qualifies a row that *was* measured.
+        """
+        e = self._table.get((tier_id, work_class))
+        return bool(e is not None and e.stale)
+
+    def stale_pairs(self) -> List[Tuple[str, Optional[str]]]:
+        """Every ``(tier_id, work_class)`` whose row is currently stale, sorted.
+
+        Snapshots the table UNDER THE LOCK before iterating: a concurrent
+        :meth:`record_grade` can insert a brand-new key, and iterating the live
+        ``dict`` view would otherwise risk ``RuntimeError: dictionary changed size
+        during iteration``. (The ``dict.get`` readers — :meth:`entry`/
+        :meth:`decision`/:meth:`score`/:meth:`is_stale` — need no lock; only this
+        full traversal does.)
+        """
+        with self._lock:
+            snapshot = list(self._table.items())
+        return sorted(
+            (k for k, e in snapshot if e.stale),
+            key=lambda k: (k[0], k[1] or ""),
+        )
+
+    def record_grade(
+        self,
+        tier_id: str,
+        work_class: Optional[str],
+        *,
+        score: float,
+        decision: Optional[str] = None,
+        last_measured: Optional[str] = None,
+        weight: int = 1,
+        submitted_fingerprint: Optional[str] = None,
+    ) -> ProfileEntry:
+        """Fold a fresh quality ``score`` into the ``(tier_id, work_class)`` row.
+
+        Read-modify-write under the store lock so concurrent background grades
+        don't lose an update. Semantics:
+
+        * ``quality_score`` becomes the sample-count-weighted running mean of the
+          prior score and the new grade (``weight`` new observations), so a single
+          noisy grade can't swing a well-sampled row; ``sample_n`` grows by
+          ``weight``.
+        * ``decision`` is updated ONLY if the caller passes one explicitly — a
+          quality number never silently flips the load-bearing trust verdict (the
+          ``deny`` gate). A brand-new row with no decision defaults to
+          ``allow-with-verify`` (use-but-verify), never a bare ``allow``.
+        * ``stale`` is cleared (the grade re-measured the row) — but ONLY when the
+          measurement is still current. ``submitted_fingerprint`` is the serve
+          identity that was active when this grade was DISPATCHED; if the row's
+          ``fingerprint`` has since advanced past it (a concurrent
+          :meth:`apply_fingerprint` stamped a NEW identity + ``stale=True`` while
+          this grade was in flight), the grade is from a now-superseded serve and
+          MUST NOT clear that fresh staleness — the existing ``stale`` is kept.
+          Passing ``None`` (no fingerprint context) clears unconditionally, the
+          prior behaviour. ``fingerprint`` itself is carried over (the identity
+          was already advanced by :meth:`apply_fingerprint` when the serve
+          changed). ``last_measured`` is set when provided, else carried over.
+
+        Returns the new (replaced) entry.
+        """
+        with self._lock:
+            prev = self._table.get((tier_id, work_class))
+            if prev is None:
+                entry = ProfileEntry(
+                    decision=decision if decision is not None else _DEFAULT_UNKNOWN,
+                    quality_score=round(float(score), 4),
+                    sample_n=max(1, int(weight)),
+                    last_measured=last_measured,
+                    stale=False,
+                    fingerprint=None,
+                )
+            else:
+                new_n = prev.sample_n + int(weight)
+                new_score = round(
+                    (prev.quality_score * prev.sample_n + float(score) * int(weight))
+                    / new_n,
+                    4,
+                )
+                # Don't clear staleness that was set AFTER this grade was
+                # submitted: if the serve identity advanced since dispatch, this
+                # measurement no longer reflects the current serve.
+                superseded = (
+                    submitted_fingerprint is not None
+                    and prev.fingerprint != submitted_fingerprint
+                )
+                new_stale = prev.stale if superseded else False
+                entry = replace(
+                    prev,
+                    decision=decision if decision is not None else prev.decision,
+                    quality_score=new_score,
+                    sample_n=new_n,
+                    last_measured=(
+                        last_measured if last_measured is not None else prev.last_measured
+                    ),
+                    stale=new_stale,
+                )
+            self._table[(tier_id, work_class)] = entry
+            return entry
+
+    def apply_fingerprint(self, tier_id: str, fingerprint: str) -> List[Optional[str]]:
+        """Associate ``fingerprint`` with every row of ``tier_id`` and mark stale on change.
+
+        For each stored row of ``tier_id`` (across ALL its work classes — a serve
+        change affects the whole tier), under the store lock:
+
+        * no prior fingerprint -> adopt ``fingerprint`` as the baseline (NOT
+          stale: there was nothing to invalidate);
+        * stored fingerprint == ``fingerprint`` -> no-op;
+        * stored fingerprint != ``fingerprint`` -> advance to ``fingerprint`` and
+          set ``stale = True`` (the serve identity changed; distrust until
+          re-measured). The fingerprint is advanced so a repeat call with the same
+          new identity is a no-op rather than re-flapping the flag.
+
+        Rows of OTHER tiers are never touched. Returns the work classes whose rows
+        were newly marked stale (sorted), so a caller/test can see the blast radius.
+        """
+        changed: List[Optional[str]] = []
+        with self._lock:
+            for key, entry in list(self._table.items()):
+                tid, work_class = key
+                if tid != tier_id:
+                    continue
+                if entry.fingerprint is None:
+                    self._table[key] = replace(entry, fingerprint=fingerprint)
+                elif entry.fingerprint != fingerprint:
+                    self._table[key] = replace(entry, fingerprint=fingerprint, stale=True)
+                    changed.append(work_class)
+                # else: identical identity -> leave the row exactly as is.
+        return sorted(changed, key=lambda wc: wc or "")
 
 
 def _seed_entry(tier_id: str, decision: str) -> ProfileEntry:
