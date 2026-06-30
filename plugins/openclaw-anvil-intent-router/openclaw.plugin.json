@@ -4,6 +4,16 @@
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
-    "properties": {}
+    "properties": {
+      "cloudClasses": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Anvil preset names to route to the native provider (bypassing anvil). Default: [\"planning\"]. Overridden by the ANVIL_CLOUD_CLASSES env var (comma-separated)."
+      },
+      "routeEndpoint": {
+        "type": "string",
+        "description": "If set, POST to this URL (anvil's /v1/route, T007) for an authoritative local/cloud tier decision instead of the fast client-side keyword heuristic. Falls back to client-side on any error/timeout. Overridden by ANVIL_ROUTE_ENDPOINT env var. Leave unset (the default) for the zero-round-trip client-side path."
+      }
+    }
   }
 }

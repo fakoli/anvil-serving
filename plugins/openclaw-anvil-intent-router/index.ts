@@ -1,38 +1,47 @@
-// openclaw-anvil-intent-router — the REFERENCE OpenClaw `before_model_resolve`
-// intent-router plugin for anvil-serving (T014).
+// openclaw-anvil-intent-router — upfront routing split (advise-and-defer:T008)
 //
-// Purpose: classify the current turn (prompt text + attachment kinds) into one
-// of anvil's CLOSED presets and emit `{ providerOverride: "anvil", modelOverride:
-// "<preset>" }`, so OpenClaw routes the run to the anvil provider's matching preset
-// model. It also appends a decision-log line per fire (for the AC1 fixture + live
-// assertion).
+// Purpose (T008): classify the current turn client-side and route UPFRONT:
+//   - cloud-preferred work-classes (e.g. `planning`) → no override → native provider.
+//     This avoids a wasted anvil round-trip for classes eval-proven to work better
+//     on the cloud subscription tier.
+//   - local work-classes (quick-edit, review, chat, long-context) → anvil.
+//     Emits { providerOverride: "anvil", modelOverride: "<bare preset>" }.
 //
-// LIVE-CONFIRMED on OpenClaw 2026.6.6 (Fakoli-Mini, 2026-06-30): a lone
-// `modelOverride: "anvil/<preset>"` is resolved as `<defaultProvider>/anvil/<preset>`
-// (e.g. `openai/anvil/planning`) → `model_not_found`. The provider MUST be named
-// separately via `providerOverride`; the wire then carries the BARE preset
-// (`model: "planning"`). See docs/findings/2026-06-30-openclaw-live-validation.md.
+// The existing keyless-503 → native failover (`agents.defaults.model.fallbacks`)
+// remains the safety net for anything that reaches anvil and exhausts.  T008 is an
+// OPTIMISATION (no unnecessary anvil contact) — not a change to that guarantee.
 //
-// REQUIRED GATE: a non-bundled plugin using `before_model_resolve` MUST be
-// granted conversation access in ~/.openclaw/openclaw.json:
-//   plugins: { entries: { "openclaw-anvil-intent-router": { hooks: { allowConversationAccess: true } } } }
-// (This hook does NOT mutate the prompt, so it does NOT need `allowPromptInjection`.)
+// CLOUD-CLASS SET:
+//   Default: {"planning"} (eval-proven cloud-preferred, T005 bake-off).
+//   Extend via ANVIL_CLOUD_CLASSES env var (comma-separated preset names).
 //
-// Focus-not-couple: ALL OpenClaw-specific code lives here, in this swappable
-// adapter plugin. The router core (anvil_serving/router/) stays OpenClaw-free
-// (AC2). The classify heuristic is the shared ./classify.mjs (single source of
-// truth) so the committed decision_log.fixture.jsonl is provably this plugin's
-// real output.
+// OPTIONAL AUTHORITATIVE MODE:
+//   Set ANVIL_ROUTE_ENDPOINT (e.g. "http://127.0.0.1:8000/v1/route") to call
+//   anvil's POST /v1/route (T007) as the authoritative tier decision.
+//   Falls back to client-side classify on any error.  Default: client-side only.
 //
-// Hook types are source-faithful to docs/OPENCLAW-INTEGRATION-SPEC.md §0/§1.
+// WIRE FORM (LIVE-CONFIRMED OpenClaw 2026.6.6, 2026-06-30):
+//   { providerOverride: "anvil", modelOverride: "<bare preset>" }
+//   A lone `modelOverride: "anvil/<preset>"` is mis-resolved → model_not_found.
+//
+// REQUIRED GATE: `plugins.entries.openclaw-anvil-intent-router.hooks.allowConversationAccess: true`
+// This hook does NOT mutate the prompt, so it does NOT need `allowPromptInjection`.
+//
+// FOCUS, NOT COUPLE: all OpenClaw-specific code lives here.
+// The router core (anvil_serving/router/) is OpenClaw-free (AC2).
 
 import { appendFileSync } from "node:fs";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 
 import { classify, type AnvilPreset } from "./classify.mjs";
+import {
+  getCloudClasses,
+  makeRoutingDecision,
+  fetchAnvilTier,
+} from "./route.mjs";
 
 // Re-export so the closed preset enum + heuristic are part of this plugin's
-// public surface (and importable by tooling such as make-fixture.mjs).
+// public surface (importable by tooling such as make-fixture.mjs).
 export { classify };
 export type { AnvilPreset };
 
@@ -53,27 +62,54 @@ export default definePluginEntry({
   register(api) {
     api.on(
       "before_model_resolve",
-      (event: BeforeModelResolveEvent, ctx): BeforeModelResolveResult => {
-        // OUTER never-break guard: a routing plugin must NEVER break a user's
-        // run. ANY error escaping this body (a throwing getter / Proxy on
-        // `event`/`ctx`, a future field access, etc.) degrades to a no-op
-        // override `{}` (OpenClaw keeps its own model resolution). The inner
-        // classify + appendFileSync guards stay too — defense in depth.
+      async (event: BeforeModelResolveEvent, ctx): Promise<BeforeModelResolveResult> => {
+        // OUTER never-break guard: a routing plugin MUST NEVER break a user's
+        // run.  ANY error escaping this body degrades to a no-op override {}
+        // (OpenClaw keeps its own model resolution).
         try {
-          // Coerce ONCE to the exact string classify sees, then derive both the
-          // classification AND prompt_chars from it — so a non-string prompt logs
-          // its real classified length, not 0.
+          // Coerce ONCE to the exact string classify sees.
           const promptText = String(event?.prompt ?? "");
           // classify NEVER throws; default "chat" is the safe floor.
           const preset: AnvilPreset = classify(promptText, event?.attachments);
-          // Route to the anvil provider by NAMING IT (providerOverride) and putting
-          // the BARE preset in modelOverride. LIVE-CONFIRMED (OpenClaw 2026.6.6):
-          // OpenClaw forwards the bare preset on the wire (model="planning"); a lone
-          // "anvil/<preset>" in modelOverride is mis-resolved under the default
-          // provider. Bare preset satisfies validate.py's WIRE_FORM_RE
-          // ^(anvil/)?<preset>$ and the anvil front door accepts it.
-          const providerOverride = "anvil";
-          const modelOverride = preset;
+
+          // ── ROUTING SPLIT (T008) ─────────────────────────────────────────
+          //
+          // Two paths:
+          //   A. AUTHORITATIVE (opt-in): call POST /v1/route (T007) when
+          //      ANVIL_ROUTE_ENDPOINT is set.  Uses the router's full quality
+          //      profile; adds one loopback round-trip.  Falls back to B on
+          //      any error/timeout.
+          //   B. CLIENT-SIDE (default): fast, zero-round-trip heuristic.
+          //      Uses DEFAULT_CLOUD_CLASSES (+ ANVIL_CLOUD_CLASSES override).
+          //
+          let routeOverride: BeforeModelResolveResult;
+
+          const routeEndpoint = process.env.ANVIL_ROUTE_ENDPOINT;
+          if (routeEndpoint) {
+            // Path A: authoritative POST /v1/route.
+            const tier = await fetchAnvilTier(
+              promptText,
+              event?.attachments as Array<{ kind: string }> | undefined,
+              routeEndpoint,
+            );
+            if (tier === "cloud") {
+              routeOverride = {}; // native provider, no anvil contact
+            } else if (tier === "local") {
+              routeOverride = { providerOverride: "anvil", modelOverride: preset };
+            } else {
+              // /v1/route unreachable / timed out / unexpected response →
+              // fall back to client-side classify (no run breakage).
+              routeOverride = makeRoutingDecision(preset, getCloudClasses());
+            }
+          } else {
+            // Path B: fast client-side classify (default).
+            routeOverride = makeRoutingDecision(preset, getCloudClasses());
+          }
+
+          // "anvil" if routed to anvil; "native" if left to native provider.
+          const destination = routeOverride.providerOverride === "anvil"
+            ? "anvil"
+            : "native";
 
           const record = {
             ts: new Date().toISOString(),
@@ -81,8 +117,10 @@ export default definePluginEntry({
             sessionKey: String((ctx as { sessionKey?: string })?.sessionKey ?? "unknown-session"),
             source: "openclaw",
             intent: preset,
-            providerOverride,
-            modelOverride,
+            destination,
+            providerOverride: routeOverride.providerOverride ?? null,
+            modelOverride: routeOverride.modelOverride ?? null,
+            authoritative: Boolean(routeEndpoint),
             prompt_chars: promptText.length,
           };
           try {
@@ -91,7 +129,7 @@ export default definePluginEntry({
             // NEVER break a run because a logging write failed.
           }
 
-          return { providerOverride, modelOverride };
+          return routeOverride;
         } catch {
           // Anything unexpected -> no override; let OpenClaw resolve normally.
           return {};

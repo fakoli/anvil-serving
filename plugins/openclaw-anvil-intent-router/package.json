@@ -1,9 +1,12 @@
 {
   "name": "openclaw-anvil-intent-router",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
-  "description": "Reference OpenClaw before_model_resolve plugin for anvil-serving (T014): classifies a turn into an anvil preset and emits modelOverride anvil/<preset>. Routing adapter only; the router core stays OpenClaw-free.",
+  "description": "Reference OpenClaw before_model_resolve plugin for anvil-serving (T008): upfront routing split — cloud-preferred classes (planning) go to native provider, local classes go to anvil. Routing adapter only; the router core stays OpenClaw-free.",
   "type": "module",
+  "scripts": {
+    "test": "node --test test.mjs"
+  },
   "openclaw": {
     "extensions": ["./index.ts"],
     "compat": {
