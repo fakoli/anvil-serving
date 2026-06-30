@@ -23,10 +23,12 @@ Design constraints (load-bearing):
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from types import MappingProxyType
-from typing import Any, List, Mapping
+from typing import Any, List, Mapping, Tuple
 
 from .internal import InternalRequest, estimate_tokens
 
@@ -55,13 +57,21 @@ _LONG_CONTEXT_WORDS = 4000
 # priority for the conflict tie-break: review > planning > refactor > the broad
 # bounded-edit verbs, so a request naming two classes resolves to the higher one
 # (but as an *ambiguous* match — see :func:`classify`).
-_KEYWORD_PHRASES = (
+#
+# The vocabulary itself lives in ``tier0_keywords.json`` next to this module —
+# the SINGLE SOURCE OF TRUTH, mirrored byte-for-byte into the OpenClaw plugin's
+# bundled copy and guarded against drift by ``tests/router/test_keyword_parity``.
+# We load it at import (below); the hardcoded ``_FALLBACK_KEYWORD_PHRASES`` is a
+# verbatim mirror used ONLY if the JSON is missing/unreadable, so a packaging
+# slip can never break import (routing must always make progress).
+#
+# NOTE on the planning phrases: word-boundary matching means bare "plan" alone
+# misses the gerund/plural — the two most natural ways to ask for planning — so
+# "plans"/"planning" are listed explicitly. (Planning is the eval-proven
+# local-weak class that must reach cloud; missing it silently leaks the work to
+# a local tier.)
+_FALLBACK_KEYWORD_PHRASES: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     ("review", ("review", "critique", "feedback", "audit")),
-    # "plan"/"plans"/"planning": word-boundary matching means "plan" alone misses
-    # the gerund/plural — the two most natural ways to ask for planning — so list
-    # them explicitly. (Planning is the eval-proven local-weak class that must
-    # reach cloud; missing it silently leaks the work to a local tier.) The
-    # OpenClaw plugin's classify.mjs mirrors this set — keep the two in sync.
     ("planning", ("plan", "plans", "planning", "design", "architect", "decompose",
                   "break down", "step by step", "roadmap")),
     ("multi-file-refactor", ("refactor", "rename across",
@@ -69,6 +79,34 @@ _KEYWORD_PHRASES = (
     ("bounded-edit", ("edit", "fix", "change", "add a",
                       "update the", "implement", "patch")),
 )
+
+# Path to the canonical taxonomy, co-located with this module.
+_KEYWORDS_PATH = Path(__file__).with_name("tier0_keywords.json")
+
+
+def _load_keyword_phrases() -> Tuple[Tuple[str, Tuple[str, ...]], ...]:
+    """Load the ordered (work_class, phrases) taxonomy from the canonical JSON.
+
+    Keys are work-classes in priority order; the insertion order of the JSON
+    object is preserved (``json.load`` -> ordered ``dict``) and IS the priority
+    order. Keys beginning with ``"_"`` are metadata and skipped. Falls back to
+    :data:`_FALLBACK_KEYWORD_PHRASES` on ANY error (missing file, bad JSON,
+    wrong shape, empty taxonomy) so import never fails.
+    """
+    try:
+        with _KEYWORDS_PATH.open(encoding="utf-8") as fh:
+            data = json.load(fh)
+        phrases = tuple(
+            (str(work_class), tuple(str(p) for p in plist))
+            for work_class, plist in data.items()
+            if not str(work_class).startswith("_")
+        )
+        return phrases or _FALLBACK_KEYWORD_PHRASES
+    except Exception:  # pragma: no cover - defensive; verbatim fallback follows.
+        return _FALLBACK_KEYWORD_PHRASES
+
+
+_KEYWORD_PHRASES = _load_keyword_phrases()
 
 # Precompile one word-boundary regex per work class from its phrase set.
 _KEYWORD_RULES = tuple(
