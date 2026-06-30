@@ -99,6 +99,31 @@ class InternalRequest:
         return ""
 
 
+@dataclass
+class StructuredResult:
+    """Structured fields from a backend response, carried as a per-thread side channel.
+
+    Backends that surface structured fields (``CloudBackend`` / ``RelayBackend``)
+    populate a ``threading.local`` during each ``generate()`` call. After the
+    generator is fully drained, callers read ``get_last_structured()`` to build a
+    :class:`~anvil_serving.router.verify.ResponseView` with a real
+    ``finish_reason`` and ``tool_calls``, making ``NotTruncated`` and
+    ``ToolCallJSONValid`` genuinely live on the serve path (#42 / #52).
+
+    ``finish_reason``: raw upstream stop reason, passed through verbatim.
+      Anthropic: ``"end_turn"`` / ``"tool_use"`` / ``"max_tokens"`` / ``"stop_sequence"``.
+      OpenAI: ``"stop"`` / ``"tool_calls"`` / ``"length"``.
+      Dialects translate to their own wire values when rendering.
+
+    ``tool_calls``: normalized list — each dict has:
+      ``"name"`` (str), ``"id"`` (str),
+      ``"arguments"`` (str — JSON string from OpenAI; dict — already-parsed from Anthropic).
+    """
+
+    finish_reason: Optional[str] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+
+
 @runtime_checkable
 class Backend(Protocol):
     """The inference seam: turn an :class:`InternalRequest` into text deltas.

@@ -63,7 +63,7 @@ from typing import Callable, Dict, Iterator, List, Optional, Sequence, Set, Tupl
 
 from .config import RouterConfig, Tier
 from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, compute_cost_usd
-from .internal import Backend, InternalRequest, estimate_tokens
+from .internal import Backend, InternalRequest, StructuredResult, estimate_tokens
 from .commit_window import build_response_view
 from .verify import VerifyResult, Verifier, default_verifiers, run_verifiers
 
@@ -117,12 +117,18 @@ class FallbackResult:
     exhausted). ``record`` is the full audit trail. ``exhausted`` is True when no
     tier served — every candidate failed, or the retry cap / circuit / budget
     stopped escalation first.
+
+    ``structured`` carries the winning tier's structured fields
+    (``finish_reason`` / ``tool_calls``) if its backend exposes
+    ``get_last_structured()``; ``None`` otherwise. The dialect layer uses it to
+    render the real stop reason and any tool calls in the response (#42 / #52).
     """
 
     served_tier: Optional[str]
     text: str
     record: DecisionRecord
     exhausted: bool
+    structured: Optional[StructuredResult] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -443,7 +449,12 @@ def route_with_fallback(
     # ---------------------------------------------------------------------- #
     # finalize: build + log the DecisionRecord                                #
     # ---------------------------------------------------------------------- #
-    def finalize(served: Optional[str], text: str, exhausted: bool) -> FallbackResult:
+    def finalize(
+        served: Optional[str],
+        text: str,
+        exhausted: bool,
+        structured: Optional[StructuredResult] = None,
+    ) -> FallbackResult:
         # Cost dimension (ADR-0001 / advise-and-defer:T003): estimate the $ cost of
         # the SERVED response from the served tier's cost fields. Pure arithmetic —
         # never blocks the hot path. 0.0 when nothing served (exhausted) or when the
@@ -479,7 +490,10 @@ def route_with_fallback(
                     file=sys.stderr,
                     flush=True,
                 )
-        return FallbackResult(served_tier=served, text=text, record=record, exhausted=exhausted)
+        return FallbackResult(
+            served_tier=served, text=text, record=record,
+            exhausted=exhausted, structured=structured,
+        )
 
     for tier_id in requested_tiers:
         # 1. Retry cap — bound total escalation work.
@@ -641,6 +655,10 @@ def route_with_fallback(
 
         if passed:
             _record_success(tier_id)  # clean run resets the consecutive-failure count
+            # Capture structured fields from the winning backend's thread-local so
+            # the dialect layer can render real stop_reason / tool_calls (#42 / #52).
+            _get_fn = getattr(backend, "get_last_structured", None)
+            _structured = _get_fn() if callable(_get_fn) else None
             attempts.append(
                 AttemptRecord(
                     tier_id=tier_id,
@@ -651,7 +669,7 @@ def route_with_fallback(
                     outcome="served",
                 )
             )
-            return finalize(tier_id, text, exhausted=False)
+            return finalize(tier_id, text, exhausted=False, structured=_structured)
 
         # FAIL: record the discard, bump the breaker, escalate.
         _record_failure(tier_id)

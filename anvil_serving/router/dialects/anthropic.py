@@ -16,7 +16,7 @@ Non-streaming: a single ``message`` object with a text content block.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, Iterator, List, Mapping
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional
 
 from ..internal import (
     DialectError,
@@ -39,6 +39,26 @@ def _input_tokens(request: InternalRequest) -> int:
     if request.system:
         texts.append(request.system)
     return estimate_tokens(texts)
+
+
+def _anthropic_stop_reason(raw: Optional[str]) -> str:
+    """Map a raw upstream ``finish_reason`` to the Anthropic wire ``stop_reason``.
+
+    Passes through Anthropic-native values unchanged; maps OpenAI-style values to
+    their Anthropic equivalents; falls back to ``"end_turn"`` for anything unknown.
+    """
+    if raw is None:
+        return "end_turn"
+    r = str(raw).lower()
+    if r in ("end_turn", "stop_sequence"):
+        return r
+    if r == "stop":
+        return "end_turn"
+    if r in ("tool_use", "tool_calls", "function_call"):
+        return "tool_use"
+    if r in ("max_tokens", "length", "model_length"):
+        return "max_tokens"
+    return "end_turn"
 
 
 class AnthropicDialect:
@@ -66,7 +86,28 @@ class AnthropicDialect:
             raw=dict(body),
         )
 
-    def stream(self, request: InternalRequest, deltas: Iterable[str]) -> Iterator[bytes]:
+    def stream(
+        self,
+        request: InternalRequest,
+        deltas: Iterable[str],
+        *,
+        get_structured: Optional[Callable[[], Any]] = None,
+    ) -> Iterator[bytes]:
+        """Stream the response as Anthropic named SSE events.
+
+        ``get_structured`` is an optional zero-argument callable invoked **after**
+        all ``deltas`` are exhausted.  It should return a
+        :class:`~anvil_serving.router.internal.StructuredResult` (or ``None``).
+        When provided and non-``None``, the real ``stop_reason`` and any
+        ``tool_use`` content blocks are emitted instead of the hardcoded defaults.
+        The text path is unaffected (``get_structured=None`` → ``"end_turn"``).
+
+        Streaming tool calls are rendered as consolidated blocks: each tool_use
+        block is emitted with a single ``input_json_delta`` chunk carrying the
+        full serialized input, rather than split partial-json chunks.  This is
+        fully wire-compatible with the Anthropic protocol and avoids the risk of
+        delivering partial tool-call JSON to the harness.
+        """
         msg_id = _new_id("msg_")
         model = request.model
         input_tokens = _input_tokens(request)
@@ -101,27 +142,116 @@ class AnthropicDialect:
                 "delta": {"type": "text_delta", "text": piece},
             })
 
-        yield _event("content_block_stop", {
-            "type": "content_block_stop",
-            "index": 0,
-        })
+        # Gather structured fields AFTER deltas are fully consumed.  At this
+        # point the backend's thread-local is populated (#42 / #52).
+        _structured = get_structured() if callable(get_structured) else None
+        _tool_calls = _structured.tool_calls if _structured is not None else None
+        _finish_reason = _structured.finish_reason if _structured is not None else None
+
+        yield _event("content_block_stop", {"type": "content_block_stop", "index": 0})
+
+        # Emit tool_use content blocks.  Each tool call is a separate content
+        # block with a single input_json_delta carrying the full serialized input
+        # (consolidated streaming — fully wire-compatible with the Anthropic
+        # protocol and safe against partial-JSON delivery).
+        if _tool_calls:
+            for _tc_idx, _tc in enumerate(_tool_calls):
+                _block_idx = _tc_idx + 1
+                _tc_id = _tc.get("id") or _new_id("toolu_")
+                _tc_name = _tc.get("name") or ""
+                _tc_args = _tc.get("arguments")
+                if isinstance(_tc_args, dict):
+                    _tc_input_dict = _tc_args
+                elif isinstance(_tc_args, str) and _tc_args.strip():
+                    try:
+                        _tc_input_dict = json.loads(_tc_args)
+                    except (ValueError, TypeError):
+                        _tc_input_dict = {}
+                else:
+                    _tc_input_dict = {}
+                yield _event("content_block_start", {
+                    "type": "content_block_start",
+                    "index": _block_idx,
+                    "content_block": {
+                        "type": "tool_use",
+                        "id": _tc_id,
+                        "name": _tc_name,
+                        "input": {},
+                    },
+                })
+                yield _event("content_block_delta", {
+                    "type": "content_block_delta",
+                    "index": _block_idx,
+                    "delta": {
+                        "type": "input_json_delta",
+                        "partial_json": json.dumps(_tc_input_dict),
+                    },
+                })
+                yield _event("content_block_stop", {
+                    "type": "content_block_stop",
+                    "index": _block_idx,
+                })
+
         yield _event("message_delta", {
             "type": "message_delta",
-            "delta": {"stop_reason": "end_turn", "stop_sequence": None},
+            "delta": {
+                "stop_reason": _anthropic_stop_reason(_finish_reason),
+                "stop_sequence": None,
+            },
             "usage": {"output_tokens": output_tokens},
         })
         yield _event("message_stop", {"type": "message_stop"})
 
-    def render(self, request: InternalRequest, text: str) -> Dict[str, Any]:
-        # output_tokens here counts the whole reply; the streamed path counts
-        # deltas. Both are deterministic estimates, not a real tokenizer.
+    def render(
+        self,
+        request: InternalRequest,
+        text: str,
+        *,
+        structured: Any = None,
+    ) -> Dict[str, Any]:
+        """Build a non-streaming Anthropic message response.
+
+        ``structured`` is an optional
+        :class:`~anvil_serving.router.internal.StructuredResult` from the backend's
+        thread-local.  When provided, the real ``stop_reason`` and any ``tool_use``
+        content blocks are included.  ``structured=None`` (the default) produces the
+        same output as before this change, preserving the text-path wire shape.
+        """
+        _tool_calls = structured.tool_calls if structured is not None else None
+        _finish_reason = structured.finish_reason if structured is not None else None
+
+        content: List[Any] = []
+        if text:
+            content.append({"type": "text", "text": text})
+        if _tool_calls:
+            for _tc in _tool_calls:
+                _tc_args = _tc.get("arguments")
+                if isinstance(_tc_args, dict):
+                    _tc_input = _tc_args
+                elif isinstance(_tc_args, str) and _tc_args.strip():
+                    try:
+                        _tc_input = json.loads(_tc_args)
+                    except (ValueError, TypeError):
+                        _tc_input = {}
+                else:
+                    _tc_input = {}
+                content.append({
+                    "type": "tool_use",
+                    "id": _tc.get("id") or _new_id("toolu_"),
+                    "name": _tc.get("name") or "",
+                    "input": _tc_input,
+                })
+        if not content:
+            # Ensure at least one content block (e.g. tool-only response with empty text)
+            content = [{"type": "text", "text": ""}]
+
         return {
             "id": _new_id("msg_"),
             "type": "message",
             "role": "assistant",
             "model": request.model,
-            "content": [{"type": "text", "text": text}],
-            "stop_reason": "end_turn",
+            "content": content,
+            "stop_reason": _anthropic_stop_reason(_finish_reason),
             "stop_sequence": None,
             "usage": {
                 "input_tokens": _input_tokens(request),
