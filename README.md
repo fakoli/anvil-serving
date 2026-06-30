@@ -171,30 +171,32 @@ if `cloud`), 400 (malformed), 503 (no suitable tier).
 
 ### The quality profile (the moat)
 
-![The quality gate — work proven on a tier stays local; unproven work falls back to cloud, measured per (model, work-class)](assets/explainer-quality-gate.png)
+![The quality gate — work proven on a tier stays local ($0 metered); unproven work is deferred to the harness's own opt-in cloud subscription; measured per (model, work-class)](assets/explainer-quality-gate.png)
 
 A table keyed `(model, work-class) → {quality_score, sample_n, last_measured, decision}` where
 `decision ∈ {allow, allow-with-verify, deny}`. Hand-seeded for the MVP; later bootstrapped from
 the shadow-eval harness (the planning eval generalized to arbitrary work-classes), right-sized
-from your real usage via `profile`, and continuously calibrated from sampled production traffic
+from measured usage via `profile`, and continuously calibrated from sampled production traffic
 graded off the hot path. Keyed on a **serve fingerprint** (model + quant + engine + serve flags)
 so a quant/engine swap marks affected rows stale and triggers re-measure.
 
 ### Architecture
 
-![anvil-serving routing pipeline — resolve → route → verify → fallback, across fast-local / heavy-local / cloud tiers](assets/architecture.png)
+![anvil-serving routing pipeline — local-first across fast-local / heavy-local ($0 metered); cloud is the harness's own, opt-in](assets/architecture.png)
 
 ```
           ┌──────────────────── anvil-serving router ───────────────────┐
 harness → │ front door → resolve intent → route → [verify] → return     │ → harness
 (CC/Codex)│  (Anthropic   (preset in        (filter by    │  on fail ↘          │
           │   +OpenAI      model field, else  constraints, │  fall back to       │
-          │   dialects)    infer work-class)  rank by       │  next tier / cloud  │
+          │   dialects)    infer work-class)  rank by       │  next local tier    │
           │                                   quality profile)                   │
           └───────────────────────────────┬──────────────┴────────────────────┘
                                            ▼
-                fast-local :30001   heavy-local :30000   cloud (Anthropic/OpenAI)
-                  (multiplexer-managed)                    (your existing key/sub)
+                fast-local :30001   heavy-local :30000    · cloud is opt-in ·
+                  (multiplexer-managed, free GPU)         on a local miss anvil returns 503;
+                                                          the harness fails over to its OWN
+                                                          cloud subscription (anvil holds no key)
 ```
 
 The core stays **protocol-standard** (Anthropic Messages + OpenAI Chat Completions) with **zero
