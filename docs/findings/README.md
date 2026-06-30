@@ -16,6 +16,7 @@ raw, reproducible eval artifacts. Newest decisions supersede older ones where th
 | 2026-06-28 | [run-log](2026-06-28-run-log.md) | Per-workflow/agent token+timing log for the 9-PR adversarial loop |
 | 2026-06-28 | [anvil-integration-audit](2026-06-28-anvil-integration-audit.md) | Does anvil support `llm_provider: custom` role-routing? (T013 premise) |
 | 2026-06-28 | [planning-capability-eval](2026-06-28-planning-capability-eval.md) | Is the local tier smart enough for anvil's planning? (blind eval) |
+| 2026-06-30 | [router-promotion-decision](2026-06-30-router-promotion-decision.md) | Per-work-class LOCAL-vs-CLOUD promotion verdicts; planning/critic cloud-default (T018) |
 
 ## eval-data/ — reproducible eval bundles
 
