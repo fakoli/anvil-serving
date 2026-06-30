@@ -24,6 +24,11 @@ from .intent import PRESETS, Preset
 
 OWNED_BY = "anvil-serving"
 
+#: The standalone routing-decision endpoint (POST /v1/route, advise-and-defer:T007).
+#: Advertised here alongside the preset vocabulary so harnesses can discover it
+#: without hard-coding the path (the ``GET /healthz`` response includes it).
+ROUTE_ENDPOINT = "/v1/route"
+
 # Fixed, deterministic creation epoch (2023-11-14T22:13:20Z) for every entry.
 # Constant on purpose — see the module docstring.
 CREATED = 1_700_000_000
