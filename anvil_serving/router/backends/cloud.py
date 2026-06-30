@@ -92,17 +92,35 @@ class CloudBackendError(RuntimeError):
 
 
 def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
-                       timeout: float) -> bytes:
+                       timeout: float, max_bytes: Optional[int] = None) -> bytes:
     """Default stdlib transport: POST ``data`` to ``url`` and return the body.
 
     Wraps :func:`urllib.request.urlopen`. Errors are re-raised as
     :class:`CloudBackendError` with a message that cannot contain the key (the
     request object — which holds the auth header — is never stringified).
+
+    ``max_bytes`` caps the response body: reads at most ``max_bytes`` bytes from
+    the wire and raises :class:`CloudBackendError` if the body is larger. This
+    prevents a runaway cloud provider from OOM-ing the router via an unexpectedly
+    huge response body. ``None`` means unlimited (the previous behaviour).
     """
     req = urllib.request.Request(url, data=data, headers=dict(headers), method="POST")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if max_bytes is not None:
+                # Read one byte more than the cap to detect overflow without
+                # buffering the entire body. A legitimate body of exactly
+                # max_bytes bytes reads max_bytes+1 chars and len == max_bytes,
+                # so it is allowed; only len > max_bytes is an overflow.
+                chunk = resp.read(max_bytes + 1)
+                if len(chunk) > max_bytes:
+                    raise CloudBackendError(
+                        f"cloud response body exceeded {max_bytes} bytes"
+                    )
+                return chunk
             return resp.read()
+    except CloudBackendError:
+        raise
     except urllib.error.HTTPError as e:  # status carries no secret
         raise CloudBackendError(
             f"cloud provider returned HTTP {e.code} {e.reason}"
@@ -135,6 +153,7 @@ class CloudBackend:
         env: Optional[Mapping[str, str]] = None,
         transport: Optional[Transport] = None,
         timeout: float = 120.0,
+        max_response_bytes: Optional[int] = None,
         _require_key: bool = True,
     ):
         # ``_require_key`` is a PRIVATE opt-out for the local-relay subclass
@@ -172,6 +191,7 @@ class CloudBackend:
         self._tier = tier
         self._key = (key or "").strip()  # private; never logged, never in __repr__
         self._timeout = timeout
+        self._max_response_bytes = max_response_bytes
         self._transport: Transport = transport or _urlopen_transport
 
     # ------------------------------------------------------------------ #
@@ -182,7 +202,17 @@ class CloudBackend:
         headers = self._headers()
         data = json.dumps(self._build_body(request)).encode("utf-8")
         try:
-            raw = self._transport(url, data=data, headers=headers, timeout=self._timeout)
+            # Pass max_bytes to the default _urlopen_transport (keyword-only).
+            # Custom transports that do not accept max_bytes are called without it
+            # so they remain backward-compatible; the post-read size guard below
+            # still applies to their output.
+            if self._transport is _urlopen_transport and self._max_response_bytes is not None:
+                raw = self._transport(
+                    url, data=data, headers=headers, timeout=self._timeout,
+                    max_bytes=self._max_response_bytes,
+                )
+            else:
+                raw = self._transport(url, data=data, headers=headers, timeout=self._timeout)
         except urllib.error.URLError as exc:
             # A custom transport may raise URLError directly (the default
             # _urlopen_transport already converts it, but this is the safety net).
@@ -196,6 +226,14 @@ class CloudBackend:
             raise CloudBackendError(
                 f"cloud upstream request failed (tier={self._tier.id!r})"
             ) from None
+        # Post-read cap for custom transports (or the default when they have
+        # already returned the full body). Guards against a runaway response that
+        # slipped past the read-cap in the transport layer.
+        if self._max_response_bytes is not None and len(raw) > self._max_response_bytes:
+            raise CloudBackendError(
+                f"cloud response body exceeded max_response_bytes="
+                f"{self._max_response_bytes} (tier={self._tier.id!r})"
+            )
         text = self._extract_text(raw)
         for delta in split_into_deltas(text):
             yield delta
