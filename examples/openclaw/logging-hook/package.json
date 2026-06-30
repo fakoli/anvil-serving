@@ -1,0 +1,13 @@
+{
+  "name": "anvil-fire-logger",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Logging-only OpenClaw before_model_resolve hook — proves the firing cadence for anvil-serving T013. Records cadence; does not route.",
+  "type": "module",
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "compat": {
+      "pluginApi": ">=2026.4.21"
+    }
+  }
+}
