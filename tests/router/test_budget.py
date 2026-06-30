@@ -126,9 +126,10 @@ def test_circuit_breaker_opens_after_threshold_then_skips():
     assert breaker["t1"] == 2
 
 
-def test_circuit_skip_counts_against_retry_cap_and_terminates():
-    # Two tiers both with open circuits + a high retry cap: the loop must still
-    # terminate (skips are bounded by max_attempts, not just by failures).
+def test_open_circuits_skip_without_consuming_cap_and_terminate():
+    # Two tiers both with open circuits + a high retry cap: the loop terminates
+    # because the candidate list is finite (skips do NOT consume the retry cap, so
+    # an open local circuit can never starve a healthy downstream tier).
     config = make_config("t1", "t2")
     decision = RoutingDecision(tiers=("t1", "t2"), work_class="chat")
     budget = Budget(max_attempts=5, circuit_threshold=1)
@@ -169,13 +170,49 @@ def test_budget_ceiling_stops_escalation_after_first_attempt():
     assert result.exhausted is True
     assert result.served_tier is None
 
-    # The running total never overran the ceiling by more than the single
-    # in-flight attempt that was already counted.
-    consumed = result.record.total_prompt_tokens + result.record.total_completion_tokens
-    assert consumed < budget.max_total_tokens
-    # Only the one real attempt contributed to the accounted tokens.
+    # The load-bearing guarantee is that escalation HALTED at the ceiling: exactly
+    # one real attempt ran, then the budget-stop prevented starting a second. (We
+    # do NOT assert consumed < ceiling — that holds only because FAILING adds no
+    # completion tokens; a single in-flight completion can inherently overrun by
+    # its own size. test_budget_halts_escalation_with_real_completions proves the
+    # halt still holds when completions are non-empty.)
     real = [a for a in result.record.attempts if a.outcome in REAL_OUTCOMES]
     assert len(real) == 1
+
+
+class _AlwaysFail:
+    """A verifier that always hard-fails — forces escalation with NON-empty,
+    token-bearing completions (so the budget ceiling is exercised for real)."""
+
+    name = "always_fail"
+
+    def verify(self, response):  # noqa: ANN001 - duck-typed Verifier
+        from anvil_serving.router.verify import VerifyResult
+
+        return VerifyResult(self.name, False, 0.0, "forced fail")
+
+
+def test_budget_halts_escalation_with_real_completions():
+    # Non-empty completions (real token cost) + a ceiling that admits one attempt:
+    # escalation must still HALT at the ceiling (no second real attempt), even
+    # though the one in-flight completion pushes the accounted total over it.
+    request = make_request()
+    prompt = _prompt_tokens(request)
+    config = make_config("t1", "t2", "t3")
+    decision = RoutingDecision(tiers=("t1", "t2", "t3"), work_class="chat")
+    nonempty = StaticBackend(["several", " words", " of", " output", " here"])
+    budget = Budget(max_total_tokens=prompt + 2, max_attempts=10)
+
+    result = route_with_fallback(
+        make_request(), decision, config, lambda tier: nonempty,
+        budget=budget, verifiers=[_AlwaysFail()],
+    )
+
+    outcomes = [a.outcome for a in result.record.attempts]
+    assert outcomes == ["fallback", "budget-stop"]  # halted after exactly one real attempt
+    real = [a for a in result.record.attempts if a.outcome in REAL_OUTCOMES]
+    assert len(real) == 1
+    assert result.exhausted is True
 
 
 def test_zero_budget_is_unlimited():

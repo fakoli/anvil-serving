@@ -35,11 +35,13 @@ Dependency injection: the tier -> backend mapping is supplied by the caller as
 
 Stdlib-only; frozen-dataclass house style.
 
-Note (scope): the ordered candidate tiers are produced by the routing policy
-(its ``RoutingDecision``). That module is not present in this checkout, so a
-minimal, duck-type-compatible :class:`RoutingDecision` (carrying ``tiers`` and
-``work_class``) is defined here; :func:`route_with_fallback` only reads those two
-attributes, so a richer policy decision drops in unchanged.
+Note (policy integration): the ordered candidate tiers are produced by the
+routing policy (``policy.route`` -> ``policy.RoutingDecision``, T005).
+:func:`route_with_fallback` is intentionally **duck-typed** on its ``decision``:
+it reads only ``.tiers`` and ``.work_class``, so a real ``policy.RoutingDecision``
+drops in directly (covered by ``test_policy_decision_integration``). The minimal
+:class:`RoutingDecision` defined here is the documented consumer contract / a
+lightweight stand-in for unit tests; it is NOT a competing policy type.
 """
 from __future__ import annotations
 
@@ -78,11 +80,15 @@ class Budget:
     * ``max_total_tokens`` — ceiling on (prompt + completion) tokens accounted
       across the request's attempts; ``0`` means unlimited. Escalation stops
       before the attempt that would reach it.
-    * ``max_attempts`` — retry cap: the maximum number of candidate tiers the
-      loop will consume (real attempts *and* circuit skips both count, so the
-      loop always terminates).
+    * ``max_attempts`` — retry cap: the maximum number of REAL backend attempts
+      per request (circuit skips and config misses do not count; the finite
+      candidate list bounds the loop regardless).
     * ``circuit_threshold`` — consecutive per-tier failures, within the session,
-      that open a tier's circuit (skipping it thereafter).
+      that open a tier's circuit (skipping it thereafter). The breaker is the
+      caller-owned ``breaker`` dict; it resets to 0 on a clean serve, and the
+      caller is responsible for any cross-request decay/half-open (a skipped tier
+      makes no call, so it cannot self-heal — give it a fresh/decayed breaker to
+      probe it again).
     """
 
     max_total_tokens: int = 0
@@ -108,10 +114,16 @@ class FallbackResult:
 
 
 def _first_failing_reason(results: Sequence) -> str:
-    """The reason of the first hard-failing verifier (for the audit trail)."""
+    """Name of the first hard-failing verifier (for the audit trail).
+
+    R012 secrets hygiene: record only the verifier's stable NAME, never its
+    ``reason`` string — T007 reasons can echo response content (a malformed diff
+    line, a tool name/argument, a parse error quoting the model output), which
+    must never land in the metadata-only decision log.
+    """
     for r in results:
         if not r.passed:
-            return f"{r.verifier}: {r.reason}"
+            return r.verifier
     return "verify failed"
 
 
@@ -125,6 +137,7 @@ def route_with_fallback(
     budget: Optional[Budget] = None,
     log: Optional[DecisionLog] = None,
     breaker: Optional[Dict[str, int]] = None,
+    response_view_factory: Optional[Callable[[Sequence[str], InternalRequest], object]] = None,
 ) -> FallbackResult:
     """Walk ``decision.tiers`` in order, serving the first tier that verifies.
 
@@ -135,7 +148,8 @@ def route_with_fallback(
        record a ``budget-stop`` and STOP (no further tier is tried).
     3. **Circuit** — if the tier's circuit is open
        (``breaker[tier] >= circuit_threshold``), record ``skipped-circuit`` and
-       move on (this still counts against the retry cap so the loop terminates).
+       move on. A skip is not a real attempt and does not consume the retry cap,
+       so an open local circuit never starves a healthy downstream (cloud) tier.
     4. **Attempt** — call ``backend_for(config.tier(tier))`` and drain its
        deltas. A raising backend is a failed attempt (``error``), never a
        propagated exception. Assemble a ``ResponseView`` and run the verifiers:
@@ -149,9 +163,19 @@ def route_with_fallback(
     :class:`DecisionRecord` to ``log`` when one is given. Never raises for a
     backend fault or an empty candidate list.
     """
-    verifiers = list(verifiers) if verifiers is not None else default_verifiers()
+    # An empty/None verifier sequence means "use the defaults" (matching the T008
+    # commit window). A caller cannot accidentally disable the quality gate by
+    # passing []: that would make all([]) == True and serve the first tier
+    # unconditionally, voiding the verify-and-fallback guarantee (AC1).
+    verifiers = list(verifiers) if verifiers else default_verifiers()
     budget = budget if budget is not None else Budget()
     breaker = breaker if breaker is not None else {}
+    # The default response view is text-only (T008 build_response_view), so only
+    # text-based verifiers (e.g. NonEmptyContent, CodeParses) fire; checks that
+    # need finish_reason / tool_calls (NotTruncated, ToolCallJSONValid) are inert
+    # until a caller injects a richer factory built from a backend that surfaces
+    # those fields. The seam is here so that wiring is a drop-in, not a rewrite.
+    make_view = response_view_factory if response_view_factory is not None else build_response_view
     work_class = getattr(decision, "work_class", None)
     requested_tiers: Tuple[str, ...] = tuple(getattr(decision, "tiers", ()) or ())
 
@@ -207,8 +231,10 @@ def route_with_fallback(
             )
             break
 
-        # 3. Circuit breaker — skip a tier whose circuit is open. Counts against
-        #    the retry cap so a degenerate config still terminates the loop.
+        # 3. Circuit breaker — skip a tier whose circuit is open. A skip is NOT a
+        #    real attempt: it does NOT consume the retry cap (the finite candidate
+        #    list already bounds the loop), so open LOCAL circuits never starve a
+        #    healthy downstream tier (e.g. cloud) out of the budget.
         failures = breaker.get(tier_id, 0)
         if failures >= budget.circuit_threshold:
             attempts.append(
@@ -221,13 +247,31 @@ def route_with_fallback(
                     outcome="skipped-circuit",
                 )
             )
-            attempt_count += 1
             continue
 
-        # 4. Attempt the tier. A raising backend (eager OR mid-stream) is a
-        #    failed attempt, never a propagated exception.
+        # 4a. Resolve the tier. An unknown tier id is a CONFIG miss, not a backend
+        #     fault: record it (no token charge, no breaker bump, does not consume
+        #     the retry cap) and move on — do not misattribute it as an "error".
         try:
-            backend = backend_for(config.tier(tier_id))
+            tier = config.tier(tier_id)
+        except Exception:  # noqa: BLE001 - unknown / invalid tier id
+            attempts.append(
+                AttemptRecord(
+                    tier_id=tier_id,
+                    verifier_passed=False,
+                    verify_reason="unknown tier id (not in config)",
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    outcome="unknown-tier",
+                )
+            )
+            continue
+
+        # 4b. Attempt the tier. A raising backend (eager OR mid-stream) is a
+        #     failed attempt, never a propagated exception. Record only the
+        #     exception TYPE — its message may echo prompt/response content (R012).
+        try:
+            backend = backend_for(tier)
             deltas = list(backend.generate(request))
         except Exception as exc:  # noqa: BLE001 - backend fault must not escape
             breaker[tier_id] = breaker.get(tier_id, 0) + 1
@@ -237,7 +281,7 @@ def route_with_fallback(
                 AttemptRecord(
                     tier_id=tier_id,
                     verifier_passed=False,
-                    verify_reason=f"backend error: {type(exc).__name__}: {exc}",
+                    verify_reason=f"backend error: {type(exc).__name__}",
                     prompt_tokens=prompt_tokens,
                     completion_tokens=0,
                     outcome="error",
@@ -253,7 +297,7 @@ def route_with_fallback(
         total_completion += completion_tokens
         last_text = text
 
-        view = build_response_view(deltas, request)
+        view = make_view(deltas, request)
         results = run_verifiers(view, verifiers, mode="all")
         passed = all(r.passed for r in results)
 

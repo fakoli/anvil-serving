@@ -6,12 +6,14 @@ accounting, so an operator can answer "why did this request end up on the cloud
 tier, and what did it cost?" after the fact.
 
 **Secrets hygiene (PRD R012).** This log records *metadata only*: tier ids,
-verify verdicts, verifier reasons, token COUNTS, and outcome labels. It never
-stores a full prompt, a full response, or a credential. The verify ``reason``
-strings come from the structural verifiers (T007), which describe a *defect*
-(e.g. "empty content", "python does not parse") rather than echoing the model's
-content; the token fields are integer counts, not text. There is no persistence
-here (a later task owns durable storage) — this is an in-memory append store.
+verify verdicts, the failing verifier's NAME, token COUNTS, and outcome labels.
+It never stores a full prompt, a full response, or a credential. Crucially, the
+``verify_reason`` field holds a content-free LABEL (the verifier name like
+``"DiffWellFormed"``, or a status like ``"circuit open (...)"`` / ``"backend
+error: TimeoutError"``) — NOT a verifier's raw ``reason`` string, because some
+T007 reasons echo the model's content (a malformed diff line, a tool name) and
+must never be persisted. The token fields are integer counts, not text. There is
+no persistence here (a later task owns durable storage) — in-memory append store.
 
 Stdlib-only; frozen-dataclass house style (mirrors ``config.py`` / ``internal.py``).
 """
@@ -37,6 +39,8 @@ class AttemptRecord:
       consecutive failures), so it was skipped without a backend call.
     * ``"budget-stop"`` — the per-session token budget would be exceeded by
       attempting this tier, so escalation stopped here.
+    * ``"unknown-tier"`` — the candidate id is absent from the config (a routing /
+      config mismatch, not a backend fault); skipped without a call or token charge.
 
     Token fields are integer COUNTS (never the text). ``prompt_tokens`` /
     ``completion_tokens`` are 0 for the no-backend-call outcomes

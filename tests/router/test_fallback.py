@@ -26,6 +26,7 @@ from anvil_serving.router.fallback import (
     route_with_fallback,
 )
 from anvil_serving.router.internal import InternalRequest, Message
+from anvil_serving.router.verify import ResponseView
 
 
 # --------------------------------------------------------------------------- #
@@ -207,3 +208,100 @@ def test_empty_tiers_is_exhausted_no_raise():
     assert result.text == ""
     assert result.record.attempts == ()
     assert result.record.fell_back is False
+
+
+# --------------------------------------------------------------------------- #
+# /code-review max regressions
+# --------------------------------------------------------------------------- #
+def test_empty_verifiers_uses_defaults_not_unconditional_serve():
+    # verifiers=[] must mean "use defaults" (matching the T008 commit window), NOT
+    # "no gate" — otherwise all([]) == True would serve a failing local
+    # unconditionally and void AC1.
+    config = make_config(make_tier("fast-local", "local"), make_tier("cloud", "cloud"))
+    decision = RoutingDecision(tiers=("fast-local", "cloud"), work_class="chat")
+
+    result = route_with_fallback(
+        make_request(), decision, config, local_or_cloud(FAILING, PASSING),
+        verifiers=[],
+    )
+    # The failing local did NOT serve; the default chain ran and forced fallback.
+    assert result.served_tier == "cloud"
+    assert result.record.attempts[0].outcome == "fallback"
+
+
+def test_unknown_tier_id_is_config_miss_not_backend_error():
+    # A candidate id absent from config is a config miss: outcome "unknown-tier",
+    # no token charge, no breaker bump, does not consume the retry cap — and the
+    # walk still reaches the valid downstream tier.
+    config = make_config(make_tier("cloud", "cloud"))  # no 'ghost' tier
+    decision = RoutingDecision(tiers=("ghost", "cloud"), work_class="chat")
+    breaker: dict = {}
+
+    result = route_with_fallback(
+        make_request(), decision, config, lambda tier: PASSING, breaker=breaker,
+    )
+    miss = result.record.attempts[0]
+    assert miss.tier_id == "ghost"
+    assert miss.outcome == "unknown-tier"
+    assert miss.prompt_tokens == 0 and miss.completion_tokens == 0
+    assert "ghost" not in breaker  # config miss must not open a circuit
+    assert result.served_tier == "cloud"  # reached the valid tier
+
+
+def test_open_local_circuit_does_not_starve_cloud():
+    # An open LOCAL circuit must not consume the retry cap and block a healthy
+    # cloud tier (the AC1 regression: forced local fail must escalate to cloud).
+    config = make_config(make_tier("fast-local", "local"), make_tier("cloud", "cloud"))
+    decision = RoutingDecision(tiers=("fast-local", "cloud"), work_class="chat")
+    breaker = {"fast-local": 2}  # circuit already open (>= default threshold 2)
+
+    result = route_with_fallback(
+        make_request(), decision, config, local_or_cloud(FAILING, PASSING),
+        budget=Budget(max_attempts=1), breaker=breaker,
+    )
+    assert result.record.attempts[0].outcome == "skipped-circuit"
+    assert result.served_tier == "cloud"  # cloud still reachable under cap=1
+
+
+def test_injected_response_view_factory_catches_truncation():
+    # With the default text-only view, NotTruncated is inert. An injected factory
+    # that surfaces finish_reason makes it fire: a non-empty-but-truncated local
+    # response now fails verify and escalates to cloud.
+    config = make_config(make_tier("fast-local", "local"), make_tier("cloud", "cloud"))
+    decision = RoutingDecision(tiers=("fast-local", "cloud"), work_class="chat")
+    truncated = StaticBackend(["a partial answer that got cut"])  # non-empty text
+
+    def truncating_view(deltas, request):
+        # Simulate a backend that surfaces finish_reason: the truncated local
+        # output is marked "length"; a cleanly-stopped response is "stop".
+        text = "".join(deltas)
+        finish = "length" if "cut" in text else "stop"
+        return ResponseView(text=text, finish_reason=finish)
+
+    result = route_with_fallback(
+        make_request(), decision, config, local_or_cloud(truncated, PASSING),
+        response_view_factory=truncating_view,
+    )
+    # finish_reason='length' trips NotTruncated -> local fails -> cloud serves.
+    assert result.served_tier == "cloud"
+    assert result.record.attempts[0].outcome == "fallback"
+
+
+def test_policy_decision_integration():
+    # A REAL policy.RoutingDecision (T005) drops into route_with_fallback unchanged
+    # (duck-typed on .tiers/.work_class) — proves the policy->fallback seam.
+    import pathlib
+
+    from anvil_serving.router.config import load as load_config
+    from anvil_serving.router.intent import resolve as resolve_intent
+    from anvil_serving.router.policy import route as policy_route
+    from anvil_serving.router.profile_store import default_profile
+
+    example = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example.toml"
+    cfg = load_config(str(example))
+    req = InternalRequest(model="quick-edit", messages=[Message("user", "fix the bug")])
+    decision = policy_route(resolve_intent(req, cfg), cfg, default_profile())
+
+    result = route_with_fallback(req, decision, cfg, lambda tier: PASSING)
+    assert result.served_tier in decision.tiers  # served one of the policy's tiers
+    assert result.exhausted is False
