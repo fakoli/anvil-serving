@@ -75,6 +75,12 @@ _CONCURRENCY_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(
     MAX_CONCURRENCY
 )
 
+#: Maximum bytes to drain from the socket after sending a 413 (or a response
+#: to an oversized GET body) before closing, so the OS can push the response
+#: through before the RST that accompanies a close with unread data.
+#: Non-blocking: only what is already in the OS receive buffer is consumed.
+_CLOSE_DRAIN_CAP: int = 64 * 1024  # 64 KiB
+
 # Pre-compiled pattern: a valid Content-Length is one or more ASCII digits,
 # nothing else (no sign, underscores, whitespace, or Unicode digits).
 _DIGIT_RE: re.Pattern = re.compile(r"[0-9]+")
@@ -93,7 +99,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         # (Set to the configured value just below the class.)
 
         # --- helpers ---------------------------------------------------------
-        def _json(self, status: int, obj) -> None:
+        def _json(self, status: int, obj, extra_headers=None) -> None:
             payload = json.dumps(obj).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
@@ -102,6 +108,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # forced it on a framing error) so the client doesn't reuse the socket.
             if self.close_connection:
                 self.send_header("Connection", "close")
+            if extra_headers:
+                for _h_name, _h_val in extra_headers.items():
+                    self.send_header(_h_name, _h_val)
             self.end_headers()
             self.wfile.write(payload)
 
@@ -336,9 +345,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # Drain any unexpected request body to keep the keep-alive socket
                 # in sync.  GETs are conventionally bodyless; a caller that sends
                 # one leaves bytes on the wire that would desync the connection for
-                # the next pipelined request.  Drain up to MAX_BODY_BYTES; close
-                # if the claimed length exceeds the cap or the header is malformed.
+                # the next pipelined request.  Drain up to MAX_BODY_BYTES before
+                # the response; if the claimed length exceeds the cap, close after
+                # the response and do a bounded post-response drain (see below) so
+                # the response is not RST-truncated.
                 cl_get = self.headers.get("Content-Length")
+                _post_drain = False  # True when we must drain after the response
                 if cl_get is not None:
                     if _DIGIT_RE.fullmatch(cl_get):
                         get_n = int(cl_get)
@@ -348,7 +360,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             except Exception:
                                 self.close_connection = True
                         elif get_n > MAX_BODY_BYTES:
+                            # Too large to drain up-front: close after the
+                            # response + bounded post-response drain so the
+                            # 200/404/405 reaches the client before RST.
                             self.close_connection = True
+                            _post_drain = True
                     else:
                         self.close_connection = True
 
@@ -366,8 +382,42 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     # as OpenAI-shaped "models" so a harness model picker can find
                     # them. Derived from the canonical presets passed in.
                     self._json(200, models_payload(presets))
+                elif route in _ROUTES or route == ROUTE_ENDPOINT:
+                    # Known POST-only route requested with GET → 405 Method Not
+                    # Allowed with Allow: POST (RFC 7231 §6.5.5).  Use the
+                    # dialect's native error envelope when one is bound to the
+                    # path; /v1/route (not dialect-backed) uses the generic shape.
+                    _dial405: Optional[Dialect] = _ROUTES.get(route)
+                    _msg405 = "this route only accepts POST requests"
+                    self._json(
+                        405,
+                        (_dial405.render_error(405, "method_not_allowed", _msg405)
+                         if _dial405 is not None
+                         else {"error": {"type": "method_not_allowed",
+                                         "message": _msg405}}),
+                        extra_headers={"Allow": "POST"},
+                    )
                 else:
                     self._error(404, "not_found", f"no route {self.path}")
+
+                # Post-response bounded drain for oversized GET bodies: flush the
+                # response then take whatever body bytes are already in the OS
+                # receive buffer (non-blocking, no waiting for more data) so TCP
+                # can deliver the response before the RST from close_connection.
+                # Mirrors the 413 drain in _post_inner — same RST-race mitigation.
+                if _post_drain:
+                    try:
+                        self.wfile.flush()
+                        _t = self.connection.gettimeout()
+                        try:
+                            self.connection.settimeout(0.0)
+                            self.connection.recv(_CLOSE_DRAIN_CAP)
+                        except OSError:
+                            pass
+                        finally:
+                            self.connection.settimeout(_t)
+                    except Exception:
+                        pass
             finally:
                 _CONCURRENCY_LIMIT.release()
 
@@ -479,6 +529,24 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     "request body too large",
                     drainable=False, n=0, dialect=dialect,
                 )
+                # Bounded drain: flush the 413 response, then take whatever body
+                # bytes are already in the OS receive buffer (non-blocking — no
+                # waiting for more data) so TCP can push the 413 to the client
+                # before the RST from close_connection.  We cannot safely drain
+                # the full body (it may be gigabytes); this read is capped and
+                # non-blocking so it never blocks the thread.
+                try:
+                    self.wfile.flush()
+                    _t = self.connection.gettimeout()
+                    try:
+                        self.connection.settimeout(0.0)
+                        self.connection.recv(_CLOSE_DRAIN_CAP)
+                    except OSError:
+                        pass
+                    finally:
+                        self.connection.settimeout(_t)
+                except Exception:
+                    pass
                 return
 
             raw = self.rfile.read(n) if n else b""  # body drained from here on
