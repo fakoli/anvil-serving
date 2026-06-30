@@ -273,7 +273,13 @@ def test_tiers_tried_is_attempts_not_requested_pool():
 # --------------------------------------------------------------------------- #
 # integration: real FallbackResult.record feeds the transparency surface
 # --------------------------------------------------------------------------- #
-def _make_tier(tier_id: str, privacy: str) -> Tier:
+def _make_tier(
+    tier_id: str,
+    privacy: str,
+    *,
+    cost_input_per_mtok=None,
+    cost_output_per_mtok=None,
+) -> Tier:
     return Tier(
         id=tier_id,
         base_url="https://example.test",
@@ -282,6 +288,8 @@ def _make_tier(tier_id: str, privacy: str) -> Tier:
         privacy=privacy,
         tool_support=True,
         auth_env="ANVIL_TEST_KEY",
+        cost_input_per_mtok=cost_input_per_mtok,
+        cost_output_per_mtok=cost_output_per_mtok,
     )
 
 
@@ -327,6 +335,76 @@ def test_integration_real_record_round_trips_through_transparency():
     assert "intent=-" in line
     # No prompt content leaks from the real request into the audit line.
     assert "implement the parser" not in line
+
+
+# --------------------------------------------------------------------------- #
+# T003 LIVE-PATH: route_with_fallback's finalize() computes + records cost_usd.
+# These exercise the PRODUCTION code path (finalize()), NOT a hand-built record —
+# the gap the earlier tests missed (cost_usd defaulted to 0.0 in production).
+# --------------------------------------------------------------------------- #
+def _cost_request() -> InternalRequest:
+    return InternalRequest(
+        model="anvil/planning",
+        system="You are a careful coding assistant",
+        messages=[Message("user", "Please design the parser module for me")],
+    )
+
+
+def test_live_finalize_records_nonzero_cost_for_cost_bearing_served_tier():
+    # A metered cloud tier WITH cost fields serves the request; the real finalize()
+    # path must compute cost_usd = (prompt*in + completion*out)/1e6 > 0 from the
+    # served tier's cost fields and the recorded token totals.
+    cloud = _make_tier("cloud", "cloud", cost_input_per_mtok=3.0, cost_output_per_mtok=15.0)
+    config = RouterConfig(tiers=(cloud,), presets={}, mapping_version="test")
+    decision = RoutingDecision(tiers=("cloud",), work_class="planning")
+    passing = StaticBackend(["Here", " is", " the", " design"])
+
+    result = route_with_fallback(
+        _cost_request(), decision, config, lambda tier: passing
+    )
+    rec = result.record
+
+    assert rec.served_tier == "cloud"
+    assert rec.cost_usd > 0.0, "live finalize() must record a non-zero cost for a metered tier"
+    # The recorded cost is exactly the formula applied to the served tier's cost
+    # fields and the record's own token totals (no hardcoded magic number).
+    expected = compute_cost_usd(cloud, rec.total_prompt_tokens, rec.total_completion_tokens)
+    assert rec.cost_usd == pytest.approx(expected)
+    assert expected > 0.0  # guard: tokens and rates are both non-zero
+
+
+def test_live_finalize_records_zero_cost_for_local_served_tier():
+    # A local tier with NO cost fields serves -> cost_usd == 0.0 on the live path.
+    local = _make_tier("fast-local", "local")  # no cost fields
+    config = RouterConfig(tiers=(local,), presets={}, mapping_version="test")
+    decision = RoutingDecision(tiers=("fast-local",), work_class="chat")
+    passing = StaticBackend(["Local", " answer"])
+
+    result = route_with_fallback(
+        _cost_request(), decision, config, lambda tier: passing
+    )
+    rec = result.record
+
+    assert rec.served_tier == "fast-local"
+    assert rec.cost_usd == 0.0
+
+
+def test_live_finalize_records_zero_cost_when_exhausted():
+    # Every candidate fails -> nothing served -> cost_usd == 0.0 (exhausted path),
+    # even though the (failed) candidate had cost fields.
+    cloud = _make_tier("cloud", "cloud", cost_input_per_mtok=3.0, cost_output_per_mtok=15.0)
+    config = RouterConfig(tiers=(cloud,), presets={}, mapping_version="test")
+    decision = RoutingDecision(tiers=("cloud",), work_class="planning")
+    failing = StaticBackend([""])  # empty completion -> NonEmptyContent fails
+
+    result = route_with_fallback(
+        _cost_request(), decision, config, lambda tier: failing
+    )
+    rec = result.record
+
+    assert result.exhausted is True
+    assert rec.served_tier is None
+    assert rec.cost_usd == 0.0
 
 
 # --------------------------------------------------------------------------- #
