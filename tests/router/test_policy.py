@@ -401,3 +401,218 @@ def test_malformed_verdict_cannot_leak():
     profile = ProfileStore({("heavy-local", "review"): ProfileEntry("deny", 0.2, 1, None)})
     dec = route(_intent("review", ("heavy-local", "cloud")), CONFIG, profile)
     assert "heavy-local" not in dec.tiers
+
+
+# ── FIX #5 (record_grade fail-closed default) ─────────────────────────────────
+def test_record_grade_new_high_risk_local_pair_defaults_deny():
+    """record_grade on a NEW unmeasured (planning, local) pair must default the
+    decision to 'deny', matching what decision() would give for the unmeasured pair.
+
+    Before the fix the new-row default was 'allow-with-verify' for ALL classes,
+    making a recorded grade on an unmeasured high-risk-local pair MORE permissive
+    than the gate's own fail-closed default.
+    """
+    store = ProfileStore({})
+    # Precondition: unmeasured pair defaults to deny.
+    assert store.decision("gpu0", "planning") == "deny"
+    # Record a grade with no explicit decision — should remain deny.
+    store.record_grade("gpu0", "planning", score=0.7)
+    e = store.entry("gpu0", "planning")
+    assert e is not None
+    assert e.decision == "deny", (
+        f"record_grade on unmeasured planning/local pair should default to 'deny', "
+        f"got {e.decision!r}"
+    )
+
+
+def test_record_grade_new_non_high_risk_pair_defaults_allow_with_verify():
+    """record_grade on a NEW unmeasured chat pair defaults to 'allow-with-verify'."""
+    store = ProfileStore({})
+    assert store.decision("gpu0", "chat") == "allow-with-verify"
+    store.record_grade("gpu0", "chat", score=0.8)
+    e = store.entry("gpu0", "chat")
+    assert e is not None
+    assert e.decision == "allow-with-verify"
+
+
+def test_record_grade_degenerate_weight_no_crash_or_corrupt():
+    """A zero or negative weight must not ZeroDivisionError or corrupt the mean.
+
+    The weight is clamped to max(0, weight) in the update path, so a negative
+    weight is treated as a no-op for the score (the observation still counts but
+    doesn't subtract from the running mean). A zero weight leaves the score unchanged.
+    """
+    store = ProfileStore({("fast-local", "chat"): ProfileEntry("allow", 0.8, 5, None)})
+    # weight=0: w=0, new_n=max(1,5+0)=5, score=(0.8*5 + 0.9*0)/5 = 0.8 (unchanged).
+    e = store.record_grade("fast-local", "chat", score=0.9, weight=0)
+    assert e is not None
+    assert 0.0 <= e.quality_score <= 1.0, f"score {e.quality_score!r} out of range"
+    # weight=-10: clamped to w=0, same no-op. No crash, no negative score.
+    e2 = store.record_grade("fast-local", "chat", score=0.5, weight=-10)
+    assert e2 is not None
+    assert 0.0 <= e2.quality_score <= 1.0, f"score {e2.quality_score!r} out of range"
+
+
+# ── FIX #4 (stale row not trusted as allow) ───────────────────────────────────
+def test_stale_allow_row_downgraded_to_allow_with_verify():
+    """A stale 'allow' row must not be trusted as 'allow'; decision() must return
+    'allow-with-verify' so the live verify gate runs.
+
+    A stale 'deny' row stays 'deny' (fail-closed).
+    """
+    from anvil_serving.router.fingerprint import serve_fingerprint
+
+    store = ProfileStore({
+        ("fast-local", "chat"): ProfileEntry("allow", 0.9, 5, None),
+        ("fast-local", "review"): ProfileEntry("deny", 0.2, 5, None),
+    })
+    fp0 = serve_fingerprint({"id": "fast-local", "model": "a"})
+    fp1 = serve_fingerprint({"id": "fast-local", "model": "b"})
+    store.apply_fingerprint("fast-local", fp0)   # baseline
+    store.apply_fingerprint("fast-local", fp1)   # serve changed -> stale
+
+    assert store.is_stale("fast-local", "chat") is True
+    assert store.is_stale("fast-local", "review") is True
+
+    # Stale 'allow' downgraded to 'allow-with-verify'.
+    assert store.decision("fast-local", "chat") == "allow-with-verify"
+    # Stale 'deny' remains 'deny' (fail-closed).
+    assert store.decision("fast-local", "review") == "deny"
+
+    # After a fresh grade the row is no longer stale -> 'allow' restored.
+    store.record_grade("fast-local", "chat", score=0.85)
+    assert store.is_stale("fast-local", "chat") is False
+    assert store.decision("fast-local", "chat") == "allow"
+
+
+def test_stale_allow_row_not_routed_direct_via_policy():
+    """policy.route() with a stale 'allow' local row keeps the tier in the result
+    (it's not denied) but profile.decision() returns 'allow-with-verify', so the
+    serve path runs the verify gate rather than streaming directly.
+    """
+    from anvil_serving.router.fingerprint import serve_fingerprint
+
+    store = ProfileStore({
+        ("fast-local", "chat"): ProfileEntry("allow", 0.9, 5, None),
+        ("cloud", "chat"): ProfileEntry("allow", 0.95, 5, None),
+    })
+    fp0 = serve_fingerprint({"id": "fast-local", "model": "a"})
+    fp1 = serve_fingerprint({"id": "fast-local", "model": "b"})
+    store.apply_fingerprint("fast-local", fp0)
+    store.apply_fingerprint("fast-local", fp1)   # stale
+
+    intent = _intent("chat", ("fast-local", "cloud"))
+    dec = route(intent, CONFIG, store)
+
+    # The stale tier is not denied — it's in the routing result.
+    assert "fast-local" in dec.tiers
+    assert "fast-local" not in dec.notes["dropped_by_deny"]
+
+    # But the profile says allow-with-verify (the serve path should verify).
+    assert store.decision("fast-local", "chat") == "allow-with-verify"
+
+
+# ── FIX #9 (reworked): a caller pin is a PREFERENCE within the gate, never a ──
+#    deny BYPASS. intent.source == "pinned" is caller-controlled (the wire
+#    `model` naming a tier id), so a pin must never let an untrusted caller reach
+#    a tier the profile DENIES for the work-class.
+def test_pin_to_allowed_tier_is_honored():
+    """A pin to a tier the gate ALLOWS for the work-class is honored (used directly)."""
+    # fast-local is 'allow' for chat in the default profile.
+    assert PROFILE.decision("fast-local", "chat") == "allow"  # precondition
+    intent = _intent("chat", ("fast-local",), source="pinned")
+    dec = route(intent, CONFIG, PROFILE)
+
+    # Pin honored: the allowed pinned tier is the routed result.
+    assert dec.tiers == ("fast-local",)
+    assert "fast-local" not in dec.notes["dropped_by_deny"]
+    # Normal gate (no override redirect occurred).
+    assert dec.notes["quality_gate"] == "on"
+
+
+def test_pin_to_denied_tier_routes_to_allowed_tier_not_the_pin():
+    """SECURITY: a pin to a tier the gate DENIES must NOT be served by that tier.
+
+    A caller pinning fast-local for multi-file-refactor (which the profile DENIES
+    for fast-local) must be routed via the work-class's normal gated pool to an
+    ALLOWED tier — never the denied pin. This is the gate-bypass the router exists
+    to prevent, now caller-triggerable via the wire `model` field.
+    """
+    # Precondition: fast-local is denied for multi-file-refactor; the review pool
+    # (the work-class's gated pool) is (heavy-local, cloud), both allowed/avw.
+    assert PROFILE.decision("fast-local", "multi-file-refactor") == "deny"
+    intent = _intent("multi-file-refactor", ("fast-local",), source="pinned")
+    dec = route(intent, CONFIG, PROFILE)
+
+    # The denied pinned tier is NOT in the result.
+    assert "fast-local" not in dec.tiers
+    # Routed via the work-class's gated pool to ALLOWED tiers (review pool).
+    assert dec.tiers == ("heavy-local", "cloud")
+    # The served (first) tier is an allowed tier, not the denied pin.
+    assert dec.tiers[0] == "heavy-local"
+    assert PROFILE.decision("heavy-local", "multi-file-refactor") != "deny"
+    # The override is auditable.
+    assert dec.notes["quality_gate"] == (
+        "pin fast-local denied for multi-file-refactor; routed via gated pool"
+    )
+
+
+def test_pin_to_denied_planning_tier_routes_to_cloud():
+    """A pin to a local tier denied for planning routes to cloud (the gated pool)."""
+    assert PROFILE.decision("fast-local", "planning") == "deny"  # precondition
+    intent = _intent("planning", ("fast-local",), source="pinned")
+    dec = route(intent, CONFIG, PROFILE)
+
+    # fast-local (denied) is not served; the planning gated pool is (cloud,).
+    assert "fast-local" not in dec.tiers
+    assert dec.tiers == ("cloud",)
+    assert "pin fast-local denied for planning" in dec.notes["quality_gate"]
+
+
+def test_pin_to_denied_tier_with_all_denied_pool_yields_clean_empty():
+    """When the work-class's gated pool is ALSO all-denied, the result is empty.
+
+    A pin to a denied tier whose fall-through pool is itself fully denied yields an
+    empty decision (the serve boundary turns this into a clean NoAvailableTierError
+    / 503) — never the denied pinned tier, and never a silent serve.
+    """
+    # A local-only config: planning pool is a single unseeded local tier (denied).
+    body = """\
+[router]
+mapping_version = "test.localonly"
+
+[[router.tiers]]
+id            = "gpu0"
+base_url      = "http://127.0.0.1:31000/v1"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "GPU0_KEY"
+
+[router.presets]
+planning = ["gpu0"]
+"""
+    import tempfile, pathlib
+    d = pathlib.Path(tempfile.mkdtemp())
+    p = d / "localonly.toml"
+    p.write_text(body, encoding="utf-8")
+    cfg = load(str(p))
+
+    # Pin gpu0 for planning: denied; fall-through pool = (gpu0,) -> also denied.
+    intent = _intent("planning", ("gpu0",), source="pinned")
+    dec = route(intent, cfg, PROFILE)
+
+    assert "gpu0" not in dec.tiers
+    assert dec.tiers == ()                 # empty -> clean 503 at the serve boundary
+    assert dec.notes["empty"] is True
+    assert "pin gpu0 denied for planning" in dec.notes["quality_gate"]
+
+
+def test_non_pinned_planning_still_denied():
+    """A non-pinned planning request still hits the deny filter normally."""
+    intent = _intent("planning", ("fast-local", "heavy-local", "cloud"), source="declared-preset")
+    dec = route(intent, CONFIG, PROFILE)
+    assert "fast-local" not in dec.tiers
+    assert "heavy-local" not in dec.tiers
+    assert dec.tiers == ("cloud",)

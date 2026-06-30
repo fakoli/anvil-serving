@@ -177,6 +177,8 @@ def test_raising_backend_is_an_error_attempt_then_falls_back():
     assert error_attempt.outcome == "error"
     assert error_attempt.verifier_passed is False
     assert "RuntimeError" in error_attempt.verify_reason
+    # FIX #6: an error escalation (not just a verify-fail) must set fell_back.
+    assert result.record.fell_back is True
 
 
 def test_all_backends_raise_yields_exhausted_no_exception():
@@ -305,3 +307,70 @@ def test_policy_decision_integration():
     result = route_with_fallback(req, decision, cfg, lambda tier: PASSING)
     assert result.served_tier in decision.tiers  # served one of the policy's tiers
     assert result.exhausted is False
+
+
+# --------------------------------------------------------------------------- #
+# FIX #6: fell_back includes errors (not only verify-fail escalations)
+# --------------------------------------------------------------------------- #
+def test_error_escalation_sets_fell_back():
+    """A first-tier that ERRORS then a second tier serves must record fell_back=True.
+
+    Before the fix, fell_back was only True for 'fallback' (verify-fail) attempts;
+    a backend crash ('error') would leave fell_back=False even though the request
+    clearly escalated past the first tier.
+    """
+    config = make_config(make_tier("fast-local", "local"), make_tier("cloud", "cloud"))
+    decision = RoutingDecision(tiers=("fast-local", "cloud"), work_class="chat")
+
+    result = route_with_fallback(
+        make_request(), decision, config, local_or_cloud(RaisingBackend(), PASSING)
+    )
+
+    assert result.served_tier == "cloud"
+    assert result.record.attempts[0].outcome == "error"
+    assert result.record.fell_back is True  # error escalation must be counted
+
+
+# --------------------------------------------------------------------------- #
+# FIX #17: verifier returning None (non-VerifyResult) must not crash the walk
+# --------------------------------------------------------------------------- #
+def test_verifier_returning_none_treated_as_fail_not_crash():
+    """A verifier seam that RETURNS None (instead of raising) must be treated as a
+    verify FAILURE — not an AttributeError crash on None.passed.
+
+    This guards the live serve path against misbehaving injected verifiers.
+    The verifier returns None only on the FIRST call (fast-local) then passes,
+    so cloud can serve and we confirm both: no crash AND the None was a fail.
+    """
+    from anvil_serving.router.verify import VerifyResult
+
+    class NoneOnFirstCallVerifier:
+        """Returns None on the first call (seam violation); passes on subsequent calls."""
+        name = "none_on_first"
+
+        def __init__(self):
+            self._calls = 0
+
+        def verify(self, response):
+            self._calls += 1
+            if self._calls == 1:
+                return None  # not a VerifyResult — seam contract violation
+            return VerifyResult(self.name, True, 1.0, "pass")
+
+    config = make_config(make_tier("fast-local", "local"), make_tier("cloud", "cloud"))
+    decision = RoutingDecision(tiers=("fast-local", "cloud"), work_class="chat")
+
+    # If the bug is present, this raises AttributeError: 'NoneType' has no 'passed'.
+    result = route_with_fallback(
+        make_request(), decision, config,
+        local_or_cloud(PASSING, PASSING),
+        verifiers=[NoneOnFirstCallVerifier()],
+    )
+
+    # The None return was treated as a verify fail (not a crash): fast-local fell back.
+    assert result.served_tier == "cloud", (
+        f"expected cloud to serve after None-returning verifier failed fast-local; "
+        f"got served_tier={result.served_tier!r}, exhausted={result.exhausted}"
+    )
+    assert result.record.attempts[0].outcome == "fallback"
+    assert result.record.fell_back is True

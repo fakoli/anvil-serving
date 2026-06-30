@@ -19,10 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence
 
-try:  # Protocol is stdlib from 3.8+; runtime_checkable lets isinstance() work.
-    from typing import Protocol, runtime_checkable
-except ImportError:  # pragma: no cover - 3.7 fallback, unused at >=3.9
-    from typing_extensions import Protocol, runtime_checkable  # type: ignore
+from typing import Protocol, runtime_checkable
 
 
 class DialectError(Exception):

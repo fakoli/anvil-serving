@@ -81,17 +81,27 @@ class Grade:
 Grader = Callable[[Mapping[str, Any]], Any]
 
 
+def _clamp_score(s: float) -> float:
+    """Clamp a raw grader score to the valid ``[0.0, 1.0]`` range.
+
+    A grader returning 5.0 (e.g. a 0-5 scale not normalized) or -1.0 would
+    corrupt the ProfileStore running mean; clamp so no out-of-range value can
+    leak in. This is the single point where all grader scores are bounded.
+    """
+    return max(0.0, min(1.0, s))
+
+
 def _coerce_grade(grade: Any) -> Tuple[float, Optional[str]]:
     """Normalize a grader return into ``(score, optional_decision)``."""
     if isinstance(grade, Grade):
-        return float(grade.score), grade.decision
+        return _clamp_score(float(grade.score)), grade.decision
     if isinstance(grade, Mapping):
         if "score" not in grade:
             raise TypeError("grade mapping must carry a 'score' key")
-        return float(grade["score"]), grade.get("decision")
+        return _clamp_score(float(grade["score"])), grade.get("decision")
     # bool is an int subclass; reject it (a boolean is not a score).
     if isinstance(grade, (int, float)) and not isinstance(grade, bool):
-        return float(grade), None
+        return _clamp_score(float(grade)), None
     raise TypeError(
         f"grader returned {type(grade).__name__}; expected Grade, a number, or a "
         f"mapping with a 'score' key"

@@ -221,8 +221,12 @@ def test_serve_skips_cloud_tier_without_creds_but_still_starts():
 # --------------------------------------------------------------------------- #
 def test_planning_with_cloud_unbound_returns_503_not_local_streaming():
     """A streaming ``planning`` request whose only gated tier (cloud) is unbound
-    must get a 503-style error envelope naming the work class + unbound
-    candidates — NOT a 200 served from the out-of-gate ``fast-local`` tier."""
+    must get a clean 503 error envelope — NOT a 200 served from the
+    out-of-gate ``fast-local`` tier.
+
+    The 503 message is intentionally generic (internal tier names and work-class
+    identifiers are logged server-side, not disclosed to the caller).
+    """
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
     assert set(httpd.anvil_tiers) == {"fast-local", "heavy-local"}
     with running(httpd) as (host, port):
@@ -235,13 +239,17 @@ def test_planning_with_cloud_unbound_returns_503_not_local_streaming():
     # An error envelope, NOT a streamed completion from a local tier.
     assert headers.get("content-type") == "application/json"
     body = json.loads(raw)
-    msg = body["error"]["message"]
-    assert "planning" in msg          # the work class is named
-    assert "cloud" in msg             # the unbound gated candidate is named
-    assert "Hello" not in raw.decode("utf-8")  # fast-local did NOT serve it
+    assert body["error"]["type"] == "service_unavailable"
+    # Internal tier names / work-class must NOT be disclosed to the client
+    # (they are logged to stderr server-side instead).
+    raw_text = raw.decode("utf-8")
+    assert "cloud" not in raw_text        # no tier name in response
+    assert "planning" not in raw_text     # no work-class in response
+    assert "Hello" not in raw_text        # fast-local did NOT serve it
 
 
 def test_planning_with_cloud_unbound_returns_503_non_streaming():
+    """Non-streaming variant: same quality-gate enforcement, same generic message."""
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
     with running(httpd) as (host, port):
         status, headers, raw = _post(
@@ -251,7 +259,10 @@ def test_planning_with_cloud_unbound_returns_503_non_streaming():
     assert status == 503, (status, raw)
     body = json.loads(raw)
     assert body["error"]["type"] == "service_unavailable"
-    assert "planning" in body["error"]["message"]
+    # Generic message — no internal names.
+    raw_text = raw.decode("utf-8")
+    assert "planning" not in raw_text
+    assert "cloud" not in raw_text
 
 
 def test_gate_allowed_bound_tier_still_serves_when_cloud_unbound():
@@ -409,3 +420,55 @@ def test_relay_backend_forwards_key_when_present():
     )
     list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
     assert captured["headers"].get("Authorization") == "Bearer local-secret"
+
+
+# --------------------------------------------------------------------------- #
+# Fix 1: public-bind warning (chore/harden-exposure)
+# --------------------------------------------------------------------------- #
+from anvil_serving.router.serve import _warn_if_public_bind  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "127.0.0.1",   # IPv4 loopback
+        "::1",         # IPv6 loopback
+    ],
+)
+def test_warn_if_public_bind_loopback_is_silent(host, capsys):
+    """Loopback addresses must NOT emit a warning."""
+    _warn_if_public_bind(host)
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "0.0.0.0",           # wildcard
+        "::",                # IPv6 wildcard
+        "",                  # empty string -> wildcard
+        "192.168.1.10",      # LAN IP
+        "10.0.0.1",          # private but non-loopback
+        "example.com",       # DNS name — cannot confirm loopback
+    ],
+)
+def test_warn_if_public_bind_non_loopback_emits_warning(host, capsys):
+    """Non-loopback / wildcard / DNS hosts must emit a prominent stderr warning."""
+    _warn_if_public_bind(host)
+    err = capsys.readouterr().err
+    assert "WARNING" in err
+    assert "authentication" in err.lower()
+
+
+def test_warn_if_public_bind_warning_names_the_host(capsys):
+    """The warning should name the host so the operator knows what was bound."""
+    _warn_if_public_bind("0.0.0.0")
+    err = capsys.readouterr().err
+    assert "0.0.0.0" in err
+
+
+def test_warn_if_public_bind_mentions_credentials(capsys):
+    """The warning must mention credential exposure so the risk is unambiguous."""
+    _warn_if_public_bind("0.0.0.0")
+    err = capsys.readouterr().err
+    assert "credential" in err.lower() or "cloud" in err.lower()

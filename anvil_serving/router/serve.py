@@ -49,6 +49,7 @@ IPv6 ~21s stall gotcha).
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import sys
 from http.server import ThreadingHTTPServer
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple
@@ -56,11 +57,57 @@ from typing import Dict, Iterator, List, Mapping, Optional, Tuple
 from .backends import CloudBackend, MissingCredentialError
 from .backends.cloud import _ANTHROPIC_VERSION, Transport
 from .config import ConfigError, RouterConfig, Tier, load
+from .decision_log import DecisionLog
+from .fallback import Budget, RoutingDecision as _FallbackDecision, route_with_fallback
 from .front_door import make_server
 from .intent import PRESETS, resolve
 from .internal import Backend, InternalRequest, NoAvailableTierError
 from .policy import route
 from .profile_store import ProfileStore, default_profile
+from .verify import default_verifiers
+
+
+# --------------------------------------------------------------------------- #
+# Public-bind safety helpers
+# --------------------------------------------------------------------------- #
+#: Explicit wildcard-bind strings that ``ipaddress.ip_address()`` does not parse.
+_WILDCARD_HOSTS = {"", "0.0.0.0", "::"}
+
+
+def _warn_if_public_bind(host: str) -> None:
+    """Emit a prominent warning to stderr when ``host`` is NOT loopback.
+
+    A non-loopback bind exposes the front door on the network with NO
+    authentication — any peer can spend the operator's cloud credentials and
+    read or inject prompts.  The server starts regardless (hard-failing is a
+    separate UX decision); the warning is the safety net.
+
+    ``""``, ``"0.0.0.0"``, and ``"::"`` are treated as non-loopback (they
+    bind all interfaces).  Non-numeric hostnames (e.g. DNS names) are also
+    flagged — only a confirmed loopback IP address passes silently.
+    """
+    if host in _WILDCARD_HOSTS:
+        _emit_public_bind_warning(host)
+        return
+    try:
+        if not ipaddress.ip_address(host).is_loopback:
+            _emit_public_bind_warning(host)
+    except ValueError:
+        # Non-numeric hostname — cannot confirm it is loopback.
+        _emit_public_bind_warning(host)
+
+
+def _emit_public_bind_warning(host: str) -> None:
+    print(
+        f"\n[anvil-serving] WARNING: binding to {host!r} exposes the front door "
+        f"on the network with NO authentication.\n"
+        f"  Any peer can send requests that spend your cloud credentials and "
+        f"read or inject prompts.\n"
+        f"  Set --host 127.0.0.1 (the default) unless you have placed your own "
+        f"authentication layer in front of this server.\n",
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -208,6 +255,23 @@ class RoutingBackend:
         self._config = config
         self._backends: Dict[str, Backend] = dict(backends)
         self._profile = profile
+        self._decision_log = DecisionLog()
+
+    def _tier_verdict(self, tier_id: str, work_class: Optional[str]) -> str:
+        """Profile verdict for ``(tier_id, work_class)``: allow / allow-with-verify / deny.
+
+        Mirrors the per-tier verdict lookup in ``policy.route`` (step 2) so that
+        ``generate`` can distinguish trusted (``allow``) tiers — streamed directly
+        — from fail-prone (``allow-with-verify``) tiers that must pass the
+        structural verifier chain before any byte reaches the client.
+        """
+        if work_class is None:
+            return "allow"  # custom preset with no taxonomy key: trust the pool
+        try:
+            is_cloud = self._config.tier(tier_id).privacy == "cloud"
+        except Exception:
+            is_cloud = False
+        return self._profile.decision(tier_id, work_class, is_cloud=is_cloud)
 
     def select_tier(self, request: InternalRequest) -> str:
         """Resolve + route ``request`` to a single BOUND, gate-allowed tier id.
@@ -234,16 +298,63 @@ class RoutingBackend:
         raise NoAvailableTierError(decision.work_class, decision.tiers)
 
     def generate(self, request: InternalRequest) -> Iterator[str]:
-        # Select EAGERLY (before returning the delegate's iterator) so a routing
-        # failure surfaces at generate()-call time — the front door catches it
-        # there, before committing a streaming 200, and answers a clean 503.
-        tier_id = self.select_tier(request)  # may raise NoAvailableTierError
-        backend = self._backends[tier_id]
-        # T009: verify-gated fallback wires in HERE — wrap this delegation in a
-        #       loop over the gated candidate list (stream_with_commit_window;
-        #       on a FallbackEvent, advance to the next candidate tier). T012
-        #       commits to the first selected tier only.
-        return backend.generate(request)
+        # Eagerly resolve intent + policy BEFORE returning any iterator so that
+        # a routing failure raises here — the front door catches NoAvailableTierError
+        # before committing a streaming 200 and answers a clean 503.
+        intent = resolve(request, self._config)
+        decision = route(intent, self._config, self._profile)
+
+        # Narrow to tiers for which we hold a live backend (preserve gate order).
+        # The policy deny-filter already ran; what remains is allow / allow-with-verify.
+        bound_tiers = tuple(tid for tid in decision.tiers if tid in self._backends)
+        if not bound_tiers:
+            print(
+                f"[anvil-serving] no bound tier for work_class="
+                f"{decision.work_class!r}: gated candidates {list(decision.tiers)} "
+                f"are unbound; refusing to bypass the quality gate",
+                file=sys.stderr,
+                flush=True,
+            )
+            raise NoAvailableTierError(decision.work_class, decision.tiers)
+
+        work_class = decision.work_class
+        first_verdict = self._tier_verdict(bound_tiers[0], work_class)
+
+        if first_verdict == "allow":
+            # Trusted tier: stream its deltas to the client directly.
+            # No buffering, no verification — TTFT is preserved.
+            return self._backends[bound_tiers[0]].generate(request)
+
+        # allow-with-verify: enforce the commit-window guarantee —
+        # ZERO partial local tokens may reach the client on a verify-failure.
+        #
+        # route_with_fallback (T009) drives the candidate walk over bound_tiers:
+        # it fully materialises each tier's response (list()) *before* running the
+        # structural verifier chain (T007), then either commits the winner or
+        # advances to the next candidate.  That buffer-then-decide cycle is the
+        # same guarantee provided by stream_with_commit_window (T008), applied
+        # generically across N candidates.  The decision is appended to
+        # self._decision_log for transparency (T010 / AC2).
+        fb_decision = _FallbackDecision(tiers=bound_tiers, work_class=work_class)
+        result = route_with_fallback(
+            request,
+            fb_decision,
+            self._config,
+            backend_for=lambda tier: self._backends[tier.id],
+            verifiers=default_verifiers(),
+            budget=Budget(),
+            log=self._decision_log,
+        )
+        if result.exhausted:
+            # Every gated, bound candidate failed verify (or was guarded out by the
+            # budget / circuit-breaker).  Refuse to serve the last attempt's text
+            # — it failed verification and must not reach the client.
+            raise NoAvailableTierError(work_class, bound_tiers)
+
+        # Yield the committed response.  route_with_fallback fully buffered the
+        # winner before returning; on any verify-FAIL path the local bytes were
+        # discarded and only the winning tier's text is in result.text.
+        return iter([result.text])
 
 
 # --------------------------------------------------------------------------- #
@@ -309,6 +420,7 @@ def serve(config_path: str, *, host: str = "127.0.0.1", port: int = 8000) -> Non
     selection, and serves both wire dialects with SSE streaming. Blocks in
     ``serve_forever`` until ``KeyboardInterrupt``; tears the server down cleanly.
     """
+    _warn_if_public_bind(host)
     httpd = build_server(config_path, host=host, port=port)
     actual_host, actual_port = httpd.server_address[:2]
     tiers = ", ".join(httpd.anvil_tiers) or "(none)"  # type: ignore[attr-defined]
@@ -350,7 +462,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         default="127.0.0.1",
         help=(
             "bind host (default 127.0.0.1; never use localhost -- it triggers a "
-            "~21s IPv6 stall on Windows)."
+            "~21s IPv6 stall on Windows). WARNING: a non-loopback host "
+            "(0.0.0.0, a LAN/public IP, etc.) exposes the front door with NO "
+            "authentication -- any peer can spend your cloud credentials or "
+            "inject prompts. Only use a non-loopback host if you have placed "
+            "your own authentication layer in front of this server."
         ),
     )
     ap.add_argument(

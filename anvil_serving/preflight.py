@@ -11,7 +11,10 @@ Usage:
      --needle-ctx 128000 [--api-key KEY] [--tool-batch 20] [--no-thinking]
 Exit code 0 = all pass, 1 = any fail.
 """
-import argparse, json, time, urllib.request
+import argparse
+import json
+import time
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def chat(base, model, messages, key=None, max_tokens=256, temperature=0.0,
