@@ -60,7 +60,7 @@ from .backends import CloudBackend, MissingCredentialError
 from .backends.cloud import _ANTHROPIC_VERSION, Transport
 from .config import ConfigError, RouterConfig, Tier, load
 from .decision_log import DecisionLog
-from .fallback import Budget, RoutingDecision as _FallbackDecision, route_with_fallback
+from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
 from .front_door import make_server
 from .intent import PRESETS, resolve
 from .internal import Backend, InternalRequest, NoAvailableTierError
@@ -262,6 +262,10 @@ class RoutingBackend:
         self._backends: Dict[str, Backend] = dict(backends)
         self._profile = profile
         self._decision_log = DecisionLog()
+        # Session-scoped circuit breaker: owned here, shared across all requests,
+        # thread-safe (ThreadingHTTPServer spawns one thread per connection).
+        # Default cooldown = 60 s, threshold comes from Budget() at call time.
+        self._circuit_breaker = CircuitBreaker()
 
     def _tier_verdict(self, tier_id: str, work_class: Optional[str]) -> str:
         """Profile verdict for ``(tier_id, work_class)``: allow / allow-with-verify / deny.
@@ -339,6 +343,8 @@ class RoutingBackend:
             verifiers=default_verifiers(),
             budget=Budget(),
             log=self._decision_log,
+            breaker=self._circuit_breaker,
+            verifier_timeout=5.0,
         )
         if result.exhausted:
             # Every gated, bound candidate failed verify (or was guarded out by the
