@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import urllib.error
 import urllib.request
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional
@@ -105,7 +106,15 @@ def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
             f"cloud provider returned HTTP {e.code} {e.reason}"
         ) from None
     except urllib.error.URLError as e:
-        raise CloudBackendError(f"cloud request failed: {e.reason}") from None
+        # Log the full reason server-side (may include upstream host / TLS detail)
+        # and surface only a generic, client-safe message so the upstream hostname
+        # and TLS internals cannot leak to callers via the 500 path.
+        print(
+            f"[anvil-serving] cloud upstream transport error: {e.reason}",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise CloudBackendError("cloud upstream request failed") from None
 
 
 class CloudBackend:
@@ -145,12 +154,17 @@ class CloudBackend:
 
         environ: Mapping[str, str] = os.environ if env is None else env
         key = environ.get(tier.auth_env)
+        # For CLOUD tiers, the credential is ALWAYS required regardless of
+        # ``_require_key``.  The ``_require_key=False`` opt-out is only honored for
+        # non-cloud (local relay) tiers where the upstream server typically needs no
+        # auth.  Silently omitting the key on a cloud tier would send an
+        # unauthenticated request to a paid provider — we must fail fast instead.
         # Unset, empty, OR whitespace-only (e.g. a trailing-newline key from
         # `$(cat keyfile)`) -> fail fast, named, typed. A blank key would otherwise
         # become a `x-api-key: ' '` 401 deep in a request, or make urllib raise an
         # opaque ValueError on the header value — never the clear startup error.
-        # Skipped when ``_require_key`` is False (relay mode: auth is optional).
-        if _require_key and (not key or not key.strip()):
+        require_credential = _require_key or (tier.privacy == "cloud")
+        if require_credential and (not key or not key.strip()):
             raise MissingCredentialError(tier_id=tier.id, env_var=tier.auth_env)
 
         self._tier = tier
@@ -165,7 +179,21 @@ class CloudBackend:
         url = self._endpoint()
         headers = self._headers()
         data = json.dumps(self._build_body(request)).encode("utf-8")
-        raw = self._transport(url, data=data, headers=headers, timeout=self._timeout)
+        try:
+            raw = self._transport(url, data=data, headers=headers, timeout=self._timeout)
+        except urllib.error.URLError as exc:
+            # A custom transport may raise URLError directly (the default
+            # _urlopen_transport already converts it, but this is the safety net).
+            # Log the full reason server-side; raise a generic, client-safe message.
+            print(
+                f"[anvil-serving] cloud tier {self._tier.id!r} upstream error: "
+                f"{exc.reason}",
+                file=sys.stderr,
+                flush=True,
+            )
+            raise CloudBackendError(
+                f"cloud upstream request failed (tier={self._tier.id!r})"
+            ) from None
         text = self._extract_text(raw)
         for delta in split_into_deltas(text):
             yield delta

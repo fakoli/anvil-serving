@@ -257,6 +257,48 @@ def test_base_url_without_scheme_raises(tmp_path):
         load(_write_toml(tmp_path, body))
 
 
+# ── Fix 2: http(s)-only base_url (chore/harden-exposure) ─────────────────────
+@pytest.mark.parametrize(
+    "bad_url",
+    [
+        "file:///etc/passwd",
+        "file:///C:/Windows/System32/drivers/etc/hosts",
+        "ftp://internal.corp/secret",
+        "gopher://169.254.169.254/",
+        "data:text/plain,hello",
+        "javascript:alert(1)",
+    ],
+)
+def test_non_http_scheme_base_url_raises(tmp_path, bad_url):
+    """Non-http(s) schemes must be rejected at config load time (SSRF / local-file)."""
+    body = _BASE_TIER.replace(
+        'base_url      = "http://127.0.0.1:30001/v1"',
+        f'base_url      = "{bad_url}"',
+    )
+    with pytest.raises(ConfigError, match="http"):
+        load(_write_toml(tmp_path, body))
+
+
+@pytest.mark.parametrize(
+    "good_url",
+    [
+        "http://127.0.0.1:30001/v1",
+        "https://api.anthropic.com",
+        "https://api.openai.com/v1",
+        "HTTP://127.0.0.1:8080",   # case-insensitive
+        "HTTPS://EXAMPLE.COM",
+    ],
+)
+def test_http_and_https_base_url_accepted(tmp_path, good_url):
+    """http:// and https:// schemes (case-insensitive) must load without error."""
+    body = _BASE_TIER.replace(
+        'base_url      = "http://127.0.0.1:30001/v1"',
+        f'base_url      = "{good_url}"',
+    )
+    cfg = load(_write_toml(tmp_path, body))
+    assert cfg.tiers[0].base_url == good_url
+
+
 def test_config_is_hashable_and_presets_immutable():
     cfg = load(str(EXAMPLE))
     # The (unhashable) presets mapping is excluded from __hash__; this must work.
