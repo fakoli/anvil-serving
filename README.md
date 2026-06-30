@@ -372,9 +372,10 @@ What shipped, by milestone:
 - **M1 — intent + policy:** Tier-0 classifier (the floor) **and** preset parsing from the `model`
   field, residency-aware routing policy over the multiplexer, `/v1/models` preset discovery,
   cloud-tier credentials on the Backend seam.
-- **M2 — the wedge:** cheap inline structural verify + verify-gated fallback-to-cloud (with the
-  streaming commit window), transparent responses + decision log, the typed extension seams, the
-  `anvil-serving serve --config ...` CLI verb, and the OpenClaw reference adapter plugin.
+- **M2 — the wedge:** cheap inline structural verify + verify-gated fallback (streaming commit
+  window; cloud escalation is the opt-in keyed mode — the keyless default returns an
+  exhaustion-503 for gateway handoff), transparent responses + decision log, the typed extension
+  seams, the `anvil-serving serve --config ...` CLI verb, and the OpenClaw reference adapter plugin.
 - **M3 — the moat:** quality-profile bootstrap from the generalized shadow-eval, async opt-in
   calibration + serve-fingerprint staleness, validation on routed traffic, and the per-work-class
   promotion decision (planning/critic stay cloud-default, failover-only).

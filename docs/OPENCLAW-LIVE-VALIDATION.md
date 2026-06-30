@@ -2,8 +2,8 @@
 
 > **✅ DONE (2026-06-30).** All three gaps were run live against OpenClaw **2026.6.6** on the
 > gateway. Results + the two bugs the live run caught (wire form needed `providerOverride` + bare
-> model; the manifest needed `configSchema`) are in
-> [`findings/2026-06-30-openclaw-live-validation.md`](findings/2026-06-30-openclaw-live-validation.md).
+> model; the manifest needed `configSchema`) are in the companion notes repo
+> `fakoli/anvil-serving-notes` (`findings/2026-06-30-openclaw-live-validation.md`).
 > The steps below remain as the reproducible procedure.
 >
 > **Original status:** the tooling, plugins, and fixtures (T013 + T014) are merged and pass against
