@@ -1,0 +1,1493 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The quality-gated local-model router for coding harnesses. Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.">
+      
+      
+      
+        <link rel="canonical" href="https://fakoli.github.io/anvil-serving/OPENCLAW-INTEGRATION-SPEC/">
+      
+      
+        <link rel="prev" href="../PLAN-advise-and-defer/">
+      
+      
+        <link rel="next" href="../OPENCLAW-LIVE-VALIDATION/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>anvil-serving × OpenClaw — buildable integration spec - anvil-serving</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#read-first-verdict-caveats-and-one-correction" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="anvil-serving" class="md-header__button md-logo" aria-label="anvil-serving" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            anvil-serving
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              anvil-serving × OpenClaw — buildable integration spec
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/fakoli/anvil-serving" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    fakoli/anvil-serving
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../QUALITY-GATED-ROUTER/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  How it works
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../MODEL-SETTINGS-EXAMPLE/" class="md-tabs__link">
+          
+  
+  
+  Quickstart
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../PLAN-advise-and-defer/" class="md-tabs__link">
+          
+  
+  
+  Cost model
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  OpenClaw integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../adr/" class="md-tabs__link">
+          
+  
+  
+  ADRs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="anvil-serving" class="md-nav__button md-logo" aria-label="anvil-serving" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    anvil-serving
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/fakoli/anvil-serving" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    fakoli/anvil-serving
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../QUALITY-GATED-ROUTER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quickstart
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MODEL-SETTINGS-EXAMPLE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SERVES-AND-EVAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serves & eval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost model
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cost model
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLAN-advise-and-defer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    advise-and-defer plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenClaw integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    OpenClaw integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration spec
+  
+
+    
+  </span>
+  
+  
+    
+  
+  
+    <span class="md-status md-status--buildable-spec"></span>
+  
+
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration spec
+  
+
+    
+  </span>
+  
+  
+    
+  
+  
+    <span class="md-status md-status--buildable-spec"></span>
+  
+
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#read-first-verdict-caveats-and-one-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        READ FIRST — verdict, caveats, and one correction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0-what-is-confirmed-build-against-these" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. What is CONFIRMED (build against these)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-reference-before_model_resolve-plugin-tier-0-classify-preset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Reference before_model_resolve plugin (Tier-0 classify → preset)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-openclaw-provider-config-recipe-point-at-anvil-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. OpenClaw provider config recipe (point at anvil-serving)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-preset-model-id-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Preset / model-id contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-where-each-stage-lives-client-plugin-vs-router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Where each stage lives (client plugin vs router)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-mvp-build-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. MVP build steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-open-questions-needing-hands-on-validation-all-unconfirmed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Open questions needing hands-on validation (all UNCONFIRMED)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPENCLAW-LIVE-VALIDATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADRs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ADRs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0001-cloud-cost-and-subscription-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0001: Cloud cost & subscription auth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#read-first-verdict-caveats-and-one-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        READ FIRST — verdict, caveats, and one correction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0-what-is-confirmed-build-against-these" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. What is CONFIRMED (build against these)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-reference-before_model_resolve-plugin-tier-0-classify-preset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Reference before_model_resolve plugin (Tier-0 classify → preset)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-openclaw-provider-config-recipe-point-at-anvil-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. OpenClaw provider config recipe (point at anvil-serving)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-preset-model-id-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Preset / model-id contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-where-each-stage-lives-client-plugin-vs-router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Where each stage lives (client plugin vs router)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-mvp-build-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. MVP build steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-open-questions-needing-hands-on-validation-all-unconfirmed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Open questions needing hands-on validation (all UNCONFIRMED)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Integration spec</h1>
+
+<blockquote>
+<p><strong>Provenance.</strong> Source-verified against the OpenClaw repo (<code>src/plugins/hook-before-agent-start.types.ts</code>,
+<code>src/plugins/hook-types.ts</code>, <code>src/agents/embedded-agent-runner/run.ts</code>, <code>docs/plugins/hooks.md</code>,
+<code>docs/concepts/model-providers.md</code>) and adversarially checked. Items not byte-confirmed are tagged
+<strong>UNCONFIRMED</strong>. Companion to <a href="../QUALITY-GATED-ROUTER/"><code>QUALITY-GATED-ROUTER.md</code></a>.</p>
+</blockquote>
+<h2 id="read-first-verdict-caveats-and-one-correction">READ FIRST — verdict, caveats, and one correction<a class="headerlink" href="#read-first-verdict-caveats-and-one-correction" title="Permanent link">&para;</a></h2>
+<p><strong>Verdict: GO, with caveats. Maturity risk: MEDIUM (API churn, not abandonment).</strong> The hook signature
+and the custom-provider config are <strong>source-confirmed</strong> and fit anvil's design exactly. Build the
+router-side preset support now; validate two live gaps <strong>before</strong> writing/shipping the plugin.</p>
+<p><strong>Environment for validation.</strong> The validate-first gaps below should be confirmed against a live
+OpenClaw install. The router serves (<code>:30000</code> heavy, <code>:30001</code> fast) must be reachable from the
+gateway. Confirming the gaps on a real install eliminates a fresh stand-up for each question.</p>
+<p><strong>Correction to record (vs the prior finding).</strong> The earlier research said <code>before_model_resolve</code>
+fires "per agent turn." The source-level dive refines this: it fires <strong>once per run, above the attempt
+loop</strong>, and does <em>not</em> re-fire on a <code>before_agent_finalize</code> "revise" retry. For a chat-bridge harness
+a "run" is plausibly <em>one user message</em> (which is exactly the cadence work-class routing needs — the
+user's message determines the work-class), but <strong>this must be confirmed live</strong>: that a run maps to a
+single user message and doesn't span turns, and that multi-step internal model calls within a run
+share one intent (fine for us). The "classify each turn" premise rests on this.</p>
+<p><strong>Two CRITICAL validate-first gaps</strong> (write no build code against them until settled):
+1. <strong>Wire <code>model</code> value</strong> — does the outbound HTTP request carry the bare id (<code>planning</code>) or the full
+   ref (<code>anvil/planning</code>)? Capture a real outbound request. (anvil should accept <strong>both</strong> to be safe.)
+2. <strong>Firing cadence</strong> — confirm <code>before_model_resolve</code> fires per user message (see correction above),
+   by logging every fire with <code>ctx.runId</code>/<code>ctx.sessionKey</code> across a multi-turn conversation.</p>
+<p><strong>API-churn risk + mitigation.</strong> OpenClaw is real, MIT, and very active, but <strong>young</strong> (CalVer
+<code>v2026.6.x</code>, no semver 1.0, multiple releases/week) and the extension surface is mid-refactor —
+<code>before_agent_start</code> is already "compatibility-only" in favor of the <code>before_model_resolve</code> we target,
+so our hook could shift on the same cadence. <em>(The reported star count was extremely high; treat the
+exact number as unverified — the load-bearing point is "very active but churning," not the figure.)</em>
+Mitigation is the <strong>focus-not-couple</strong> architecture, and it's genuine: the router core stays
+protocol-standard with <strong>zero OpenClaw import</strong>; the OpenClaw piece is a <strong>~50-line, one-hook,
+swappable adapter plugin</strong>. If the hook churns, only the adapter changes; if OpenClaw stalls, the
+router is unaffected. Guardrails: pin the <code>pluginApi</code> compat + OpenClaw release; keep all
+OpenClaw-specific code in the plugin package; <strong>verify+fallback lives in the router</strong> (the design
+already assumes this — OpenClaw has no response-swap hook, so this is the only correct place).</p>
+<blockquote>
+<p>Status: buildable spec, rev 2026-06-29. Derived from source-verified facet findings
+(<code>src/plugins/hook-before-agent-start.types.ts</code>, <code>src/plugins/hook-types.ts</code>,
+<code>src/agents/embedded-agent-runner/run.ts</code>, <code>docs/plugins/hooks.md</code>,
+<code>docs/concepts/model-providers.md</code>, <code>docs/gateway/config-tools.md</code>) and anvil's own
+<code>docs/QUALITY-GATED-ROUTER.md</code>. Every item not byte-confirmed against OpenClaw source/docs is
+tagged <strong>UNCONFIRMED — validate before relying on in build code</strong>.</p>
+</blockquote>
+<h2 id="0-what-is-confirmed-build-against-these">0. What is CONFIRMED (build against these)<a class="headerlink" href="#0-what-is-confirmed-build-against-these" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Hook signature (source-verified).</strong> <code>before_model_resolve</code> event = <code>{ prompt: string; attachments?: { kind: "image"|"video"|"audio"|"document"|"other"; mimeType?: string }[] }</code>; result = <code>{ modelOverride?: string; providerOverride?: string }</code>. Types live in <code>src/plugins/hook-before-agent-start.types.ts</code> (file named for the @deprecated <code>before_agent_start</code>, but holds the current <code>before_model_resolve</code> types). Handler is <code>(event, ctx) =&gt; result</code>, <code>ctx: PluginHookAgentContext</code>.</li>
+<li><strong>Fires once per run, above the attempt loop</strong> (<code>run.ts</code> L1033 <code>resolveHookModelSelection</code>, applied at <code>setup.ts</code> L98–103). It does <strong>not</strong> re-fire on a <code>before_agent_finalize</code> "revise" retry (the revise path reuses the resolved provider/modelId; <code>run.ts</code> L4063–4078).</li>
+<li><strong>Provider registration.</strong> <code>models.providers.&lt;id&gt;</code> accepts <code>baseUrl</code>, <code>apiKey</code>, <code>api</code> (enum <code>openai-completions | openai-responses | anthropic-messages | google-generative-ai</code>), <code>headers</code>, inline <code>models[]</code>. <code>models.mode: "merge"</code> (default) ADDS to the built-in catalog. Models are referenced everywhere as the string <code>"&lt;providerId&gt;/&lt;modelId&gt;"</code>. Docs say verbatim: self-hosted <code>/v1/chat/completions</code> (MLX/vLLM/SGLang) → use <code>openai-completions</code>.</li>
+<li><strong>Preset-as-model.</strong> Any arbitrary string declared as a model <code>id</code> in a provider's <code>models[]</code> becomes a first-class selectable model <code>"&lt;providerId&gt;/&lt;modelId&gt;"</code>.</li>
+<li><strong>Per-model sampling/thinking knobs.</strong> <code>agents.defaults.models["anvil/&lt;preset&gt;"].params.chat_template_kwargs</code> and <code>.params.extra_body</code> — covers anvil gotcha #5 (<code>enable_thinking:false</code>).</li>
+<li><strong>Verify primitives (client-side).</strong> <code>llm_output</code> (observe-only: <code>assistantTexts[]</code>, <code>usage</code>), <code>before_agent_finalize</code> (decision: <code>{ action?: "continue"|"revise"|"finalize"; reason?; retry?: { instruction; idempotencyKey?; maxAttempts? } }</code>, cap <code>MAX_BEFORE_AGENT_FINALIZE_REVISIONS=3</code>), <code>model_call_ended</code> (transport telemetry). <strong>No</strong> <code>after_model_response</code>/response-swap hook.</li>
+<li><strong>Native failover</strong> (<code>agents.defaults.model.fallbacks</code>) triggers on transport-class errors only (auth/429/overloaded/timeout/billing) — <strong>never</strong> on a correctness/quality verdict.</li>
+<li><strong>Gating.</strong> Non-bundled plugins using <code>before_model_resolve</code> MUST set <code>plugins.entries.&lt;id&gt;.hooks.allowConversationAccess=true</code>. Prompt-mutating hooks additionally need <code>allowPromptInjection</code>.</li>
+<li><strong>Trust/deploy.</strong> MIT (OpenClaw Foundation). Node 22.19+/24, TS ESM. Gateway defaults to loopback; a loopback anvil endpoint needs no TLS and no gateway auth. Plugin install = "running code", gated by <code>security.installPolicy</code> + <code>plugins.allow</code>/<code>plugins.deny</code>; config change requires <code>openclaw gateway restart</code>.</li>
+</ul>
+<h2 id="1-reference-before_model_resolve-plugin-tier-0-classify-preset">1. Reference <code>before_model_resolve</code> plugin (Tier-0 classify → preset)<a class="headerlink" href="#1-reference-before_model_resolve-plugin-tier-0-classify-preset" title="Permanent link">&para;</a></h2>
+<p>The plugin classifies the current turn and emits an anvil preset id. Because the event carries <strong>only <code>prompt</code> + attachment metadata</strong> (CONFIRMED — "No session messages are available yet in this phase"), the classifier is a lightweight heuristic over prompt text + attachment kinds, not a full-context judge.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// index.ts  — package &quot;type&quot;:&quot;module&quot;, ESM, Node 22.19+</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">definePluginEntry</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;openclaw/plugin-sdk/plugin-entry&quot;</span><span class="p">;</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1">// Closed preset enum = anvil&#39;s wire vocabulary (must match models[] ids in §2 and the router).</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kr">type</span><span class="w"> </span><span class="nx">AnvilPreset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;planning&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;quick-edit&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;review&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;chat&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;long-context&quot;</span><span class="p">;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="kd">function</span><span class="w"> </span><span class="nx">classify</span><span class="p">(</span><span class="nx">prompt</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">attachments</span><span class="o">?:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">}[])</span><span class="o">:</span><span class="w"> </span><span class="nx">AnvilPreset</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">prompt</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">();</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">attachments</span><span class="o">?</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span><span class="nx">a</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">a</span><span class="p">.</span><span class="nx">kind</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;image&quot;</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;review&quot;</span><span class="p">;</span><span class="w"> </span><span class="c1">// multimodal → capable tier</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">prompt</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">24</span><span class="nx">_000</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;long-context&quot;</span><span class="p">;</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="sr">/\b(plan|design|decompose|architect|break (this )?down)\b/</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">p</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;planning&quot;</span><span class="p">;</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="sr">/\b(review|critique|audit|find bugs?)\b/</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">p</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;review&quot;</span><span class="p">;</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="sr">/\b(fix|edit|rename|tweak|typo|small change)\b/</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">p</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;quick-edit&quot;</span><span class="p">;</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;chat&quot;</span><span class="p">;</span><span class="w"> </span><span class="c1">// safe default; router biases ambiguous → safer/cloud tier</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="p">}</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="nx">definePluginEntry</span><span class="p">({</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;anvil-intent-router&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Anvil intent router&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">  </span><span class="nx">register</span><span class="p">(</span><span class="nx">api</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="nx">api</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">      </span><span class="s2">&quot;before_model_resolve&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">      </span><span class="p">(</span><span class="nx">event</span><span class="p">,</span><span class="w"> </span><span class="nx">_ctx</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">({</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">        </span><span class="nx">providerOverride</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;anvil&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">        </span><span class="nx">modelOverride</span><span class="o">:</span><span class="w"> </span><span class="kt">classify</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">prompt</span><span class="p">,</span><span class="w"> </span><span class="nx">event</span><span class="p">.</span><span class="nx">attachments</span><span class="p">),</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">      </span><span class="p">}),</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nx">priority</span><span class="o">:</span><span class="w"> </span><span class="kt">50</span><span class="w"> </span><span class="cm">/*, timeoutMs: 50 */</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">    </span><span class="p">);</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="p">});</span>
+</code></pre></div>
+<p><strong>UNCONFIRMED — must validate on a live gateway before shipping:</strong>
+- <strong>Firing cadence (load-bearing).</strong> Source structure says once-per-run, and the doc comment says "before session messages load" — confirm empirically that <code>before_model_resolve</code> fires <strong>per agent turn</strong> (so per-turn classification is real) and not once per session. The entire "classify each turn" premise hinges on this. Validate by logging every fire with <code>ctx.runId</code>/<code>ctx.sessionKey</code> across a multi-turn conversation.
+- <strong><code>registerEntry</code> arg shape.</strong> Two doc/example forms appear: object form <code>definePluginEntry({ id, name, register(api){...} })</code> and callback form <code>definePluginEntry(async (api) =&gt; {...})</code>. Pin the form against the installed SDK's <code>plugin-entry</code> export.
+- <strong><code>ctx</code> field availability.</strong> <code>PluginHookAgentContext</code> is documented to include <code>workspaceDir</code>, <code>channel</code>, <code>contextTokenBudget</code>, etc., but which fields are populated at the <code>before_model_resolve</code> phase is UNCONFIRMED — the classifier above deliberately uses only <code>event</code> to stay safe.</p>
+<p><strong>Packaging (CONFIRMED shape, version string UNCONFIRMED):</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>// package.json
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{ &quot;type&quot;: &quot;module&quot;,
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  &quot;openclaw&quot;: { &quot;extensions&quot;: [&quot;./index.ts&quot;],
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    &quot;compat&quot;: { &quot;pluginApi&quot;: &quot;&gt;=2026.3.24-beta.2&quot; } } }  // UNCONFIRMED exact floor; before_model_resolve reportedly added ~2026.4.21 — confirm against CHANGELOG/release tags and pin.
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>// openclaw.plugin.json
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>{ &quot;id&quot;: &quot;anvil-intent-router&quot;, &quot;activation&quot;: { &quot;onStartup&quot;: true } }
+</code></pre></div>
+Install: <code>openclaw plugins install ./local</code> (dev) or <code>clawhub:&lt;org&gt;/anvil-intent-router</code>; then <code>openclaw gateway restart</code>; verify <code>openclaw plugins inspect anvil-intent-router --runtime --json</code>.</p>
+<h2 id="2-openclaw-provider-config-recipe-point-at-anvil-serving">2. OpenClaw provider config recipe (point at anvil-serving)<a class="headerlink" href="#2-openclaw-provider-config-recipe-point-at-anvil-serving" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// ~/.openclaw/openclaw.json (JSON5)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>{
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  models: {
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    mode: &quot;merge&quot;,                          // CONFIRMED default; ADDS to built-in catalog
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    providers: {
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>      anvil: {
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        baseUrl: &quot;http://127.0.0.1:8000/v1&quot;, // anvil-serving OpenAI-compat front door (loopback ⇒ no TLS/auth)
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        apiKey: &quot;${ANVIL_API_KEY}&quot;,          // env interpolation CONFIRMED; anvil may ignore on loopback
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        api: &quot;openai-completions&quot;,           // CONFIRMED for self-hosted vLLM/SGLang
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        models: [
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>          { id: &quot;planning&quot;,     name: &quot;Anvil · Planning&quot;,     reasoning: false, input: [&quot;text&quot;],          contextWindow: 128000, maxTokens: 32000 },
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>          { id: &quot;quick-edit&quot;,   name: &quot;Anvil · Quick Edit&quot;,   reasoning: false, input: [&quot;text&quot;],          contextWindow: 32000,  maxTokens: 8192  },
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>          { id: &quot;review&quot;,       name: &quot;Anvil · Review&quot;,       reasoning: false, input: [&quot;text&quot;,&quot;image&quot;],  contextWindow: 128000, maxTokens: 16000 },
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>          { id: &quot;chat&quot;,         name: &quot;Anvil · Chat&quot;,         reasoning: false, input: [&quot;text&quot;],          contextWindow: 32000,  maxTokens: 8192  },
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>          { id: &quot;long-context&quot;, name: &quot;Anvil · Long Context&quot;, reasoning: false, input: [&quot;text&quot;],          contextWindow: 256000, maxTokens: 16000 }
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>        ]
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>      }
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    }
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>  },
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>  agents: { defaults: {
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    // Default slot when the plugin is absent → router&#39;s own Tier-0 classifier still applies.
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    model: { primary: &quot;anvil/chat&quot; },
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    // anvil gotcha #5 (thinking-by-default models) — per-preset:
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    models: {
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>      &quot;anvil/planning&quot;:     { params: { chat_template_kwargs: { enable_thinking: false } } },
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>      &quot;anvil/long-context&quot;: { params: { chat_template_kwargs: { enable_thinking: false } } }
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    }
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>  } },
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>  plugins: { entries: { &quot;anvil-intent-router&quot;: { hooks: { allowConversationAccess: true } } } } // CONFIRMED required gate
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>}
+</code></pre></div>
+<h2 id="3-preset-model-id-contract">3. Preset / model-id contract<a class="headerlink" href="#3-preset-model-id-contract" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Vocabulary:</strong> closed enum <code>{ planning, quick-edit, review, chat, long-context }</code> (matches <code>docs/QUALITY-GATED-ROUTER.md</code> §9). Same strings in three places: plugin <code>modelOverride</code>, provider <code>models[].id</code>, anvil router's accepted <code>model</code> names.</li>
+<li><strong>Selection string</strong> inside OpenClaw is <code>"anvil/&lt;preset&gt;"</code> (CONFIRMED ref format).</li>
+<li><strong>Wire value — UNCONFIRMED (CRITICAL build gap).</strong> It is NOT documented whether the upstream HTTP <code>model</code> field receives the bare id (<code>"planning"</code>) or the full ref (<code>"anvil/planning"</code>). The <code>openai-completions</code> convention is the bare id, so <strong>anvil-serving must accept <code>planning</code>/<code>quick-edit</code>/… as servable model names</strong> — but <strong>capture an actual outbound request</strong> (local echo server or proxy log) to confirm before building the router's model-name parser. To be robust, anvil should accept BOTH the bare preset and the <code>anvil/&lt;preset&gt;</code> form. This is the single most important thing to verify hands-on.</li>
+<li><strong><code>/v1/models</code> discovery:</strong> anvil should serve the preset tokens with human names so they also surface for non-plugin/closed harnesses (Tier-1). Whether OpenClaw auto-imports a custom provider's catalog from <code>/v1/models</code> vs requiring the inline <code>models[]</code> is UNCONFIRMED — the inline <code>models[]</code> above is the safe, CONFIRMED path; treat catalog auto-pull as a bonus to verify.</li>
+<li><strong>Override resolution — UNCONFIRMED.</strong> Whether <code>modelOverride</code> must name a model already in the resolved catalog (i.e. it MUST be pre-registered in <code>models[]</code>) or can be an arbitrary opaque preset id is not confirmed. Build defensively: always pre-register every preset in <code>models[]</code> (§2).</li>
+</ul>
+<h2 id="4-where-each-stage-lives-client-plugin-vs-router">4. Where each stage lives (client plugin vs router)<a class="headerlink" href="#4-where-each-stage-lives-client-plugin-vs-router" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Lives in</th>
+<th>Why (source-grounded)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tier-0 classify</strong></td>
+<td><strong>Client plugin</strong> (<code>before_model_resolve</code>), with the <strong>router's own classifier as the floor</strong></td>
+<td>Plugin sees the raw turn prompt and can emit a per-turn preset. Closed harnesses (Claude Code/Codex) lack the hook, so the router must still classify.</td>
+</tr>
+<tr>
+<td><strong>Intent → (model, tier, params)</strong></td>
+<td><strong>Router</strong></td>
+<td>Preset is opaque to OpenClaw; only anvil owns the quality profile + tier mapping.</td>
+</tr>
+<tr>
+<td><strong>Verify (cheap structural)</strong></td>
+<td><strong>Router (primary)</strong>; optional client mirror via <code>llm_output</code></td>
+<td><code>llm_output</code> is observe-only; it can feed a client-side verdict but cannot change the served response. Inline verify on the hot path belongs in the router.</td>
+</tr>
+<tr>
+<td><strong>Cross-tier quality fallback (within a turn)</strong></td>
+<td><strong>Router ONLY</strong></td>
+<td>CONFIRMED: <code>before_model_resolve</code> fires once per run; <code>before_agent_finalize</code> "revise" retries the <strong>same</strong> model (no provider/model field), cap 3; native failover excludes quality verdicts. The client cannot escalate tier mid-turn on a quality miss.</td>
+</tr>
+<tr>
+<td><strong>Client-side escalation</strong></td>
+<td><strong>Client plugin (next-turn only, optional)</strong></td>
+<td>A plugin may store an <code>llm_output</code>/<code>model_call_ended</code> verdict and bias the NEXT turn's <code>before_model_resolve</code> upward. Same-turn <code>before_agent_finalize</code> "revise" can only nudge the same model with an instruction string.</td>
+</tr>
+</tbody>
+</table>
+<p>Net: this matches anvil's existing design (<code>QUALITY-GATED-ROUTER.md</code> §7) — verify+fallback is a <strong>router</strong> responsibility; the OpenClaw plugin is a thin Tier-0 classifier that pushes per-turn intent to the wire. No design change needed.</p>
+<h2 id="5-mvp-build-steps">5. MVP build steps<a class="headerlink" href="#5-mvp-build-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Router accepts presets (no OpenClaw needed).</strong> Make anvil-serving's OpenAI front door accept <code>{planning,quick-edit,review,chat,long-context}</code> (and <code>anvil/&lt;preset&gt;</code>) as <code>model</code>, map to tier, serve. Add <code>/v1/models</code> listing the presets. (anvil M0–M1.)</li>
+<li><strong>Use the available OpenClaw install on the gateway</strong> (already installed; no fresh stand-up). Confirm/pin its version (<code>openclaw --version</code>), then add the §2 provider block pointing at the router. Smoke-test <code>openclaw models list</code> shows <code>anvil/*</code>; send a turn with <code>agents.defaults.model.primary="anvil/chat"</code>; <strong>capture the outbound request to settle §3 wire-value gap.</strong> (Reproducing elsewhere: <code>npm i -g openclaw@&lt;pinned stable&gt;</code> + <code>openclaw onboard --install-daemon</code>.)</li>
+<li><strong>Reference plugin.</strong> Build §1, <code>openclaw plugins install ./local</code>, set <code>allowConversationAccess=true</code>, restart. Log every <code>before_model_resolve</code> fire → <strong>confirm per-turn cadence</strong>. Verify a returned <code>modelOverride</code> actually routes the turn to the anvil endpoint with the expected wire model.</li>
+<li><strong>Router-side verify+fallback.</strong> Implement cheap structural verify + tier fallback server-side (anvil M2). Optionally add a client <code>llm_output</code> observer that logs verdicts for next-turn biasing.</li>
+<li><strong>Harden + publish.</strong> Pin <code>pluginApi</code> compat once confirmed; publish plugin to ClawHub; document the <code>security.installPolicy</code>/<code>plugins.allow</code> install path.</li>
+</ol>
+<h2 id="6-open-questions-needing-hands-on-validation-all-unconfirmed">6. Open questions needing hands-on validation (all UNCONFIRMED)<a class="headerlink" href="#6-open-questions-needing-hands-on-validation-all-unconfirmed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Wire <code>model</code> field = bare id vs <code>anvil/&lt;preset&gt;</code> (step 2 capture). <strong>CRITICAL.</strong></li>
+<li><code>before_model_resolve</code> per-turn vs per-session firing cadence (step 3 logging). <strong>CRITICAL.</strong></li>
+<li>Whether <code>modelOverride</code> must reference a catalog-registered model (build defensively: always register).</li>
+<li>Exact <code>pluginApi</code> compat floor string + the release that introduced <code>before_model_resolve</code> (pin from CHANGELOG/tags).</li>
+<li><code>definePluginEntry</code> arg form (object vs callback) in the installed SDK.</li>
+<li>Whether a <code>before_agent_finalize</code> "revise" instruction can be parsed by the router to coerce escalation (likely no clean channel — treat router fallback as the real path).</li>
+<li>Plugin runtime config/secret access (<code>plugins.entries.&lt;id&gt;.config</code>) and whether plugins are sandboxed (affects shipping-safety claims).</li>
+<li>Timeout key name(s) on the provider (<code>timeoutSeconds</code> vs <code>timeoutMs</code>) — not byte-confirmed.</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
