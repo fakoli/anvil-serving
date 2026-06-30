@@ -30,7 +30,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict
 
-import pytest
 
 from anvil_serving.router.backends import StaticBackend
 from anvil_serving.router.profile_store import ProfileEntry, ProfileStore
