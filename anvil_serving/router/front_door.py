@@ -75,7 +75,7 @@ _DIGIT_RE: re.Pattern = re.compile(r"[0-9]+")
 
 
 def _make_handler(backend: Backend, timeout: Optional[float],
-                  presets: Iterable[Preset]):
+                  presets: Iterable[Preset], exhaustion_status: int = 503):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -151,9 +151,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # backend (T012) selects its tier eagerly at generate()-call time, so
             # if no quality-gated tier is bound for this work class it raises
             # NoAvailableTierError HERE — before any header is sent — and we
-            # answer a clean 503 instead of a 200 + empty/truncated body. (For a
-            # plain generator backend this call is a no-op: its body runs lazily,
-            # so the M0 mid-stream close-on-error contract below is unchanged.)
+            # answer a clean exhaustion status instead of a 200 + empty/truncated
+            # body. (For a plain generator backend this call is a no-op: its body
+            # runs lazily, so the M0 mid-stream close-on-error contract below is
+            # unchanged.)
             #
             # Any other exception from generate() is also surfaced as a clean 500
             # here, before the 200 is committed, so the client always sees a real
@@ -161,11 +162,20 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             try:
                 deltas = backend.generate(request)
             except NoAvailableTierError as e:
-                # Log the detail server-side; send a generic message to the client
-                # (tier identities / remediation are internal-operator information).
-                print(f"[anvil] 503 no available tier: {e}", file=sys.stderr)
+                # Keyless handoff contract (ADR-0001 §Mechanism, advise-and-defer:T004).
+                # exhaustion_status is the signal the gateway's transport failover
+                # keys on to re-run this request on the native subscription provider.
+                # Default 503 is chosen because OpenClaw classifies it as "overloaded"
+                # (transport failover) — pending live validation in T005. Configurable
+                # via [router].exhaustion_status to match a different gateway's trigger.
+                # C3 holds: the commit-window fully buffered + verified the local
+                # tier's response before raising — nothing local was streamed before
+                # this point. This is an honest availability signal, not partial output.
+                # Log the detail server-side; send a sanitised generic message to the
+                # client (tier identities / remediation are internal-operator info).
+                print(f"[anvil] {exhaustion_status} no available tier: {e}", file=sys.stderr)
                 self._error(
-                    503, "service_unavailable",
+                    exhaustion_status, "service_unavailable",
                     "no quality-gated tier is available for this request",
                     dialect=dialect,
                 )
@@ -402,12 +412,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     text = "".join(backend.generate(request))
                     payload = dialect.render(request, text)
                 except NoAvailableTierError as e:
-                    # No quality-gated tier is bound for this work class -> 503.
-                    # Log the detail (tier names, remediation) server-side; send
-                    # a generic message to the client.
-                    print(f"[anvil] 503 no available tier: {e}", file=sys.stderr)
+                    # Keyless handoff contract — see the streaming path above for
+                    # the full rationale (ADR-0001 §Mechanism, advise-and-defer:T004).
+                    # Log the detail server-side; send a sanitised generic message.
+                    print(f"[anvil] {exhaustion_status} no available tier: {e}", file=sys.stderr)
                     self._error(
-                        503, "service_unavailable",
+                        exhaustion_status, "service_unavailable",
                         "no quality-gated tier is available for this request",
                         dialect=dialect,
                     )
@@ -431,7 +441,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 def make_server(host: str = "127.0.0.1", port: int = 8000,
                 backend: Optional[Backend] = None,
                 timeout: Optional[float] = 120,
-                presets: Optional[Iterable[Preset]] = None) -> ThreadingHTTPServer:
+                presets: Optional[Iterable[Preset]] = None,
+                exhaustion_status: int = 503) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
     Pass ``port=0`` to bind an ephemeral port (read it back from
@@ -440,15 +451,18 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     default so abandoned keep-alive sockets can't leak threads/FDs); pass
     ``None`` to disable. ``presets`` are the work-class tokens ``GET /v1/models``
     advertises; defaults to the canonical :data:`~anvil_serving.router.intent.PRESETS`
-    (injectable like ``backend`` for tests). Call ``server.serve_forever()``
-    (typically on a background thread) to run.
+    (injectable like ``backend`` for tests). ``exhaustion_status`` is the HTTP
+    status returned when all quality-gated tiers are exhausted (default 503 —
+    the keyless handoff signal; see :class:`~anvil_serving.router.config.RouterConfig`
+    and ADR-0001 §Mechanism). Call ``server.serve_forever()`` (typically on a
+    background thread) to run.
     """
     if backend is None:
         backend = EchoBackend()
     if presets is None:
         presets = PRESETS
     httpd = ThreadingHTTPServer((host, port),
-                                _make_handler(backend, timeout, presets))
+                                _make_handler(backend, timeout, presets, exhaustion_status))
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd
 

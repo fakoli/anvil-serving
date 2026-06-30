@@ -1,0 +1,19 @@
+# Test fixture: single-tier local-only config (no cloud tier, no fallback tier).
+# Used by T004 tests: an allow-with-verify verify-failure exhausts the tier
+# chain immediately (chat -> [fast-local] only), so the front door must return
+# the exhaustion_status (default 503 — the keyless handoff signal per
+# ADR-0001 §Mechanism, advise-and-defer:T004) with nothing streamed (C3).
+[router]
+mapping_version = "test-single-tier-local"
+
+[[router.tiers]]
+id            = "fast-local"
+base_url      = "http://127.0.0.1:30001/v1"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FAST_LOCAL_KEY"
+
+[router.presets]
+chat = ["fast-local"]
