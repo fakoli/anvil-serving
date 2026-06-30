@@ -16,8 +16,16 @@ from typing import Mapping, Optional
 
 from .prices import fetch_prices
 
-VALID_DIALECTS = {"openai", "anthropic"}
-VALID_PRIVACY = {"local", "cloud"}
+# Tier dialect + privacy enums as NAMED constants, defined once here so the bare
+# string literals don't scatter across the router (backends, serve, policy). The
+# VALID_* sets stay the validation source of truth, now built from these names.
+DIALECT_OPENAI = "openai"
+DIALECT_ANTHROPIC = "anthropic"
+VALID_DIALECTS = {DIALECT_OPENAI, DIALECT_ANTHROPIC}
+
+PRIVACY_LOCAL = "local"
+PRIVACY_CLOUD = "cloud"
+VALID_PRIVACY = {PRIVACY_LOCAL, PRIVACY_CLOUD}
 
 # An auth reference must be an ENV-VAR NAME, not a secret literal.
 _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
