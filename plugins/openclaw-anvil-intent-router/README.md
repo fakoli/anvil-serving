@@ -2,8 +2,8 @@
 
 The **reference** OpenClaw `before_model_resolve` plugin for anvil-serving. On
 each turn it classifies the prompt (text + attachment kinds) into one of anvil's
-closed presets and emits `{ modelOverride: "anvil/<preset>" }`, so OpenClaw
-routes the run to the anvil provider's matching preset model.
+closed presets and emits `{ providerOverride: "anvil", modelOverride: "<preset>" }`,
+so OpenClaw routes the run to the anvil provider's matching preset model.
 
 This is the build that T013 unblocked: T013 shipped the validate-first tooling
 (wire-form + fire-cadence) under [`examples/openclaw/`](../../examples/openclaw/);
@@ -18,7 +18,7 @@ contract.
 
 | File | What it is |
 |------|------------|
-| `index.ts` | The plugin. `definePluginEntry` + `api.on("before_model_resolve", ...)`; classifies, writes a decision-log line, returns `{ modelOverride: "anvil/<preset>" }`. |
+| `index.ts` | The plugin. `definePluginEntry` + `api.on("before_model_resolve", ...)`; classifies, writes a decision-log line, returns `{ providerOverride: "anvil", modelOverride: "<preset>" }`. |
 | `classify.mjs` | The SINGLE SOURCE OF TRUTH heuristic (`classify`, `PRESETS`). Imported by both `index.ts` and `make-fixture.mjs`, so the fixture is provably the plugin's real output. |
 | `classify.d.mts` | TypeScript declarations for `classify.mjs` (`AnvilPreset`, the closed enum). |
 | `package.json`, `openclaw.plugin.json` | Plugin packaging (`type: module`, `extensions: ["./index.ts"]`, `compat.pluginApi >= 2026.4.21`, `activation.onStartup`). |
@@ -62,8 +62,9 @@ biases to `review`; **many** attachments (>= 4) bias to `long-context`.
 
 The preset set is anvil's closed wire vocabulary
 `{ planning, quick-edit, review, chat, long-context }` and matches
-`anvil_serving.router.intent.PRESETS`. The emitted `anvil/<preset>` satisfies the
-wire-form contract `^(anvil/)?<preset>$` (see `examples/openclaw/validate.py`).
+`anvil_serving.router.intent.PRESETS`. The emitted **bare** `<preset>` (the model
+within the `anvil` provider) satisfies the wire-form contract `^(anvil/)?<preset>$`
+(see `examples/openclaw/validate.py`); OpenClaw forwards it bare on the wire.
 
 `classify` **never throws** — any internal failure degrades to `chat`, and the
 decision-log write is wrapped in `try/catch`, so a logging error never breaks a
@@ -88,8 +89,8 @@ run.
    (This hook does **not** mutate the prompt, so it does **not** need
    `allowPromptInjection`.)
 3. **Register the anvil provider — REQUIRED, not optional.** This plugin
-   **unconditionally** returns `modelOverride: "anvil/<preset>"` on every turn, so
-   `~/.openclaw/openclaw.json` **MUST** define the `anvil` provider with `models[]`
+   **unconditionally** returns `{ providerOverride: "anvil", modelOverride: "<preset>" }`
+   on every turn, so `~/.openclaw/openclaw.json` **MUST** define the `anvil` provider with `models[]`
    entries for **every** preset id (`planning`, `quick-edit`, `review`, `chat`,
    `long-context` — spec §2). If the provider/model is missing, forcing an override
    for an unresolvable id can fail model resolution and break the run — there is no
@@ -114,13 +115,14 @@ run.
      }
    }
    ```
-   > **Validate-first gap (confirm on the live gateway).** The plugin emits the
-   > **namespaced** `anvil/<preset>` selection string. Whether OpenClaw's resolver
-   > wants that namespaced form or the **bare** `<preset>` id on the wire (the
-   > anvil front door accepts BOTH — see `examples/openclaw/validate.py`'s
-   > `WIRE_FORM_RE` `^(anvil/)?<preset>$`) is the one piece this repo cannot prove
-   > offline. Confirm it against the real gateway (the LIVE step below); if the
-   > resolver rejects the namespaced form, switch `index.ts` to return the bare id.
+   > **LIVE-CONFIRMED (OpenClaw 2026.6.6, Fakoli-Mini, 2026-06-30).** The plugin
+   > names the provider (`providerOverride: "anvil"`) and emits the **bare** preset
+   > (`modelOverride: "planning"`); OpenClaw then forwards the **bare** id on the
+   > wire (captured `model: "planning"`). A lone `modelOverride: "anvil/<preset>"`
+   > is mis-resolved as `<defaultProvider>/anvil/<preset>` → `model_not_found`,
+   > which is why the provider MUST be named separately. The anvil front door
+   > accepts both forms (`WIRE_FORM_RE` `^(anvil/)?<preset>$`). Full results +
+   > the two bugs the live run caught: `docs/findings/2026-06-30-openclaw-live-validation.md`.
 4. **Restart the gateway:** `openclaw gateway restart`.
 5. **(Optional) point the decision log somewhere writable:**
    `export ANVIL_DECISION_LOG=/abs/path/decision_log.jsonl`
