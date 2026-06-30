@@ -7,7 +7,7 @@
 // uses, runs it over labeled synthetic turns, ASSERTS each result equals its
 // label (so a drift in classify fails generation loudly), and writes one
 // decision-log line per turn in the exact shape index.ts emits:
-//   { synthetic, ts, runId, sessionKey, source:"openclaw", intent, modelOverride, prompt_chars }
+//   { synthetic, ts, runId, sessionKey, source:"openclaw", intent, providerOverride, modelOverride, prompt_chars }
 //
 // Run:  node plugins/openclaw-anvil-intent-router/make-fixture.mjs
 // Output is deterministic (fixed base timestamp + per-turn offset) so
@@ -132,7 +132,8 @@ TURNS.forEach((turn, i) => {
     sessionKey: turn.sessionKey,
     source: "openclaw",
     intent,
-    modelOverride: `anvil/${intent}`,
+    providerOverride: "anvil",
+    modelOverride: intent,
     prompt_chars: turn.prompt.length,
   };
   lines.push(JSON.stringify(record));

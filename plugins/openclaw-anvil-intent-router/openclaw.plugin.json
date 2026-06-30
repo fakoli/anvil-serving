@@ -1,4 +1,9 @@
 {
   "id": "openclaw-anvil-intent-router",
-  "activation": { "onStartup": true }
+  "activation": { "onStartup": true },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
 }
