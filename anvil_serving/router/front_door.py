@@ -29,6 +29,10 @@ clients (no chunked encoding) get a close-delimited stream instead, mirroring
 from __future__ import annotations
 
 import json
+import os
+import re
+import sys
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Iterable, Optional
 
@@ -46,12 +50,36 @@ _ROUTES = {
     "/v1/messages": AnthropicDialect(),
 }
 
+# --------------------------------------------------------------------------- #
+# Resource caps (DoS protection)
+# --------------------------------------------------------------------------- #
+
+#: Maximum request body size in bytes.  Requests whose Content-Length exceeds
+#: this value are rejected with 413 before any body bytes are read.
+#: Default: 32 MiB.  Override via the ``ANVIL_MAX_BODY_BYTES`` env var.
+MAX_BODY_BYTES: int = int(os.environ.get("ANVIL_MAX_BODY_BYTES", str(32 * 1024 * 1024)))
+
+#: Maximum number of requests being processed concurrently.  When all slots are
+#: occupied, the next incoming request receives an immediate 503.
+#: Default: 64.  Override via the ``ANVIL_MAX_CONCURRENCY`` env var.
+MAX_CONCURRENCY: int = int(os.environ.get("ANVIL_MAX_CONCURRENCY", "64"))
+
+#: Shared bounded semaphore across all handler instances/threads.
+_CONCURRENCY_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(
+    MAX_CONCURRENCY
+)
+
+# Pre-compiled pattern: a valid Content-Length is one or more ASCII digits,
+# nothing else (no sign, underscores, whitespace, or Unicode digits).
+_DIGIT_RE: re.Pattern = re.compile(r"[0-9]+")
+
 
 def _make_handler(backend: Backend, timeout: Optional[float],
                   presets: Iterable[Preset]):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
-        server_version = "anvil-front-door/0.1"
+        # Generic server token: no software name or version disclosed.
+        server_version = "anvil"
         # Finite idle timeout: with HTTP/1.1 keep-alive on a ThreadingHTTPServer,
         # an abandoned connection would otherwise pin a daemon thread blocked in
         # readline() forever (thread/FD leak). A timed-out read makes
@@ -81,26 +109,33 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._json(status, {"error": {"type": etype, "message": message}})
 
         def _fail_framing(self, status: int, etype: str, message: str,
-                          drainable: bool, n: int) -> None:
+                          drainable: bool, n: int,
+                          dialect: Optional[Dialect] = None) -> None:
             """Respond to a pre-body framing/routing error WITHOUT desyncing a
             pooled keep-alive socket (RFC 7230 3.3.3/6.6).
 
-            If the body length is known (``drainable``), drain it so the socket
-            stays in sync and the connection survives — closing instead would, on
-            an unread body, trigger an RST on Windows that truncates this very
-            response. If the length is undeterminable (chunked / unparseable
-            Content-Length), we cannot realign, so we must close. Generic
-            envelope (these are transport-level, pre-dialect errors).
+            If the body length is known (``drainable``) AND within the body-size
+            cap, drain it so the socket stays in sync and the connection survives
+            — closing instead would, on an unread body, trigger an RST on Windows
+            that truncates this very response.  If the body exceeds the cap or the
+            length is undeterminable (Transfer-Encoding / unparseable
+            Content-Length), we cannot safely realign, so we must close.
+
+            When a dialect is known (request routed to a known path), the error
+            envelope is rendered in that dialect's native shape.
             """
             if drainable:
-                if n:
+                if 0 < n <= MAX_BODY_BYTES:
                     try:
                         self.rfile.read(n)
                     except Exception:
                         self.close_connection = True  # short read -> can't realign
+                elif n > MAX_BODY_BYTES:
+                    # Body is too large to drain safely; close instead.
+                    self.close_connection = True
             else:
                 self.close_connection = True
-            self._error(status, etype, message)
+            self._error(status, etype, message, dialect=dialect)
 
         def _write_sse(self, dialect: Dialect, request) -> None:
             """Stream the backend's deltas as native SSE, flushed per event.
@@ -119,10 +154,25 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # answer a clean 503 instead of a 200 + empty/truncated body. (For a
             # plain generator backend this call is a no-op: its body runs lazily,
             # so the M0 mid-stream close-on-error contract below is unchanged.)
+            #
+            # Any other exception from generate() is also surfaced as a clean 500
+            # here, before the 200 is committed, so the client always sees a real
+            # HTTP error status for pre-stream failures.
             try:
                 deltas = backend.generate(request)
             except NoAvailableTierError as e:
-                self._error(503, "service_unavailable", str(e), dialect=dialect)
+                # Log the detail server-side; send a generic message to the client
+                # (tier identities / remediation are internal-operator information).
+                print(f"[anvil] 503 no available tier: {e}", file=sys.stderr)
+                self._error(
+                    503, "service_unavailable",
+                    "no quality-gated tier is available for this request",
+                    dialect=dialect,
+                )
+                return
+            except Exception as e:
+                print(f"[anvil] 500 backend error in generate(): {e}", file=sys.stderr)
+                self._error(500, "internal_error", "internal error", dialect=dialect)
                 return
 
             self.send_response(200)
@@ -177,62 +227,148 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
-            route = self.path.split("?", 1)[0].rstrip("/")
-            if route in ("/healthz", "/health"):
-                self._json(200, {"status": "ok",
-                                 "dialects": sorted(d.name for d in _ROUTES.values())})
-            elif route == "/v1/models":
-                # Preset discovery: list the configured presets (intent tokens)
-                # as OpenAI-shaped "models" so a harness model picker can find
-                # them. Derived from the canonical presets passed in.
-                self._json(200, models_payload(presets))
-            else:
-                self._error(404, "not_found", f"no route {self.path}")
+            # Drain any unexpected request body to keep the keep-alive socket in
+            # sync.  GETs are conventionally bodyless; a caller that sends one
+            # leaves bytes on the wire that would desync the connection for the
+            # next pipelined request.  Drain up to MAX_BODY_BYTES; close if the
+            # claimed length exceeds the cap or the header is malformed.
+            cl_get = self.headers.get("Content-Length")
+            if cl_get is not None:
+                if _DIGIT_RE.fullmatch(cl_get):
+                    get_n = int(cl_get)
+                    if 0 < get_n <= MAX_BODY_BYTES:
+                        try:
+                            self.rfile.read(get_n)
+                        except Exception:
+                            self.close_connection = True
+                    elif get_n > MAX_BODY_BYTES:
+                        self.close_connection = True
+                else:
+                    self.close_connection = True
+
+            if not _CONCURRENCY_LIMIT.acquire(blocking=False):
+                self.close_connection = True
+                self._error(503, "server_busy", "server busy; try again later")
+                return
+            try:
+                route = self.path.split("?", 1)[0].rstrip("/")
+                if route in ("/healthz", "/health"):
+                    self._json(200, {
+                        "status": "ok",
+                        "dialects": sorted(d.name for d in _ROUTES.values()),
+                    })
+                elif route == "/v1/models":
+                    # Preset discovery: list the configured presets (intent tokens)
+                    # as OpenAI-shaped "models" so a harness model picker can find
+                    # them. Derived from the canonical presets passed in.
+                    self._json(200, models_payload(presets))
+                else:
+                    self._error(404, "not_found", f"no route {self.path}")
+            finally:
+                _CONCURRENCY_LIMIT.release()
 
         def do_POST(self) -> None:
+            # Acquire the concurrency semaphore before doing any work.  The
+            # request line and headers are already parsed by handle_one_request,
+            # so we can send a proper 503 if the server is saturated.
+            if not _CONCURRENCY_LIMIT.acquire(blocking=False):
+                self.close_connection = True
+                self._error(503, "server_busy", "server busy; try again later")
+                return
+            try:
+                self._post_inner()
+            finally:
+                _CONCURRENCY_LIMIT.release()
+
+        def _post_inner(self) -> None:
+            """Core POST dispatch, called under the concurrency semaphore."""
             path = self.path.split("?", 1)[0]
 
-            # Resolve the request-body length up front so error paths can DRAIN a
-            # known-length body and keep the keep-alive socket in sync, instead
-            # of closing it. (A chunked upload or an unparseable Content-Length is
-            # undrainable -> the early-return paths below must close.)
-            te = (self.headers.get("Transfer-Encoding") or "").lower()
-            cl = self.headers.get("Content-Length")
-            n = 0
-            drainable = "chunked" not in te
-            if drainable and cl is not None:
-                try:
-                    n = int(cl)
-                except (TypeError, ValueError):
-                    drainable = False
-                else:
-                    if n < 0:
-                        drainable = False
+            # --- Strict framing: gather and validate headers -----------------
+            #
+            # Transfer-Encoding: we don't decode chunked bodies.  Reject ANY
+            # request carrying a TE header, including obfuscated/duplicate ones
+            # (get_all to catch request-smuggling vectors).
+            te_all = self.headers.get_all("Transfer-Encoding") or []
+            has_te = bool(te_all)
 
+            # Content-Length: strict parse.
+            # * Duplicate CL headers: reject (request smuggling, RFC 7230 3.3.2).
+            # * Non-ASCII-digit CL (underscores, sign, whitespace, Unicode):
+            #   reject.  Python's int() is too permissive here.
+            cl_all = self.headers.get_all("Content-Length") or []
+            dup_cl = len(cl_all) > 1
+            # Use the single raw CL string (or None if absent / duplicated).
+            cl_raw = cl_all[0] if len(cl_all) == 1 else None
+
+            n = 0
+            cl_invalid = False
+            if not has_te and not dup_cl and cl_raw is not None:
+                if _DIGIT_RE.fullmatch(cl_raw):
+                    n = int(cl_raw)
+                    # Non-negative guaranteed by the ^[0-9]+$ match.
+                else:
+                    cl_invalid = True
+
+            # drainable: the body byte count is known, valid, and we can
+            # safely read exactly n bytes to realign the keep-alive stream.
+            # (Even drainable bodies are capped at MAX_BODY_BYTES inside
+            # _fail_framing to bound the drain work.)
+            drainable = not has_te and not dup_cl and not cl_invalid
+
+            # --- Route check (establishes dialect for dialect-aware errors) --
             dialect: Optional[Dialect] = _ROUTES.get(path)
-            if dialect is None:  # unknown route (body, if well-framed, is drained)
-                self._fail_framing(404, "not_found", f"no route {path}", drainable, n)
+            if dialect is None:  # unknown route — drain if body is well-framed
+                self._fail_framing(404, "not_found", f"no route {path}",
+                                   drainable, n)
                 return
-            if "chunked" in te:  # we don't decode chunked uploads
+
+            # --- Reject any Transfer-Encoding header (411) -------------------
+            if has_te:
                 self._fail_framing(
                     411, "invalid_request",
                     "chunked request bodies are unsupported; send Content-Length",
-                    drainable=False, n=0)
+                    drainable=False, n=0, dialect=dialect,
+                )
                 return
-            if cl is not None and not drainable:  # malformed/negative Content-Length
-                self._fail_framing(400, "invalid_request",
-                                   f"invalid Content-Length: {cl!r}",
-                                   drainable=False, n=0)
+
+            # --- Reject duplicate Content-Length headers (400) ---------------
+            if dup_cl:
+                self._fail_framing(
+                    400, "invalid_request",
+                    "duplicate Content-Length headers",
+                    drainable=False, n=0, dialect=dialect,
+                )
+                return
+
+            # --- Reject non-digit / malformed Content-Length (400) -----------
+            if cl_invalid:
+                self._fail_framing(
+                    400, "invalid_request",
+                    f"invalid Content-Length: {cl_all[0]!r}",
+                    drainable=False, n=0, dialect=dialect,
+                )
+                return
+
+            # --- Body size cap: reject before reading (413) ------------------
+            if n > MAX_BODY_BYTES:
+                self._fail_framing(
+                    413, "payload_too_large",
+                    "request body too large",
+                    drainable=False, n=0, dialect=dialect,
+                )
                 return
 
             raw = self.rfile.read(n) if n else b""  # body drained from here on
             try:
                 body = json.loads(raw or b"{}")
             except Exception as e:
-                self._error(400, "invalid_request", f"bad JSON body: {e}")
+                self._error(400, "invalid_request", f"bad JSON body: {e}",
+                            dialect=dialect)
                 return
             if not isinstance(body, dict):
-                self._error(400, "invalid_request", "body must be a JSON object")
+                self._error(400, "invalid_request", "body must be a JSON object",
+                            dialect=dialect)
                 return
 
             try:
@@ -241,7 +377,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(e.status, e.etype, e.message, dialect=dialect)
                 return
             except Exception as e:  # other malformed but JSON-parseable body
-                self._error(400, "invalid_request", f"bad request: {e}", dialect=dialect)
+                self._error(400, "invalid_request", f"bad request: {e}",
+                            dialect=dialect)
                 return
 
             if request.stream:
@@ -256,13 +393,21 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     payload = dialect.render(request, text)
                 except NoAvailableTierError as e:
                     # No quality-gated tier is bound for this work class -> 503.
-                    # The router refuses to bypass the gate, so this is a clean
-                    # "service unavailable", not a 500 backend fault.
-                    self._error(503, "service_unavailable", str(e), dialect=dialect)
+                    # Log the detail (tier names, remediation) server-side; send
+                    # a generic message to the client.
+                    print(f"[anvil] 503 no available tier: {e}", file=sys.stderr)
+                    self._error(
+                        503, "service_unavailable",
+                        "no quality-gated tier is available for this request",
+                        dialect=dialect,
+                    )
                     return
                 except Exception as e:
-                    self._error(500, "internal_error",
-                                f"backend error: {e}", dialect=dialect)
+                    # Unexpected backend fault: log the detail server-side; send
+                    # a generic message so internal state is not disclosed.
+                    print(f"[anvil] 500 backend error: {e}", file=sys.stderr)
+                    self._error(500, "internal_error", "internal error",
+                                dialect=dialect)
                     return
                 self._json(200, payload)
 
