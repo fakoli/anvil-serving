@@ -18,13 +18,15 @@ Credential policy (the gate):
 Stdlib-only HTTP: the default transport uses :mod:`urllib.request`. The transport
 is an injectable seam (``transport=``) so tests run hermetically with NO network.
 
-Scope notes (deferred, not this task):
+Scope notes:
 
-* **Provider model resolution.** ``request.model`` is forwarded verbatim to the
-  provider as a placeholder. Mapping a routing token (e.g. a preset name) to a
-  concrete provider model id (preset -> tier -> provider model) is the routing
-  layer's job (T009/T012); :class:`~anvil_serving.router.config.Tier` carries no
-  provider-model field yet, so there is nothing to prefer over ``request.model``.
+* **Provider model resolution.** When a tier is configured with a ``model`` field
+  (the concrete provider model id, e.g. ``"claude-opus-4-20250514"``), that value
+  is preferred over ``request.model`` so that routing tokens (e.g. ``"planning"``,
+  ``"quick-edit"``) are never forwarded verbatim to the upstream provider, which
+  would cause a 4xx rejection.  When ``tier.model`` is absent (``None``),
+  ``request.model`` is used as before — backward-compatible for configs that do
+  not set the field.
 * **Dialect branching.** The per-dialect logic is split across
   :meth:`CloudBackend._endpoint` / ``_headers`` / ``_build_body`` / ``_extract_text``;
   a per-dialect adapter object would encapsulate it. Out of scope for T006.
@@ -225,6 +227,11 @@ class CloudBackend:
         return headers
 
     def _build_body(self, request: InternalRequest) -> Dict[str, Any]:
+        # Prefer the tier's configured concrete provider model id over the routing
+        # token in request.model. A routing token (e.g. "planning", "quick-edit")
+        # forwarded verbatim to the upstream provider causes a 4xx rejection; the
+        # tier's model field holds the real provider model name (close #43).
+        upstream_model = self._tier.model or request.model
         if self._tier.dialect == "anthropic":
             # Anthropic's messages array is user/assistant only; the system
             # prompt rides the top-level `system` field.
@@ -234,7 +241,7 @@ class CloudBackend:
                 if m.role != "system"
             ]
             body: Dict[str, Any] = {
-                "model": request.model,
+                "model": upstream_model,
                 "messages": msgs,
                 "max_tokens": request.max_tokens or _DEFAULT_MAX_TOKENS,
                 "stream": False,
@@ -255,7 +262,7 @@ class CloudBackend:
         if request.system and not any(m.role == "system" for m in request.messages):
             msgs.insert(0, {"role": "system", "content": request.system})
         body = {
-            "model": request.model,
+            "model": upstream_model,
             "messages": msgs,
             "stream": False,
         }
