@@ -6,8 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-Advise-and-defer work — on `main`, not yet versioned. These changes complete the
-subscription-first routing story and the production-readiness docs pass.
+_Nothing yet._
+
+## [0.4.0] - 2026-06-30
+
+Advise-and-defer — the subscription-first routing pivot — plus the launch-hardening pass.
+anvil is now **local-serve + routing brain**: the harness owns cloud on its subscription and
+no cloud API key sits in the default path ($0 metered API by default). This release also closes
+the six post-launch hardening issues (#42, #45, #46, #47, #52, #53).
 
 ### Changed
 
@@ -29,6 +35,9 @@ subscription-first routing story and the production-readiness docs pass.
   default, opt-in metered cloud, keyless handoff, $0-metered framing). Internal
   design/planning/findings documents relocated to the private companion repo
   `fakoli/anvil-serving-notes`; public docs retain the product-facing surface.
+- **Internal maintainability (#46).** `RelayBackend` decoupled into the backends package;
+  dialect/privacy magic strings replaced with named constants; a dialect parity test pins both
+  dialects' surface. Behavior-preserving — no wire change.
 
 ### Added
 
@@ -58,6 +67,27 @@ subscription-first routing story and the production-readiness docs pass.
   `allow` / `allow-with-verify` classes through anvil. Uses the shared
   `tier0_keywords.json` classifier vocabulary; optionally calls `/v1/route` for the
   authoritative decision.
+- **Tool-call passthrough + live structured verifiers (#42, #52).** `tool_calls` / `tool_use`
+  and the real `finish_reason` / `stop_reason` now flow through the backends, dialects, and
+  verifiers (streaming and non-streaming) — a coding harness's tool-calling turn is preserved
+  end-to-end, and the `NotTruncated` / `ToolCallJSONValid` verifiers run live on the serve path
+  (previously inert). The text path is byte-identical.
+
+### Fixed
+
+- **Fallback-path hardening (#45, #52).** Seam isolation (a hung verifier is bounded by a
+  latency budget; a raising observer/log or response-view factory can no longer crash a served
+  request), 32 MiB drain byte-caps (local + cloud) against runaway responses, and a
+  **session-scoped, thread-safe circuit breaker with cooldown + half-open decay** so a transient
+  blip can't permanently disable a tier.
+- **Front-door HTTP polish (#53).** A `GET` to a POST-only route returns `405` + `Allow: POST`
+  (not `404`); a bounded non-blocking drain after a `413` avoids a connection-reset race;
+  `do_GET` body-handling keeps the socket in sync.
+- **Concurrency + correctness hygiene (#47).** `DecisionLog` is guarded by a lock (it is written
+  from `ThreadingHTTPServer` request threads); a structurally-malformed cloud response now
+  surfaces a sanitized error instead of being masked as an empty completion.
+- **`benchmark` context-clamp + `--no-thinking` (#78).** Right-sizes the replayed request
+  distribution and avoids thinking-budget starvation during benchmarks.
 
 ## [0.3.0] - 2026-06-30
 
@@ -123,5 +153,6 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/fakoli/anvil-serving/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/fakoli/anvil-serving/releases/tag/v0.3.0
