@@ -213,6 +213,32 @@ def route(
                 kept.append(tid)
             survivors = kept
 
+        # 1b. Metered-cloud gate (ADR-0001 / advise-and-defer:T002).
+        #     A ``privacy == "cloud"`` tier is a routing candidate ONLY for
+        #     work-classes listed in ``config.metered_cloud``.  When that list is
+        #     absent or empty (the default), cloud is NEVER a candidate.
+        #     This gate applies to a None work_class (a custom preset) TOO: a
+        #     custom preset whose pool names a cloud tier does NOT reach it unless
+        #     that work-class is explicitly metered. Since a None work-class can
+        #     never appear in ``metered_cloud`` (a list of work-class strings),
+        #     ``None not in _metered_classes`` is always True, so cloud is dropped
+        #     for custom presets whenever it would be for an unmapped class — the
+        #     cost-safe default ("empty map => cloud is never routed", ADR-0001).
+        dropped_by_metered_gate: list[str] = []
+        _metered_classes = frozenset(getattr(config, "metered_cloud", ()) or ())
+        if work_class not in _metered_classes:
+            _mc_kept: list[str] = []
+            for tid in survivors:
+                try:
+                    _is_cloud = config.tier(tid).privacy == "cloud"
+                except Exception:
+                    _is_cloud = False
+                if _is_cloud:
+                    dropped_by_metered_gate.append(tid)
+                else:
+                    _mc_kept.append(tid)
+            survivors = _mc_kept
+
         # 2. Profile-deny filter (AC1), fail-closed. Resolved WITH each tier's
         #    privacy so an unmeasured local on a high-risk class denies while
         #    cloud stays allowed. Skipped (gate "off") only for a None work class
@@ -266,6 +292,7 @@ def route(
             "dropped_missing": tuple(dropped_missing),
             "dropped_duplicate": tuple(dropped_duplicate),
             "dropped_by_constraint": tuple(dropped_by_constraint),
+            "dropped_by_metered_gate": tuple(dropped_by_metered_gate),
             "dropped_by_deny": tuple(dropped_by_deny),
             "residency_deferred": tuple(residency_deferred),
             "empty": not result,
