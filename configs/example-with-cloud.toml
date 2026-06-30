@@ -29,6 +29,11 @@ served_model_name = "local-specialist"
 # auth_env names an ENV VAR; the secret itself is NEVER stored here.
 [router]
 mapping_version = "2026-06-30.0"
+# metered_cloud: the ONLY work-classes that may be served by a metered
+# (privacy=="cloud") tier.  Default empty = cloud is NEVER a routing candidate.
+# Add a work-class here only when you explicitly accept the per-token $ cost.
+# (ADR-0001 / advise-and-defer:T002)
+metered_cloud = ["planning"]
 
 [[router.tiers]]
 id            = "fast-local"

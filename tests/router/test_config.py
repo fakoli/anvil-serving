@@ -372,3 +372,88 @@ def test_example_has_no_cloud_tier_id():
         "tier id 'cloud' found in the default config; "
         "move the cloud tier to example-with-cloud.toml (T001)"
     )
+
+
+# ── T002: metered_cloud config parsing (ADR-0001 / advise-and-defer:T002) ────
+#
+# These tests write full TOML bodies (not using _write_toml + _BASE_TIER) because
+# metered_cloud is a [router]-level key that must appear BEFORE [[router.tiers]]
+# arrays in TOML (keys cannot be added to a table after an array-table opener).
+
+_MC_TOML_HEADER = """\
+[router]
+mapping_version = "test.mc"
+"""
+
+_MC_TOML_TIER = """\
+
+[[router.tiers]]
+id            = "fast-local"
+base_url      = "http://127.0.0.1:30001/v1"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FAST_LOCAL_KEY"
+
+[router.presets]
+chat = ["fast-local"]
+"""
+
+
+def _write_mc_toml(tmp_path: pathlib.Path, extra_router_keys: str = "") -> str:
+    """Write a minimal router config with optional extra [router]-level keys."""
+    p = tmp_path / "mc.toml"
+    p.write_text(_MC_TOML_HEADER + extra_router_keys + _MC_TOML_TIER, encoding="utf-8")
+    return str(p)
+
+
+def test_metered_cloud_absent_defaults_to_empty(tmp_path):
+    """A config with no metered_cloud key → RouterConfig.metered_cloud == ().
+    Absent == empty: cloud is never a candidate by default (ADR-0001)."""
+    cfg = load(_write_mc_toml(tmp_path))
+    assert cfg.metered_cloud == ()
+
+
+def test_metered_cloud_present_parses_to_tuple(tmp_path):
+    """metered_cloud = ["planning", "chat"] → tuple of strings in that order."""
+    cfg = load(_write_mc_toml(tmp_path, 'metered_cloud = ["planning", "chat"]\n'))
+    assert cfg.metered_cloud == ("planning", "chat")
+
+
+def test_metered_cloud_empty_list_parses_to_empty_tuple(tmp_path):
+    """metered_cloud = [] → (): explicitly empty maps to the same result as absent."""
+    cfg = load(_write_mc_toml(tmp_path, "metered_cloud = []\n"))
+    assert cfg.metered_cloud == ()
+
+
+def test_metered_cloud_non_list_raises(tmp_path):
+    """metered_cloud must be a list; a scalar value raises ConfigError."""
+    with pytest.raises(ConfigError):
+        load(_write_mc_toml(tmp_path, 'metered_cloud = "planning"\n'))
+
+
+def test_metered_cloud_non_string_elements_raises(tmp_path):
+    """metered_cloud must be a list of strings; non-string elements raise ConfigError."""
+    with pytest.raises(ConfigError):
+        load(_write_mc_toml(tmp_path, "metered_cloud = [1, 2]\n"))
+
+
+def test_default_config_metered_cloud_is_empty():
+    """example.toml (local-only default) has metered_cloud == () — the local-only
+    config has no cloud tier and no metered mapping (ADR-0001 / T002)."""
+    cfg = load(str(EXAMPLE))
+    assert cfg.metered_cloud == ()
+
+
+def test_example_with_cloud_has_metered_cloud_set():
+    """example-with-cloud.toml must have a non-empty metered_cloud showing operators
+    how to opt specific work-classes into metered cloud routing (T002 worked example)."""
+    cfg = load(str(EXAMPLE_WITH_CLOUD))
+    assert isinstance(cfg.metered_cloud, tuple)
+    assert len(cfg.metered_cloud) > 0, (
+        "example-with-cloud.toml must set metered_cloud to at least one work-class "
+        "(T002 worked example — nothing is metered unless mapped)"
+    )
+    # planning is the canonical example in the worked example (ADR-0001)
+    assert "planning" in cfg.metered_cloud

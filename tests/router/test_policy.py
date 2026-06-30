@@ -91,12 +91,44 @@ def test_ac1_bounded_edit_keeps_fast_local():
     assert dec.tiers[0] == "fast-local"  # cost order: fast first
 
 
-def test_ac1_deny_entry_never_routed_direct_store():
+def test_ac1_deny_entry_never_routed_direct_store(tmp_path):
     # A hand-built store where (heavy-local, review) is deny: heavy-local must be
     # absent for a review intent even though the example profile allows it.
+    # Uses a temp config with metered_cloud=["review"] so cloud remains a candidate
+    # for this work-class and can confirm the quality-gate allows it while deny drops
+    # the denied tier.
+    body = """\
+[router]
+mapping_version = "test.deny.review"
+metered_cloud = ["review"]
+
+[[router.tiers]]
+id            = "heavy-local"
+base_url      = "http://127.0.0.1:30000/v1"
+dialect       = "openai"
+context_limit = 131072
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
+
+[[router.tiers]]
+id            = "cloud"
+base_url      = "https://api.anthropic.com"
+dialect       = "anthropic"
+context_limit = 200000
+privacy       = "cloud"
+tool_support  = true
+auth_env      = "ANTHROPIC_API_KEY"
+
+[router.presets]
+review = ["heavy-local", "cloud"]
+"""
+    p = tmp_path / "deny-review.toml"
+    p.write_text(body, encoding="utf-8")
+    cfg = load(str(p))
     profile = ProfileStore({("heavy-local", "review"): ProfileEntry("deny", 0.2, 1, None)})
     intent = _intent("review", ("heavy-local", "cloud"))
-    dec = route(intent, CONFIG, profile)
+    dec = route(intent, cfg, profile)
     assert "heavy-local" not in dec.tiers
     assert "heavy-local" in dec.notes["dropped_by_deny"]
     assert dec.tiers == ("cloud",)  # cloud unmeasured -> allow (is_cloud), kept
@@ -113,9 +145,11 @@ def test_ac2_result_is_subset_of_candidate_pool():
 def test_ac2_routed_pool_follows_config_preset(tmp_path):
     # A temp config whose planning pool is two cloud tiers in a non-default order;
     # route() must follow it rather than any baked-in default.
+    # metered_cloud=["planning"] is required so the cloud tiers are candidates.
     body = """\
 [router]
 mapping_version = "test.0"
+metered_cloud = ["planning"]
 
 [[router.tiers]]
 id            = "fast-local"
@@ -172,18 +206,27 @@ planning = ["cloud2", "cloud"]
 
 # ── hard-constraint filter ───────────────────────────────────────────────────
 def test_constraint_min_context_drops_fast_local():
+    # quick-edit -> work_class=bounded-edit; pool [fast, heavy, cloud].
+    # metered_cloud=["planning"] in example-with-cloud.toml, so cloud is gated
+    # for bounded-edit.  The constraint filter still drops fast-local for ctx;
+    # heavy-local (131072 >= 100000) remains in the result.
     intent = resolve(_req("quick-edit"), CONFIG)  # pool [fast, heavy, cloud]
     dec = route(intent, CONFIG, PROFILE, needs=Needs(min_context=100000))
     assert "fast-local" not in dec.tiers  # ctx 32768 < 100000
     assert "heavy-local" in dec.tiers     # 131072 fits
-    assert "cloud" in dec.tiers           # 200000 fits
+    # Cloud is gated for bounded-edit (not in metered_cloud).
+    assert "cloud" not in dec.tiers
     assert "fast-local" in dec.notes["dropped_by_constraint"]
+    assert "cloud" in dec.notes["dropped_by_metered_gate"]
 
 
 def test_constraint_needs_tools_drops_no_tool_tier(tmp_path):
+    # quick-edit -> work_class=bounded-edit.  metered_cloud=["bounded-edit"] so cloud
+    # is a candidate; the constraint filter must then drop the no-tool tier.
     body = """\
 [router]
 mapping_version = "test.0"
+metered_cloud = ["bounded-edit"]
 
 [[router.tiers]]
 id            = "no-tools-local"
@@ -218,19 +261,25 @@ quick-edit = ["no-tools-local", "cloud"]
 
 # ── None work class skips the deny filter (custom preset trusts the pool) ─────
 def test_none_work_class_skips_deny_filter():
-    intent = _intent(None, ("fast-local", "cloud"))
+    # A local-only pool isolates the deny-filter behaviour from the T002 metered
+    # gate (which now drops a cloud tier for a None work-class too). Both locals
+    # survive: the quality deny-filter is skipped for a None work-class.
+    intent = _intent(None, ("fast-local", "heavy-local"))
     dec = route(intent, CONFIG, PROFILE)
-    assert dec.tiers == ("fast-local", "cloud")
+    assert dec.tiers == ("fast-local", "heavy-local")
     assert dec.notes["dropped_by_deny"] == ()
 
 
 # ── robustness: a pool id absent from config is dropped + noted, never raised ──
 def test_missing_pool_id_dropped_and_noted():
-    intent = _intent("chat", ("ghost", "cloud"))
+    # work_class="chat" with a local-only fallback so the metered gate doesn't
+    # interfere; the test isolates the missing-id drop (ghost is unknown to config).
+    intent = _intent("chat", ("ghost", "fast-local"))
     dec = route(intent, CONFIG, PROFILE)
     assert "ghost" not in dec.tiers
     assert "ghost" in dec.notes["dropped_missing"]
-    assert dec.tiers == ("cloud",)
+    # chat: fast-local is allow; the unknown id is dropped, leaving the local tier.
+    assert dec.tiers == ("fast-local",)
 
 
 def test_empty_result_allowed_and_noted():
@@ -318,10 +367,16 @@ def test_score_and_entry_have_coverage():
 
 # ── policy: fail-closed wiring, gate visibility, de-dup, robustness ───────────
 def _gpu0_planning_config(tmp_path):
-    """A config with an UNSEEDED local tier 'gpu0' in the planning pool."""
+    """A config with an UNSEEDED local tier 'gpu0' in the planning pool.
+
+    metered_cloud=["planning"] so cloud is a candidate for planning; the
+    quality gate can then prove gpu0 (unmeasured local) is denied while
+    cloud (always-available) is kept.
+    """
     body = """\
 [router]
 mapping_version = "test.gpu0"
+metered_cloud = ["planning"]
 
 [[router.tiers]]
 id            = "gpu0"
@@ -375,9 +430,11 @@ def test_none_workclass_records_gate_off():
 def test_duplicate_pool_id_deduped():
     # FIX F: a duplicate tier id must not appear twice in the result; the drop is
     # noted, first-occurrence order is preserved.
-    intent = _intent("chat", ("fast-local", "cloud", "fast-local"))
+    # A local-only pool (both allow for chat) isolates de-duplication from the
+    # T002 metered gate (which would otherwise drop a cloud tier here).
+    intent = _intent("chat", ("fast-local", "heavy-local", "fast-local"))
     dec = route(intent, CONFIG, PROFILE)
-    assert dec.tiers == ("fast-local", "cloud")
+    assert dec.tiers == ("fast-local", "heavy-local")
     assert dec.tiers.count("fast-local") == 1
     assert "fast-local" in dec.notes["dropped_duplicate"]
 
@@ -544,17 +601,22 @@ def test_pin_to_denied_tier_routes_to_allowed_tier_not_the_pin():
     for fast-local) must be routed via the work-class's normal gated pool to an
     ALLOWED tier — never the denied pin. This is the gate-bypass the router exists
     to prevent, now caller-triggerable via the wire `model` field.
+
+    The review pool (multi-file-refactor's gated pool) is (heavy-local, cloud).
+    With metered_cloud=["planning"] in the example config, cloud is gated for
+    multi-file-refactor, so only heavy-local reaches the final result.
     """
     # Precondition: fast-local is denied for multi-file-refactor; the review pool
-    # (the work-class's gated pool) is (heavy-local, cloud), both allowed/avw.
+    # (the work-class's gated pool) is (heavy-local, cloud).
     assert PROFILE.decision("fast-local", "multi-file-refactor") == "deny"
     intent = _intent("multi-file-refactor", ("fast-local",), source="pinned")
     dec = route(intent, CONFIG, PROFILE)
 
     # The denied pinned tier is NOT in the result.
     assert "fast-local" not in dec.tiers
-    # Routed via the work-class's gated pool to ALLOWED tiers (review pool).
-    assert dec.tiers == ("heavy-local", "cloud")
+    # Routed via the work-class's gated pool; cloud is then gated (not in
+    # metered_cloud for multi-file-refactor), so only heavy-local remains.
+    assert dec.tiers == ("heavy-local",)
     # The served (first) tier is an allowed tier, not the denied pin.
     assert dec.tiers[0] == "heavy-local"
     assert PROFILE.decision("heavy-local", "multi-file-refactor") != "deny"
@@ -624,3 +686,170 @@ def test_non_pinned_planning_still_denied():
     assert "fast-local" not in dec.tiers
     assert "heavy-local" not in dec.tiers
     assert dec.tiers == ("cloud",)
+
+
+# ── T002: per-intent metered-cloud gate (ADR-0001 / advise-and-defer:T002) ────
+#
+# The metered-cloud gate enforces: a privacy=="cloud" tier is a routing candidate
+# ONLY for work-classes listed in RouterConfig.metered_cloud.  An empty/absent
+# metered_cloud means cloud is NEVER a candidate.
+
+def _cloud_config(tmp_path, metered_cloud: list, extra_presets: str = "") -> object:
+    """Return a RouterConfig with fast-local + cloud tiers and the given metered_cloud."""
+    lines = [
+        "[router]",
+        'mapping_version = "test.mc"',
+    ]
+    if metered_cloud is not None:
+        vals = ", ".join(f'"{w}"' for w in metered_cloud)
+        lines.append(f"metered_cloud = [{vals}]")
+    lines += [
+        "",
+        "[[router.tiers]]",
+        'id            = "fast-local"',
+        'base_url      = "http://127.0.0.1:30001/v1"',
+        'dialect       = "openai"',
+        "context_limit = 32768",
+        'privacy       = "local"',
+        "tool_support  = true",
+        'auth_env      = "ANVIL_FAST_LOCAL_KEY"',
+        "",
+        "[[router.tiers]]",
+        'id            = "cloud"',
+        'base_url      = "https://api.anthropic.com"',
+        'dialect       = "anthropic"',
+        "context_limit = 200000",
+        'privacy       = "cloud"',
+        "tool_support  = true",
+        'auth_env      = "ANTHROPIC_API_KEY"',
+        "",
+        "[router.presets]",
+        'planning   = ["cloud"]',
+        'chat       = ["fast-local", "cloud"]',
+        'quick-edit = ["fast-local", "cloud"]',
+    ]
+    if extra_presets:
+        lines.append(extra_presets)
+    body = "\n".join(lines) + "\n"
+    p = tmp_path / "mc.toml"
+    p.write_text(body, encoding="utf-8")
+    return load(str(p))
+
+
+def test_metered_gate_empty_cloud_never_candidate(tmp_path):
+    """With metered_cloud=[] (empty), a cloud tier is NEVER in the routed result,
+    for every work-class.  This is the ADR-0001 invariant: no global 'use cloud'
+    switch; cloud must be explicitly mapped."""
+    cfg = _cloud_config(tmp_path, metered_cloud=[])
+
+    for wc, candidate_tiers in [
+        ("planning", ("cloud",)),
+        ("bounded-edit", ("fast-local", "cloud")),
+        ("chat", ("fast-local", "cloud")),
+    ]:
+        intent = _intent(wc, candidate_tiers)
+        dec = route(intent, cfg, PROFILE)
+        assert "cloud" not in dec.tiers, f"cloud must never be routed; work_class={wc!r}"
+        assert "cloud" in dec.notes["dropped_by_metered_gate"], wc
+
+
+def test_metered_gate_planning_only(tmp_path):
+    """With metered_cloud=["planning"], cloud is a candidate ONLY for planning;
+    for every other work-class it is gated out."""
+    cfg = _cloud_config(tmp_path, metered_cloud=["planning"])
+
+    # planning → cloud IS a candidate (and the only one after quality deny strips locals)
+    intent_plan = _intent("planning", ("fast-local", "cloud"))
+    dec_plan = route(intent_plan, cfg, PROFILE)
+    assert "cloud" in dec_plan.tiers, "cloud must be a candidate for planning"
+    assert "cloud" not in dec_plan.notes["dropped_by_metered_gate"]
+
+    # bounded-edit → cloud gated
+    intent_edit = _intent("bounded-edit", ("fast-local", "cloud"))
+    dec_edit = route(intent_edit, cfg, PROFILE)
+    assert "cloud" not in dec_edit.tiers, "cloud must be gated for bounded-edit"
+    assert "cloud" in dec_edit.notes["dropped_by_metered_gate"]
+
+    # chat → cloud gated
+    intent_chat = _intent("chat", ("fast-local", "cloud"))
+    dec_chat = route(intent_chat, cfg, PROFILE)
+    assert "cloud" not in dec_chat.tiers, "cloud must be gated for chat"
+    assert "cloud" in dec_chat.notes["dropped_by_metered_gate"]
+
+
+def test_metered_gate_applies_to_none_work_class(tmp_path):
+    """COST-SAFETY (closes the work_class=None bypass): a custom preset
+    (work_class=None) whose pool names a cloud tier must NOT reach it when that
+    cloud is not metered. With metered_cloud=[] the cloud tier is dropped even for
+    a None work-class — a None can never appear in metered_cloud, so the gate
+    fires. Guarantees 'empty map => cloud is never a candidate', custom presets
+    included (ADR-0001 / advise-and-defer:T002)."""
+    cfg = _cloud_config(tmp_path, metered_cloud=[])  # empty → cloud never
+
+    # work_class=None: custom-preset mode — the gate STILL applies, cloud dropped,
+    # only the local tier survives.
+    intent = _intent(None, ("fast-local", "cloud"))
+    dec = route(intent, cfg, PROFILE)
+    assert "cloud" not in dec.tiers, "cloud must be gated for a None work_class too"
+    assert dec.tiers == ("fast-local",)
+    assert "cloud" in dec.notes["dropped_by_metered_gate"]
+
+
+def test_metered_gate_none_work_class_cloud_only_pool_is_empty(tmp_path):
+    """COST-SAFETY: a custom preset (work_class=None) whose pool is cloud-ONLY,
+    with metered_cloud=[], collapses to an empty decision — the serve boundary
+    turns this into a clean 503 rather than ever reaching the metered tier. This
+    is the closed hole: a custom preset can no longer slip cloud past an empty map."""
+    cfg = _cloud_config(tmp_path, metered_cloud=[])
+
+    intent = _intent(None, ("cloud",))
+    dec = route(intent, cfg, PROFILE)
+    assert dec.tiers == ()  # empty -> clean 503 at the serve boundary
+    assert dec.notes["empty"] is True
+    assert "cloud" in dec.notes["dropped_by_metered_gate"]
+
+
+def test_metered_gate_recorded_in_notes(tmp_path):
+    """dropped_by_metered_gate is always present in notes and contains the
+    ids of cloud tiers dropped by the gate."""
+    cfg = _cloud_config(tmp_path, metered_cloud=[])
+
+    intent = _intent("chat", ("fast-local", "cloud"))
+    dec = route(intent, cfg, PROFILE)
+    assert "dropped_by_metered_gate" in dec.notes
+    assert "cloud" in dec.notes["dropped_by_metered_gate"]
+    # fast-local (local tier) is never in the metered gate drop list
+    assert "fast-local" not in dec.notes["dropped_by_metered_gate"]
+
+
+def test_metered_gate_absent_metered_cloud_same_as_empty(tmp_path):
+    """A config with no metered_cloud key is identical to metered_cloud=[]:
+    cloud is never a candidate (default-safe / ADR-0001)."""
+    # _cloud_config with metered_cloud=None omits the key from TOML entirely.
+    cfg = _cloud_config(tmp_path, metered_cloud=None)
+    assert cfg.metered_cloud == ()  # parsed as empty tuple
+
+    intent = _intent("planning", ("cloud",))
+    dec = route(intent, cfg, PROFILE)
+    assert "cloud" not in dec.tiers
+    assert "cloud" in dec.notes["dropped_by_metered_gate"]
+
+
+def test_metered_gate_default_config_unaffected():
+    """The default local-only config (example.toml) has no cloud tier and
+    metered_cloud defaults to (); the gate has no effect on local-only routing."""
+    from anvil_serving.router.config import load as _load
+
+    default_cfg_path = str(
+        pathlib.Path(__file__).resolve().parents[2] / "configs" / "example.toml"
+    )
+    cfg = _load(default_cfg_path)
+    assert cfg.metered_cloud == ()
+    # All tiers are local; route a planning intent through the default config.
+    intent_plan = resolve(_req("planning"), cfg)
+    dec = route(intent_plan, cfg, PROFILE)
+    # No cloud tier present at all: metered gate has nothing to drop.
+    assert dec.notes["dropped_by_metered_gate"] == ()
+    # Local tiers are still subject to the quality gate (planning -> locals denied).
+    # The example.toml planning pool is (heavy-local,) which is denied for planning.
+    assert "heavy-local" in dec.notes["dropped_by_deny"]
