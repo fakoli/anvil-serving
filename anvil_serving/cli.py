@@ -1,5 +1,7 @@
 """anvil-serving CLI — profile / models / deploy / preflight / benchmark / multiplexer / serve."""
-import sys, os, runpy, subprocess
+import sys
+import os
+import subprocess
 
 HERE = os.path.dirname(__file__)
 

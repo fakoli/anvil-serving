@@ -14,7 +14,12 @@ Usage:
   # fan-out burst sharing ONE prefix (exercises prefix cache like a workflow wave):
   python3 benchmark.py --base-url ... --model ... --burst 20 --shared-prefix-tokens 8000 --ctx-tokens 64000
 """
-import argparse, json, time, random, statistics, urllib.request
+import argparse
+import json
+import time
+import random
+import statistics
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 FILLER = "def helper_%d():\n    return compute(%d)  # routine specialist context\n"

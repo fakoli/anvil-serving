@@ -48,7 +48,15 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
 # Ship the canonical Tier-0 keyword taxonomy (tier0_keywords.json) inside the
 # wheel so classify.py can load it at runtime from an installed package.
 "anvil_serving.router" = ["*.json"]
+"anvil_serving" = ["py.typed"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+ignore = ["E701", "E702"]

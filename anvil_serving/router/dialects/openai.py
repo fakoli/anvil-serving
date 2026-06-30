@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import time
-import uuid
 from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional
 
 from ..internal import (
@@ -20,10 +19,7 @@ from ..internal import (
     estimate_tokens,
     normalize_messages,
 )
-
-
-def _new_id() -> str:
-    return "chatcmpl-" + uuid.uuid4().hex[:24]
+from . import _new_id
 
 
 def _sse(obj: Dict[str, Any]) -> bytes:
@@ -73,7 +69,7 @@ class OpenAIDialect:
         )
 
     def stream(self, request: InternalRequest, deltas: Iterable[str]) -> Iterator[bytes]:
-        cid = _new_id()
+        cid = _new_id("chatcmpl-")
         created = int(time.time())
         model = request.model
         # 1) opening chunk announces the assistant role.
@@ -90,7 +86,7 @@ class OpenAIDialect:
         prompt = estimate_tokens(prompt_texts)
         completion = estimate_tokens([text])
         return {
-            "id": _new_id(),
+            "id": _new_id("chatcmpl-"),
             "object": "chat.completion",
             "created": int(time.time()),
             "model": request.model,

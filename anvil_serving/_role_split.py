@@ -5,8 +5,11 @@ Splits assistant calls by isSidechain (subagent vs main orchestrator) and by mod
 so we can size the LOCAL specialist context ceiling from the subagent distribution
 rather than the orchestrator's long-context tail. Stdlib only.
 """
-import json, os, glob, sys
-from collections import defaultdict, Counter
+import json
+import os
+import glob
+import sys
+from collections import defaultdict
 
 PROJECTS = os.environ.get("ANVIL_CLAUDE_LOGS") or os.path.expanduser("~/.claude/projects")
 

@@ -47,10 +47,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
-try:  # Protocol is stdlib from 3.8+; runtime_checkable lets isinstance() work.
-    from typing import Protocol, runtime_checkable
-except ImportError:  # pragma: no cover - 3.7 fallback, unused at >=3.9
-    from typing_extensions import Protocol, runtime_checkable  # type: ignore
+from typing import Protocol, runtime_checkable
 
 # Re-export the seams that ALREADY own a Protocol — single source of truth. These
 # imports are the canonical objects; ``seams.Backend is internal.Backend`` etc.

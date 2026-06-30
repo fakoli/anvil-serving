@@ -26,7 +26,11 @@ dead_everywhere. Only FP8/FP4-MoE safetensors that hang post-load on this sm_120
 
 Stdlib only; dicts/tables in-out.
 """
-import os, sys, json, argparse, shutil
+import os
+import sys
+import json
+import argparse
+import shutil
 
 
 def classify_rows(rows, mixture):
@@ -440,7 +444,8 @@ def _selfcheck():
     # --- EXECUTE layer on a TEMP filesystem (real dirs, real rmtree); NO real
     #     HF cache, NO GPU, NO network. Roots are INJECTED so every deletion is
     #     gated to the temp tree only. ---
-    import tempfile, shutil as _sh
+    import tempfile
+    import shutil as _sh
     root = tempfile.mkdtemp(prefix="anvil_prune_")
     outside = tempfile.mkdtemp(prefix="anvil_outside_")
     try:

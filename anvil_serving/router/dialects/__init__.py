@@ -18,14 +18,16 @@ is intentionally minimal but real.
 
 from __future__ import annotations
 
+import uuid
 from typing import Any, Dict, Iterable, Iterator, Mapping
 
 from ..internal import InternalRequest
 
-try:
-    from typing import Protocol, runtime_checkable
-except ImportError:  # pragma: no cover
-    from typing_extensions import Protocol, runtime_checkable  # type: ignore
+from typing import Protocol, runtime_checkable
+
+
+def _new_id(prefix: str) -> str:
+    return prefix + uuid.uuid4().hex[:24]
 
 
 @runtime_checkable

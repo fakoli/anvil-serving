@@ -1,5 +1,6 @@
 """Config + cross-platform auto-detection (no hardcoded user paths)."""
-import os, glob, json
+import os
+import glob
 
 def claude_logs_dir():
     return os.environ.get("ANVIL_CLAUDE_LOGS") or os.path.expanduser("~/.claude/projects")

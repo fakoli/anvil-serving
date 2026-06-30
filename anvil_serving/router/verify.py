@@ -41,10 +41,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-try:  # Protocol is stdlib from 3.8+; runtime_checkable lets isinstance() work.
-    from typing import Protocol, runtime_checkable
-except ImportError:  # pragma: no cover - 3.7 fallback, unused at >=3.9
-    from typing_extensions import Protocol, runtime_checkable  # type: ignore
+from typing import Protocol, runtime_checkable
 
 
 # --------------------------------------------------------------------------- #
@@ -394,8 +391,9 @@ class ToolCallJSONValid:
                 problems.append(f"#{i}: tool call is {type(tc).__name__}, not an object")
                 continue
 
-            name = _tool_name(tc) or f"#{i}"
-            required = list(self.required_keys.get(_tool_name(tc), []))
+            raw_name = _tool_name(tc)
+            name = raw_name or f"#{i}"
+            required = list(self.required_keys.get(raw_name, []))
             args = _tool_arguments(tc)
 
             parsed: Any
