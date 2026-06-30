@@ -390,7 +390,10 @@ def build_server(
 
     # Advertise the canonical intent vocabulary on GET /v1/models (T004): the
     # presets ARE the "models" a harness model picker addresses.
-    httpd = make_server(host, port, routing, timeout=timeout, presets=PRESETS)
+    # Pass exhaustion_status from config so the front door uses the operator-
+    # configured keyless handoff signal (ADR-0001 §Mechanism, T004).
+    httpd = make_server(host, port, routing, timeout=timeout, presets=PRESETS,
+                        exhaustion_status=config.exhaustion_status)
     # Stash what we bound for introspection (serve()'s banner + tests).
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]

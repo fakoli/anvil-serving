@@ -37,6 +37,14 @@ from anvil_serving.router.serve import build_server
 
 CONFIG = str(Path(__file__).resolve().parents[2] / "configs" / "example.toml")
 
+# Single-tier local-only configs (no fallback tier): used for T004 keyless-
+# exhaustion tests.  An allow-with-verify miss on these configs exhausts
+# immediately; the front door must return exhaustion_status with nothing
+# streamed from the failing local tier (C3 on the keyless path).
+_FIXTURES = Path(__file__).resolve().parent / "fixtures"
+CONFIG_SINGLE_TIER = str(_FIXTURES / "single-tier-local.toml")
+CONFIG_SINGLE_TIER_424 = str(_FIXTURES / "single-tier-local-424.toml")
+
 # Local backend output that FAILS the structural verifier chain:
 # a fenced Python block containing a syntax error trips CodeParses.
 LOCAL_FAIL_CONTENT = "```python\ndef broken_local_fn(\n```"
@@ -425,3 +433,123 @@ def test_c3_anthropic_avw_fail_non_streaming_falls_back_to_next_candidate():
     assert record is not None
     assert record.fell_back
     assert record.served_tier == "heavy-local"
+
+
+# --------------------------------------------------------------------------- #
+# T004: keyless exhaustion → exhaustion_status (C3 on the keyless path)
+#
+# In the local-only default an allow-with-verify miss MUST exhaust the local
+# tier chain and the front door MUST return the exhaustion status (default 503)
+# with NO partial local tokens in the body (C3).
+#
+# Architecture: CONFIG_SINGLE_TIER has only one tier (fast-local) in the chat
+# pool — no fallback tier.  When fast-local fails verify, route_with_fallback
+# exhausts, RoutingBackend.generate() raises NoAvailableTierError BEFORE
+# returning any iterator (fully eager: the commit-window drained + verified the
+# whole local response in memory first), and the front door converts it to the
+# configured exhaustion status.  This is the keyless handoff signal: OpenClaw's
+# transport failover treats it as "overloaded" and re-runs on the native
+# subscription provider (ADR-0001 §Mechanism, advise-and-defer:T004).
+# --------------------------------------------------------------------------- #
+
+def test_c3_keyless_exhaustion_streaming_default_503():
+    """Streaming: avw miss on a local-only single-tier config → exhaustion_status
+    (default 503); the broken local token is absent from the response body (C3).
+
+    The commit-window buffers the entire local response before NoAvailableTierError
+    is raised, so the front door still has not sent any headers when it catches
+    the error — the 503 IS the first (and only) thing the client receives.
+    """
+    backends = {"fast-local": StaticBackend([LOCAL_FAIL_CONTENT])}
+    httpd = build_server(
+        CONFIG_SINGLE_TIER, host="127.0.0.1", port=0,
+        backends=backends, profile=_avw_profile(),
+    )
+    with running(httpd) as (host, port):
+        status, _headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "chat", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+        )
+
+    # Must be the exhaustion status (503 by default), not a 200.
+    assert status == 503, f"expected exhaustion status 503, got {status}: {raw!r}"
+
+    # C3: the broken local token must appear NOWHERE in the response body.
+    raw_text = raw.decode("utf-8")
+    assert "broken_local_fn" not in raw_text, (
+        f"local token leaked into exhaustion response: {raw_text!r}"
+    )
+    assert LOCAL_FAIL_CONTENT not in raw_text, (
+        f"local content leaked into exhaustion response: {raw_text!r}"
+    )
+
+    # Body must be a generic error envelope, not any local content.
+    body = json.loads(raw_text)
+    assert "error" in body, f"expected error envelope, got: {body}"
+
+
+def test_c3_keyless_exhaustion_non_streaming_default_503():
+    """Non-streaming: avw miss on a local-only single-tier config → exhaustion_status
+    (default 503); the broken local token is absent from the response body (C3).
+
+    Symmetric with the streaming test: the non-streaming path also catches
+    NoAvailableTierError before committing any response bytes.
+    """
+    backends = {"fast-local": StaticBackend([LOCAL_FAIL_CONTENT])}
+    httpd = build_server(
+        CONFIG_SINGLE_TIER, host="127.0.0.1", port=0,
+        backends=backends, profile=_avw_profile(),
+    )
+    with running(httpd) as (host, port):
+        status, _headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "chat", "messages": [{"role": "user", "content": "hi"}]},
+        )
+
+    assert status == 503, f"expected exhaustion status 503, got {status}: {raw!r}"
+
+    raw_text = raw.decode("utf-8")
+    assert "broken_local_fn" not in raw_text, (
+        f"local token leaked into exhaustion response: {raw_text!r}"
+    )
+    assert LOCAL_FAIL_CONTENT not in raw_text, (
+        f"local content leaked into exhaustion response: {raw_text!r}"
+    )
+
+    body = json.loads(raw_text)
+    assert "error" in body, f"expected error envelope, got: {body}"
+
+
+def test_c3_keyless_exhaustion_configurable_status_424():
+    """exhaustion_status is configurable: a config with exhaustion_status=424 →
+    the exhaustion response uses 424, not the default 503.
+
+    Proves the operator can override exhaustion_status to match their gateway's
+    transport-failover trigger (ADR-0001 §Mechanism, advise-and-defer:T004).
+    C3 still holds: no local tokens in the body regardless of the status value.
+    """
+    backends = {"fast-local": StaticBackend([LOCAL_FAIL_CONTENT])}
+    httpd = build_server(
+        CONFIG_SINGLE_TIER_424, host="127.0.0.1", port=0,
+        backends=backends, profile=_avw_profile(),
+    )
+    with running(httpd) as (host, port):
+        status, _headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "chat", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+        )
+
+    # The configured exhaustion_status (424) must be returned, not the default 503.
+    assert status == 424, f"expected configured exhaustion_status 424, got {status}: {raw!r}"
+
+    # C3 still holds with the non-default status.
+    raw_text = raw.decode("utf-8")
+    assert "broken_local_fn" not in raw_text, (
+        f"local token leaked into 424 exhaustion response: {raw_text!r}"
+    )
+    assert LOCAL_FAIL_CONTENT not in raw_text, (
+        f"local content leaked into 424 exhaustion response: {raw_text!r}"
+    )
+
+    body = json.loads(raw_text)
+    assert "error" in body, f"expected error envelope, got: {body}"
