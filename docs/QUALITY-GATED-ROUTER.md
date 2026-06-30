@@ -3,13 +3,10 @@
 > **Status:** design / proposal — rev 2026-06-29. Sets the product direction for anvil-serving
 > as a **harness-facing** tool (Claude Code, Codex, Cline, Aider, Continue, any OpenAI/Anthropic
 > client) rather than an anvil-coupled serving tier.
-> **Grounded in:**
-> [`findings/2026-06-28-anvil-integration-audit.md`](findings/2026-06-28-anvil-integration-audit.md)
-> (the integration point is the runtime, not anvil),
-> [`findings/2026-06-28-planning-capability-eval.md`](findings/2026-06-28-planning-capability-eval.md)
-> (local quality is work-class-dependent and *measurable*), and
-> [`findings/2026-06-29-harness-intent-routing.md`](findings/2026-06-29-harness-intent-routing.md)
-> (what harnesses can actually carry on the wire — verified).
+> **Grounded in** (full findings in the companion notes repo `fakoli/anvil-serving-notes`):
+> the integration-point audit (the integration point is the runtime, not anvil),
+> the planning-capability eval (local quality is work-class-dependent and *measurable*), and
+> the harness-intent-routing research (what harnesses can actually carry on the wire — verified).
 
 ## 1. Thesis
 
@@ -48,7 +45,7 @@ knowledge of which model clears that bar *is* the value. Models become a fungibl
 clients never change when models churn (re-point an intent centrally instead).
 
 **Decision — the descriptor is a closed enum of named presets, carried in the `model` field**
-("model-name-as-intent"). Verified rationale ([`findings/2026-06-29-harness-intent-routing.md`](findings/2026-06-29-harness-intent-routing.md)):
+("model-name-as-intent"). Verified rationale (harness-intent-routing findings, `fakoli/anvil-serving-notes`):
 unmodified harnesses expose exactly one operator-controllable routing channel — the `model` string,
 which is required in both wire schemas, forwarded verbatim, and free-form (only the *genuine*
 upstream validates model names; a router behind the base_url may reinterpret them). Shipping
@@ -165,15 +162,15 @@ field), **503** (no tier survives the quality + metered-cloud gate).
 
 ## 5. The quality profile (the moat)
 
-![The quality gate — work proven on a tier stays local; unproven work falls back to cloud, measured per (model, work-class)](../assets/explainer-quality-gate.png)
+![The quality gate — work proven on a tier stays local ($0 metered); unproven work is deferred to the harness's own opt-in cloud subscription; measured per (model, work-class)](../assets/explainer-quality-gate.png)
 
 A table keyed `(model, work-class)` → `{quality_score, sample_n, last_measured, decision}` where
 `decision ∈ {allow, allow-with-verify, deny}`. Populated by:
 
-1. **Bootstrap** from the shadow-eval harness already built
-   (`findings/eval-data/2026-06-28-planning-capability/`): replay representative requests per
-   work-class to each local tier, grade against cloud (deterministic checks + blind/LLM judge),
-   emit the table. Generalize that harness from "planning" to arbitrary work-classes.
+1. **Bootstrap** from the shadow-eval harness already built (eval data in `fakoli/anvil-serving-notes`):
+   replay representative requests per work-class to each local tier, grade against cloud
+   (deterministic checks + blind/LLM judge), emit the table. Generalize that harness from
+   "planning" to arbitrary work-classes.
 2. **Calibrate** continuously: async-sample a small % of production responses, grade with cloud
    off the hot path, update scores. The table tracks model/quant/serve changes over time.
 3. **Right-size** from the user's real usage via existing `profile` (which work-classes dominate
@@ -352,8 +349,8 @@ at a custom endpoint at all. The README's "any OpenAI/Anthropic client" claim mu
 **OpenClaw is the one in-scope client that crosses into per-request routing** (open-source TS Plugin
 SDK; its `before_model_resolve` hook runs *per turn* and can set `modelOverride`/`providerOverride`).
 **Hermes Agent** (open-source MIT) is a clean, *rich* Tier-1 consumer — notably more model slots than
-Claude Code — but its hooks can't alter the outgoing request, so it stays Tier-1 short of a fork. See
-[`findings/2026-06-29-openclaw-hermes-customization.md`](findings/2026-06-29-openclaw-hermes-customization.md).
+Claude Code — but its hooks can't alter the outgoing request, so it stays Tier-1 short of a fork
+(OpenClaw/Hermes customization findings in `fakoli/anvil-serving-notes`).
 
 **Beachhead decision — OpenClaw-first (focus, not couple).** anvil-serving concentrates integration
 *depth* on OpenClaw as the first-class client, because it's the one harness that unlocks per-request
@@ -439,8 +436,10 @@ substrate is already here.
   the `model` field (Tier 1) — *not Tier 1 alone*, because most traffic arrives without a declared
   intent. Tier rules over the multiplexer (bounded→fast, long-ctx→heavy, planning/review→cloud);
   hand-authored table. Serve `/v1/models` preset discovery.
-- **M2 — the wedge:** cheap structural verify + fallback-to-cloud on failure, with fallback logging
-  **and transparent responses** (echo the served model/tier). First release delivering the unique promise.
+- **M2 — the wedge:** cheap structural verify + verify-gated fallback (streaming commit window;
+  cloud escalation is the opt-in keyed mode — the keyless default returns an exhaustion-503 for
+  gateway handoff) **and transparent responses** (echo the served model/tier). First release
+  delivering the unique promise.
 - **M3 — measured table + plugin SDK:** generalize the shadow-eval to populate the quality profile
   per work-class; replace the hand-authored table; add async calibration; expose public plugin entry
   points. The moat turning on.

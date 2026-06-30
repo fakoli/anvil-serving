@@ -20,4 +20,4 @@ people and the chat logs.
 
 | # | Title | Status |
 |---|-------|--------|
-| [0001](0001-cloud-cost-and-subscription-auth.md) | Cloud cost & subscription auth — why anvil should not relay cloud | Proposed (deferred) |
+| [0001](0001-cloud-cost-and-subscription-auth.md) | Cloud cost & subscription auth — why anvil should not relay cloud | Accepted |
