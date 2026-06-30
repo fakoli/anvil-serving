@@ -1,6 +1,6 @@
 # anvil-serving as a harness product: the quality-gated router
 
-> **Status:** design / proposal — rev 2026-06-29. Sets the product direction for anvil-serving
+> **Status:** shipped (v0.3.0) — design reference, rev 2026-06-29. Sets the product direction for anvil-serving
 > as a **harness-facing** tool (Claude Code, Codex, Cline, Aider, Continue, any OpenAI/Anthropic
 > client) rather than an anvil-coupled serving tier.
 > **Grounded in** (full findings in the companion notes repo `fakoli/anvil-serving-notes`):
