@@ -213,3 +213,124 @@ def test_lowercase_bearer_scrubbed():
     out = sanitize(rec, calibration=False)
     assert "bearer abc123def456ghi789" not in _flatten(out)
     assert MASK in out["log"]
+
+
+# ── Gap 1 + 2: camelCase / glued creds and cookie / private_key ───────────────
+_CAMEL_CRED_VALUES = {
+    "apiToken": "tok-api-1234-ABCDEF-SECRET",
+    "accessToken": "tok-access-5678-GHIJKL-SECRET",
+    "sessionToken": "tok-session-ABCDEF-SECRET",
+    "refreshToken": "tok-refresh-MNOPQR-SECRET",
+    "clientSecret": "secret-client-9012-STUVWX",
+    "secretKey": "key-secret-3456-YZABCD",
+    "privateKey": "key-private-7890-EFGHIJ",
+    "apiKey": "key-api-1234-KLMNOP",
+    "authToken": "tok-auth-5678-QRSTUV",
+    "bearerToken": "tok-bearer-9012-WXYZAB",
+    "cookie": "session=abc123xyz; Path=/; HttpOnly",
+    "private_key": "super-private-key-value-789-SECRET",
+}
+
+
+def test_camelcase_and_gap2_names_masked_calibration_off():
+    rec = dict(_CAMEL_CRED_VALUES)
+    out = sanitize(rec, calibration=False)
+    blob = _flatten(out)
+    for field, val in _CAMEL_CRED_VALUES.items():
+        assert val not in blob, f"raw value of {field!r} survived (calibration=False)"
+        assert MASK in out[field], f"{field!r} not masked (calibration=False)"
+
+
+def test_camelcase_and_gap2_names_masked_calibration_on():
+    """Secrets are always masked, even in calibration mode."""
+    rec = dict(_CAMEL_CRED_VALUES)
+    out = sanitize(rec, calibration=True)
+    blob = _flatten(out)
+    for field, val in _CAMEL_CRED_VALUES.items():
+        assert val not in blob, f"raw value of {field!r} survived (calibration=True)"
+        assert MASK in out[field], f"{field!r} not masked (calibration=True)"
+
+
+# ── Gap 2: PEM private key body scrubbed from free text ───────────────────────
+_PEM_KEY = (
+    "-----BEGIN RSA PRIVATE KEY-----\n"
+    "MIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4YBTlOoGFEBMsql4WkPkNmgBXVL\n"
+    "V7B5GQCIMZf4Q2yKMH3BIi9yRDaDulvBsZPVBVdvZ3VbOjbdWBIHGJWPRCcFmpXM\n"
+    "ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF12345678\n"
+    "-----END RSA PRIVATE KEY-----"
+)
+
+
+def test_pem_private_key_scrubbed_from_free_text():
+    rec = {"log": f"Loaded key: {_PEM_KEY} done"}
+    out = sanitize(rec, calibration=False)
+    blob = _flatten(out)
+    assert "BEGIN RSA PRIVATE KEY" not in blob, "PEM BEGIN marker survived"
+    assert "MIIEowIBAAKCAQEA" not in blob, "PEM base64 body survived"
+    assert MASK in out["log"], "MASK not inserted in log field"
+    assert "done" in out["log"], "surrounding prose after PEM was lost"
+
+
+def test_pem_private_key_scrubbed_calibration_on():
+    """PEM blocks are free-text secrets: scrubbed in both modes."""
+    rec = {"note": f"key={_PEM_KEY}"}
+    out = sanitize(rec, calibration=True)
+    blob = _flatten(out)
+    assert "BEGIN RSA PRIVATE KEY" not in blob
+    assert "MIIEowIBAAKCAQEA" not in blob
+
+
+# ── Gap 3: query / data / text / request / response treated as prompt fields ──
+_PROMPT_BODY_2 = "Write a function that computes the Fibonacci sequence efficiently."
+
+
+def test_query_data_text_request_response_redacted_calibration_off():
+    rec = {
+        "query": _PROMPT_BODY_2,
+        "data": _PROMPT_BODY_2,
+        "text": _PROMPT_BODY_2,
+        "request": _PROMPT_BODY_2,
+        "response": _PROMPT_BODY_2,
+    }
+    out = sanitize(rec, calibration=False)
+    blob = _flatten(out)
+    assert _PROMPT_BODY_2 not in blob, "prompt body survived under one of the new field names"
+    for field in rec:
+        assert "REDACTED_PROMPT" in out[field], f"{field!r} not fingerprinted (calibration=False)"
+
+
+def test_query_data_text_request_response_kept_calibration_on():
+    """Calibration mode keeps prompt bodies but still strips embedded keys."""
+    embedded_key = "sk-ant-xyz123SECRETVALUE-ABCDEF"
+    rec = {
+        "query": f"{_PROMPT_BODY_2} key={embedded_key}",
+        "data": _PROMPT_BODY_2,
+        "text": _PROMPT_BODY_2,
+        "request": {"prompt": _PROMPT_BODY_2},
+        "response": COMPLETION,
+    }
+    out = sanitize(rec, calibration=True)
+    blob = _flatten(out)
+    # Prompt bodies are retained for calibration scoring.
+    assert _PROMPT_BODY_2 in blob, "prompt body should be retained with calibration=True"
+    assert COMPLETION in blob, "completion should be retained with calibration=True"
+    # But the embedded key must still be scrubbed.
+    assert embedded_key not in blob, "embedded API key survived calibration=True"
+
+
+# ── Gap 1+2+3 regression: metric fields still survive (no over-redaction) ─────
+def test_new_patterns_do_not_over_redact_metrics():
+    """The metric guard must hold even with the new secret / prompt patterns."""
+    rec = {
+        "usage": {"input_tokens": 12, "output_tokens": 34, "total_tokens": 46},
+        "token_count": 46,
+        "completion_tokens": 34,
+        "prompt_tokens": 12,
+    }
+    out = sanitize(rec, calibration=False)
+    assert out["usage"]["input_tokens"] == 12
+    assert out["usage"]["output_tokens"] == 34
+    assert out["usage"]["total_tokens"] == 46
+    assert out["token_count"] == 46
+    assert out["completion_tokens"] == 34
+    assert out["prompt_tokens"] == 12
