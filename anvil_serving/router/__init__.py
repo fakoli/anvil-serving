@@ -25,6 +25,14 @@ from .front_door import make_server, serve
 from .intent import PRESETS, Preset
 from .internal import Backend, InternalRequest, Message
 from .secrets import redact_key, redact_prompt, sanitize
+from .serve import (
+    RelayBackend,
+    RoutingBackend,
+    build_backend_for_tier,
+    build_backends,
+    build_server,
+)
+from .serve import serve as serve_config
 from .verify import (
     CodeParses,
     DiffWellFormed,
@@ -80,4 +88,11 @@ __all__ = [
     "PRESETS",
     "Preset",
     "models_payload",
+    # T012 — `anvil-serving serve`: config -> per-tier backends -> front door
+    "serve_config",
+    "build_server",
+    "build_backends",
+    "build_backend_for_tier",
+    "RoutingBackend",
+    "RelayBackend",
 ]
