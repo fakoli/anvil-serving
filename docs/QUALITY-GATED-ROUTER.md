@@ -86,6 +86,83 @@ profile). Refreshed on demand and continuously calibrated from sampled productio
 **Data plane (fast, per-request):** resolve intent → route → optional inline verify → fallback.
 Must add negligible latency and must stream.
 
+### Routing topology
+
+The diagram below shows the full component topology: what modules exist, how they chain, and — most
+importantly — where the **default path** ends (local tiers) vs. the **opt-in** and **escape** branches.
+
+```mermaid
+flowchart TD
+    H["Harness / Gateway<br/>(Claude Code · Codex · Aider · Cline · OpenClaw)"]
+
+    subgraph ROUTER["anvil-serving router"]
+        FD["front_door<br/>POST /v1/messages<br/>POST /v1/chat/completions<br/>POST /v1/route"]
+        INT["intent.resolve<br/>Tier-1: preset in model field<br/>Tier-0: classify payload"]
+        POL{"policy.route<br/>quality profile gate"}
+        VF["verify + fallback<br/>commit_window · retry cap"]
+        FD --> INT --> POL
+        POL -->|"allow / allow-with-verify"| VF
+    end
+
+    subgraph LOCALBOX["Default path — free GPU, zero metered cost"]
+        FL["fast-local :30001<br/>(multiplexer-managed)"]
+        HL["heavy-local :30000<br/>(multiplexer-managed)"]
+    end
+
+    CLOUD["cloud tier — opt-in only<br/>Anthropic / OpenAI API · metered per-token<br/>(metered_cloud config + API key required)"]
+    SOS["503 exhaustion<br/>gateway transport failover<br/>native subscription provider<br/>flat-rate, zero metered by anvil"]
+    RET([200 to harness])
+
+    H --> FD
+    POL -->|"deny, no local candidate"| SOS
+    VF --> LOCALBOX
+    LOCALBOX --> VF
+    VF -->|"verify passes"| RET
+    VF -->|"all exhausted, keyless default"| SOS
+    POL -.->|"opt-in keyed, metered_cloud only"| CLOUD
+    CLOUD --> RET
+
+    classDef gateNode fill:#0b3b40,stroke:#23b6c4,color:#7fe9f0;
+    classDef cloudNode fill:#16365e,stroke:#58a6ff,color:#cfe6ff;
+    classDef localNode fill:#0b2b0b,stroke:#23c430,color:#7ff09a;
+    classDef escNode fill:#3b1800,stroke:#c47823,color:#f0c887;
+    class POL,VF gateNode;
+    class CLOUD cloudNode;
+    class FL,HL localNode;
+    class SOS escNode;
+```
+
+Key reads:
+- **Solid green (local tiers):** the default path — a `deny`-free, quality-gated request never leaves the GPU box.
+- **Dashed blue arrow → cloud:** only drawn when `[router].metered_cloud` is set and an API key is present; absent from `configs/example.toml`.
+- **Amber (503 / escape):** the keyless-default path — anvil exhausts local, returns 503 with no local tokens committed; the upstream gateway (e.g. OpenClaw) treats this as a transport failure and re-runs on its native flat-rate subscription.
+
+### `POST /v1/route` decision flow
+
+`POST /v1/route` exposes the routing brain as a **decision-only endpoint** — the same `intent.resolve`
++ `policy.route` pipeline as the serve path, but it returns a JSON decision and **never calls
+`backend.generate`**. The OpenClaw plugin uses it in authoritative mode; any other client can query it
+to preview tier selection without incurring inference cost.
+
+```mermaid
+flowchart TD
+    REQ["POST /v1/route<br/>completions-shaped body<br/>+ optional signals.work_class"] --> PARSE["parse body<br/>extract signals override"]
+    PARSE -->|"invalid body"| E400["400 — malformed request"]
+    PARSE --> INT["intent.resolve<br/>(same brain as the serve path)"]
+    INT --> ROUTE{"policy.route<br/>quality profile + metered_cloud gate"}
+    ROUTE -->|"tier found"| DEC["200 routing decision<br/>tier · model · provider · work_class<br/>reason · confidence · session_id<br/>backend.generate never called"]
+    ROUTE -->|"all candidates exhausted"| E503["503 — no suitable tier"]
+    classDef gateNode fill:#0b3b40,stroke:#23b6c4,color:#7fe9f0;
+    classDef okNode fill:#0b2b0b,stroke:#23c430,color:#7ff09a;
+    classDef errNode fill:#3b0b0b,stroke:#c42323,color:#f08080;
+    class INT,ROUTE gateNode;
+    class DEC okNode;
+    class E400,E503 errNode;
+```
+
+Status codes: **200** (decision made, even when `tier: cloud`), **400** (malformed / missing `model`
+field), **503** (no tier survives the quality + metered-cloud gate).
+
 ## 5. The quality profile (the moat)
 
 ![The quality gate — work proven on a tier stays local; unproven work falls back to cloud, measured per (model, work-class)](../assets/explainer-quality-gate.png)

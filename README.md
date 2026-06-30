@@ -100,21 +100,27 @@ classifications bias toward the safer/cloud tier and are logged for calibration.
 
 ```mermaid
 flowchart LR
-    REQ([request]) --> RES[resolve intent<br/>preset or classify]
-    RES --> POL{quality profile<br/>model x work-class}
-    POL -->|deny| CLOUD[cloud tier]
-    POL -->|allow| LOCAL[local tier]
-    POL -->|allow-with-verify| LV[local tier]
-    LV --> VER{cheap structural verify}
-    VER -->|pass| RET([return to harness])
-    VER -->|fail or error| ESC[escalate up tier chain]
-    ESC --> CLOUD
+    REQ([request]) --> RES["resolve intent<br/>(preset or Tier-0 infer)"]
+    RES --> POL{"quality profile<br/>model x work-class"}
+    POL -->|allow| LOCAL["local tier<br/>(fast or heavy)"]
+    POL -->|"allow-with-verify"| LV[local tier]
+    LV --> VER{"structural verify"}
+    VER -->|pass| RET([200 to harness])
     LOCAL --> RET
+    VER -->|fail| MISS[all candidates exhausted]
+    POL -->|deny| MISS
+    MISS --> GATE{"cloud tier<br/>opt-in configured?"}
+    GATE -->|"no, keyless default"| SOS["503 exhaustion — no local tokens<br/>gateway failover to native provider<br/>(flat-rate, zero metered by anvil)"]
+    GATE -->|"yes, opt-in keyed"| CLOUD["cloud tier<br/>(metered, explicit opt-in only)"]
     CLOUD --> RET
     classDef gate fill:#0b3b40,stroke:#23b6c4,color:#7fe9f0;
     classDef cloud fill:#16365e,stroke:#58a6ff,color:#cfe6ff;
-    class POL,VER gate;
+    classDef local fill:#0b2b0b,stroke:#23c430,color:#7ff09a;
+    classDef escape fill:#3b1800,stroke:#c47823,color:#f0c887;
+    class POL,VER,GATE gate;
     class CLOUD cloud;
+    class LOCAL,LV local;
+    class SOS escape;
 ```
 
 Most "quality control" is **routing done ahead of time** (never send a `deny` work-class to
