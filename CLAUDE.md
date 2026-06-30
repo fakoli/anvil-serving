@@ -171,5 +171,15 @@ Cloud credentials go in env vars only — never in config files. The front door 
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — OpenClaw adapter plugin spec (verdict: go-with-caveats)
 - `docs/findings/` — the research evidence (planning-capability eval, integration audit,
   harness intent routing, OpenClaw vs Hermes customization)
+- `docs/adr/` — **Architecture Decision Records** — the *why* behind significant design decisions
 - `examples/fakoli-dark/` — real two-tier instance (heavy :30000 SGLang, fast :30001 vLLM)
 - `specs/archive/` — pre-pivot design history (archived; marked historical)
+
+## Architecture Decision Records (ADRs)
+
+Significant architecture/design decisions are recorded as **ADRs in `docs/adr/`** — one file per
+decision (`NNNN-short-kebab-title.md`), Context → Decision → Consequences (start from
+`docs/adr/template.md`). When you make or change a non-trivial design decision (a contract, a
+routing/auth model, a dependency, a protocol or security choice), **add or supersede an ADR** —
+never silently change direction, and never delete an ADR (supersede it). Index + convention:
+`docs/adr/README.md`. First record: `docs/adr/0001-cloud-cost-and-subscription-auth.md`.
