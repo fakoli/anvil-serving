@@ -42,7 +42,13 @@ import urllib.error
 import urllib.request
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional
 
-from ..config import ConfigError, Tier
+from ..config import (
+    DIALECT_ANTHROPIC,
+    DIALECT_OPENAI,
+    PRIVACY_CLOUD,
+    ConfigError,
+    Tier,
+)
 from ..internal import InternalRequest, StructuredResult
 from .local import split_into_deltas
 
@@ -50,7 +56,7 @@ from .local import split_into_deltas
 Transport = Callable[..., bytes]
 
 # Dialects this backend can speak to a cloud provider.
-_SUPPORTED_DIALECTS = ("openai", "anthropic")
+_SUPPORTED_DIALECTS = (DIALECT_OPENAI, DIALECT_ANTHROPIC)
 
 # Anthropic's provider-relative endpoint path (base_url is the bare host).
 _ANTHROPIC_PATH = "/v1/messages"
@@ -162,7 +168,7 @@ class CloudBackend:
         # but must NOT require a credential and must NOT trip the cloud-only gate
         # (local vLLM/SGLang servers usually need no auth). It stays True for all
         # real cloud use, so the fail-fast credential contract below is unchanged.
-        if _require_key and tier.privacy != "cloud":
+        if _require_key and tier.privacy != PRIVACY_CLOUD:
             # Defensive: this backend authenticates against a remote provider; a
             # local tier should be served by the in-process backends.
             raise ConfigError(
@@ -185,7 +191,7 @@ class CloudBackend:
         # `$(cat keyfile)`) -> fail fast, named, typed. A blank key would otherwise
         # become a `x-api-key: ' '` 401 deep in a request, or make urllib raise an
         # opaque ValueError on the header value — never the clear startup error.
-        require_credential = _require_key or (tier.privacy == "cloud")
+        require_credential = _require_key or (tier.privacy == PRIVACY_CLOUD)
         if require_credential and (not key or not key.strip()):
             raise MissingCredentialError(tier_id=tier.id, env_var=tier.auth_env)
 
@@ -226,7 +232,7 @@ class CloudBackend:
         if not isinstance(data, Mapping):
             return StructuredResult()
 
-        if self._tier.dialect == "anthropic":
+        if self._tier.dialect == DIALECT_ANTHROPIC:
             finish_reason = data.get("stop_reason")
             blocks = data.get("content") or []
             tool_calls: Optional[List[Dict[str, Any]]] = None
@@ -321,7 +327,7 @@ class CloudBackend:
     # ------------------------------------------------------------------ #
     def _endpoint(self) -> str:
         base = self._tier.base_url.rstrip("/")
-        if self._tier.dialect == "anthropic":
+        if self._tier.dialect == DIALECT_ANTHROPIC:
             return base + _ANTHROPIC_PATH
         # openai-compatible: the Chat Completions API lives under /v1. The config
         # only checks for a scheme, so base_url may or may not already carry the
@@ -335,7 +341,7 @@ class CloudBackend:
     def _headers(self) -> Dict[str, str]:
         """Outbound headers, including the auth header built from the env key."""
         headers = {"Content-Type": "application/json"}
-        if self._tier.dialect == "anthropic":
+        if self._tier.dialect == DIALECT_ANTHROPIC:
             headers["x-api-key"] = self._key
             headers["anthropic-version"] = _ANTHROPIC_VERSION
         else:  # openai-compatible
@@ -348,7 +354,7 @@ class CloudBackend:
         # forwarded verbatim to the upstream provider causes a 4xx rejection; the
         # tier's model field holds the real provider model name (close #43).
         upstream_model = self._tier.model or request.model
-        if self._tier.dialect == "anthropic":
+        if self._tier.dialect == DIALECT_ANTHROPIC:
             # Anthropic's messages array is user/assistant only; the system
             # prompt rides the top-level `system` field.
             msgs = [
@@ -421,7 +427,7 @@ class CloudBackend:
                 f"(tier={self._tier.id!r}; see stderr for detail)"
             )
 
-        if self._tier.dialect == "anthropic":
+        if self._tier.dialect == DIALECT_ANTHROPIC:
             if "content" not in data:
                 raise _malformed("'content' field absent") from None
             blocks = data["content"]
