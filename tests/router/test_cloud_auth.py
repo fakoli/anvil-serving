@@ -16,6 +16,7 @@ import json
 import pytest
 
 from anvil_serving.router.backends import CloudBackend, MissingCredentialError
+from anvil_serving.router.backends.cloud import CloudBackendError
 from anvil_serving.router.config import ConfigError, Tier
 
 FAKE_KEY = "sk-test-DEADBEEF-not-a-real-key"
@@ -392,7 +393,6 @@ def test_urlerror_hostname_not_leaked_in_cloudbackenderror(monkeypatch):
     the upstream tier's hostname to the client.
     """
     import urllib.error
-    from anvil_serving.router.backends.cloud import CloudBackendError
 
     UPSTREAM_HOST = "secret-internal-api.corp.example.com"
 
@@ -416,3 +416,107 @@ def test_urlerror_hostname_not_leaked_in_cloudbackenderror(monkeypatch):
     )
     # The error IS a CloudBackendError (not URLError propagating uncaught).
     assert isinstance(ei.value, CloudBackendError)
+
+
+# ── Fix (issue #47): _extract_text raises on structural malformation ───────────
+#
+# Rationale: returning "" for a malformed provider response masks the error
+# as an empty completion; the verify gate then sees empty content and (depending
+# on the verifier) may pass a structurally-broken response to the client.
+# The fix raises CloudBackendError for missing/wrong-type structural fields so
+# the fallback path treats it as a failed attempt rather than a valid answer.
+#
+# Two cases are carefully distinguished:
+#   - structurally malformed  → CloudBackendError (not "")
+#   - legitimately empty      → "" (valid completion with no content)
+
+# --- OpenAI dialect: malformed payloads -----------------------------------------
+
+@pytest.mark.parametrize("body, label", [
+    # missing 'choices' key entirely
+    (b'{"id":"x","object":"chat.completion"}', "missing-choices"),
+    # 'choices' is not a list (wrong type)
+    (b'{"choices": "not-a-list"}', "choices-not-list"),
+    # choices[0] is not a Mapping
+    (b'{"choices": ["a-string"]}', "choices-elem-not-object"),
+    # choices[0] missing 'message' field
+    (b'{"choices": [{"finish_reason": "stop"}]}', "missing-message"),
+    # choices[0].message is not a Mapping
+    (b'{"choices": [{"message": "bare-string"}]}', "message-not-object"),
+])
+def test_openai_malformed_payload_raises(monkeypatch, body, label):
+    """A structurally malformed OpenAI response raises CloudBackendError, not ''."""
+    monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
+    transport = _CaptureTransport(body)
+    backend = CloudBackend(_openai_cloud_tier(), transport=transport)
+
+    with pytest.raises(CloudBackendError):
+        list(backend.generate(_request("openai")))
+
+
+def test_openai_empty_choices_is_valid_empty_completion(monkeypatch):
+    """choices: [] is a legitimate empty completion — must return '', not raise."""
+    monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
+    body = json.dumps({"choices": []}).encode()
+    transport = _CaptureTransport(body)
+    backend = CloudBackend(_openai_cloud_tier(), transport=transport)
+
+    out = list(backend.generate(_request("openai")))
+    assert "".join(out) == ""
+
+
+def test_openai_null_content_is_valid_empty_completion(monkeypatch):
+    """message.content == null is a valid empty completion — return '', not raise."""
+    monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
+    body = json.dumps(
+        {"choices": [{"message": {"role": "assistant", "content": None}}]}
+    ).encode()
+    transport = _CaptureTransport(body)
+    backend = CloudBackend(_openai_cloud_tier(), transport=transport)
+
+    out = list(backend.generate(_request("openai")))
+    assert "".join(out) == ""
+
+
+# --- Anthropic dialect: malformed payloads --------------------------------------
+
+@pytest.mark.parametrize("body, label", [
+    # missing 'content' key entirely
+    (b'{"type":"message","role":"assistant"}', "missing-content"),
+    # 'content' is not a list (wrong type)
+    (b'{"content": "bare-string"}', "content-not-list"),
+    # 'content' is null (structurally wrong for Anthropic)
+    (b'{"content": null}', "content-null"),
+])
+def test_anthropic_malformed_payload_raises(monkeypatch, body, label):
+    """A structurally malformed Anthropic response raises CloudBackendError, not ''."""
+    monkeypatch.setenv(ANTHROPIC_ENV, FAKE_KEY)
+    transport = _CaptureTransport(body)
+    backend = CloudBackend(_anthropic_tier(), transport=transport)
+
+    with pytest.raises(CloudBackendError):
+        list(backend.generate(_request("anthropic")))
+
+
+def test_anthropic_empty_content_list_is_valid_empty_completion(monkeypatch):
+    """content: [] (no text blocks) is a valid empty completion — return '', not raise."""
+    monkeypatch.setenv(ANTHROPIC_ENV, FAKE_KEY)
+    body = json.dumps({"content": []}).encode()
+    transport = _CaptureTransport(body)
+    backend = CloudBackend(_anthropic_tier(), transport=transport)
+
+    out = list(backend.generate(_request("anthropic")))
+    assert "".join(out) == ""
+
+
+def test_anthropic_non_text_blocks_only_is_empty_completion(monkeypatch):
+    """A content list with only non-text blocks (e.g. tool_use) returns ''."""
+    monkeypatch.setenv(ANTHROPIC_ENV, FAKE_KEY)
+    body = json.dumps({
+        "content": [{"type": "tool_use", "id": "tu1", "name": "bash", "input": {}}]
+    }).encode()
+    transport = _CaptureTransport(body)
+    backend = CloudBackend(_anthropic_tier(), transport=transport)
+
+    out = list(backend.generate(_request("anthropic")))
+    assert "".join(out) == ""  # no text blocks → legitimately empty text
