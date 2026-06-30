@@ -30,12 +30,14 @@ from __future__ import annotations
 
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Optional
+from typing import Iterable, Optional
 
 from .backends import EchoBackend
 from .dialects import Dialect
 from .dialects.anthropic import AnthropicDialect
 from .dialects.openai import OpenAIDialect
+from .discovery import models_payload
+from .intent import PRESETS, Preset
 from .internal import Backend, DialectError
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
@@ -45,7 +47,8 @@ _ROUTES = {
 }
 
 
-def _make_handler(backend: Backend, timeout: Optional[float]):
+def _make_handler(backend: Backend, timeout: Optional[float],
+                  presets: Iterable[Preset]):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         server_version = "anvil-front-door/0.1"
@@ -160,9 +163,15 @@ def _make_handler(backend: Backend, timeout: Optional[float]):
 
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
-            if self.path.split("?", 1)[0].rstrip("/") in ("/healthz", "/health"):
+            route = self.path.split("?", 1)[0].rstrip("/")
+            if route in ("/healthz", "/health"):
                 self._json(200, {"status": "ok",
                                  "dialects": sorted(d.name for d in _ROUTES.values())})
+            elif route == "/v1/models":
+                # Preset discovery: list the configured presets (intent tokens)
+                # as OpenAI-shaped "models" so a harness model picker can find
+                # them. Derived from the canonical presets passed in.
+                self._json(200, models_payload(presets))
             else:
                 self._error(404, "not_found", f"no route {self.path}")
 
@@ -245,19 +254,25 @@ def _make_handler(backend: Backend, timeout: Optional[float]):
 
 def make_server(host: str = "127.0.0.1", port: int = 8000,
                 backend: Optional[Backend] = None,
-                timeout: Optional[float] = 120) -> ThreadingHTTPServer:
+                timeout: Optional[float] = 120,
+                presets: Optional[Iterable[Preset]] = None) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
     Pass ``port=0`` to bind an ephemeral port (read it back from
     ``server.server_address[1]``). ``backend`` defaults to :class:`EchoBackend`.
     ``timeout`` is the per-connection idle read timeout in seconds (finite by
     default so abandoned keep-alive sockets can't leak threads/FDs); pass
-    ``None`` to disable. Call ``server.serve_forever()`` (typically on a
-    background thread) to run.
+    ``None`` to disable. ``presets`` are the work-class tokens ``GET /v1/models``
+    advertises; defaults to the canonical :data:`~anvil_serving.router.intent.PRESETS`
+    (injectable like ``backend`` for tests). Call ``server.serve_forever()``
+    (typically on a background thread) to run.
     """
     if backend is None:
         backend = EchoBackend()
-    httpd = ThreadingHTTPServer((host, port), _make_handler(backend, timeout))
+    if presets is None:
+        presets = PRESETS
+    httpd = ThreadingHTTPServer((host, port),
+                                _make_handler(backend, timeout, presets))
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd
 

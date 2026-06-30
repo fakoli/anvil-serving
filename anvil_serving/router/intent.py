@@ -40,16 +40,77 @@ from .classify import classify
 from .config import RouterConfig
 from .internal import InternalRequest
 
-# Canonical taxonomy bridges. Presets are the caller-facing vocabulary; work
-# classes are the classifier-facing vocabulary. These maps translate between
-# them so a declared preset and an inferred work class land in the same space.
-PRESET_TO_WORK_CLASS = {
-    "chat": "chat",
-    "quick-edit": "bounded-edit",
-    "review": "review",
-    "planning": "planning",
-    "long-context": "long-context",
-}
+# Canonical preset registry — the R002 enum and the SINGLE SOURCE OF TRUTH for
+# the router's caller-facing vocabulary. Each preset is one named work-class
+# token a caller may put in the wire ``model`` field; ``/v1/models`` discovery
+# (:mod:`anvil_serving.router.discovery`) derives its listing directly from this
+# tuple, so adding/removing a preset HERE changes the served model list with no
+# other edit (the T004 no-drift criterion). ``name``/``description`` are the
+# human-readable metadata a harness model picker shows — keep them the one place
+# these live; ``work_class`` is the classifier-facing taxonomy (profile-lookup)
+# key this preset maps to.
+@dataclass(frozen=True)
+class Preset:
+    """A caller-facing routing preset (one R002 work-class token)."""
+
+    id: str
+    name: str
+    description: str
+    work_class: str
+
+
+PRESETS: tuple[Preset, ...] = (
+    Preset(
+        id="planning",
+        name="Planning",
+        description=(
+            "Multi-step planning and architecture: decompose a task, weigh "
+            "trade-offs, and produce a build plan before any code is edited."
+        ),
+        work_class="planning",
+    ),
+    Preset(
+        id="quick-edit",
+        name="Quick Edit",
+        description=(
+            "Small, bounded code edits: a focused change to one or a few files "
+            "where the scope is already clear."
+        ),
+        work_class="bounded-edit",
+    ),
+    Preset(
+        id="review",
+        name="Review",
+        description=(
+            "Code review and multi-file reasoning: critique a diff, trace "
+            "changes across files, and surface bugs and risks."
+        ),
+        work_class="review",
+    ),
+    Preset(
+        id="chat",
+        name="Chat",
+        description=(
+            "General conversation and Q&A: explanations, brainstorming, and "
+            "quick questions with no code-editing commitment."
+        ),
+        work_class="chat",
+    ),
+    Preset(
+        id="long-context",
+        name="Long Context",
+        description=(
+            "Large-context work: reason over very long inputs (big files, logs, "
+            "or many documents) in a single request."
+        ),
+        work_class="long-context",
+    ),
+)
+
+# Caller-facing preset id -> classifier-facing work class. DERIVED from the
+# canonical registry above so the two can never drift: a declared preset and an
+# inferred work class land in the same space.
+PRESET_TO_WORK_CLASS = {p.id: p.work_class for p in PRESETS}
 
 WORK_CLASS_TO_PRESET = {
     "chat": "chat",

@@ -20,7 +20,9 @@ from .commit_window import (
     build_response_view,
     stream_with_commit_window,
 )
+from .discovery import models_payload
 from .front_door import make_server, serve
+from .intent import PRESETS, Preset
 from .internal import Backend, InternalRequest, Message
 from .secrets import redact_key, redact_prompt, sanitize
 from .verify import (
@@ -74,4 +76,8 @@ __all__ = [
     "stream_with_commit_window",
     "FallbackEvent",
     "build_response_view",
+    # T004 — /v1/models preset discovery
+    "PRESETS",
+    "Preset",
+    "models_payload",
 ]
