@@ -277,16 +277,21 @@ The prior wire-form and fire-cadence gaps are already settled
 `decision_log.fixture.jsonl` is a **synthetic, regenerable** stand-in for a live
 decision log — every line carries `"synthetic": true`. It exists so AC1 can be
 asserted in CI without a live gateway. It is produced by `make-fixture.mjs`,
-which imports the **same** `classify` the plugin runs, so the fixture is provably
-the plugin's real output. Regenerate it any time with:
+which imports the **same** `classify` AND the **same** routing-decision layer
+(`route.mjs`) the plugin runs, so the fixture is provably the plugin's real
+output — including the T008 split (planning → `destination:"native"`,
+`providerOverride:null`; local presets → `destination:"anvil"` + bare override).
+Regenerate it any time with:
 
 ```bash
 node plugins/openclaw-anvil-intent-router/make-fixture.mjs
 ```
 
-AC1 (synthetic half) is asserted exactly as the live step, against the fixture:
+AC1 (synthetic half) is asserted exactly as the live step, against the fixture —
+note the T008 invariant: a `planning` turn is routed to the **native** provider
+(`destination:"native"`), NOT to anvil:
 
 ```bash
-jq -e 'select(.source=="openclaw" and .intent=="planning")' \
+jq -e 'select(.source=="openclaw" and .intent=="planning" and .destination=="native")' \
    plugins/openclaw-anvil-intent-router/decision_log.fixture.jsonl
 ```
