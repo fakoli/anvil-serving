@@ -306,9 +306,20 @@ class Calibrator:
     def _submit(
         self, request: Any, response: Any, work_class: Optional[str], tier_id: str
     ) -> Optional[concurrent.futures.Future]:
+        # Capture the serve identity active for this row AT DISPATCH TIME, on the
+        # caller thread (before any worker can run). record_grade uses it so a
+        # grade measured under the current serve cannot clear a staleness that a
+        # LATER apply_fingerprint sets while this grade is still in flight.
+        prev = self._store.entry(tier_id, work_class)
+        submitted_fp = prev.fingerprint if prev is not None else None
         try:
             fut = self._executor.submit(
-                self._grade_and_record, request, response, work_class, tier_id
+                self._grade_and_record,
+                request,
+                response,
+                work_class,
+                tier_id,
+                submitted_fp,
             )
         except RuntimeError:
             # Executor already shut down: never block or raise on the request path.
@@ -345,9 +356,20 @@ class Calibrator:
         return clean
 
     def _grade_and_record(
-        self, request: Any, response: Any, work_class: Optional[str], tier_id: str
+        self,
+        request: Any,
+        response: Any,
+        work_class: Optional[str],
+        tier_id: str,
+        submitted_fingerprint: Optional[str],
     ) -> None:
-        """Worker body: build -> redact -> grade -> record. Errors are swallowed."""
+        """Worker body: build -> redact -> grade -> record. Errors are swallowed.
+
+        ``submitted_fingerprint`` is the serve identity captured at dispatch (see
+        :meth:`_submit`); it is forwarded to
+        :meth:`~anvil_serving.router.profile_store.ProfileStore.record_grade` so a
+        grade for a now-superseded serve can't clear fresh staleness.
+        """
         try:
             sample = self._build_sample(request, response, work_class, tier_id)
             redacted = self._redact(sample)  # BEFORE egress to the grader
@@ -359,6 +381,7 @@ class Calibrator:
                 score=score,
                 decision=decision,
                 last_measured=self._now(),
+                submitted_fingerprint=submitted_fingerprint,
             )
         except Exception as exc:  # noqa: BLE001 - calibration must NEVER break serving
             # Count + stash for observability; the request already succeeded, so a

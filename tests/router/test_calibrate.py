@@ -286,3 +286,50 @@ def test_fresh_grade_clears_stale_after_serve_change():
     entry = store.entry("fast-local", "review")
     assert entry.stale is False              # re-measured -> trust restored
     assert entry.fingerprint == fp1          # under the CURRENT serve identity
+
+
+# ── review FIX 1: a grade in flight across a serve change must NOT clear stale ─
+def test_inflight_grade_does_not_clear_stale_set_after_submit():
+    """A grade dispatched under fingerprint F0 that completes AFTER the serve
+    advanced to F1 (which set stale=True) must NOT clear that fresh staleness."""
+    store = default_profile()
+    fp0 = serve_fingerprint({"id": "fast-local", "model": "a"})
+    fp1 = serve_fingerprint({"id": "fast-local", "model": "b"})
+    mark_stale_on_change(store, "fast-local", fp0)   # baseline (F0), not stale
+    assert store.is_stale("fast-local", "review") is False
+    before = store.entry("fast-local", "review")
+
+    release = threading.Event()
+    started = threading.Event()
+
+    def grader(sample):
+        started.set()
+        assert release.wait(5), "test never released the grader"
+        return Grade(score=0.9)
+
+    cal = Calibrator(store, grader=grader, enabled=True, sample_rate=1.0)
+    try:
+        # Dispatch the grade while the row's fingerprint is still F0 (submitted_fp
+        # is captured on this thread, before the worker runs).
+        cal.observe({"p": "x"}, {"c": "y"}, "review", "fast-local")
+        assert started.wait(5), "background grade never started"
+
+        # The serve changes to F1 WHILE the F0-era grade is parked -> rows stale.
+        mark_stale_on_change(store, "fast-local", fp1)
+        assert store.is_stale("fast-local", "review") is True
+
+        # Release the superseded grade and drain it.
+        release.set()
+        assert cal.drain(timeout=5)
+        assert cal.errors == 0
+    finally:
+        release.set()
+        cal.close()
+
+    entry = store.entry("fast-local", "review")
+    # The grade still updated the score/sample count ...
+    assert entry.sample_n == before.sample_n + 1
+    assert entry.quality_score != before.quality_score
+    # ... but it did NOT clear the staleness the F1 change set (it measured F0).
+    assert entry.stale is True
+    assert entry.fingerprint == fp1

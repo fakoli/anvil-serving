@@ -8,6 +8,8 @@ untouched. Stdlib only, deterministic, no network.
 """
 from __future__ import annotations
 
+import threading
+
 from anvil_serving.router.config import Tier
 from anvil_serving.router.fingerprint import (
     identity,
@@ -154,3 +156,47 @@ def test_refresh_fingerprint_wires_spec_to_staleness():
     assert set(newly) == ALL_CLASSES
     assert store.is_stale("heavy-local", "planning") is True
     assert store.is_stale("fast-local", "planning") is False        # other tier safe
+
+
+# ── review FIX 2: stale_pairs() snapshots under the lock (no concurrent-insert race)
+def test_stale_pairs_safe_under_concurrent_record_grade():
+    """Hammer ``stale_pairs()`` while writers INSERT brand-new keys via
+    ``record_grade``. An unlocked iteration over the live dict view would raise
+    ``RuntimeError: dictionary changed size during iteration``; the lock-snapshot
+    must keep it safe and the returned list sorted."""
+    store = default_profile()
+    n_keys = 600
+    errors: list = []
+    done = threading.Event()
+
+    def writer(prefix: str):
+        for i in range(n_keys):
+            # Each call inserts a previously-unseen (tier, work_class) key.
+            store.record_grade("fast-local", f"{prefix}-{i}", score=0.5)
+
+    def reader():
+        # Read until all writers finish; any unsafe iteration surfaces here.
+        while not done.is_set():
+            try:
+                pairs = store.stale_pairs()
+                assert pairs == sorted(pairs, key=lambda k: (k[0], k[1] or ""))
+            except Exception as exc:  # pragma: no cover - the bug we're guarding
+                errors.append(exc)
+                return
+
+    writers = [threading.Thread(target=writer, args=(p,)) for p in ("a", "b", "c")]
+    readers = [threading.Thread(target=reader) for _ in range(4)]
+    for t in readers:
+        t.start()
+    for t in writers:
+        t.start()
+    for t in writers:
+        t.join(20)
+    done.set()
+    for t in readers:
+        t.join(5)
+
+    assert not errors, errors
+    # Sanity: all the inserted keys landed and none are stale (record_grade clears).
+    assert isinstance(store.stale_pairs(), list)
+    assert store.entry("fast-local", "a-0") is not None

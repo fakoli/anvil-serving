@@ -186,9 +186,19 @@ class ProfileStore:
         return bool(e is not None and e.stale)
 
     def stale_pairs(self) -> List[Tuple[str, Optional[str]]]:
-        """Every ``(tier_id, work_class)`` whose row is currently stale, sorted."""
+        """Every ``(tier_id, work_class)`` whose row is currently stale, sorted.
+
+        Snapshots the table UNDER THE LOCK before iterating: a concurrent
+        :meth:`record_grade` can insert a brand-new key, and iterating the live
+        ``dict`` view would otherwise risk ``RuntimeError: dictionary changed size
+        during iteration``. (The ``dict.get`` readers — :meth:`entry`/
+        :meth:`decision`/:meth:`score`/:meth:`is_stale` — need no lock; only this
+        full traversal does.)
+        """
+        with self._lock:
+            snapshot = list(self._table.items())
         return sorted(
-            (k for k, e in self._table.items() if e.stale),
+            (k for k, e in snapshot if e.stale),
             key=lambda k: (k[0], k[1] or ""),
         )
 
@@ -201,6 +211,7 @@ class ProfileStore:
         decision: Optional[str] = None,
         last_measured: Optional[str] = None,
         weight: int = 1,
+        submitted_fingerprint: Optional[str] = None,
     ) -> ProfileEntry:
         """Fold a fresh quality ``score`` into the ``(tier_id, work_class)`` row.
 
@@ -215,10 +226,17 @@ class ProfileStore:
           quality number never silently flips the load-bearing trust verdict (the
           ``deny`` gate). A brand-new row with no decision defaults to
           ``allow-with-verify`` (use-but-verify), never a bare ``allow``.
-        * ``stale`` is CLEARED: the grade was produced by the live serve, so the
-          row is freshly measured again. ``fingerprint`` is carried over (the
-          identity was already advanced by :meth:`apply_fingerprint` when the
-          serve changed). ``last_measured`` is set when provided, else carried over.
+        * ``stale`` is cleared (the grade re-measured the row) — but ONLY when the
+          measurement is still current. ``submitted_fingerprint`` is the serve
+          identity that was active when this grade was DISPATCHED; if the row's
+          ``fingerprint`` has since advanced past it (a concurrent
+          :meth:`apply_fingerprint` stamped a NEW identity + ``stale=True`` while
+          this grade was in flight), the grade is from a now-superseded serve and
+          MUST NOT clear that fresh staleness — the existing ``stale`` is kept.
+          Passing ``None`` (no fingerprint context) clears unconditionally, the
+          prior behaviour. ``fingerprint`` itself is carried over (the identity
+          was already advanced by :meth:`apply_fingerprint` when the serve
+          changed). ``last_measured`` is set when provided, else carried over.
 
         Returns the new (replaced) entry.
         """
@@ -240,6 +258,14 @@ class ProfileStore:
                     / new_n,
                     4,
                 )
+                # Don't clear staleness that was set AFTER this grade was
+                # submitted: if the serve identity advanced since dispatch, this
+                # measurement no longer reflects the current serve.
+                superseded = (
+                    submitted_fingerprint is not None
+                    and prev.fingerprint != submitted_fingerprint
+                )
+                new_stale = prev.stale if superseded else False
                 entry = replace(
                     prev,
                     decision=decision if decision is not None else prev.decision,
@@ -248,7 +274,7 @@ class ProfileStore:
                     last_measured=(
                         last_measured if last_measured is not None else prev.last_measured
                     ),
-                    stale=False,  # freshly re-measured -> trust restored
+                    stale=new_stale,
                 )
             self._table[(tier_id, work_class)] = entry
             return entry
