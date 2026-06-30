@@ -13,6 +13,7 @@ import json
 import socket
 import threading
 from contextlib import contextmanager
+from pathlib import Path as _Path
 from typing import Dict, List, Tuple
 
 import pytest
@@ -826,8 +827,6 @@ def test_streaming_backend_eager_exception_gives_clean_500():
 # --------------------------------------------------------------------------- #
 # POST /v1/route — routing-brain decision endpoint (advise-and-defer:T007)
 # --------------------------------------------------------------------------- #
-
-from pathlib import Path as _Path
 
 _CONFIGS_DIR = _Path(__file__).resolve().parents[2] / "configs"
 _CONFIG_LOCAL_ONLY = str(_CONFIGS_DIR / "example.toml")
