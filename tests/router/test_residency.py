@@ -4,6 +4,11 @@ The local tiers share one multiplexer slot (R013): loading a non-resident local
 costs a model swap. The policy DEFERS a non-resident local behind the resident
 local and the cloud tiers, so an alternating fast/heavy workload does NOT trigger
 a swap on every request. These tests assert the swap count stays bounded.
+
+These tests use ``configs/example-with-cloud.toml`` (the opt-in cloud config) because
+several AC3 tests verify that a non-resident local is deferred specifically BEHIND
+cloud (the classic anti-thrash anchor). The shipped default config (``example.toml``)
+is local-only (T001 / ADR-0001); see test_config.py for local-only default tests.
 """
 from __future__ import annotations
 
@@ -16,7 +21,7 @@ from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.policy import local_tier_ids, route
 from anvil_serving.router.profile_store import default_profile
 
-EXAMPLE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example.toml"
+EXAMPLE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example-with-cloud.toml"
 CONFIG = load(str(EXAMPLE))
 PROFILE = default_profile()
 LOCALS = local_tier_ids(CONFIG)

@@ -1,6 +1,11 @@
 """Tests for the residency-aware routing policy (harness-router:T005).
 
-Proves the acceptance criteria against the real ``configs/example.toml``:
+Proves the acceptance criteria against ``configs/example-with-cloud.toml`` (the
+opt-in cloud config) because these tests exercise cloud routing logic — deny gates,
+planning-goes-cloud, residency deferral behind cloud, etc.  The shipped *default*
+config (``example.toml``) is local-only (T001 / ADR-0001); see test_config.py for
+tests that assert the local-only default topology.
+
   AC1 - a ``deny`` ``(tier, work_class)`` is NEVER in the routed result; a
         planning intent yields only the cloud tier, a bounded-edit intent keeps
         fast-local.
@@ -27,9 +32,11 @@ from anvil_serving.router.profile_store import (
     default_profile,
 )
 
-# CWD-independent: example.toml at <repo>/configs/example.toml; this file is at
+# CWD-independent: example-with-cloud.toml at <repo>/configs/; this file is at
 # <repo>/tests/router/test_policy.py (parents[2] == repo root).
-EXAMPLE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example.toml"
+# These tests exercise cloud routing behavior, so they use the opt-in cloud config.
+# The local-only default (example.toml) is tested in test_config.py (T001).
+EXAMPLE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example-with-cloud.toml"
 CONFIG = load(str(EXAMPLE))
 PROFILE = default_profile()
 

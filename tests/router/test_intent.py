@@ -1,6 +1,11 @@
 """Tests for intent resolution: presets, classifier, override (harness-router:T003).
 
-Proves the three acceptance criteria against the real ``configs/example.toml``:
+Proves the three acceptance criteria against ``configs/example-with-cloud.toml``
+(the opt-in cloud config) because these tests exercise cloud intent routing — safer
+tier = cloud, planning → cloud, ambiguous → cloud, etc.  The shipped *default*
+config (``example.toml``) is local-only (T001 / ADR-0001); see test_config.py for
+tests that assert the local-only default topology.
+
   AC1 - "planning" and "anvil/planning" resolve to the SAME intent.
   AC2 - an unknown/empty model is classified, never errors.
   AC3 - ambiguous inputs resolve to the configured safer (cloud) tier, logged.
@@ -22,9 +27,11 @@ from anvil_serving.router.intent import (
 )
 from anvil_serving.router.internal import InternalRequest, Message
 
-# CWD-independent: example.toml at <repo>/configs/example.toml; this file is at
+# CWD-independent: example-with-cloud.toml at <repo>/configs/; this file is at
 # <repo>/tests/router/test_intent.py (parents[2] == repo root).
-EXAMPLE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example.toml"
+# These tests exercise cloud intent-resolution logic, so they use the opt-in cloud
+# config.  The local-only default (example.toml) is tested in test_config.py (T001).
+EXAMPLE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example-with-cloud.toml"
 CONFIG = load(str(EXAMPLE))
 
 

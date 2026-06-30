@@ -1,0 +1,69 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# OPT-IN CLOUD TIER — METERED API BILLING  (ADR-0001 / advise-and-defer)
+#
+# This file demonstrates the optional cloud tier.  Including a cloud tier
+# incurs METERED API billing on every cloud-routed request ($/token, not flat).
+#
+# THE CLOUD TIER IS OFF BY DEFAULT.  The default shipped config is
+# configs/example.toml, which is local-only and holds zero cloud credentials.
+#
+# Only configure a cloud tier here if your harness cannot route cloud traffic
+# itself.  OpenClaw-style harnesses should route cloud directly using their
+# own subscription (see docs/adr/0001-cloud-cost-and-subscription-auth.md):
+# routing cloud through anvil uses a metered API key, while routing through
+# the harness uses the flat-rate subscription you already pay for.
+#
+# To activate the cloud tier you must set the auth_env variable before starting
+# the router (auth_env names the ENV VAR; the secret is NEVER stored here):
+#   export ANTHROPIC_API_KEY=<your key>
+# Without the key, the cloud tier is skipped at startup (not fatal); the local
+# tiers still bind and serve.
+# ─────────────────────────────────────────────────────────────────────────────
+claude_logs   = "~/.claude/projects"          # where `profile` reads usage
+hf_extra_roots = []                            # extra HF cache hub dirs to scan for `models sync`
+model_dirs     = []                            # plain (non-HF-cache) model folders
+gpu_index      = 0                             # GPU to pin the serve to
+served_model_name = "local-specialist"
+
+# ── Router tier topology ──────────────────────────────────────────────────────
+# auth_env names an ENV VAR; the secret itself is NEVER stored here.
+[router]
+mapping_version = "2026-06-30.0"
+
+[[router.tiers]]
+id            = "fast-local"
+base_url      = "http://127.0.0.1:30001/v1"   # vLLM gpt-oss-20b (OpenAI-compatible)
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FAST_LOCAL_KEY"
+
+[[router.tiers]]
+id            = "heavy-local"
+base_url      = "http://127.0.0.1:30000/v1"   # SGLang qwen3-coder-30b (OpenAI-compatible)
+dialect       = "openai"
+context_limit = 131072
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
+
+# ── OPT-IN: metered cloud tier — incurs $$/token billing ─────────────────────
+# Remove or comment out this block to return to local-only (no cloud key needed).
+[[router.tiers]]
+id            = "cloud"
+base_url      = "https://api.anthropic.com"
+dialect       = "anthropic"
+context_limit = 200000
+privacy       = "cloud"
+tool_support  = true
+auth_env      = "ANTHROPIC_API_KEY"            # export ANTHROPIC_API_KEY=<your key>
+
+# preset -> ordered candidate tier pool (filter then rank; planning->cloud is eval-proven)
+# Cloud appears in pools where its quality advantage justifies the metered cost.
+[router.presets]
+chat         = ["fast-local", "cloud"]
+quick-edit   = ["fast-local", "heavy-local", "cloud"]
+review       = ["heavy-local", "cloud"]
+planning     = ["cloud"]
+long-context = ["heavy-local", "cloud"]

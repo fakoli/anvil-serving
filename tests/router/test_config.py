@@ -1,8 +1,9 @@
 """Tests for the router/tier config schema + loader (harness-router:T002).
 
 Proves both PRD acceptance criteria:
-  AC1 - configs/example.toml yields fast-local, heavy-local, cloud with their
-        endpoints, dialects, and constraints.
+  AC1 - configs/example.toml yields fast-local and heavy-local (local-only,
+        ADR-0001 / advise-and-defer:T001) with their endpoints, dialects, and
+        constraints.  The cloud tier lives in example-with-cloud.toml (opt-in).
   AC2 - every tier's auth reference NAMES an env var; no secret literal appears
         in the config and none is required to load it.
 """
@@ -22,15 +23,17 @@ from anvil_serving.router.config import (
 
 # CWD-independent: example.toml lives at <repo>/configs/example.toml and this
 # file is at <repo>/tests/router/test_config.py (parents[2] == repo root).
-EXAMPLE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "example.toml"
+_CONFIGS = pathlib.Path(__file__).resolve().parents[2] / "configs"
+EXAMPLE = _CONFIGS / "example.toml"
+EXAMPLE_WITH_CLOUD = _CONFIGS / "example-with-cloud.toml"
 
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
-# Env-var names the example references; used to prove load() needs no secret.
+# Env-var names the local-only example references; used to prove load() needs
+# no cloud secret.  ANTHROPIC_API_KEY is intentionally absent (ADR-0001).
 EXAMPLE_AUTH_ENVS = (
     "ANVIL_FAST_LOCAL_KEY",
     "ANVIL_HEAVY_LOCAL_KEY",
-    "ANTHROPIC_API_KEY",
 )
 
 _BASE_TIER = """\
@@ -56,16 +59,18 @@ def _write_toml(tmp_path: pathlib.Path, body: str) -> str:
 
 # ── AC1 ──────────────────────────────────────────────────────────────────────
 def test_example_loads_expected_tiers():
+    """example.toml is local-only (ADR-0001 / T001): only local tiers present."""
     cfg = load(str(EXAMPLE))
     assert isinstance(cfg, RouterConfig)
     ids = {t.id for t in cfg.tiers}
-    assert ids == {"fast-local", "heavy-local", "cloud"}
+    # Local-only: no cloud tier in the default config.
+    assert ids == {"fast-local", "heavy-local"}
     for t in cfg.tiers:
         assert isinstance(t, Tier)
         assert t.base_url
-        assert t.dialect in {"openai", "anthropic"}
+        assert t.dialect == "openai"        # both local tiers speak OpenAI dialect
         assert t.context_limit > 0
-        assert t.privacy in {"local", "cloud"}
+        assert t.privacy == "local"         # every tier in the default config is local
         assert isinstance(t.tool_support, bool)
 
     # Spot-check the worked example's concrete constraints.
@@ -73,11 +78,6 @@ def test_example_loads_expected_tiers():
     assert fast.base_url == "http://127.0.0.1:30001/v1"
     assert fast.dialect == "openai" and fast.privacy == "local"
     assert fast.context_limit == 32768
-
-    cloud = cfg.tier("cloud")
-    assert cloud.base_url == "https://api.anthropic.com"
-    assert cloud.dialect == "anthropic" and cloud.privacy == "cloud"
-    assert cloud.context_limit == 200000
 
 
 def test_no_localhost_in_local_endpoints():
@@ -114,18 +114,19 @@ def test_presets_reference_known_tiers():
         for cid in cands:
             assert cid in known, f"preset {name} -> unknown tier {cid}"
 
-    assert cfg.presets["planning"] == ("cloud",)
+    # Local-only: planning routes to the best local tier, not cloud (T001).
+    assert cfg.presets["planning"] == ("heavy-local",)
     resolved = cfg.candidates("planning")
-    assert tuple(t.id for t in resolved) == ("cloud",)
-    assert resolved[0].dialect == "anthropic"
+    assert tuple(t.id for t in resolved) == ("heavy-local",)
+    assert resolved[0].dialect == "openai"  # local tiers use OpenAI dialect
 
 
 def test_candidates_preserve_order():
     cfg = load(str(EXAMPLE))
+    # Local-only: quick-edit routes fast -> heavy, no cloud (T001).
     assert tuple(t.id for t in cfg.candidates("quick-edit")) == (
         "fast-local",
         "heavy-local",
-        "cloud",
     )
 
 
@@ -133,7 +134,7 @@ def test_mapping_version_present():
     cfg = load(str(EXAMPLE))
     assert isinstance(cfg.mapping_version, str)
     assert cfg.mapping_version
-    assert cfg.mapping_version == "2026-06-29.0"
+    assert cfg.mapping_version == "2026-06-30.0"
 
 
 # ── lookup error paths ────────────────────────────────────────────────────────
@@ -315,3 +316,59 @@ def test_legacy_loader_still_works():
     cfg = legacy_load(str(EXAMPLE))
     assert cfg["claude_logs"]
     assert "router" in cfg
+
+
+# ── T001: local-only default config (ADR-0001 / advise-and-defer) ─────────────
+def test_example_has_only_local_tiers():
+    """AC: configs/example.toml is the shipped default and must hold ZERO cloud
+    tiers (ADR-0001).  Every tier it declares must have privacy == 'local'."""
+    cfg = load(str(EXAMPLE))
+    for t in cfg.tiers:
+        assert t.privacy == "local", (
+            f"tier {t.id!r} has privacy={t.privacy!r}; "
+            f"the default config must be local-only (T001)"
+        )
+
+
+def test_example_loads_without_cloud_env_var(monkeypatch):
+    """AC: configs/example.toml loads successfully when ANTHROPIC_API_KEY is
+    absent (and all other cloud env vars).  The default config requires NO
+    cloud credential at load time or at runtime."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANVIL_FAST_LOCAL_KEY", raising=False)
+    monkeypatch.delenv("ANVIL_HEAVY_LOCAL_KEY", raising=False)
+    # Must not raise regardless of what env vars are set.
+    cfg = load(str(EXAMPLE))
+    assert cfg is not None
+    # No cloud tier loaded.
+    assert all(t.privacy == "local" for t in cfg.tiers)
+
+
+def test_example_with_cloud_has_cloud_tier():
+    """Companion: configs/example-with-cloud.toml (the opt-in file) DOES declare
+    a cloud tier so operators have a worked example for opting in."""
+    cfg = load(str(EXAMPLE_WITH_CLOUD))
+    cloud_tiers = [t for t in cfg.tiers if t.privacy == "cloud"]
+    assert cloud_tiers, "example-with-cloud.toml must contain at least one cloud tier"
+    cloud = cloud_tiers[0]
+    assert cloud.auth_env == "ANTHROPIC_API_KEY"
+    assert cloud.base_url == "https://api.anthropic.com"
+
+
+def test_example_with_cloud_loads_without_key(monkeypatch):
+    """example-with-cloud.toml loads (config parse) even when ANTHROPIC_API_KEY
+    is absent — load() never reads secrets, only records auth_env names."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    cfg = load(str(EXAMPLE_WITH_CLOUD))
+    # The cloud tier is declared in the file; load() should succeed.
+    assert any(t.privacy == "cloud" for t in cfg.tiers)
+
+
+def test_example_has_no_cloud_tier_id():
+    """example.toml must not declare any tier with id 'cloud' (belt-and-suspenders
+    check separate from privacy field)."""
+    cfg = load(str(EXAMPLE))
+    assert "cloud" not in {t.id for t in cfg.tiers}, (
+        "tier id 'cloud' found in the default config; "
+        "move the cloud tier to example-with-cloud.toml (T001)"
+    )

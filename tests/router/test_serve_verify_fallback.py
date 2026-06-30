@@ -101,15 +101,19 @@ def _parse_content(raw: bytes) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# C3-FAIL: allow-with-verify local FAILS verify -> cloud is served, no local tokens
+# C3-FAIL: allow-with-verify local FAILS verify -> fallback is served, no local tokens
 # --------------------------------------------------------------------------- #
-def test_c3_avw_fail_delivers_cloud_not_local_streaming():
+def test_c3_avw_fail_delivers_fallback_not_local_streaming():
     """CORE INVARIANT (streaming): allow-with-verify local that fails verify
-    must deliver ZERO local tokens; the cloud fallback is served instead, and
-    the decision log records the fallback."""
+    must deliver ZERO local tokens; the next-candidate fallback is served instead,
+    and the decision log records the fallback.
+
+    In the local-only default config chat -> [fast-local, heavy-local]; heavy-local
+    is the fallback (not cloud — T001 ships no cloud tier by default).
+    """
     backends: Dict[str, StaticBackend] = {
         "fast-local": StaticBackend([LOCAL_FAIL_CONTENT]),
-        "cloud": StaticBackend([CLOUD_CONTENT]),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),  # the fallback candidate
     }
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
     with running(httpd) as (host, port):
@@ -121,8 +125,8 @@ def test_c3_avw_fail_delivers_cloud_not_local_streaming():
     assert status == 200, (status, raw)
     content = _parse_content(raw)
 
-    # Cloud output must be delivered.
-    assert content == CLOUD_CONTENT, f"expected cloud content, got: {content!r}"
+    # Fallback output must be delivered.
+    assert content == CLOUD_CONTENT, f"expected fallback content, got: {content!r}"
 
     # No local token may appear anywhere in the delivered HTTP body.
     raw_text = raw.decode("utf-8")
@@ -133,7 +137,9 @@ def test_c3_avw_fail_delivers_cloud_not_local_streaming():
     record = httpd.anvil_routing._decision_log.last
     assert record is not None, "no decision record written"
     assert record.fell_back, "decision log did not record fell_back=True"
-    assert record.served_tier == "cloud", f"served_tier should be cloud, got {record.served_tier!r}"
+    assert record.served_tier == "heavy-local", (
+        f"served_tier should be heavy-local, got {record.served_tier!r}"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -141,10 +147,10 @@ def test_c3_avw_fail_delivers_cloud_not_local_streaming():
 # --------------------------------------------------------------------------- #
 def test_c3_avw_pass_delivers_local_not_cloud_streaming():
     """PASS path: allow-with-verify local that PASSES verify is committed and
-    delivered; the cloud backend is never reached."""
+    delivered; the fallback backend is never reached."""
     backends: Dict[str, StaticBackend] = {
         "fast-local": StaticBackend([LOCAL_PASS_CONTENT]),
-        "cloud": StaticBackend([CLOUD_CONTENT]),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),
     }
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
     with running(httpd) as (host, port):
@@ -207,12 +213,12 @@ def test_c3_allow_streams_directly_no_verify():
 # --------------------------------------------------------------------------- #
 # C3-NON-STREAMING: stream=False also verifies + falls back
 # --------------------------------------------------------------------------- #
-def test_c3_avw_fail_non_streaming_falls_back_to_cloud():
+def test_c3_avw_fail_non_streaming_falls_back_to_next_candidate():
     """Non-streaming path (stream=False): allow-with-verify local that fails
-    verify must still be discarded; the cloud response is delivered instead."""
+    verify must still be discarded; the next-candidate response is delivered."""
     backends: Dict[str, StaticBackend] = {
         "fast-local": StaticBackend([LOCAL_FAIL_CONTENT]),
-        "cloud": StaticBackend([CLOUD_CONTENT]),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),
     }
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
     with running(httpd) as (host, port):
@@ -227,13 +233,13 @@ def test_c3_avw_fail_non_streaming_falls_back_to_cloud():
     body = json.loads(raw)
     content = body["choices"][0]["message"]["content"]
 
-    assert content == CLOUD_CONTENT, f"expected cloud content, got: {content!r}"
+    assert content == CLOUD_CONTENT, f"expected fallback content, got: {content!r}"
     assert "broken_local_fn" not in raw.decode("utf-8"), "local token leaked"
 
     record = httpd.anvil_routing._decision_log.last
     assert record is not None
     assert record.fell_back
-    assert record.served_tier == "cloud"
+    assert record.served_tier == "heavy-local"
 
 
 # --------------------------------------------------------------------------- #
@@ -314,12 +320,12 @@ def _parse_anthropic_content(raw: bytes) -> str:
     return "".join(pieces)
 
 
-def test_c3_anthropic_avw_fail_delivers_cloud_not_local_streaming():
+def test_c3_anthropic_avw_fail_delivers_fallback_not_local_streaming():
     """Anthropic streaming: allow-with-verify local that FAILS verify must
-    deliver ZERO local tokens; the cloud fallback is served via Anthropic SSE."""
+    deliver ZERO local tokens; the next-candidate fallback is served via Anthropic SSE."""
     backends: Dict[str, StaticBackend] = {
         "fast-local": StaticBackend([LOCAL_FAIL_CONTENT]),
-        "cloud": StaticBackend([CLOUD_CONTENT]),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),  # fallback in local-only config
     }
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
     with running(httpd) as (host, port):
@@ -337,8 +343,8 @@ def test_c3_anthropic_avw_fail_delivers_cloud_not_local_streaming():
     assert "text/event-stream" in headers.get("content-type", ""), headers
     content = _parse_anthropic_content(raw)
 
-    # Cloud output must be delivered.
-    assert content == CLOUD_CONTENT, f"expected cloud content, got: {content!r}"
+    # Fallback output must be delivered.
+    assert content == CLOUD_CONTENT, f"expected fallback content, got: {content!r}"
 
     # No local token may appear anywhere in the HTTP body.
     raw_text = raw.decode("utf-8")
@@ -349,15 +355,15 @@ def test_c3_anthropic_avw_fail_delivers_cloud_not_local_streaming():
     record = httpd.anvil_routing._decision_log.last
     assert record is not None, "no decision record written"
     assert record.fell_back, "decision log did not record fell_back=True"
-    assert record.served_tier == "cloud"
+    assert record.served_tier == "heavy-local"
 
 
 def test_c3_anthropic_avw_pass_delivers_local_streaming():
     """Anthropic streaming: allow-with-verify local that PASSES verify is
-    committed and delivered via Anthropic SSE; cloud is not reached."""
+    committed and delivered via Anthropic SSE; the fallback is not reached."""
     backends: Dict[str, StaticBackend] = {
         "fast-local": StaticBackend([LOCAL_PASS_CONTENT]),
-        "cloud": StaticBackend([CLOUD_CONTENT]),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),
     }
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
     with running(httpd) as (host, port):
@@ -387,12 +393,12 @@ def test_c3_anthropic_avw_pass_delivers_local_streaming():
     assert record.served_tier == "fast-local"
 
 
-def test_c3_anthropic_avw_fail_non_streaming_falls_back_to_cloud():
+def test_c3_anthropic_avw_fail_non_streaming_falls_back_to_next_candidate():
     """Anthropic non-streaming: allow-with-verify local that fails verify must
-    be discarded; the cloud response is delivered in the Anthropic message format."""
+    be discarded; the next-candidate response is delivered in the Anthropic message format."""
     backends: Dict[str, StaticBackend] = {
         "fast-local": StaticBackend([LOCAL_FAIL_CONTENT]),
-        "cloud": StaticBackend([CLOUD_CONTENT]),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),
     }
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
     with running(httpd) as (host, port):
@@ -412,10 +418,10 @@ def test_c3_anthropic_avw_fail_non_streaming_falls_back_to_cloud():
     # Anthropic non-streaming message format: content is a list of blocks.
     content = body["content"][0]["text"]
 
-    assert content == CLOUD_CONTENT, f"expected cloud content, got: {content!r}"
+    assert content == CLOUD_CONTENT, f"expected fallback content, got: {content!r}"
     assert "broken_local_fn" not in raw.decode("utf-8"), "local token leaked"
 
     record = httpd.anvil_routing._decision_log.last
     assert record is not None
     assert record.fell_back
-    assert record.served_tier == "cloud"
+    assert record.served_tier == "heavy-local"
