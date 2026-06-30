@@ -33,8 +33,8 @@ tiers; the router decides what each one is *trusted* to serve.
 
 Transport is a commodity — LiteLLM, claude-code-router, Ollama, OpenRouter all move tokens.
 None of them know **whether local can actually do *this* work.** They route by static rules
-(model name, cost, regex). On anvil's real PRD→tasks planning prompt we measured the gap
-directly ([`docs/findings/2026-06-28-planning-capability-eval.md`](docs/findings/2026-06-28-planning-capability-eval.md)):
+(model name, cost, regex). On anvil's real PRD→tasks planning prompt, the gap was measured
+directly:
 
 - Local output is **structurally valid ≥92%** of the time (5 of 6 outputs scored 100% — parses
   cleanly under the strict schema, no cycles, no dangling edges) — structural validity is **not**
@@ -45,21 +45,19 @@ directly ([`docs/findings/2026-06-28-planning-capability-eval.md`](docs/findings
 
 A dumb proxy sends that planning request to local and silently corrupts a long agent run. The
 defensible asset is therefore **not** the transport — it's the **quality profile** (per model ×
-work-class, measured on *your* workload) plus the **verify-and-fallback loop.** Competitors can
-copy transport in a weekend; they can't copy "we measured that `gpt-oss-20b` is safe for bounded
-edits but unsafe for dependency planning on *your* repos."
+work-class, measured on the operator's own workload) plus the **verify-and-fallback loop.**
+Competitors can copy transport in a weekend; they can't copy "we measured that `gpt-oss-20b` is
+safe for bounded edits but unsafe for dependency planning on *your* repos."
 
 Two more decisions fell out of the research and shaped the design:
 
 - **The integration point is the harness/runtime, not a ledger.** An audit of the `anvil`
   state engine confirmed it is *not* an LLM gateway — it exposes a single `custom_base_url` for
-  optional planning augmentation, with no router and no two-tier endpoint routing
-  ([`docs/findings/2026-06-28-anvil-integration-audit.md`](docs/findings/2026-06-28-anvil-integration-audit.md)).
+  optional planning augmentation, with no router and no two-tier endpoint routing.
   So the router lives where the agent traffic actually flows: in front of the harness.
 - **The `model` field is the one routing channel unmodified harnesses expose.** It is required
   in both wire schemas, forwarded verbatim, and free-form — so "named presets in the model
-  field" is the right wire surface
-  ([`docs/findings/2026-06-29-harness-intent-routing.md`](docs/findings/2026-06-29-harness-intent-routing.md)).
+  field" is the right wire surface.
 
 ---
 
@@ -353,9 +351,8 @@ now lives, after the router promotion).
 
 ## Status
 
-**v0.3.0 is shipped.** The `harness-router` PRD
-([`docs/prd/anvil-serving-harness-router.prd.md`](docs/prd/anvil-serving-harness-router.prd.md))
-is **complete — all 18 tasks built (milestones M0–M3), 378 tests green**. Both the router front
+**v0.3.0 is shipped.** The `harness-router` PRD is **complete — all 18 tasks built
+(milestones M0–M3), 378 tests green**. Both the router front
 door (`anvil-serving serve`) and the serving substrate (profile / models sync / deploy / preflight
 / benchmark / multiplexer) ship today. See the [CHANGELOG](CHANGELOG.md) for the full release
 notes.
@@ -400,21 +397,18 @@ What shipped, by milestone:
 
 ### Docs
 
-- **Direction & thesis:** [`docs/DIRECTION.md`](docs/DIRECTION.md),
-  [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md)
-- **Cloud cost & auth design:** [ADR-0001](docs/adr/0001-cloud-cost-and-subscription-auth.md)
-  (why anvil is not in the cloud path by default) ·
+- **Product design:** [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md) (full router
+  design — intent presets, tier ladder, verify-fallback, quality profile, plugin seams, appendix
+  config recipes)
+- **Cloud cost & auth:** [ADR-0001](docs/adr/0001-cloud-cost-and-subscription-auth.md)
+  (why anvil does not relay cloud by default) ·
   [`docs/PLAN-advise-and-defer.md`](docs/PLAN-advise-and-defer.md) (implementation plan)
-- **The evidence (findings):**
-  [integration audit](docs/findings/2026-06-28-anvil-integration-audit.md) ·
-  [planning-capability eval](docs/findings/2026-06-28-planning-capability-eval.md) ·
-  [harness intent routing](docs/findings/2026-06-29-harness-intent-routing.md) ·
-  [OpenClaw vs Hermes customization](docs/findings/2026-06-29-openclaw-hermes-customization.md)
 - **OpenClaw integration:** [`docs/OPENCLAW-INTEGRATION-SPEC.md`](docs/OPENCLAW-INTEGRATION-SPEC.md)
-- **Serving methodology:** [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) (size a serve from usage) ·
-  [`docs/USAGE-BASELINE-METHOD.md`](docs/USAGE-BASELINE-METHOD.md) ·
-  [`docs/MODEL-LANDSCAPE.md`](docs/MODEL-LANDSCAPE.md) ·
-  [`docs/HARNESS-COMPARISON.md`](docs/HARNESS-COMPARISON.md) ·
-  [`docs/MODEL-SETTINGS-EXAMPLE.md`](docs/MODEL-SETTINGS-EXAMPLE.md)
+  (source-verified buildable spec, go-with-caveats verdict) ·
+  [`docs/OPENCLAW-LIVE-VALIDATION.md`](docs/OPENCLAW-LIVE-VALIDATION.md) (live-validation runbook)
+- **Serving reference:** [`docs/MODEL-SETTINGS-EXAMPLE.md`](docs/MODEL-SETTINGS-EXAMPLE.md)
+  (thinking-by-default model config and sampling) ·
+  [`docs/SERVES-AND-EVAL.md`](docs/SERVES-AND-EVAL.md) (serve lifecycle + eval entry point)
+- **Architecture decisions:** [`docs/adr/`](docs/adr/) — one ADR per significant design choice
 
 MIT licensed.
