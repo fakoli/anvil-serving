@@ -137,6 +137,34 @@ fail-prone classes on the streaming path, a non-streamed **commit window** buffe
 before the first byte reaches the harness, so a local miss never delivers partial tokens. Every
 fallback is logged as a profile signal.
 
+### Default: local-only / $0 metered cloud
+
+**The default config (`configs/example.toml`) routes local-only — anvil holds no cloud API key
+and incurs $0 metered API billing.** The "cloud tier" in the diagram above operates in two modes:
+
+- **Keyless (default):** no cloud tier is configured. On a local verify-failure, all candidates
+  are exhausted and anvil returns an **`exhaustion_status`** (503 by default, configurable) with
+  nothing local committed. A gateway like OpenClaw treats this as a transport failure and re-routes
+  the request on its native subscription provider — **flat-rate, not metered.**
+- **Opt-in keyed:** when an operator explicitly adds a cloud tier via
+  `configs/example-with-cloud.toml`, verify-failures escalate internally to the cloud tier and
+  return **200**. This is metered — every cloud-routed request bills per token against the API key.
+
+> **Billing warning:** the opt-in cloud tier routes through a metered API key
+> (`ANTHROPIC_API_KEY`, etc.), not your flat-rate subscription. Per-token charges apply to every
+> request the cloud tier serves. The per-intent `[router].metered_cloud` map controls which
+> work-classes are ever eligible for the cloud tier — nothing is metered unless you explicitly
+> list it there. See [`configs/example-with-cloud.toml`](configs/example-with-cloud.toml) and
+> [ADR-0001](docs/adr/0001-cloud-cost-and-subscription-auth.md) for the full opt-in config and
+> rationale.
+
+**`POST /v1/route` — the routing-brain endpoint.** The decision is also queryable standalone,
+without serving the request: send a completions-shaped body, get back
+`{ tier, model, provider, work_class, reason, confidence, session_id }`. The OpenClaw plugin
+uses this to route `deny`-class requests directly to the gateway's native provider — bypassing
+anvil entirely — and to send `allow`-class requests through. Status 200 (decision made, even
+if `cloud`), 400 (malformed), 503 (no suitable tier).
+
 ### The quality profile (the moat)
 
 ![The quality gate — work proven on a tier stays local; unproven work falls back to cloud, measured per (model, work-class)](assets/explainer-quality-gate.png)
@@ -243,10 +271,12 @@ the right default — keep it loopback-only unless you have a reason not to.
 
 If you bind it publicly (`--host 0.0.0.0`) or otherwise put it on a reachable address, **you are
 responsible for authentication and network controls** (a reverse proxy with auth, firewall rules,
-a private network). An open endpoint lets **any** caller drive routing and, via the cloud
-fallback tier, **consume your cloud credentials** — so an unauthenticated public bind is both a
-quality and a billing exposure. Cloud credentials are referenced by env-var name and redacted from
-logs; see [`SECURITY.md`](SECURITY.md) for the full threat model and how to report a vulnerability.
+a private network). An open endpoint lets **any** caller drive routing and, if you have configured an opt-in metered
+cloud tier, **consume your cloud credentials** — so an unauthenticated public bind is both a
+quality and a billing exposure. (The default local-only config carries no cloud key, but the risk
+still applies if you later add one.) Cloud credentials are referenced by env-var name and redacted
+from logs; see [`SECURITY.md`](SECURITY.md) for the full threat model and how to report a
+vulnerability.
 
 ---
 
@@ -372,6 +402,9 @@ What shipped, by milestone:
 
 - **Direction & thesis:** [`docs/DIRECTION.md`](docs/DIRECTION.md),
   [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md)
+- **Cloud cost & auth design:** [ADR-0001](docs/adr/0001-cloud-cost-and-subscription-auth.md)
+  (why anvil is not in the cloud path by default) ·
+  [`docs/PLAN-advise-and-defer.md`](docs/PLAN-advise-and-defer.md) (implementation plan)
 - **The evidence (findings):**
   [integration audit](docs/findings/2026-06-28-anvil-integration-audit.md) ·
   [planning-capability eval](docs/findings/2026-06-28-planning-capability-eval.md) ·
