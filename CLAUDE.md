@@ -82,7 +82,7 @@ anvil_serving/
     backends/          cloud.py (CloudBackend: urllib relay to Anthropic/OpenAI)
                        local.py (RelayBackend: urllib relay to local SGLang/vLLM)
 
-templates/   configs/   docs/   examples/fakoli-dark/   plugins/   specs/
+templates/   configs/   docs/   examples/fakoli-dark/   plugins/
 ```
 
 ### Request path (one sentence per module)
@@ -180,11 +180,12 @@ Cloud credentials go in env vars only — never in config files. The front door 
 - `README.md` — product framing, quickstart, substrate commands, worked example
 - `docs/QUALITY-GATED-ROUTER.md` — full design (intent presets, tier ladder, verify-fallback, profile)
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — OpenClaw adapter plugin spec (verdict: go-with-caveats)
-- `docs/findings/` — the research evidence (planning-capability eval, integration audit,
-  harness intent routing, OpenClaw vs Hermes customization)
 - `docs/adr/` — **Architecture Decision Records** — the *why* behind significant design decisions
 - `examples/fakoli-dark/` — real two-tier instance (heavy :30000 SGLang, fast :30001 vLLM)
-- `specs/archive/` — pre-pivot design history (archived; marked historical)
+
+> **Companion repo:** internal design discussions, planning context, dated bake-off findings,
+> and the tracked PRDs live in the private companion repo `fakoli/anvil-serving-notes`
+> (relocated to keep this repo product-focused).
 
 ## Architecture Decision Records (ADRs)
 

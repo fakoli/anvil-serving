@@ -17,7 +17,7 @@ from anvil_serving.router.profile_store import ProfileEntry, ProfileStore
 
 # Repo root: tests/router/this_file -> parents[2].
 REPO_ROOT = Path(__file__).resolve().parents[2]
-EVAL_DATA = REPO_ROOT / "docs" / "findings" / "eval-data"
+EVAL_DATA = REPO_ROOT / "tests" / "fixtures" / "eval-data"
 
 # The committed planning eval normalizes to these per-tier scores (known
 # aggregates: frontier 24.75/25, fast 16.0/25, heavy 13.25/25). All three pairs

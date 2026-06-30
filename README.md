@@ -379,7 +379,7 @@ What shipped, by milestone:
   `hook-fire-log.jsonl` is a representative fixture, not a live capture.
 - **Most promotion verdicts are seed/expected.** The shipped per-work-class promotion decisions
   are hand-seeded, pending real-traffic calibration; only `planning` rests on hard eval data
-  ([`docs/findings/2026-06-28-planning-capability-eval.md`](docs/findings/2026-06-28-planning-capability-eval.md)).
+  (blind-judge scores: frontier 24.75/25, fast 16.0, heavy 13.25 — full data in the companion notes repo).
 - **The T017 traffic fixture is synthetic** — traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 

@@ -39,3 +39,6 @@ These are non-negotiable — a PR that breaks one will not pass review:
 
 Keep PRs focused: one logical change per PR, with a clear description of the *why*. If you are
 unsure whether a change fits the direction, open an issue first.
+
+> **Design history:** internal design discussions, planning PRDs, dated bake-off findings, and
+> pre-pivot spec archives live in the private companion repo `fakoli/anvil-serving-notes`.
