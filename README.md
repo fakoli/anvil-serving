@@ -109,7 +109,7 @@ flowchart LR
     POL -->|allow-with-verify| LV[local tier]
     LV --> VER{cheap structural verify}
     VER -->|pass| RET([return to harness])
-    VER -->|fail / timeout / low-confidence| ESC[escalate up tier chain]
+    VER -->|fail or error| ESC[escalate up tier chain]
     ESC --> CLOUD
     LOCAL --> RET
     CLOUD --> RET
