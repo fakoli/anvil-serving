@@ -341,6 +341,24 @@ def format_report(summary: Mapping[str, Any]) -> str:
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
+def _threshold_type(value: str) -> float:
+    """argparse ``type=`` for ``--silent-failure-threshold``.
+
+    A silent-failure RATE is a fraction, so its CI-gate threshold must be in
+    [0.0, 1.0].  A value > 1.0 would make the gate condition
+    ``rate >= threshold`` permanently false — the gate would *never* trip.
+    """
+    try:
+        v = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid float value: {value!r}")
+    if v < 0.0 or v > 1.0:
+        raise argparse.ArgumentTypeError(
+            f"--silent-failure-threshold must be in [0.0, 1.0]; got {v}"
+        )
+    return v
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m anvil_serving.router.metrics",
@@ -359,11 +377,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--silent-failure-threshold",
-        type=float,
+        type=_threshold_type,
         default=DEFAULT_SILENT_FAILURE_THRESHOLD,
         metavar="RATE",
         help="gate: fail if any work-class (or overall) silent-failure rate is "
-        f">= this (default {DEFAULT_SILENT_FAILURE_THRESHOLD} = 1%%).",
+        f">= this (default {DEFAULT_SILENT_FAILURE_THRESHOLD} = 1%%). Must be in [0.0, 1.0].",
     )
     p.add_argument(
         "--json",
@@ -380,10 +398,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     window breached the threshold; ``2`` — a usage / I/O / parse error.
     """
     args = build_arg_parser().parse_args(argv)
-
-    if args.silent_failure_threshold < 0:
-        print("error: --silent-failure-threshold must be >= 0", file=sys.stderr)
-        return 2
 
     try:
         records = load_records(Path(args.replay))
