@@ -145,12 +145,32 @@ Full design: [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md). Ope
 ## Install
 
 ```bash
-pip install -e .          # stdlib-only; no required deps
+pip install anvil-serving   # stdlib-only; no required deps
 anvil-serving --help
 ```
 
-The router front door (`anvil-serving serve`) is the build in progress (see Status below).
-The substrate commands ship today.
+> `pip install anvil-serving` works once the package is published to PyPI. Until then (or for
+> development), install from a clone: `pip install -e .`.
+
+### 30-second quickstart
+
+```bash
+# 1) install
+pip install anvil-serving            # or: pip install -e .  (from a clone)
+
+# 2) start the router front door on 127.0.0.1:8000
+anvil-serving serve --config configs/example.toml
+
+# 3a) Claude Code: point it at the router (use 127.0.0.1, never localhost)
+export ANTHROPIC_BASE_URL="http://127.0.0.1:8000"
+export ANTHROPIC_MODEL="planning"        # an intent preset, sent verbatim in the model field
+
+# 3b) or any OpenAI-compatible client: point its base URL at the router
+export OPENAI_API_BASE="http://127.0.0.1:8000/v1"
+# then use a preset token as the model id, e.g. "planning" / "quick-edit" / "chat"
+```
+
+Both the router front door (`anvil-serving serve`) and the serving substrate commands ship today.
 
 ### Pointing a harness at the router (config recipes)
 
@@ -179,6 +199,20 @@ Model (ID) = a preset token. **Codex CLI** — set `base_url` + `model = "planni
 `~/.codex/config.toml`. **Cursor / Amp / Devin are out of scope** — backend-mediated or
 backend-locked, so they can't be repointed at a self-hosted endpoint. Full recipes:
 [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md) (Appendix).
+
+---
+
+## Security & exposure
+
+The front door binds **`127.0.0.1`** by default and has **no built-in authentication**. That is
+the right default — keep it loopback-only unless you have a reason not to.
+
+If you bind it publicly (`--host 0.0.0.0`) or otherwise put it on a reachable address, **you are
+responsible for authentication and network controls** (a reverse proxy with auth, firewall rules,
+a private network). An open endpoint lets **any** caller drive routing and, via the cloud
+fallback tier, **consume your cloud credentials** — so an unauthenticated public bind is both a
+quality and a billing exposure. Cloud credentials are referenced by env-var name and redacted from
+logs; see [`SECURITY.md`](SECURITY.md) for the full threat model and how to report a vulnerability.
 
 ---
 
@@ -253,25 +287,40 @@ now lives, after the router promotion).
 
 ---
 
-## Status & roadmap
+## Status
 
-The substrate (profile / models sync / deploy / preflight / benchmark / multiplexer) ships
-today. The **router** is the active build, tracked as the `harness-router` PRD → **v0.3.0**
-([`docs/prd/anvil-serving-harness-router.prd.md`](docs/prd/anvil-serving-harness-router.prd.md),
-18 tasks). The shippable MVP is **M0–M2** on a hand-authored profile table ("useful and unique");
-**M3** ("the moat") adds the measured table + calibration + per-work-class validation:
+**v0.3.0 is shipped.** The `harness-router` PRD
+([`docs/prd/anvil-serving-harness-router.prd.md`](docs/prd/anvil-serving-harness-router.prd.md))
+is **complete — all 18 tasks built (milestones M0–M3), 378 tests green**. Both the router front
+door (`anvil-serving serve`) and the serving substrate (profile / models sync / deploy / preflight
+/ benchmark / multiplexer) ship today. See the [CHANGELOG](CHANGELOG.md) for the full release
+notes.
 
-- **M0 — front door + config:** Anthropic + OpenAI dialects, streaming, pass-through to one
-  backend, tier-topology config schema. Drop-in for Claude Code today.
-- **M1 — intent + policy (hand-seeded):** Tier-0 classifier (the floor) **and** preset parsing
-  from the `model` field, residency-aware routing policy over the multiplexer, `/v1/models`
-  preset discovery, cloud-tier credentials on the Backend seam.
-- **M2 — the wedge:** cheap inline structural verify + fallback-to-cloud (with the streaming
-  commit window), transparent responses + decision log, the typed extension seams, the
+What shipped, by milestone:
+
+- **M0 — front door + config:** Anthropic + OpenAI dialects, SSE streaming, pass-through to one
+  backend, tier-topology config schema. Drop-in for Claude Code.
+- **M1 — intent + policy:** Tier-0 classifier (the floor) **and** preset parsing from the `model`
+  field, residency-aware routing policy over the multiplexer, `/v1/models` preset discovery,
+  cloud-tier credentials on the Backend seam.
+- **M2 — the wedge:** cheap inline structural verify + verify-gated fallback-to-cloud (with the
+  streaming commit window), transparent responses + decision log, the typed extension seams, the
   `anvil-serving serve --config ...` CLI verb, and the OpenClaw reference adapter plugin.
-- **M3 — the moat:** bootstrap the quality profile from the generalized shadow-eval, async
-  opt-in calibration + serve-fingerprint staleness, validation on real routed traffic, and the
-  per-work-class promotion decision (planning/critic stay cloud-default, failover-only).
+- **M3 — the moat:** quality-profile bootstrap from the generalized shadow-eval, async opt-in
+  calibration + serve-fingerprint staleness, validation on routed traffic, and the per-work-class
+  promotion decision (planning/critic stay cloud-default, failover-only).
+
+### Known limitations
+
+- **OpenClaw live validation is manual.** Validating against a real OpenClaw install (firing
+  cadence + outbound wire `model` form) is a human step on the gateway box —
+  [`examples/openclaw/README.md`](examples/openclaw/README.md). The committed
+  `hook-fire-log.jsonl` is a representative fixture, not a live capture.
+- **Most promotion verdicts are seed/expected.** The shipped per-work-class promotion decisions
+  are hand-seeded, pending real-traffic calibration; only `planning` rests on hard eval data
+  ([`docs/findings/2026-06-28-planning-capability-eval.md`](docs/findings/2026-06-28-planning-capability-eval.md)).
+- **The T017 traffic fixture is synthetic** — traffic-metrics behavior is exercised against a
+  synthetic fixture, not yet against real routed production traffic.
 
 ### Reuse map
 
@@ -282,8 +331,8 @@ today. The **router** is the active build, tracked as the `harness-router` PRD �
 | Bring up + on-demand model swap on one GPU | `multiplexer` | exists |
 | Correctness gate | `preflight` | exists |
 | Throughput / capacity measurement | `benchmark` | exists |
-| Per-work-class quality measurement | shadow-eval harness | built (generalize) |
-| Front door + intent-resolve + route + verify + fallback | new `router` module | **the build** |
+| Per-work-class quality measurement | shadow-eval harness | built + generalized |
+| Front door + intent-resolve + route + verify + fallback | `router` module | **shipped** |
 
 ### Docs
 
