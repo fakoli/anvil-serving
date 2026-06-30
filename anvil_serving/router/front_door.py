@@ -40,9 +40,15 @@ from .backends import EchoBackend
 from .dialects import Dialect
 from .dialects.anthropic import AnthropicDialect
 from .dialects.openai import OpenAIDialect
-from .discovery import models_payload
-from .intent import PRESETS, Preset
-from .internal import Backend, DialectError, NoAvailableTierError
+from .discovery import models_payload, ROUTE_ENDPOINT
+from .intent import PRESETS, Preset, WORK_CLASS_TO_PRESET
+from .internal import (
+    Backend,
+    DialectError,
+    InternalRequest,
+    NoAvailableTierError,
+    normalize_messages,
+)
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
 _ROUTES = {
@@ -235,6 +241,88 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         except Exception:
                             pass
 
+        # --- /v1/route decision endpoint (advise-and-defer:T007) ------------
+        def _handle_route_decision(self, body: dict) -> None:
+            """Handle ``POST /v1/route`` — routing brain, no backend serving.
+
+            Accepts a ``/v1/chat/completions``-shaped body plus an optional
+            ``signals`` object ``{work_class, token_estimate, urgency}`` (T007
+            contract).  If ``signals.work_class`` is present it is mapped to
+            the corresponding preset id via :data:`WORK_CLASS_TO_PRESET` (so
+            ``"bounded-edit"`` -> ``"quick-edit"``) before being set as the
+            request ``model``; ``intent.resolve`` then classifies it as a
+            declared-preset rather than inferring from the message content.
+
+            Calls ``backend.decide(request)`` if the backend exposes that
+            method (i.e. is a :class:`~anvil_serving.router.serve.RoutingBackend`).
+            A plain echo/static backend returns 503 ("routing brain not
+            available") — intentional: the decision endpoint has no meaning
+            without a routing backend.
+
+            **Never** calls ``backend.generate()`` or any tier backend.
+            """
+            # Extract signals override (optional; must be a dict).
+            raw_signals = body.get("signals")
+            signals: dict = raw_signals if isinstance(raw_signals, dict) else {}
+
+            # Build an InternalRequest from the completions-shaped body.
+            messages = normalize_messages(body.get("messages") or [])
+            model = str(body.get("model") or "")
+            max_tokens = body.get("max_tokens")
+
+            # signals.work_class: map taxonomy key → preset id so
+            # intent.resolve() treats it as a declared-preset.
+            if signals.get("work_class"):
+                wc = str(signals["work_class"])
+                model = WORK_CLASS_TO_PRESET.get(wc, wc)
+
+            # signals.token_estimate: optional max_tokens override.
+            if signals.get("token_estimate") is not None:
+                try:
+                    max_tokens = int(signals["token_estimate"])
+                except (TypeError, ValueError):
+                    pass  # ignore non-integer; keep body's max_tokens
+
+            request = InternalRequest(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                stream=False,
+                dialect="route",
+                raw=dict(body),
+            )
+
+            # The routing brain lives on RoutingBackend.decide(); a plain
+            # static/echo backend has no decide() → this endpoint has no
+            # meaning without a routing backend.
+            decide_fn = getattr(backend, "decide", None)
+            if decide_fn is None:
+                self._error(
+                    503, "service_unavailable",
+                    "routing brain not available (server is not configured "
+                    "with a routing backend)",
+                )
+                return
+
+            try:
+                result = decide_fn(request)
+            except NoAvailableTierError as e:
+                print(
+                    f"[anvil] 503 /v1/route no available tier: {e}",
+                    file=sys.stderr,
+                )
+                self._error(
+                    503, "service_unavailable",
+                    "no quality-gated tier is available for this request",
+                )
+                return
+            except Exception as e:
+                print(f"[anvil] 500 /v1/route error: {e}", file=sys.stderr)
+                self._error(500, "internal_error", "internal error")
+                return
+
+            self._json(200, result)
+
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
             # Acquire the concurrency semaphore FIRST — before draining any body
@@ -269,6 +357,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._json(200, {
                         "status": "ok",
                         "dialects": sorted(d.name for d in _ROUTES.values()),
+                        # Advertise the decision endpoint alongside dialect routes
+                        # (ROUTE_ENDPOINT from discovery.py, T007).
+                        "routes": sorted(list(_ROUTES) + [ROUTE_ENDPOINT]),
                     })
                 elif route == "/v1/models":
                     # Preset discovery: list the configured presets (intent tokens)
@@ -337,8 +428,19 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             drainable = not has_te and not dup_cl and not cl_invalid
 
             # --- Route check (establishes dialect for dialect-aware errors) --
+            #
+            # /v1/route is the standalone routing-decision endpoint (T007).
+            # It is NOT dialect-backed — it accepts a completions-shaped body
+            # and returns a decision JSON — so it is treated separately from
+            # the SSE-streaming dialect routes.  Pre-body framing errors on
+            # this path use the generic error envelope (dialect=None); the
+            # body is parsed and dispatched AFTER the shared framing checks.
+            is_route_decision = (path == ROUTE_ENDPOINT)
+
             dialect: Optional[Dialect] = _ROUTES.get(path)
-            if dialect is None:  # unknown route — drain if body is well-framed
+            if dialect is None and not is_route_decision:
+                # Unknown route — drain body if well-framed to keep the
+                # keep-alive socket in sync, then 404.
                 self._fail_framing(404, "not_found", f"no route {path}",
                                    drainable, n)
                 return
@@ -389,6 +491,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if not isinstance(body, dict):
                 self._error(400, "invalid_request", "body must be a JSON object",
                             dialect=dialect)
+                return
+
+            # /v1/route: run the routing brain and return the decision;
+            # never parse with a dialect and never call backend.generate().
+            if is_route_decision:
+                self._handle_route_decision(body)
                 return
 
             try:

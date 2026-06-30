@@ -823,5 +823,298 @@ def test_streaming_backend_eager_exception_gives_clean_500():
     assert json.loads(raw)["error"]["type"] == "internal_error"
 
 
+# --------------------------------------------------------------------------- #
+# POST /v1/route — routing-brain decision endpoint (advise-and-defer:T007)
+# --------------------------------------------------------------------------- #
+
+from pathlib import Path as _Path
+
+_CONFIGS_DIR = _Path(__file__).resolve().parents[2] / "configs"
+_CONFIG_LOCAL_ONLY = str(_CONFIGS_DIR / "example.toml")
+_CONFIG_WITH_CLOUD = str(_CONFIGS_DIR / "example-with-cloud.toml")
+
+
+class _NeverCallBackend:
+    """Tier-backend stub: generate() raises if accidentally called.
+
+    Injected into RoutingBackend._backends for /v1/route tests to assert
+    that the decision endpoint never calls any tier backend.
+    """
+
+    def generate(self, request):
+        raise AssertionError(
+            "POST /v1/route must NOT call backend.generate() — "
+            "it is a decision endpoint, not a serve path"
+        )
+
+
+def _make_routing_backend(config_path, tier_ids, profile=None):
+    """Build a RoutingBackend with NeverCallBackend stubs for the given tier ids."""
+    from anvil_serving.router.config import load as _load
+    from anvil_serving.router.profile_store import default_profile
+    from anvil_serving.router.serve import RoutingBackend
+
+    config = _load(config_path)
+    backends = {tid: _NeverCallBackend() for tid in tier_ids}
+    return RoutingBackend(config, backends, profile or default_profile())
+
+
+@pytest.fixture
+def route_local_server():
+    """Server backed by a RoutingBackend using the local-only example config."""
+    routing = _make_routing_backend(
+        _CONFIG_LOCAL_ONLY,
+        tier_ids=["fast-local", "heavy-local"],
+    )
+    httpd = make_server("127.0.0.1", 0, routing)
+    host, port = httpd.server_address[:2]
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+    yield host, port
+    httpd.shutdown()
+    httpd.server_close()
+    t.join(timeout=5)
+
+
+@pytest.fixture
+def route_cloud_server():
+    """Server backed by a RoutingBackend using the cloud-opt-in config.
+
+    Injects a NeverCallBackend for the cloud tier so the decision endpoint
+    can select it without making any real network calls.
+    """
+    routing = _make_routing_backend(
+        _CONFIG_WITH_CLOUD,
+        tier_ids=["fast-local", "heavy-local", "cloud"],
+    )
+    httpd = make_server("127.0.0.1", 0, routing)
+    host, port = httpd.server_address[:2]
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+    yield host, port
+    httpd.shutdown()
+    httpd.server_close()
+    t.join(timeout=5)
+
+
+def _assert_route_response(result: dict) -> None:
+    """Assert all required T007 contract fields are present and well-formed."""
+    assert "tier" in result, f"missing 'tier' in {result}"
+    assert result["tier"] in ("local", "cloud"), f"invalid tier {result['tier']!r}"
+    assert "model" in result, f"missing 'model' in {result}"
+    assert isinstance(result["model"], str) and result["model"], "model must be non-empty str"
+    assert "provider" in result, f"missing 'provider' in {result}"
+    assert isinstance(result["provider"], str), "provider must be str"
+    assert "work_class" in result, f"missing 'work_class' in {result}"
+    assert "reason" in result, f"missing 'reason' in {result}"
+    assert isinstance(result["reason"], str), "reason must be str"
+    assert "confidence" in result, f"missing 'confidence' in {result}"
+    assert isinstance(result["confidence"], float), "confidence must be float"
+    assert 0.0 <= result["confidence"] <= 1.0, f"confidence out of range: {result['confidence']}"
+    assert "session_id" in result, f"missing 'session_id' in {result}"
+    assert result["session_id"].startswith("rte_"), (
+        f"session_id must start with 'rte_', got {result['session_id']!r}"
+    )
+
+
+def test_route_allow_preset_returns_local(route_local_server):
+    """POST /v1/route for 'chat' (allow preset) returns a well-formed local decision.
+
+    chat -> fast-local (allow by default profile); NeverCallBackend stubs
+    confirm generate() is never triggered.
+    """
+    host, port = route_local_server
+    status, _, raw = _post(host, port, "/v1/route", {
+        "model": "chat",
+        "messages": [{"role": "user", "content": "hello"}],
+    })
+
+    assert status == 200
+    result = json.loads(raw)
+    _assert_route_response(result)
+    assert result["tier"] == "local"
+    assert result["work_class"] == "chat"
+    assert result["confidence"] == 1.0, "declared-preset must have confidence 1.0"
+    assert "preset='chat'" in result["reason"], result["reason"]
+
+
+def test_route_allow_with_verify_returns_local(route_local_server):
+    """POST /v1/route for a review class (allow-with-verify profile override)
+    returns a local decision; generate() is never called.
+
+    Uses a custom profile that marks heavy-local as allow-with-verify for
+    review (the default marks it allow; this confirms the endpoint works for
+    the allow-with-verify tier class without any backend call).
+    """
+    from anvil_serving.router.profile_store import ProfileEntry, ProfileStore
+
+    avw_profile = ProfileStore({
+        ("heavy-local", "review"): ProfileEntry("allow-with-verify", 0.7, 10, None)
+    })
+    routing = _make_routing_backend(
+        _CONFIG_LOCAL_ONLY,
+        tier_ids=["fast-local", "heavy-local"],
+        profile=avw_profile,
+    )
+    httpd = make_server("127.0.0.1", 0, routing)
+    host, port = httpd.server_address[:2]
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+    try:
+        status, _, raw = _post(host, port, "/v1/route", {
+            "model": "review",
+            "messages": [{"role": "user", "content": "review this diff"}],
+        })
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        t.join(timeout=5)
+
+    assert status == 200
+    result = json.loads(raw)
+    _assert_route_response(result)
+    assert result["tier"] == "local"
+    # review -> heavy-local (the only candidate in example.toml for review)
+    assert result["provider"] == "heavy-local"
+    assert result["confidence"] == 1.0, "declared-preset must have confidence 1.0"
+
+
+def test_route_deny_planning_local_only_returns_503(route_local_server):
+    """POST /v1/route for 'planning' with a local-only config returns 503.
+
+    planning -> heavy-local in example.toml; heavy-local is 'deny' for
+    planning in the default profile (eval-proven-weak local class). The
+    quality gate drops it; no tiers remain; NoAvailableTierError → 503.
+    """
+    host, port = route_local_server
+    status, _, raw = _post(host, port, "/v1/route", {
+        "model": "planning",
+        "messages": [{"role": "user", "content": "plan this project"}],
+    })
+
+    assert status == 503
+    body = json.loads(raw)
+    assert body["error"]["type"] == "service_unavailable"
+    # Internal tier names must NOT leak to the client.
+    body_text = raw.decode("utf-8")
+    assert "heavy-local" not in body_text
+    assert "fast-local" not in body_text
+
+
+def test_route_metered_cloud_class_returns_cloud(route_cloud_server):
+    """POST /v1/route for 'planning' with the cloud-opt-in config returns tier:'cloud'.
+
+    example-with-cloud.toml maps planning to ["cloud"] with metered_cloud
+    = ["planning"]; the default profile allows cloud for planning; the
+    cloud tier's NeverCallBackend stub confirms generate() is never called.
+    """
+    host, port = route_cloud_server
+    status, _, raw = _post(host, port, "/v1/route", {
+        "model": "planning",
+        "messages": [{"role": "user", "content": "plan this feature"}],
+    })
+
+    assert status == 200
+    result = json.loads(raw)
+    _assert_route_response(result)
+    assert result["tier"] == "cloud"
+    assert result["provider"] == "cloud"
+    assert result["work_class"] == "planning"
+    assert result["confidence"] == 1.0, "declared-preset must have confidence 1.0"
+
+
+def test_route_signals_work_class_override(route_cloud_server):
+    """POST /v1/route with signals.work_class overrides the model field.
+
+    Passing signals={"work_class":"planning"} with an empty model should
+    route identically to model="planning" (WORK_CLASS_TO_PRESET maps
+    "planning" -> "planning" preset).
+    """
+    host, port = route_cloud_server
+    # Body has no model but signals.work_class = "planning"
+    status, _, raw = _post(host, port, "/v1/route", {
+        "messages": [{"role": "user", "content": "plan this"}],
+        "signals": {"work_class": "planning"},
+    })
+
+    assert status == 200
+    result = json.loads(raw)
+    _assert_route_response(result)
+    assert result["tier"] == "cloud"
+    assert result["work_class"] == "planning"
+
+
+def test_route_never_calls_generate():
+    """POST /v1/route must never invoke backend.generate().
+
+    Uses a routing backend whose tier-stubs raise AssertionError on
+    generate().  If the endpoint accidentally calls the serve path, the
+    test thread will catch the error as a 500; it must be 200 instead.
+    """
+    routing = _make_routing_backend(
+        _CONFIG_LOCAL_ONLY,
+        tier_ids=["fast-local", "heavy-local"],
+    )
+    with running_server(routing) as (host, port):
+        # Use the chat preset (allowed for local tier) — would stream if
+        # the endpoint accidentally called generate().
+        status, _, raw = _post(host, port, "/v1/route", {
+            "model": "chat",
+            "messages": [{"role": "user", "content": "hi"}],
+        })
+
+    assert status == 200, f"expected 200, got {status}: {raw.decode()}"
+    # The response must be a valid decision, not a 500 from generate().
+    _assert_route_response(json.loads(raw))
+
+
+def test_route_malformed_body_400(route_local_server):
+    """POST /v1/route with a non-JSON body returns 400."""
+    host, port = route_local_server
+    conn = http.client.HTTPConnection(host, port, timeout=10)
+    try:
+        conn.request("POST", "/v1/route", b"{not json}",
+                     {"Content-Type": "application/json"})
+        resp = conn.getresponse()
+        status = resp.status
+        raw = resp.read()
+    finally:
+        conn.close()
+
+    assert status == 400
+    assert json.loads(raw)["error"]["type"] == "invalid_request"
+
+
+def test_route_no_routing_backend_503():
+    """POST /v1/route with a plain StaticBackend (no .decide) returns 503.
+
+    A static/echo backend has no routing brain; the endpoint must return
+    503 'routing brain not available', not 500 or a traceback.
+    """
+    with running_server(StaticBackend(["hello"])) as (host, port):
+        status, _, raw = _post(host, port, "/v1/route", {
+            "model": "chat",
+            "messages": [{"role": "user", "content": "hi"}],
+        })
+
+    assert status == 503
+    body = json.loads(raw)
+    assert body["error"]["type"] == "service_unavailable"
+
+
+def test_route_session_ids_are_unique(route_local_server):
+    """POST /v1/route session_ids must differ across requests."""
+    host, port = route_local_server
+    ids = set()
+    for _ in range(5):
+        status, _, raw = _post(host, port, "/v1/route", {
+            "model": "chat",
+            "messages": [{"role": "user", "content": "hi"}],
+        })
+        assert status == 200
+        ids.add(json.loads(raw)["session_id"])
+    assert len(ids) == 5, f"session_ids are not unique: {ids}"
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

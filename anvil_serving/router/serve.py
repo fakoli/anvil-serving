@@ -340,6 +340,97 @@ class RoutingBackend:
         # discarded and only the winning tier's text is in result.text.
         return iter([result.text])
 
+    def decide(self, request: InternalRequest) -> dict:
+        """Run the routing brain for *request* without serving (T007).
+
+        Called by ``POST /v1/route``.  Runs the same ``intent.resolve`` +
+        ``policy.route`` as :meth:`generate` but **never calls any tier
+        backend** — it is the decision endpoint, not the serve path.
+
+        Returns a dict with the T007 contract fields::
+
+            {
+                "tier":       "local" | "cloud",
+                "model":      "<tier.model or tier.id>",
+                "provider":   "<tier id>",
+                "work_class": "<resolved work class or ''>",
+                "reason":     "<source + quality-gate note>",
+                "confidence": <float>,
+                "session_id": "rte_<hex>",
+            }
+
+        Confidence derivation (deterministic, documented for the T007 wire
+        contract):
+
+        * 1.0 — ``declared-preset``: caller named a known routing token.
+        * 0.9 — ``pinned``: caller named a concrete tier id.
+        * 0.8 — ``inferred``, classifier confident.
+        * 0.5 — ``inferred``, ambiguous (collapsed to the safer tier).
+
+        Raises :class:`~anvil_serving.router.internal.NoAvailableTierError`
+        when every quality-gated candidate is unbound — same semantics as
+        :meth:`generate`; the front door renders a clean 503.
+        """
+        from .dialects import _new_id
+
+        intent = resolve(request, self._config)
+        decision = route(intent, self._config, self._profile)
+
+        # Narrow to tiers that are both gated (allow / allow-with-verify) AND
+        # have a live backend — mirrors generate()'s bound-tier logic exactly
+        # so decide() is faithful to what the serve path would actually pick.
+        bound_tiers = tuple(tid for tid in decision.tiers if tid in self._backends)
+        if not bound_tiers:
+            print(
+                f"[anvil-serving] /v1/route: no bound tier for work_class="
+                f"{decision.work_class!r}: gated candidates {list(decision.tiers)} "
+                f"are unbound",
+                file=sys.stderr,
+                flush=True,
+            )
+            raise NoAvailableTierError(decision.work_class, decision.tiers)
+
+        top_tier_id = bound_tiers[0]
+        top_tier = self._config.tier(top_tier_id)
+
+        # Confidence: deterministic scheme (see docstring).
+        source = intent.source
+        if source == "declared-preset":
+            confidence: float = 1.0
+        elif source == "pinned":
+            confidence = 0.9
+        elif not intent.ambiguous:
+            confidence = 0.8
+        else:
+            confidence = 0.5
+
+        # Reason: source label + quality-gate note from policy + denied tiers.
+        notes = decision.notes
+        quality_gate = str(notes.get("quality_gate", ""))
+        denied = list(notes.get("dropped_by_deny", ()))
+        if source == "declared-preset":
+            src_label = f"preset={intent.preset!r}"
+        elif source == "pinned":
+            src_label = "pinned"
+        else:  # inferred
+            src_label = "inferred"
+            if intent.ambiguous:
+                src_label += " (ambiguous→safer tier)"
+        reason_parts = [f"{src_label}; quality gate: {quality_gate}"]
+        if denied:
+            reason_parts.append(f"denied: {denied}")
+        reason = "; ".join(reason_parts)
+
+        return {
+            "tier": top_tier.privacy,            # "local" | "cloud"
+            "model": top_tier.model or top_tier_id,
+            "provider": top_tier_id,
+            "work_class": decision.work_class or "",
+            "reason": reason,
+            "confidence": confidence,
+            "session_id": _new_id("rte_"),
+        }
+
 
 # --------------------------------------------------------------------------- #
 # Server assembly + run
