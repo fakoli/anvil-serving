@@ -62,7 +62,7 @@ richer multi-axis intent does not belong in the string.
 
 ## 4. Architecture
 
-![anvil-serving routing pipeline — resolve → route → verify → fallback, across fast-local / heavy-local / cloud tiers](../assets/architecture.png)
+![anvil-serving routing pipeline — resolve → route → verify → fallback, across fast-local / heavy-local / cloud tiers](assets/architecture.png)
 
 ```
           ┌──────────────────── anvil-serving router ───────────────────┐
@@ -162,7 +162,7 @@ field), **503** (no tier survives the quality + metered-cloud gate).
 
 ## 5. The quality profile (the moat)
 
-![The quality gate — work proven on a tier stays local ($0 metered); unproven work is deferred to the harness's own opt-in cloud subscription; measured per (model, work-class)](../assets/explainer-quality-gate.png)
+![The quality gate — work proven on a tier stays local ($0 metered); unproven work is deferred to the harness's own opt-in cloud subscription; measured per (model, work-class)](assets/explainer-quality-gate.png)
 
 A table keyed `(model, work-class)` → `{quality_score, sample_n, last_measured, decision}` where
 `decision ∈ {allow, allow-with-verify, deny}`. Populated by:

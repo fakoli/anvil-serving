@@ -16,3 +16,6 @@ model-library/_seen.json
 /profile.json
 # stale pre-pivot internal resume note — not shipped publicly (removed from the repo)
 HANDOFF.md
+
+# MkDocs build output
+site/

@@ -1,0 +1,68 @@
+site_name: anvil-serving
+site_description: >-
+  The quality-gated local-model router for coding harnesses.
+  Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.
+site_url: https://fakoli.github.io/anvil-serving/
+repo_url: https://github.com/fakoli/anvil-serving
+repo_name: fakoli/anvil-serving
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - How it works: QUALITY-GATED-ROUTER.md
+  - Quickstart:
+      - Model settings: MODEL-SETTINGS-EXAMPLE.md
+      - Serves & eval: SERVES-AND-EVAL.md
+  - Cost model:
+      - advise-and-defer plan: PLAN-advise-and-defer.md
+  - OpenClaw integration:
+      - Integration spec: OPENCLAW-INTEGRATION-SPEC.md
+      - Live validation: OPENCLAW-LIVE-VALIDATION.md
+  - ADRs:
+      - Overview: adr/README.md
+      - 'ADR-0001: Cloud cost & subscription auth': adr/0001-cloud-cost-and-subscription-auth.md
+      - Template: adr/template.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.snippets:
+      base_path: ['.']
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.inlinehilite
