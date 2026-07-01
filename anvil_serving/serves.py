@@ -248,8 +248,11 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
                   "permission?)" % s["container"])
             rc = 1
             continue
-        if st in ("restarting", "removing", "dead", "unknown"):
-            # exotic / transitional state -> don't fresh-create (collision/destroy risk)
+        if st in ("restarting", "removing", "dead", "unknown") and not (recreate and st == "dead"):
+            # exotic / transitional state -> don't fresh-create (collision/destroy risk).
+            # Exception: an explicit `--recreate` may rescue a `dead` container — it's a
+            # terminal (not running) state, so a `docker rm -f` + fresh `up` is safe. The
+            # other states stay hands-off even under --recreate.
             print("  %s: in state %r — not auto-started; resolve manually" % (s["container"], st))
             rc = 1
             continue
@@ -265,8 +268,15 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
                       "cannot recreate; resolve manually" % s["container"])
                 rc = 1
                 continue
-            steps = [["docker", "rm", "-f", s["container"]], up]
-            desc = "recreate %s: docker rm -f + %s" % (s["container"], " ".join(up))
+            if st == "absent":
+                # Nothing to remove — a `docker rm -f` of a nonexistent container errors
+                # (exit 1) and would abort the fresh `up`. So `--recreate` also bootstraps
+                # a serve that isn't there yet: just run `up`.
+                steps = [up]
+                desc = "up %s (--recreate, none present): %s" % (s["name"], " ".join(up))
+            else:
+                steps = [["docker", "rm", "-f", s["container"]], up]
+                desc = "recreate %s: docker rm -f + %s" % (s["container"], " ".join(up))
         elif st == "absent":
             if not up:
                 print("  %s: absent and no `up` command in manifest — start it "
@@ -329,8 +339,7 @@ def main(argv=None):
                    help="for `up`: print what would run without starting any container.")
     p.add_argument("--recreate", action="store_true",
                    help="for `up`: force `docker rm -f` + a fresh `up` for an existing "
-                        "container instead of `docker start` (also happens automatically "
-                        "when the container has drifted from the manifest's declared model).")
+                        "container instead of `docker start`.")
     a = p.parse_args(argv)
 
     try:

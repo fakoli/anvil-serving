@@ -336,3 +336,25 @@ def test_cmd_up_recreate_without_up_command_fails():
     run = _inspect_returning("exited")
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 1
     assert not any(c[:2] == ["docker", "start"] for c in run.calls)
+
+
+def test_cmd_up_recreate_on_absent_bootstraps_up_without_failing_rm():
+    # `up --recreate` on a container that isn't there yet must NOT `docker rm -f` a
+    # nonexistent container (that errors -> aborts) — it should just run the fresh `up`.
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local", "up": ["docker", "compose", "up", "-d"]}]
+    run = _inspect_returning("absent")
+    assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
+    assert ["docker", "compose", "up", "-d"] in run.calls          # the `up` ran
+    assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)  # no doomed rm -f
+
+
+def test_cmd_up_recreate_rescues_dead_container():
+    # a `dead` container is terminal (not running), so an explicit --recreate may
+    # rm -f + re-up it — unlike the hands-off default (test_cmd_up_dead_is_not_auto_created).
+    serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
+             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+    run = _inspect_returning("dead")
+    assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
+    assert ["docker", "rm", "-f", "vllm-gptoss"] in run.calls
+    assert ["bash", "serve-fast.sh"] in run.calls
