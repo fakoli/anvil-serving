@@ -6,8 +6,15 @@
 # scripts had (a stopped container silently kept serving a stale model) and drops the MSYS
 # path-mangling / quoting traps of hand-built `docker run --model /model` one-liners.
 #
-#   heavy -> service `sglang`  (Qwen3.5-35B-A3B AWQ, SGLang, :30000, RTX PRO 6000 96GB / GPU 1)
-#   fast  -> service `fast`    (gpt-oss-20b, vLLM, :30001, RTX 5090 / GPU 0)
+#   heavy  -> service `sglang`  (Qwen3.5-35B-A3B AWQ, SGLang, :30000, RTX PRO 6000 96GB / GPU 1)
+#   fast   -> service `fast`    (gpt-oss-20b, vLLM, :30001, RTX 5090 / GPU 0)
+#   router -> service `router`  (anvil-serving front door, :8000 — see docs/adr/0004)
+#
+# `router` is the only service published beyond loopback (ADR-0004 — router as a
+# service): it is the single authenticated, network-facing endpoint. `sglang` and
+# `fast` stay loopback-only (see their `ports:` below) and are reached by the router
+# over the default Compose network by SERVICE NAME (http://sglang:30000/v1,
+# http://fast:30001/v1 — see configs/example-docker.toml), never published themselves.
 #
 # heavy: Qwen3.5-35B-A3B AWQ 4-bit (copied from the WSL HF cache into a plain Windows dir).
 # Why AWQ-35B and not Qwen3-Coder-Next-FP8: the FP8 80B (~75GB) hung post-load on this build
@@ -121,3 +128,35 @@ services:
       --enable-auto-tool-choice
       --tool-call-parser openai
       --host 0.0.0.0 --port 30001
+
+  # Router: the single network-facing, token-authed endpoint (ADR-0004 — router as a
+  # service). Reaches `sglang`/`fast` by service name on the default Compose network;
+  # they are NOT published beyond loopback (see their `ports:` above). Only this
+  # service is published, and only to ${ROUTER_PUBLISH:-127.0.0.1} — never 0.0.0.0 —
+  # keeping the CLAUDE.md gotcha #1 / SECURITY.md loopback-only invariant on the host
+  # side while the in-container bind (Dockerfile ENTRYPOINT) is 0.0.0.0 by design.
+  router:
+    build:
+      context: ../..            # repo root (the Dockerfile lives at the repo root)
+      dockerfile: Dockerfile
+    container_name: anvil-router
+    restart: unless-stopped
+    depends_on:
+      - sglang
+      - fast
+    ports:
+      # Publish ONLY the router, and only to loopback by default. Override
+      # ROUTER_PUBLISH (e.g. to a Tailscale IP) to expose it beyond this host — the
+      # token check (ANVIL_ROUTER_TOKEN, ADR-0004) is the auth boundary at that point.
+      - "${ROUTER_PUBLISH:-127.0.0.1}:8000:8000"
+    environment:
+      # The router's own bearer/x-api-key token (ADR-0004); referenced by NAME via
+      # configs/example-docker.toml's [server].auth_env, never stored in the config.
+      # Set it in your shell/`.env` before `docker compose up` -- unset means auth is
+      # OFF (RouterConfig's [server].auth_env is unset -> back-compat, front door
+      # accepts unauthenticated requests, same as today's loopback default).
+      ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
+    volumes:
+      # Bind-mount the router config (tiers reach the serves by service name; see
+      # configs/example-docker.toml). REPLACE with your own config path if you fork this.
+      - "${ANVIL_ROUTER_CONFIG:-../../configs/example-docker.toml}:/etc/anvil/config.toml:ro"
