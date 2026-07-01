@@ -57,6 +57,44 @@ def _write_toml(tmp_path: pathlib.Path, body: str) -> str:
     return str(p)
 
 
+# ── genericity:R001 — a tier needs `model` or the preset token 404s upstream ──
+def test_example_local_tiers_model_field():
+    """Shipped configs set the `model` field on every local tier, so the router forwards
+    the served-model-name upstream (not the routing token) and does not 404 out of the box."""
+    for cfg_path in (EXAMPLE, EXAMPLE_WITH_CLOUD):
+        cfg = load(str(cfg_path))
+        for t in cfg.tiers:
+            if t.privacy == "local":
+                assert t.model, f"{cfg_path.name}: local tier {t.id!r} is missing model="
+
+
+def test_cloud_tier_has_model():
+    """The opt-in cloud tier also sets `model` (else the preset token 400/404s upstream)."""
+    cfg = load(str(EXAMPLE_WITH_CLOUD))
+    cloud = [t for t in cfg.tiers if t.privacy == "cloud"]
+    assert cloud, "example-with-cloud.toml should declare a cloud tier"
+    for t in cloud:
+        assert t.model, f"cloud tier {t.id!r} is missing model="
+
+
+def test_missing_model_warning(tmp_path, capsys):
+    """A local tier without `model=` still loads (non-fatal) but warns, naming the tier."""
+    cfg_path = _write_toml(tmp_path, _BASE_TIER)  # fast-local, no model=
+    load(cfg_path)
+    err = capsys.readouterr().err
+    assert "fast-local" in err
+    assert "model" in err.lower()
+
+
+def test_local_tier_with_model_does_not_warn(tmp_path, capsys):
+    """Setting `model=` on a local tier silences the R001 warning."""
+    body = _BASE_TIER + 'model         = "gpt-oss-20b"\n'
+    cfg_path = _write_toml(tmp_path, body)
+    load(cfg_path)
+    err = capsys.readouterr().err
+    assert "fast-local" not in err
+
+
 # ── AC1 ──────────────────────────────────────────────────────────────────────
 def test_example_loads_expected_tiers():
     """example.toml is local-only (ADR-0001 / T001): only local tiers present."""
