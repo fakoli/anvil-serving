@@ -8,6 +8,10 @@ real network.
     transport timeout (cloud tiers keep the 120s default).
   * T003 — a tier's extra_body is merged verbatim into the upstream request
     body (both dialects); absent extra_body is a no-op (no regression).
+  * T002 — a local tier with model=None auto-derives its served model id from
+    GET {base_url}/v1/models at backend-build time; explicit model= always
+    wins; a malformed (0/>1 candidate) catalog is a ConfigError; a network
+    failure is non-fatal (model stays None).
 """
 from __future__ import annotations
 
@@ -16,7 +20,8 @@ from typing import Dict
 
 import pytest
 
-from anvil_serving.router.config import RouterConfig, Tier
+from anvil_serving.router.backends.cloud import discover_single_model
+from anvil_serving.router.config import ConfigError, RouterConfig, Tier
 from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.serve import build_backend_for_tier, build_backends
 
@@ -163,3 +168,120 @@ def test_extra_body_can_override_a_router_set_key_when_operator_configures_it():
     relay = build_backend_for_tier(tier, env={}, transport=fake)
     list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
     assert captured["body"]["stream"] is True
+
+
+# --------------------------------------------------------------------------- #
+# T002 — GET /v1/models auto-derive for a local tier with model=None
+# --------------------------------------------------------------------------- #
+def _models_fake(model_ids):
+    """A fake GET transport(url, *, headers, timeout) advertising `model_ids`."""
+    captured: Dict[str, object] = {}
+
+    def fake(url, *, headers, timeout):
+        captured["url"] = url
+        captured["timeout"] = timeout
+        return json.dumps({"data": [{"id": m} for m in model_ids]}).encode("utf-8")
+
+    return fake, captured
+
+
+def test_auto_derive_model_single_candidate_forwards_that_id():
+    """model=None + a stub upstream advertising exactly one model -> the backend
+    forwards THAT id (not the preset routing token) in the upstream body."""
+    discovery_fake, discovery_captured = _models_fake(["qwen3-32b-awq"])
+    post_fake, post_captured = _post_fake(
+        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
+    )
+
+    tier = _local_tier(model=None)
+    relay = build_backend_for_tier(
+        tier, env={}, transport=post_fake, model_discovery_transport=discovery_fake
+    )
+    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
+
+    assert discovery_captured["url"] == "http://127.0.0.1:30001/v1/models"
+    assert post_captured["body"]["model"] == "qwen3-32b-awq"  # NOT "chat"
+
+
+def test_auto_derive_model_zero_candidates_raises_config_error():
+    discovery_fake, _ = _models_fake([])
+    with pytest.raises(ConfigError):
+        build_backend_for_tier(
+            _local_tier(model=None), env={}, model_discovery_transport=discovery_fake
+        )
+
+
+def test_auto_derive_model_multiple_candidates_raises_config_error():
+    discovery_fake, _ = _models_fake(["model-a", "model-b"])
+    with pytest.raises(ConfigError) as excinfo:
+        build_backend_for_tier(
+            _local_tier(model=None), env={}, model_discovery_transport=discovery_fake
+        )
+    assert "fast-local" in str(excinfo.value)
+
+
+def test_auto_derive_model_explicit_model_skips_the_probe():
+    """An explicit model= always wins: the discovery transport is never called."""
+    def _boom(url, *, headers, timeout):
+        raise AssertionError("discovery transport must not be called when model= is set")
+
+    post_fake, post_captured = _post_fake(
+        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
+    )
+    relay = build_backend_for_tier(
+        _local_tier(model="served-model"),  # already set
+        env={}, transport=post_fake, model_discovery_transport=_boom,
+    )
+    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
+    assert post_captured["body"]["model"] == "served-model"
+
+
+def test_auto_derive_model_network_error_is_non_fatal_leaves_model_none():
+    """A network failure during discovery must NOT crash backend construction —
+    model stays unresolved and the existing request.model fallback applies."""
+    def _network_error(url, *, headers, timeout):
+        raise OSError("connection refused")
+
+    post_fake, post_captured = _post_fake(
+        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
+    )
+    relay = build_backend_for_tier(
+        _local_tier(model=None), env={}, transport=post_fake,
+        model_discovery_transport=_network_error,
+    )
+    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
+    # request.model ("chat") is forwarded, unchanged from today's behaviour.
+    assert post_captured["body"]["model"] == "chat"
+
+
+def test_auto_derive_model_malformed_response_is_non_fatal():
+    """A reachable-but-garbage response (not valid JSON) is treated the same as
+    a network error -- non-fatal, model stays unresolved."""
+    def _garbage(url, *, headers, timeout):
+        return b"not json"
+
+    relay = build_backend_for_tier(
+        _local_tier(model=None), env={}, model_discovery_transport=_garbage,
+    )
+    assert relay._tier.model is None
+
+
+def test_discover_single_model_cloud_tier_is_a_no_op():
+    """discover_single_model() never probes a cloud tier, even if model=None."""
+    def _boom(url, *, headers, timeout):
+        raise AssertionError("must not probe a cloud tier")
+
+    tier = _cloud_tier(model=None)
+    out = discover_single_model(tier, transport=_boom)
+    assert out is tier
+
+
+def test_discover_single_model_pure_function_returns_new_tier():
+    """discover_single_model() is a pure function: the input Tier is untouched
+    (frozen dataclass) and a NEW Tier with model set is returned."""
+    fake, _ = _models_fake(["only-model"])
+    tier = _local_tier(model=None)
+    out = discover_single_model(tier, transport=fake)
+    assert tier.model is None  # original untouched
+    assert out.model == "only-model"
+    assert out.id == tier.id  # every other field carried over

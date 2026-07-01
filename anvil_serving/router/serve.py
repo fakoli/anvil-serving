@@ -62,7 +62,7 @@ from typing import Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 # constructs it, and to keep the ``anvil_serving.router.serve.RelayBackend``
 # import path stable for existing callers.
 from .backends import CloudBackend, MissingCredentialError, RelayBackend
-from .backends.cloud import Transport
+from .backends.cloud import DiscoveryTransport, Transport, discover_single_model
 from .config import ConfigError, PRIVACY_CLOUD, PRIVACY_LOCAL, RouterConfig, Tier, load
 from .decision_log import DecisionLog
 from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
@@ -126,6 +126,7 @@ def build_backend_for_tier(
     env: Optional[Mapping[str, str]] = None,
     transport: Optional[Transport] = None,
     timeout: float = 120.0,
+    model_discovery_transport: Optional[DiscoveryTransport] = None,
 ) -> Backend:
     """Build the :class:`~anvil_serving.router.internal.Backend` for one tier.
 
@@ -133,7 +134,16 @@ def build_backend_for_tier(
       construction; raises :class:`MissingCredentialError` if unset).
     * otherwise (``local``) -> :class:`RelayBackend` (urllib relay to ``base_url``;
       auth optional).
+
+    **genericity:T002** — a ``local`` tier with no explicit ``model=`` is first
+    run through :func:`~anvil_serving.router.backends.cloud.discover_single_model`,
+    which probes ``GET {base_url}/v1/models`` and adopts the single advertised
+    id (raising :class:`ConfigError` on an ambiguous 0/>1 catalog; a network
+    failure is non-fatal and leaves ``model`` unset). A tier that already sets
+    ``model=`` skips the probe entirely — explicit config always wins.
     """
+    if tier.privacy == PRIVACY_LOCAL and tier.model is None:
+        tier = discover_single_model(tier, transport=model_discovery_transport)
     if tier.privacy == PRIVACY_CLOUD:
         return CloudBackend(tier, env=env, transport=transport, timeout=timeout)
     return RelayBackend(tier, env=env, transport=transport, timeout=timeout)
@@ -144,6 +154,7 @@ def build_backends(
     *,
     env: Optional[Mapping[str, str]] = None,
     transport: Optional[Transport] = None,
+    model_discovery_transport: Optional[DiscoveryTransport] = None,
 ) -> Tuple[Dict[str, Backend], List[Tuple[str, str]]]:
     """Build one backend per configured tier.
 
@@ -157,6 +168,10 @@ def build_backends(
     hung/cold local serve fails fast to the next tier) instead of the 120s
     cloud-tuned default that :func:`build_backend_for_tier` otherwise applies. A
     cloud tier is unaffected — it keeps the 120s default.
+
+    ``model_discovery_transport`` is an injectable seam for the T002
+    ``GET /v1/models`` auto-derive probe (hermetic tests only; production uses
+    the real ``urllib`` GET).
     """
     backends: Dict[str, Backend] = {}
     skipped: List[Tuple[str, str]] = []
@@ -166,7 +181,8 @@ def build_backends(
             if tier.privacy != PRIVACY_CLOUD:
                 kwargs["timeout"] = config.relay_timeout
             backends[tier.id] = build_backend_for_tier(
-                tier, env=env, transport=transport, **kwargs
+                tier, env=env, transport=transport,
+                model_discovery_transport=model_discovery_transport, **kwargs
             )
         except MissingCredentialError as e:
             # Cloud tier with no key: don't crash the whole server — bind the
