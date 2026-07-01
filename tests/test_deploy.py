@@ -165,3 +165,70 @@ def test_deploy_cli_no_manifest_skips_emission(tmp_path, monkeypatch):
     deploy.main(["--model", "/w/model", "--out", str(out_path),
                 "--manifest-out", str(manifest_path), "--no-manifest"])
     assert not manifest_path.exists()
+
+
+# ---- vLLM engine branch (genericity:T010) ---------------------------------------
+
+def test_deploy_engine_vllm_renders_ipc_host_and_v2_runner_off():
+    out = deploy.render("/w/model", gpu=0, engine="vllm", served_name="gpt-oss-20b",
+                        port=30001, _run=_run_missing)
+    assert "ipc: host" in out
+    assert 'VLLM_USE_V2_MODEL_RUNNER: "0"' in out
+    assert "vllm-gpt-oss-20b" in out  # container name derived from served-name
+
+
+def test_deploy_engine_vllm_argv_matches_multiplexer_build_cmd():
+    out = deploy.render("/w/model", gpu=0, engine="vllm", served_name="gpt-oss-20b",
+                        port=30001, gpu_mem_util=0.9, context=65536, _run=_run_missing)
+    entry = {"name": "gpt-oss-20b", "model_path": "/models/local", "port": 30001,
+             "engine": "vllm",
+             "args": ["--gpu-memory-utilization", "0.9", "--max-model-len", "65536",
+                      "--reasoning-parser", "qwen3", "--enable-auto-tool-choice",
+                      "--tool-call-parser", "qwen3_coder"]}
+    from anvil_serving import multiplexer
+    argv = multiplexer.build_cmd(entry)
+    for tok in argv[1:]:
+        assert tok in out or tok.replace('"', "'") in out or ("'" + tok + "'") in out or tok in out
+
+
+def test_deploy_engine_vllm_gpu_pinning_env_matches_sglang_pattern():
+    out = deploy.render("/w/model", gpu=1, engine="vllm", served_name="m", port=30001, _run=_run_ok)
+    assert "CUDA_DEVICE_ORDER: PCI_BUS_ID" in out
+    assert "CUDA_VISIBLE_DEVICES: GPU-d0f446cf-1771-414c-e116-a39138798a8c" in out
+
+
+def test_deploy_engine_sglang_default_unchanged():
+    out_default = deploy.render("/w/model", gpu=0, _run=_run_missing)
+    out_explicit = deploy.render("/w/model", gpu=0, engine="sglang", _run=_run_missing)
+    assert out_default == out_explicit
+    assert "sglang.launch_server" in out_default
+    assert "container_name: sglang" in out_default
+
+
+def test_deploy_infer_engine_defaults_sglang_when_no_config(tmp_path):
+    assert deploy._infer_engine(str(tmp_path)) == "sglang"
+
+
+def test_deploy_infer_engine_nvfp4_prefers_vllm(tmp_path):
+    (tmp_path / "config.json").write_text(
+        '{"quantization_config": {"quant_method": "modelopt", "format": "nvfp4"}}',
+        encoding="utf-8")
+    assert deploy._infer_engine(str(tmp_path)) == "vllm"
+
+
+def test_deploy_infer_engine_awq_stays_sglang(tmp_path):
+    (tmp_path / "config.json").write_text(
+        '{"quantization_config": {"quant_method": "awq"}}', encoding="utf-8")
+    assert deploy._infer_engine(str(tmp_path)) == "sglang"
+
+
+def test_deploy_cli_engine_vllm_end_to_end(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    manifest_path = tmp_path / "serves.toml"
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main(["--model", "/w/model", "--out", str(out_path), "--engine", "vllm",
+                "--served-name", "gpt-oss-20b", "--port", "30001",
+                "--manifest-out", str(manifest_path)])
+    parsed = deploy._serves.load_manifest(str(manifest_path))
+    assert parsed[0]["container"] == "vllm-gpt-oss-20b"
+    assert parsed[0]["up"][-1] == "vllm"  # `up -d vllm` (the compose SERVICE key)
