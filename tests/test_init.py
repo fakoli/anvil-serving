@@ -104,7 +104,7 @@ def test_init_router_toml_loads_without_missing_model_warning(tmp_path, capsys):
     result = init.run(model="/w/model", gpu="0", out_dir=str(out_dir), served_name="local",
                       _run=_run_missing)
     capsys.readouterr()  # drain init's own nvidia-smi warning
-    cfg = router_config.load(result["router"])
+    router_config.load(result["router"])
     err = capsys.readouterr().err
     assert "WARNING" not in err  # no T001 missing-`model` warning on load
 
