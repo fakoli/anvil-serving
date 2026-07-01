@@ -37,6 +37,7 @@ services:
       # SECURITY.md). The router (which does the auth/routing) is what fronts these.
       - "127.0.0.1:30000:30000"
     volumes:
+      # REPLACE: your local model directory (env override: ANVIL_MODELS_DIR; default is a machine-specific Windows path).
       - "${ANVIL_MODELS_DIR:-C:/Users/sdoum/models}/qwen35-awq:/models/qwen35-awq"
     environment:
       # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (CLAUDE.md
@@ -44,6 +45,7 @@ services:
       # + PCI_BUS_ID ordering — so the heavy tier can never land on the 5090 and collide
       # with the fast tier on cuda:0 (OOM). Belt-and-suspenders with device_ids below.
       CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # REPLACE: your GPU's UUID — find it with `nvidia-smi -L` (env override: HEAVY_GPU_UUID).
       CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
     deploy:
       resources:
@@ -67,6 +69,9 @@ services:
       --enable-metrics
       --served-model-name qwen35-awq-local
       --host 0.0.0.0 --port 30000
+    # REPLACE (or keep in sync): --served-model-name above must match configs/example.toml
+    # ([[router.tiers]] heavy-local .model), examples/fakoli-dark/serves.toml, and
+    # docker-compose.heavy.yml — the router 404s if the wire model doesn't match.
 
   # Fast tier: gpt-oss-20b on vLLM (RTX 5090 / GPU 0, :30001).
   # Converted from the old serve-fast-gptoss-vllm.sh `docker run` one-liner so the fast serve
@@ -81,6 +86,7 @@ services:
       # (127.0.0.1-only repo, CLAUDE.md gotcha #1 / SECURITY.md).
       - "127.0.0.1:30001:30001"
     volumes:
+      # REPLACE: your local model directory (env override: ANVIL_MODELS_DIR; default is a machine-specific Windows path).
       - "${ANVIL_MODELS_DIR:-C:/Users/sdoum/models}/gpt-oss-20b:/models/gpt-oss-20b:ro"
     environment:
       # Force PCI-bus ordering so the pinned card is selected regardless of enumeration order
@@ -90,6 +96,7 @@ services:
       # so pin the card the proven way too — CUDA_VISIBLE_DEVICES=<UUID> — so the fast tier
       # can never collide with the heavy tier on cuda:0 (OOM). Belt-and-suspenders with the
       # device_ids reservation below.
+      # REPLACE: your GPU's UUID — find it with `nvidia-smi -L` (env override: FAST_GPU_UUID).
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       # Mandatory on this WSL2/Docker box: WSL2 exposes no UVA, so vLLM's v2 model runner's
       # UvaBuffer dies with "RuntimeError: UVA is not available" at engine init (gotcha #14).
@@ -102,6 +109,7 @@ services:
             # card. If a future Docker Desktop build ignores device_ids isolation on WSL2, fall
             # back to `count: all` + environment CUDA_VISIBLE_DEVICES=<this UUID> (the mechanism
             # the old serve-fast-*.sh scripts used).
+            # REPLACE: your GPU's UUID — find it with `nvidia-smi -L`.
             - driver: nvidia
               device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]

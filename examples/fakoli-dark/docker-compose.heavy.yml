@@ -1,22 +1,34 @@
+# REFERENCE / SUPERSEDED — `anvil-serving serves up heavy` NO LONGER runs this file.
+# examples/fakoli-dark/docker-compose.yml (service `sglang`) is the current source of truth
+# for the heavy tier (see docs/adr/0002-serves-are-compose-defined.md); this file is kept only
+# as an alternate single-tier reference. Its served-model-name and volume/model path were
+# reconciled to match docker-compose.yml's heavy service so the two files never disagree on
+# what "heavy" answers to (genericity:T014) — swap the volume back to
+# `qwen3-coder-30b-awq` (and `--served-model-name` accordingly) only if you deliberately want
+# the older Qwen3-Coder-30B checkpoint instead of the current Qwen3.5-35B-A3B AWQ heavy tier.
 services:
   sglang:
     image: lmsysorg/sglang:latest
     container_name: sglang
     restart: unless-stopped
     shm_size: "16g"
-    ports: ["30000:30000"]
+    ports:
+      # Bind to loopback only — see docker-compose.yml (this port must never publish on
+      # 0.0.0.0; CLAUDE.md gotcha #1 / SECURITY.md).
+      - "127.0.0.1:30000:30000"
     volumes:
-      - "C:/Users/sdoum/models/qwen3-coder-30b-awq:/models/qwen3-coder-30b-awq"
+      # REPLACE: your local model directory (this is a machine-specific Windows path).
+      - "C:/Users/sdoum/models/qwen35-awq:/models/qwen35-awq"
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["1"]
+              device_ids: ["1"]   # REPLACE: your GPU index — `nvidia-smi -L` (or pin by UUID, see docker-compose.yml)
               capabilities: [gpu]
     command: >
       python3 -m sglang.launch_server
-      --model-path /models/qwen3-coder-30b-awq
+      --model-path /models/qwen35-awq
       --attention-backend triton
       --weight-loader-disable-mmap
       --kv-cache-dtype fp8_e5m2
@@ -25,5 +37,5 @@ services:
       --max-running-requests 16
       --mem-fraction-static 0.88
       --enable-metrics
-      --served-model-name qwen3-coder-local
+      --served-model-name qwen35-awq-local
       --host 0.0.0.0 --port 30000
