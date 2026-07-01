@@ -115,6 +115,13 @@ class RouterConfig:
     # default of 120s (tuned for a slower cloud provider). Threaded through
     # serve.build_backends -> build_backend_for_tier. Does not affect cloud tiers.
     relay_timeout: float = 20.0
+    # genericity:T004 — when True (default), a privacy="local" tier under an
+    # "allow" profile verdict is NOT streamed as a raw zero-verifier passthrough;
+    # it runs through a minimal commit-window (NonEmptyContent/NotTruncated) first,
+    # so an empty/truncated local 200 escalates (or exhausts to
+    # ``exhaustion_status``) instead of being served silently. A cloud/remote tier
+    # under "allow" is never affected by this flag.
+    verify_local_min: bool = True
 
     def tier(self, tier_id: str) -> Tier:
         """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
@@ -398,6 +405,15 @@ def load(path: str) -> RouterConfig:
         )
     relay_timeout: float = float(raw_relay_timeout)
 
+    # ``verify_local_min`` (genericity:T004): gate for the minimal commit-window
+    # safety net on a privacy=local tier under an "allow" verdict. Default True.
+    raw_verify_local_min = router.get("verify_local_min", True)
+    if not isinstance(raw_verify_local_min, bool):
+        raise ConfigError(
+            f"[router].verify_local_min must be a boolean (true/false) in {path}"
+        )
+    verify_local_min: bool = raw_verify_local_min
+
     return RouterConfig(
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
@@ -406,4 +422,5 @@ def load(path: str) -> RouterConfig:
         exhaustion_status=exhaustion_status,
         cost_sync=cost_sync,
         relay_timeout=relay_timeout,
+        verify_local_min=verify_local_min,
     )

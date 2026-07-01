@@ -63,7 +63,7 @@ from typing import Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 # import path stable for existing callers.
 from .backends import CloudBackend, MissingCredentialError, RelayBackend
 from .backends.cloud import Transport
-from .config import ConfigError, PRIVACY_CLOUD, RouterConfig, Tier, load
+from .config import ConfigError, PRIVACY_CLOUD, PRIVACY_LOCAL, RouterConfig, Tier, load
 from .decision_log import DecisionLog
 from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
 from .front_door import make_server
@@ -71,7 +71,7 @@ from .intent import PRESETS, resolve
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult
 from .policy import route
 from .profile_store import ProfileStore, default_profile
-from .verify import ResponseView, default_verifiers
+from .verify import NonEmptyContent, NotTruncated, ResponseView, default_verifiers
 
 
 # --------------------------------------------------------------------------- #
@@ -291,8 +291,26 @@ class RoutingBackend:
 
         work_class = decision.work_class
         first_verdict = self._tier_verdict(bound_tiers[0], work_class)
+        first_tier = self._config.tier(bound_tiers[0])
 
-        if first_verdict == "allow":
+        # genericity:T004 — a privacy=local tier under "allow" is normally the
+        # most trusted case (streamed raw, below) but that also means it is the
+        # ONE path with zero structural verification at all: an empty/truncated
+        # local 200 (thinking-budget starvation, a serve mid-restart) would
+        # otherwise reach the harness silently as a "successful" reply. Route it
+        # through a MINIMAL commit-window (NonEmptyContent/NotTruncated only —
+        # deliberately cheaper than the full allow-with-verify chain below) so
+        # that failure mode escalates to the next candidate (or exhausts to
+        # exhaustion_status) instead of being served. A cloud/remote "allow" tier
+        # is unaffected — it keeps the raw passthrough (TTFT preserved). Operators
+        # can opt out via [router].verify_local_min = false.
+        min_verify_local_allow = (
+            first_verdict == "allow"
+            and first_tier.privacy == PRIVACY_LOCAL
+            and self._config.verify_local_min
+        )
+
+        if first_verdict == "allow" and not min_verify_local_allow:
             # Trusted tier: stream its deltas to the client directly.
             # No buffering, no verification — TTFT is preserved.
             #
@@ -310,20 +328,48 @@ class RoutingBackend:
 
             return _allow_wrap()
 
-        # allow-with-verify: enforce the commit-window guarantee —
-        # ZERO partial local tokens may reach the client on a verify-failure.
-        #
-        # route_with_fallback (T009) drives the candidate walk over bound_tiers:
-        # it fully materialises each tier's response (list()) *before* running the
-        # structural verifier chain (T007), then either commits the winner or
-        # advances to the next candidate.  That buffer-then-decide cycle is the
-        # same guarantee provided by stream_with_commit_window (T008), applied
-        # generically across N candidates.  The decision is appended to
-        # self._decision_log for transparency (T010 / AC2).
-        #
-        # #52 — verifiers now live: inject a response_view_factory that reads
-        # finish_reason + tool_calls from the backend's thread-local so
-        # NotTruncated and ToolCallJSONValid fire on real upstream data.
+        # allow-with-verify (full chain), OR a local "allow" under the T004
+        # minimal-verify safety net (NonEmptyContent/NotTruncated only): both
+        # enforce the commit-window guarantee — ZERO partial local tokens may
+        # reach the client on a verify-failure. route_with_fallback (T009) drives
+        # the candidate walk over bound_tiers, buffering each tier's response
+        # before deciding, exactly as stream_with_commit_window (T008) does for a
+        # single tier, generalised across N candidates.
+        verifiers = default_verifiers() if not min_verify_local_allow else [
+            NonEmptyContent(), NotTruncated(),
+        ]
+        result = self._route_with_verify(request, bound_tiers, work_class, verifiers)
+        if result.exhausted:
+            # Every gated, bound candidate failed verify (or was guarded out by the
+            # budget / circuit-breaker).  Refuse to serve the last attempt's text
+            # — it failed verification and must not reach the client.
+            raise NoAvailableTierError(work_class, bound_tiers)
+
+        # Propagate the winning tier's structured fields to our thread-local so
+        # the dialect layer can render real stop_reason / tool_calls (#42).
+        self._thread_local.last_result = result.structured
+
+        # Yield the committed response.  route_with_fallback fully buffered the
+        # winner before returning; on any verify-FAIL path the local bytes were
+        # discarded and only the winning tier's text is in result.text.
+        return iter([result.text])
+
+    def _route_with_verify(
+        self,
+        request: InternalRequest,
+        bound_tiers: Tuple[str, ...],
+        work_class: Optional[str],
+        verifiers: Sequence,
+    ):
+        """Buffer + run ``verifiers`` over ``bound_tiers`` via
+        :func:`~anvil_serving.router.fallback.route_with_fallback`.
+
+        Shared by the full allow-with-verify chain and the T004 minimal
+        local-allow safety net — they differ only in which verifier list runs.
+        #52 — injects a response_view_factory that reads finish_reason +
+        tool_calls from the backend's thread-local so NotTruncated and
+        ToolCallJSONValid fire on real upstream data (not just the joined text).
+        """
         _last_backend: List[Optional[Backend]] = [None]
 
         def _tracking_backend_for(tier: Tier) -> Backend:
@@ -348,32 +394,18 @@ class RoutingBackend:
             return ResponseView(text=text)
 
         fb_decision = _FallbackDecision(tiers=bound_tiers, work_class=work_class)
-        result = route_with_fallback(
+        return route_with_fallback(
             request,
             fb_decision,
             self._config,
             backend_for=_tracking_backend_for,
-            verifiers=default_verifiers(),
+            verifiers=verifiers,
             budget=Budget(),
             log=self._decision_log,
             breaker=self._circuit_breaker,
             verifier_timeout=5.0,
             response_view_factory=_structured_view_factory,
         )
-        if result.exhausted:
-            # Every gated, bound candidate failed verify (or was guarded out by the
-            # budget / circuit-breaker).  Refuse to serve the last attempt's text
-            # — it failed verification and must not reach the client.
-            raise NoAvailableTierError(work_class, bound_tiers)
-
-        # Propagate the winning tier's structured fields to our thread-local so
-        # the dialect layer can render real stop_reason / tool_calls (#42).
-        self._thread_local.last_result = result.structured
-
-        # Yield the committed response.  route_with_fallback fully buffered the
-        # winner before returning; on any verify-FAIL path the local bytes were
-        # discarded and only the winning tier's text is in result.text.
-        return iter([result.text])
 
     def decide(self, request: InternalRequest) -> dict:
         """Run the routing brain for *request* without serving (T007).

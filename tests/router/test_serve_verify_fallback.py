@@ -184,22 +184,24 @@ def test_c3_avw_pass_delivers_local_not_cloud_streaming():
 
 
 # --------------------------------------------------------------------------- #
-# C3-ALLOW: allow tier -> streamed directly, no verify invoked
+# C3-ALLOW: allow tier -> streamed directly, no *full* verifier chain invoked
+#
+# genericity:T004 superseded the old "allow == zero verification" contract for
+# a LOCAL tier specifically: a privacy=local tier under "allow" now runs a
+# MINIMAL commit-window (NonEmptyContent/NotTruncated only) so an empty local
+# 200 is caught and escalated instead of silently reaching the client (see
+# test_serve_fallback.py for the dedicated T004 coverage). Good, well-formed
+# content from the first "allow" candidate is still served from that tier —
+# the minimal check does not change the common case, only the failure case.
 # --------------------------------------------------------------------------- #
-def test_c3_allow_streams_directly_no_verify():
-    """An 'allow' tier is streamed to the client WITHOUT running any verifier.
-
-    Proof: we serve content that would fail NonEmptyContent if verify ran
-    (an empty string), and assert that the empty content IS delivered — not
-    fallen back to the cloud tier.  If verify had run, cloud would have served
-    CLOUD_CONTENT instead.
-    """
+def test_c3_allow_good_content_streams_from_first_tier():
+    """An 'allow' tier serving well-formed content is served from that FIRST
+    tier, not escalated — the T004 minimal-verify safety net is a no-op on a
+    normal response (only the empty/truncated failure mode is caught)."""
     backends: Dict[str, StaticBackend] = {
-        "fast-local": StaticBackend([""]),   # empty -> would fail NonEmptyContent
-        "cloud": StaticBackend([CLOUD_CONTENT]),
-        "heavy-local": StaticBackend(["heavy-served"]),
+        "fast-local": StaticBackend(["fast-local-response"]),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),  # must NOT be reached
     }
-    # Default profile: fast-local is 'allow' for chat.
     from anvil_serving.router.profile_store import default_profile
     httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends,
                          profile=default_profile())
@@ -211,11 +213,8 @@ def test_c3_allow_streams_directly_no_verify():
 
     assert status == 200, (status, raw)
     content = _parse_content(raw)
-
-    # The empty local content was delivered directly — not fallen back to cloud.
-    assert content == "", f"expected empty local content, got: {content!r}"
-    # Cloud fallback was NOT invoked.
-    assert CLOUD_CONTENT not in raw.decode("utf-8")
+    assert content == "fast-local-response"
+    assert CLOUD_CONTENT not in raw.decode("utf-8"), "escalated when it should not have"
 
 
 # --------------------------------------------------------------------------- #

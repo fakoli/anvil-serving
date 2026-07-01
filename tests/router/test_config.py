@@ -628,6 +628,24 @@ def test_relay_timeout_bool_raises(tmp_path):
         load(_write_toml(tmp_path, body))
 
 
+# ── genericity:T004 — [router].verify_local_min ─────────────────────────────
+def test_verify_local_min_defaults_to_true(tmp_path):
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    assert cfg.verify_local_min is True
+
+
+def test_verify_local_min_can_be_disabled(tmp_path):
+    body = "verify_local_min = false\n" + _BASE_TIER
+    cfg = load(_write_toml(tmp_path, body))
+    assert cfg.verify_local_min is False
+
+
+def test_verify_local_min_non_bool_raises(tmp_path):
+    body = 'verify_local_min = "yes"\n' + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
 # ── genericity:T003 — per-tier extra_body ───────────────────────────────────
 def test_extra_body_absent_defaults_to_none(tmp_path):
     """extra_body absent -> None (no regression: body is unchanged from today)."""

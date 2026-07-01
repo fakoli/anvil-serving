@@ -14,6 +14,7 @@ served_model_name = "local-specialist"
 [router]
 mapping_version = "2026-06-30.0"
 # relay_timeout = 20   # seconds; transport timeout for LOCAL tiers (default 20s; genericity:T005)
+# verify_local_min = true  # minimal empty/truncated-response check on a local "allow" tier (default true; genericity:T004)
 
 [[router.tiers]]
 id            = "fast-local"
