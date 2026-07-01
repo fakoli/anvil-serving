@@ -12,6 +12,15 @@ never starts or stops them. `serves` does, driven by a declarative manifest
 that is the single source of truth for *which container runs on which port as
 which model*.
 
+> **Operational prerequisite:** `serves` (and `deploy`) drive **Docker** and
+> **Docker Compose v2** (`docker compose …`) to run the GPU model containers. These
+> are *ops* requirements for standing up the serving substrate — **not** Python
+> runtime dependencies. The router and the whole `anvil-serving` package stay
+> **stdlib-only** (nothing added to `pip install`, nothing in the hot path); Docker
+> Compose is a tool the operator installs alongside Docker + the NVIDIA runtime. Every
+> serve is Docker-Compose-defined, so `serves up` is a drift-safe `docker compose up -d`
+> — see [ADR-0002](adr/0002-serves-are-compose-defined.md).
+
 ```bash
 anvil-serving serves status           # docker state + health + GPU memory per serve
 anvil-serving serves down             # docker stop every serve (free the GPUs)
@@ -24,7 +33,8 @@ anvil-serving serves --manifest X.toml status   # use a different topology
 `up` is mechanism-aware by container state: **running** → left alone; **stopped**
 (exited/created) → restarted with `docker start` (fast, no reload); **paused** →
 `docker unpause`; **missing** → created fresh from the manifest's `up` command (a
-compose file for `heavy`, a `docker run` script for `fast`). A container in an
+`docker compose up -d <service>` per tier — **both** tiers are now Docker-Compose-
+defined; see [ADR-0002](adr/0002-serves-are-compose-defined.md)). A container in an
 exotic state (dead/restarting) is left for you to resolve rather than blindly
 re-created. `down` likewise stops any state that holds the GPU (running/paused/
 restarting), not just `running`.
@@ -32,20 +42,46 @@ restarting), not just `running`.
 > **Two notes on `up`:** (1) The manifest `up` is **executed** — it's parsed with
 > `shlex` and run as an argv list (no shell, so paths with spaces are safe and
 > there's no injection sink), but treat the manifest as trusted like a Makefile.
-> (2) The fresh-create command for `fast` is `bash …serve-fast-gptoss-vllm.sh`, so
-> a *first-time* `serves up fast` needs `bash` on PATH (Git Bash / WSL on Windows);
-> an already-created container is just `docker start`ed and needs none of this.
+> (2) Every serve's `up` is `docker compose -f {dir}/docker-compose.yml up -d <service>`
+> (`sglang` for heavy, `fast` for the gpt-oss vLLM tier). `docker compose up -d` is
+> **drift-safe** — it natively recreates a service whose config has changed, closing
+> the old bug where a stopped `docker run` container kept serving a stale model. This
+> supersedes the ad-hoc `serve-fast-*.sh` scripts (kept only as reference); a
+> first-time `serves up fast` no longer needs `bash` on PATH.
 
 **Manifest entry:**
 ```toml
 [[serve]]
 name = "fast"                 # logical name (also accepted by down/up)
-container = "vllm-gptoss"     # docker container name
+container = "vllm-gptoss"     # docker container name (== the compose service's container_name)
 port = 30001
 model = "gpt-oss-20b"         # served-model-name (used by `eval`)
 health = "/health"
-up = "bash {dir}/serve-fast-gptoss-vllm.sh"   # {dir} = the manifest's directory
+up = "docker compose -f {dir}/docker-compose.yml up -d fast"   # {dir} = the manifest's dir
 ```
+
+### Standing up a one-off experiment serve
+
+Trying a new model (e.g. for the Blackwell lab notebook) does **not** need a hand-built
+`docker run`. The parametrized
+[`docker-compose.experiment.yml`](../examples/fakoli-dark/docker-compose.experiment.yml)
+is one vLLM service driven by env vars, with the hard-won sm_120/WSL2 defaults baked in
+(stable image, `VLLM_USE_V2_MODEL_RUNNER=0`, the D:-backed `vllm-hfcache` volume for ~15s
+native loads, `CUDA_DEVICE_ORDER=PCI_BUS_ID`):
+
+```bash
+MODEL=RedHatAI/Qwen3-32B-NVFP4 \
+GPU_UUID=GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 \
+PORT=30002 SERVED_NAME=qwen3-32b-nvfp4 \
+  docker compose -f examples/fakoli-dark/docker-compose.experiment.yml up -d
+
+# extra vLLM flags (parsers, trust-remote-code, …) ride in EXTRA_ARGS:
+#   EXTRA_ARGS="--reasoning-parser qwen3 --tool-call-parser qwen3_coder --trust-remote-code"
+```
+
+`MODEL` and `GPU_UUID` are required; `SERVED_NAME` / `PORT` / `EXTRA_ARGS` default. Once it
+answers on `:{PORT}`, point `anvil-serving eval preflight --base-url http://127.0.0.1:{PORT}/v1
+--model {SERVED_NAME}` at it.
 
 ## `anvil-serving eval` — one entry point for the evals
 
