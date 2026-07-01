@@ -7,13 +7,14 @@ read at load time, so a config can be loaded with no secrets present.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
 import tomllib
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
-from typing import Mapping, Optional
+from typing import Any, Mapping, Optional
 
 from .prices import fetch_prices
 
@@ -67,6 +68,16 @@ class Tier:
     # Set these on metered cloud tiers so cost_usd can be computed per-request.
     cost_input_per_mtok: Optional[float] = None
     cost_output_per_mtok: Optional[float] = None
+    # Optional inline-table of extra JSON-serialisable keys merged verbatim into the
+    # upstream request body (genericity:T003) -- e.g. a local vLLM/SGLang server's
+    # `chat_template_kwargs: {enable_thinking: false}` to defend against the
+    # thinking-budget-starvation gotcha (CLAUDE.md gotcha #6/#9). Never overrides the
+    # keys the router itself sets (model/messages/stream/...); it is applied via
+    # ``body.update(extra_body)`` in backends/cloud.py, so a key here CAN clobber a
+    # router-set key if the operator explicitly configures it that way -- that is
+    # intentional passthrough, not a bug. Kept ``hash=False`` (a dict is unhashable)
+    # to match ``RouterConfig.presets`` below; Tier is never used as a dict/set key.
+    extra_body: Optional[Mapping[str, Any]] = field(default=None, hash=False)
 
 
 @dataclass(frozen=True)
@@ -97,6 +108,20 @@ class RouterConfig:
     # When True, tiers with unset cost fields have them filled from the LiteLLM pricing
     # JSON after loading; static config values always win (never overwritten).
     cost_sync: bool = False
+    # genericity:T005 — transport timeout (seconds) used to build LOCAL-tier
+    # (privacy="local") backends. Kept short by default: a local vLLM/SGLang serve
+    # that has hung or gone cold should fail fast so the router escalates to the
+    # next tier promptly, rather than sitting on the CloudBackend/RelayBackend
+    # default of 120s (tuned for a slower cloud provider). Threaded through
+    # serve.build_backends -> build_backend_for_tier. Does not affect cloud tiers.
+    relay_timeout: float = 20.0
+    # genericity:T004 — when True (default), a privacy="local" tier under an
+    # "allow" profile verdict is NOT streamed as a raw zero-verifier passthrough;
+    # it runs through a minimal commit-window (NonEmptyContent/NotTruncated) first,
+    # so an empty/truncated local 200 escalates (or exhausts to
+    # ``exhaustion_status``) instead of being served silently. A cloud/remote tier
+    # under "allow" is never affected by this flag.
+    verify_local_min: bool = True
 
     def tier(self, tier_id: str) -> Tier:
         """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
@@ -220,6 +245,25 @@ def _parse_tier(raw: object) -> Tier:
     cost_input = _parse_cost_field(raw.get("cost_input_per_mtok"), "cost_input_per_mtok")
     cost_output = _parse_cost_field(raw.get("cost_output_per_mtok"), "cost_output_per_mtok")
 
+    # Optional: extra keys merged verbatim into the upstream request body
+    # (genericity:T003), e.g. a local server's thinking-disable knob. Absent ->
+    # None (no-op; body is unchanged, matching today's behaviour exactly).
+    raw_extra_body = raw.get("extra_body")
+    extra_body: Optional[Mapping[str, Any]] = None
+    if raw_extra_body is not None:
+        if not isinstance(raw_extra_body, dict):
+            raise ConfigError(
+                f"tier {tid!r}: extra_body must be a table (inline dict), got "
+                f"{type(raw_extra_body).__name__}"
+            )
+        try:
+            json.dumps(raw_extra_body)
+        except (TypeError, ValueError) as e:
+            raise ConfigError(
+                f"tier {tid!r}: extra_body must be JSON-serialisable: {e}"
+            ) from e
+        extra_body = MappingProxyType(dict(raw_extra_body))
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -231,6 +275,7 @@ def _parse_tier(raw: object) -> Tier:
         model=tier_model or None,
         cost_input_per_mtok=cost_input,
         cost_output_per_mtok=cost_output,
+        extra_body=extra_body,
     )
 
 
@@ -344,6 +389,31 @@ def load(path: str) -> RouterConfig:
             filled.append(replace(t, cost_input_per_mtok=cost_in, cost_output_per_mtok=cost_out))
         tiers = filled
 
+    # ``relay_timeout`` (genericity:T005): transport timeout in seconds used to
+    # build LOCAL-tier backends. Default kept short (20s) so a hung/cold local
+    # serve fails fast to the next tier rather than sitting on the 120s cloud-
+    # tuned default. bool is a subclass of int -- reject it explicitly.
+    raw_relay_timeout = router.get("relay_timeout", 20.0)
+    if (
+        isinstance(raw_relay_timeout, bool)
+        or not isinstance(raw_relay_timeout, (int, float))
+        or raw_relay_timeout <= 0
+    ):
+        raise ConfigError(
+            f"[router].relay_timeout must be a positive number of seconds "
+            f"(default 20.0) in {path}"
+        )
+    relay_timeout: float = float(raw_relay_timeout)
+
+    # ``verify_local_min`` (genericity:T004): gate for the minimal commit-window
+    # safety net on a privacy=local tier under an "allow" verdict. Default True.
+    raw_verify_local_min = router.get("verify_local_min", True)
+    if not isinstance(raw_verify_local_min, bool):
+        raise ConfigError(
+            f"[router].verify_local_min must be a boolean (true/false) in {path}"
+        )
+    verify_local_min: bool = raw_verify_local_min
+
     return RouterConfig(
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
@@ -351,4 +421,6 @@ def load(path: str) -> RouterConfig:
         metered_cloud=metered_cloud,
         exhaustion_status=exhaustion_status,
         cost_sync=cost_sync,
+        relay_timeout=relay_timeout,
+        verify_local_min=verify_local_min,
     )
