@@ -1,0 +1,37 @@
+# Keep the router image build context small and avoid leaking VCS/dev cruft in.
+.git
+.gitignore
+.github
+
+# Worktrees checked out under .claude/ during agent sessions
+.claude
+
+# Tests, docs, and non-runtime tooling — not needed inside the image
+tests
+docs
+examples
+assets
+plugins
+mkdocs.yml
+requirements-docs.txt
+CHANGELOG.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+AGENTS.md
+
+# Python / build caches
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+venv
+build
+dist
+
+# OS/editor cruft
+.DS_Store
