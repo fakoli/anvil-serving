@@ -35,6 +35,8 @@ import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from .gpus import gpu_uuid  # noqa: F401 (re-exported; shared with `deploy` — T007)
+
 # --- REGISTRY TABLE: single source of truth for /v1/models AND the loader ----
 # Columns: name (served /v1 id) | engine ('sglang'|'vllm', picks build_cmd branch
 #   + container image) | model_path (dir handed to backend) | est_weight_gb
@@ -118,29 +120,6 @@ def build_cmd(entry):
     return ["python3", "-m", "sglang.launch_server", "--model-path", mp,
             "--weight-loader-disable-mmap", "--enable-metrics",
             "--max-running-requests", "16", *args, *common]
-
-
-def gpu_uuid(index):
-    """IMPURE: map a GPU index -> its stable UUID via nvidia-smi, else None.
-
-    Docker Desktop's WSL2 backend IGNORES `--gpus device=N` (it exposes ALL GPUs),
-    so index pinning does NOT isolate — two serves could land on one card. The proven
-    reliable isolation (examples/fakoli-dark gotcha) is `--gpus all` +
-    CUDA_DEVICE_ORDER=PCI_BUS_ID + CUDA_VISIBLE_DEVICES=<GPU-UUID>. This resolves the
-    UUID so docker_run_cmd can emit that env-var isolation. Returns None if nvidia-smi
-    is missing or the index isn't found (caller then falls back to `--gpus device=`)."""
-    import subprocess
-    try:
-        out = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=index,uuid", "--format=csv,noheader"],
-            stderr=subprocess.DEVNULL, encoding="utf-8")
-    except Exception:
-        return None
-    for line in out.splitlines():
-        parts = [p.strip() for p in line.split(",")]
-        if len(parts) == 2 and parts[0].isdigit() and int(parts[0]) == index:
-            return parts[1]
-    return None
 
 
 def docker_run_cmd(entry):

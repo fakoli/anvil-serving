@@ -36,11 +36,15 @@ def _tiers():
     is reported as a parse error, not as "no tiers".
     """
     from . import serves
+    # Deliberately the shipped fakoli-dark topology, NOT `serves.DEFAULT_MANIFEST`
+    # (genericity:T012 repointed that to the CWD's own ./serves.toml, which most
+    # dev/CI working directories don't have) — this eval verb documents and
+    # always targets the reference two-tier setup.
     return {s["name"]: {
                 "base_url": "http://127.0.0.1:%s/v1" % s["port"], "model": s["model"],
                 "port": s["port"], "health": s.get("health", "/health"),
                 "container": s["container"]}
-            for s in serves.load_manifest(serves.DEFAULT_MANIFEST) if s.get("model")}
+            for s in serves.load_manifest(serves.EXAMPLE_MANIFEST) if s.get("model")}
 
 
 def _reachable(port, path, _open=urllib.request.urlopen):
