@@ -13,6 +13,18 @@
 # Why AWQ-35B and not Qwen3-Coder-Next-FP8: the FP8 80B (~75GB) hung post-load on this build
 # AND leaves only ~8GB KV; a 4-bit 35B-A3B (~24GB) loads faster and leaves room for real fan-out.
 # Pinned to GPU 1 (RTX PRO 6000 96GB); the 5090 (GPU 0) stays free for the fast tier.
+#
+# Machine-specific values are env-var placeholders (genericity:T012), matching
+# docker-compose.experiment.yml's pattern, so this file is portable to another box —
+# but every `${VAR:-default}` defaults to THIS fakoli-dark box's actual values, so it
+# is runnable UNCHANGED with no env vars set at all:
+#   HEAVY_GPU_UUID   default GPU-d0f446cf-1771-414c-e116-a39138798a8c (RTX PRO 6000 96GB)
+#   FAST_GPU_UUID    default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
+#   ANVIL_MODELS_DIR default C:/Users/sdoum/models (host dir holding qwen35-awq/, gpt-oss-20b/)
+# On a different box, find your GPU UUIDs with `nvidia-smi --query-gpu=index,uuid --format=csv`
+# (or `anvil-serving doctor`), then e.g.:
+#   HEAVY_GPU_UUID=GPU-... FAST_GPU_UUID=GPU-... ANVIL_MODELS_DIR=/home/me/models \
+#     docker compose -f examples/fakoli-dark/docker-compose.yml up -d
 services:
   sglang:
     image: lmsysorg/sglang:latest
@@ -25,20 +37,20 @@ services:
       # SECURITY.md). The router (which does the auth/routing) is what fronts these.
       - "127.0.0.1:30000:30000"
     volumes:
-      - "C:/Users/sdoum/models/qwen35-awq:/models/qwen35-awq"
+      - "${ANVIL_MODELS_DIR:-C:/Users/sdoum/models}/qwen35-awq:/models/qwen35-awq"
     environment:
       # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (CLAUDE.md
       # gotcha #13), so also pin the heavy card the proven way — CUDA_VISIBLE_DEVICES=<UUID>
       # + PCI_BUS_ID ordering — so the heavy tier can never land on the 5090 and collide
       # with the fast tier on cuda:0 (OOM). Belt-and-suspenders with device_ids below.
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: GPU-d0f446cf-1771-414c-e116-a39138798a8c   # RTX PRO 6000 96GB
+      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["1"]   # 1 = RTX PRO 6000 96GB (0 = RTX 5090)
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]   # RTX PRO 6000 96GB
               capabilities: [gpu]
     command: >
       python3 -m sglang.launch_server
@@ -69,7 +81,7 @@ services:
       # (127.0.0.1-only repo, CLAUDE.md gotcha #1 / SECURITY.md).
       - "127.0.0.1:30001:30001"
     volumes:
-      - "C:/Users/sdoum/models/gpt-oss-20b:/models/gpt-oss-20b:ro"
+      - "${ANVIL_MODELS_DIR:-C:/Users/sdoum/models}/gpt-oss-20b:/models/gpt-oss-20b:ro"
     environment:
       # Force PCI-bus ordering so the pinned card is selected regardless of enumeration order
       # (hard-won: multi-GPU pinning needs CUDA_DEVICE_ORDER=PCI_BUS_ID — CLAUDE.md gotcha #13).
@@ -78,7 +90,7 @@ services:
       # so pin the card the proven way too — CUDA_VISIBLE_DEVICES=<UUID> — so the fast tier
       # can never collide with the heavy tier on cuda:0 (OOM). Belt-and-suspenders with the
       # device_ids reservation below.
-      CUDA_VISIBLE_DEVICES: GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1   # RTX 5090
+      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       # Mandatory on this WSL2/Docker box: WSL2 exposes no UVA, so vLLM's v2 model runner's
       # UvaBuffer dies with "RuntimeError: UVA is not available" at engine init (gotcha #14).
       VLLM_USE_V2_MODEL_RUNNER: "0"
@@ -91,7 +103,7 @@ services:
             # back to `count: all` + environment CUDA_VISIBLE_DEVICES=<this UUID> (the mechanism
             # the old serve-fast-*.sh scripts used).
             - driver: nvidia
-              device_ids: ["GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"]   # RTX 5090
+              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
     command: >
       serve /models/gpt-oss-20b
