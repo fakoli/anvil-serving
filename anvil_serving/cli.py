@@ -5,11 +5,26 @@ import subprocess
 
 HERE = os.path.dirname(__file__)
 
+MIN_PYTHON = (3, 11)
+
+def _check_python_version(version_info=None):
+    """Return an error message if running under an unsupported interpreter, else None."""
+    vi = version_info if version_info is not None else sys.version_info
+    if (vi[0], vi[1]) < MIN_PYTHON:
+        return "anvil-serving needs Python >=%d.%d; you have %d.%d" % (
+            MIN_PYTHON[0], MIN_PYTHON[1], vi[0], vi[1],
+        )
+    return None
+
 def _run_script(name, argv, env=None):
     e = dict(os.environ); e.update(env or {})
     return subprocess.call([sys.executable, os.path.join(HERE, name)] + argv, env=e)
 
 def main(argv=None):
+    _version_error = _check_python_version()
+    if _version_error:
+        print(_version_error, file=sys.stderr)
+        return 1
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__ + "\n  commands: profile | models | deploy | serves | serve | preflight | benchmark | eval | multiplexer | cache-prune | score"); return 0
