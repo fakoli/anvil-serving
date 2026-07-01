@@ -213,6 +213,9 @@ Full design: [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md). Ope
 
 ## Install
 
+Requires **Python >=3.11** (the router's config loader uses stdlib `tomllib`, added in 3.11).
+Running an older interpreter prints a clear error and exits — see `anvil_serving/cli.py`.
+
 ```bash
 pip install anvil-serving   # stdlib-only; no required deps
 anvil-serving --help
@@ -221,11 +224,22 @@ anvil-serving --help
 > `pip install anvil-serving` works once the package is published to PyPI. Until then (or for
 > development), install from a clone: `pip install -e .`.
 
+**macOS** — if `pip install` fights your system/Homebrew Python (externally-managed-environment,
+PATH shadowing), install with [`pipx`](https://pipx.pypa.io/) instead — it gives `anvil-serving` its
+own isolated venv and puts the CLI on your `PATH`:
+
+```bash
+brew install pipx && pipx ensurepath
+pipx install anvil-serving          # or, from a clone: pipx install -e .
+anvil-serving --help
+```
+
 ### 30-second quickstart
 
 ```bash
 # 1) install
 pip install anvil-serving            # or: pip install -e .  (from a clone)
+#    macOS alternative: pipx install anvil-serving
 
 # 2) start the router front door on 127.0.0.1:8000
 anvil-serving serve --config configs/example.toml
