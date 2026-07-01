@@ -578,3 +578,79 @@ def test_build_server_local_only_config_serves_without_cloud(monkeypatch):
         )
     assert status == 200
     assert parse_openai_content(raw) == "Hello"
+
+
+# --------------------------------------------------------------------------- #
+# router-service:T001 - [server].auth_env resolved ONCE by build_server and
+# threaded into the front door (ADR-0004)
+# --------------------------------------------------------------------------- #
+_SERVER_TOKEN = "build-server-secret-token"
+
+
+def _config_with_server_auth(tmp_path: Path, auth_env_name: str = "ANVIL_ROUTER_TOKEN") -> str:
+    """A tmp copy of configs/example.toml with a [server] auth_env prepended."""
+    base = Path(CONFIG).read_text(encoding="utf-8")
+    text = f'[server]\nauth_env = "{auth_env_name}"\n\n' + base
+    p = tmp_path / "cfg-with-auth.toml"
+    p.write_text(text, encoding="utf-8")
+    return str(p)
+
+
+def test_build_server_wires_server_auth_env_into_front_door(tmp_path):
+    """A correct token routes through; a missing/wrong one gets 401 -- proving
+    build_server actually reads [server].auth_env and threads the resolved
+    secret into front_door.make_server (not just parses it)."""
+    cfg_path = _config_with_server_auth(tmp_path)
+    httpd = build_server(
+        cfg_path, host="127.0.0.1", port=0,
+        backends=_local_only_backends(),
+        env={"ANVIL_ROUTER_TOKEN": _SERVER_TOKEN},
+    )
+    with running(httpd) as (host, port):
+        status_unauthed, _, _ = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "chat", "messages": [{"role": "user", "content": "hi"}], "stream": False},
+        )
+        conn = http.client.HTTPConnection(host, port, timeout=10)
+        try:
+            conn.request(
+                "POST", "/v1/chat/completions",
+                json.dumps({"model": "chat", "messages": [{"role": "user", "content": "hi"}],
+                            "stream": False}),
+                {"Content-Type": "application/json",
+                 "Authorization": f"Bearer {_SERVER_TOKEN}"},
+            )
+            resp = conn.getresponse()
+            status_authed = resp.status
+            resp.read()
+        finally:
+            conn.close()
+    assert status_unauthed == 401
+    assert status_authed == 200
+
+
+def test_build_server_no_server_table_means_auth_off():
+    """CONFIG has no [server] table at all -> build_server resolves no token
+    and every request is accepted, unchanged from pre-T001 behaviour."""
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=_local_only_backends())
+    with running(httpd) as (host, port):
+        status, _, _ = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "chat", "messages": [{"role": "user", "content": "hi"}], "stream": False},
+        )
+    assert status == 200
+
+
+def test_build_server_auth_env_configured_but_unset_raises_config_error(tmp_path):
+    """[server].auth_env names a real env-var NAME, but the env var itself is
+    unset -- this must fail fast at server-build time (a security-relevant
+    misconfiguration), never silently fall back to auth OFF."""
+    from anvil_serving.router.config import ConfigError
+
+    cfg_path = _config_with_server_auth(tmp_path)
+    with pytest.raises(ConfigError):
+        build_server(
+            cfg_path, host="127.0.0.1", port=0,
+            backends=_local_only_backends(),
+            env={},  # ANVIL_ROUTER_TOKEN deliberately absent
+        )
