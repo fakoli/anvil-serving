@@ -283,21 +283,95 @@ Model (ID) = a preset token. **Codex CLI** — set `base_url` + `model = "planni
 backend-locked, so they can't be repointed at a self-hosted endpoint. Full recipes:
 [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md) (Appendix).
 
+### Run the router in Docker (supervised, auth-gated)
+
+`pip install anvil-serving` (above) still works and remains the quickest way to run the router
+locally — Docker is an **additional** deployment option for running it as a supervised,
+network-facing service, restart-supervised alongside the local model serves. See
+[ADR-0004](docs/adr/0004-router-as-a-service-containerized-and-authed.md) for the full design.
+
+```bash
+# 1) pick the token the router will require on every route except /healthz
+export ANVIL_ROUTER_TOKEN="$(openssl rand -hex 32)"   # generate once, keep it secret
+
+# 2) build the repo-root image (stdlib-only, non-root user, HEALTHCHECK on /healthz)
+docker build -t anvil-serving .
+
+# 3) run it, publishing ONLY 127.0.0.1 on the host
+docker run -d --name anvil-router \
+  -p 127.0.0.1:8000:8000 \
+  -e ANVIL_ROUTER_TOKEN \
+  -v "$(pwd)/configs/example.toml:/etc/anvil/config.toml:ro" \
+  anvil-serving
+
+# 4) point a harness at the authed router
+export ANTHROPIC_BASE_URL="http://127.0.0.1:8000"
+export ANTHROPIC_AUTH_TOKEN="$ANVIL_ROUTER_TOKEN"        # -> Authorization: Bearer header
+```
+
+Auth is **opt-in**, keyed off config, not off the container: it activates only when the config
+has a `[server]` table naming an env var to check —
+
+```toml
+# configs/example.toml (excerpt) -- turn auth on
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"   # env-var NAME only; never a literal token in this file
+```
+
+With no `[server]` table (the shipped `configs/example.toml` default), the container behaves
+exactly like the bare `pip install` path always has: no built-in auth, loopback-only by
+convention — full back-compat. When `auth_env` **is** set, the front door requires
+`Authorization: Bearer <token>` **or** `x-api-key: <token>` on every route, compared against
+`os.environ[auth_env]` with a constant-time check; `GET /healthz` stays unauthenticated always
+(it returns `{"status":"ok"}` and is what the image's `HEALTHCHECK` probes).
+
+**Compose, co-located with the local serves** — the router reaches the GPU serves by Docker
+**service name** over a shared internal network; only the router is published beyond loopback:
+
+```yaml
+services:
+  router:
+    build: .                                        # repo-root Dockerfile
+    ports:
+      - "${ROUTER_PUBLISH:-127.0.0.1}:8000:8000"
+    environment:
+      - ANVIL_ROUTER_TOKEN
+    volumes:
+      - ./configs/example.toml:/etc/anvil/config.toml:ro
+    restart: unless-stopped
+    depends_on: [sglang, fast]
+  sglang:   # heavy tier -- internal only, not published beyond the router
+    ...
+  fast:     # fast tier -- internal only, not published beyond the router
+    ...
+```
+
+With this topology the router config's tiers point at the serves by **service name**
+(`http://sglang:30000/v1`, `http://fast:30001/v1`) instead of `127.0.0.1`. See
+[`examples/fakoli-dark/`](examples/fakoli-dark/) for the full worked cross-box example — a
+gateway box's harness reaching a GPU box's containerized, token-authed router over a private
+network.
+
 ---
 
 ## Security & exposure
 
-The front door binds **`127.0.0.1`** by default and has **no built-in authentication**. That is
-the right default — keep it loopback-only unless you have a reason not to.
+The front door binds **`127.0.0.1`** by default. **Auth is opt-in and off by default** — with no
+`[server]` table (or no `auth_env` key inside it) in your config, the router behaves exactly as
+it always has: no built-in authentication, loopback-only by convention. Configuring
+`[server].auth_env = "ANVIL_ROUTER_TOKEN"` turns on a built-in bearer / `x-api-key` token check
+(constant-time compare against `os.environ[auth_env]`) on every route except `GET /healthz` — see
+[ADR-0004](docs/adr/0004-router-as-a-service-containerized-and-authed.md) and the Docker section
+above.
 
-If you bind it publicly (`--host 0.0.0.0`) or otherwise put it on a reachable address, **you are
-responsible for authentication and network controls** (a reverse proxy with auth, firewall rules,
-a private network). An open endpoint lets **any** caller drive routing and, if you have configured an opt-in metered
-cloud tier, **consume your cloud credentials** — so an unauthenticated public bind is both a
-quality and a billing exposure. (The default local-only config carries no cloud key, but the risk
-still applies if you later add one.) Cloud credentials are referenced by env-var name and redacted
-from logs; see [`SECURITY.md`](SECURITY.md) for the full threat model and how to report a
-vulnerability.
+**A token is required before you expose the router beyond loopback.** If you bind it publicly
+(`--host 0.0.0.0`) or otherwise put it on a reachable address, configure `auth_env` first — an
+open, unauthenticated endpoint lets **any** caller drive routing and, if you have configured an
+opt-in metered cloud tier, **consume your cloud credentials**. (The default local-only config
+carries no cloud key, but the risk still applies if you later add one.) Treat a mesh/tailnet ACL
+(e.g. Tailscale) as **defense-in-depth on top of the token**, never as a substitute for it. Cloud
+credentials are referenced by env-var name and redacted from logs; see [`SECURITY.md`](SECURITY.md)
+for the full threat model and how to report a vulnerability.
 
 ---
 
