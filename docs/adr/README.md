@@ -23,3 +23,4 @@ people and the chat logs.
 | [0001](0001-cloud-cost-and-subscription-auth.md) | Cloud cost & subscription auth — why anvil should not relay cloud | Accepted |
 | [0002](0002-serves-are-compose-defined.md) | Model serves are Docker-Compose-defined | Accepted |
 | [0003](0003-portable-defaults-and-generic-onboarding.md) | Portable-by-default: out-of-box router correctness and a generated bring-up | Accepted |
+| [0004](0004-router-as-a-service-containerized-and-authed.md) | Router as a service: containerized, network-facing, token-authed | Accepted |
