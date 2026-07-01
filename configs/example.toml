@@ -24,6 +24,11 @@ context_limit = 32768
 privacy       = "local"
 tool_support  = true
 auth_env      = "ANVIL_FAST_LOCAL_KEY"
+# extra_body merges verbatim into the upstream request body (genericity:T003).
+# Uncomment for a thinking-by-default local model (Qwen3.5, gpt-oss, ...) that
+# otherwise burns its max_tokens budget reasoning and returns empty content
+# (CLAUDE.md gotcha #6/#9):
+# extra_body = { chat_template_kwargs = { enable_thinking = false } }
 
 [[router.tiers]]
 id            = "heavy-local"
@@ -34,6 +39,7 @@ context_limit = 131072
 privacy       = "local"
 tool_support  = true
 auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
+# extra_body = { chat_template_kwargs = { enable_thinking = false } }
 
 # preset -> ordered candidate tier pool (filter then rank)
 # Local-only: all presets route to free local GPU tiers.

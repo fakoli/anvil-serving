@@ -6,14 +6,18 @@ real network.
   * T005 — [router].relay_timeout is threaded through build_backends ->
     build_backend_for_tier so a LOCAL tier's backend actually uses it as its
     transport timeout (cloud tiers keep the 120s default).
+  * T003 — a tier's extra_body is merged verbatim into the upstream request
+    body (both dialects); absent extra_body is a no-op (no regression).
 """
 from __future__ import annotations
 
+import json
 from typing import Dict
 
 import pytest
 
 from anvil_serving.router.config import RouterConfig, Tier
+from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.serve import build_backend_for_tier, build_backends
 
 
@@ -48,6 +52,20 @@ def _config(*tiers: Tier, **overrides) -> RouterConfig:
     )
     kwargs.update(overrides)
     return RouterConfig(**kwargs)
+
+
+def _post_fake(response_body: bytes):
+    """A fake POST transport(url, *, data, headers, timeout) capturing the call."""
+    captured: Dict[str, object] = {}
+
+    def fake(url, *, data, headers, timeout):
+        captured["url"] = url
+        captured["headers"] = dict(headers)
+        captured["body"] = json.loads(data)
+        captured["timeout"] = timeout
+        return response_body
+
+    return fake, captured
 
 
 # --------------------------------------------------------------------------- #
@@ -91,3 +109,57 @@ def test_build_backend_for_tier_direct_call_keeps_120s_default():
     concern, not a change to build_backend_for_tier's own default."""
     relay = build_backend_for_tier(_local_tier(), env={})
     assert relay._timeout == pytest.approx(120.0)
+
+
+# --------------------------------------------------------------------------- #
+# T003 — per-tier extra_body merged into the upstream body
+# --------------------------------------------------------------------------- #
+def test_extra_body_merged_into_openai_body():
+    fake, captured = _post_fake(
+        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
+    )
+    tier = _local_tier(
+        extra_body={"chat_template_kwargs": {"enable_thinking": False}}
+    )
+    relay = build_backend_for_tier(tier, env={}, transport=fake)
+    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
+    assert captured["body"]["chat_template_kwargs"] == {"enable_thinking": False}
+    # Router-set keys are untouched.
+    assert captured["body"]["model"] == "served-model"
+
+
+def test_extra_body_merged_into_anthropic_body():
+    fake, captured = _post_fake(
+        json.dumps({"content": [{"type": "text", "text": "ok"}]}).encode("utf-8")
+    )
+    tier = _cloud_tier(extra_body={"top_k": 40})
+    cloud = build_backend_for_tier(
+        tier, env={"ANVIL_TEST_CLOUD_KEY": "sk-test-DEADBEEF"}, transport=fake
+    )
+    list(cloud.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
+    assert captured["body"]["top_k"] == 40
+    assert captured["body"]["model"] == "claude-opus-4-20250514"
+
+
+def test_extra_body_absent_body_unchanged():
+    """No regression: extra_body absent -> the body is byte-for-byte what it was
+    before T003 (no extra keys, no key removed)."""
+    fake, captured = _post_fake(
+        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
+    )
+    relay = build_backend_for_tier(_local_tier(), env={}, transport=fake)
+    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
+    assert set(captured["body"].keys()) == {"model", "messages", "stream"}
+
+
+def test_extra_body_can_override_a_router_set_key_when_operator_configures_it():
+    """extra_body is applied last (body.update); an operator who explicitly sets
+    a colliding key (e.g. stream) gets the override -- documented, intentional
+    passthrough, not accidental clobbering."""
+    fake, captured = _post_fake(
+        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
+    )
+    tier = _local_tier(extra_body={"stream": True})
+    relay = build_backend_for_tier(tier, env={}, transport=fake)
+    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
+    assert captured["body"]["stream"] is True

@@ -372,6 +372,11 @@ class CloudBackend:
                 body["system"] = request.system
             if request.temperature is not None:
                 body["temperature"] = request.temperature
+            # genericity:T003 -- per-tier extra_body merged verbatim (e.g. a local
+            # server's thinking-disable knob). Applied LAST so an operator who
+            # explicitly configures a colliding key gets the override they asked
+            # for; absent extra_body this is a no-op (no regression).
+            body.update(self._tier.extra_body or {})
             return body
 
         # openai-compatible: the system prompt rides as a role=system message.
@@ -392,6 +397,8 @@ class CloudBackend:
             body["max_tokens"] = request.max_tokens
         if request.temperature is not None:
             body["temperature"] = request.temperature
+        # genericity:T003 -- see the Anthropic branch above for the rationale.
+        body.update(self._tier.extra_body or {})
         return body
 
     def _extract_text(self, raw: bytes) -> str:

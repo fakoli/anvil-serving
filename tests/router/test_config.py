@@ -626,3 +626,42 @@ def test_relay_timeout_bool_raises(tmp_path):
     body = "relay_timeout = true\n" + _BASE_TIER
     with pytest.raises(ConfigError):
         load(_write_toml(tmp_path, body))
+
+
+# ── genericity:T003 — per-tier extra_body ───────────────────────────────────
+def test_extra_body_absent_defaults_to_none(tmp_path):
+    """extra_body absent -> None (no regression: body is unchanged from today)."""
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    assert cfg.tiers[0].extra_body is None
+
+
+def test_extra_body_parses_inline_table(tmp_path):
+    # TOML's `[router.tiers.X]` sub-table syntax only unambiguously targets the
+    # LAST entry of an array-of-tables, so use the explicit inline-table form
+    # here instead -- it stays correct regardless of how many tiers precede it.
+    body = _BASE_TIER + (
+        'extra_body = { temperature_scale = 0.9, '
+        'chat_template_kwargs = { enable_thinking = false } }\n'
+    )
+    cfg = load(_write_toml(tmp_path, body))
+    t = cfg.tiers[0]
+    assert t.extra_body == {
+        "temperature_scale": 0.9,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+
+
+def test_extra_body_non_dict_raises(tmp_path):
+    body = _BASE_TIER + "extra_body = [1, 2, 3]\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_extra_body_non_string_key_type_is_toml_illegal(tmp_path):
+    """TOML tables always have string keys, so the JSON-serialisability guard is
+    exercised via a value TOML cannot represent instead (there is no TOML
+    non-serialisable-but-valid shape for a *value*, so this pins that a bad
+    table is still caught structurally): a non-dict value under extra_body."""
+    body = _BASE_TIER + 'extra_body = "not-a-table"\n'
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
