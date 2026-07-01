@@ -1,0 +1,63 @@
+# Parametrized vLLM experiment harness — stand up ANY model for a one-off trial without
+# hand-building a `docker run` line (which mangles /model paths under MSYS, drops quoting, and
+# drifts). One service, driven entirely by env vars, with the hard-won sm_120/WSL2 defaults baked
+# in. This is the "add a model to the Blackwell lab notebook" path; the permanent tiers live in
+# docker-compose.yml. See docs/adr/0002-serves-are-compose-defined.md.
+#
+# Usage — MODEL and GPU_UUID are required; SERVED_NAME / PORT / EXTRA_ARGS have defaults:
+#
+#   MODEL=RedHatAI/Qwen3-32B-NVFP4 \
+#   GPU_UUID=GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 \
+#   PORT=30002 SERVED_NAME=qwen3-32b-nvfp4 \
+#     docker compose -f examples/fakoli-dark/docker-compose.experiment.yml up -d
+#
+#   # extra vLLM flags (e.g. Qwen reasoning/tool parsers) ride in EXTRA_ARGS:
+#   EXTRA_ARGS="--reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --trust-remote-code" \
+#     MODEL=... GPU_UUID=... docker compose -f examples/fakoli-dark/docker-compose.experiment.yml up -d
+#
+#   docker compose -f examples/fakoli-dark/docker-compose.experiment.yml logs -f experiment
+#   PORT=30002 docker compose -f examples/fakoli-dark/docker-compose.experiment.yml down
+#
+# Hard-won defaults baked in (docs/findings/blackwell-sm120-lab-notebook.md + CLAUDE.md gotchas):
+#   - image vllm/vllm-openai:latest       stable; the lab's known-good engine (:nightly only when a
+#                                         needed fix hasn't reached stable).
+#   - VLLM_USE_V2_MODEL_RUNNER=0          mandatory: WSL2 exposes no UVA -> the v2 runner's UvaBuffer
+#                                         dies with "RuntimeError: UVA is not available" (gotcha #14).
+#   - vllm-hfcache docker volume          D:-backed ext4 -> ~15s native reloads vs 20-90min over a
+#                                         C:/ 9P bind-mount; pass the HF repo-id as MODEL and vLLM
+#                                         resolves it from (or downloads it once into) the cache (#15).
+#   - GPU pinned by UUID + PCI_BUS_ID     the right card, every time (gotcha #13).
+services:
+  experiment:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-experiment-${PORT:-30002}
+    restart: "no"
+    ipc: host
+    ports:
+      - "${PORT:-30002}:${PORT:-30002}"
+    volumes:
+      # Native-speed weights cache (backed by D: ext4). vLLM downloads a new MODEL here once,
+      # then reloads it in ~15s. Deliberately NOT a C:/ bind-mount (9P ~15 MB/s cold-load tax).
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${GPU_UUID:?set GPU_UUID to the target card UUID (e.g. the 5090 GPU-04d3b6e7-...)}"]
+              capabilities: [gpu]
+    command: >
+      serve ${MODEL:?set MODEL to a HF repo-id (e.g. RedHatAI/Qwen3-32B-NVFP4)}
+      --served-model-name ${SERVED_NAME:-experiment}
+      --gpu-memory-utilization 0.90
+      --host 0.0.0.0 --port ${PORT:-30002}
+      ${EXTRA_ARGS:-}
+
+# The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
+# Create it once if it does not exist:  docker volume create vllm-hfcache
+volumes:
+  vllm-hfcache:
+    external: true

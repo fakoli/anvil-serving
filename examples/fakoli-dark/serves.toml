@@ -6,8 +6,14 @@
 #
 # These two serves back the router tiers in configs/example.toml
 # (heavy-local -> :30000, fast-local -> :30001). `{dir}` resolves to this file's
-# directory. A stopped-but-existing container is restarted with `docker start`;
-# the `up` command is only used to CREATE a fresh container from scratch.
+# directory.
+#
+# BOTH serves are now Docker-Compose-defined (docker-compose.yml holds a service per
+# tier) — see docs/adr/0002-serves-are-compose-defined.md. Each `up` targets its own
+# compose service by name, so `serves up heavy` and `serves up fast` stay independent.
+# `docker compose up -d` is drift-safe: it natively recreates a service whose config has
+# changed, fixing the old bug where a stopped `docker run` container kept serving a stale
+# model. The old serve-fast-gptoss-vllm.sh is superseded (kept only as reference).
 
 [[serve]]
 name = "heavy"                 # heavy coder tier (qwen35-awq on the 96 GB card)
@@ -15,7 +21,7 @@ container = "sglang"
 port = 30000
 model = "qwen35-awq-local"     # served-model-name (used by `anvil-serving eval`)
 health = "/health"
-up = "docker compose -f {dir}/docker-compose.yml up -d"
+up = "docker compose -f {dir}/docker-compose.yml up -d sglang"
 
 [[serve]]
 name = "fast"                  # fast tier (gpt-oss-20b on the RTX 5090)
@@ -23,4 +29,4 @@ container = "vllm-gptoss"
 port = 30001
 model = "gpt-oss-20b"          # served-model-name (used by `anvil-serving eval`)
 health = "/health"
-up = "bash {dir}/serve-fast-gptoss-vllm.sh"
+up = "docker compose -f {dir}/docker-compose.yml up -d fast"

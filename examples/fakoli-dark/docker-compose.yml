@@ -1,8 +1,18 @@
-# SGLang local specialist serve — phase 1 (decision 2 + 3)
-# Pinned to GPU 1 (RTX PRO 6000 96GB); 5090 stays free for gaming.
-# Model: Qwen3.5-35B-A3B AWQ 4-bit (copied from the WSL HF cache into a plain Windows dir).
+# fakoli-dark serves — the Docker-Compose source of truth for BOTH local tiers.
+#
+# `anvil-serving serves up` delegates here (see serves.toml + docs/adr/0002). One
+# `docker compose up -d <service>` per tier; Compose recreates a service natively when its
+# config drifts — which fixes the stale-container drift bug the old ad-hoc `docker run`
+# scripts had (a stopped container silently kept serving a stale model) and drops the MSYS
+# path-mangling / quoting traps of hand-built `docker run --model /model` one-liners.
+#
+#   heavy -> service `sglang`  (Qwen3.5-35B-A3B AWQ, SGLang, :30000, RTX PRO 6000 96GB / GPU 1)
+#   fast  -> service `fast`    (gpt-oss-20b, vLLM, :30001, RTX 5090 / GPU 0)
+#
+# heavy: Qwen3.5-35B-A3B AWQ 4-bit (copied from the WSL HF cache into a plain Windows dir).
 # Why AWQ-35B and not Qwen3-Coder-Next-FP8: the FP8 80B (~75GB) hung post-load on this build
-# AND leaves only ~8GB KV. A 4-bit 35B-A3B (~24GB) loads faster and leaves room for real fan-out.
+# AND leaves only ~8GB KV; a 4-bit 35B-A3B (~24GB) loads faster and leaves room for real fan-out.
+# Pinned to GPU 1 (RTX PRO 6000 96GB); the 5090 (GPU 0) stays free for the fast tier.
 services:
   sglang:
     image: lmsysorg/sglang:latest
@@ -35,3 +45,42 @@ services:
       --enable-metrics
       --served-model-name qwen35-awq-local
       --host 0.0.0.0 --port 30000
+
+  # Fast tier: gpt-oss-20b on vLLM (RTX 5090 / GPU 0, :30001).
+  # Converted from the old serve-fast-gptoss-vllm.sh `docker run` one-liner so the fast serve
+  # is Compose-defined like heavy: drift-safe, no MSYS path-mangling, no shell-quoting traps.
+  fast:
+    image: vllm/vllm-openai:nightly
+    container_name: vllm-gptoss
+    restart: unless-stopped
+    ipc: host                       # was --ipc=host (vLLM needs a large shared-memory segment)
+    ports:
+      - "30001:30001"
+    volumes:
+      - "C:/Users/sdoum/models/gpt-oss-20b:/models/gpt-oss-20b:ro"
+    environment:
+      # Force PCI-bus ordering so the pinned card is selected regardless of enumeration order
+      # (hard-won: multi-GPU pinning needs CUDA_DEVICE_ORDER=PCI_BUS_ID — CLAUDE.md gotcha #13).
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # Mandatory on this WSL2/Docker box: WSL2 exposes no UVA, so vLLM's v2 model runner's
+      # UvaBuffer dies with "RuntimeError: UVA is not available" at engine init (gotcha #14).
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            # Pin the RTX 5090 by UUID (not index) so the fast tier can never land on the heavy
+            # card. If a future Docker Desktop build ignores device_ids isolation on WSL2, fall
+            # back to `count: all` + environment CUDA_VISIBLE_DEVICES=<this UUID> (the mechanism
+            # the old serve-fast-*.sh scripts used).
+            - driver: nvidia
+              device_ids: ["GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"]   # RTX 5090
+              capabilities: [gpu]
+    command: >
+      serve /models/gpt-oss-20b
+      --served-model-name gpt-oss-20b
+      --max-model-len 65536
+      --gpu-memory-utilization 0.90
+      --enable-auto-tool-choice
+      --tool-call-parser openai
+      --host 0.0.0.0 --port 30001

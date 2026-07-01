@@ -292,6 +292,13 @@ vulnerability.
 These commands ship today and are how you right-size, stand up, and validate the local tiers the
 router routes across. Stdlib-only; the hard-won gotchas (below) are baked in as defaults.
 
+> **Ops prerequisite (substrate only):** `deploy` and `serves` run the GPU model containers via
+> **Docker** + **Docker Compose v2** (`docker compose …`), on top of the NVIDIA container runtime.
+> Model serves are Docker-Compose-defined so `serves up` is a drift-safe `docker compose up -d`
+> ([ADR-0002](docs/adr/0002-serves-are-compose-defined.md)). This is an **operational** requirement
+> for standing up local tiers — **not** a Python dependency: the router and the `anvil-serving`
+> package stay stdlib-only (`pip install` pulls in nothing; the hot path adds no runtime deps).
+
 ```
 anvil-serving profile      # parse ~/.claude logs -> usage baseline (context/gen/concurrency percentiles, role split)
 anvil-serving models sync  # scan your HF caches -> card catalog + INDEX (GGUF vs safetensors, ctx, quant, license, thinking)
