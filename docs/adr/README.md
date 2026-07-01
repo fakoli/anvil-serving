@@ -21,3 +21,4 @@ people and the chat logs.
 | # | Title | Status |
 |---|-------|--------|
 | [0001](0001-cloud-cost-and-subscription-auth.md) | Cloud cost & subscription auth — why anvil should not relay cloud | Accepted |
+| [0002](0002-serves-are-compose-defined.md) | Model serves are Docker-Compose-defined | Accepted |
