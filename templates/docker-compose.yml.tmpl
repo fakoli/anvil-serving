@@ -4,9 +4,9 @@ services:
     container_name: sglang
     restart: unless-stopped
     shm_size: "16g"
-    ports: ["{port}:{port}"]
+    ports: ["{bind}:{port}:{port}"]
     volumes: ["{model}:/models/local"]
-    deploy: {{resources: {{reservations: {{devices: [{{driver: nvidia, device_ids: ["{gpu}"], capabilities: [gpu]}}]}}}}}}
+{env_block}    deploy: {{resources: {{reservations: {{devices: [{{driver: nvidia, device_ids: ["{device_id}"], capabilities: [gpu]}}]}}}}}}
     command: >
       python3 -m sglang.launch_server
       --model-path /models/local

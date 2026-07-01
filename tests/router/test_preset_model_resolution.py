@@ -227,13 +227,18 @@ def test_relay_backend_without_model_falls_back_to_request_model():
     assert body["model"] == "local-model-name"
 
 
-# ── Example config: existing tiers still have model=None (back-compat) ────────
+# ── Example config: local tiers set model= so the preset token is not forwarded ──
 
-def test_example_toml_tiers_have_none_model():
-    """The example.toml doesn't set model on any tier; all should be None."""
+def test_example_toml_local_tiers_have_model():
+    """example.toml sets ``model`` on every local tier (genericity:R001): the router
+    forwards the served-model-name upstream, not the routing token, so the shipped
+    default config does not 404 on the first request. (The RelayBackend fallback to
+    ``request.model`` when a tier omits ``model`` is still covered by
+    ``test_relay_backend_without_model_falls_back_to_request_model`` above.)"""
     cfg = load(str(REPO_ROOT / "configs" / "example.toml"))
     for tier in cfg.tiers:
-        assert tier.model is None, (
-            f"tier {tier.id!r} unexpectedly has model={tier.model!r}; "
-            "update example.toml or this test"
-        )
+        if tier.privacy == "local":
+            assert tier.model, (
+                f"tier {tier.id!r} is missing model=; the preset token would be "
+                f"forwarded upstream and 404 (genericity:R001)"
+            )

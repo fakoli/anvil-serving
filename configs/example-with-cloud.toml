@@ -38,6 +38,7 @@ metered_cloud = ["planning"]
 [[router.tiers]]
 id            = "fast-local"
 base_url      = "http://127.0.0.1:30001/v1"   # vLLM gpt-oss-20b (OpenAI-compatible)
+model         = "gpt-oss-20b"                  # REQUIRED: the serve's --served-model-name (else the preset token is forwarded and 404s)
 dialect       = "openai"
 context_limit = 32768
 privacy       = "local"
@@ -46,7 +47,8 @@ auth_env      = "ANVIL_FAST_LOCAL_KEY"
 
 [[router.tiers]]
 id            = "heavy-local"
-base_url      = "http://127.0.0.1:30000/v1"   # SGLang qwen3-coder-30b (OpenAI-compatible)
+base_url      = "http://127.0.0.1:30000/v1"   # SGLang heavy local tier (OpenAI-compatible)
+model         = "qwen35-awq-local"             # REQUIRED: the serve's --served-model-name (else the preset token is forwarded and 404s)
 dialect       = "openai"
 context_limit = 131072
 privacy       = "local"
@@ -58,6 +60,7 @@ auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
 [[router.tiers]]
 id            = "cloud"
 base_url      = "https://api.anthropic.com"
+model         = "claude-sonnet-4-6"            # REQUIRED: upstream provider model id (else the preset token is forwarded and 400/404s)
 dialect       = "anthropic"
 context_limit = 200000
 privacy       = "cloud"
