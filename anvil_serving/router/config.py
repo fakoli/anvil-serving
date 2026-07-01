@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 import tomllib
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
@@ -180,6 +181,21 @@ def _parse_tier(raw: object) -> Tier:
     if tier_model is not None and not isinstance(tier_model, str):
         raise ConfigError(
             f"tier {tid!r}: model must be a string or absent, got {tier_model!r}"
+        )
+
+    # A local tier without an explicit served-model-name is a footgun: the
+    # request's routing token (a preset like "quick-edit") is forwarded upstream
+    # as the model id, and vLLM/SGLang reject an unknown model with HTTP 404.
+    # Warn (non-fatal) at load so a misconfigured local tier is caught here, not
+    # as a confusing per-request 404. (genericity:R001)
+    if privacy == PRIVACY_LOCAL and tier_model is None:
+        print(
+            f"[anvil-serving] WARNING: local tier {tid!r} has no `model` set; the "
+            f"request's routing token will be forwarded upstream as the model id "
+            f"and the serve will 404. Set model = \"<served-model-name>\" (the "
+            f"serve's --served-model-name).",
+            file=sys.stderr,
+            flush=True,
         )
 
     # Optional: cost per million tokens (USD) for metered cloud tiers.
