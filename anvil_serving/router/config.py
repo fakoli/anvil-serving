@@ -4,6 +4,11 @@ Loads the ``[router]`` block of an anvil-serving TOML config into a frozen,
 validated :class:`RouterConfig`. Every tier names an env-var for its auth
 secret (``auth_env``); the secret literal is never stored here and is never
 read at load time, so a config can be loaded with no secrets present.
+
+Also loads the optional top-level ``[server]`` table (:func:`load_server_config`
+-> :class:`ServerConfig`) — front-door token auth (ADR-0004). Same contract:
+``[server].auth_env`` names an env var, never a secret literal; absent means
+auth is off.
 """
 from __future__ import annotations
 
@@ -137,6 +142,63 @@ class RouterConfig:
         except KeyError:
             raise ConfigError(f"unknown preset: {preset!r}") from None
         return tuple(self.tier(tid) for tid in ids)
+
+
+@dataclass(frozen=True)
+class ServerConfig:
+    """Optional ``[server]`` table: front-door token-auth configuration (ADR-0004).
+
+    ``auth_env`` names the env var holding the bearer/``x-api-key`` token that
+    incoming requests are compared against (constant-time, ``hmac.compare_digest``
+    in :mod:`front_door`). **Absent -> auth is OFF**, identical to today's
+    loopback-only default — full back-compat. The secret literal is NEVER
+    stored here, only the env-var NAME, mirroring the ``Tier.auth_env``
+    contract above.
+    """
+
+    auth_env: Optional[str] = None
+
+
+def load_server_config(path: str) -> ServerConfig:
+    """Load + validate the optional ``[server]`` table of the TOML config at ``path``.
+
+    No ``[server]`` table, or one with no ``auth_env`` key, yields
+    ``ServerConfig(auth_env=None)`` — auth OFF. Never reads ``os.environ``:
+    only the env-var NAME shape is validated here (same rules as a tier's
+    ``auth_env``), never the secret literal.
+    """
+    path = os.path.expanduser(path)
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except OSError as e:
+        raise ConfigError(f"cannot read router config {path!r}: {e}") from e
+    except tomllib.TOMLDecodeError as e:
+        raise ConfigError(f"invalid TOML in router config {path!r}: {e}") from e
+
+    server = data.get("server")
+    if server is None:
+        return ServerConfig(auth_env=None)
+    if not isinstance(server, dict):
+        raise ConfigError(f"[server] must be a table in {path}")
+
+    auth_env = server.get("auth_env")
+    if auth_env is None:
+        return ServerConfig(auth_env=None)
+
+    if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
+        raise ConfigError(
+            f"[server].auth_env must name an ENV VAR matching "
+            f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret reference, "
+            f"never the secret itself"
+        )
+    if _SECRET_SHAPED_RE.fullmatch(auth_env):
+        raise ConfigError(
+            f"[server].auth_env {auth_env!r} is shaped like a credential "
+            f"literal, not an env-var name; store the env-var NAME, never the secret"
+        )
+
+    return ServerConfig(auth_env=auth_env)
 
 
 def _parse_tier(raw: object) -> Tier:

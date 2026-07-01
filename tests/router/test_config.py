@@ -17,8 +17,10 @@ import pytest
 from anvil_serving.router.config import (
     ConfigError,
     RouterConfig,
+    ServerConfig,
     Tier,
     load,
+    load_server_config,
 )
 
 # CWD-independent: example.toml lives at <repo>/configs/example.toml and this
@@ -683,3 +685,87 @@ def test_extra_body_non_string_key_type_is_toml_illegal(tmp_path):
     body = _BASE_TIER + 'extra_body = "not-a-table"\n'
     with pytest.raises(ConfigError):
         load(_write_toml(tmp_path, body))
+
+
+# ── router-service:T001 — top-level [server] table (front-door auth) ────────
+#
+# `load_server_config` reads the OPTIONAL top-level `[server]` table
+# independently of `[router]` (ADR-0004). It never reads os.environ -- it only
+# validates the `auth_env` NAME shape, exactly like a tier's `auth_env`.
+def _write_raw_toml(tmp_path: pathlib.Path, text: str) -> str:
+    p = tmp_path / "cfg.toml"
+    p.write_text(text, encoding="utf-8")
+    return str(p)
+
+
+def test_server_table_absent_yields_auth_off(tmp_path):
+    """No [server] table at all -> ServerConfig(auth_env=None), auth OFF."""
+    path = _write_raw_toml(tmp_path, "[router]\n" + _BASE_TIER)
+    cfg = load_server_config(path)
+    assert cfg == ServerConfig(auth_env=None)
+    assert cfg.auth_env is None
+
+
+def test_server_table_present_without_auth_env_yields_auth_off(tmp_path):
+    path = _write_raw_toml(
+        tmp_path,
+        "[server]\n\n[router]\n" + _BASE_TIER,
+    )
+    cfg = load_server_config(path)
+    assert cfg.auth_env is None
+
+
+def test_server_auth_env_valid_name_parses(tmp_path):
+    path = _write_raw_toml(
+        tmp_path,
+        '[server]\nauth_env = "ANVIL_ROUTER_TOKEN"\n\n[router]\n' + _BASE_TIER,
+    )
+    cfg = load_server_config(path)
+    assert cfg.auth_env == "ANVIL_ROUTER_TOKEN"
+    # Loading the [router] block independently is unaffected by [server].
+    assert isinstance(load(path), RouterConfig)
+
+
+def test_server_table_not_a_table_raises(tmp_path):
+    path = _write_raw_toml(tmp_path, 'server = "oops"\n\n[router]\n' + _BASE_TIER)
+    with pytest.raises(ConfigError):
+        load_server_config(path)
+
+
+@pytest.mark.parametrize(
+    "bad_name",
+    [
+        "anvil_router_token",  # lowercase
+        "1ANVIL_TOKEN",  # leading digit
+        "ANVIL-ROUTER-TOKEN",  # hyphens not allowed
+        "ANVIL TOKEN",  # whitespace
+        "",  # empty
+    ],
+)
+def test_server_auth_env_bad_name_raises(tmp_path, bad_name):
+    path = _write_raw_toml(
+        tmp_path,
+        f'[server]\nauth_env = "{bad_name}"\n\n[router]\n' + _BASE_TIER,
+    )
+    with pytest.raises(ConfigError):
+        load_server_config(path)
+
+
+def test_server_auth_env_secret_shaped_literal_raises(tmp_path):
+    """A pasted AWS-access-key-id-shaped literal fits the env-name charset but
+    must still be rejected as a secret literal, not a name (defense in depth,
+    mirrors the tier auth_env guard)."""
+    path = _write_raw_toml(
+        tmp_path,
+        '[server]\nauth_env = "AKIAABCDEFGHIJKLMNOP"\n\n[router]\n' + _BASE_TIER,
+    )
+    with pytest.raises(ConfigError):
+        load_server_config(path)
+
+
+def test_server_auth_env_non_string_raises(tmp_path):
+    path = _write_raw_toml(
+        tmp_path, "[server]\nauth_env = 12345\n\n[router]\n" + _BASE_TIER,
+    )
+    with pytest.raises(ConfigError):
+        load_server_config(path)
