@@ -25,6 +25,13 @@ vLLM engine (genericity:T010): `--engine vllm` renders a vLLM compose
 gotcha #14). Its serve argv is built by `multiplexer.build_cmd()` — the SAME
 function that launches a vLLM backend for the multiplexer — so the two paths
 can never drift apart. `--engine sglang` (the default) is unchanged.
+
+Thinking-disable at generation time (genericity:T011): `--disable-thinking`
+(or `--model-facts <card.json>` reporting `thinking_default: true`, as
+written by `models sync`) injects the engine-appropriate
+`--chat-template-kwargs '{"enable_thinking": false}'` into the serve command
+— CLAUDE.md gotcha #6: a thinking-by-default model on a small `max_tokens`
+budget otherwise burns it reasoning and returns EMPTY content.
 """
 import ipaddress
 import json
@@ -239,13 +246,24 @@ def append_serve_entry(manifest_path, name, container, port, served_name, up, he
 
 
 def render_tier_stub(tier_id, served_name, port, dialect="openai", context_limit=131072,
-                      privacy="local", tool_support=True, auth_env=None):
+                      privacy="local", tool_support=True, auth_env=None, disable_thinking=False):
     """A `[[router.tiers]]` TOML stub for `configs/*.toml` — `model` MUST equal
     the serve's `--served-model-name` and the port MUST equal the compose's
-    published port (T009 AC), so pasting this in never 404s (genericity:R001)."""
+    published port (T009 AC), so pasting this in never 404s (genericity:R001).
+
+    `disable_thinking=True` adds an advisory TOML comment (not a live field —
+    `Tier` has no `extra_body` yet, tracked as genericity:R003) so an operator
+    knows to set `chat_template_kwargs:{enable_thinking:false}` at the request
+    layer too if the serve-side `--chat-template-kwargs` flag isn't enough."""
     auth_env = auth_env or ("ANVIL_" + tier_id.upper().replace("-", "_") + "_KEY")
+    comment = (
+        "# thinking-by-default model: the serve command already disables it "
+        "(--chat-template-kwargs); once Tier grows `extra_body` (genericity:R003) "
+        "also set chat_template_kwargs = {enable_thinking = false} here.\n"
+        if disable_thinking else ""
+    )
     return (
-        f'\n[[router.tiers]]\n'
+        f'\n{comment}[[router.tiers]]\n'
         f'id            = "{tier_id}"\n'
         f'base_url      = "http://127.0.0.1:{port}/v1"\n'
         f'model         = "{served_name}"\n'
@@ -255,6 +273,20 @@ def render_tier_stub(tier_id, served_name, port, dialect="openai", context_limit
         f'tool_support  = {"true" if tool_support else "false"}\n'
         f'auth_env      = "{auth_env}"\n'
     )
+
+
+def read_thinking_default(model_facts_path):
+    """Read `thinking_default` from a `models sync` card JSON (T011), or
+    False if `model_facts_path` is absent/unreadable/missing the key. Never
+    raises — a missing/malformed facts file just means "don't disable"."""
+    if not model_facts_path:
+        return False
+    try:
+        with open(model_facts_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return False
+    return bool(data.get("thinking_default"))
 
 
 def _infer_engine(model_path):
@@ -287,6 +319,15 @@ def main(argv):
                          "config.json weight format, else sglang)")
     ap.add_argument("--gpu-mem-util", type=float, default=0.90,
                     help="--gpu-memory-utilization for the vLLM engine (ignored for sglang)")
+    ap.add_argument("--disable-thinking", action="store_true",
+                    help="inject the engine-appropriate flag to disable a "
+                         "thinking-by-default model (CLAUDE.md gotcha #6: "
+                         "otherwise it burns a small max_tokens budget "
+                         "reasoning and returns EMPTY content); auto-set when "
+                         "--model-facts reports thinking_default=true")
+    ap.add_argument("--model-facts", default=None,
+                    help="path to a `models sync` card JSON for this model "
+                         "(reads thinking_default; see `anvil-serving models sync`)")
     ap.add_argument("--bind", default=None,
                     help="publish address (default 127.0.0.1; loopback-only). "
                          "Pass 0.0.0.0 (or --expose-lan) to LAN-expose the "
@@ -304,9 +345,10 @@ def main(argv):
     a = ap.parse_args(argv)
     bind = a.bind or (LAN_BIND if a.expose_lan else LOOPBACK_BIND)
     engine = a.engine or _infer_engine(a.model)
+    disable_thinking = a.disable_thinking or read_thinking_default(a.model_facts)
     open(a.out, "w", encoding="utf-8").write(
         render(a.model, a.gpu, a.context, a.served_name, port=a.port, bind=bind,
-              engine=engine, gpu_mem_util=a.gpu_mem_util))
+              engine=engine, gpu_mem_util=a.gpu_mem_util, disable_thinking=disable_thinking))
     print("wrote", a.out, "\nLaunch:  docker compose -f", a.out, "up -d")
 
     if a.no_manifest:
@@ -329,6 +371,7 @@ def main(argv):
 
     print(
         "\nRouter tier stub (paste into [router.tiers] in your config):\n"
-        + render_tier_stub(tier_id, a.served_name, a.port, context_limit=a.context)
+        + render_tier_stub(tier_id, a.served_name, a.port, context_limit=a.context,
+                          disable_thinking=disable_thinking)
     )
     return 0
