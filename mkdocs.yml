@@ -10,26 +10,17 @@ edit_uri: edit/main/docs/
 docs_dir: docs
 
 theme:
-  name: material
-  palette:
-    - scheme: default
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
-  features:
-    - navigation.tabs
-    - navigation.sections
-    - navigation.top
-    - search.highlight
-    - content.code.copy
+  name: readthedocs
+  # Disable the RTD theme's built-in highlight.js to avoid double-processing
+  # with pymdownx.highlight (which handles syntax highlighting at build time).
+  highlightjs: false
+
+plugins:
+  - search
+  - mermaid2:
+      # Pin to a known-good mermaid.js release; the plugin injects this CDN JS
+      # automatically — no extra_javascript block needed.
+      version: '10.9.0'
 
 nav:
   - Home: index.md
@@ -59,7 +50,10 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+          # mermaid2.fence_mermaid_custom emits <div class="mermaid"> which the
+          # mermaid2 plugin then targets with mermaid.initialize(); this is the
+          # correct custom fence for non-Material themes (no superfences.fence_code_format).
+          format: !!python/name:mermaid2.fence_mermaid_custom
   - pymdownx.snippets:
       base_path: ['.']
   - pymdownx.tabbed:
