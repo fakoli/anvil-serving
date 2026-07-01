@@ -270,13 +270,31 @@ def test_cmd_up_compose_serve_runs_compose_up_not_docker_start():
     assert not any(c[:2] == ["docker", "start"] for c in run.calls)  # never blind-started
 
 
-def test_cmd_up_compose_serve_running_is_noop():
-    # `up -d` on an unchanged running compose serve would be a no-op; we skip the call.
+def test_cmd_up_compose_serve_running_reruns_compose_up_for_drift():
+    # THE M1 fix: a RUNNING compose serve is still (re)run through `docker compose up -d`
+    # UNCONDITIONALLY — a cheap no-op when the compose config is unchanged, and a native
+    # recreate when the compose file drifted (ADR-0002). A blind "already running" short-
+    # circuit would silently keep serving a stale model after the compose file was edited.
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
-             "model": "qwen35-awq-local", "up": ["docker", "compose", "up", "-d"]}]
+             "model": "qwen35-awq-local",
+             "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
     run = _inspect_returning("running")
     assert serves.cmd_up(serv, [], _run=run) == 0
-    assert all(c[:2] == ["docker", "inspect"] for c in run.calls)  # only inspected
+    assert ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"] in run.calls
+    assert not any(c[:2] == ["docker", "start"] for c in run.calls)  # never blind-started
+
+
+def test_cmd_up_paused_compose_serve_is_unpaused_not_composed():
+    # N1: a PAUSED compose serve must be `docker unpause`d (handled before the compose
+    # branch), not routed through `docker compose up -d` — which would not unpause it and
+    # would leave the serve stuck paused.
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local",
+             "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
+    run = _inspect_returning("paused")
+    assert serves.cmd_up(serv, [], _run=run) == 0
+    assert ["docker", "unpause", "sglang"] in run.calls
+    assert serv[0]["up"] not in run.calls  # did NOT take the compose path
 
 
 def test_cmd_up_script_serve_warns_on_model_drift(capsys):
