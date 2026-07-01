@@ -121,7 +121,7 @@ export default definePluginEntry({
 // openclaw.plugin.json
 { "id": "anvil-intent-router", "activation": { "onStartup": true } }
 ```
-Install: `openclaw plugins install ./local` (dev) or `clawhub:<org>/anvil-intent-router`; then `openclaw gateway restart`; verify `openclaw plugins inspect anvil-intent-router --runtime --json`.
+Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/anvil-intent-router`; then `openclaw gateway restart`; verify `openclaw plugins inspect anvil-intent-router --runtime --json`. **`--link` is required on OpenClaw >=2026.6.11** — that compiled-runtime loader rejects a copy-install (`openclaw plugins install <path>` without the flag) for TypeScript/compiled plugins like this one; only a linked (symlinked) install is accepted.
 
 ## 2. OpenClaw provider config recipe (point at anvil-serving)
 
@@ -182,7 +182,7 @@ Net: this matches anvil's existing design (`QUALITY-GATED-ROUTER.md` §7) — ve
 
 1. **Router accepts presets (no OpenClaw needed).** Make anvil-serving's OpenAI front door accept `{planning,quick-edit,review,chat,long-context}` (and `anvil/<preset>`) as `model`, map to tier, serve. Add `/v1/models` listing the presets. (anvil M0–M1.)
 2. **Use the available OpenClaw install on the gateway** (already installed; no fresh stand-up). Confirm/pin its version (`openclaw --version`), then add the §2 provider block pointing at the router. Smoke-test `openclaw models list` shows `anvil/*`; send a turn with `agents.defaults.model.primary="anvil/chat"`; **capture the outbound request to settle §3 wire-value gap.** (Reproducing elsewhere: `npm i -g openclaw@<pinned stable>` + `openclaw onboard --install-daemon`.)
-3. **Reference plugin.** Build §1, `openclaw plugins install ./local`, set `allowConversationAccess=true`, restart. Log every `before_model_resolve` fire → **confirm per-turn cadence**. Verify a returned `modelOverride` actually routes the turn to the anvil endpoint with the expected wire model.
+3. **Reference plugin.** Build §1, `openclaw plugins install --link ./local`, set `allowConversationAccess=true`, restart. Log every `before_model_resolve` fire → **confirm per-turn cadence**. Verify a returned `modelOverride` actually routes the turn to the anvil endpoint with the expected wire model.
 4. **Router-side verify+fallback.** Implement cheap structural verify + tier fallback server-side (anvil M2). Optionally add a client `llm_output` observer that logs verdicts for next-turn biasing.
 5. **Harden + publish.** Pin `pluginApi` compat once confirmed; publish plugin to ClawHub; document the `security.installPolicy`/`plugins.allow` install path.
 
