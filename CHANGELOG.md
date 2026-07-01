@@ -8,6 +8,49 @@ All notable changes to this project are documented here. The format is based on
 
 _Nothing yet._
 
+## [0.6.0] - 2026-07-01
+
+**Router as a service** — the front door is now a containerized, network-facing, **token-authed**
+endpoint ([ADR-0004](https://github.com/fakoli/anvil-serving/blob/main/docs/adr/0004-router-as-a-service-containerized-and-authed.md)),
+so the serves stay loopback-only behind one authenticated boundary and keep-alive comes from Docker.
+
+### Added
+
+- **Built-in front-door token auth (opt-in).** `[server].auth_env` names the env var (e.g.
+  `ANVIL_ROUTER_TOKEN`) holding a shared token; the front door accepts `Authorization: Bearer <t>` or
+  `x-api-key: <t>`, compares constant-time (`hmac`), and returns `401` on mismatch. **Off when unset**
+  (loopback default unchanged); configured-but-env-unset fails fast. Unauthenticated `GET /healthz`.
+- **Repo-root `Dockerfile`** (stdlib-only image, non-root, `HEALTHCHECK` on `/healthz`) and a
+  router+serves compose topology: the `router` is the only published, authed service; the serves stay
+  loopback-only and are reached by service name. Ships `configs/example-docker.toml`.
+
+### Changed
+
+- **`SECURITY.md`** documents the built-in bearer/`x-api-key` auth (supersedes the old "no built-in
+  authentication" note); the raw serves stay loopback/internal behind the router.
+
+## [0.5.0] - 2026-07-01
+
+**Portable-by-default** — out-of-box router correctness and a generated bring-up
+([ADR-0003](https://github.com/fakoli/anvil-serving/blob/main/docs/adr/0003-portable-defaults-and-generic-onboarding.md)),
+so anvil-serving works generically, not just on the authors' setup.
+
+### Added
+
+- **`anvil-serving init` / `onboard`** — one command detects GPUs and emits a mutually-consistent
+  compose + `serves.toml` + router config. **`anvil-serving doctor`** environment preflight. Shared
+  `gpus.py` GPU-UUID pinning; `deploy` gains a vLLM engine, loopback-default publish, and serves.toml +
+  router-tier emission. Per-tier **`extra_body`** (inject `chat_template_kwargs.enable_thinking=false`
+  for thinking-by-default models); configurable **`[router].relay_timeout`**; `/v1/models` served-name
+  auto-derive.
+
+### Fixed
+
+- **Shipped example configs 404'd out of the box** (a local tier without `model=` forwarded the preset
+  token upstream) — `model=` is now required and warned. **verify-on-local-`allow`** catches an
+  empty/truncated local `200` instead of delivering it. README states Python ≥3.11 + a pipx recipe;
+  the OpenClaw plugin install uses `--link`.
+
 ## [0.4.1] - 2026-06-30
 
 Serving-substrate hardening: model serves are now Docker-Compose-defined and `serves up`
