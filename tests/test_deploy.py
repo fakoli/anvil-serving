@@ -86,3 +86,82 @@ def test_deploy_cli_bind_flag_overrides(tmp_path, monkeypatch):
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     deploy.main(["--model", "/w/model", "--out", str(out_path), "--bind", "192.168.1.5"])
     assert '192.168.1.5:30000:30000' in out_path.read_text(encoding="utf-8")
+
+
+# ---- emits serves.toml entry + router-tier stub (genericity:T009) --------------
+
+def test_deploy_render_serve_entry_matches_compose_fields():
+    entry = deploy.render_serve_entry(
+        "heavy", "sglang", 30000, "qwen35-awq-local", "docker compose -f x.yml up -d sglang")
+    assert 'name = "heavy"' in entry
+    assert 'container = "sglang"' in entry
+    assert 'port = 30000' in entry
+    assert 'model = "qwen35-awq-local"' in entry
+
+
+def test_deploy_append_serve_entry_creates_manifest(tmp_path):
+    manifest = tmp_path / "serves.toml"
+    ok = deploy.append_serve_entry(
+        str(manifest), "heavy", "sglang", 30000, "qwen35-awq-local", "docker compose up -d sglang")
+    assert ok is True
+    parsed = deploy._serves.load_manifest(str(manifest))
+    assert len(parsed) == 1
+    assert parsed[0]["name"] == "heavy"
+    assert parsed[0]["container"] == "sglang"
+    assert parsed[0]["port"] == 30000
+    assert parsed[0]["model"] == "qwen35-awq-local"
+
+
+def test_deploy_append_serve_entry_appends_to_existing(tmp_path):
+    manifest = tmp_path / "serves.toml"
+    deploy.append_serve_entry(str(manifest), "heavy", "sglang", 30000, "m1", "up1")
+    deploy.append_serve_entry(str(manifest), "fast", "vllm", 30001, "m2", "up2")
+    parsed = deploy._serves.load_manifest(str(manifest))
+    assert {s["name"] for s in parsed} == {"heavy", "fast"}
+
+
+def test_deploy_append_serve_entry_no_duplicate_on_rerun(tmp_path, capsys):
+    manifest = tmp_path / "serves.toml"
+    deploy.append_serve_entry(str(manifest), "heavy", "sglang", 30000, "m1", "up1")
+    ok = deploy.append_serve_entry(str(manifest), "heavy", "sglang", 30000, "m1", "up1")
+    assert ok is False
+    parsed = deploy._serves.load_manifest(str(manifest))
+    assert len(parsed) == 1
+    assert "already present" in capsys.readouterr().err
+
+
+def test_deploy_render_tier_stub_model_and_port_match_serve():
+    stub = deploy.render_tier_stub("heavy-local", "qwen35-awq-local", 30000)
+    assert 'model         = "qwen35-awq-local"' in stub
+    assert 'base_url      = "http://127.0.0.1:30000/v1"' in stub
+    assert 'privacy       = "local"' in stub
+    assert 'dialect       = "openai"' in stub
+
+
+def test_deploy_cli_emits_manifest_and_tier_stub(tmp_path, monkeypatch, capsys):
+    out_path = tmp_path / "compose.yml"
+    manifest_path = tmp_path / "serves.toml"
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main(["--model", "/w/model", "--out", str(out_path), "--port", "30000",
+                "--served-name", "qwen35-awq-local", "--tier-id", "heavy-local",
+                "--manifest-out", str(manifest_path)])
+    parsed = deploy._serves.load_manifest(str(manifest_path))
+    assert len(parsed) == 1
+    assert parsed[0] == {
+        "name": "heavy-local", "container": "sglang", "port": 30000,
+        "model": "qwen35-awq-local", "health": "/health",
+        "up": ["docker", "compose", "-f", str(out_path).replace("\\", "/"), "up", "-d", "sglang"],
+    }
+    out = capsys.readouterr().out
+    assert "router.tiers" in out
+    assert 'model         = "qwen35-awq-local"' in out
+    assert "http://127.0.0.1:30000/v1" in out
+
+
+def test_deploy_cli_no_manifest_skips_emission(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    manifest_path = tmp_path / "serves.toml"
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main(["--model", "/w/model", "--out", str(out_path),
+                "--manifest-out", str(manifest_path), "--no-manifest"])
+    assert not manifest_path.exists()
