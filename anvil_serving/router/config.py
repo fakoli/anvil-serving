@@ -97,6 +97,13 @@ class RouterConfig:
     # When True, tiers with unset cost fields have them filled from the LiteLLM pricing
     # JSON after loading; static config values always win (never overwritten).
     cost_sync: bool = False
+    # genericity:T005 — transport timeout (seconds) used to build LOCAL-tier
+    # (privacy="local") backends. Kept short by default: a local vLLM/SGLang serve
+    # that has hung or gone cold should fail fast so the router escalates to the
+    # next tier promptly, rather than sitting on the CloudBackend/RelayBackend
+    # default of 120s (tuned for a slower cloud provider). Threaded through
+    # serve.build_backends -> build_backend_for_tier. Does not affect cloud tiers.
+    relay_timeout: float = 20.0
 
     def tier(self, tier_id: str) -> Tier:
         """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
@@ -344,6 +351,22 @@ def load(path: str) -> RouterConfig:
             filled.append(replace(t, cost_input_per_mtok=cost_in, cost_output_per_mtok=cost_out))
         tiers = filled
 
+    # ``relay_timeout`` (genericity:T005): transport timeout in seconds used to
+    # build LOCAL-tier backends. Default kept short (20s) so a hung/cold local
+    # serve fails fast to the next tier rather than sitting on the 120s cloud-
+    # tuned default. bool is a subclass of int -- reject it explicitly.
+    raw_relay_timeout = router.get("relay_timeout", 20.0)
+    if (
+        isinstance(raw_relay_timeout, bool)
+        or not isinstance(raw_relay_timeout, (int, float))
+        or raw_relay_timeout <= 0
+    ):
+        raise ConfigError(
+            f"[router].relay_timeout must be a positive number of seconds "
+            f"(default 20.0) in {path}"
+        )
+    relay_timeout: float = float(raw_relay_timeout)
+
     return RouterConfig(
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
@@ -351,4 +374,5 @@ def load(path: str) -> RouterConfig:
         metered_cloud=metered_cloud,
         exhaustion_status=exhaustion_status,
         cost_sync=cost_sync,
+        relay_timeout=relay_timeout,
     )

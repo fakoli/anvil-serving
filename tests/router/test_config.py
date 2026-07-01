@@ -581,3 +581,48 @@ def test_example_with_cloud_has_cost_fields_on_cloud_tier():
     )
     assert cloud.cost_input_per_mtok > 0
     assert cloud.cost_output_per_mtok > 0
+
+
+# ── genericity:T005 — [router].relay_timeout ────────────────────────────────
+def test_relay_timeout_defaults_to_20(tmp_path):
+    """Absent relay_timeout -> a short (20s) default, not the 120s cloud default."""
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    assert cfg.relay_timeout == pytest.approx(20.0)
+
+
+def test_relay_timeout_parses_when_set(tmp_path):
+    body = "relay_timeout = 5\n" + _BASE_TIER
+    cfg = load(_write_toml(tmp_path, body))
+    assert cfg.relay_timeout == pytest.approx(5.0)
+    assert isinstance(cfg.relay_timeout, float)
+
+
+def test_relay_timeout_accepts_float(tmp_path):
+    body = "relay_timeout = 2.5\n" + _BASE_TIER
+    cfg = load(_write_toml(tmp_path, body))
+    assert cfg.relay_timeout == pytest.approx(2.5)
+
+
+def test_relay_timeout_zero_raises(tmp_path):
+    body = "relay_timeout = 0\n" + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_relay_timeout_negative_raises(tmp_path):
+    body = "relay_timeout = -1\n" + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_relay_timeout_non_number_raises(tmp_path):
+    body = 'relay_timeout = "fast"\n' + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_relay_timeout_bool_raises(tmp_path):
+    """bool is an int subclass in Python; must be rejected explicitly."""
+    body = "relay_timeout = true\n" + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))

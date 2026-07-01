@@ -151,13 +151,22 @@ def build_backends(
     its id + reason are returned in the second element so the caller can warn and
     still start the front door bound to the serviceable tiers. Returns
     ``(backends_by_tier_id, skipped)`` where ``skipped`` is ``[(tier_id, reason), ...]``.
+
+    **genericity:T005** — a LOCAL tier's backend is built with
+    ``config.relay_timeout`` as its transport timeout (default 20s, short so a
+    hung/cold local serve fails fast to the next tier) instead of the 120s
+    cloud-tuned default that :func:`build_backend_for_tier` otherwise applies. A
+    cloud tier is unaffected — it keeps the 120s default.
     """
     backends: Dict[str, Backend] = {}
     skipped: List[Tuple[str, str]] = []
     for tier in config.tiers:
         try:
+            kwargs: Dict[str, object] = {}
+            if tier.privacy != PRIVACY_CLOUD:
+                kwargs["timeout"] = config.relay_timeout
             backends[tier.id] = build_backend_for_tier(
-                tier, env=env, transport=transport
+                tier, env=env, transport=transport, **kwargs
             )
         except MissingCredentialError as e:
             # Cloud tier with no key: don't crash the whole server — bind the

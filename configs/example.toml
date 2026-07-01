@@ -13,6 +13,7 @@ served_model_name = "local-specialist"
 # See configs/example-with-cloud.toml for the opt-in metered cloud tier.
 [router]
 mapping_version = "2026-06-30.0"
+# relay_timeout = 20   # seconds; transport timeout for LOCAL tiers (default 20s; genericity:T005)
 
 [[router.tiers]]
 id            = "fast-local"
