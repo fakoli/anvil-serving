@@ -8,7 +8,7 @@ invocation styles with no single entry point.
 
 The router (`anvil-serving serve`) talks to the GPU model serves as backends but
 never starts or stops them. `serves` does, driven by a declarative manifest
-(default [`examples/fakoli-dark/serves.toml`](examples/fakoli-dark/serves.toml))
+(default [`examples/fakoli-dark/serves.toml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/serves.toml))
 that is the single source of truth for *which container runs on which port as
 which model*.
 
