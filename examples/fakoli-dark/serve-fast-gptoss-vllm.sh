@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Fast tier: gpt-oss-20b on vLLM (RTX 5090 / GPU 0, port 30001).
 #
-# Reconstructed from the live `vllm-gptoss` container config so the fast serve has
-# a canonical launch artifact (it previously lived only in a findings doc). Mirrors
-# serve-fast-glm-vllm.sh. `anvil-serving serves up fast` runs this when the
-# container does not yet exist (an already-stopped one is just `docker start`ed).
+# REFERENCE / SUPERSEDED — `anvil-serving serves up fast` NO LONGER runs this. The fast serve
+# is now Docker-Compose-defined (examples/fakoli-dark/docker-compose.yml, service `fast`) per
+# docs/adr/0002-serves-are-compose-defined.md; the manifest's `up` delegates to
+# `docker compose up -d fast`. This script is kept only as a readable record of the `docker run`
+# line the compose service was derived from. If you run it by hand, note the hard-won env vars
+# below — especially VLLM_USE_V2_MODEL_RUNNER=0: WSL2 exposes no UVA, so vLLM's v2 model runner's
+# UvaBuffer otherwise dies with "RuntimeError: UVA is not available" at engine init (gotcha #14).
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL='*'
@@ -17,6 +20,7 @@ docker run -d --name vllm-gptoss \
   --gpus all \
   -e CUDA_VISIBLE_DEVICES="$GPU0_UUID" \
   -e CUDA_DEVICE_ORDER=PCI_BUS_ID \
+  -e VLLM_USE_V2_MODEL_RUNNER=0 \
   --ipc=host \
   -p 30001:30001 \
   -v "C:/Users/sdoum/models/gpt-oss-20b:/models/gpt-oss-20b:ro" \

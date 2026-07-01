@@ -8,15 +8,17 @@ remembering two different launch mechanisms.
 
 It reads a manifest (default `examples/fakoli-dark/serves.toml`) that declares
 each serve's container name, port, health path, declared `model` (served-model-name),
-and an optional `up` command for a *fresh* create. Bringing a serve up is drift-safe:
-when `up` is a `docker compose up -d`, that command IS the (re)start — compose
-recreates the container when its config changed and fast-(re)starts it when not, so a
-stale model is never resurrected by a blind `docker start`. A one-shot `docker run`
-*script* serve can't be re-run over an existing container, so it is `docker start`ed —
-with a loud warning if it drifted from the declared `model` (fix: `--recreate`, or,
-better, convert it to a compose file). `--recreate` forces a clean `docker rm -f` +
-`up` for any serve. stdlib-only: `subprocess` to docker, `urllib` for the health
-probe, `tomllib` to read the manifest.
+and an optional `up` command. Bringing a serve up is drift-safe: when `up` is a
+`docker compose up -d`, that command IS the (re)start and is run UNCONDITIONALLY — even
+when the container is already running — because compose recreates the container when its
+config changed and fast-(re)starts it (a cheap no-op) when not, so editing the compose
+file and re-running `serves up` recreates the container to match and a stale model is
+never resurrected by a blind `docker start`. A one-shot `docker run` *script* serve can't
+be re-run over an existing container, so it is `docker start`ed — with a loud warning if
+it drifted from the declared `model` (fix: `--recreate`, or, better, convert it to a
+compose file). A paused serve (either kind) is `docker unpause`d. `--recreate` forces a
+clean `docker rm -f` + `up` for any serve. stdlib-only: `subprocess` to docker, `urllib`
+for the health probe, `tomllib` to read the manifest.
 
 TRUST BOUNDARY: a serve's `up` command from the manifest is EXECUTED. It is parsed
 with `shlex` and run as an argv list (no shell), so `{dir}` paths with spaces are
@@ -42,8 +44,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 DEFAULT_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
 
-# Container states that hold the GPU / are live and must be `docker stop`ped.
-_ACTIVE = ("running", "paused", "restarting", "removing", "unknown")
 # States meaning the container exists but is already stopped (nothing to free).
 _STOPPED = ("exited", "created", "dead")
 
@@ -284,22 +284,26 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
                 rc = 1
                 continue
             steps, desc = [up], "up %s: %s" % (s["name"], " ".join(up))
+        elif st == "paused":
+            # A paused container (compose OR script) still pins 100% of its VRAM; resume
+            # it with `docker unpause`. Handled BEFORE the compose branch so a paused
+            # compose serve isn't routed through `docker compose up -d` (which would not
+            # unpause it) and left stuck paused.
+            steps, desc = [["docker", "unpause", s["container"]]], "unpause %s" % s["container"]
         elif compose:
             # `docker compose up -d` natively recreates the container when its compose
-            # config changed and fast-(re)starts it otherwise — so we run `up`, never a
-            # blind `docker start` that would silently resurrect the container's STALE
-            # model. Drift-safety for free; no bespoke config-hashing needed.
-            if st == "running":
-                print("  %s: already running" % s["container"])  # up -d would be a no-op
-                continue
+            # config changed and fast-(re)starts it (a cheap no-op) otherwise — so we run
+            # `up` UNCONDITIONALLY, even when the container is already running. That is the
+            # whole point of ADR-0002: edit the compose file, re-run `serves up`, and the
+            # container is recreated to match, instead of a blind "already running" skip or
+            # a `docker start` silently resurrecting the container's STALE model. Drift-
+            # safety for free; no bespoke config-hashing needed.
             steps = [up]
             desc = "compose up %s: %s" % (s["name"], " ".join(up))
         elif st == "running":
             _warn_drift(s, _run=_run)  # script serve: can't self-heal, so at least warn
             print("  %s: already running" % s["container"])
             continue
-        elif st == "paused":
-            steps, desc = [["docker", "unpause", s["container"]]], "unpause %s" % s["container"]
         else:  # exited / created -- a `docker run` script serve
             # A `docker run` script can't be re-run over an existing container (name
             # clash), so we `docker start` it — but that resurrects whatever model it
