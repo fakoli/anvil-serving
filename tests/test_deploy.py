@@ -52,3 +52,37 @@ def test_deploy_cli_writes_compose(tmp_path, monkeypatch):
     rc = deploy.main(["--model", "/w/model", "--gpu", "0", "--out", str(out_path)])
     assert out_path.exists()
     assert "sglang.launch_server" in out_path.read_text(encoding="utf-8")
+
+
+# ---- loopback default / --expose-lan (genericity:T008) -------------------------
+
+def test_deploy_loopback_default_publishes_127_0_0_1():
+    out = deploy.render("/w/model", gpu=0, port=30000, _run=_run_missing)
+    assert 'ports: ["127.0.0.1:30000:30000"]' in out
+
+
+def test_deploy_expose_lan_publishes_0_0_0_0_and_warns(capsys):
+    out = deploy.render("/w/model", gpu=0, port=30000, bind="0.0.0.0", _run=_run_missing)
+    assert 'ports: ["0.0.0.0:30000:30000"]' in out
+    err = capsys.readouterr().err
+    assert "WARNING" in err and "SECURITY.md" in err
+
+
+def test_deploy_loopback_default_prints_no_public_bind_warning(capsys):
+    deploy.render("/w/model", gpu=0, port=30000, _run=_run_missing)
+    err = capsys.readouterr().err
+    assert "network" not in err  # only the nvidia-smi warning, no public-bind warning
+
+
+def test_deploy_cli_expose_lan_flag(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main(["--model", "/w/model", "--out", str(out_path), "--expose-lan"])
+    assert '0.0.0.0:30000:30000' in out_path.read_text(encoding="utf-8")
+
+
+def test_deploy_cli_bind_flag_overrides(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main(["--model", "/w/model", "--out", str(out_path), "--bind", "192.168.1.5"])
+    assert '192.168.1.5:30000:30000' in out_path.read_text(encoding="utf-8")
