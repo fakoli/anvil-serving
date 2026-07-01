@@ -352,6 +352,15 @@ One front door speaking two dialects so it's zero-config for the major harnesses
   and can't take `chat_template_kwargs` over some paths; the sm_120 engine/quant matrix). **Absorbing
   this friction is itself a feature.**
 
+**Deployment: pip-install (loopback, no auth) or containerized (network-facing, token-authed).**
+The endpoint above is unchanged either way — a harness just points its `base_url` at it. The
+router can run as a bare `pip install` loopback process (today's default, unauthenticated by
+design) or as a supervised Docker service with built-in bearer/`x-api-key` auth, opt-in via
+`[server].auth_env`, so it can be safely exposed across a cross-box topology (e.g. an OpenClaw
+gateway box reaching a GPU box's router). See [ADR-0004](adr/0004-router-as-a-service-containerized-and-authed.md),
+the top-level README's "Run the router in Docker" section, and
+[`examples/fakoli-dark/README.md`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/README.md) for the worked example.
+
 Verified support grid (full detail + citations in the finding):
 
 | Harness | base_url? | arbitrary model string? | per-request hook / extra fields | intent slots/session | tier |

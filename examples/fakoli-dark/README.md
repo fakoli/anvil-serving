@@ -11,42 +11,57 @@ machine it was built on. Read this file before you copy anything.
 
 - **The GPU box (`fakoli-dark` itself)** — runs the local model serves (this directory's
   compose files): **heavy** `:30000` (Qwen3.5-35B-A3B AWQ on SGLang, RTX PRO 6000 96GB) and
-  **fast** `:30001` (gpt-oss-20b on vLLM, RTX 5090 32GB). It also runs `anvil-serving serve`
-  (the router front door), which talks to both serves over `127.0.0.1` because they're
-  colocated with the router on this same box.
+  **fast** `:30001` (gpt-oss-20b on vLLM, RTX 5090 32GB). It also runs the **router**,
+  **containerized per [ADR-0004](../../docs/adr/0004-router-as-a-service-containerized-and-authed.md)**
+  — reaching both serves by Docker **service name** over the internal compose network, and it
+  is the **only** service on this box published beyond loopback (behind a token).
 - **The gateway box (`Fakoli Mini`)** — a separate, smaller machine that runs **OpenClaw**
-  (the harness). It is where coding-agent traffic originates.
+  (the harness). It is where coding-agent traffic originates; its `anvil` provider is
+  repointed at the router on the GPU box, with a bearer token.
 
 ```
-Fakoli Mini (gateway)                 fakoli-dark (GPU box)
-┌────────────────────┐   private net  ┌──────────────────────────────┐
-│ OpenClaw            │ ─────────────▶ │ anvil-serving serve  :8000   │
-│ (harness)            │  (NOT loopback)│  ├── heavy-local  → :30000  │
-└────────────────────┘                 │  └── fast-local   → :30001  │
-                                        └──────────────────────────────┘
+Fakoli Mini (gateway)                    fakoli-dark (GPU box)
+┌─────────────────────┐   private net    ┌───────────────────────────────────────────┐
+│ OpenClaw             │ ────────────────▶ │ router (Docker, auth-gated) : 8000        │
+│ anvil provider ->     │  Authorization:   │  ├── sglang (internal only, no publish)   │
+│ http://<fakoli-dark>:8000/v1  Bearer $TOKEN│  └── fast   (internal only, no publish)   │
+└─────────────────────┘                    └───────────────────────────────────────────┘
 ```
 
-## Cross-box exposure — this is the one thing you can't copy verbatim
+Note the shift from earlier revisions of this doc: **the raw serves are no longer published
+beyond loopback at all.** The router is the single, authenticated, network-facing boundary; the
+serves sit behind it on the internal Docker network.
+
+## Cross-box exposure — the router is the ONE authenticated boundary
 
 Everywhere else in this repo, `127.0.0.1` is the right (and only supported) default — see
-`CLAUDE.md` gotcha #1 and [`SECURITY.md`](../../SECURITY.md). That still holds **within** each
-box: the model serves in this directory bind `127.0.0.1` only, and only the router talks to
-them directly.
+`CLAUDE.md` gotcha #1 and [`SECURITY.md`](../../SECURITY.md). That still holds **within** the
+GPU box: `sglang` and `fast` bind loopback / the internal Docker network only — never publish
+either serve directly. Only the containerized **router** crosses the box boundary, and per
+ADR-0004 it is the one endpoint that must be (and is) **authenticated**.
 
-But the **router front door itself** must be reachable from the *other* box (the gateway), and
-`127.0.0.1` never crosses a machine boundary — a loopback address is local to the box it's
-bound on. Two ways to make that cross-box hop, in order of preference:
-
-1. **Bind the front door to a private/tailnet address, not `0.0.0.0`.** If both boxes are on a
-   private mesh network (Tailscale, WireGuard, a LAN you control), start the router with
-   `anvil-serving serve --host <fakoli-dark's-tailnet-IP>` and point the gateway's
-   `ANTHROPIC_BASE_URL` / `OPENAI_API_BASE` at that address instead of `127.0.0.1`. This never
-   touches the public internet.
-2. **If you must bind more broadly (`--host 0.0.0.0`), you own auth and network controls** —
-   put a reverse proxy with authentication in front, or firewall the port to the gateway's IP
-   only. See [`SECURITY.md`](../../SECURITY.md): an unauthenticated router on a reachable
-   address lets any caller drive routing and, if you've opted into a metered cloud tier,
-   consume your cloud credentials.
+1. **Run the router in Docker on `fakoli-dark`, co-located with the serves** — see the top-level
+   [README's Docker section](../../README.md#run-the-router-in-docker-supervised-auth-gated).
+   Publish it on a private/tailnet address, not `0.0.0.0` — e.g.
+   `ROUTER_PUBLISH=<fakoli-dark's-tailnet-IP> docker compose up -d router` — and **always**
+   configure `[server].auth_env = "ANVIL_ROUTER_TOKEN"` before the router is reachable from
+   another box. This never touches the public internet. The router's tier `base_url`s point at
+   the serves **by service name** (`http://sglang:30000/v1`, `http://fast:30001/v1`), not
+   `127.0.0.1` — they're all in the same compose network now.
+2. **On the gateway (`Fakoli Mini`), repoint OpenClaw's `anvil` provider at the router**, not at
+   either raw serve:
+   ```bash
+   # Fakoli Mini
+   export ANVIL_ROUTER_TOKEN="…"     # same secret configured on fakoli-dark's router
+   # OpenClaw anvil provider config:
+   #   baseUrl: http://<fakoli-dark's-tailnet-IP>:8000/v1
+   #   headers: { Authorization: "Bearer $ANVIL_ROUTER_TOKEN" }
+   ```
+3. **If you must bind the router more broadly (`--host 0.0.0.0` / `ROUTER_PUBLISH=0.0.0.0`), the
+   token is not optional.** See [`SECURITY.md`](../../SECURITY.md): an unauthenticated router on
+   a reachable address lets any caller drive routing and, if you've opted into a metered cloud
+   tier, consume your cloud credentials. Treat a mesh ACL (Tailscale) as defense-in-depth **on
+   top of** the token, never as a substitute for it.
 
 Either way, do **not** use `127.0.0.1` in the gateway's config for the router URL — it will
 resolve to the gateway box itself, not to `fakoli-dark`, and every request will fail to connect.
@@ -68,7 +83,8 @@ below is the consolidated list.
 | Heavy served-model-name | `qwen35-awq-local` | your choice — must match across every file that names it | `docker-compose.yml`, `docker-compose.heavy.yml` (`--served-model-name`), `serves.toml` (`[[serve]] name = "heavy"` `.model`), `../../configs/example.toml` (`[[router.tiers]] id = "heavy-local"` `.model`), `../../README.md` |
 | Fast served-model-name | `gpt-oss-20b` | your choice | `docker-compose.yml`, `serve-fast-gptoss-vllm.sh` (`--served-model-name`), `serves.toml` (`[[serve]] name = "fast"` `.model`), `../../configs/example.toml` (`[[router.tiers]] id = "fast-local"` `.model`) |
 | Ports | `30000` (heavy), `30001` (fast), `8000` (router front door) | your choice — must not collide with other local services | every compose/script file, `../../configs/example.toml` (`base_url`) |
-| Cross-box tailnet/private IP | *(none committed — machine-specific)* | your mesh network's assigned address for the GPU box (e.g. `tailscale ip -4`) | the gateway's `ANTHROPIC_BASE_URL` / `OPENAI_API_BASE`, and the router's `--host` flag — see "Cross-box exposure" above |
+| Cross-box tailnet/private IP | *(none committed — machine-specific)* | your mesh network's assigned address for the GPU box (e.g. `tailscale ip -4`) | the gateway's OpenClaw `anvil` provider `baseUrl`, and the router's `ROUTER_PUBLISH` / `--host` — see "Cross-box exposure" above |
+| Router token | *(none committed — secret, generate your own)* | e.g. `openssl rand -hex 32` | `ANVIL_ROUTER_TOKEN` env var on **both** boxes, `[server].auth_env` in `../../configs/example.toml`, the gateway's OpenClaw `anvil` provider `Authorization: Bearer` header — see [ADR-0004](../../docs/adr/0004-router-as-a-service-containerized-and-authed.md) |
 
 `docker-compose.heavy.yml` is a **superseded reference file** (kept only as an alternate
 single-tier example) — `docker-compose.yml` is the current source of truth for both tiers; see

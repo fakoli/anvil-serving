@@ -28,6 +28,7 @@ clients (no chunked encoding) get a close-delimited stream instead, mirroring
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import re
@@ -85,9 +86,36 @@ _CLOSE_DRAIN_CAP: int = 64 * 1024  # 64 KiB
 # nothing else (no sign, underscores, whitespace, or Unicode digits).
 _DIGIT_RE: re.Pattern = re.compile(r"[0-9]+")
 
+# --------------------------------------------------------------------------- #
+# Front-door token auth (ADR-0004 / T001)
+# --------------------------------------------------------------------------- #
+#: Liveness route that stays unauthenticated even when auth is on (container
+#: healthchecks must not need a token).
+_HEALTHZ_PATH = "/healthz"
+
+
+def _extract_bearer_token(headers) -> Optional[str]:
+    """Pull the caller's token from ``Authorization: Bearer <t>`` or ``x-api-key: <t>``.
+
+    Returns ``None`` when neither header is present or the ``Authorization``
+    header isn't the ``Bearer`` scheme -- callers treat ``None`` as "no token
+    supplied", which always fails auth (never compared as an empty string).
+    """
+    auth_header = headers.get("Authorization")
+    if auth_header:
+        scheme, _, value = auth_header.partition(" ")
+        if scheme.strip().lower() == "bearer" and value.strip():
+            return value.strip()
+        return None
+    api_key = headers.get("x-api-key")
+    if api_key and api_key.strip():
+        return api_key.strip()
+    return None
+
 
 def _make_handler(backend: Backend, timeout: Optional[float],
-                  presets: Iterable[Preset], exhaustion_status: int = 503):
+                  presets: Iterable[Preset], exhaustion_status: int = 503,
+                  auth_token: Optional[str] = None):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -113,6 +141,24 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self.send_header(_h_name, _h_val)
             self.end_headers()
             self.wfile.write(payload)
+
+        def _authenticated(self) -> bool:
+            """True if this request carries a valid token, or auth is off.
+
+            ``auth_token`` is resolved ONCE at server start (threaded in from
+            ``serve.py``) — never re-read from ``os.environ`` per request.
+            Comparison is constant-time (``hmac.compare_digest``) so response
+            timing can't be used to guess the token byte-by-byte. The token
+            itself is never logged: on failure only a generic message is sent.
+            """
+            if auth_token is None:
+                return True  # [server].auth_env unset -> auth OFF (back-compat)
+            supplied = _extract_bearer_token(self.headers)
+            if supplied is None:
+                return False
+            return hmac.compare_digest(
+                supplied.encode("utf-8"), auth_token.encode("utf-8")
+            )
 
         def _error(self, status: int, etype: str, message: str,
                    dialect: Optional[Dialect] = None) -> None:
@@ -381,7 +427,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         self.close_connection = True
 
                 route = self.path.split("?", 1)[0].rstrip("/")
-                if route in ("/healthz", "/health"):
+                # Every route requires auth EXCEPT GET /healthz -- container
+                # healthchecks must not need a token (ADR-0004). The `/health`
+                # alias is NOT exempt: only the literal `/healthz` path is.
+                if route != _HEALTHZ_PATH and not self._authenticated():
+                    self._json(401, {"error": {
+                        "type": "authentication_error",
+                        "message": "invalid or missing API key",
+                    }})
+                elif route in ("/healthz", "/health"):
                     self._json(200, {
                         "status": "ok",
                         "dialects": sorted(d.name for d in _ROUTES.values()),
@@ -488,6 +542,23 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # (Even drainable bodies are capped at MAX_BODY_BYTES inside
             # _fail_framing to bound the drain work.)
             drainable = not has_te and not dup_cl and not cl_invalid
+
+            # --- Auth check (ADR-0004 / T001) ---------------------------------
+            #
+            # Every POST route requires auth (there is no POST /healthz route
+            # at all -- the only unauthenticated route is GET /healthz, handled
+            # in do_GET). Checked BEFORE the route/dialect lookup below so an
+            # unauthenticated caller gets a uniform 401 regardless of whether
+            # the path exists (no route-enumeration oracle). Drains the body
+            # via the same drainable/n framing state just computed, exactly
+            # like the other pre-body rejections below, so a pooled keep-alive
+            # socket stays in sync.
+            if not self._authenticated():
+                self._fail_framing(
+                    401, "authentication_error", "invalid or missing API key",
+                    drainable, n,
+                )
+                return
 
             # --- Route check (establishes dialect for dialect-aware errors) --
             #
@@ -636,7 +707,8 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
                 backend: Optional[Backend] = None,
                 timeout: Optional[float] = 120,
                 presets: Optional[Iterable[Preset]] = None,
-                exhaustion_status: int = 503) -> ThreadingHTTPServer:
+                exhaustion_status: int = 503,
+                auth_token: Optional[str] = None) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
     Pass ``port=0`` to bind an ephemeral port (read it back from
@@ -648,24 +720,32 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     (injectable like ``backend`` for tests). ``exhaustion_status`` is the HTTP
     status returned when all quality-gated tiers are exhausted (default 503 —
     the keyless handoff signal; see :class:`~anvil_serving.router.config.RouterConfig`
-    and ADR-0001 §Mechanism). Call ``server.serve_forever()`` (typically on a
+    and ADR-0001 §Mechanism). ``auth_token`` is the RESOLVED secret (already read
+    from ``os.environ`` once by the caller, e.g. ``serve.build_server`` from
+    ``[server].auth_env`` — ADR-0004 / T001); ``None`` (the default) means auth
+    is OFF, identical to today's behaviour. Every route requires this token
+    (``Authorization: Bearer <t>`` or ``x-api-key: <t>``, constant-time compare)
+    except ``GET /healthz``. Call ``server.serve_forever()`` (typically on a
     background thread) to run.
     """
     if backend is None:
         backend = EchoBackend()
     if presets is None:
         presets = PRESETS
-    httpd = ThreadingHTTPServer((host, port),
-                                _make_handler(backend, timeout, presets, exhaustion_status))
+    httpd = ThreadingHTTPServer(
+        (host, port),
+        _make_handler(backend, timeout, presets, exhaustion_status, auth_token),
+    )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd
 
 
 def serve(host: str = "127.0.0.1", port: int = 8000,
           backend: Optional[Backend] = None,
-          timeout: Optional[float] = 120) -> None:
+          timeout: Optional[float] = 120,
+          auth_token: Optional[str] = None) -> None:
     """Build and run the front door until interrupted."""
-    httpd = make_server(host, port, backend, timeout)
+    httpd = make_server(host, port, backend, timeout, auth_token=auth_token)
     actual_host, actual_port = httpd.server_address[:2]
     print(f"anvil-serving front door on http://{actual_host}:{actual_port}  "
           f"(routes: {', '.join(sorted(_ROUTES))})")

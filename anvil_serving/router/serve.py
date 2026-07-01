@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import os
 import sys
 import threading
 from http.server import ThreadingHTTPServer
@@ -63,7 +64,15 @@ from typing import Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 # import path stable for existing callers.
 from .backends import CloudBackend, MissingCredentialError, RelayBackend
 from .backends.cloud import DiscoveryTransport, Transport, discover_single_model
-from .config import ConfigError, PRIVACY_CLOUD, PRIVACY_LOCAL, RouterConfig, Tier, load
+from .config import (
+    ConfigError,
+    PRIVACY_CLOUD,
+    PRIVACY_LOCAL,
+    RouterConfig,
+    Tier,
+    load,
+    load_server_config,
+)
 from .decision_log import DecisionLog
 from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
 from .front_door import make_server
@@ -544,8 +553,34 @@ def build_server(
     :func:`build_backends` (cloud tiers missing creds are skipped with a stderr
     warning). The bound tier ids and routing backend are stashed on the returned
     server as ``anvil_tiers`` / ``anvil_routing`` for introspection.
+
+    **Front-door auth (ADR-0004 / T001):** the optional ``[server].auth_env``
+    key is resolved to its secret value from ``env`` (``os.environ`` when
+    ``env`` is ``None``) exactly ONCE here, then threaded into
+    :func:`~anvil_serving.router.front_door.make_server` as ``auth_token`` --
+    never re-read from the environment per request. ``[server]`` absent (or
+    ``auth_env`` unset within it) means auth stays OFF, matching today's
+    loopback default. If ``auth_env`` IS set but the named env var is unset
+    or empty, this raises :class:`~anvil_serving.router.config.ConfigError`
+    rather than silently starting with auth off -- a configured-but-unresolved
+    auth_env is a misconfiguration, not an opt-out (mirrors the tiers'
+    :class:`~anvil_serving.router.backends.MissingCredentialError` fail-fast
+    stance, except auth is the server's own security boundary so it hard-fails
+    instead of skipping).
     """
     config = load(config_path)
+    server_config = load_server_config(config_path)
+    environ: Mapping[str, str] = os.environ if env is None else env
+    auth_token: Optional[str] = None
+    if server_config.auth_env:
+        auth_token = environ.get(server_config.auth_env) or None
+        if not auth_token:
+            raise ConfigError(
+                f"[server].auth_env names {server_config.auth_env!r} but it is "
+                f"not set (or empty) in the environment; export it to the auth "
+                f"secret, or remove [server].auth_env to run without front-door "
+                f"auth"
+            )
 
     if backends is None:
         built, skipped = build_backends(config, env=env, transport=transport)
@@ -570,7 +605,8 @@ def build_server(
     # Pass exhaustion_status from config so the front door uses the operator-
     # configured keyless handoff signal (ADR-0001 §Mechanism, T004).
     httpd = make_server(host, port, routing, timeout=timeout, presets=PRESETS,
-                        exhaustion_status=config.exhaustion_status)
+                        exhaustion_status=config.exhaustion_status,
+                        auth_token=auth_token)
     # Stash what we bound for introspection (serve()'s banner + tests).
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
