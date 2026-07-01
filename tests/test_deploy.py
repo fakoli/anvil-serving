@@ -232,3 +232,60 @@ def test_deploy_cli_engine_vllm_end_to_end(tmp_path, monkeypatch):
     parsed = deploy._serves.load_manifest(str(manifest_path))
     assert parsed[0]["container"] == "vllm-gpt-oss-20b"
     assert parsed[0]["up"][-1] == "vllm"  # `up -d vllm` (the compose SERVICE key)
+
+
+# ---- thinking-disable at generation time (genericity:T011) ---------------------
+
+def test_deploy_thinking_disable_sglang_injects_chat_template_kwargs():
+    out = deploy.render("/w/model", gpu=0, disable_thinking=True, _run=_run_missing)
+    assert "--chat-template-kwargs" in out
+    assert '"enable_thinking": false' in out
+
+
+def test_deploy_thinking_disable_vllm_injects_chat_template_kwargs():
+    out = deploy.render("/w/model", gpu=0, engine="vllm", disable_thinking=True, _run=_run_missing)
+    assert "--chat-template-kwargs" in out
+    assert '"enable_thinking": false' in out
+
+
+def test_deploy_non_thinking_model_renders_unchanged():
+    out_plain = deploy.render("/w/model", gpu=0, _run=_run_missing)
+    out_explicit_false = deploy.render("/w/model", gpu=0, disable_thinking=False, _run=_run_missing)
+    assert out_plain == out_explicit_false
+    assert "chat-template-kwargs" not in out_plain
+
+
+def test_deploy_read_thinking_default_true(tmp_path):
+    facts = tmp_path / "card.json"
+    facts.write_text('{"thinking_default": true}', encoding="utf-8")
+    assert deploy.read_thinking_default(str(facts)) is True
+
+
+def test_deploy_read_thinking_default_false_when_absent():
+    assert deploy.read_thinking_default(None) is False
+    assert deploy.read_thinking_default("/does/not/exist.json") is False
+
+
+def test_deploy_cli_disable_thinking_flag_forces_regardless_of_catalog(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main(["--model", "/w/model", "--out", str(out_path),
+                "--disable-thinking", "--no-manifest"])
+    assert "enable_thinking" in out_path.read_text(encoding="utf-8")
+
+
+def test_deploy_cli_model_facts_thinking_default_auto_disables(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    facts = tmp_path / "card.json"
+    facts.write_text('{"thinking_default": true}', encoding="utf-8")
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main(["--model", "/w/model", "--out", str(out_path),
+                "--model-facts", str(facts), "--no-manifest"])
+    assert "enable_thinking" in out_path.read_text(encoding="utf-8")
+
+
+def test_deploy_cli_no_facts_no_flag_stays_unchanged(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main(["--model", "/w/model", "--out", str(out_path), "--no-manifest"])
+    assert "enable_thinking" not in out_path.read_text(encoding="utf-8")
