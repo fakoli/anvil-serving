@@ -7,10 +7,16 @@ between sessions (`serves down`) and bring them back (`serves up`) without
 remembering two different launch mechanisms.
 
 It reads a manifest (default `examples/fakoli-dark/serves.toml`) that declares
-each serve's container name, port, health path, and an optional `up` command for
-a *fresh* create. An already-created-but-stopped container is restarted with
-`docker start` (no manifest `up` needed). stdlib-only: `subprocess` to docker,
-`urllib` for the health probe, `tomllib` to read the manifest.
+each serve's container name, port, health path, declared `model` (served-model-name),
+and an optional `up` command for a *fresh* create. Bringing a serve up is drift-safe:
+when `up` is a `docker compose up -d`, that command IS the (re)start — compose
+recreates the container when its config changed and fast-(re)starts it when not, so a
+stale model is never resurrected by a blind `docker start`. A one-shot `docker run`
+*script* serve can't be re-run over an existing container, so it is `docker start`ed —
+with a loud warning if it drifted from the declared `model` (fix: `--recreate`, or,
+better, convert it to a compose file). `--recreate` forces a clean `docker rm -f` +
+`up` for any serve. stdlib-only: `subprocess` to docker, `urllib` for the health
+probe, `tomllib` to read the manifest.
 
 TRUST BOUNDARY: a serve's `up` command from the manifest is EXECUTED. It is parsed
 with `shlex` and run as an argv list (no shell), so `{dir}` paths with spaces are
@@ -155,7 +161,81 @@ def cmd_down(serves, names, _run=subprocess.run):
     return rc
 
 
-def cmd_up(serves, names, dry_run=False, _run=subprocess.run):
+# Flags whose value names the model a container was created to serve. We prefer
+# --served-model-name (what the OpenAI API advertises, what the manifest's `model`
+# is), falling back to the weights id in --model / --model-path.
+_SERVED_NAME_FLAGS = ("--served-model-name", "--served_model_name")
+_MODEL_PATH_FLAGS = ("--model", "--model-path", "--model_path")
+
+
+def _created_argv(container, _run=subprocess.run):
+    """The argv a container was CREATED with (Config.Cmd + Args), one token per
+    line. Empty list if docker is unavailable or inspect fails — callers must
+    treat 'unknown' as 'no drift' and never block on uncertainty.
+    """
+    tmpl = "{{range .Config.Cmd}}{{println .}}{{end}}{{range .Args}}{{println .}}{{end}}"
+    try:
+        r = _run(["docker", "inspect", "-f", tmpl, container],
+                 capture_output=True, text=True)
+    except FileNotFoundError:
+        return []
+    if r.returncode != 0:
+        return []
+    return [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
+
+
+def _model_from_argv(tokens):
+    """Best-effort served-model identifier from a container's created argv: the
+    value of --served-model-name (preferred) else --model / --model-path. Handles
+    both `--flag value` and `--flag=value`. None if neither flag is present.
+    """
+    def _value(flags):
+        for i, tok in enumerate(tokens):
+            for fl in flags:
+                if tok == fl and i + 1 < len(tokens):
+                    return tokens[i + 1]
+                if tok.startswith(fl + "="):
+                    return tok.split("=", 1)[1]
+        return None
+    return _value(_SERVED_NAME_FLAGS) or _value(_MODEL_PATH_FLAGS)
+
+
+def _served_model(container, _run=subprocess.run):
+    """The model an EXISTING container was created to serve, or None if it can't
+    be determined (docker down, inspect failed, or no model flag on its argv).
+    """
+    return _model_from_argv(_created_argv(container, _run=_run))
+
+
+def _is_compose_up(up):
+    """True if the manifest `up` is a `docker compose up` — idempotent and drift-safe
+    (it recreates the container when the compose config changed and fast-(re)starts it
+    when unchanged), unlike a one-shot `docker run` script that can't be re-run over an
+    existing container.
+    """
+    if not up:
+        return False
+    return up[:2] == ["docker", "compose"] or up[0] == "docker-compose"
+
+
+def _warn_drift(s, _run=subprocess.run):
+    """Loudly warn if an EXISTING (script-serve) container was created serving a
+    different model than the manifest declares — a `docker start` would resurrect the
+    STALE model. Best-effort: silent if the declared/served model can't be determined
+    (never block on uncertainty). Compose serves don't need this: `up -d` self-heals.
+    """
+    declared = s.get("model")
+    if not declared:
+        return
+    served = _served_model(s["container"], _run=_run)
+    if served and served != declared:
+        print("  WARNING: %s was created serving %r but the manifest declares %r — "
+              "`docker start` will resurrect the STALE model; run `up --recreate` (or "
+              "convert this serve to a compose file) to fix."
+              % (s["container"], served, declared))
+
+
+def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
@@ -163,40 +243,81 @@ def cmd_up(serves, names, dry_run=False, _run=subprocess.run):
     rc = 0
     for s in targets:
         st = docker_state(s["container"], _run=_run)
-        if st == "running":
-            print("  %s: already running" % s["container"])
-            continue
         if st == "error":
             print("  %s: cannot determine state (docker missing / daemon down / "
                   "permission?)" % s["container"])
             rc = 1
             continue
+        if st in ("restarting", "removing", "dead", "unknown") and not (recreate and st == "dead"):
+            # exotic / transitional state -> don't fresh-create (collision/destroy risk).
+            # Exception: an explicit `--recreate` may rescue a `dead` container — it's a
+            # terminal (not running) state, so a `docker rm -f` + fresh `up` is safe. The
+            # other states stay hands-off even under --recreate.
+            print("  %s: in state %r — not auto-started; resolve manually" % (s["container"], st))
+            rc = 1
+            continue
 
-        if st == "paused":
-            action, desc = ["docker", "unpause", s["container"]], "unpause %s" % s["container"]
-        elif st in ("exited", "created"):
-            action = ["docker", "start", s["container"]]
-            desc = "start %s (restart existing container)" % s["container"]
+        up = s.get("up")
+        compose = _is_compose_up(up)
+
+        if recreate:
+            # Explicit clean recreate from `up` (compose OR script): force-remove the
+            # existing container, then run the fresh-create `up`.
+            if not up:
+                print("  %s: --recreate requested but no `up` command in manifest — "
+                      "cannot recreate; resolve manually" % s["container"])
+                rc = 1
+                continue
+            if st == "absent":
+                # Nothing to remove — a `docker rm -f` of a nonexistent container errors
+                # (exit 1) and would abort the fresh `up`. So `--recreate` also bootstraps
+                # a serve that isn't there yet: just run `up`.
+                steps = [up]
+                desc = "up %s (--recreate, none present): %s" % (s["name"], " ".join(up))
+            else:
+                steps = [["docker", "rm", "-f", s["container"]], up]
+                desc = "recreate %s: docker rm -f + %s" % (s["container"], " ".join(up))
         elif st == "absent":
-            up = s.get("up")
             if not up:
                 print("  %s: absent and no `up` command in manifest — start it "
                       "manually (see examples/fakoli-dark/)" % s["name"])
                 rc = 1
                 continue
-            action, desc = up, "up %s: %s" % (s["name"], " ".join(up))
-        else:  # restarting / removing / dead / unknown -> don't fresh-create (collision/destroy risk)
-            print("  %s: in state %r — not auto-started; resolve manually" % (s["container"], st))
-            rc = 1
+            steps, desc = [up], "up %s: %s" % (s["name"], " ".join(up))
+        elif compose:
+            # `docker compose up -d` natively recreates the container when its compose
+            # config changed and fast-(re)starts it otherwise — so we run `up`, never a
+            # blind `docker start` that would silently resurrect the container's STALE
+            # model. Drift-safety for free; no bespoke config-hashing needed.
+            if st == "running":
+                print("  %s: already running" % s["container"])  # up -d would be a no-op
+                continue
+            steps = [up]
+            desc = "compose up %s: %s" % (s["name"], " ".join(up))
+        elif st == "running":
+            _warn_drift(s, _run=_run)  # script serve: can't self-heal, so at least warn
+            print("  %s: already running" % s["container"])
             continue
+        elif st == "paused":
+            steps, desc = [["docker", "unpause", s["container"]]], "unpause %s" % s["container"]
+        else:  # exited / created -- a `docker run` script serve
+            # A `docker run` script can't be re-run over an existing container (name
+            # clash), so we `docker start` it — but that resurrects whatever model it
+            # was CREATED with. Warn loudly on drift; the fix is `--recreate` or compose.
+            _warn_drift(s, _run=_run)
+            steps = [["docker", "start", s["container"]]]
+            desc = ("start %s (restart existing container; convert to a compose serve "
+                    "or use --recreate for drift-safety)" % s["container"])
 
         print("  " + desc)
         if dry_run:
             continue
-        r = _run(action, capture_output=True, text=True)
-        if r.returncode != 0:
-            print("  FAILED: %s" % (r.stderr or r.stdout or "").strip())
-            rc = 1
+        for step in steps:
+            r = _run(step, capture_output=True, text=True)
+            if r.returncode != 0:
+                print("  FAILED: %s" % (r.stderr or r.stdout or "").strip())
+                rc = 1
+                break
     return rc
 
 
@@ -216,6 +337,9 @@ def main(argv=None):
                    help="path to the serves manifest TOML (default: %(default)s).")
     p.add_argument("--dry-run", action="store_true",
                    help="for `up`: print what would run without starting any container.")
+    p.add_argument("--recreate", action="store_true",
+                   help="for `up`: force `docker rm -f` + a fresh `up` for an existing "
+                        "container instead of `docker start`.")
     a = p.parse_args(argv)
 
     try:
@@ -232,7 +356,7 @@ def main(argv=None):
     if a.action == "down":
         return cmd_down(serves, a.names)
     if a.action == "up":
-        return cmd_up(serves, a.names, dry_run=a.dry_run)
+        return cmd_up(serves, a.names, dry_run=a.dry_run, recreate=a.recreate)
     return 2
 
 
