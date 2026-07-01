@@ -49,7 +49,10 @@ def test_deploy_nvidia_smi_absent_falls_back_to_integer_no_crash(capsys):
 def test_deploy_cli_writes_compose(tmp_path, monkeypatch):
     out_path = tmp_path / "compose.yml"
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
-    rc = deploy.main(["--model", "/w/model", "--gpu", "0", "--out", str(out_path)])
+    # --no-manifest: without it main() falls back to --manifest-out's default
+    # ("./serves.toml"), which would write into the pytest-invoking CWD — a
+    # real side effect this test must not have.
+    rc = deploy.main(["--model", "/w/model", "--gpu", "0", "--out", str(out_path), "--no-manifest"])
     assert out_path.exists()
     assert "sglang.launch_server" in out_path.read_text(encoding="utf-8")
 
@@ -77,14 +80,14 @@ def test_deploy_loopback_default_prints_no_public_bind_warning(capsys):
 def test_deploy_cli_expose_lan_flag(tmp_path, monkeypatch):
     out_path = tmp_path / "compose.yml"
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
-    deploy.main(["--model", "/w/model", "--out", str(out_path), "--expose-lan"])
+    deploy.main(["--model", "/w/model", "--out", str(out_path), "--expose-lan", "--no-manifest"])
     assert '0.0.0.0:30000:30000' in out_path.read_text(encoding="utf-8")
 
 
 def test_deploy_cli_bind_flag_overrides(tmp_path, monkeypatch):
     out_path = tmp_path / "compose.yml"
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
-    deploy.main(["--model", "/w/model", "--out", str(out_path), "--bind", "192.168.1.5"])
+    deploy.main(["--model", "/w/model", "--out", str(out_path), "--bind", "192.168.1.5", "--no-manifest"])
     assert '192.168.1.5:30000:30000' in out_path.read_text(encoding="utf-8")
 
 
