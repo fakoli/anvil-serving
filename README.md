@@ -9,7 +9,7 @@
 > *Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 [![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
@@ -459,8 +459,9 @@ now lives, after the router promotion).
 
 ## Status
 
-**v0.4.1 is shipped.** The `harness-router` PRD is **complete — all 18 tasks built
-(milestones M0–M3), 707 tests green**. v0.4.0 shipped advise-and-defer (local-only default,
+**v0.6.0 is shipped.** The router is now a containerized, token-authed service (ADR-0004) on top of
+the portable-by-default genericity work (ADR-0003); the `harness-router` PRD is **complete — all 18
+tasks built (milestones M0–M3), 881 tests green**. v0.4.0 shipped advise-and-defer (local-only default,
 opt-in metered cloud) and the launch-hardening pass on top of the v0.3.0 harness-router. Both
 the router front door (`anvil-serving serve`) and the serving substrate (profile / models sync /
 deploy / preflight / benchmark / multiplexer) ship. See the [CHANGELOG](CHANGELOG.md) for the
