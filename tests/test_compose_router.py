@@ -28,7 +28,7 @@ def _service_blocks(text: str) -> dict[str, str]:
     """
     lines = text.splitlines()
     try:
-        start = next(i for i, l in enumerate(lines) if l.rstrip() == "services:")
+        start = next(i for i, ln in enumerate(lines) if ln.rstrip() == "services:")
     except StopIteration:
         raise AssertionError("compose file has no top-level `services:` key")
 

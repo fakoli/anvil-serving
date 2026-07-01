@@ -359,7 +359,7 @@ design) or as a supervised Docker service with built-in bearer/`x-api-key` auth,
 `[server].auth_env`, so it can be safely exposed across a cross-box topology (e.g. an OpenClaw
 gateway box reaching a GPU box's router). See [ADR-0004](adr/0004-router-as-a-service-containerized-and-authed.md),
 the top-level README's "Run the router in Docker" section, and
-[`examples/fakoli-dark/README.md`](../examples/fakoli-dark/README.md) for the worked example.
+[`examples/fakoli-dark/README.md`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/README.md) for the worked example.
 
 Verified support grid (full detail + citations in the finding):
 
