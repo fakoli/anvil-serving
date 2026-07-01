@@ -2,9 +2,7 @@
 local model serve. `nvidia-smi` / docker are injected, so these run with no
 GPU, no docker, and no network.
 """
-import os
 
-import pytest
 
 from anvil_serving import deploy
 
@@ -52,7 +50,7 @@ def test_deploy_cli_writes_compose(tmp_path, monkeypatch):
     # --no-manifest: without it main() falls back to --manifest-out's default
     # ("./serves.toml"), which would write into the pytest-invoking CWD — a
     # real side effect this test must not have.
-    rc = deploy.main(["--model", "/w/model", "--gpu", "0", "--out", str(out_path), "--no-manifest"])
+    deploy.main(["--model", "/w/model", "--gpu", "0", "--out", str(out_path), "--no-manifest"])
     assert out_path.exists()
     assert "sglang.launch_server" in out_path.read_text(encoding="utf-8")
 
