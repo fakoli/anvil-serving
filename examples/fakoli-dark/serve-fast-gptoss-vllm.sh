@@ -12,7 +12,7 @@ set -euo pipefail
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL='*'
 
-GPU0_UUID="GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"   # RTX 5090
+GPU0_UUID="GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"   # REPLACE: your GPU's UUID — `nvidia-smi -L`
 
 docker rm -f vllm-gptoss 2>/dev/null || true
 
@@ -22,8 +22,9 @@ docker run -d --name vllm-gptoss \
   -e CUDA_DEVICE_ORDER=PCI_BUS_ID \
   -e VLLM_USE_V2_MODEL_RUNNER=0 \
   --ipc=host \
-  -p 30001:30001 \
+  -p 127.0.0.1:30001:30001 \
   -v "C:/Users/sdoum/models/gpt-oss-20b:/models/gpt-oss-20b:ro" \
+  `# REPLACE: your local model directory (this is a machine-specific Windows path)` \
   vllm/vllm-openai:nightly \
   serve /models/gpt-oss-20b \
   --served-model-name gpt-oss-20b \
@@ -34,4 +35,4 @@ docker run -d --name vllm-gptoss \
   --host 0.0.0.0 --port 30001
 
 echo "vllm-gptoss starting on GPU 0 (RTX 5090). Watch: docker logs -f vllm-gptoss"
-echo "Health: curl http://localhost:30001/health   Models: curl http://localhost:30001/v1/models"
+echo "Health: curl http://127.0.0.1:30001/health   Models: curl http://127.0.0.1:30001/v1/models"
