@@ -18,9 +18,9 @@ theme:
 plugins:
   - search
   - mermaid2:
-      # Pin to a known-good mermaid.js release; the plugin injects this CDN JS
+      # Use a stable mermaid 11.x release; the plugin injects this CDN JS
       # automatically — no extra_javascript block needed.
-      version: '10.9.0'
+      version: '11.4.1'
 
 nav:
   - Home: index.md
@@ -50,10 +50,12 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          # mermaid2.fence_mermaid_custom emits <div class="mermaid"> which the
-          # mermaid2 plugin then targets with mermaid.initialize(); this is the
-          # correct custom fence for non-Material themes (no superfences.fence_code_format).
-          format: !!python/name:mermaid2.fence_mermaid_custom
+          # fence_mermaid (NOT fence_mermaid_custom) emits <div class="mermaid">
+          # without a <code> wrapper and without escaping < / > — so <br/> in node
+          # labels stays as literal text that mermaid.js can parse.
+          # fence_mermaid_custom sets custom=True → <pre class="mermaid"><code>
+          # which wraps the source in <code>, breaking the mermaid parser.
+          format: !!python/name:mermaid2.fence_mermaid
   - pymdownx.snippets:
       base_path: ['.']
   - pymdownx.tabbed:

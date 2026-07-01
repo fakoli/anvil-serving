@@ -1,18 +1,14 @@
-<div align="center">
-
 ![anvil-serving — the quality-gated local-model router for coding harnesses](assets/banner.png)
 
 # anvil-serving
 
 > **The quality-gated local-model router for coding harnesses.**
-
+>
 > *Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/fakoli/anvil-serving/blob/main/LICENSE)
 [![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/fakoli/anvil-serving/blob/main/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
-
-</div>
 
 Point your coding harness (Claude Code, Codex, Aider, Cline, Continue — OpenClaw as the
 near-first-class beachhead) at **one** anvil-serving endpoint. Per request, the router resolves an
