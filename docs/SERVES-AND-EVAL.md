@@ -64,7 +64,7 @@ up = "docker compose -f {dir}/docker-compose.yml up -d fast"   # {dir} = the man
 
 Trying a new model (e.g. for the Blackwell lab notebook) does **not** need a hand-built
 `docker run`. The parametrized
-[`docker-compose.experiment.yml`](../examples/fakoli-dark/docker-compose.experiment.yml)
+`examples/fakoli-dark/docker-compose.experiment.yml`
 is one vLLM service driven by env vars, with the hard-won sm_120/WSL2 defaults baked in
 (stable image, `VLLM_USE_V2_MODEL_RUNNER=0`, the D:-backed `vllm-hfcache` volume for ~15s
 native loads, `CUDA_DEVICE_ORDER=PCI_BUS_ID`):
