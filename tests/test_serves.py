@@ -206,3 +206,133 @@ def test_cmd_up_dry_run_starts_nothing():
     run = _inspect_returning("exited")
     serves.cmd_up(serv, [], dry_run=True, _run=run)
     assert not any(c[:2] == ["docker", "start"] for c in run.calls if isinstance(c, list))
+
+
+# ---- drift-safe `up` --------------------------------------------------------
+#
+# `docker start` resurrects an existing container with whatever model/args it was
+# CREATED with, ignoring later serves.toml / compose edits — which once served a
+# stale `qwen3-coder-30b-awq` in place of the declared model. `up` must be drift-safe:
+#  - compose serve  -> run `docker compose up -d` (recreates natively on config drift),
+#  - script serve   -> `docker start` but WARN loudly on model drift,
+#  - `--recreate`   -> force `docker rm -f` + `up` for either kind.
+
+def _up_run(state, created_argv=None, step_rc=0, step_err=""):
+    """A fake _run for cmd_up: `docker inspect ... .State.Status` -> `state`;
+    `docker inspect ... .Config.Cmd/.Args` -> the container's created argv (one
+    token per line); any other command (rm / start / unpause / `up`) -> proc(rc).
+    """
+    calls = []
+
+    def run(argv, **k):
+        calls.append(argv)
+        if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
+            tmpl = argv[3] if len(argv) > 3 else ""
+            if ".State.Status" in tmpl:
+                if state == "absent":
+                    return proc(1, "", "Error: No such object")
+                if state == "error":
+                    return proc(1, "", "Cannot connect to the Docker daemon")
+                return proc(0, state + "\n")
+            return proc(0, "\n".join(created_argv or []) + "\n")  # created-argv inspect
+        return proc(step_rc, "", step_err)
+
+    run.calls = calls
+    return run
+
+
+def test_model_from_argv_prefers_served_name_then_model_path():
+    argv = ["python", "-m", "vllm", "--model", "org/repo", "--served-model-name", "declared"]
+    assert serves._model_from_argv(argv) == "declared"          # served-name wins
+    assert serves._model_from_argv(["--model", "org/repo"]) == "org/repo"  # falls back
+    assert serves._model_from_argv(["--model-path", "/w/qwen35-awq"]) == "/w/qwen35-awq"
+    assert serves._model_from_argv(["--served-model-name=eq-form"]) == "eq-form"  # --flag=value
+    assert serves._model_from_argv(["python", "-m", "vllm"]) is None  # no model flag
+
+
+def test_is_compose_up_detects_compose_vs_script():
+    assert serves._is_compose_up(["docker", "compose", "-f", "x.yml", "up", "-d"])
+    assert serves._is_compose_up(["docker-compose", "up", "-d"])  # legacy hyphenated
+    assert not serves._is_compose_up(["bash", "serve.sh"])  # docker run script
+    assert not serves._is_compose_up(None)
+
+
+def test_cmd_up_compose_serve_runs_compose_up_not_docker_start():
+    # THE fix: an existing (stopped) compose serve is brought up with `docker compose
+    # up -d` — which natively recreates on config drift — NOT a blind `docker start`
+    # that would resurrect its stale model.
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local",
+             "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
+    run = _inspect_returning("exited")
+    assert serves.cmd_up(serv, [], _run=run) == 0
+    assert ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"] in run.calls
+    assert not any(c[:2] == ["docker", "start"] for c in run.calls)  # never blind-started
+
+
+def test_cmd_up_compose_serve_running_is_noop():
+    # `up -d` on an unchanged running compose serve would be a no-op; we skip the call.
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local", "up": ["docker", "compose", "up", "-d"]}]
+    run = _inspect_returning("running")
+    assert serves.cmd_up(serv, [], _run=run) == 0
+    assert all(c[:2] == ["docker", "inspect"] for c in run.calls)  # only inspected
+
+
+def test_cmd_up_script_serve_warns_on_model_drift(capsys):
+    # a `docker run` script serve can't self-heal via compose -> `docker start` + a
+    # loud warning naming the STALE served model vs the declared one.
+    serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
+             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+    run = _up_run("exited", created_argv=["--served-model-name", "qwen3-coder-30b-awq"])
+    assert serves.cmd_up(serv, [], _run=run) == 0
+    out = capsys.readouterr().out
+    assert "WARNING" in out and "qwen3-coder-30b-awq" in out and "gpt-oss-20b" in out
+    assert ["docker", "start", "vllm-gptoss"] in run.calls          # current behavior kept
+    assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)  # no auto-recreate
+
+
+def test_cmd_up_script_serve_no_drift_starts_quietly(capsys):
+    serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
+             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+    run = _up_run("exited", created_argv=["--served-model-name", "gpt-oss-20b"])
+    assert serves.cmd_up(serv, [], _run=run) == 0
+    assert ["docker", "start", "vllm-gptoss"] in run.calls
+    assert "WARNING" not in capsys.readouterr().out
+
+
+def test_cmd_up_script_serve_drift_ignored_when_model_undeterminable(capsys):
+    # inspect can't reveal the served model (no model flag) -> no false-positive warning.
+    serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
+             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+    run = _up_run("exited", created_argv=["python", "-m", "vllm"])  # no model flag
+    assert serves.cmd_up(serv, [], _run=run) == 0
+    assert ["docker", "start", "vllm-gptoss"] in run.calls
+    assert "WARNING" not in capsys.readouterr().out
+
+
+def test_cmd_up_recreate_flag_force_removes_then_reups_compose():
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local", "up": ["docker", "compose", "up", "-d"]}]
+    run = _inspect_returning("exited")
+    assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
+    assert ["docker", "rm", "-f", "sglang"] in run.calls
+    assert ["docker", "compose", "up", "-d"] in run.calls
+    assert not any(c[:2] == ["docker", "start"] for c in run.calls)
+
+
+def test_cmd_up_recreate_flag_works_for_script_serve():
+    serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
+             "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
+    run = _inspect_returning("exited")
+    assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
+    assert ["docker", "rm", "-f", "vllm-gptoss"] in run.calls
+    assert ["bash", "serve-fast.sh"] in run.calls
+    assert not any(c[:2] == ["docker", "start"] for c in run.calls)
+
+
+def test_cmd_up_recreate_without_up_command_fails():
+    serv = [{"name": "x", "container": "x", "port": 1, "health": "/health", "model": "m"}]
+    run = _inspect_returning("exited")
+    assert serves.cmd_up(serv, [], recreate=True, _run=run) == 1
+    assert not any(c[:2] == ["docker", "start"] for c in run.calls)
