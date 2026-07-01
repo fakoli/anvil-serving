@@ -40,12 +40,14 @@ import sys
 import threading
 import urllib.error
 import urllib.request
+from dataclasses import replace
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional
 
 from ..config import (
     DIALECT_ANTHROPIC,
     DIALECT_OPENAI,
     PRIVACY_CLOUD,
+    PRIVACY_LOCAL,
     ConfigError,
     Tier,
 )
@@ -142,6 +144,96 @@ def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
             flush=True,
         )
         raise CloudBackendError("cloud upstream request failed") from None
+
+
+# --------------------------------------------------------------------------- #
+# genericity:T002 — optional GET /v1/models auto-derive for a local tier
+# --------------------------------------------------------------------------- #
+#: GET transport(url, *, headers, timeout) -> response body bytes. Distinct from
+#: the POST-shaped `Transport` above (no request body).
+DiscoveryTransport = Callable[..., bytes]
+
+#: Default probe timeout — short and independent of the (possibly much longer)
+#: relay/cloud request timeout, since this is a cheap startup discovery call.
+_DEFAULT_DISCOVERY_TIMEOUT = 5.0
+
+
+def _urlopen_get_transport(
+    url: str, *, headers: Mapping[str, str], timeout: float
+) -> bytes:
+    """Default stdlib GET transport for ``/v1/models`` discovery."""
+    req = urllib.request.Request(url, headers=dict(headers), method="GET")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read()
+
+
+def _models_endpoint(base_url: str) -> str:
+    """``{base_url}/v1/models``, normalizing a base_url that may or may not
+    already carry the ``/v1`` segment (mirrors :meth:`CloudBackend._endpoint`)."""
+    base = base_url.rstrip("/")
+    if not base.endswith(_OPENAI_VERSION_SEGMENT):
+        base += _OPENAI_VERSION_SEGMENT
+    return base + "/models"
+
+
+def discover_single_model(
+    tier: Tier,
+    *,
+    transport: Optional[DiscoveryTransport] = None,
+    timeout: float = _DEFAULT_DISCOVERY_TIMEOUT,
+) -> Tier:
+    """Resolve ``tier.model`` from ``GET {base_url}/v1/models`` when it is unset.
+
+    * ``tier.model`` already set, or a non-``local`` tier -> returned unchanged,
+      no probe issued. **Explicit config always wins**; this is purely a local-
+      serve convenience for a tier that never got a ``model =`` line.
+    * Upstream reachable and advertises exactly ONE model -> the tier is
+      returned with that id adopted as ``model`` (so the router forwards the
+      served-model-name upstream instead of the routing token — genericity:R001).
+    * Upstream reachable but advertises ZERO or MORE THAN ONE model -> raises
+      :class:`ConfigError` naming the tier, the URL, and the candidate ids: an
+      ambiguous/empty catalog is a real misconfiguration the operator must
+      resolve by setting ``model =`` explicitly — it must fail loudly at
+      startup, not silently 404 (or route to the wrong model) on every request.
+    * A NETWORK or parse failure (connection refused, timeout, DNS, non-JSON
+      body, unexpected shape) -> **non-fatal**: the tier is returned unchanged
+      (``model`` stays ``None``, a warning is printed to stderr) so a cold or
+      still-booting local serve does not prevent the router from starting; the
+      existing ``request.model`` fallback (the routing token forwarded as-is)
+      still applies for that tier until it is reachable.
+    """
+    if tier.model is not None or tier.privacy != PRIVACY_LOCAL:
+        return tier
+
+    url = _models_endpoint(tier.base_url)
+    _transport = transport or _urlopen_get_transport
+    try:
+        raw = _transport(url, headers={}, timeout=timeout)
+        data = json.loads(raw or b"{}")
+    except Exception as exc:  # noqa: BLE001 - any transport/parse fault is non-fatal here
+        print(
+            f"[anvil-serving] tier {tier.id!r}: /v1/models auto-derive skipped "
+            f"({type(exc).__name__}: {exc}); model stays unset for now (falls "
+            f"back to forwarding the request's routing token)",
+            file=sys.stderr,
+            flush=True,
+        )
+        return tier
+
+    entries = data.get("data") if isinstance(data, Mapping) else None
+    ids: List[str] = []
+    if isinstance(entries, list):
+        for e in entries:
+            if isinstance(e, Mapping) and isinstance(e.get("id"), str) and e["id"]:
+                ids.append(e["id"])
+
+    if len(ids) != 1:
+        raise ConfigError(
+            f"tier {tier.id!r}: /v1/models at {url!r} advertised {len(ids)} "
+            f"model(s) {ids!r}; auto-derive requires exactly one candidate. "
+            f"Set model = \"<served-model-name>\" explicitly on this tier."
+        )
+    return replace(tier, model=ids[0])
 
 
 class CloudBackend:
