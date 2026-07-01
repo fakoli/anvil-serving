@@ -16,7 +16,7 @@ changes.
 
 ### Changed
 
-- **Model serves are Docker-Compose-defined ([ADR-0002](docs/adr/0002-serves-are-compose-defined.md)).**
+- **Model serves are Docker-Compose-defined ([ADR-0002](https://github.com/fakoli/anvil-serving/blob/main/docs/adr/0002-serves-are-compose-defined.md)).**
   `anvil-serving serves up` delegates to `docker compose up -d <service>`, which recreates a
   container when its compose config has drifted and fast-restarts it when unchanged —
   replacing a blind `docker start` that could silently serve a stale model. Added a
