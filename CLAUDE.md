@@ -170,6 +170,25 @@ Cloud credentials go in env vars only — never in config files. The front door 
     (`-e CUDA_VISIBLE_DEVICES=<GPU-uuid> -e CUDA_DEVICE_ORDER=PCI_BUS_ID`) or the model loads on
     the wrong card. fakoli-dark: 5090/fast `GPU-04d3b6e7…`, RTX PRO 6000 96 GB/heavy `GPU-d0f446cf…`.
     Large model pulls go to **`D:`** (empty 4 TB Samsung NVMe), not the OS drive.
+14. **`-e VLLM_USE_V2_MODEL_RUNNER=0` is mandatory on this WSL2/Docker box.** vLLM's GPU model
+    runner uses a `UvaBuffer` needing Unified Virtual Addressing, which WSL2 passthrough doesn't
+    expose → `RuntimeError: UVA is not available` at engine init, on BOTH `:latest` and `:nightly`.
+15. **Serve from a named docker volume, not a `C:/…` bind-mount.** Windows bind-mounts read over 9P
+    (~15 MB/s → 18–90 min loads); a `vllm-hfcache` volume on D:-backed ext4 (pass the HF repo-id as
+    `--model`) loads natively (~15 s). The 9P mount is the real cold-load tax.
+16. **On sm_120, prefer PLAIN-DENSE NVFP4.** MoE-NVFP4 grouped-GEMM produces garbage / crashes
+    (upstream: CUTLASS #3096, vLLM #31085 / #33416); hybrid-attention / Gated-DeltaNet re-introduces a
+    prefill-workspace overflow; block-scaled FP8 is a dead-end (DeepGEMM `layout.hpp:76: Unknown
+    recipe`, or ~14 tok/s with `VLLM_USE_DEEP_GEMM=0`). Root cause: consumer sm_120 uses the `mma.*`
+    ISA path, less mature than datacenter sm_100 `tcgen05.*`.
+17. **NVFP4 ≈1.8× faster than FP8 on sm_120** (measured, dense Qwen3-32B: 340 vs 190 tok/s), ~half
+    the VRAM — the FP4:FP8 hardware ceiling. Prefer NVFP4 as the local quant.
+18. **RedHat `*-NVFP4` checkpoints are compressed-tensors-packed → OMIT `--quantization`**
+    (auto-detect); forcing `--quantization modelopt_fp4` fails the config-match check on stable vLLM.
+    (Contrast gotcha 10: NVIDIA `nvidia/*-NVFP4` Model-Optimizer checkpoints *do* take `modelopt_fp4`.)
+19. **Community prior art — cross-ref before burning a load cycle on a new model:**
+    `local-inference-lab/rtx6kpro` wiki (closest thing to a master list of sm_120-working models) +
+    `0xsero/blackwell-gpu-wiki` (the sm_100-vs-sm_120 "why it breaks" reference).
 
 ---
 
