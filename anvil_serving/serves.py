@@ -42,7 +42,12 @@ except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-DEFAULT_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
+# genericity:T012 — the default manifest is the CWD's own serves.toml (what
+# `anvil-serving deploy`/`init` write there), not the shipped fakoli-dark
+# example. EXAMPLE_MANIFEST keeps a name for the shipped reference topology
+# (tests, docs) now that DEFAULT_MANIFEST no longer points at it.
+DEFAULT_MANIFEST = "./serves.toml"
+EXAMPLE_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
 
 # States meaning the container exists but is already stopped (nothing to free).
 _STOPPED = ("exited", "created", "dead")
@@ -349,7 +354,11 @@ def main(argv=None):
     try:
         serves = load_manifest(a.manifest)
     except FileNotFoundError:
-        print("manifest not found: %s" % a.manifest, file=sys.stderr)
+        print(
+            "manifest not found: %s (run `anvil-serving init` to generate one, "
+            "or pass --manifest to point at an existing serves.toml)" % a.manifest,
+            file=sys.stderr,
+        )
         return 2
     except Exception as e:  # malformed manifest
         print("bad manifest %s: %s" % (a.manifest, e), file=sys.stderr)

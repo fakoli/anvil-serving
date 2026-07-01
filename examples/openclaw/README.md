@@ -64,9 +64,11 @@ log, wire-form `(a)` from a separately **captured outbound request** (`--capture
 1. **Start the anvil-serving front door** somewhere OpenClaw can reach it
    (loopback is fine): `anvil-serving serve --config configs/example.toml`
    (front door defaults to `http://127.0.0.1:8000/v1`).
-2. **Install the logging hook** on Fakoli Mini:
+2. **Install the logging hook** on Fakoli Mini. Use `--link` (symlinked install) —
+   OpenClaw >=2026.6.11 rejects a plain copy-install for a TypeScript/compiled
+   plugin like this one:
    ```bash
-   openclaw plugins install ./examples/openclaw/logging-hook
+   openclaw plugins install --link ./examples/openclaw/logging-hook
    ```
 3. **Grant conversation access** (REQUIRED for any non-bundled plugin using
    `before_model_resolve`) in `~/.openclaw/openclaw.json`:

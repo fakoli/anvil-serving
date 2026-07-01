@@ -170,7 +170,7 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 
 - **OpenClaw live validation is manual.** Validating the integration against a real OpenClaw
   install (firing cadence and outbound wire `model` form) requires a human on the gateway box; see
-  [`examples/openclaw/README.md`](examples/openclaw/README.md). The committed `hook-fire-log.jsonl`
+  [`examples/openclaw/README.md`](https://github.com/fakoli/anvil-serving/blob/main/examples/openclaw/README.md). The committed `hook-fire-log.jsonl`
   is a representative fixture, not a live capture.
 - **Most promotion verdicts are seed/expected.** Per-work-class promotion decisions in the
   shipped profile are hand-seeded and pending real-traffic calibration; only `planning` rests on

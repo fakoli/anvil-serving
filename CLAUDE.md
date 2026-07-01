@@ -5,7 +5,7 @@ and routes coding-harness traffic across local and cloud model tiers — with pe
 verification and automatic fallback. Install, run `anvil-serving serve`, point your harness at
 `http://127.0.0.1:8000`, and you get *local where it's been proven, cloud where it hasn't*.
 
-The router is **shipped (v0.4.0)** — 18 tasks, milestones M0-M3, 500+ tests green. v0.4.0 adds advise-and-defer (local-only default, opt-in metered cloud) and the launch-hardening pass on top of the v0.3.0 harness-router. The serving
+The router is **shipped (v0.4.1)** — 18 tasks, milestones M0-M3, 707 tests green. v0.4.0 shipped advise-and-defer (local-only default, opt-in metered cloud) and the launch-hardening pass on top of the v0.3.0 harness-router; v0.4.1 hardened the serving substrate (Docker-Compose-defined serves). The serving
 substrate (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`) also ships
 and right-sizes the local tiers the router routes across.
 

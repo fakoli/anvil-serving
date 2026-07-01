@@ -24,7 +24,7 @@ set -euo pipefail
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL='*'
 
-GPU0_UUID="GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"   # RTX 5090
+GPU0_UUID="GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"   # REPLACE: your GPU's UUID — `nvidia-smi -L`
 
 docker rm -f vllm-glm 2>/dev/null || true
 
@@ -33,8 +33,9 @@ docker run -d --name vllm-glm \
   -e CUDA_VISIBLE_DEVICES="$GPU0_UUID" \
   -e CUDA_DEVICE_ORDER=PCI_BUS_ID \
   --ipc=host \
-  -p 30001:30001 \
+  -p 127.0.0.1:30001:30001 \
   -v "C:/Users/sdoum/models/glm47-flash-awq:/models/glm47-flash-awq:ro" \
+  `# REPLACE: your local model directory (this is a machine-specific Windows path)` \
   vllm/vllm-openai:nightly \
   /models/glm47-flash-awq \
   --served-model-name glm-4.7-flash \
@@ -47,7 +48,7 @@ docker run -d --name vllm-glm \
   --port 30001
 
 # Poll readiness:
-#   curl http://localhost:30001/v1/models
+#   curl http://127.0.0.1:30001/v1/models
 # Smoke test:
-#   curl http://localhost:30001/v1/chat/completions -H 'Content-Type: application/json' \
+#   curl http://127.0.0.1:30001/v1/chat/completions -H 'Content-Type: application/json' \
 #     -d '{"model":"glm-4.7-flash","messages":[{"role":"user","content":"say ready"}],"max_tokens":8,"temperature":0}'

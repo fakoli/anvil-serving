@@ -1,0 +1,11 @@
+services:
+  vllm:
+    image: {image}
+    container_name: {container}
+    restart: unless-stopped
+    ipc: host
+    ports: ["{bind}:{port}:{port}"]
+    volumes: ["{model}:/models/local"]
+{env_block}    deploy: {{resources: {{reservations: {{devices: [{{driver: nvidia, device_ids: ["{device_id}"], capabilities: [gpu]}}]}}}}}}
+    command: >
+      {command}

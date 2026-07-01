@@ -75,9 +75,32 @@ def test_load_manifest_rejects_missing_required_fields(tmp_path):
 
 
 def test_shipped_fakoli_manifest_is_valid():
-    serves_list = serves.load_manifest(serves.DEFAULT_MANIFEST)
+    serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     names = {s["name"] for s in serves_list}
     assert {"heavy", "fast"} <= names
+
+
+# ---- default manifest / missing manifest (genericity:T012) ---------------------
+
+def test_default_manifest_is_cwd_serves_toml():
+    assert serves.DEFAULT_MANIFEST == "./serves.toml"
+    assert serves.EXAMPLE_MANIFEST.endswith(os.path.join("examples", "fakoli-dark", "serves.toml"))
+
+
+def test_missing_manifest_errors_pointing_to_init(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    rc = serves.main(["status"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "anvil-serving init" in err
+    assert "serves.toml" in err
+
+
+def test_missing_explicit_manifest_also_points_to_init(tmp_path, capsys):
+    missing = str(tmp_path / "nope.toml")
+    rc = serves.main(["status", "--manifest", missing])
+    assert rc == 2
+    assert "anvil-serving init" in capsys.readouterr().err
 
 
 # ---- selection --------------------------------------------------------------

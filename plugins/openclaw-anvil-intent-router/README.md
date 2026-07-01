@@ -140,9 +140,15 @@ only.
 
 ## Install (on the OpenClaw gateway — e.g. Fakoli Mini)
 
-1. **Install the plugin** (dev/local):
+> **OpenClaw >=2026.6.11: use `--link`, not a copy-install.** This plugin ships a
+> compiled/TypeScript runtime (`index.ts` + `route.mjs`). Starting with OpenClaw
+> 2026.6.11, the gateway's compiled-runtime loader rejects plugins installed by
+> **copy** (`openclaw plugins install <path>` without a flag) — only a **linked**
+> install is accepted. Always install with `--link`:
+
+1. **Install the plugin** (dev/local, symlinked so gateway restarts pick up edits):
    ```bash
-   openclaw plugins install ./plugins/openclaw-anvil-intent-router
+   openclaw plugins install --link ./plugins/openclaw-anvil-intent-router
    ```
 2. **Grant conversation access — REQUIRED.** Any non-bundled plugin using
    `before_model_resolve` must be granted conversation access in

@@ -9,7 +9,7 @@
 > *Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 [![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
@@ -213,6 +213,9 @@ Full design: [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md). Ope
 
 ## Install
 
+Requires **Python >=3.11** (the router's config loader uses stdlib `tomllib`, added in 3.11).
+Running an older interpreter prints a clear error and exits — see `anvil_serving/cli.py`.
+
 ```bash
 pip install anvil-serving   # stdlib-only; no required deps
 anvil-serving --help
@@ -221,11 +224,22 @@ anvil-serving --help
 > `pip install anvil-serving` works once the package is published to PyPI. Until then (or for
 > development), install from a clone: `pip install -e .`.
 
+**macOS** — if `pip install` fights your system/Homebrew Python (externally-managed-environment,
+PATH shadowing), install with [`pipx`](https://pipx.pypa.io/) instead — it gives `anvil-serving` its
+own isolated venv and puts the CLI on your `PATH`:
+
+```bash
+brew install pipx && pipx ensurepath
+pipx install anvil-serving          # or, from a clone: pipx install -e .
+anvil-serving --help
+```
+
 ### 30-second quickstart
 
 ```bash
 # 1) install
 pip install anvil-serving            # or: pip install -e .  (from a clone)
+#    macOS alternative: pipx install anvil-serving
 
 # 2) start the router front door on 127.0.0.1:8000
 anvil-serving serve --config configs/example.toml
@@ -353,10 +367,14 @@ exists: it manages the single-resident fast/heavy swap pair on one GPU behind on
 [`examples/fakoli-dark/`](examples/fakoli-dark/) is a real two-tier instance and the bake-off
 context for the router:
 
-- **heavy** `:30000` — `qwen3-coder-30b` on **SGLang**, RTX PRO 6000 96GB.
+- **heavy** `:30000` — Qwen3.5-35B-A3B AWQ (served-model-name `qwen35-awq-local`) on **SGLang**,
+  RTX PRO 6000 96GB.
 - **fast** `:30001` — `gpt-oss-20b` on **vLLM**, RTX 5090 32GB.
 - **gateway** — **Fakoli Mini** runs **OpenClaw** (already installed), the beachhead harness; the
-  router sits between it and the serves.
+  router sits between it and the serves — see
+  [`examples/fakoli-dark/README.md`](examples/fakoli-dark/README.md) for the cross-box exposure
+  model (the gateway and the GPU box are separate machines) and every hardcoded value (GPU UUIDs,
+  model paths, ports) you must replace with your own before reusing this topology.
 
 It carries the actual compose files, the `.wslconfig` fix snapshot, the model index, the setup
 story ([`SETUP-STORY.md`](examples/fakoli-dark/SETUP-STORY.md)), the decisions log, and the
@@ -367,8 +385,8 @@ now lives, after the router promotion).
 
 ## Status
 
-**v0.4.0 is shipped.** The `harness-router` PRD is **complete — all 18 tasks built
-(milestones M0–M3), 378 tests green**. v0.4.0 ships advise-and-defer (local-only default,
+**v0.4.1 is shipped.** The `harness-router` PRD is **complete — all 18 tasks built
+(milestones M0–M3), 707 tests green**. v0.4.0 shipped advise-and-defer (local-only default,
 opt-in metered cloud) and the launch-hardening pass on top of the v0.3.0 harness-router. Both
 the router front door (`anvil-serving serve`) and the serving substrate (profile / models sync /
 deploy / preflight / benchmark / multiplexer) ship. See the [CHANGELOG](CHANGELOG.md) for the
