@@ -8,6 +8,31 @@ All notable changes to this project are documented here. The format is based on
 
 _Nothing yet._
 
+## [0.4.1] - 2026-06-30
+
+Serving-substrate hardening: model serves are now Docker-Compose-defined and `serves up`
+is drift-safe, plus Blackwell sm_120 serving guidance. No router changes; no breaking
+changes.
+
+### Changed
+
+- **Model serves are Docker-Compose-defined ([ADR-0002](https://github.com/fakoli/anvil-serving/blob/main/docs/adr/0002-serves-are-compose-defined.md)).**
+  `anvil-serving serves up` delegates to `docker compose up -d <service>`, which recreates a
+  container when its compose config has drifted and fast-restarts it when unchanged —
+  replacing a blind `docker start` that could silently serve a stale model. Added a
+  parametrized experiment-harness compose (`examples/fakoli-dark/docker-compose.experiment.yml`).
+  **Docker Compose v2 is now a serving-substrate prerequisite** (the router itself stays stdlib-only).
+- `serves up` gained a `--recreate` flag (force `docker rm -f` + up) and a served-vs-declared
+  model drift warning for script-based serves.
+- Serve ports bind `127.0.0.1` only; GPU pinning uses `CUDA_VISIBLE_DEVICES` (reliable on
+  Docker-Desktop/WSL2) alongside Compose `device_ids`.
+
+### Docs
+
+- Blackwell **sm_120** serving gotchas (dense NVFP4 vs the MoE-NVFP4/block-FP8 kernel gaps,
+  NVFP4≈1.8×FP8, the `VLLM_USE_V2_MODEL_RUNNER=0` UVA fix, the docker-volume vs 9P load path)
+  in `CLAUDE.md`; ADR-0002.
+
 ## [0.4.0] - 2026-06-30
 
 Advise-and-defer — the subscription-first routing pivot — plus the launch-hardening pass.
@@ -153,6 +178,7 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/fakoli/anvil-serving/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/fakoli/anvil-serving/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/fakoli/anvil-serving/releases/tag/v0.3.0
