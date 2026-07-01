@@ -581,3 +581,105 @@ def test_example_with_cloud_has_cost_fields_on_cloud_tier():
     )
     assert cloud.cost_input_per_mtok > 0
     assert cloud.cost_output_per_mtok > 0
+
+
+# ── genericity:T005 — [router].relay_timeout ────────────────────────────────
+def test_relay_timeout_defaults_to_20(tmp_path):
+    """Absent relay_timeout -> a short (20s) default, not the 120s cloud default."""
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    assert cfg.relay_timeout == pytest.approx(20.0)
+
+
+def test_relay_timeout_parses_when_set(tmp_path):
+    body = "relay_timeout = 5\n" + _BASE_TIER
+    cfg = load(_write_toml(tmp_path, body))
+    assert cfg.relay_timeout == pytest.approx(5.0)
+    assert isinstance(cfg.relay_timeout, float)
+
+
+def test_relay_timeout_accepts_float(tmp_path):
+    body = "relay_timeout = 2.5\n" + _BASE_TIER
+    cfg = load(_write_toml(tmp_path, body))
+    assert cfg.relay_timeout == pytest.approx(2.5)
+
+
+def test_relay_timeout_zero_raises(tmp_path):
+    body = "relay_timeout = 0\n" + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_relay_timeout_negative_raises(tmp_path):
+    body = "relay_timeout = -1\n" + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_relay_timeout_non_number_raises(tmp_path):
+    body = 'relay_timeout = "fast"\n' + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_relay_timeout_bool_raises(tmp_path):
+    """bool is an int subclass in Python; must be rejected explicitly."""
+    body = "relay_timeout = true\n" + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+# ── genericity:T004 — [router].verify_local_min ─────────────────────────────
+def test_verify_local_min_defaults_to_true(tmp_path):
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    assert cfg.verify_local_min is True
+
+
+def test_verify_local_min_can_be_disabled(tmp_path):
+    body = "verify_local_min = false\n" + _BASE_TIER
+    cfg = load(_write_toml(tmp_path, body))
+    assert cfg.verify_local_min is False
+
+
+def test_verify_local_min_non_bool_raises(tmp_path):
+    body = 'verify_local_min = "yes"\n' + _BASE_TIER
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+# ── genericity:T003 — per-tier extra_body ───────────────────────────────────
+def test_extra_body_absent_defaults_to_none(tmp_path):
+    """extra_body absent -> None (no regression: body is unchanged from today)."""
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    assert cfg.tiers[0].extra_body is None
+
+
+def test_extra_body_parses_inline_table(tmp_path):
+    # TOML's `[router.tiers.X]` sub-table syntax only unambiguously targets the
+    # LAST entry of an array-of-tables, so use the explicit inline-table form
+    # here instead -- it stays correct regardless of how many tiers precede it.
+    body = _BASE_TIER + (
+        'extra_body = { temperature_scale = 0.9, '
+        'chat_template_kwargs = { enable_thinking = false } }\n'
+    )
+    cfg = load(_write_toml(tmp_path, body))
+    t = cfg.tiers[0]
+    assert t.extra_body == {
+        "temperature_scale": 0.9,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+
+
+def test_extra_body_non_dict_raises(tmp_path):
+    body = _BASE_TIER + "extra_body = [1, 2, 3]\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_extra_body_non_string_key_type_is_toml_illegal(tmp_path):
+    """TOML tables always have string keys, so the JSON-serialisability guard is
+    exercised via a value TOML cannot represent instead (there is no TOML
+    non-serialisable-but-valid shape for a *value*, so this pins that a bad
+    table is still caught structurally): a non-dict value under extra_body."""
+    body = _BASE_TIER + 'extra_body = "not-a-table"\n'
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
