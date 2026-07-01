@@ -7,13 +7,14 @@ read at load time, so a config can be loaded with no secrets present.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
 import tomllib
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
-from typing import Mapping, Optional
+from typing import Any, Mapping, Optional
 
 from .prices import fetch_prices
 
@@ -67,6 +68,16 @@ class Tier:
     # Set these on metered cloud tiers so cost_usd can be computed per-request.
     cost_input_per_mtok: Optional[float] = None
     cost_output_per_mtok: Optional[float] = None
+    # Optional inline-table of extra JSON-serialisable keys merged verbatim into the
+    # upstream request body (genericity:T003) -- e.g. a local vLLM/SGLang server's
+    # `chat_template_kwargs: {enable_thinking: false}` to defend against the
+    # thinking-budget-starvation gotcha (CLAUDE.md gotcha #6/#9). Never overrides the
+    # keys the router itself sets (model/messages/stream/...); it is applied via
+    # ``body.update(extra_body)`` in backends/cloud.py, so a key here CAN clobber a
+    # router-set key if the operator explicitly configures it that way -- that is
+    # intentional passthrough, not a bug. Kept ``hash=False`` (a dict is unhashable)
+    # to match ``RouterConfig.presets`` below; Tier is never used as a dict/set key.
+    extra_body: Optional[Mapping[str, Any]] = field(default=None, hash=False)
 
 
 @dataclass(frozen=True)
@@ -227,6 +238,25 @@ def _parse_tier(raw: object) -> Tier:
     cost_input = _parse_cost_field(raw.get("cost_input_per_mtok"), "cost_input_per_mtok")
     cost_output = _parse_cost_field(raw.get("cost_output_per_mtok"), "cost_output_per_mtok")
 
+    # Optional: extra keys merged verbatim into the upstream request body
+    # (genericity:T003), e.g. a local server's thinking-disable knob. Absent ->
+    # None (no-op; body is unchanged, matching today's behaviour exactly).
+    raw_extra_body = raw.get("extra_body")
+    extra_body: Optional[Mapping[str, Any]] = None
+    if raw_extra_body is not None:
+        if not isinstance(raw_extra_body, dict):
+            raise ConfigError(
+                f"tier {tid!r}: extra_body must be a table (inline dict), got "
+                f"{type(raw_extra_body).__name__}"
+            )
+        try:
+            json.dumps(raw_extra_body)
+        except (TypeError, ValueError) as e:
+            raise ConfigError(
+                f"tier {tid!r}: extra_body must be JSON-serialisable: {e}"
+            ) from e
+        extra_body = MappingProxyType(dict(raw_extra_body))
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -238,6 +268,7 @@ def _parse_tier(raw: object) -> Tier:
         model=tier_model or None,
         cost_input_per_mtok=cost_input,
         cost_output_per_mtok=cost_output,
+        extra_body=extra_body,
     )
 
 
