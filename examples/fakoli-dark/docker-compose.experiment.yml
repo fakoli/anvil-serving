@@ -27,6 +27,12 @@
 #                                         C:/ 9P bind-mount; pass the HF repo-id as MODEL and vLLM
 #                                         resolves it from (or downloads it once into) the cache (#15).
 #   - GPU pinned by UUID + PCI_BUS_ID     the right card, every time (gotcha #13).
+#
+# A DISTINCT Compose project name (`fakoli-experiment`) keeps experiment `up`/`down` from
+# touching the production `fakoli-dark` serves: without it both files default their project
+# name to the directory (`fakoli-dark`), so an experiment `down` reports the live tiers as
+# orphans and churns the shared network.
+name: fakoli-experiment
 services:
   experiment:
     image: vllm/vllm-openai:latest
@@ -34,13 +40,19 @@ services:
     restart: "no"
     ipc: host
     ports:
-      - "${PORT:-30002}:${PORT:-30002}"
+      # Loopback-only publish: the experiment vLLM endpoint is unauthenticated and must not
+      # be LAN-exposed (127.0.0.1-only repo, CLAUDE.md gotcha #1 / SECURITY.md).
+      - "127.0.0.1:${PORT:-30002}:${PORT:-30002}"
     volumes:
       # Native-speed weights cache (backed by D: ext4). vLLM downloads a new MODEL here once,
       # then reloads it in ~15s. Deliberately NOT a C:/ bind-mount (9P ~15 MB/s cold-load tax).
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (gotcha #13),
+      # so also select the target card via CUDA_VISIBLE_DEVICES=<UUID>. Belt-and-suspenders
+      # with the device_ids reservation below.
+      CUDA_VISIBLE_DEVICES: ${GPU_UUID}
       VLLM_USE_V2_MODEL_RUNNER: "0"
     deploy:
       resources:

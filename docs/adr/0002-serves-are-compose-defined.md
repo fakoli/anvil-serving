@@ -70,8 +70,11 @@ This **supersedes the ad-hoc `docker run` serve scripts** (`serve-fast-gptoss-vl
   package remain stdlib-only** — no new import, no PyPI dependency, nothing added to the hot path.
   This is an ops tool the operator installs, on the same footing as Docker itself, and it is
   documented as such in `README.md` and `docs/SERVES-AND-EVAL.md`.
-- **The stale-container drift bug is closed** for compose serves: editing the compose file and
-  re-running `serves up` recreates the container to match, instead of `docker start`-ing a stale one.
+- **The stale-container drift bug is closed** for compose serves: `serves up` issues
+  `docker compose up -d <service>` **unconditionally — even when the container is already
+  running** — so editing the compose file and re-running `serves up` recreates the container to
+  match (and is a cheap no-op when unchanged), instead of short-circuiting on "already running" or
+  `docker start`-ing a stale one.
 - **One mental model.** Every serve is `docker compose up -d <service>` / `down`; no per-tier bash
   entrypoint, no `bash`-on-PATH requirement for a first-time `serves up fast`, no MSYS guards.
 - **Trade-off:** the compose files carry machine-specific facts (the fakoli-dark GPU UUIDs, Windows
