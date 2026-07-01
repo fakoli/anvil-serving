@@ -270,7 +270,7 @@ sequenceDiagram
     participant L as local tier
     participant C as cloud tier (metered)
     H->>R: request (intent preset in model field)
-    R->>R: resolve intent; metered_cloud gate → cloud is a candidate
+    R->>R: resolve intent, metered_cloud gate → cloud is a candidate
     R->>L: attempt local (buffered in commit window)
     L-->>R: candidate output
     R->>R: cheap structural verify
