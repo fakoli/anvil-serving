@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Dict, Mapping, Optional
 
 from ..config import DIALECT_ANTHROPIC, Tier
-from .cloud import _ANTHROPIC_VERSION, CloudBackend, Transport
+from .cloud import _ANTHROPIC_VERSION, CloudBackend, StreamTransport, Transport
 
 
 class RelayBackend(CloudBackend):
@@ -51,12 +51,15 @@ class RelayBackend(CloudBackend):
         env: Optional[Mapping[str, str]] = None,
         transport: Optional[Transport] = None,
         timeout: float = 120.0,
+        stream_transport: Optional[StreamTransport] = None,
     ):
         # Relay mode: no credential requirement and no cloud-only privacy gate
         # (local tier). super() resolves the optional key from ``auth_env`` (may
-        # be empty -> no auth header, see _headers) and the default transport.
+        # be empty -> no auth header, see _headers) and the default transport
+        # (including the streaming one — a local vLLM/SGLang serve streams SSE).
         super().__init__(
-            tier, env=env, transport=transport, timeout=timeout, _require_key=False
+            tier, env=env, transport=transport, timeout=timeout,
+            stream_transport=stream_transport, _require_key=False
         )
 
     def _headers(self) -> Dict[str, str]:
