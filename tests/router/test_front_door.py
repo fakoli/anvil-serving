@@ -211,10 +211,13 @@ def test_anthropic_streaming():
         assert d["index"] == 0
         assert d["delta"]["type"] == "text_delta"
 
-    # message_delta reports a stop reason and an output-token count.
+    # message_delta reports a stop reason and an output-token count. The count
+    # is estimated over the ASSEMBLED text (not the raw delta count, which
+    # would report 1 for a fully-buffered verify-path commit): "Hello there"
+    # estimates to 2 word-tokens regardless of how it was chunked.
     msg_delta = dict(events)["message_delta"]
     assert msg_delta["delta"]["stop_reason"] == "end_turn"
-    assert msg_delta["usage"]["output_tokens"] == len(tokens)
+    assert msg_delta["usage"]["output_tokens"] == 2
 
 
 def test_anthropic_non_streaming():

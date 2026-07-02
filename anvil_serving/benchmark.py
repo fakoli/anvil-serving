@@ -9,7 +9,7 @@ Stdlib only (urllib + threading; streaming for TTFT).
 
 Usage:
   # steady mixed load:
-  python3 benchmark.py --base-url http://localhost:30000/v1 --model coder-specialist \
+  python3 benchmark.py --base-url http://127.0.0.1:30000/v1 --model coder-specialist \
       --requests 60 --concurrency 20
   # fan-out burst sharing ONE prefix (exercises prefix cache like a workflow wave):
   python3 benchmark.py --base-url ... --model ... --burst 20 --shared-prefix-tokens 8000 --ctx-tokens 64000

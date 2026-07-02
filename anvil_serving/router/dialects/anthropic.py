@@ -133,14 +133,18 @@ class AnthropicDialect:
         # Optional keep-alive ping (real API emits these); exercises the path.
         yield _event("ping", {"type": "ping"})
 
-        output_tokens = 0
+        pieces: List[str] = []
         for piece in deltas:
-            output_tokens += 1
+            pieces.append(piece)
             yield _event("content_block_delta", {
                 "type": "content_block_delta",
                 "index": 0,
                 "delta": {"type": "text_delta", "text": piece},
             })
+        # Estimate over the ASSEMBLED text, not the delta count: the verify path
+        # commits a fully-buffered response as ONE delta, which a raw count
+        # would report as output_tokens=1 regardless of length.
+        output_tokens = estimate_tokens(["".join(pieces)])
 
         # Gather structured fields AFTER deltas are fully consumed.  At this
         # point the backend's thread-local is populated (#42 / #52).
