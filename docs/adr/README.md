@@ -24,3 +24,4 @@ people and the chat logs.
 | [0002](0002-serves-are-compose-defined.md) | Model serves are Docker-Compose-defined | Accepted |
 | [0003](0003-portable-defaults-and-generic-onboarding.md) | Portable-by-default: out-of-box router correctness and a generated bring-up | Accepted |
 | [0004](0004-router-as-a-service-containerized-and-authed.md) | Router as a service: containerized, network-facing, token-authed | Accepted |
+| [0005](0005-anvil-503-native-failover-unreliable.md) | anvil-503 native-failover loop: OpenClaw's fallback walk does not escape a `providerOverride` | Accepted |

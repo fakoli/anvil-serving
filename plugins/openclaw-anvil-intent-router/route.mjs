@@ -6,10 +6,34 @@
 //     - { providerOverride:"anvil", modelOverride:"<preset>" } → anvil for local work-classes
 //
 //   This avoids a wasted anvil round-trip for classes (e.g. `planning`) that are
-//   eval-proven to work better on cloud models.  The existing keyless-503→failover
-//   in `agents.defaults.model.fallbacks` remains the safety net for anything that
-//   does reach anvil and exhausts (M0 design; this is an OPTIMISATION, not a
-//   change to that guarantee).
+//   eval-proven to work better on cloud models.
+//
+// KNOWN DEFECT (anvil-503 native-failover loop — LIVE-CONFIRMED 2026-07-01):
+//   The M0 design assumed `agents.defaults.model.fallbacks` was a safety net for
+//   ANY turn that reaches anvil and exhausts (returns 503).  Live E2E testing
+//   against a real OpenClaw gateway falsified that for turns where THIS plugin
+//   emitted `providerOverride:"anvil"` (i.e. every local-preferred-class turn —
+//   quick-edit/review/chat/long-context, the majority of traffic): OpenClaw
+//   resolves `before_model_resolve`'s override ONCE, "above the attempt loop"
+//   (source-confirmed, see docs/OPENCLAW-INTEGRATION-SPEC.md §0), and that
+//   resolution appears to stick for the WHOLE run, including the native-failover
+//   walk over `agents.defaults.model.fallbacks` — so a 503 from anvil is
+//   followed by fallback attempts that ALSO resolve through the `anvil`
+//   provider (and 503 again), never reaching the native cloud provider.
+//   The safety net IS reliable for cloud-preferred classes (this function
+//   returns `{}` — no override is ever set, so there is nothing to stick).
+//   Root cause + operator workaround: docs/OPENCLAW-INTEGRATION-SPEC.md
+//   ("anvil-503 native-failover loop") and docs/adr/0005-anvil-503-native-failover-unreliable.md.
+//   Practical mitigations (no OpenClaw-side fix available from this repo):
+//     1. Add a work-class whose local tier is known to be flaky/exhausted to
+//        `ANVIL_CLOUD_CLASSES` so this plugin never emits a `providerOverride`
+//        for it (sidesteps the stickiness entirely — the turn never touches
+//        anvil, so there's nothing for the failover walk to inherit).
+//     2. Enable anvil's own opt-in metered cloud tier (ADR-0001,
+//        `configs/example-with-cloud.toml`) and list the at-risk work-classes in
+//        `[router].metered_cloud`, so anvil's `fallback.py` escalates to a bound
+//        cloud tier INSIDE the same `provider="anvil"` response — anvil never
+//        returns 503 for those classes, so OpenClaw's failover is never invoked.
 //
 // CLOUD-CLASS SET (DEFAULT_CLOUD_CLASSES):
 //   "planning" — the only eval-proven cloud-preferred preset (T005 bake-off finding:
@@ -104,13 +128,18 @@ export function getCloudClasses() {
 export function makeRoutingDecision(preset, cloudClasses) {
   if (cloudClasses.has(preset)) {
     // Cloud-preferred: return no override.  OpenClaw uses its native provider.
-    // The keyless 503 → native failover in agents.defaults.model.fallbacks
-    // remains the safety net for anything that does reach anvil and exhausts.
+    // This is the ONE routing path where the keyless 503 -> native-failover
+    // story is actually sound: no providerOverride is ever emitted here, so
+    // there is nothing for OpenClaw's attempt loop to stick to.
     return {};
   }
   // Local-preferred: route to anvil.
   // Wire form (LIVE-CONFIRMED): providerOverride names the provider;
   // modelOverride carries the BARE preset (not "anvil/<preset>").
+  //
+  // KNOWN DEFECT: once this providerOverride is emitted, a subsequent anvil
+  // 503 is NOT reliably rescued by agents.defaults.model.fallbacks — see the
+  // module docstring above and docs/adr/0005-anvil-503-native-failover-unreliable.md.
   return { providerOverride: "anvil", modelOverride: preset };
 }
 
