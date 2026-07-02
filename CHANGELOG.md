@@ -4,28 +4,48 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] - 2026-07-01
 
-### Added
-
-- **Sampling-field wire fidelity (`top_p` / stop sequences).** `InternalRequest` now carries
-  `top_p` and a normalized `stop` (list of strings — OpenAI's string-or-array `stop` form is
-  collapsed to a list; Anthropic's `stop_sequences` is native). Both dialects parse them
-  (`dialects/openai.py`: `top_p` / `stop`; `dialects/anthropic.py`: `top_p` / `stop_sequences`),
-  and `CloudBackend._build_body` (`anvil_serving/router/backends/cloud.py`) forwards them with
-  dialect-correct wire names, only when present, so an absent field builds the exact same body as
-  before (extends the #96 byte-identical regression pin). Also forwards same-dialect-only
-  `top_k` (Anthropic) and `presence_penalty` / `frequency_penalty` (OpenAI) — never invented for a
-  translated cross-dialect request. Deliberately NOT forwarded: `logit_bias`, `seed`, `user`,
-  `metadata` — provider-account/session-scoped fields (billing attribution, abuse tracking,
-  deterministic-replay opt-in), not generation-quality knobs, so passthrough would leak
-  caller-side state for little harness value. A tier's `extra_body` (applied last, #97) still
-  overrides any of these — documented precedence, now test-pinned.
-  Previously a harness sending `top_p` or a stop sequence had it silently dropped: the local/cloud
-  model sampled with different parameters than requested.
+**Wire fidelity + production hardening** — the relay now forwards what the harness actually sent
+(tools, tool history, sampling parameters) and streams what the model actually produced (real SSE
+deltas, real token counts), with a full-codebase hardening pass behind it.
 
 ### Fixed
 
+- **Tools and tool history were silently dropped on relay** (#96) — the headline fix. The relay
+  backends rebuilt the upstream body from the flattened `InternalRequest`, which dropped the
+  request's `tools` / `tool_choice` and the `tool_use` / `tool_result` conversation history — a
+  routed tier could never call a tool and lost its own tool history between turns. New
+  `dialects/translate.py` (pure stdlib) translates tool definitions, `tool_choice`, and
+  tool-carrying message history between the Anthropic and OpenAI wire shapes;
+  `CloudBackend._build_body` forwards same-dialect requests verbatim and translates cross-dialect
+  ones (e.g. Claude Code → local vLLM). Tool-free requests build a byte-identical body to before
+  (regression-pinned). Verified live: a real 104-tool OpenClaw agent turn now reaches the local
+  model and returns a real `tool_calls` response.
+- **`relay()` now actually streams** (#98). `resp.read(65536)` on an `http.client` response blocks
+  until 64 KB accumulate or EOF, so SSE token deltas were delivered all at once at end-of-stream —
+  TTFT equaled full completion time. `read1()` returns per-chunk. The most user-visible fix in the
+  hardening pass.
+- **Classifier keyword haystack** (#97): only a short (≤150-word) system prompt joins the keyword
+  scan — a harness's standing multi-thousand-word system prompt permanently contains
+  "plan"/"review"/"edit"/"fix", which multi-matched every request into an ambiguous verdict and
+  drowned the actual intent of the last user turn.
+- **Public-bind warning is auth-aware** (#97): with `[server].auth_env` configured it notes the
+  token gate instead of falsely claiming the endpoint has no authentication.
+- **Production hardening bug bash** (#98) — router core: `DecisionLog` is a bounded ring buffer
+  (default 10k records; was an unbounded per-request append — a slow leak on a long-running
+  router); `RouterConfig.tier()` is O(1); an abandoned circuit-breaker half-open probe no longer
+  wedges a tier OPEN forever (probes expire after one cooldown); the fence-scan verifier is linear
+  (was O(spans × delimiters) — adversarial many-fence responses cost ~10⁹ comparisons in the
+  hot path); front-door keep-alive desync and trailing-slash fixes. Support modules: multiplexer
+  swap-path hardening (dead-child detection, checked `docker rm -f`, zombie reaping, OOM-guard
+  eviction credit, clean 4xx/5xx) and **loopback bind by default** (was `0.0.0.0` — an
+  unauthenticated model-swap endpoint on the LAN); calibrate bounded backpressure
+  (`max_pending=64`, drops counted); secrets redaction is component-boundaried (`context_limit`
+  no longer destroyed by a substring match on `text`); prices parse-before-cache, atomic writes,
+  stale-cache fallback, per-process memo; case-insensitive inferred-preset resolution;
+  `PYTHONHASHSEED`-independent fingerprints (set values canonicalized — set-valued serve flags
+  re-fingerprint once on upgrade).
 - **`policy.Needs.needs_tools` was never populated on the serve path.** `policy.route()` has always
   honored `needs.needs_tools` (excludes `tool_support=false` tiers), but `serve.RoutingBackend`
   never constructed a `Needs` — `route()` was always called with `needs=None`, so a tools-bearing
@@ -36,7 +56,6 @@ All notable changes to this project are documented here. The format is based on
   available (`internal.estimate_tokens`) is an explicit word-count approximation, not a real
   tokenizer, and comparing it against a tier's real `context_limit` would be an unsound gate; wiring
   a real per-request context estimate is separate, larger work.
-
 - **Verify: empty-content false-negative on tool-call-only local replies (regression coverage).**
   Live end-to-end testing with a real OpenClaw agent turn reported a local model reply with empty
   text `content` but a populated `tool_calls` being wrongly treated as thinking-budget starvation
@@ -53,6 +72,32 @@ All notable changes to this project are documented here. The format is based on
   both the T004 minimal-verify local-"allow" path and the full allow-with-verify chain, since no
   end-to-end coverage previously existed for this shape. If this was observed against a *deployed*
   container, rebuild/redeploy from a commit that includes #42/#52 (any v0.6.0+ build already does).
+
+### Added
+
+- **Measured-profile loading** (#97): `[router].profile_path` loads a measured `profile.json`
+  (written by `profile_bootstrap` / eval bootstrap) instead of always routing on the hand-authored
+  seed profile. Configured-but-unloadable is a startup `ConfigError` — fail fast, never silently
+  fall back to seeds the operator asked to replace.
+- **Real usage passthrough** (#97): the relay backends extract the upstream's real `usage` block
+  and both dialects render the real token counts when present (word-count estimate remains the
+  fallback). Harnesses use these numbers for context management, so the estimated fiction was
+  actively misleading.
+- **Sampling-field wire fidelity (`top_p` / stop sequences).** `InternalRequest` now carries
+  `top_p` and a normalized `stop` (list of strings — OpenAI's string-or-array `stop` form is
+  collapsed to a list; Anthropic's `stop_sequences` is native). Both dialects parse them
+  (`dialects/openai.py`: `top_p` / `stop`; `dialects/anthropic.py`: `top_p` / `stop_sequences`),
+  and `CloudBackend._build_body` (`anvil_serving/router/backends/cloud.py`) forwards them with
+  dialect-correct wire names, only when present, so an absent field builds the exact same body as
+  before (extends the #96 byte-identical regression pin). Also forwards same-dialect-only
+  `top_k` (Anthropic) and `presence_penalty` / `frequency_penalty` (OpenAI) — never invented for a
+  translated cross-dialect request. Deliberately NOT forwarded: `logit_bias`, `seed`, `user`,
+  `metadata` — provider-account/session-scoped fields (billing attribution, abuse tracking,
+  deterministic-replay opt-in), not generation-quality knobs, so passthrough would leak
+  caller-side state for little harness value. A tier's `extra_body` (applied last, #97) still
+  overrides any of these — documented precedence, now test-pinned.
+  Previously a harness sending `top_p` or a stop sequence had it silently dropped: the local/cloud
+  model sampled with different parameters than requested.
 
 ## [0.6.0] - 2026-07-01
 
