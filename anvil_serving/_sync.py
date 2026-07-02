@@ -25,6 +25,12 @@ CARDS = os.path.join(HERE, "cards")
 STATE = os.path.join(HERE, "_seen.json")
 os.makedirs(CARDS, exist_ok=True)
 
+
+def _fs_slug(name):
+    """Make a name safe as a cards/ filename component: no path separators,
+    no traversal. Real HF owner/repo ids pass through unchanged."""
+    return re.sub(r"[^A-Za-z0-9._-]", "_", str(name)).lstrip(".") or "_"
+
 # Scan roots: (path, kind). HF caches use models--owner--repo; "dir" = plain model folders.
 def _auto_roots():
     import glob as _g
@@ -209,7 +215,8 @@ def summarize(owner, repo, model_dir, kind):
     )
     card = fetch_card(owner, repo) if owner else None
     if card:
-        open(os.path.join(CARDS, f"{owner}__{repo}.md"), "w", encoding="utf-8").write(card)
+        with open(os.path.join(CARDS, f"{owner}__{repo}.md"), "w", encoding="utf-8") as fh:
+            fh.write(card)
         fm = parse_frontmatter(card)
         s["license"] = fm.get("license")
         s["pipeline_tag"] = fm.get("pipeline_tag")
@@ -218,8 +225,9 @@ def summarize(owner, repo, model_dir, kind):
         s["card_saved"] = f"cards/{owner}__{repo}.md"
     else:
         s["card_saved"] = None
-    open(os.path.join(CARDS, f"{owner}__{repo}.json" if owner else f"{repo}.json"), "w",
-         encoding="utf-8").write(json.dumps(s, indent=1))
+    with open(os.path.join(CARDS, f"{owner}__{repo}.json" if owner else f"{repo}.json"),
+              "w", encoding="utf-8") as fh:
+        fh.write(json.dumps(s, indent=1))
     return s
 
 def discover():
@@ -238,7 +246,23 @@ def discover():
                 if os.path.isdir(d):
                     cfg = load_json(os.path.join(d, "config.json"))
                     nm = cfg.get("_name_or_path") or os.path.basename(d)
-                    owner, repo = (nm.split("/",1)+[None])[:2] if "/" in str(nm) else (None, os.path.basename(d))
+                    # _name_or_path is often a FILESYSTEM PATH for local
+                    # fine-tunes ("/models/qwen3"); splitting that on "/" put
+                    # path separators into owner/repo, so the card write later
+                    # targeted a nonexistent subpath (or escaped cards/ via
+                    # "..") and the model silently vanished from the index.
+                    # Treat path-looking names as plain dirs; sanitize both
+                    # halves for filename use otherwise.
+                    nm = str(nm)
+                    looks_like_path = (
+                        nm.startswith(("/", ".", "~")) or ":" in nm or "\\" in nm
+                        or nm.count("/") != 1
+                    )
+                    if looks_like_path or "/" not in nm:
+                        owner, repo = None, _fs_slug(os.path.basename(d))
+                    else:
+                        o, r = nm.split("/", 1)
+                        owner, repo = _fs_slug(o), _fs_slug(r)
                     found.append((owner, repo, d, "dir"))
     return found
 

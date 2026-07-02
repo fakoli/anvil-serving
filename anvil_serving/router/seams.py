@@ -177,7 +177,15 @@ class FunctionRoutingPolicy:
         residency: Optional[str] = None,
         needs: "Optional[Needs]" = None,
     ) -> "RoutingDecision":
-        return self._fn(intent, config, profile, residency=residency, needs=needs)
+        # Forward the optional kwargs only when set, so the documented minimal
+        # three-argument route function lifts without a TypeError at request
+        # time (the real policy.route accepts both; a plugin's may not).
+        kwargs: dict = {}
+        if residency is not None:
+            kwargs["residency"] = residency
+        if needs is not None:
+            kwargs["needs"] = needs
+        return self._fn(intent, config, profile, **kwargs)
 
 
 class DecisionLogObserver:

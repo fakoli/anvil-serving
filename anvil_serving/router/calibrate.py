@@ -205,6 +205,7 @@ class Calibrator:
         max_workers: int = 2,
         sampler: Optional[Callable[[], bool]] = None,
         now: Optional[Callable[[], str]] = None,
+        max_pending: int = 64,
     ):
         self._store = store
         self._grader = grader
@@ -220,6 +221,13 @@ class Calibrator:
             max_workers=max_workers, thread_name_prefix="anvil-calibrate"
         )
         self._owns_executor = executor is None
+        # Backpressure cap: each queued grade pins the FULL request+response
+        # payload in the executor's (unbounded) queue, so a grader slower than
+        # the sampled arrival rate would grow memory monotonically on a
+        # long-lived server. Above the cap, new samples are DROPPED (counted in
+        # ``dropped``) — calibration is best-effort sampling, never a queue.
+        self._max_pending = int(max_pending)
+        self._dropped = 0
 
         # Pending futures (so tests can drain) + a private RNG so sampling never
         # perturbs global random state.
@@ -249,6 +257,21 @@ class Calibrator:
         """Count of background grades that raised (and were swallowed)."""
         return self._errors
 
+    @property
+    def dropped(self) -> int:
+        """Count of samples dropped by the ``max_pending`` backpressure cap."""
+        return self._dropped
+
+    @property
+    def last_error(self) -> Optional[str]:
+        """Type name of the most recent swallowed grade error (content-free).
+
+        The only per-error diagnostic; ``errors`` alone is just a rising
+        integer. Returns the exception TYPE only — never its message, which
+        could echo request/response content (R012).
+        """
+        return type(self._last_error).__name__ if self._last_error else None
+
     def observe(
         self,
         request: Any,
@@ -265,7 +288,10 @@ class Calibrator:
         grader is never called.
         """
         if self._enabled and not self._closed and self._should_sample():
-            self._submit(request, response, work_class, tier_id)
+            if self.pending() >= self._max_pending:
+                self._dropped += 1  # backpressure: drop-newest, never queue up
+            else:
+                self._submit(request, response, work_class, tier_id)
         return response
 
     def pending(self) -> int:

@@ -95,8 +95,26 @@ def serve_fingerprint(spec: Any) -> str:
     string.
     """
     blob = {"schema": FINGERPRINT_SCHEMA, "identity": identity(spec)}
-    canonical = json.dumps(blob, sort_keys=True, separators=(",", ":"), default=str)
+    canonical = json.dumps(
+        blob, sort_keys=True, separators=(",", ":"), default=_canonical_default
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _canonical_default(o: Any) -> Any:
+    """Deterministic JSON fallback for non-JSON identity values.
+
+    ``default=str`` alone made the "stable" digest hash-seed-dependent for a
+    ``set``/``frozenset`` inside ``params`` (its str() order varies across
+    processes), causing spurious cross-process staleness marks. Sets are
+    canonicalized element-wise and sorted by their serialized form; everything
+    else keeps the str() fallback.
+    """
+    if isinstance(o, (set, frozenset)):
+        return sorted(
+            (json.dumps(e, sort_keys=True, default=_canonical_default) for e in o)
+        )
+    return str(o)
 
 
 def mark_stale_on_change(

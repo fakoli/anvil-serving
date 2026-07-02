@@ -238,10 +238,17 @@ def resolve(request: InternalRequest, config: RouterConfig) -> Intent:
         source = "inferred"
         ambiguous = not c.confident
         preset = WORK_CLASS_TO_PRESET.get(work_class)
-        if ambiguous or preset not in config.presets:
-            candidate_tiers = (safer,)
+        # Case-insensitive membership, matching the declared-preset branch: a
+        # config that spells the preset "Planning" must not silently collapse
+        # every confidently-inferred planning request to the safer tier.
+        actual = preset_lc.get(preset) if preset else None
+        if ambiguous or actual is None:
+            # ``safer`` is "" only for a directly-constructed empty-tiers
+            # config; emit an empty candidate list then, not a bogus "" id.
+            candidate_tiers = (safer,) if safer else ()
         else:
-            candidate_tiers = _candidate_ids(config, preset)
+            preset = actual
+            candidate_tiers = _candidate_ids(config, actual)
 
     decision = MappingProxyType({
         "model_in": getattr(request, "model", None),

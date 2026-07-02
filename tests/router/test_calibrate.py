@@ -173,6 +173,9 @@ def test_concurrent_grades_no_lost_update():
         enabled=True,
         sample_rate=1.0,
         max_workers=8,
+        # This test pins LOST-UPDATE safety, not backpressure: lift the
+        # max_pending cap well above n so no sample is dropped by design.
+        max_pending=10_000,
     )
     n = 200
     try:
@@ -183,9 +186,41 @@ def test_concurrent_grades_no_lost_update():
         # Without the store lock, racing read-modify-writes would LOSE increments
         # and this count would come up short.
         assert entry.sample_n == before_n + n
+        assert cal.dropped == 0
         assert cal.errors == 0
         assert 0.0 <= entry.quality_score <= 1.0
     finally:
+        cal.close()
+
+
+# ── backpressure: a slow grader must bound queued samples, not queue forever ──
+def test_backpressure_drops_instead_of_queueing():
+    import threading as _threading
+
+    store = default_profile()
+    release = _threading.Event()
+
+    def _slow_grader(sample):
+        release.wait(timeout=30)
+        return Grade(score=0.7)
+
+    cal = Calibrator(
+        store,
+        grader=_slow_grader,
+        enabled=True,
+        sample_rate=1.0,
+        max_workers=1,
+        max_pending=3,
+    )
+    try:
+        for _ in range(20):
+            cal.observe({"prompt": "x"}, {"content": "y"}, "review", "fast-local")
+        # With the worker blocked, at most max_pending grades may be queued;
+        # the rest are counted as dropped instead of pinning payloads forever.
+        assert cal.pending() <= 3
+        assert cal.dropped >= 20 - 3
+    finally:
+        release.set()
         cal.close()
 
 
