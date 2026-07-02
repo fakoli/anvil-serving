@@ -6,6 +6,12 @@
 # what "heavy" answers to (genericity:T014) — swap the volume back to
 # `qwen3-coder-30b-awq` (and `--served-model-name` accordingly) only if you deliberately want
 # the older Qwen3-Coder-30B checkpoint instead of the current Qwen3.5-35B-A3B AWQ heavy tier.
+#
+# NOT reconciled on every flag: as of 2026-07-02 docker-compose.yml's `sglang` service also
+# carries `--speculative-algorithm NEXTN` + spec-decode flags (validated live, real throughput
+# gain, see CHANGELOG.md) plus `--reasoning-parser qwen3 --language-only --cuda-graph-max-bs-decode
+# 8`, none of which are mirrored here. This file already predates those and is not kept flag-for-
+# flag current — treat docker-compose.yml as authoritative for anything beyond model identity.
 services:
   sglang:
     image: lmsysorg/sglang:latest
