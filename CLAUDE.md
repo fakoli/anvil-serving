@@ -44,7 +44,8 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 ```
 anvil_serving/
   cli.py               dispatch: profile | models | deploy | serves | serve | preflight |
-                                 benchmark | eval | multiplexer | cache-prune | score
+                                 benchmark | eval | multiplexer | cache-prune | score |
+                                 init (alias onboard) | doctor
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
   models.py            scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py)
@@ -80,9 +81,12 @@ anvil_serving/
     discovery.py       /v1/models payload (advertises preset vocabulary)
     config.py          RouterConfig: tiers, presets, budget, circuit-breaker params
     internal.py        InternalRequest, Message, Backend protocol, NoAvailableTierError
-    dialects/          anthropic.py + openai.py — wire-dialect parse + response rendering
-    backends/          cloud.py (CloudBackend: urllib relay to Anthropic/OpenAI)
-                       local.py (RelayBackend: urllib relay to local SGLang/vLLM)
+    dialects/          anthropic.py + openai.py (wire-dialect parse + response rendering);
+                       translate.py (cross-dialect tool/tool-history translation, #96)
+    backends/          cloud.py (CloudBackend: urllib relay to Anthropic/OpenAI);
+                       relay.py (RelayBackend: relay to local SGLang/vLLM, auth-optional);
+                       sse.py (upstream SSE parse + stream assemblers, true streaming #102);
+                       local.py (StaticBackend/EchoBackend: deterministic in-process demo backends)
 
 templates/   configs/   docs/   examples/fakoli-dark/   plugins/
 ```

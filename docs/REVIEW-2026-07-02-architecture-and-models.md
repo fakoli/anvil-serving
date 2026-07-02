@@ -52,6 +52,10 @@ availability-never-bypasses-the-gate invariant; the ADR discipline.
 3. **Multiplexer registry genericity** — the default `REGISTRY` in `multiplexer.py` still
    ships fakoli-dark personal paths (`C:/Users/sdoum/...`) inside the pip package;
    should move to an example registry file (ADR-0003 spirit).
+   *[Status update, later on 2026-07-02: substantially closed by #107 — the registry now
+   uses container paths on the `fakoli-models` named volume and no personal host paths
+   ship in the package. Residue: the default still presumes that pre-populated volume,
+   and `init`/`doctor` still have no multiplexer coverage.]*
 4. **`/healthz` drain visibility** — surface in-flight counts + drain waits for operators
    (noted in ADR-0006 consequences).
 
