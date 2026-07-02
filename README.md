@@ -16,7 +16,7 @@
 
 </div>
 
-Point your coding harness (Claude Code, Codex, Aider, Cline, Continue — OpenClaw as the
+Point your coding harness (Claude Code, Codex, Aider, pi, Cline, Continue — OpenClaw as the
 near-first-class beachhead) at **one** anvil-serving endpoint. Per request, the router resolves an
 **intent** to a **tier** — fast-local, heavy-local, or cloud — using a **measured per-(model,
 work-class) quality profile**, cheaply **verifies** the output, and **falls back** to the next
@@ -89,7 +89,7 @@ string with no declared intent:
 | Tier | Mechanism | Available on |
 |---|---|---|
 | **0 — Infer** | classify work-class from the raw payload (token count, `thinking` flag, tool types, image content, system-prompt fingerprint) — per-request intent with no caller cooperation | every harness that reaches the endpoint |
-| **1 — Named presets in `model`** | caller/config sets a preset token; router maps preset → tier | Claude Code, Codex, Aider, Cline, Continue — **not** Cursor/Amp/Devin |
+| **1 — Named presets in `model`** | caller/config sets a preset token; router maps preset → tier | Claude Code, Codex, Aider, pi, Cline, Continue — **not** Cursor/Amp/Devin |
 | **2 — extra_body / header dimensions** | optional structured hints (budget, latency, verifier policy) | Codex, Continue; Aider (config) |
 | **3 — Native intent field** | a first-class per-request intent field | none today (needs a standard/harness change) |
 
@@ -276,6 +276,21 @@ export OPENAI_API_BASE="http://127.0.0.1:8000/v1"
 export OPENAI_API_KEY="$ANVIL_ROUTER_TOKEN"
 aider --model openai/planning --editor-model openai/quick-edit --weak-model openai/chat
 ```
+
+**pi** (Mario Zechner's coding agent) — custom providers are first-class in
+`~/.pi/agent/models.json`; anvil's presets ride as free-form model ids (pick via `/model` or
+`pi -m planning`):
+```json
+{ "providers": { "anvil": {
+    "baseUrl": "http://127.0.0.1:8000/v1", "api": "openai-completions",
+    "apiKey": "$ANVIL_ROUTER_TOKEN",
+    "models": [
+      { "id": "planning",   "name": "anvil planning",   "contextWindow": 131072, "maxTokens": 16384 },
+      { "id": "quick-edit", "name": "anvil quick-edit", "contextWindow": 131072, "maxTokens": 16384 },
+      { "id": "review",     "name": "anvil review",     "contextWindow": 131072, "maxTokens": 16384 } ] } } }
+```
+Declare `contextWindow` as the **largest routed tier's** window — an understated value makes a
+harness clamp its completion budget (see `docs/OPENCLAW-INTEGRATION-SPEC.md` §2).
 
 **Cline / Continue.dev** — select "OpenAI Compatible", Base URL `http://127.0.0.1:8000/v1`,
 Model (ID) = a preset token. **Codex CLI** — set `base_url` + `model = "planning"` in
