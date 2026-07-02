@@ -298,6 +298,33 @@ class RoutingBackend:
         # dialect layer after the stream is drained to render real finish_reason /
         # tool_calls in the response body (#42 / #52).
         self._thread_local: threading.local = threading.local()
+        # Residency tracking (AC3 anti-thrash): the local tier that last served.
+        # policy.route() defers every OTHER local behind the resident one + cloud,
+        # so an alternating fast/heavy workload does not swap the multiplexer on
+        # every request. Guarded by a lock (ThreadingHTTPServer = concurrent
+        # requests); read at route time, written when a LOCAL tier is selected.
+        self._residency_lock = threading.Lock()
+        self._resident_tier: Optional[str] = None
+        self._local_tier_ids = frozenset(
+            t.id for t in config.tiers if t.privacy == PRIVACY_LOCAL
+        )
+
+    def _residency(self) -> Optional[str]:
+        """The local tier that last served (or ``None``) — thread-safe read."""
+        with self._residency_lock:
+            return self._resident_tier
+
+    def _note_selected(self, tier_id: Optional[str]) -> None:
+        """Record that a LOCAL tier was selected to serve (thread-safe).
+
+        A cloud tier does not change residency: routing through cloud neither
+        loads nor evicts a local model, so the last-known local resident stays
+        the best anti-thrash signal.
+        """
+        if tier_id is None or tier_id not in self._local_tier_ids:
+            return
+        with self._residency_lock:
+            self._resident_tier = tier_id
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         """Return the structured fields from the last ``generate()`` on this thread.
@@ -331,18 +358,12 @@ class RoutingBackend:
         # a routing failure raises here — the front door catches NoAvailableTierError
         # before committing a streaming 200 and answers a clean 503.
         intent = resolve(request, self._config)
-        # TODO(residency): policy.route() accepts a `residency` kwarg (the currently-
-        # resident local tier id) that enables the AC3 anti-thrash reorder (defers a
-        # non-resident local behind cloud so an alternating fast/heavy workload does
-        # not swap the multiplexer every request). It is not wired here because
-        # RoutingBackend has no residency-tracking mechanism: there is no field,
-        # counter, or tracker that records which local tier last served. Wiring it
-        # requires: (1) a threading-safe `_resident_tier: Optional[str]` field on
-        # RoutingBackend, (2) updating it when a local tier is selected (at route time,
-        # before the backend call), and (3) passing it to route() here and in decide().
-        # The residency reorder is an optimisation (not correctness); without it,
-        # route() defaults to residency=None and leaves the config cost order untouched.
-        decision = route(intent, self._config, self._profile, needs=_needs_for(request))
+        # Residency-aware routing (AC3 anti-thrash): pass the local tier that
+        # last served so policy.route() defers swap-forcing non-resident locals
+        # behind the resident local + cloud. An optimisation, not correctness:
+        # with no residency yet (None) the config cost order is untouched.
+        decision = route(intent, self._config, self._profile,
+                         residency=self._residency(), needs=_needs_for(request))
 
         # Narrow to tiers for which we hold a live backend (preserve gate order).
         # The policy deny-filter already ran; what remains is allow / allow-with-verify.
@@ -387,6 +408,8 @@ class RoutingBackend:
             # the stream is exhausted — the dialect layer reads it via
             # get_last_structured() to render the real stop reason / tool calls (#42).
             inner_backend = self._backends[bound_tiers[0]]
+            # Selected at route time, before the backend call (AC3 residency).
+            self._note_selected(bound_tiers[0])
             self._thread_local.last_result = None  # cleared; set when stream finishes
 
             def _allow_wrap() -> Iterator[str]:
@@ -412,6 +435,10 @@ class RoutingBackend:
             # budget / circuit-breaker).  Refuse to serve the last attempt's text
             # — it failed verification and must not reach the client.
             raise NoAvailableTierError(work_class, bound_tiers)
+
+        # The verify walk may have escalated past the first candidate: record
+        # the tier that ACTUALLY served as the resident (AC3 residency).
+        self._note_selected(result.served_tier)
 
         # Propagate the winning tier's structured fields to our thread-local so
         # the dialect layer can render real stop_reason / tool_calls (#42).
@@ -509,10 +536,10 @@ class RoutingBackend:
         from .dialects import _new_id
 
         intent = resolve(request, self._config)
-        # TODO(residency): residency not passed here either — see the same note
-        # in generate() above.  decide() should mirror generate() once tracking
-        # is added so /v1/route reflects the real anti-thrash order.
-        decision = route(intent, self._config, self._profile, needs=_needs_for(request))
+        # Residency passed read-only so /v1/route reflects the real anti-thrash
+        # order; decide() never serves, so it never UPDATES residency.
+        decision = route(intent, self._config, self._profile,
+                         residency=self._residency(), needs=_needs_for(request))
 
         # Narrow to tiers that are both gated (allow / allow-with-verify) AND
         # have a live backend — mirrors generate()'s bound-tier logic exactly
