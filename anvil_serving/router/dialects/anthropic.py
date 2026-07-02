@@ -24,6 +24,7 @@ from ..internal import (
     estimate_tokens,
     flatten_content,
     normalize_messages,
+    normalize_stop,
 )
 from . import _new_id
 
@@ -81,6 +82,8 @@ class AnthropicDialect:
             system=system,
             max_tokens=max_tokens,
             temperature=body.get("temperature"),
+            top_p=body.get("top_p"),
+            stop=normalize_stop(body.get("stop_sequences")),
             stream=bool(body.get("stream", False)),
             dialect=self.name,
             raw=dict(body),
