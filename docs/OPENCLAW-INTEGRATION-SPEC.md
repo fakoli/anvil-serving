@@ -66,7 +66,7 @@ already assumes this — OpenClaw has no response-swap hook, so this is the only
 - **Preset-as-model.** Any arbitrary string declared as a model `id` in a provider's `models[]` becomes a first-class selectable model `"<providerId>/<modelId>"`.
 - **Per-model sampling/thinking knobs.** `agents.defaults.models["anvil/<preset>"].params.chat_template_kwargs` and `.params.extra_body` — covers anvil gotcha #5 (`enable_thinking:false`).
 - **Verify primitives (client-side).** `llm_output` (observe-only: `assistantTexts[]`, `usage`), `before_agent_finalize` (decision: `{ action?: "continue"|"revise"|"finalize"; reason?; retry?: { instruction; idempotencyKey?; maxAttempts? } }`, cap `MAX_BEFORE_AGENT_FINALIZE_REVISIONS=3`), `model_call_ended` (transport telemetry). **No** `after_model_response`/response-swap hook.
-- **Native failover** (`agents.defaults.model.fallbacks`) triggers on transport-class errors only (auth/429/overloaded/timeout/billing) — **never** on a correctness/quality verdict.
+- **Native failover** (`agents.defaults.model.fallbacks`) triggers on transport-class errors only (auth/429/overloaded/timeout/billing) — **never** on a correctness/quality verdict. **LIVE-CONFIRMED CAVEAT (2026-07-01, see §7 below):** the fallback walk itself fires correctly on anvil's exhaustion-503, but when the failing attempt was resolved via `before_model_resolve`'s `providerOverride`, the fallback attempts also resolve through that same overridden provider — so the native provider is never actually reached. Treat this as a live-confirmed gap, not the "safety net" §1/§4 previously assumed.
 - **Gating.** Non-bundled plugins using `before_model_resolve` MUST set `plugins.entries.<id>.hooks.allowConversationAccess=true`. Prompt-mutating hooks additionally need `allowPromptInjection`.
 - **Trust/deploy.** MIT (OpenClaw Foundation). Node 22.19+/24, TS ESM. Gateway defaults to loopback; a loopback anvil endpoint needs no TLS and no gateway auth. Plugin install = "running code", gated by `security.installPolicy` + `plugins.allow`/`plugins.deny`; config change requires `openclaw gateway restart`.
 
@@ -196,3 +196,55 @@ Net: this matches anvil's existing design (`QUALITY-GATED-ROUTER.md` §7) — ve
 - Whether a `before_agent_finalize` "revise" instruction can be parsed by the router to coerce escalation (likely no clean channel — treat router fallback as the real path).
 - Plugin runtime config/secret access (`plugins.entries.<id>.config`) and whether plugins are sandboxed (affects shipping-safety claims).
 - Timeout key name(s) on the provider (`timeoutSeconds` vs `timeoutMs`) — not byte-confirmed.
+
+## 7. LIVE-CONFIRMED DEFECT (2026-07-01): the anvil-503 native-failover loop
+
+**Symptom (observed live, real OpenClaw agent turn, v0.6.0):** `before_model_resolve` set
+`providerOverride:"anvil"` for a local-preferred-class turn (quick-edit/review/chat/long-context —
+`plugins/openclaw-anvil-intent-router`'s T008 upfront split). anvil returned 503 (`"no
+quality-gated tier is available for this request"` — the keyless-handoff signal, ADR-0001).
+OpenClaw's native failover (`agents.defaults.model.fallbacks -> [openai/gpt-5.5,
+openai/gpt-5.4-mini]`) DID fire (so the 503-is-a-transport-failure-trigger assumption from
+`docs/PLAN-advise-and-defer.md` Phase 1 is confirmed correct) — but **both configured fallback
+models also 503'd through the `anvil` provider**, never reaching the native cloud provider. The
+agent turn ended in "couldn't generate a response" instead of a graceful cloud handoff.
+
+**Root cause (source-grounded, not guessed).** §0 above is source-confirmed: `before_model_resolve`
+"fires once per run, above the attempt loop" (`run.ts` L1033 `resolveHookModelSelection`, applied at
+`setup.ts` L98–103). The live symptom is consistent with that resolution — specifically the
+`providerOverride` component — being applied for the **whole run's attempt loop**, not just the
+first (primary) attempt: the fallback walk over `agents.defaults.model.fallbacks` re-resolves a
+model string for each fallback entry, but the *provider* component of that resolution appears to
+stay pinned to whatever `before_model_resolve` returned, regardless of the provider named in the
+fallback entry itself (`openai/gpt-5.5` still resolved through `anvil`). This would explain why
+**both** fallback attempts hit anvil's 503 rather than the native provider.
+
+This is consistent with, and sharpens, the "validate live (currently UNCONFIRMED)" item in
+`docs/adr/0001-cloud-cost-and-subscription-auth.md` — the exhaustion-503 DOES trip OpenClaw's
+"overloaded" failover category (that part of ADR-0001's mechanism holds), but the *result* of that
+failover is not the native provider when a `providerOverride` is in play.
+
+**Scope of the defect:** every turn where the plugin emits `{ providerOverride: "anvil", ... }` —
+i.e. every local-preferred-class turn (quick-edit, review, chat, long-context; the large majority of
+traffic in the default classify table). It does **not** affect cloud-preferred turns (`planning` by
+default): those return `{}` (no override at all), so there is no `providerOverride` to stick, and
+OpenClaw's own default/native resolution runs normally.
+
+**No repo-side code fix exists.** The router (`anvil_serving/router/`) is behaving correctly per its
+own contract (503 with zero streamed local tokens, C3) — the bug is in how OpenClaw's attempt loop
+re-resolves the fallback chain after a `before_model_resolve` override. This repo cannot patch
+OpenClaw. Two operator-side mitigations (see `plugins/openclaw-anvil-intent-router/README.md` for
+the exact config):
+
+1. **`ANVIL_CLOUD_CLASSES`** — move a work-class whose local tier is known to be flaky/exhausted into
+   the cloud-preferred set. Its turns then never touch anvil (no `providerOverride` emitted), so
+   there is nothing for the failover walk to inherit. Zero-cost, but drops local-first routing for
+   that class.
+2. **anvil's own opt-in metered cloud tier** (ADR-0001, `configs/example-with-cloud.toml` +
+   `[router].metered_cloud`) — let anvil's `fallback.py` escalate to a bound cloud tier *inside* the
+   same `provider="anvil"` request/response. anvil then never returns 503 for the at-risk classes, so
+   OpenClaw's (unreliable) native failover is never invoked at all. This is the durable fix, gated by
+   the explicit billing opt-in ADR-0001 already requires.
+
+See also `docs/adr/0005-anvil-503-native-failover-unreliable.md` (the ADR record of this finding) and
+`docs/OPENCLAW-LIVE-VALIDATION.md` (Gap 4).

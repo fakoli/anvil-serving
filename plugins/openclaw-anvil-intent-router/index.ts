@@ -7,9 +7,22 @@
 //   - local work-classes (quick-edit, review, chat, long-context) → anvil.
 //     Emits { providerOverride: "anvil", modelOverride: "<bare preset>" }.
 //
-// The existing keyless-503 → native failover (`agents.defaults.model.fallbacks`)
-// remains the safety net for anything that reaches anvil and exhausts.  T008 is an
-// OPTIMISATION (no unnecessary anvil contact) — not a change to that guarantee.
+// T008 is an OPTIMISATION (no unnecessary anvil contact for eval-proven-cloud
+// classes) — it does not itself change the keyless-503 handoff design.
+//
+// KNOWN DEFECT (anvil-503 native-failover loop — LIVE-CONFIRMED 2026-07-01):
+// The keyless-503 -> `agents.defaults.model.fallbacks` handoff is NOT reliable
+// for any turn where this plugin emitted `providerOverride:"anvil"` (i.e. every
+// local-preferred-class turn): OpenClaw resolves the hook's override once,
+// above the attempt loop, and that resolution appears to stick across the
+// native-failover walk too, so the configured fallback models also resolve
+// through the `anvil` provider and 503 again instead of reaching the native
+// cloud provider. It IS reliable for cloud-preferred classes (no override is
+// ever emitted for them, so nothing sticks). See route.mjs's module docstring,
+// docs/OPENCLAW-INTEGRATION-SPEC.md, and
+// docs/adr/0005-anvil-503-native-failover-unreliable.md for the root cause and
+// the operator-side mitigations (`ANVIL_CLOUD_CLASSES`, anvil's opt-in metered
+// cloud tier).
 //
 // CLOUD-CLASS SET:
 //   Default: {"planning"} (eval-proven cloud-preferred, T005 bake-off).
