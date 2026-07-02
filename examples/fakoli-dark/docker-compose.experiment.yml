@@ -61,6 +61,11 @@ services:
             - driver: nvidia
               device_ids: ["${GPU_UUID:?set GPU_UUID to the target card UUID (e.g. the 5090 GPU-04d3b6e7-...)}"]
               capabilities: [gpu]
+    # Pin the entrypoint: upstream flipped the image default from `vllm` to `vllm serve`,
+    # which made the leading `serve` below double up and break arg parsing (hit live
+    # 2026-07-02: "vllm: error: unrecognized arguments: <model>"). Explicit entrypoint
+    # is stable against either image vintage.
+    entrypoint: ["vllm"]
     command: >
       serve ${MODEL:?set MODEL to a HF repo-id (e.g. RedHatAI/Qwen3-32B-NVFP4)}
       --served-model-name ${SERVED_NAME:-experiment}
