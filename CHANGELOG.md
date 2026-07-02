@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-07-02
+
+**Weights on a volume + docs truth-up.** Two fixes from live operation, and a documentation
+pass that brings every stated claim back in line with the shipped code.
+
+### Fixed
+
+- **Model weights mount from a named Docker volume, never a host bind mount** (#107). On
+  Docker Desktop/WSL2, 9P/virtiofs bind mounts turned cold model loads into 20–90 minute
+  stalls. All serve definitions — the fakoli-dark compose files, the legacy serve scripts,
+  and the multiplexer's default registry (new `volume` registry key) — now read weights
+  from an external named volume, with container paths unchanged so serve fingerprints are
+  unaffected. This also removed the last machine-specific host paths from the shipped
+  package.
+- **Eval data default resolves to `tests/fixtures/eval-data`** (#106) — the previous
+  default pointed at a directory relocated to the companion notes repo; the vLLM
+  experiment entrypoint is pinned alongside it.
+
+### Documentation
+
+- **ADR-0007** (#105): a Claude-subscription cloud tier is feasible and permitted for
+  self-hosted single-operator use — opt-in, subprocess-to-CLI, text-only classes, no tool
+  broker, documented ToS-gray. Design-only; no implementation scheduled. Companion pi
+  harness recipe added to the README.
+- **Docs truth-up (positioning refresh):** README *Known limitations* rewritten to include
+  the live-confirmed ADR-0005 keyless-failover caveat, the promotion-table evidence-erosion
+  note (the reference heavy serve moved off the model the seeds were measured against;
+  shadow-eval re-run recommended), and the Anthropic-dialect `NotTruncated` pass-through
+  behavior introduced by the v0.7.1 caller-cap fix. AGENTS.md updated off v0.4.1/707-tests
+  to v0.7.x/993; README/CLAUDE.md test counts corrected to 993 collected; mkdocs nav now
+  publishes ADR-0002–0007 and the 2026-07-02 architecture review; docs version badge
+  bumped; stale `relay.py` (non-streaming upstream) and `serves.py` (manifest default)
+  docstrings corrected.
+
 ## [0.7.1] - 2026-07-02
 
 **Live-incident hardening** — a LIVE end-to-end run (2026-07-02) found a harness that
@@ -358,7 +392,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/fakoli/anvil-serving/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/fakoli/anvil-serving/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/fakoli/anvil-serving/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/fakoli/anvil-serving/compare/v0.5.0...v0.6.0

@@ -6,7 +6,8 @@ stop, start, and inspect the GPU-backed model serves — so you can free the car
 between sessions (`serves down`) and bring them back (`serves up`) without
 remembering two different launch mechanisms.
 
-It reads a manifest (default `examples/fakoli-dark/serves.toml`) that declares
+It reads a manifest (default `./serves.toml` — what `deploy`/`init` write; the shipped
+reference is `examples/fakoli-dark/serves.toml`) that declares
 each serve's container name, port, health path, declared `model` (served-model-name),
 and an optional `up` command. Bringing a serve up is drift-safe: when `up` is a
 `docker compose up -d`, that command IS the (re)start and is run UNCONDITIONALLY — even

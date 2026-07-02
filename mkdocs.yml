@@ -36,7 +36,15 @@ nav:
   - ADRs:
       - Overview: adr/README.md
       - 'ADR-0001: Cloud cost & subscription auth': adr/0001-cloud-cost-and-subscription-auth.md
+      - 'ADR-0002: Serves are Compose-defined': adr/0002-serves-are-compose-defined.md
+      - 'ADR-0003: Portable defaults & generic onboarding': adr/0003-portable-defaults-and-generic-onboarding.md
+      - 'ADR-0004: Router as a service': adr/0004-router-as-a-service-containerized-and-authed.md
+      - 'ADR-0005: anvil-503 native failover unreliable': adr/0005-anvil-503-native-failover-unreliable.md
+      - 'ADR-0006: Multiplexer swap draining': adr/0006-multiplexer-swap-draining.md
+      - 'ADR-0007: Subscription-auth cloud tier': adr/0007-subscription-auth-cloud-tier.md
       - Template: adr/template.md
+  - Architecture reviews:
+      - '2026-07-02: Architecture & models': REVIEW-2026-07-02-architecture-and-models.md
   - Changelog: changelog.md
 
 markdown_extensions:

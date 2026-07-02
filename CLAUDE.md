@@ -5,7 +5,7 @@ and routes coding-harness traffic across local and cloud model tiers — with pe
 verification and automatic fallback. Install, run `anvil-serving serve`, point your harness at
 `http://127.0.0.1:8000`, and you get *local where it's been proven, cloud where it hasn't*.
 
-The router is **shipped (v0.7.1)** — 18 tasks, milestones M0-M3, 977 tests green. v0.7.x added wire
+The router is **shipped (v0.7.2)** — 18 tasks, milestones M0-M3, 993 tests green. v0.7.x added wire
 fidelity (tools/tool-history forwarding, real SSE streaming, sampling params) + production hardening
 (caller-capped truncation, breaker, bounded decision log). v0.5.0 shipped the genericity pass (out-of-box router correctness + generated bring-up, ADR-0003); v0.6.0 made the router a containerized, token-authed service (ADR-0004). Earlier: v0.4.0 shipped advise-and-defer (local-only default, opt-in metered cloud); v0.4.1 hardened the serving substrate (Docker-Compose-defined serves). The serving
 substrate (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`) also ships
@@ -44,7 +44,8 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 ```
 anvil_serving/
   cli.py               dispatch: profile | models | deploy | serves | serve | preflight |
-                                 benchmark | eval | multiplexer | cache-prune | score
+                                 benchmark | eval | multiplexer | cache-prune | score |
+                                 init (alias onboard) | doctor
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
   models.py            scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py)
@@ -80,9 +81,12 @@ anvil_serving/
     discovery.py       /v1/models payload (advertises preset vocabulary)
     config.py          RouterConfig: tiers, presets, budget, circuit-breaker params
     internal.py        InternalRequest, Message, Backend protocol, NoAvailableTierError
-    dialects/          anthropic.py + openai.py — wire-dialect parse + response rendering
-    backends/          cloud.py (CloudBackend: urllib relay to Anthropic/OpenAI)
-                       local.py (RelayBackend: urllib relay to local SGLang/vLLM)
+    dialects/          anthropic.py + openai.py (wire-dialect parse + response rendering);
+                       translate.py (cross-dialect tool/tool-history translation, #96)
+    backends/          cloud.py (CloudBackend: urllib relay to Anthropic/OpenAI);
+                       relay.py (RelayBackend: relay to local SGLang/vLLM, auth-optional);
+                       sse.py (upstream SSE parse + stream assemblers, true streaming #102);
+                       local.py (StaticBackend/EchoBackend: deterministic in-process demo backends)
 
 templates/   configs/   docs/   examples/fakoli-dark/   plugins/
 ```

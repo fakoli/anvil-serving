@@ -7,8 +7,10 @@
 ## What you're working in
 
 A quality-gated local-model router (`anvil_serving/router/`) plus a serving substrate
-(`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`). The router
-is shipped (v0.4.1). The canonical product description is `README.md`; do not contradict it.
+(`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`, plus the
+v0.5.0 onboarding trio `init`/`doctor`/`gpus`). The router is shipped (v0.7.x): token-authed
+containerized service, cross-dialect tool translation, true upstream SSE streaming,
+residency-aware routing. The canonical product description is `README.md`; do not contradict it.
 
 ## Read before you write
 
@@ -34,7 +36,7 @@ is shipped (v0.4.1). The canonical product description is `README.md`; do not co
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest tests/ -x -q          # full suite; 707 tests expected green
+python -m pytest tests/ -x -q          # full suite; 993 tests expected green
 anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <name>  # live gate
 ```
 
