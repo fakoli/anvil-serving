@@ -25,7 +25,16 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-EVAL_DATA_ROOT = os.path.join(REPO, "docs", "findings", "eval-data")
+# The committed eval fixtures live under tests/fixtures/ (the dated findings tree was
+# relocated to the private notes repo); fall back to the legacy docs/findings path so a
+# checkout that still carries it keeps working.
+_EVAL_DATA_CANDIDATES = (
+    os.path.join(REPO, "tests", "fixtures", "eval-data"),
+    os.path.join(REPO, "docs", "findings", "eval-data"),
+)
+EVAL_DATA_ROOT = next(
+    (p for p in _EVAL_DATA_CANDIDATES if os.path.isdir(p)), _EVAL_DATA_CANDIDATES[0]
+)
 PLANNING_DIR = os.path.join(EVAL_DATA_ROOT, "2026-06-28-planning-capability")
 
 
