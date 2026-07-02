@@ -27,3 +27,4 @@ people and the chat logs.
 | [0005](0005-anvil-503-native-failover-unreliable.md) | anvil-503 native-failover loop: OpenClaw's fallback walk does not escape a `providerOverride` | Accepted |
 | [0006](0006-multiplexer-swap-draining.md) | Multiplexer swaps drain in-flight requests before evicting the resident model | Accepted |
 | [0007](0007-subscription-auth-cloud-tier.md) | Subscription-auth cloud tier: feasible via `claude` CLI subprocess — opt-in only, text-only classes, no tool broker | Accepted |
+| [0008](0008-heavy-tier-speculative-decoding.md) | Heavy tier enables NEXTN speculative decoding (self-speculation, no draft model) | Accepted |
