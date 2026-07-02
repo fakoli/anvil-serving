@@ -59,7 +59,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
+from typing import Callable, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 from .config import RouterConfig, Tier
 from .decision_log import AttemptRecord, DecisionLog, DecisionRecord, compute_cost_usd
@@ -165,7 +165,7 @@ class CircuitBreaker:
         self._lock: threading.Lock = threading.Lock()
         self._failures: Dict[str, int] = {}       # consecutive failure count
         self._last_fail: Dict[str, float] = {}    # monotonic time of last failure
-        self._probing: Set[str] = set()           # tiers in a half-open probe
+        self._probing: Dict[str, float] = {}      # tier -> monotonic probe-grant time
         self.cooldown: float = cooldown
 
     def is_open(self, tier_id: str, threshold: int) -> bool:
@@ -175,19 +175,28 @@ class CircuitBreaker:
         calling thread is granted the half-open probe (the tier is marked as
         probing and the method returns *False* so the caller attempts the tier).
         All concurrent callers see *True* (OPEN) while a probe is in flight.
+
+        **Probe expiry (wedge-proofing).** A granted probe whose outcome is never
+        reported (the probing thread died, or an exit path skipped both
+        ``record_failure`` and ``record_success``) must not hold the circuit OPEN
+        forever. A probe older than ``cooldown`` seconds is treated as abandoned
+        and a new probe is granted in its place.
         """
         with self._lock:
             if self._failures.get(tier_id, 0) < threshold:
                 return False  # CLOSED — no skip
+            now = time.monotonic()
             last_fail = self._last_fail.get(tier_id, 0.0)
-            if time.monotonic() < last_fail + self.cooldown:
+            if now < last_fail + self.cooldown:
                 return True  # OPEN — still in cooldown, skip
             # Cooldown expired → half-open window.
-            if tier_id in self._probing:
-                # A probe is already in flight from another thread; keep others out.
+            probe_started = self._probing.get(tier_id)
+            if probe_started is not None and now < probe_started + self.cooldown:
+                # A live probe is in flight from another thread; keep others out.
                 return True
-            # Grant the probe to THIS thread.
-            self._probing.add(tier_id)
+            # No probe, or the previous probe is stale (never reported an
+            # outcome) — grant the probe to THIS thread.
+            self._probing[tier_id] = now
             return False  # HALF-OPEN — allow the probe through
 
     def record_failure(self, tier_id: str) -> None:
@@ -195,14 +204,14 @@ class CircuitBreaker:
         with self._lock:
             self._failures[tier_id] = self._failures.get(tier_id, 0) + 1
             self._last_fail[tier_id] = time.monotonic()
-            self._probing.discard(tier_id)
+            self._probing.pop(tier_id, None)
 
     def record_success(self, tier_id: str) -> None:
         """Record a success, closing the circuit (reset all state for this tier)."""
         with self._lock:
             self._failures[tier_id] = 0
             self._last_fail.pop(tier_id, None)
-            self._probing.discard(tier_id)
+            self._probing.pop(tier_id, None)
 
     def failure_count(self, tier_id: str) -> int:
         """Return the current consecutive failure count (for logging/inspection)."""

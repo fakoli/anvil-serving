@@ -21,9 +21,15 @@ from __future__ import annotations
 
 import re
 import threading
+from collections import deque
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, Deque, Mapping, Optional, Tuple
+
+#: Default ring-buffer capacity for :class:`DecisionLog`. One record per routed
+#: request; 10k bounds a long-running server's audit memory to the recent
+#: window while staying far above what an operator inspects interactively.
+DEFAULT_MAX_RECORDS = 10_000
 
 
 @dataclass(frozen=True)
@@ -195,23 +201,36 @@ fell_back=<true|false> tiers=<t1>t2>t3|-> prompt=<n> completion=<n>
 
 
 class DecisionLog:
-    """In-memory, append-only store of :class:`DecisionRecord` (no persistence).
+    """In-memory, bounded store of :class:`DecisionRecord` (no persistence).
 
     A single session's audit trail. :meth:`record` appends; :attr:`records`
     returns an immutable snapshot (a tuple copy, so a caller cannot mutate the
-    internal list); :attr:`last` is the most recent record or ``None``. No
+    internal store); :attr:`last` is the most recent record or ``None``. No
     secrets are stored — see the module docstring.
+
+    **Bounded memory.** The store is a ring buffer capped at ``max_records``
+    (default :data:`DEFAULT_MAX_RECORDS`): once full, appending evicts the
+    OLDEST record. The router appends one record per request and lives for the
+    whole server session, so an unbounded list is a slow memory leak on a
+    long-running service — a week of steady harness traffic is hundreds of
+    thousands of records. The cap keeps the recent window an operator actually
+    inspects; durable full-history storage is a separate (persistence) concern.
+    Pass ``max_records=None`` for the old unbounded behaviour (tests,
+    short-lived replay tooling).
 
     **Thread-safety.** The router runs under :class:`~http.server.ThreadingHTTPServer`,
     so :meth:`record` and :attr:`last`/:attr:`records`/:meth:`__len__` can be called
     concurrently from per-request handler threads. A :class:`threading.Lock` guards
     every mutation *and* every read that iterates ``_records``. The lock is held only
-    for the minimal critical section (the list operation itself); no expensive work
+    for the minimal critical section (the deque operation itself); no expensive work
     is done under it.
     """
 
-    def __init__(self) -> None:
-        self._records: List[DecisionRecord] = []
+    def __init__(self, max_records: Optional[int] = DEFAULT_MAX_RECORDS) -> None:
+        if max_records is not None and max_records <= 0:
+            raise ValueError(f"max_records must be positive or None, got {max_records!r}")
+        # deque(maxlen=None) is unbounded — the explicit opt-out.
+        self._records: Deque[DecisionRecord] = deque(maxlen=max_records)
         self._lock = threading.Lock()
 
     def record(self, record: DecisionRecord) -> None:

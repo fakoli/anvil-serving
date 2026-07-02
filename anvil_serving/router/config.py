@@ -18,6 +18,7 @@ import re
 import sys
 import tomllib
 from dataclasses import dataclass, field, replace
+from functools import cached_property
 from types import MappingProxyType
 from typing import Any, Mapping, Optional
 
@@ -136,12 +137,21 @@ class RouterConfig:
     # back to seeds the operator asked to replace).
     profile_path: Optional[str] = None
 
+    @cached_property
+    def _tiers_by_id(self) -> Mapping[str, Tier]:
+        """Lazy id -> Tier index. ``tier()`` runs several times per routed
+        request (policy filters, verdict lookups, fallback attempts), so the
+        linear scan over ``tiers`` is replaced with one dict build on first
+        use. ``cached_property`` writes straight into ``__dict__``, which a
+        frozen dataclass permits (no ``__slots__``)."""
+        return MappingProxyType({t.id: t for t in self.tiers})
+
     def tier(self, tier_id: str) -> Tier:
         """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
-        for t in self.tiers:
-            if t.id == tier_id:
-                return t
-        raise ConfigError(f"unknown tier id: {tier_id!r}")
+        t = self._tiers_by_id.get(tier_id)
+        if t is None:
+            raise ConfigError(f"unknown tier id: {tier_id!r}")
+        return t
 
     def candidates(self, preset: str) -> tuple[Tier, ...]:
         """Resolve a preset's ordered candidate tiers (raises if unknown)."""
