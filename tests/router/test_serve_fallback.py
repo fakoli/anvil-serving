@@ -127,6 +127,48 @@ def test_local_allow_empty_content_no_further_candidate_exhausts_503():
     assert "error" in body, f"expected error envelope, got: {body}"
 
 
+def test_local_allow_tool_call_only_not_escalated():
+    """v0.6.1 hotfix: a LOCAL 'allow' tier whose reply has empty text content
+    but a populated ``tool_calls`` (a real tool-call turn, e.g. a coding-agent
+    reading a file) must be served from the FIRST candidate, not misread as
+    thinking-budget starvation and escalated/exhausted. Regression pin for the
+    live end-to-end bug: empty content + >=1 tool_call must PASS the T004
+    minimal commit-window (NonEmptyContent honors tool_calls; NotTruncated
+    does not flag finish_reason='tool_calls' as truncation)."""
+
+    class _ToolCallBackend:
+        """Empty text delta, but a populated tool_calls + finish_reason='tool_calls'."""
+
+        def generate(self, request):
+            yield ""
+
+        def get_last_structured(self):
+            from anvil_serving.router.internal import StructuredResult
+            return StructuredResult(
+                finish_reason="tool_calls",
+                tool_calls=[{"name": "read_file", "arguments": '{"path": "a.py"}'}],
+            )
+
+    backends = {
+        "fast-local": _ToolCallBackend(),
+        "heavy-local": StaticBackend(["should-not-be-reached"]),
+    }
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends,
+                         profile=default_profile())
+    with running(httpd) as (host, port):
+        status, _headers, raw = _post(host, port, "/v1/chat/completions", _chat_request())
+
+    assert status == 200, (status, raw)
+    raw_text = raw.decode("utf-8")
+    assert "read_file" in raw_text, f"expected the tool call to be delivered, got: {raw_text!r}"
+    assert "should-not-be-reached" not in raw_text, "escalated when it should not have"
+
+    record = httpd.anvil_routing._decision_log.last
+    assert record is not None
+    assert not record.fell_back, "tool-call-only local reply was wrongly escalated"
+    assert record.served_tier == "fast-local"
+
+
 def test_local_allow_truncated_content_escalates():
     """A LOCAL 'allow' tier whose structured result reports a truncated
     finish_reason is caught by NotTruncated and escalates, even though its text
