@@ -118,10 +118,18 @@ class StructuredResult:
     ``tool_calls``: normalized list — each dict has:
       ``"name"`` (str), ``"id"`` (str),
       ``"arguments"`` (str — JSON string from OpenAI; dict — already-parsed from Anthropic).
+
+    ``usage``: the upstream's REAL token accounting, normalized to
+    ``{"input_tokens": int, "output_tokens": int}`` (Anthropic wire names;
+    OpenAI's ``prompt_tokens``/``completion_tokens`` are mapped in).  ``None``
+    when the upstream reported none — the dialect layer then falls back to the
+    word-count estimate as before.  Harnesses use these numbers for context
+    management, so passing the real counts through matters.
     """
 
     finish_reason: Optional[str] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None
+    usage: Optional[Dict[str, int]] = None
 
 
 @runtime_checkable

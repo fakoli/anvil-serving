@@ -127,6 +127,14 @@ class RouterConfig:
     # ``exhaustion_status``) instead of being served silently. A cloud/remote tier
     # under "allow" is never affected by this flag.
     verify_local_min: bool = True
+    # Optional path to a measured quality profile (the ``profile.json`` written by
+    # ``python -m anvil_serving.router.profile_bootstrap`` / ``eval bootstrap``).
+    # When set, ``serve`` loads it at startup instead of the hand-authored seed
+    # profile, so the router routes on YOUR measured verdicts. Absent (default)
+    # keeps today's behaviour: the built-in seed profile. A configured-but-
+    # unreadable path is a startup ConfigError (fail fast, never silently fall
+    # back to seeds the operator asked to replace).
+    profile_path: Optional[str] = None
 
     def tier(self, tier_id: str) -> Tier:
         """Return the tier with ``tier_id`` or raise :class:`ConfigError`."""
@@ -476,6 +484,22 @@ def load(path: str) -> RouterConfig:
         )
     verify_local_min: bool = raw_verify_local_min
 
+    # ``profile_path``: optional path to a measured ``profile.json`` (written by
+    # profile_bootstrap). Only the SHAPE is validated here; readability/content
+    # are checked where it is consumed (serve.build_server), which fail-fasts
+    # with a ConfigError on a configured-but-unloadable profile.
+    raw_profile_path = router.get("profile_path")
+    if raw_profile_path is not None and (
+        not isinstance(raw_profile_path, str) or not raw_profile_path
+    ):
+        raise ConfigError(
+            f"[router].profile_path must be a non-empty path string or absent "
+            f"in {path}"
+        )
+    profile_path: Optional[str] = (
+        os.path.expanduser(raw_profile_path) if raw_profile_path else None
+    )
+
     return RouterConfig(
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
@@ -485,4 +509,5 @@ def load(path: str) -> RouterConfig:
         cost_sync=cost_sync,
         relay_timeout=relay_timeout,
         verify_local_min=verify_local_min,
+        profile_path=profile_path,
     )

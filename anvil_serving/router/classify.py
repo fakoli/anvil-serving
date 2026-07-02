@@ -51,6 +51,16 @@ WORK_CLASSES = (
 # dense content.
 _LONG_CONTEXT_WORDS = 4000
 
+# The system prompt joins the KEYWORD haystack only when it is short. A short
+# system prompt is operator-set, per-intent signal ("You audit code for
+# security issues" -> review). A harness's standing system prompt is thousands
+# of words and permanently contains "plan", "review", "edit", "fix", ... — so
+# including it would make EVERY request multi-match and collapse to an
+# ambiguous verdict, drowning the per-request intent in the last user turn.
+# Long system prompts still count toward the long-context word estimate; they
+# are just excluded from keyword matching.
+_SYSTEM_KEYWORD_MAX_WORDS = 150
+
 # Keyword fingerprints, in priority order. Each entry is (work_class, phrases).
 # Matched with WORD-BOUNDARY regex (not substring), so "change" does not fire on
 # "exchange", "plan" on "planes", or "design" on "redesigned". Order encodes
@@ -157,10 +167,13 @@ def classify(request: InternalRequest) -> Classification:
     Priority (first to fire wins):
 
     1. **long-context** — estimated words over :data:`_LONG_CONTEXT_WORDS`.
-    2. **stated intent** — word-boundary keyword scan over system + last user
-       turn. Exactly one class matched -> that class, ``confident``. Two or more
-       *conflicting* classes matched -> the highest-priority one, but
-       ``confident=False`` (the intent layer routes ambiguity to the safer tier).
+    2. **stated intent** — word-boundary keyword scan over the last user turn
+       plus a SHORT system prompt (<= :data:`_SYSTEM_KEYWORD_MAX_WORDS` words;
+       a harness's standing multi-thousand-word system prompt is excluded so it
+       cannot drown the per-request intent). Exactly one class matched -> that
+       class, ``confident``. Two or more *conflicting* classes matched -> the
+       highest-priority one, but ``confident=False`` (the intent layer routes
+       ambiguity to the safer tier).
     3. **thinking enabled** — an active (not ``{"type": "disabled"}``) thinking
        budget -> ``planning``.
     4. **tools present** -> ``bounded-edit`` (an agent loop doing edits). Placed
@@ -187,7 +200,13 @@ def classify(request: InternalRequest) -> Classification:
         has_tools = bool(tools)
 
         last_user = getattr(request, "last_user_text", "") or ""
-        haystack = (system + " " + last_user).lower()
+        # Keyword scan: last user turn + (only) a SHORT system prompt. A long
+        # (harness-standing) system prompt is a fingerprint, not per-request
+        # intent — see _SYSTEM_KEYWORD_MAX_WORDS above.
+        system_for_keywords = (
+            system if len(system.split()) <= _SYSTEM_KEYWORD_MAX_WORDS else ""
+        )
+        haystack = (system_for_keywords + " " + last_user).lower()
         # One entry per rule that fires; rules are in priority order, and each
         # rule is a distinct work class, so ``matched`` is the distinct set of
         # matched classes, highest priority first.
