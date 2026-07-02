@@ -6,7 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **Verify: empty-content false-negative on tool-call-only local replies (regression coverage).**
+  Live end-to-end testing with a real OpenClaw agent turn reported a local model reply with empty
+  text `content` but a populated `tool_calls` being wrongly treated as thinking-budget starvation
+  by `NonEmptyContent` and escalated/exhausted to a `503`. Investigation found the router logic was
+  already correct on `main` — `NonEmptyContent` (`anvil_serving/router/verify.py`) already passes on
+  a non-empty `tool_calls` list even with empty text, and `RoutingBackend._route_with_verify`
+  (`anvil_serving/router/serve.py`) already threads a backend's `tool_calls`/`finish_reason` into the
+  `ResponseView` via `get_last_structured()` — landed by the structured-field-passthrough work
+  (#42/#52), which predates and is included in v0.6.0. A genuinely empty reply (no text AND no
+  `tool_calls`) still correctly fails and escalates/defers, per the T004 safety net. Added end-to-end
+  front-door regression tests (`tests/router/test_serve_fallback.py`,
+  `tests/router/test_serve_verify_fallback.py`) and unit-level edge-case pins
+  (`tests/router/test_verify.py`) locking in the tool-call-only-pass / truly-empty-fails contract at
+  both the T004 minimal-verify local-"allow" path and the full allow-with-verify chain, since no
+  end-to-end coverage previously existed for this shape. If this was observed against a *deployed*
+  container, rebuild/redeploy from a commit that includes #42/#52 (any v0.6.0+ build already does).
 
 ## [0.6.0] - 2026-07-01
 

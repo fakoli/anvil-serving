@@ -58,6 +58,32 @@ def test_non_empty_content_fail():
     assert "empty" in r.reason.lower()
 
 
+def test_non_empty_content_fail_empty_text_and_empty_tool_calls_list():
+    # An explicit empty LIST of tool calls (as opposed to None) must still
+    # read as "no tool calls" -> the thinking-budget-starvation failure mode
+    # must still fail, not be masked by a falsy-but-present tool_calls field.
+    r = NonEmptyContent().verify(ResponseView(text="", tool_calls=[]))
+    assert not r.passed and r.score == 0.0
+    assert "empty" in r.reason.lower()
+
+
+def test_non_empty_content_pass_multiple_tool_calls_no_text():
+    # The exact live-testing shape (v0.6.1 hotfix): a local model's tool-call
+    # turn with genuinely empty text content and >=1 tool call must PASS, not
+    # be misread as thinking-budget starvation.
+    r = NonEmptyContent().verify(
+        ResponseView(
+            text="",
+            finish_reason="tool_calls",
+            tool_calls=[
+                {"name": "read_file", "arguments": '{"path": "a.py"}'},
+                {"name": "ls", "arguments": "{}"},
+            ],
+        )
+    )
+    assert r.passed and r.score == 1.0
+
+
 # --------------------------------------------------------------------------- #
 # NotTruncated
 # --------------------------------------------------------------------------- #
