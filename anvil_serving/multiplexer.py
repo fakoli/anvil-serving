@@ -274,11 +274,23 @@ class SubprocessBackend:
         # bind-mounts host_path -> model_path. Raises BackendError on unknown engine.
         cmd = docker_run_cmd(launch)
         self._container = f"anvil-{entry['name']}"
-        self._proc = subprocess.Popen(
-            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        try:
+            self._proc = subprocess.Popen(
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        except OSError as e:  # docker not on PATH, exec failure -> clean 503
+            raise BackendError(f"cannot launch docker for {entry['name']}: {e}")
         base = f"http://127.0.0.1:{port}/v1"
         deadline = time.time() + self.startup_timeout
         while time.time() < deadline:
+            # A child that already exited (port conflict, missing image, daemon
+            # down) can never become healthy: fail NOW instead of spinning the
+            # full startup timeout while holding the multiplexer lock.
+            rc = self._proc.poll()
+            if rc is not None:
+                self._cleanup(best_effort=True)
+                raise BackendError(
+                    f"docker run for {entry['name']} exited rc={rc} before "
+                    f"the backend came up")
             try:
                 with urllib.request.urlopen(
                         f"http://127.0.0.1:{port}/health", timeout=5) as r:
@@ -287,25 +299,50 @@ class SubprocessBackend:
                         return base
             except Exception:
                 time.sleep(2)
-        self.stop()
+        # Timed out: clean up best-effort so the timeout error (the diagnosis
+        # that matters) is never masked by a failing docker rm.
+        self._cleanup(best_effort=True)
         raise BackendError(f"backend for {entry['name']} did not come up within "
                            f"{self.startup_timeout}s")
 
     def stop(self):
+        """Evict the resident backend. Raises :class:`BackendError` if the
+        container could not be confirmed removed — the GPU is then still
+        occupied, and pretending it is free would make the NEXT start collide
+        on the port/VRAM and fail far more opaquely."""
+        self._cleanup(best_effort=False)
+
+    def _cleanup(self, *, best_effort):
         import subprocess
         c = getattr(self, "_container", None)
+        rm_failed = None
         if c:
             try:
-                subprocess.call(["docker", "rm", "-f", c],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-            except Exception:
-                pass
+                rc = subprocess.call(["docker", "rm", "-f", c],
+                                     stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.STDOUT)
+                if rc != 0:
+                    rm_failed = f"docker rm -f {c} exited rc={rc}"
+            except Exception as e:
+                rm_failed = f"docker rm -f {c} raised {type(e).__name__}: {e}"
         if self._proc is not None:
+            # Reap the docker-run client so a swap-heavy server doesn't
+            # accumulate zombies; escalate terminate -> kill on a hang.
             try:
                 self._proc.terminate()
+                try:
+                    self._proc.wait(timeout=10)
+                except Exception:
+                    self._proc.kill()
+                    self._proc.wait(timeout=10)
             except Exception:
                 pass
             self._proc = None
+        if rm_failed and not best_effort:
+            # Do NOT clear `current`: the old container may still hold the GPU.
+            raise BackendError(
+                f"could not remove container ({rm_failed}); the GPU may still "
+                f"be occupied — refusing to swap on top of it")
         self.current = None
 
 
@@ -362,8 +399,20 @@ class Multiplexer:
             if self.resident == name and self.backend.current == name:
                 return self.base_url
             entry = self.table[name]
-            # AC2: run the OOM guard FIRST, BEFORE evicting the good model
-            oom_guard(entry, self.ram_probe(), self.cap)
+            # AC2: run the OOM guard FIRST, BEFORE evicting the good model.
+            # Credit the evictee's weight to the budget: its mmap-off weights
+            # are part of what the probe currently sees as used, and a SWAP
+            # frees them before the new load. Without the credit, a legitimate
+            # swap on a tight box is falsely 503'd forever (e.g. 18 GB resident
+            # of a 32 GB budget leaves ~14 GB "available", refusing a 13 GB
+            # model whose eviction-adjusted budget is really ~32 GB).
+            avail = self.ram_probe()
+            prior_resident = (
+                self.table.get(self.resident) if self.resident else None
+            )
+            if self.backend.current is not None and prior_resident is not None:
+                avail += prior_resident.get("est_weight_gb", 0)
+            oom_guard(entry, avail, self.cap)
             # Capture the prior resident so a failed swap can be rolled back.
             prior_name = self.resident
             prior_entry = self.table.get(prior_name) if prior_name else None
@@ -414,16 +463,25 @@ def relay(resp, h, chunk_size=65536):
         status = getattr(resp, "code", 200)  # urllib HTTPError carries .code
     ctype = resp.headers.get("Content-Type", "application/octet-stream")
     clen = resp.headers.get("Content-Length")
+    cenc = resp.headers.get("Content-Encoding")
     h.send_response(status)
     h.send_header("Content-Type", ctype)
+    if cenc is not None:
+        h.send_header("Content-Encoding", cenc)  # body is copied verbatim
     if clen is not None:
         h.send_header("Content-Length", clen)  # non-streaming: pass length through
     else:
         h.close_connection = True              # streaming: close-delimited body
         h.send_header("Connection", "close")
     h.end_headers()
+    # read1() returns as soon as ANY bytes are available in the current chunk;
+    # plain read(n) on an http.client response BLOCKS until n bytes accumulate
+    # or EOF — which turns an SSE stream of tiny `data:` events into one big
+    # end-of-stream delivery (TTFT == full completion time). Fall back to
+    # read(n) for response-like objects without read1 (tests, HTTPError).
+    read = getattr(resp, "read1", None) or resp.read
     while True:
-        chunk = resp.read(chunk_size)
+        chunk = read(chunk_size)
         if not chunk:
             break
         h.wfile.write(chunk)
@@ -458,12 +516,27 @@ def make_handler(mux):
             if path not in ("/v1/chat/completions", "/v1/completions"):
                 self._err(404, "not_found", f"no route {path}")
                 return
+            # Chunked request bodies are not decoded here (mirrors the router
+            # front door): reject explicitly instead of reading an empty body
+            # and answering a misleading "bad body".
+            if self.headers.get_all("Transfer-Encoding"):
+                self.close_connection = True
+                self._err(411, "invalid_request",
+                          "chunked request bodies are unsupported; send "
+                          "Content-Length")
+                return
             n = int(self.headers.get("Content-Length") or 0)
             body = self.rfile.read(n)
             try:
                 model = json.loads(body)["model"]
             except Exception as e:
                 self._err(400, "invalid_request", f"bad body: {e}")
+                return
+            if not isinstance(model, str):
+                # A non-string model (e.g. an object) must be a clean 400, not
+                # an unhashable-type TypeError out of the registry lookup.
+                self._err(400, "invalid_request",
+                          f"model must be a string, got {type(model).__name__}")
                 return
             # ensure_loaded (load/swap) happens here; forwarding is per-thread/outside lock
             try:
@@ -478,6 +551,12 @@ def make_handler(mux):
             except BackendError as e:
                 self._err(503, "backend_unavailable",       # startup failure (not RAM)
                           f"backend failed to start: {e}")
+                return
+            except Exception as e:
+                # Anything else is a bug, but the caller still deserves an HTTP
+                # response instead of a connection reset + server traceback.
+                self._err(500, "internal_error",
+                          f"unexpected error: {type(e).__name__}")
                 return
             # AC1/streaming: open upstream and relay verbatim, incrementally.
             url = base + path[len("/v1"):]
@@ -504,7 +583,14 @@ def make_handler(mux):
     return Handler
 
 
-def serve(mux, host="0.0.0.0", port=8000):
+def serve(mux, host="127.0.0.1", port=8000):
+    # Loopback by default (project security posture — CLAUDE.md / SECURITY.md):
+    # this endpoint is unauthenticated and can drive GPU model load/swap, so a
+    # non-loopback bind must be an explicit operator decision, warned loudly.
+    if host not in ("127.0.0.1", "::1"):
+        print(f"WARNING: binding the multiplexer to {host!r} exposes an "
+              f"UNAUTHENTICATED model-swap endpoint on the network; any peer "
+              f"can load/evict GPU models. See SECURITY.md.", flush=True)
     httpd = ThreadingHTTPServer((host, port), make_handler(mux))
     print(f"anvil multiplexer on http://{host}:{port}  models={mux.order}")
     httpd.serve_forever()
@@ -732,7 +818,9 @@ def main(argv=None):
         description="On-demand OpenAI-compatible model multiplexer (single-resident, "
                     "RAM-guarded swap).")
     ap.add_argument("--registry", default=None, help="JSON registry table to override the default")
-    ap.add_argument("--host", default="0.0.0.0")
+    ap.add_argument("--host", default="127.0.0.1",
+                    help="bind host (default 127.0.0.1 — loopback; this endpoint "
+                         "is UNAUTHENTICATED, so a non-loopback bind is warned)")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--ram-cap-gb", type=float, default=None,
                     help="pin the RAM budget below the probe (e.g. model the ~50%% WSL cap)")

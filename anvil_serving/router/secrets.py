@@ -37,7 +37,14 @@ MASK = "[REDACTED]"
 # clobber the count. Plural ``*_tokens`` / ``token_count`` only; the singular
 # ``token`` field (a real secret) is intentionally NOT here.
 _METRIC_NAME_RE = re.compile(
-    r"(?i)((^|_)tokens$|token_count$|^token_usage$)"
+    r"(?i)("
+    r"(^|_)tokens$|token_count$|^token_usage$"
+    # Correlation / metric / limit suffixes: request_id, response_ms,
+    # input_cost_per_mtok, context_limit, content_type carry no prompt text —
+    # destroying them defeats the module's own "records stay correlatable"
+    # promise. Checked BEFORE the prompt rule, exactly like the token counts.
+    r"|_id$|_ms$|_cost(_per_\w+)?$|_limit$|_type$"
+    r")"
 )
 
 # Field NAMES whose value is a secret and is always masked, in every mode.
@@ -82,10 +89,17 @@ _SECRET_NAME_RE = re.compile(
 # Masked to a fingerprint unless calibration capture is opted in. (The metric
 # guard above runs first, so ``prompt_tokens`` / ``completion_tokens`` are NOT
 # caught here despite the ``prompt`` / ``completion`` substrings.)
+# Component-boundaried like ``_SECRET_NAME_RE`` (not bare substrings): the old
+# unanchored form caught ``request_id`` (via ``request``), ``metadata`` (via
+# ``data``), ``context_limit`` (via ``text``!) and friends, silently destroying
+# IDs and numeric metadata in every sanitized record.
 _PROMPT_NAME_RE = re.compile(
-    r"(prompt|messages|completion|content|system|input|output|response_text|user_text"
-    r"|query|data|text|request|response)",
-    re.IGNORECASE,
+    r"""(?ix)
+    (?:^|[^a-z0-9])
+    (?:prompt|messages?|completions?|content|system|input|output
+      |response_text|user_text|query|data|text|request|response)
+    (?![a-z0-9])
+    """,
 )
 
 # Secret-SHAPED substrings to scrub out of any free-text value as defense in

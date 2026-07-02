@@ -105,6 +105,10 @@ def _run_planning(a, _call=subprocess.call):
               "steps (see the eval README) — run them before aggregate for a fresh panel.")
     print("[planning] grade_struct.py (deterministic) ...")
     rc = _call([sys.executable, os.path.join(d, "grade_struct.py")], cwd=d) or rc
+    if rc:
+        # Don't aggregate over stale/partial grading output.
+        print("[planning] grade_struct failed; skipping aggregate", file=sys.stderr)
+        return rc
     print("[planning] aggregate.py ...")
     rc = _call([sys.executable, os.path.join(d, "aggregate.py")], cwd=d) or rc
     if rc == 0:

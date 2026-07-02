@@ -356,6 +356,14 @@ def write_profile(eval_data_root: Path, out_path: Path) -> dict:
 
 def store_from_profile(profile: dict) -> ProfileStore:
     """Build a :class:`ProfileStore` from a profile document (round-trips ``profile.json``)."""
+    schema = profile.get("schema")
+    if schema != SCHEMA:
+        # A wrong/future-schema document must fail loudly here, not as an
+        # opaque KeyError (or worse, load silently with missing semantics).
+        raise ValueError(
+            f"profile schema mismatch: expected {SCHEMA!r}, got {schema!r}; "
+            f"regenerate the profile with this version's profile_bootstrap"
+        )
     table: Dict[Tuple[str, Optional[str]], ProfileEntry] = {}
     for row in profile["entries"]:
         key = (row["tier_id"], row["work_class"])
@@ -518,7 +526,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
     eval_data_root = Path(args.replay)
     out_path = Path(args.out)
-    profile = write_profile(eval_data_root, out_path)
+    try:
+        profile = write_profile(eval_data_root, out_path)
+    except Exception as exc:
+        # Missing/corrupt fixtures are an operator error, not a crash: match
+        # the clean exit-2 style of every other error path in this CLI.
+        print(f"error: could not build profile from {eval_data_root}: "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
     print(f"wrote {out_path} ({len(profile['entries'])} entries)")
     print(_format_summary(profile))
     return 0
