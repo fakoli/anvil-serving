@@ -7,7 +7,7 @@ Tests: (1) long-context needle retrieval, (2) shared-prefix tool-calling batch
 (4) short coding smoke. Stdlib only (urllib).
 
 Usage:
-  python3 preflight.py --base-url http://localhost:30000/v1 --model coder-specialist \
+  python3 preflight.py --base-url http://127.0.0.1:30000/v1 --model coder-specialist \
      --needle-ctx 128000 [--api-key KEY] [--tool-batch 20] [--no-thinking]
 Exit code 0 = all pass, 1 = any fail.
 """
