@@ -9,7 +9,7 @@
 > *Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.2-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.3-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 [![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
@@ -474,7 +474,10 @@ now lives, after the router promotion).
 
 ## Status
 
-**v0.7.2 is shipped.** The relay forwards tools, tool history, and sampling parameters with
+**v0.7.3 is shipped.** The fakoli-dark heavy tier enables NEXTN speculative decoding
+(self-speculation from the model's own MTP head, no separate draft model) — validated live before
+merging (ADR-0008): +30-43% decode throughput depending on concurrency, no wire-level change. On
+top of that, the relay forwards tools, tool history, and sampling parameters with
 full wire fidelity, streams real SSE deltas (true TTFT), and passes through real token usage — on
 top of the v0.6.0 containerized, token-authed service (ADR-0004) and the portable-by-default
 genericity work (ADR-0003); the `harness-router` PRD is **complete — all 18
