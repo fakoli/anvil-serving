@@ -51,6 +51,15 @@ from ..config import (
     ConfigError,
     Tier,
 )
+from ..dialects.translate import (
+    anthropic_messages_to_openai,
+    anthropic_tool_choice_to_openai,
+    anthropic_tools_to_openai,
+    has_tool_artifacts,
+    openai_messages_to_anthropic,
+    openai_tool_choice_to_anthropic,
+    openai_tools_to_anthropic,
+)
 from ..internal import InternalRequest, StructuredResult
 from .local import split_into_deltas
 
@@ -446,14 +455,36 @@ class CloudBackend:
         # forwarded verbatim to the upstream provider causes a 4xx rejection; the
         # tier's model field holds the real provider model name (close #43).
         upstream_model = self._tier.model or request.model
+
+        # Wire fidelity for tool-carrying requests: the flattened
+        # request.messages drop tools/tool_choice and the tool_use/tool_result
+        # history an agent loop rides on. When the raw wire body carries tool
+        # structure, forward it — verbatim when the caller's dialect matches
+        # this tier's, translated otherwise. Tool-free requests keep the
+        # original flattened body byte-identical (regression safety).
+        raw: Mapping[str, Any] = (
+            request.raw if isinstance(request.raw, Mapping) else {}
+        )
+        preserve_tools = (
+            request.dialect in _SUPPORTED_DIALECTS and has_tool_artifacts(raw)
+        )
+
         if self._tier.dialect == DIALECT_ANTHROPIC:
             # Anthropic's messages array is user/assistant only; the system
             # prompt rides the top-level `system` field.
-            msgs = [
-                {"role": m.role, "content": m.content}
-                for m in request.messages
-                if m.role != "system"
-            ]
+            if preserve_tools and request.dialect == DIALECT_ANTHROPIC:
+                msgs: List[Dict[str, Any]] = [
+                    dict(m) for m in raw.get("messages") or ()
+                    if isinstance(m, Mapping) and m.get("role") != "system"
+                ]
+            elif preserve_tools:
+                msgs = openai_messages_to_anthropic(raw.get("messages"))
+            else:
+                msgs = [
+                    {"role": m.role, "content": m.content}
+                    for m in request.messages
+                    if m.role != "system"
+                ]
             body: Dict[str, Any] = {
                 "model": upstream_model,
                 "messages": msgs,
@@ -464,6 +495,17 @@ class CloudBackend:
                 body["system"] = request.system
             if request.temperature is not None:
                 body["temperature"] = request.temperature
+            if preserve_tools:
+                if request.dialect == DIALECT_ANTHROPIC:
+                    tools = raw.get("tools")
+                    choice = raw.get("tool_choice")
+                else:
+                    tools = openai_tools_to_anthropic(raw.get("tools"))
+                    choice = openai_tool_choice_to_anthropic(raw.get("tool_choice"))
+                if tools:
+                    body["tools"] = tools
+                if choice is not None:
+                    body["tool_choice"] = choice
             # genericity:T003 -- per-tier extra_body merged verbatim (e.g. a local
             # server's thinking-disable knob). Applied LAST so an operator who
             # explicitly configures a colliding key gets the override they asked
@@ -472,13 +514,24 @@ class CloudBackend:
             return body
 
         # openai-compatible: the system prompt rides as a role=system message.
-        msgs = [{"role": m.role, "content": m.content} for m in request.messages]
+        if preserve_tools and request.dialect == DIALECT_OPENAI:
+            msgs = [
+                dict(m) for m in raw.get("messages") or ()
+                if isinstance(m, Mapping)
+            ]
+        elif preserve_tools:
+            msgs = anthropic_messages_to_openai(raw.get("messages"))
+        else:
+            msgs = [{"role": m.role, "content": m.content} for m in request.messages]
         # Forward request.system faithfully. The OpenAI dialect leaves the system
         # message IN messages (so it's already present); an Anthropic-origin
         # request carries the system prompt ONLY on `.system` (no system message),
         # and dropping it here would silently lose the instruction. Prepend it
         # unless a system message is already present (avoids duplication).
-        if request.system and not any(m.role == "system" for m in request.messages):
+        if request.system and not any(
+            (m.get("role") if isinstance(m, Mapping) else None) == "system"
+            for m in msgs
+        ):
             msgs.insert(0, {"role": "system", "content": request.system})
         body = {
             "model": upstream_model,
@@ -489,6 +542,17 @@ class CloudBackend:
             body["max_tokens"] = request.max_tokens
         if request.temperature is not None:
             body["temperature"] = request.temperature
+        if preserve_tools:
+            if request.dialect == DIALECT_OPENAI:
+                tools = raw.get("tools")
+                choice = raw.get("tool_choice")
+            else:
+                tools = anthropic_tools_to_openai(raw.get("tools"))
+                choice = anthropic_tool_choice_to_openai(raw.get("tool_choice"))
+            if tools:
+                body["tools"] = tools
+            if choice is not None:
+                body["tool_choice"] = choice
         # genericity:T003 -- see the Anthropic branch above for the rationale.
         body.update(self._tier.extra_body or {})
         return body
