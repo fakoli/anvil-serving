@@ -183,6 +183,46 @@ def test_c3_avw_pass_delivers_local_not_cloud_streaming():
     assert record.served_tier == "fast-local"
 
 
+def test_c3_avw_pass_tool_call_only_delivers_local_not_cloud():
+    """v0.6.1 hotfix: allow-with-verify local whose reply is empty text but a
+    populated ``tool_calls`` must PASS the FULL default verifier chain (not
+    just the T004 minimal one) and be committed/delivered; the fallback is
+    never reached. Regression pin against re-introducing the empty-content
+    false-negative in the allow-with-verify path."""
+
+    class _ToolCallBackend:
+        def generate(self, request):
+            yield ""
+
+        def get_last_structured(self):
+            from anvil_serving.router.internal import StructuredResult
+            return StructuredResult(
+                finish_reason="tool_calls",
+                tool_calls=[{"name": "ls", "arguments": "{}"}],
+            )
+
+    backends: Dict[str, object] = {
+        "fast-local": _ToolCallBackend(),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),
+    }
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends, profile=_avw_profile())
+    with running(httpd) as (host, port):
+        status, headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {"model": "chat", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+        )
+
+    assert status == 200, (status, raw)
+    raw_text = raw.decode("utf-8")
+    assert '"ls"' in raw_text, f"expected the tool call to be delivered, got: {raw_text!r}"
+    assert CLOUD_CONTENT not in raw_text, "cloud content unexpectedly appeared"
+
+    record = httpd.anvil_routing._decision_log.last
+    assert record is not None
+    assert not record.fell_back, "tool-call-only local reply was wrongly escalated"
+    assert record.served_tier == "fast-local"
+
+
 # --------------------------------------------------------------------------- #
 # C3-ALLOW: allow tier -> streamed directly, no *full* verifier chain invoked
 #
