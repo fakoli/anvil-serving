@@ -30,6 +30,18 @@ Scope notes:
 * **Dialect branching.** The per-dialect logic is split across
   :meth:`CloudBackend._endpoint` / ``_headers`` / ``_build_body`` / ``_extract_text``;
   a per-dialect adapter object would encapsulate it. Out of scope for T006.
+* **Sampling-field forwarding (fx-sampling).** ``_build_body`` forwards
+  ``top_p`` and stop sequences (dialect-correct names: OpenAI ``stop``,
+  Anthropic ``stop_sequences``) from ``InternalRequest``, plus same-dialect-only
+  ``top_k`` (Anthropic) and ``presence_penalty``/``frequency_penalty`` (OpenAI) —
+  all only when present, so an absent field never changes the built body
+  (regression-pinned). Deliberately NOT forwarded: ``logit_bias``, ``seed``,
+  ``user``, ``metadata`` — these are provider-account/session-scoped (billing
+  attribution, abuse tracking, deterministic-replay opt-in) rather than
+  generation-quality knobs a coding harness sets, so blanket passthrough would
+  leak caller-side identifiers/state into the upstream call for low harness
+  value. A tier's ``extra_body`` is applied LAST and can override any of these
+  (documented precedence — see the ``extra_body`` note below).
 """
 
 from __future__ import annotations
@@ -514,6 +526,18 @@ class CloudBackend:
                 body["system"] = request.system
             if request.temperature is not None:
                 body["temperature"] = request.temperature
+            # Sampling fields (fx-sampling): only set when the caller actually sent
+            # them, so a tool-free / sampling-field-free request still builds the
+            # exact byte-identical body as before this change (regression pin —
+            # test_tool_free_request_body_is_unchanged / test_extra_body_absent_body_unchanged).
+            if request.top_p is not None:
+                body["top_p"] = request.top_p
+            if request.stop:
+                body["stop_sequences"] = request.stop
+            # top_k is Anthropic-only (no OpenAI equivalent); forward it same-dialect
+            # only — never invented for a translated OpenAI-origin request.
+            if request.dialect == DIALECT_ANTHROPIC and raw.get("top_k") is not None:
+                body["top_k"] = raw["top_k"]
             if preserve_tools:
                 if request.dialect == DIALECT_ANTHROPIC:
                     tools = raw.get("tools")
@@ -528,7 +552,9 @@ class CloudBackend:
             # genericity:T003 -- per-tier extra_body merged verbatim (e.g. a local
             # server's thinking-disable knob). Applied LAST so an operator who
             # explicitly configures a colliding key gets the override they asked
-            # for; absent extra_body this is a no-op (no regression).
+            # for; absent extra_body this is a no-op (no regression). This is also
+            # the documented precedence for the sampling fields above: a tier's
+            # extra_body always wins over a request's top_p/stop/top_k (fx-sampling).
             body.update(self._tier.extra_body or {})
             return body
 
@@ -561,6 +587,23 @@ class CloudBackend:
             body["max_tokens"] = request.max_tokens
         if request.temperature is not None:
             body["temperature"] = request.temperature
+        # Sampling fields (fx-sampling): only set when present -- see the
+        # Anthropic branch above for the byte-identical-body rationale.
+        if request.top_p is not None:
+            body["top_p"] = request.top_p
+        if request.stop:
+            # OpenAI's wire form for a single stop string is the bare string, but
+            # a list is always accepted, and InternalRequest.stop is already the
+            # normalized list -- forward the list form, valid for 1..4 entries.
+            body["stop"] = request.stop
+        # presence_penalty / frequency_penalty are OpenAI-only (no Anthropic
+        # equivalent); forward same-dialect only -- never invented for a
+        # translated Anthropic-origin request.
+        if request.dialect == DIALECT_OPENAI:
+            if raw.get("presence_penalty") is not None:
+                body["presence_penalty"] = raw["presence_penalty"]
+            if raw.get("frequency_penalty") is not None:
+                body["frequency_penalty"] = raw["frequency_penalty"]
         if preserve_tools:
             if request.dialect == DIALECT_OPENAI:
                 tools = raw.get("tools")
@@ -573,6 +616,8 @@ class CloudBackend:
             if choice is not None:
                 body["tool_choice"] = choice
         # genericity:T003 -- see the Anthropic branch above for the rationale.
+        # Also the documented precedence for the sampling fields above: a tier's
+        # extra_body always wins over a request's top_p/stop/penalties (fx-sampling).
         body.update(self._tier.extra_body or {})
         return body
 

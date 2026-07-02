@@ -86,6 +86,8 @@ class InternalRequest:
     system: Optional[str] = None
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    stop: Optional[List[str]] = None
     stream: bool = False
     dialect: str = ""
     raw: Dict[str, Any] = field(default_factory=dict)
@@ -178,6 +180,25 @@ def normalize_messages(raw_messages: Any) -> List[Message]:
             out.append(Message(str(m.get("role", "user")),
                                flatten_content(m.get("content"))))
     return out
+
+
+def normalize_stop(value: Any) -> Optional[List[str]]:
+    """Normalize a wire ``stop`` field to a list of strings, or ``None`` if absent.
+
+    OpenAI's ``stop`` accepts either a bare string or an array of up to 4
+    strings; Anthropic's ``stop_sequences`` is always an array. This collapses
+    both wire shapes to ``InternalRequest.stop``'s single internal
+    representation (``List[str]``) so ``_build_body`` can re-render either
+    dialect's native form without re-inspecting the raw body.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return [value] if value else None
+    if isinstance(value, (list, tuple)):
+        out = [str(v) for v in value if isinstance(v, str) and v]
+        return out or None
+    return None
 
 
 def estimate_tokens(texts: Sequence[str]) -> int:

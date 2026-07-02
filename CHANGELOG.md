@@ -6,7 +6,36 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Sampling-field wire fidelity (`top_p` / stop sequences).** `InternalRequest` now carries
+  `top_p` and a normalized `stop` (list of strings — OpenAI's string-or-array `stop` form is
+  collapsed to a list; Anthropic's `stop_sequences` is native). Both dialects parse them
+  (`dialects/openai.py`: `top_p` / `stop`; `dialects/anthropic.py`: `top_p` / `stop_sequences`),
+  and `CloudBackend._build_body` (`anvil_serving/router/backends/cloud.py`) forwards them with
+  dialect-correct wire names, only when present, so an absent field builds the exact same body as
+  before (extends the #96 byte-identical regression pin). Also forwards same-dialect-only
+  `top_k` (Anthropic) and `presence_penalty` / `frequency_penalty` (OpenAI) — never invented for a
+  translated cross-dialect request. Deliberately NOT forwarded: `logit_bias`, `seed`, `user`,
+  `metadata` — provider-account/session-scoped fields (billing attribution, abuse tracking,
+  deterministic-replay opt-in), not generation-quality knobs, so passthrough would leak
+  caller-side state for little harness value. A tier's `extra_body` (applied last, #97) still
+  overrides any of these — documented precedence, now test-pinned.
+  Previously a harness sending `top_p` or a stop sequence had it silently dropped: the local/cloud
+  model sampled with different parameters than requested.
+
 ### Fixed
+
+- **`policy.Needs.needs_tools` was never populated on the serve path.** `policy.route()` has always
+  honored `needs.needs_tools` (excludes `tool_support=false` tiers), but `serve.RoutingBackend`
+  never constructed a `Needs` — `route()` was always called with `needs=None`, so a tools-bearing
+  request could route to a tier with no tool support (the model would then be unable to call any
+  tool it needed). Wired via `dialects.translate.has_tool_artifacts` (#96): both `RoutingBackend.generate`
+  and `RoutingBackend.decide` now build a `Needs(needs_tools=...)` from the raw wire body before
+  calling `route()`. `Needs.min_context` is deliberately left unwired — the only estimator
+  available (`internal.estimate_tokens`) is an explicit word-count approximation, not a real
+  tokenizer, and comparing it against a tier's real `context_limit` would be an unsound gate; wiring
+  a real per-request context estimate is separate, larger work.
 
 - **Verify: empty-content false-negative on tool-call-only local replies (regression coverage).**
   Live end-to-end testing with a real OpenClaw agent turn reported a local model reply with empty
