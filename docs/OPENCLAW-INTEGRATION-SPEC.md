@@ -125,6 +125,9 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/anvil
 
 ## 2. OpenClaw provider config recipe (point at anvil-serving)
 
+> **`contextWindow` MUST match the real routed tier's window — see the
+> live-confirmed failure mode below the recipe before changing these values.**
+
 ```jsonc
 // ~/.openclaw/openclaw.json (JSON5)
 {
@@ -136,11 +139,11 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/anvil
         apiKey: "${ANVIL_API_KEY}",          // env interpolation CONFIRMED; anvil may ignore on loopback
         api: "openai-completions",           // CONFIRMED for self-hosted vLLM/SGLang
         models: [
-          { id: "planning",     name: "Anvil · Planning",     reasoning: false, input: ["text"],          contextWindow: 128000, maxTokens: 32000 },
-          { id: "quick-edit",   name: "Anvil · Quick Edit",   reasoning: false, input: ["text"],          contextWindow: 32000,  maxTokens: 8192  },
-          { id: "review",       name: "Anvil · Review",       reasoning: false, input: ["text","image"],  contextWindow: 128000, maxTokens: 16000 },
-          { id: "chat",         name: "Anvil · Chat",         reasoning: false, input: ["text"],          contextWindow: 32000,  maxTokens: 8192  },
-          { id: "long-context", name: "Anvil · Long Context", reasoning: false, input: ["text"],          contextWindow: 256000, maxTokens: 16000 }
+          { id: "planning",     name: "Anvil · Planning",     reasoning: false, input: ["text"],          contextWindow: 131072, maxTokens: 32000 },
+          { id: "quick-edit",   name: "Anvil · Quick Edit",   reasoning: false, input: ["text"],          contextWindow: 131072, maxTokens: 8192  },
+          { id: "review",       name: "Anvil · Review",       reasoning: false, input: ["text","image"],  contextWindow: 131072, maxTokens: 16000 },
+          { id: "chat",         name: "Anvil · Chat",         reasoning: false, input: ["text"],          contextWindow: 131072, maxTokens: 8192  },
+          { id: "long-context", name: "Anvil · Long Context", reasoning: false, input: ["text"],          contextWindow: 131072, maxTokens: 16000 }
         ]
       }
     }
@@ -157,6 +160,45 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/anvil
   plugins: { entries: { "anvil-intent-router": { hooks: { allowConversationAccess: true } } } } // CONFIRMED required gate
 }
 ```
+
+**Why every preset above declares `131072` (v0.7.1 — LIVE-CONFIRMED FAILURE MODE,
+2026-07-02).** `contextWindow` must be declared as the **LARGEST context window among
+the tiers a preset can actually route to**, not the smallest/typical one — for the
+reference deploy (`configs/example.toml`) that is `heavy-local`'s `context_limit =
+131072`, since every preset's candidate pool either routes to `heavy-local` directly
+(`review`, `planning`, `long-context`) or can escalate to it as a fallback
+(`chat`, `quick-edit: [fast-local, heavy-local]`). An earlier version of this recipe
+declared `chat`/`quick-edit` at `32000` (matching only `fast-local`'s window) — that
+understated value caused a live incident:
+
+1. OpenClaw computes `max_completion_tokens = declared contextWindow − actual prompt
+   tokens`, **clamped to a floor of 1** — it does **not** reject an oversized prompt.
+2. A real conversation's prompt grew past the understated `32000` (an actual ~43k-token
+   payload vs. the declared 32768-class window). Every subsequent turn's
+   `max_completion_tokens` computed negative, floored to **1**.
+3. The local model correctly honored the 1-token cap and returned exactly one token with
+   `finish_reason: "length"` — genuinely correct, caller-capped behavior.
+4. **Pre-v0.7.1**, anvil's `NotTruncated` verifier had no way to distinguish "the model
+   obeyed an explicit caller cap" from "an unexpected truncation" — it hard-failed every
+   such response on every tier, producing a 503 exhaustion on **every turn**. Worse, the
+   repeated verify-failures tripped the circuit breaker (`fallback.CircuitBreaker`),
+   blacking out the whole work-class (not just the offending turn) for the cooldown
+   window — collateral damage to otherwise-healthy traffic.
+5. The operator-visible 503 error text ("gated candidates [...] are unbound. Configure
+   that tier's credentials/endpoint...") pointed at credentials/reachability, which was
+   **wrong** — the tiers were bound and reachable the whole time — costing real
+   debugging time twice before the `contextWindow` misdeclaration was found.
+
+**v0.7.1 fixes the router side** (a caller-capped `length`/`max_tokens` stop with
+non-empty content now PASSES `NotTruncated` — see `anvil_serving/router/verify.py` — so
+it no longer 503s or trips the breaker) **but the `contextWindow` values above are still
+the correct fix on the OpenClaw side**: declaring the true largest routed window means
+OpenClaw computes a realistic completion budget in the first place, rather than relying
+on the router to absorb an artificially starved budget every turn. Any harness that
+computes its own completion-token budget from a declared context window has the same
+failure shape — a 1-token (or otherwise pathologically small) "availability probe" is
+not exotic; it is a natural consequence of *any* provider-side context-window
+misdeclaration once the real prompt exceeds it.
 
 ## 3. Preset / model-id contract
 

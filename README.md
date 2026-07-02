@@ -9,7 +9,7 @@
 > *Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.1-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 [![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
@@ -459,11 +459,14 @@ now lives, after the router promotion).
 
 ## Status
 
-**v0.7.0 is shipped.** The relay now forwards tools, tool history, and sampling parameters with
+**v0.7.1 is shipped.** The relay now forwards tools, tool history, and sampling parameters with
 full wire fidelity, streams real SSE deltas (true TTFT), and passes through real token usage — on
 top of the v0.6.0 containerized, token-authed service (ADR-0004) and the portable-by-default
 genericity work (ADR-0003); the `harness-router` PRD is **complete — all 18
-tasks built (milestones M0–M3), 954 tests green**. v0.4.0 shipped advise-and-defer (local-only default,
+tasks built (milestones M0–M3), 977 tests green**. v0.7.1 is a live-incident hardening pass: a
+caller-capped `length`/`max_tokens` stop (e.g. a harness-computed `max_completion_tokens` floored
+at 1) now passes structural verify instead of 503-exhausting and tripping the circuit breaker on
+every turn. v0.4.0 shipped advise-and-defer (local-only default,
 opt-in metered cloud) and the launch-hardening pass on top of the v0.3.0 harness-router. Both
 the router front door (`anvil-serving serve`) and the serving substrate (profile / models sync /
 deploy / preflight / benchmark / multiplexer) ship. See the [CHANGELOG](CHANGELOG.md) for the
