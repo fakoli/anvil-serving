@@ -40,8 +40,11 @@ class RelayBackend(CloudBackend):
     ``CloudBackend.__init__`` carries over automatically. The only override is
     :meth:`_headers` (auth-optional).
 
-    The cloud call is non-streaming upstream; the reply is split into deltas so
-    the front door's streaming path stays genuinely multi-chunk (inherited).
+    Streaming is inherited from ``CloudBackend``: with the default (or an
+    injected) stream transport, a streaming request issues a real ``stream: true``
+    upstream call and yields the model's own SSE deltas as they arrive (#102);
+    otherwise the buffered reply is split into deltas so the front door's
+    streaming path stays genuinely multi-chunk.
     """
 
     def __init__(
