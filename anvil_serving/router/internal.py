@@ -37,31 +37,64 @@ class DialectError(Exception):
 
 
 class NoAvailableTierError(Exception):
-    """No quality-gated tier is BOUND to serve a request's work class.
+    """No quality-gated tier served a request's work class.
 
-    Raised by the routing backend (T012) when every tier in the gated/allowed
-    candidate list is unbound — e.g. the only tier the quality gate permits for
-    ``planning`` is a cloud tier whose credential env var is unset, so it was
-    skipped at startup. The router does NOT fall back to an out-of-gate tier:
-    availability must never silently override the quality gate, so it raises this
-    instead, and the front door renders it as a clean 503 dialect error envelope
-    (defined here, alongside :class:`DialectError`, so the front door can catch it
-    without importing the routing layer — which would be a cycle).
+    Raised by the routing backend (T012) from two DISTINCT situations that
+    render as the same 503 to the harness but need different operator-facing
+    diagnosis (v0.7.1 — a live incident showed the pre-v0.7.1 single message
+    pointed at "credentials/reachability" for BOTH, costing real debugging time
+    on the exhausted case, where the tiers were bound and reachable the whole
+    time):
 
-    Carries the ``work_class`` and the gated ``candidates`` for the operator.
+    * ``kind="unbound"`` (the default) — every tier in the gated/allowed
+      candidate list is unbound — e.g. the only tier the quality gate permits
+      for ``planning`` is a cloud tier whose credential env var is unset, so it
+      was skipped at startup. The router does NOT fall back to an out-of-gate
+      tier: availability must never silently override the quality gate. Here
+      "configure credentials/endpoint" IS the right, accurate remediation.
+    * ``kind="exhausted"`` — every gated, BOUND candidate was actually
+      attempted (relayed to) and failed verification or the relay call itself;
+      the tiers were reachable and credentialed the whole time. The message
+      says so instead of pointing at credentials/reachability — see the
+      decision log for which candidate failed which check.
+
+    Both kinds are the SAME exception type (the front door's
+    ``except NoAvailableTierError`` contract is unchanged; only the message —
+    and this ``kind`` attribute — differ), defined here alongside
+    :class:`DialectError` so the front door can catch it without importing the
+    routing layer (which would be a cycle).
+
+    Carries ``work_class``, the gated ``candidates``, and ``kind`` for the
+    operator / caller.
     """
 
-    def __init__(self, work_class: Optional[str], candidates: Sequence[str]):
+    def __init__(
+        self,
+        work_class: Optional[str],
+        candidates: Sequence[str],
+        *,
+        kind: str = "unbound",
+    ):
         self.work_class = work_class
         self.candidates = tuple(candidates)
+        self.kind = kind
         cands = list(self.candidates)
-        super().__init__(
-            f"no quality-gated tier available for work_class={work_class!r}: "
-            f"gated candidates {cands} are unbound. Configure that tier's "
-            f"credentials/endpoint (set its auth_env, or make the local "
-            f"base_url reachable); the router refuses to bypass the quality "
-            f"gate by serving from a tier the gate did not allow."
-        )
+        if kind == "exhausted":
+            super().__init__(
+                f"no quality-gated tier served work_class={work_class!r}: all "
+                f"{len(cands)} bound candidate tier(s) {cands} were attempted "
+                f"and failed (verification or relay error); see the decision "
+                f"log for the per-tier failure reasons. The tiers were bound "
+                f"and reachable -- this is not a credentials/endpoint problem."
+            )
+        else:
+            super().__init__(
+                f"no quality-gated tier available for work_class={work_class!r}: "
+                f"gated candidates {cands} are unbound. Configure that tier's "
+                f"credentials/endpoint (set its auth_env, or make the local "
+                f"base_url reachable); the router refuses to bypass the quality "
+                f"gate by serving from a tier the gate did not allow."
+            )
 
 
 @dataclass

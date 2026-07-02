@@ -119,7 +119,10 @@ def build_response_view(buffered: Sequence[str], request: InternalRequest) -> Re
 
     The :class:`Backend` protocol yields plain text deltas only, so the default
     view's ``text`` is the lossless join of the buffer and the structured fields
-    (``finish_reason``/``tool_calls``) are left unset.
+    (``finish_reason``/``tool_calls``) are left unset. ``caller_max_tokens`` IS
+    populated from ``request.max_tokens`` (the caller's explicit cap, if any) —
+    it needs no structured backend support, just the original request, so it is
+    threaded through even in this minimal default view (v0.7.1).
 
     **Consequence for the default verifier chain (findings 12/13).** With this
     default factory, only the *text-based* checks are effective:
@@ -131,7 +134,7 @@ def build_response_view(buffered: Sequence[str], request: InternalRequest) -> Re
     inject a custom ``response_view_factory`` that carries ``finish_reason`` and
     ``tool_calls`` from the real response.
     """
-    return ResponseView(text="".join(buffered))
+    return ResponseView(text="".join(buffered), caller_max_tokens=request.max_tokens)
 
 
 # --------------------------------------------------------------------------- #

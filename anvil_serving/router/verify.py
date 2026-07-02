@@ -68,6 +68,19 @@ class ResponseView:
         is expected to be in that format.
       * ``expected_language`` — optional hint, e.g. "python", used to type an
         untagged fenced code block.
+      * ``caller_max_tokens`` — the CALLER's explicit token cap for this request
+        (``InternalRequest.max_tokens``, parsed from the wire's ``max_tokens`` /
+        ``max_completion_tokens``), or ``None`` when the caller set no cap at
+        all. This is the live-incident fix (v0.7.1): a harness that computes its
+        own completion budget (e.g. ``contextWindow - prompt_tokens``, clamped to
+        a floor of 1) and sends ``max_tokens=1`` gets EXACTLY what it asked for
+        when the model stops at that cap — that is compliance, not truncation.
+        :class:`NotTruncated` reads this field to tell "the model obeyed an
+        explicit caller cap" apart from "the model hit an unrequested/default
+        budget and got cut off mid-answer". ``None`` here means "no explicit
+        caller cap was set", so a length-like stop still reads as genuine
+        truncation (the tier/default budget was hit, not something the caller
+        asked for).
     """
 
     text: str = ""
@@ -75,6 +88,7 @@ class ResponseView:
     tool_calls: Optional[List[Dict[str, Any]]] = None
     expected_format: Optional[str] = None
     expected_language: Optional[str] = None
+    caller_max_tokens: Optional[int] = None
 
 
 @dataclass
@@ -344,8 +358,24 @@ class NonEmptyContent:
 class NotTruncated:
     """Fail when ``finish_reason`` indicates the output was cut off.
 
-    "length"/"max_tokens"/"model_length" → truncated (fail). A clean stop or an
-    unknown (``None``) reason passes — we only flag a *known* truncation.
+    "length"/"max_tokens"/"model_length" → truncated (fail), UNLESS the CALLER
+    explicitly set a token cap (:attr:`ResponseView.caller_max_tokens` is not
+    ``None``) — in that case a length-like stop is exactly what was asked for
+    (compliance, not truncation) and this check PASSES (v0.7.1, the live
+    contextWindow-clamp incident: a harness that computes
+    ``max_completion_tokens = contextWindow - prompt_tokens``, floored at 1,
+    can legitimately send ``max_tokens=1``; the model honoring that cap must
+    not be treated as a structural defect, or every such probe 503s and —
+    worse — trips the circuit breaker on tiers that are actually healthy).
+
+    A clean stop or an unknown (``None``) reason always passes — we only flag a
+    *known* truncation. When the caller set NO cap at all
+    (``caller_max_tokens is None``) a length-like stop is still a genuine
+    unexpected truncation (the tier's own default budget was hit, not
+    something the caller asked for) and this still fails. This check does NOT
+    look at ``response.text`` — an empty caller-capped ``length`` response
+    still passes NotTruncated; :class:`NonEmptyContent` is what catches
+    thinking-budget starvation (empty content regardless of any cap).
     """
 
     name = "not_truncated"
@@ -356,6 +386,13 @@ class NotTruncated:
         # not a known truncation token reads as a clean stop.
         reason = (fr if isinstance(fr, str) else "").strip().lower()
         if reason in _TRUNCATION_REASONS:
+            if response.caller_max_tokens is not None:
+                return VerifyResult(
+                    self.name, True, 1.0,
+                    f"caller-capped stop (finish_reason={response.finish_reason!r}, "
+                    f"caller_max_tokens={response.caller_max_tokens!r}): compliance, "
+                    f"not truncation",
+                )
             return VerifyResult(
                 self.name, False, 0.0,
                 f"response truncated (finish_reason={response.finish_reason!r})",

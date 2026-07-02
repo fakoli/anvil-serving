@@ -4,6 +4,52 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-07-02
+
+**Live-incident hardening** — a LIVE end-to-end run (2026-07-02) found a harness that
+computes `max_completion_tokens = declared contextWindow − prompt tokens`, floored at 1
+(never rejects an oversized prompt). A misdeclared `contextWindow` made every real turn
+arrive with `max_completion_tokens: 1`; the local model correctly honored the cap and
+returned its one token with `finish_reason: "length"` — but anvil's `NotTruncated`
+verifier had no way to tell a caller-requested cap from an unexpected truncation, so it
+hard-failed every such response on every tier: 503 exhaustion on every turn, and the
+repeated verify-failures tripped the circuit breaker, blacking out an otherwise-healthy
+work-class for the cooldown window. The exhaustion 503 also printed a misleading message
+("configure that tier's credentials/endpoint") for a case where the tiers were bound and
+reachable the whole time.
+
+### Fixed
+
+- **Caller-capped `length`/`max_tokens` is compliance, not truncation** (the headline
+  fix). `verify.ResponseView` gained a `caller_max_tokens` field, populated from the
+  request's own `max_tokens` (parsed from `max_tokens`/`max_completion_tokens` by the
+  dialects) at both response-view construction sites (`serve.py`'s
+  `_structured_view_factory` and `commit_window.build_response_view`, the fallback used
+  when a caller injects no factory). `NotTruncated` now passes a `length`-like stop when
+  the caller set an explicit cap — it is exactly what was asked for. When the caller set
+  **no** cap at all, a `length`-like stop is still treated as genuine unexpected
+  truncation (unchanged). The critical interaction is preserved: an EMPTY,
+  caller-capped `length` response (thinking-budget starvation, CLAUDE.md gotcha #9)
+  still fails via `NonEmptyContent` — only a non-empty caller-capped response passes the
+  full chain. With verify passing, no failure is recorded, so the breaker-poisoning stops
+  too. Regression-pinned end to end: a real `max_tokens: 1` request through the front
+  door + a local `allow` tier now returns 200 with the 1-token body, not a 503, and does
+  not increment the circuit breaker across repeated 1-token-capped requests.
+- **Exhaustion 503 message no longer blames credentials when the tiers were bound and
+  reachable.** `internal.NoAvailableTierError` gained a `kind` parameter
+  (`"unbound"` default / `"exhausted"`) distinguishing the two raise sites in
+  `serve.py`'s `RoutingBackend.generate()`: `bound_tiers` empty (genuinely unbound — the
+  "configure credentials/endpoint" message is correct and unchanged) vs. every bound
+  candidate attempted and failed verify/relay (now says so — "all N bound candidate
+  tiers were attempted and failed (verification or relay error); see the decision log" —
+  instead of pointing at credentials/reachability). Same exception type throughout — the
+  front door's `except NoAvailableTierError` contract is unchanged.
+- **Docs:** `docs/OPENCLAW-INTEGRATION-SPEC.md` §2's provider-config recipe now declares
+  `contextWindow: 131072` (the largest routed tier's window, `heavy-local`) for every
+  preset instead of the previous `32000`-class values for `chat`/`quick-edit` that
+  under-declared their real routed ceiling — the live-confirmed failure mode above is
+  documented in full alongside the corrected recipe.
+
 ## [0.7.0] - 2026-07-01
 
 **Wire fidelity + production hardening** — the relay now forwards what the harness actually sent

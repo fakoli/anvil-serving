@@ -410,8 +410,12 @@ class RoutingBackend:
         if result.exhausted:
             # Every gated, bound candidate failed verify (or was guarded out by the
             # budget / circuit-breaker).  Refuse to serve the last attempt's text
-            # — it failed verification and must not reach the client.
-            raise NoAvailableTierError(work_class, bound_tiers)
+            # — it failed verification and must not reach the client. This is the
+            # EXHAUSTED case (kind="exhausted", v0.7.1): the tiers WERE bound and
+            # reachable — distinct from the bound_tiers-empty raise above, whose
+            # "configure credentials/endpoint" message would be actively
+            # misleading here (see internal.NoAvailableTierError docstring).
+            raise NoAvailableTierError(work_class, bound_tiers, kind="exhausted")
 
         # Propagate the winning tier's structured fields to our thread-local so
         # the dialect layer can render real stop_reason / tool_calls (#42).
@@ -451,6 +455,13 @@ class RoutingBackend:
             b = _last_backend[0]
             _fn = getattr(b, "get_last_structured", None) if b else None
             text = "".join(deltas)
+            # Thread the CALLER's explicit token cap into the view so
+            # NotTruncated (verify.py, v0.7.1) can tell "the model obeyed an
+            # explicit caller cap" (compliance) apart from "the tier's own
+            # default budget was hit" (genuine truncation) — request.max_tokens
+            # is None unless the caller sent one (dialects/openai.py parses
+            # max_tokens/max_completion_tokens; anthropic.py requires max_tokens).
+            caller_cap = req.max_tokens
             if callable(_fn):
                 s = _fn()
                 if s is not None:
@@ -458,8 +469,9 @@ class RoutingBackend:
                         text=text,
                         finish_reason=s.finish_reason,
                         tool_calls=s.tool_calls,
+                        caller_max_tokens=caller_cap,
                     )
-            return ResponseView(text=text)
+            return ResponseView(text=text, caller_max_tokens=caller_cap)
 
         fb_decision = _FallbackDecision(tiers=bound_tiers, work_class=work_class)
         return route_with_fallback(
