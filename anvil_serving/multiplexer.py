@@ -48,7 +48,7 @@ REGISTRY = [
     # heavy (gpu 1): qwen3-coder-30b AWQ via SGLang
     {"name": "qwen3-coder-local", "engine": "sglang",
      "model_path": "/models/qwen3-coder-30b-awq",
-     "host_path": "C:/Users/sdoum/models/qwen3-coder-30b-awq", "est_weight_gb": 18,
+     "volume": "fakoli-models", "est_weight_gb": 18,
      "gpu": 1, "port": 30000,
      "args": ["--attention-backend", "triton", "--tool-call-parser", "qwen3_coder",
               "--kv-cache-dtype", "fp8_e5m2", "--context-length", "131072",
@@ -56,7 +56,7 @@ REGISTRY = [
     # fast/coding (gpu 0, swaps with qwen3-14b): gpt-oss-20b via vLLM (VALIDATED fast pick)
     {"name": "gpt-oss-20b", "engine": "vllm",
      "model_path": "/models/gpt-oss-20b",
-     "host_path": "C:/Users/sdoum/models/gpt-oss-20b", "est_weight_gb": 13,
+     "volume": "fakoli-models", "est_weight_gb": 13,
      "gpu": 0, "port": 30001,
      "args": ["--max-model-len", "65536", "--gpu-memory-utilization", "0.90",
               "--tool-call-parser", "openai", "--enable-auto-tool-choice"]},
@@ -65,7 +65,7 @@ REGISTRY = [
     # fast/safe (gpu 0, swaps with gpt-oss): qwen3-14b AWQ via SGLang
     {"name": "qwen3-14b-fast", "engine": "sglang",
      "model_path": "/models/qwen3-14b-awq",
-     "host_path": "C:/Users/sdoum/models/qwen3-14b-awq", "est_weight_gb": 9,
+     "volume": "fakoli-models", "est_weight_gb": 9,
      "gpu": 0, "port": 30001,
      "args": ["--quantization", "awq_marlin", "--attention-backend", "flashinfer",
               "--reasoning-parser", "qwen3", "--tool-call-parser", "qwen3_coder",
@@ -78,9 +78,10 @@ REGISTRY = [
 # More broadly, per-row gpu/port are INFORMATIONAL under this multiplexer's GLOBAL
 # single-resident model (only ONE backend is ever up at a time) — they document the
 # intended placement, not a guarantee of concurrent residency (review note, not a bug).
-# host_path is the REAL on-host weights dir (C:/Users/sdoum/models/<dir> on this box);
-# it is bind-mounted to the in-container model_path so the engine actually finds the
-# weights (mounting model_path:model_path would create empty dirs -> weights not found).
+# volume is the named docker volume holding the model dirs (mounted read-only at the
+# parent of model_path). host_path (host bind mount) remains supported for minimal/test
+# rows ONLY -- never use it for real weights: a host bind rides 9P/virtiofs on Docker
+# Desktop/WSL2 and makes cold loads pathological (operator rule 2026-07-02).
 # est_weight_gb are 4-bit AWQ footprint ESTIMATES feeding the OOM guard; correct
 # them against real `models sync` facts when available.
 
@@ -137,15 +138,25 @@ def docker_run_cmd(entry):
     Without a gpu_uuid, fall back to `--gpus device={gpu}` so the self-check and
     non-WSL hosts (which DO honor device=) still work.
 
-    Bind mount is host_path -> model_path: the weights live on the HOST at host_path
-    (e.g. C:/Users/sdoum/models/<dir> on this box), while model_path is the in-container
-    path the engine opens. host_path defaults to model_path for minimal/test rows."""
+    Weights mount: rows with a "volume" key mount that named docker volume read-only
+    at the parent of model_path (never a 9P host bind). Legacy host_path bind mounts
+    remain supported for minimal/test rows; host_path defaults to model_path."""
     image = ENGINE_IMAGE.get(entry.get("engine", "sglang"))
     if image is None:
         raise BackendError(
             f"unknown engine {entry.get('engine')!r} for {entry['name']}")
     argv = build_cmd(entry)
     host_path = entry.get("host_path", entry["model_path"])
+    volume = entry.get("volume")
+    if volume:
+        # Named docker volume holding the model dirs, mounted read-only at the PARENT
+        # of model_path (fakoli-models:/models:ro with model_path=/models/<dir>).
+        # NEVER a host bind mount: on Docker Desktop/WSL2 a host bind rides 9P/virtiofs
+        # and makes cold loads pathological (~12 MB/s; 20-90 min) -- operator rule
+        # 2026-07-02, see examples/fakoli-dark/docker-compose.yml header.
+        mount = f"{volume}:{os.path.dirname(entry['model_path'])}:ro"
+    else:
+        mount = f"{host_path}:{entry['model_path']}"
     port = entry["port"]
     uuid = entry.get("gpu_uuid")
     if uuid:  # reliable isolation: expose all, pin by UUID via CUDA_VISIBLE_DEVICES
@@ -160,7 +171,7 @@ def docker_run_cmd(entry):
             *gpu_flags,
             "--shm-size", "16g",
             "-p", f"{port}:{port}",
-            "-v", f"{host_path}:{entry['model_path']}",
+            "-v", mount,
             image, *argv[1:]]
 
 
@@ -877,8 +888,8 @@ def _self_check():
     assert "vllm" not in vpost, vpost                              # NOT a doubled 'vllm serve'
     assert vpost.count("serve") == 1, vpost                        # no stray dup positional
     assert vpost[1] == vrow["model_path"], vpost                   # model path is the positional
-    # host_path -> model_path bind mount (NOT host==container, which makes empty dirs)
-    assert f"{vrow['host_path']}:{vrow['model_path']}" in vdock, vdock
+    # volume mounted read-only at the parent of model_path (never a 9P host bind)
+    assert f"{vrow['volume']}:{os.path.dirname(vrow['model_path'])}:ro" in vdock, vdock
 
     sdock = docker_run_cmd(srow)
     assert sdock[sdock.index("--entrypoint") + 1] == "python3", sdock  # sglang -> python3
@@ -886,7 +897,12 @@ def _self_check():
     spost = sdock[simg + 1:]
     assert spost[:2] == ["-m", "sglang.launch_server"], spost     # module run, not doubled
     assert "python3" not in spost and "vllm" not in spost, spost  # no doubled binary / wrong engine
-    assert f"{srow['host_path']}:{srow['model_path']}" in sdock, sdock
+    assert f"{srow['volume']}:{os.path.dirname(srow['model_path'])}:ro" in sdock, sdock
+    # legacy host_path rows still bind-mount host_path -> model_path (test/minimal only)
+    legacy = docker_run_cmd({"name": "t", "engine": "vllm", "model_path": "/m/x",
+                             "host_path": "/tmp/x", "est_weight_gb": 1, "gpu": 0,
+                             "port": 1, "args": []})
+    assert "/tmp/x:/m/x" in legacy, legacy
 
     # unknown engine -> BackendError before any launch (pure guard)
     try:
