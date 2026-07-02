@@ -18,7 +18,9 @@ services:
       - "127.0.0.1:30000:30000"
     volumes:
       # REPLACE: your local model directory (this is a machine-specific Windows path).
-      - "C:/Users/sdoum/models/qwen35-awq:/models/qwen35-awq"
+      # Weights from the fakoli-models docker volume — never a 9P host bind mount
+      # (see docker-compose.yml header for the populate recipe + rationale).
+      - "fakoli-models:/models:ro"
     deploy:
       resources:
         reservations:
@@ -39,3 +41,7 @@ services:
       --enable-metrics
       --served-model-name qwen35-awq-local
       --host 0.0.0.0 --port 30000
+
+volumes:
+  fakoli-models:
+    external: true
