@@ -52,6 +52,10 @@ services:
     volumes:
       # Weights from the fakoli-models docker volume (see header) — never a host bind mount.
       - "fakoli-models:/models:ro"
+      # Persist the engine caches (FlashInfer JIT kernels, torch inductor/triton) across
+      # container recreates: without this every fresh container re-JITs its CUDA kernels
+      # during graph capture — measured 286s of a 12.5-min cold start (2026-07-02).
+      - "sglang-cache:/root/.cache"
     environment:
       # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (CLAUDE.md
       # gotcha #13), so also pin the heavy card the proven way — CUDA_VISIBLE_DEVICES=<UUID>
@@ -70,7 +74,6 @@ services:
     command: >
       python3 -m sglang.launch_server
       --model-path /models/qwen35-awq
-      --weight-loader-disable-mmap
       --kv-cache-dtype fp8_e5m2
       --reasoning-parser qwen3
       --tool-call-parser qwen3_coder
@@ -101,6 +104,9 @@ services:
     volumes:
       # Weights from the fakoli-models docker volume (see header) — never a host bind mount.
       - "fakoli-models:/models:ro"
+      # Persist vLLM's torch.compile + FlashInfer JIT caches across recreates (measured
+      # ~46s compile + graph-capture JIT per fresh container, 2026-07-02).
+      - "vllm-cache:/root/.cache"
     environment:
       # Force PCI-bus ordering so the pinned card is selected regardless of enumeration order
       # (hard-won: multi-GPU pinning needs CUDA_DEVICE_ORDER=PCI_BUS_ID — CLAUDE.md gotcha #13).
@@ -175,3 +181,6 @@ services:
 volumes:
   fakoli-models:
     external: true
+  # Engine JIT/compile caches — safe to delete (rebuilt on next start), so compose-managed.
+  sglang-cache:
+  vllm-cache:
