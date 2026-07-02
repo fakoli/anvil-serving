@@ -10,9 +10,42 @@ anvil's closed presets, then applies an **upfront routing split** (T008):
 - **Local-preferred classes** (quick-edit, review, chat, long-context) → **anvil**
   → emits `{ providerOverride: "anvil", modelOverride: "<preset>" }`.
 
-The existing keyless-503 → native failover (`agents.defaults.model.fallbacks`)
-remains the safety net for anything that reaches anvil and exhausts.  T008 is an
-**optimisation** — no design change to the M0 guarantee.
+T008 is an **optimisation** (no wasted anvil round-trip for eval-proven-cloud
+classes) — it does not itself change the M0 keyless-503 handoff design.
+
+> **KNOWN DEFECT — read before relying on native failover
+> (LIVE-CONFIRMED 2026-07-01).** The keyless-503 → `agents.defaults.model.fallbacks`
+> safety net is **not reliable** for any turn where this plugin emitted
+> `providerOverride:"anvil"` — i.e. every local-preferred-class turn
+> (quick-edit / review / chat / long-context). Live E2E testing against a real
+> OpenClaw gateway showed that after anvil 503s, OpenClaw's fallback walk
+> (`agents.defaults.model.fallbacks`, e.g. `openai/gpt-5.5`, `openai/gpt-5.4-mini`)
+> ALSO resolved through the `anvil` provider and 503'd again — the turn never
+> reached the native cloud provider, and the user saw "couldn't generate a
+> response". Root cause: `before_model_resolve` resolves its override once,
+> "above the attempt loop" (source-confirmed,
+> `docs/OPENCLAW-INTEGRATION-SPEC.md` §0), and that resolution appears to stick
+> across the native-failover walk too. The safety net **is** reliable for
+> cloud-preferred classes (`planning` by default) — no `providerOverride` is
+> ever emitted for them, so there's nothing to stick.
+>
+> **This is an OpenClaw-side behavior; there is no known fix from this repo.**
+> Two operator-side mitigations, in order of effort:
+> 1. **`ANVIL_CLOUD_CLASSES`** — add any work-class whose local tier is known to
+>    be flaky/exhausted to the cloud-preferred set (see "Cloud-class set" below).
+>    That class's turns never touch anvil, so there's nothing for the failover
+>    walk to inherit. Zero anvil-side config needed; costs the local-first
+>    benefit for that class only.
+> 2. **anvil's own opt-in metered cloud tier** (ADR-0001,
+>    `configs/example-with-cloud.toml`) — add the at-risk work-classes to
+>    `[router].metered_cloud` so anvil's `fallback.py` escalates to a bound
+>    cloud tier **inside** the same `provider="anvil"` response. anvil never
+>    returns 503 for those classes, so OpenClaw's (unreliable) native failover
+>    is never invoked. This is a billing decision (ADR-0001) — opt in explicitly.
+>
+> Full root-cause writeup: `docs/OPENCLAW-INTEGRATION-SPEC.md`
+> ("anvil-503 native-failover loop") and
+> `docs/adr/0005-anvil-503-native-failover-unreliable.md`.
 
 > **Focus, not couple.** All OpenClaw-specific code lives in this swappable
 > adapter package. The router core (`anvil_serving/router/`) contains **zero**
@@ -78,8 +111,10 @@ same knob for the gateway's plugin config UI (the env var takes precedence).
 
 Because `planning` (and any other cloud-preferred class) is now routed to the
 native provider upfront, the gateway MUST have `agents.defaults.model.fallbacks`
-configured with the native provider — **both** for this upfront path and as the
-M0 keyless-503 safety net for anything that reaches anvil and exhausts:
+configured with the native provider — this is required for the upfront
+(cloud-preferred) path, which IS reliable. It is **not** a reliable safety net
+for anything that reaches anvil and exhausts (local-preferred classes) — see
+the KNOWN DEFECT callout above:
 
 ```jsonc
 // ~/.openclaw/openclaw.json
@@ -246,6 +281,12 @@ Tests cover:
 
 The prior wire-form and fire-cadence gaps are already settled
 (`docs/findings/2026-06-30-openclaw-live-validation.md`).
+
+**2026-07-01 live E2E finding (new):** the keyless-503 → native-failover safety
+net for local-preferred classes is **not reliable** — see the KNOWN DEFECT
+callout near the top of this file, `docs/OPENCLAW-INTEGRATION-SPEC.md`
+("anvil-503 native-failover loop"), and
+`docs/adr/0005-anvil-503-native-failover-unreliable.md`.
 
 ## LIVE integration step (MANUAL — run by a human on the gateway)
 
