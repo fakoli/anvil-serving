@@ -169,6 +169,7 @@ class OpenAIDialect:
         """
         _tool_calls = structured.tool_calls if structured is not None else None
         _finish_reason = structured.finish_reason if structured is not None else None
+        _usage = getattr(structured, "usage", None) if structured is not None else None
 
         message: Dict[str, Any] = {"role": "assistant", "content": text if text else None}
         if _tool_calls:
@@ -189,9 +190,14 @@ class OpenAIDialect:
                 })
             message["tool_calls"] = tc_wire
 
-        prompt_texts: List[str] = [m.content for m in request.messages]
-        prompt = estimate_tokens(prompt_texts)
-        completion = estimate_tokens([text])
+        # Real upstream counts when the backend surfaced them; else estimates.
+        if _usage is not None:
+            prompt = _usage["input_tokens"]
+            completion = _usage["output_tokens"]
+        else:
+            prompt_texts: List[str] = [m.content for m in request.messages]
+            prompt = estimate_tokens(prompt_texts)
+            completion = estimate_tokens([text])
         return {
             "id": _new_id("chatcmpl-"),
             "object": "chat.completion",

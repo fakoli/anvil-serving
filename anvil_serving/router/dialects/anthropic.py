@@ -141,16 +141,21 @@ class AnthropicDialect:
                 "index": 0,
                 "delta": {"type": "text_delta", "text": piece},
             })
-        # Estimate over the ASSEMBLED text, not the delta count: the verify path
-        # commits a fully-buffered response as ONE delta, which a raw count
-        # would report as output_tokens=1 regardless of length.
-        output_tokens = estimate_tokens(["".join(pieces)])
-
         # Gather structured fields AFTER deltas are fully consumed.  At this
         # point the backend's thread-local is populated (#42 / #52).
         _structured = get_structured() if callable(get_structured) else None
         _tool_calls = _structured.tool_calls if _structured is not None else None
         _finish_reason = _structured.finish_reason if _structured is not None else None
+        _usage = _structured.usage if _structured is not None else None
+
+        # Prefer the upstream's REAL output count when the backend surfaced one;
+        # otherwise estimate over the ASSEMBLED text, not the delta count: the
+        # verify path commits a fully-buffered response as ONE delta, which a
+        # raw count would report as output_tokens=1 regardless of length.
+        output_tokens = (
+            _usage["output_tokens"] if _usage is not None
+            else estimate_tokens(["".join(pieces)])
+        )
 
         yield _event("content_block_stop", {"type": "content_block_stop", "index": 0})
 
@@ -223,6 +228,7 @@ class AnthropicDialect:
         """
         _tool_calls = structured.tool_calls if structured is not None else None
         _finish_reason = structured.finish_reason if structured is not None else None
+        _usage = getattr(structured, "usage", None) if structured is not None else None
 
         content: List[Any] = []
         if text:
@@ -257,10 +263,13 @@ class AnthropicDialect:
             "content": content,
             "stop_reason": _anthropic_stop_reason(_finish_reason),
             "stop_sequence": None,
-            "usage": {
-                "input_tokens": _input_tokens(request),
-                "output_tokens": estimate_tokens([text]),
-            },
+            # Real upstream counts when the backend surfaced them; else estimates.
+            "usage": (
+                dict(_usage) if _usage is not None else {
+                    "input_tokens": _input_tokens(request),
+                    "output_tokens": estimate_tokens([text]),
+                }
+            ),
         }
 
     def render_error(self, status: int, etype: str, message: str) -> Dict[str, Any]:
