@@ -102,6 +102,76 @@ def test_not_truncated_fail():
 
 
 # --------------------------------------------------------------------------- #
+# NotTruncated x caller_max_tokens (v0.7.1 — the live contextWindow-clamp
+# incident: a harness-computed max_completion_tokens floored at 1 must not
+# 503 every turn and trip the circuit breaker).
+# --------------------------------------------------------------------------- #
+def test_not_truncated_pass_caller_capped_length():
+    # The caller explicitly asked for a 1-token completion (max_tokens=1) and
+    # the model stopped exactly there with non-empty content: that is
+    # compliance with the caller's request, not a structural defect.
+    for reason in ("length", "max_tokens", "model_length"):
+        r = NotTruncated().verify(
+            ResponseView(text="ok", finish_reason=reason, caller_max_tokens=1))
+        assert r.passed, reason
+        assert r.score == 1.0
+        assert "caller-capped" in r.reason.lower() or "compliance" in r.reason.lower()
+
+
+def test_not_truncated_fail_length_no_caller_cap():
+    # No explicit caller cap (max_tokens was never set on the request) but the
+    # completion still stopped at "length": this is the tier's OWN default
+    # budget being hit, unrequested — still a genuine, unexpected truncation.
+    r = NotTruncated().verify(
+        ResponseView(text="partial answer", finish_reason="length", caller_max_tokens=None))
+    assert not r.passed and r.score == 0.0
+    assert "truncat" in r.reason.lower()
+
+
+def test_not_truncated_pass_caller_cap_set_but_clean_stop():
+    # A caller cap being present must not change the verdict for a clean stop
+    # — caller_max_tokens only matters when finish_reason is length-like.
+    r = NotTruncated().verify(
+        ResponseView(text="done", finish_reason="stop", caller_max_tokens=4096))
+    assert r.passed and r.score == 1.0
+
+
+def test_not_truncated_and_non_empty_content_chain_empty_capped_length_still_fails():
+    # CRITICAL INTERACTION (thinking-budget starvation, CLAUDE.md gotcha #9):
+    # caller sets max_tokens=16000, the model burns the whole budget reasoning
+    # and returns EMPTY content with finish_reason="length". NotTruncated alone
+    # now passes (the cap was honored) but NonEmptyContent must STILL fail —
+    # empty is empty regardless of any cap. Only a NON-EMPTY caller-capped
+    # length response should pass the full chain.
+    starved = ResponseView(text="", finish_reason="length", caller_max_tokens=16000)
+    nt = NotTruncated().verify(starved)
+    nec = NonEmptyContent().verify(starved)
+    assert nt.passed, "caller-capped length alone must pass NotTruncated"
+    assert not nec.passed, "empty content must still fail NonEmptyContent regardless of cap"
+    assert not all_passed([nt, nec])
+
+
+def test_not_truncated_and_non_empty_content_chain_nonempty_capped_length_passes():
+    # The companion pin: a NON-EMPTY caller-capped length response passes the
+    # whole chain — this is the exact live-incident shape (max_tokens=1,
+    # model returns its one token, finish_reason="length").
+    ok = ResponseView(text="1", finish_reason="length", caller_max_tokens=1)
+    nt = NotTruncated().verify(ok)
+    nec = NonEmptyContent().verify(ok)
+    assert nt.passed and nec.passed
+    assert all_passed([nt, nec])
+
+
+def test_not_truncated_caller_cap_zero_is_still_an_explicit_cap():
+    # caller_max_tokens=0 is falsy but semantically distinct from None (the
+    # caller DID set an explicit field, even if the value is degenerate) — the
+    # field must be compared with `is not None`, not truthiness.
+    r = NotTruncated().verify(
+        ResponseView(text="x", finish_reason="length", caller_max_tokens=0))
+    assert r.passed, "caller_max_tokens=0 must still read as an explicit caller cap"
+
+
+# --------------------------------------------------------------------------- #
 # ToolCallJSONValid
 # --------------------------------------------------------------------------- #
 def test_tool_call_json_valid_pass():
