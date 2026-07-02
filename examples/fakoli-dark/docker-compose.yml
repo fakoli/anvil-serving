@@ -82,9 +82,21 @@ services:
       --max-running-requests 16
       --mem-fraction-static 0.88
       --cuda-graph-max-bs-decode 8
+      --speculative-algorithm NEXTN
+      --speculative-num-steps 3
+      --speculative-eagle-topk 1
+      --speculative-num-draft-tokens 4
       --enable-metrics
       --served-model-name qwen35-awq-local
       --host 0.0.0.0 --port 30000
+    # Speculative decoding (NEXTN self-speculation via the model's own MTP head — no separate
+    # draft model/VRAM budget needed): +30-43% decode throughput depending on load, ~80%
+    # acceptance rate, validated live 2026-07-02 with radix cache (prefix caching) left ON —
+    # SGLang #19796 (SM120 NaN-on-prefix-hit) did NOT reproduce across 78.6%/96.2% cache-hit-rate
+    # trials incl. concurrent multi-turn traffic. Known tradeoff: TTFT regresses under concurrency
+    # (+37% at concurrency=4) — monitor post-rollout. First cold start after adding these flags
+    # takes ~9.5 min (one-time CUDA graph JIT for the new verify path); subsequent restarts stay
+    # fast once cached in the sglang-cache volume. Full trial writeup: see CHANGELOG.md and memory.
     # REPLACE (or keep in sync): --served-model-name above must match configs/example.toml
     # ([[router.tiers]] heavy-local .model), examples/fakoli-dark/serves.toml, and
     # docker-compose.heavy.yml — the router 404s if the wire model doesn't match.

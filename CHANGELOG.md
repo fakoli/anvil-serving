@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **fakoli-dark heavy tier enables NEXTN speculative decoding** (ADR-0008). Self-speculation via
+  the model's own built-in MTP head (no separate draft model, no additional steady-state VRAM
+  cost) — validated live with a two-step A/B on production hardware before merging: +30-43%
+  decode throughput depending on concurrency, ~82% draft-token acceptance rate, and confirmed
+  SGLang issue #19796 (an SM120-specific NaN-on-prefix-cache-hit crash) does not reproduce on
+  this stack at cache-hit rates up to 96.2% under concurrent multi-turn traffic. Known tradeoff:
+  TTFT regresses under concurrency (+37% at concurrency=4); net end-to-end latency still improved
+  in every trial. No wire-level change — `served-model-name` and the router config are unaffected.
+
 ## [0.7.2] - 2026-07-02
 
 **Weights on a volume + docs truth-up.** Two fixes from live operation, and a documentation
