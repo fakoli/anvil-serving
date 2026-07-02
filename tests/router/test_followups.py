@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import textwrap
+from pathlib import Path
 
 import pytest
 
@@ -89,8 +90,10 @@ def test_profile_path_rejects_non_string(tmp_path):
 
 def test_build_server_loads_measured_profile(tmp_path):
     profile_path = _write_profile(tmp_path)
+    # as_posix(): a Windows path's backslashes would be TOML escape sequences
+    # inside a basic string ("C:\Users\..." -> invalid \U hex escape).
     config_path = _write_config(
-        tmp_path, f'profile_path = "{profile_path}"'
+        tmp_path, f'profile_path = "{Path(profile_path).as_posix()}"'
     )
     httpd = build_server(config_path, port=0)
     try:
@@ -105,7 +108,7 @@ def test_build_server_loads_measured_profile(tmp_path):
 
 def test_build_server_fail_fast_on_unloadable_profile(tmp_path):
     config_path = _write_config(
-        tmp_path, f'profile_path = "{tmp_path / "missing.json"}"'
+        tmp_path, f'profile_path = "{(tmp_path / "missing.json").as_posix()}"'
     )
     with pytest.raises(ConfigError) as ei:
         build_server(config_path, port=0)
