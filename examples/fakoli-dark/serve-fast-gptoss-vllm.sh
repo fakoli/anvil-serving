@@ -23,7 +23,7 @@ docker run -d --name vllm-gptoss \
   -e VLLM_USE_V2_MODEL_RUNNER=0 \
   --ipc=host \
   -p 127.0.0.1:30001:30001 \
-  -v "C:/Users/sdoum/models/gpt-oss-20b:/models/gpt-oss-20b:ro" \
+  -v "fakoli-models:/models:ro" \
   `# REPLACE: your local model directory (this is a machine-specific Windows path)` \
   vllm/vllm-openai:nightly \
   serve /models/gpt-oss-20b \

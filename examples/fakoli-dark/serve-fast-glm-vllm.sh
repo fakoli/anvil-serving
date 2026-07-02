@@ -34,7 +34,7 @@ docker run -d --name vllm-glm \
   -e CUDA_DEVICE_ORDER=PCI_BUS_ID \
   --ipc=host \
   -p 127.0.0.1:30001:30001 \
-  -v "C:/Users/sdoum/models/glm47-flash-awq:/models/glm47-flash-awq:ro" \
+  -v "fakoli-models:/models:ro" \
   `# REPLACE: your local model directory (this is a machine-specific Windows path)` \
   vllm/vllm-openai:nightly \
   /models/glm47-flash-awq \
