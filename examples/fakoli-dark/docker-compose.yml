@@ -27,10 +27,16 @@
 # is runnable UNCHANGED with no env vars set at all:
 #   HEAVY_GPU_UUID   default GPU-d0f446cf-1771-414c-e116-a39138798a8c (RTX PRO 6000 96GB)
 #   FAST_GPU_UUID    default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
-#   ANVIL_MODELS_DIR default C:/Users/sdoum/models (host dir holding qwen35-awq/, gpt-oss-20b/)
+# Model weights live in the `fakoli-models` DOCKER VOLUME (native ext4 inside Docker's
+# data root — ~15s reloads), NEVER a host bind mount: on Docker Desktop/WSL2 a C:/ bind
+# rides 9P/virtiofs and turns a cold load into 20-90 minutes (hit live 2026-07-02).
+# Create + populate the volume once:
+#   docker volume create fakoli-models
+#   docker run --rm -v /path/to/your/models:/src:ro -v fakoli-models:/dst alpine \
+#     sh -c 'cp -a /src/qwen35-awq /src/gpt-oss-20b /dst/'
 # On a different box, find your GPU UUIDs with `nvidia-smi --query-gpu=index,uuid --format=csv`
 # (or `anvil-serving doctor`), then e.g.:
-#   HEAVY_GPU_UUID=GPU-... FAST_GPU_UUID=GPU-... ANVIL_MODELS_DIR=/home/me/models \
+#   HEAVY_GPU_UUID=GPU-... FAST_GPU_UUID=GPU-... \
 #     docker compose -f examples/fakoli-dark/docker-compose.yml up -d
 services:
   sglang:
@@ -44,8 +50,8 @@ services:
       # SECURITY.md). The router (which does the auth/routing) is what fronts these.
       - "127.0.0.1:30000:30000"
     volumes:
-      # REPLACE: your local model directory (env override: ANVIL_MODELS_DIR; default is a machine-specific Windows path).
-      - "${ANVIL_MODELS_DIR:-C:/Users/sdoum/models}/qwen35-awq:/models/qwen35-awq"
+      # Weights from the fakoli-models docker volume (see header) — never a host bind mount.
+      - "fakoli-models:/models:ro"
     environment:
       # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (CLAUDE.md
       # gotcha #13), so also pin the heavy card the proven way — CUDA_VISIBLE_DEVICES=<UUID>
@@ -93,8 +99,8 @@ services:
       # (127.0.0.1-only repo, CLAUDE.md gotcha #1 / SECURITY.md).
       - "127.0.0.1:30001:30001"
     volumes:
-      # REPLACE: your local model directory (env override: ANVIL_MODELS_DIR; default is a machine-specific Windows path).
-      - "${ANVIL_MODELS_DIR:-C:/Users/sdoum/models}/gpt-oss-20b:/models/gpt-oss-20b:ro"
+      # Weights from the fakoli-models docker volume (see header) — never a host bind mount.
+      - "fakoli-models:/models:ro"
     environment:
       # Force PCI-bus ordering so the pinned card is selected regardless of enumeration order
       # (hard-won: multi-GPU pinning needs CUDA_DEVICE_ORDER=PCI_BUS_ID — CLAUDE.md gotcha #13).
@@ -120,6 +126,9 @@ services:
             - driver: nvidia
               device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
+    # Pin the entrypoint (same rationale as docker-compose.experiment.yml): upstream flipped
+    # :latest's default from `vllm` to `vllm serve`; explicit is stable against either vintage.
+    entrypoint: ["vllm"]
     command: >
       serve /models/gpt-oss-20b
       --served-model-name gpt-oss-20b
@@ -160,3 +169,9 @@ services:
       # Bind-mount the router config (tiers reach the serves by service name; see
       # configs/example-docker.toml). REPLACE with your own config path if you fork this.
       - "${ANVIL_ROUTER_CONFIG:-../../configs/example-docker.toml}:/etc/anvil/config.toml:ro"
+
+# Weights volume — pre-created + populated once (see header). External so a compose
+# `down -v` can never delete the model weights.
+volumes:
+  fakoli-models:
+    external: true
