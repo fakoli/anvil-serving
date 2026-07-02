@@ -59,8 +59,10 @@ of upstream reports:
   zero errors, confirmed via the server's own `#cached-token` log lines, not just the client-side
   report.
 
-Full numbers, raw logs, and methodology: session trial writeup (`specdecode-trial/RESULTS.md`,
-2026-07-02) and the `heavy-tier-speculative-decoding-plan` memory.
+The key numbers above are the complete record of what was measured; the raw benchmark logs from
+this validation session are not committed to this repo (per the existing convention — dated
+trial/bake-off findings live in the private companion repo `fakoli/anvil-serving-notes`, not
+inline in the product repo).
 
 ## Consequences
 

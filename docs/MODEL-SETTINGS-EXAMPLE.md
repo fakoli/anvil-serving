@@ -61,18 +61,25 @@ For OpenClaw or any harness that supports per-model default params, set these as
   tool calls (required for agentic use).
 - `--language-only` — skip the vision encoder (text/code only) → frees VRAM for KV, faster load.
 - `--context-length 131072` (128K), `--kv-cache-dtype fp8_e5m2`, `--mem-fraction-static 0.88`,
-  `--max-running-requests 16`, `--weight-loader-disable-mmap` (avoids the virtiofs mmap slowness on
-  Windows bind mounts), `--cuda-graph-max-bs-decode 8`.
+  `--max-running-requests 16`, `--cuda-graph-max-bs-decode 8`. (`--weight-loader-disable-mmap` was
+  dropped in #108 — it was a 9P-bind-mount-era workaround, obsolete now that weights load from a
+  named Docker volume; see CLAUDE.md gotcha #16.)
 
-### Optional: faster decode via the model's native MTP (self-speculative)
+### Speculative decoding via the model's native MTP (self-speculative) — production default
 
-The model ships a Multi-Token-Prediction head. To try the throughput boost add:
+The model ships a Multi-Token-Prediction head; SGLang self-speculates from it directly (no
+separate draft model or added VRAM cost):
 
 ```
 --speculative-algorithm NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4
 ```
 
-Benchmark before/after — it adds startup time and may not help at high concurrency.
+**This is enabled by default in `docker-compose.yml` as of 2026-07-02** — validated live on this
+exact checkpoint before being turned on: +30-43% decode throughput depending on concurrency, ~82%
+draft-token acceptance rate, and confirmed SGLang issue #19796 (an SM120 NaN-on-prefix-cache-hit
+crash) does not reproduce on this stack. Known tradeoff: TTFT regresses under concurrency (+37% at
+concurrency=4); net end-to-end latency still improved in every trial. Full methodology and numbers:
+[ADR-0008](adr/0008-heavy-tier-speculative-decoding.md).
 
 ## Process to change model settings (repeatable)
 
