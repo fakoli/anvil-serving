@@ -372,7 +372,13 @@ class MockBackend:
 
 # --- MULTIPLEXER: holds the registry + the injected seams + swap logic --------
 class Multiplexer:
-    def __init__(self, registry, backend, ram_probe=available_ram_gb, ram_cap_gb=None):
+    #: Default seconds a swap waits for in-flight requests on the OLD resident
+    #: to finish before stopping it anyway (bounded availability: a hung or
+    #: glacial client must not block model swaps forever).
+    DEFAULT_DRAIN_TIMEOUT = 30.0
+
+    def __init__(self, registry, backend, ram_probe=available_ram_gb, ram_cap_gb=None,
+                 drain_timeout=DEFAULT_DRAIN_TIMEOUT):
         self.table = {r["name"]: r for r in registry}
         self.order = [r["name"] for r in registry]
         self.backend = backend          # <-- injectable backend seam
@@ -380,7 +386,14 @@ class Multiplexer:
         self.cap = ram_cap_gb
         self.resident = None
         self.base_url = None
-        self._lock = threading.Lock()   # serializes load/swap; forward path is outside
+        self.drain_timeout = drain_timeout
+        # One lock + condition governs ALL shared state (resident/base_url/
+        # in-flight counts/swap flag). The relay itself runs OUTSIDE the lock;
+        # only the bookkeeping around it takes it (ADR-0006).
+        self._lock = threading.Lock()
+        self._cond = threading.Condition(self._lock)
+        self._inflight = {}             # model name -> live lease count
+        self._swapping = False          # a swap is draining/loading right now
 
     def models_payload(self):
         """OpenAI /v1/models body. NEVER triggers a load."""
@@ -388,36 +401,102 @@ class Multiplexer:
                 "data": [{"id": n, "object": "model", "owned_by": "anvil"}
                          for n in self.order]}
 
+    def inflight(self, name):
+        """Live lease count for `name` (introspection/tests)."""
+        with self._cond:
+            return self._inflight.get(name, 0)
+
+    def lease(self, name):
+        """Context manager: ensure `name` is resident, hold an in-flight lease
+        on it for the duration of the block, and yield its base_url.
+
+        The lease is what a swap DRAINS against (ADR-0006): while any lease on
+        the resident model is live, `ensure_loaded(<other>)` waits (up to
+        `drain_timeout`) before stopping the resident backend, so an active
+        relay is not severed mid-stream. Acquisition is atomic with the
+        resident check — a swap can never sneak between "ensure_loaded
+        returned" and "the relay registered itself"."""
+        return _Lease(self, name)
+
+    def _acquire(self, name):
+        with self._cond:
+            base = self._ensure_loaded_locked(name)
+            self._inflight[name] = self._inflight.get(name, 0) + 1
+            return base
+
+    def _release(self, name):
+        with self._cond:
+            n = self._inflight.get(name, 0) - 1
+            if n > 0:
+                self._inflight[name] = n
+            else:
+                self._inflight.pop(name, None)
+            # Wake a swap waiting for the drain (and any queued requests).
+            self._cond.notify_all()
+
     def ensure_loaded(self, name):
         """Make `name` resident and return its backend base_url. Load-on-demand,
-        single-resident swap, OOM-guarded. Raises UnknownModel on unknown model,
-        LoadError on OOM-guard refusal, BackendError on a start failure."""
+        single-resident swap, OOM-guarded, drain-aware (ADR-0006). Raises
+        UnknownModel on unknown model, LoadError on OOM-guard refusal,
+        BackendError on a start failure."""
+        with self._cond:
+            return self._ensure_loaded_locked(name)
+
+    def _ensure_loaded_locked(self, name):
+        """Core load/swap logic. Caller holds ``self._cond``."""
         if name not in self.table:
             raise UnknownModel(name)
-        with self._lock:
-            # AC3: already resident -> serve immediately, NO restart, NO churn
-            if self.resident == name and self.backend.current == name:
-                return self.base_url
-            entry = self.table[name]
-            # AC2: run the OOM guard FIRST, BEFORE evicting the good model.
-            # Credit the evictee's weight to the budget: its mmap-off weights
-            # are part of what the probe currently sees as used, and a SWAP
-            # frees them before the new load. Without the credit, a legitimate
-            # swap on a tight box is falsely 503'd forever (e.g. 18 GB resident
-            # of a 32 GB budget leaves ~14 GB "available", refusing a 13 GB
-            # model whose eviction-adjusted budget is really ~32 GB).
-            avail = self.ram_probe()
-            prior_resident = (
-                self.table.get(self.resident) if self.resident else None
-            )
-            if self.backend.current is not None and prior_resident is not None:
-                avail += prior_resident.get("est_weight_gb", 0)
-            oom_guard(entry, avail, self.cap)
-            # Capture the prior resident so a failed swap can be rolled back.
-            prior_name = self.resident
-            prior_entry = self.table.get(prior_name) if prior_name else None
-            # SWAP: single-resident GPU -> stop old, start new
+        # Queue behind an in-progress swap: Condition.wait releases the lock
+        # while the swapping thread drains/loads, so without this gate a
+        # request for the OLD model could keep taking fresh leases on the
+        # dying resident and starve the swap forever. New arrivals wait here
+        # and re-evaluate residency once the swap settles.
+        while self._swapping:
+            self._cond.wait()
+        # AC3: already resident -> serve immediately, NO restart, NO churn
+        if self.resident == name and self.backend.current == name:
+            return self.base_url
+        entry = self.table[name]
+        # AC2: run the OOM guard FIRST, BEFORE draining/evicting the good model.
+        # Credit the evictee's weight to the budget: its mmap-off weights
+        # are part of what the probe currently sees as used, and a SWAP
+        # frees them before the new load. Without the credit, a legitimate
+        # swap on a tight box is falsely 503'd forever (e.g. 18 GB resident
+        # of a 32 GB budget leaves ~14 GB "available", refusing a 13 GB
+        # model whose eviction-adjusted budget is really ~32 GB).
+        avail = self.ram_probe()
+        prior_resident = (
+            self.table.get(self.resident) if self.resident else None
+        )
+        if self.backend.current is not None and prior_resident is not None:
+            avail += prior_resident.get("est_weight_gb", 0)
+        oom_guard(entry, avail, self.cap)
+        # Capture the prior resident so a failed swap can be rolled back.
+        prior_name = self.resident
+        prior_entry = self.table.get(prior_name) if prior_name else None
+        self._swapping = True
+        try:
+            # SWAP: single-resident GPU -> drain old, stop old, start new
             if self.backend.current is not None:
+                # DRAIN (ADR-0006): wait for live leases on the old resident to
+                # finish before stopping it, so no active relay is severed.
+                # Bounded: after `drain_timeout` the swap proceeds anyway and
+                # the laggards are severed (logged) — availability of the NEW
+                # model must not hinge on a hung client. cond.wait releases
+                # the lock, so leases can drain (and queued requests park in
+                # the `while self._swapping` gate above).
+                if prior_name is not None:
+                    deadline = time.monotonic() + self.drain_timeout
+                    while self._inflight.get(prior_name, 0) > 0:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            print(
+                                f"[multiplexer] drain timeout ({self.drain_timeout}s): "
+                                f"{self._inflight.get(prior_name, 0)} in-flight "
+                                f"request(s) on {prior_name!r} will be severed by "
+                                f"the swap to {name!r}", flush=True)
+                            break
+                        self._cond.wait(timeout=remaining)
                 self.backend.stop()
                 self.resident = None
                 self.base_url = None
@@ -439,6 +518,33 @@ class Multiplexer:
                 raise  # surface the original start failure (BackendError -> 503)
             self.resident = name
             return self.base_url
+        finally:
+            self._swapping = False
+            self._cond.notify_all()  # release the queued requests
+
+
+class _Lease:
+    """Context manager pairing `Multiplexer._acquire` with `_release`.
+
+    A tiny class (not ``@contextmanager``) so acquisition happens in
+    ``__enter__`` — constructing the lease object is side-effect free, and a
+    failed acquire (UnknownModel/LoadError/BackendError) propagates before any
+    lease is registered."""
+
+    __slots__ = ("_mux", "_name", "base_url")
+
+    def __init__(self, mux, name):
+        self._mux = mux
+        self._name = name
+        self.base_url = None
+
+    def __enter__(self):
+        self.base_url = self._mux._acquire(self._name)
+        return self.base_url
+
+    def __exit__(self, *exc):
+        self._mux._release(self._name)
+        return False
 
 
 # --- HTTP FRONT: one handler maps OpenAI routes onto the Multiplexer ----------
@@ -538,9 +644,12 @@ def make_handler(mux):
                 self._err(400, "invalid_request",
                           f"model must be a string, got {type(model).__name__}")
                 return
-            # ensure_loaded (load/swap) happens here; forwarding is per-thread/outside lock
+            # lease(): load/swap happens inside acquisition; the lease is then
+            # HELD for the whole relay so a concurrent swap drains (waits for)
+            # this request instead of stopping the backend under it (ADR-0006).
             try:
-                base = mux.ensure_loaded(model)
+                lease = mux.lease(model)
+                base = lease.__enter__()
             except UnknownModel:
                 self._err(404, "model_not_found",
                           f"unknown model {model!r}; known: {mux.order}")
@@ -558,24 +667,28 @@ def make_handler(mux):
                 self._err(500, "internal_error",
                           f"unexpected error: {type(e).__name__}")
                 return
-            # AC1/streaming: open upstream and relay verbatim, incrementally.
-            url = base + path[len("/v1"):]
             try:
-                resp = _open_upstream(url, body)
-            except urllib.error.HTTPError as e:
-                resp = e  # relay the upstream error status + body verbatim
-            except (urllib.error.URLError, OSError) as e:
-                # AC2: backend down / connection refused / swapped mid-flight ->
-                # clean 503 instead of dropping the request with a raw traceback.
-                self._err(503, "backend_unavailable", f"backend unreachable: {e}")
-                return
-            try:
-                relay(resp, self)
-            finally:
+                # AC1/streaming: open upstream and relay verbatim, incrementally.
+                url = base + path[len("/v1"):]
                 try:
-                    resp.close()
-                except Exception:
-                    pass
+                    resp = _open_upstream(url, body)
+                except urllib.error.HTTPError as e:
+                    resp = e  # relay the upstream error status + body verbatim
+                except (urllib.error.URLError, OSError) as e:
+                    # AC2: backend down / connection refused / drain-timeout
+                    # severed mid-flight -> clean 503 instead of dropping the
+                    # request with a raw traceback.
+                    self._err(503, "backend_unavailable", f"backend unreachable: {e}")
+                    return
+                try:
+                    relay(resp, self)
+                finally:
+                    try:
+                        resp.close()
+                    except Exception:
+                        pass
+            finally:
+                lease.__exit__(None, None, None)
 
         def log_message(self, *a):  # quiet
             pass
@@ -809,6 +922,70 @@ def _self_check():
     assert f"device={srow['gpu']}" in fdock, fdock
     assert "CUDA_VISIBLE_DEVICES" not in " ".join(fdock), fdock    # no env-isolation injected
 
+    # --- IN-FLIGHT DRAINING (ADR-0006): a swap must WAIT for live leases on the
+    # old resident before stopping it, then proceed; a drain timeout severs.
+    be5 = MockBackend()
+    mux5 = Multiplexer(reg, be5, ram_probe=lambda: 100.0, drain_timeout=5.0)
+    lease_a = mux5.lease("a")
+    lease_a.__enter__()                          # a live request on "a"
+    assert mux5.inflight("a") == 1
+
+    swap_done = threading.Event()
+
+    def _swap_to_b():
+        mux5.ensure_loaded("b")
+        swap_done.set()
+
+    swapper = threading.Thread(target=_swap_to_b, daemon=True)
+    swapper.start()
+    # The swap must NOT complete while the lease is held: "a" stays resident.
+    assert not swap_done.wait(timeout=0.3)
+    assert be5.current == "a" and be5.stops == 0, (be5.current, be5.stops)
+    # Releasing the lease drains the swap: "b" becomes resident promptly.
+    lease_a.__exit__(None, None, None)
+    assert swap_done.wait(timeout=5.0), "swap did not proceed after drain"
+    swapper.join(timeout=5.0)
+    assert be5.current == "b" and be5.stops == 1 and mux5.resident == "b"
+    assert mux5.inflight("a") == 0
+
+    # A NEW request for the old model during the drain queues behind the swap
+    # (it must not take a fresh lease on the dying resident and starve the swap).
+    be6 = MockBackend()
+    mux6 = Multiplexer(reg, be6, ram_probe=lambda: 100.0, drain_timeout=5.0)
+    l_a = mux6.lease("a")
+    l_a.__enter__()
+    done_b = threading.Event()
+    threading.Thread(target=lambda: (mux6.ensure_loaded("b"), done_b.set()),
+                     daemon=True).start()
+    # Give the swapper time to enter the drain wait, then race an "a" request.
+    time.sleep(0.2)
+    a_result = {}
+
+    def _late_a():
+        with mux6.lease("a") as base:
+            a_result["base"] = base
+    late = threading.Thread(target=_late_a, daemon=True)
+    late.start()
+    assert not done_b.wait(timeout=0.3)          # still draining (lease held)
+    l_a.__exit__(None, None, None)               # drain completes
+    assert done_b.wait(timeout=5.0)
+    late.join(timeout=10.0)
+    # The late "a" request was queued, then served after a swap BACK to "a".
+    assert a_result.get("base") == "http://mock/a", a_result
+    assert be6.current == "a" and mux6.resident == "a"
+
+    # DRAIN TIMEOUT: a lease that never releases must not block a swap forever.
+    be7 = MockBackend()
+    mux7 = Multiplexer(reg, be7, ram_probe=lambda: 100.0, drain_timeout=0.2)
+    hung = mux7.lease("a")
+    hung.__enter__()                             # never released ("hung" client)
+    t0 = time.monotonic()
+    mux7.ensure_loaded("b")                      # severs the laggard after 0.2s
+    assert time.monotonic() - t0 >= 0.15, "swap did not wait for the drain window"
+    assert be7.current == "b" and mux7.resident == "b"
+    hung.__exit__(None, None, None)              # laggard release stays harmless
+    assert mux7.inflight("a") == 0
+
     print("self-check OK")
 
 
@@ -824,6 +1001,11 @@ def main(argv=None):
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--ram-cap-gb", type=float, default=None,
                     help="pin the RAM budget below the probe (e.g. model the ~50%% WSL cap)")
+    ap.add_argument("--drain-timeout", type=float,
+                    default=Multiplexer.DEFAULT_DRAIN_TIMEOUT,
+                    help="seconds a swap waits for in-flight requests on the old "
+                         "model to finish before severing them (default %(default)s; "
+                         "0 = swap immediately, the pre-ADR-0006 behaviour)")
     ap.add_argument("--self-check", action="store_true",
                     help="run the mock asserts and exit (no server, no GPU)")
     a = ap.parse_args(argv)
@@ -831,7 +1013,8 @@ def main(argv=None):
         _self_check()
         return 0
     registry = load_registry(a.registry)
-    mux = Multiplexer(registry, SubprocessBackend(), ram_cap_gb=a.ram_cap_gb)
+    mux = Multiplexer(registry, SubprocessBackend(), ram_cap_gb=a.ram_cap_gb,
+                      drain_timeout=a.drain_timeout)
     serve(mux, a.host, a.port)
     return 0
 
