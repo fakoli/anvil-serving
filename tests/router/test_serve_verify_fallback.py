@@ -30,6 +30,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict
 
+import pytest
 
 from anvil_serving.router.backends import StaticBackend
 from anvil_serving.router.profile_store import ProfileEntry, ProfileStore
@@ -254,6 +255,53 @@ def test_c3_allow_good_content_streams_from_first_tier():
     assert status == 200, (status, raw)
     content = _parse_content(raw)
     assert content == "fast-local-response"
+    assert CLOUD_CONTENT not in raw.decode("utf-8"), "escalated when it should not have"
+
+
+# --------------------------------------------------------------------------- #
+# v0.7.1 — the live incident, end to end: a caller-capped max_tokens=1 request
+# through the REAL front door + a local 'allow' tier must return 200 with the
+# 1-token body, not the pre-v0.7.1 503 (see verify.NotTruncated + serve.py's
+# _structured_view_factory / commit_window.build_response_view).
+# --------------------------------------------------------------------------- #
+def test_caller_capped_max_tokens_one_returns_200_not_exhaustion():
+    """A harness that computes max_completion_tokens = contextWindow - prompt
+    tokens (floored at 1) sends ``max_tokens: 1``; the local model honors the
+    cap and stops with finish_reason='length' after exactly one non-empty
+    token. Pre-v0.7.1 this always 503'd (NotTruncated had no way to know the
+    cap was the CALLER's, not an unexpected budget hit); v0.7.1 must return a
+    clean 200 with that one token, through the T004 minimal-verify local
+    'allow' path (fast-local is 'allow' under the default profile for chat)."""
+
+    class _OneTokenCappedBackend:
+        def generate(self, request):
+            yield "1"
+
+        def get_last_structured(self):
+            from anvil_serving.router.internal import StructuredResult
+            return StructuredResult(finish_reason="length")
+
+    backends: Dict[str, object] = {
+        "fast-local": _OneTokenCappedBackend(),
+        "heavy-local": StaticBackend([CLOUD_CONTENT]),  # must NOT be reached
+    }
+    from anvil_serving.router.profile_store import default_profile
+    httpd = build_server(CONFIG, host="127.0.0.1", port=0, backends=backends,
+                         profile=default_profile())
+    with running(httpd) as (host, port):
+        status, _headers, raw = _post(
+            host, port, "/v1/chat/completions",
+            {
+                "model": "chat",
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 1,
+                "stream": True,
+            },
+        )
+
+    assert status == 200, (status, raw)
+    content = _parse_content(raw)
+    assert content == "1", f"expected the 1-token body, got: {content!r}"
     assert CLOUD_CONTENT not in raw.decode("utf-8"), "escalated when it should not have"
 
 
@@ -557,6 +605,55 @@ def test_c3_keyless_exhaustion_non_streaming_default_503():
 
     body = json.loads(raw_text)
     assert "error" in body, f"expected error envelope, got: {body}"
+
+
+# --------------------------------------------------------------------------- #
+# v0.7.1 Fix 2 — the raised NoAvailableTierError carries kind="exhausted" (not
+# the default "unbound") when the bound tier chain was attempted and failed.
+# The front door still sanitizes the CLIENT-facing body (proven above); this
+# pins the internal exception the operator-facing stderr log line is built
+# from -- calling RoutingBackend.generate() directly, bypassing the HTTP layer.
+# --------------------------------------------------------------------------- #
+def test_generate_raises_exhausted_kind_when_bound_tiers_all_fail_verify():
+    from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
+
+    backends = {"fast-local": StaticBackend([LOCAL_FAIL_CONTENT])}
+    routing = build_server(
+        CONFIG_SINGLE_TIER, host="127.0.0.1", port=0,
+        backends=backends, profile=_avw_profile(),
+    ).anvil_routing
+
+    request = InternalRequest(model="chat", messages=[Message("user", "hi")])
+    with pytest.raises(NoAvailableTierError) as excinfo:
+        list(routing.generate(request))
+
+    err = excinfo.value
+    assert err.kind == "exhausted"
+    msg = str(err)
+    assert "attempted" in msg.lower() and "fail" in msg.lower()
+    assert "configure that tier's" not in msg.lower()
+
+
+def test_generate_raises_unbound_kind_when_no_gated_candidate_is_bound():
+    from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
+
+    # A backend IS bound, but under a tier id that is NOT in the gated
+    # candidate pool for "chat" on this single-tier config (only "fast-local"
+    # is gated) -> zero overlap with the gated candidates -> the "unbound"
+    # branch (kind stays default). build_server requires a non-empty backends
+    # dict, so this (rather than {}) is the way to exercise that branch.
+    routing = build_server(
+        CONFIG_SINGLE_TIER, host="127.0.0.1", port=0,
+        backends={"unrelated-tier": StaticBackend(["x"])}, profile=_avw_profile(),
+    ).anvil_routing
+
+    request = InternalRequest(model="chat", messages=[Message("user", "hi")])
+    with pytest.raises(NoAvailableTierError) as excinfo:
+        list(routing.generate(request))
+
+    err = excinfo.value
+    assert err.kind == "unbound"
+    assert "configure that tier's" in str(err).lower()
 
 
 def test_c3_keyless_exhaustion_configurable_status_424():

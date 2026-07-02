@@ -22,10 +22,11 @@ from anvil_serving.router.config import RouterConfig, Tier
 from anvil_serving.router.decision_log import DecisionLog
 from anvil_serving.router.fallback import (
     Budget,
+    CircuitBreaker,
     RoutingDecision,
     route_with_fallback,
 )
-from anvil_serving.router.internal import InternalRequest, Message
+from anvil_serving.router.internal import InternalRequest, Message, StructuredResult
 from anvil_serving.router.verify import ResponseView
 
 
@@ -374,3 +375,66 @@ def test_verifier_returning_none_treated_as_fail_not_crash():
     )
     assert result.record.attempts[0].outcome == "fallback"
     assert result.record.fell_back is True
+
+
+# --------------------------------------------------------------------------- #
+# v0.7.1 — live incident: a caller-capped max_tokens=1 response must NOT trip
+# the circuit breaker. Pre-fix, NotTruncated hard-failed every 1-token
+# caller-capped response, so a harness whose declared contextWindow understated
+# the real prompt size (floors max_completion_tokens at 1) made EVERY turn fail
+# verify — and repeated verify-FAILs bump the breaker (route_with_fallback's
+# `_record_failure` on the "fallback" outcome), eventually opening the circuit
+# and blacking out the tier for the cooldown window even though it was healthy
+# and correctly honoring the caller's own cap.
+# --------------------------------------------------------------------------- #
+def test_caller_capped_one_token_length_does_not_trip_circuit_breaker():
+    """Drive the REAL fallback path with a fake backend that reports
+    finish_reason='length' after one non-empty token AND a request with an
+    explicit max_tokens=1 cap. With the v0.7.1 fix, NotTruncated passes (the
+    cap was honored) so route_with_fallback records a 'served' outcome and
+    NEVER calls breaker.record_failure -- the circuit must stay closed after
+    many repeated 1-token-capped requests, exactly the live-incident shape
+    (many consecutive availability-probe-shaped turns)."""
+
+    class _OneTokenCappedBackend:
+        def generate(self, request):
+            yield "1"
+
+        def get_last_structured(self):
+            return StructuredResult(finish_reason="length")
+
+    def structured_view_factory(deltas, request):
+        text = "".join(deltas)
+        return ResponseView(
+            text=text, finish_reason="length", caller_max_tokens=request.max_tokens,
+        )
+
+    config = make_config(make_tier("fast-local", "local"), make_tier("cloud", "cloud"))
+    decision = RoutingDecision(tiers=("fast-local", "cloud"), work_class="chat")
+    backend = _OneTokenCappedBackend()
+    breaker = CircuitBreaker()
+
+    request = InternalRequest(
+        model="anvil/chat", messages=[Message("user", "hi")], max_tokens=1,
+    )
+
+    # Fire it enough times to exceed the default circuit_threshold (2) many
+    # times over -- if a single request were (wrongly) recording a failure,
+    # the circuit would open well before this loop ends.
+    for _ in range(6):
+        result = route_with_fallback(
+            request, decision, config,
+            lambda tier: backend,
+            response_view_factory=structured_view_factory,
+            breaker=breaker,
+        )
+        assert result.served_tier == "fast-local", (
+            f"expected fast-local to serve the caller-capped 1-token response, "
+            f"got served_tier={result.served_tier!r}, exhausted={result.exhausted}"
+        )
+        assert result.record.attempts[0].outcome == "served"
+        assert not result.record.fell_back
+
+    # The circuit must be fully closed: zero consecutive failures recorded.
+    assert breaker.failure_count("fast-local") == 0
+    assert not breaker.is_open("fast-local", threshold=2)
