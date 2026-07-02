@@ -260,10 +260,21 @@ def _has_unterminated_fence(text: str) -> bool:
     not is a dangling opener. Line-start only (heuristic) so an inline ``` in
     prose (e.g. "use ``` to format") is not a false positive.
     """
+    # Two-pointer merge over two position-sorted streams (complete-block spans
+    # and line-start delimiters): O(spans + delimiters). The previous
+    # any()-containment scan was O(spans * delimiters) — quadratic on
+    # adversarial input like a response of thousands of bare ``` lines, which
+    # is exactly the kind of blob this hot-path check gets fed.
     spans = [(m.start(), m.end()) for m in _FENCE_RE.finditer(text or "")]
+    i = 0
     for dm in _FENCE_DELIM_RE.finditer(text or ""):
         pos = dm.start(1)  # the ``` itself, after any indent
-        if not any(start <= pos < end for start, end in spans):
+        # Advance past spans that end at or before this delimiter; both the
+        # delimiter stream and the span list are sorted by position, so a span
+        # skipped here can never contain a LATER delimiter either.
+        while i < len(spans) and spans[i][1] <= pos:
+            i += 1
+        if i >= len(spans) or not (spans[i][0] <= pos < spans[i][1]):
             return True
     return False
 

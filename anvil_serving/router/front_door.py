@@ -407,7 +407,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # the response; if the claimed length exceeds the cap, close after
                 # the response and do a bounded post-response drain (see below) so
                 # the response is not RST-truncated.
-                cl_get = self.headers.get("Content-Length")
+                # A GET carrying Transfer-Encoding has a body we do not decode
+                # (mirrors the POST-side 411 stance): the byte count is
+                # unknowable, so the keep-alive socket cannot be realigned —
+                # close after the response instead of desyncing the next
+                # pipelined request.
+                _get_has_te = bool(self.headers.get_all("Transfer-Encoding"))
+                if _get_has_te:
+                    self.close_connection = True
+                # TE takes precedence over Content-Length (RFC 7230 3.3.3): with
+                # TE present the body is NOT CL-framed, so skip the CL drain.
+                cl_get = None if _get_has_te else self.headers.get("Content-Length")
                 _post_drain = False  # True when we must drain after the response
                 if cl_get is not None:
                     if _DIGIT_RE.fullmatch(cl_get):
@@ -497,7 +507,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # 503 envelope speaks the caller's native wire format (Anthropic
                 # vs OpenAI) rather than always the generic shape.
                 _busy_dialect: Optional[Dialect] = _ROUTES.get(
-                    self.path.split("?", 1)[0]
+                    self.path.split("?", 1)[0].rstrip("/")
                 )
                 self._error(503, "server_busy", "server busy; try again later",
                             dialect=_busy_dialect)
@@ -509,7 +519,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         def _post_inner(self) -> None:
             """Core POST dispatch, called under the concurrency semaphore."""
-            path = self.path.split("?", 1)[0]
+            # Normalize exactly like do_GET (query split + trailing-slash strip)
+            # so POST /v1/messages/ routes the same as POST /v1/messages instead
+            # of 404ing on the slash.
+            path = self.path.split("?", 1)[0].rstrip("/")
 
             # --- Strict framing: gather and validate headers -----------------
             #

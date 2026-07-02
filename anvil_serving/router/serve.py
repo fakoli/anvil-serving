@@ -264,8 +264,11 @@ class RoutingBackend:
         self._decision_log = DecisionLog()
         # Session-scoped circuit breaker: owned here, shared across all requests,
         # thread-safe (ThreadingHTTPServer spawns one thread per connection).
-        # Default cooldown = 60 s, threshold comes from Budget() at call time.
+        # Default cooldown = 60 s, threshold comes from the shared Budget below.
         self._circuit_breaker = CircuitBreaker()
+        # Escalation guards are identical for every request (a frozen parameter
+        # set, not per-request state) — construct once, share across requests.
+        self._budget = Budget()
         # Per-thread structured-result store: set during generate() and read by the
         # dialect layer after the stream is drained to render real finish_reason /
         # tool_calls in the response body (#42 / #52).
@@ -440,7 +443,7 @@ class RoutingBackend:
             self._config,
             backend_for=_tracking_backend_for,
             verifiers=verifiers,
-            budget=Budget(),
+            budget=self._budget,
             log=self._decision_log,
             breaker=self._circuit_breaker,
             verifier_timeout=5.0,

@@ -201,17 +201,24 @@ _FALLBACK_VLLM = """services:
       {command}
 """
 
+def _toml_str(value):
+    """A valid TOML basic string for `value`. `json.dumps` escaping is a strict
+    subset of TOML basic-string syntax, so a name/path containing `"` or `\\`
+    (a Windows `up` command line, say) can't corrupt the manifest."""
+    return json.dumps(str(value))
+
+
 def render_serve_entry(name, container, port, served_name, up, health="/health"):
     """A `[[serve]]` TOML block for the `anvil-serving serves` manifest —
     container/port/model MUST agree with the compose just rendered (T009 AC)."""
     return (
         f'\n[[serve]]\n'
-        f'name = "{name}"\n'
-        f'container = "{container}"\n'
+        f'name = {_toml_str(name)}\n'
+        f'container = {_toml_str(container)}\n'
         f'port = {port}\n'
-        f'model = "{served_name}"\n'
-        f'health = "{health}"\n'
-        f'up = "{up}"\n'
+        f'model = {_toml_str(served_name)}\n'
+        f'health = {_toml_str(health)}\n'
+        f'up = {_toml_str(up)}\n'
     )
 
 
@@ -224,8 +231,17 @@ def append_serve_entry(manifest_path, name, container, port, served_name, up, he
     if os.path.isfile(manifest_path):
         try:
             existing = _serves.load_manifest(manifest_path)
-        except Exception:
-            existing = []
+        except Exception as e:
+            # A manifest that no longer parses is already broken; appending
+            # another entry to it just compounds the damage AND hides the
+            # breakage. Skip and tell the operator to repair it first.
+            print(
+                f"[anvil-serving] {manifest_path} is unreadable "
+                f"({type(e).__name__}: {e}); NOT appending — repair the "
+                f"manifest first.",
+                file=sys.stderr,
+            )
+            return False
         if any(s.get("name") == name for s in existing):
             print(
                 f"[anvil-serving] serve {name!r} already present in "
@@ -264,14 +280,14 @@ def render_tier_stub(tier_id, served_name, port, dialect="openai", context_limit
     )
     return (
         f'\n{comment}[[router.tiers]]\n'
-        f'id            = "{tier_id}"\n'
+        f'id            = {_toml_str(tier_id)}\n'
         f'base_url      = "http://127.0.0.1:{port}/v1"\n'
-        f'model         = "{served_name}"\n'
-        f'dialect       = "{dialect}"\n'
+        f'model         = {_toml_str(served_name)}\n'
+        f'dialect       = {_toml_str(dialect)}\n'
         f'context_limit = {context_limit}\n'
-        f'privacy       = "{privacy}"\n'
+        f'privacy       = {_toml_str(privacy)}\n'
         f'tool_support  = {"true" if tool_support else "false"}\n'
-        f'auth_env      = "{auth_env}"\n'
+        f'auth_env      = {_toml_str(auth_env)}\n'
     )
 
 
