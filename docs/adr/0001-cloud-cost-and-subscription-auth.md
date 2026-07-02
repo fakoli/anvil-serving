@@ -176,6 +176,14 @@ escalation, `before_agent_finalize`, retries the *same* model). So "local respon
 2026.6.6's "overloaded" failover category. If not, emit whatever status OpenClaw classifies as a
 transport-failover trigger. (Plan, Phase 1.)
 
+> **2026-07-01 update — partially validated, with a caveat: see [ADR-0005](0005-anvil-503-native-failover-unreliable.md).**
+> Live testing confirmed the exhaustion-503 DOES trip OpenClaw's "overloaded" failover category (step
+> 3 above holds). But when the request that 503'd had a `providerOverride` set by
+> `before_model_resolve` (step 1, the `allow`/`allow-with-verify` → anvil path — the common case),
+> the failover's fallback attempts ALSO resolve through the overridden provider and 503 again,
+> never reaching the native subscription provider. This decision (no cloud API key in the default
+> path) still stands; ADR-0005 documents the mechanism gap and the operator-side mitigations.
+
 ### `POST /v1/route` shape
 
 Research finding: a decision-only endpoint is **novel** — no production gateway exposes one; NotDiamond's
