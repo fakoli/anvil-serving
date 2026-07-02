@@ -74,9 +74,20 @@ from ..dialects.translate import (
 )
 from ..internal import InternalRequest, StructuredResult
 from .local import split_into_deltas
+from .sse import (
+    AnthropicStreamAssembler,
+    OpenAIStreamAssembler,
+    iter_sse_events,
+)
 
 #: transport(url, *, data, headers, timeout) -> response body bytes.
 Transport = Callable[..., bytes]
+
+#: stream_transport(url, *, data, headers, timeout) -> an OPEN response object:
+#: line-iterable (SSE framing), with ``.headers`` (mapping-like ``get``) and
+#: ``.close()``.  The default wraps ``urllib.request.urlopen``; tests inject a
+#: canned-bytes fake.  Distinct from ``Transport`` (which buffers the body).
+StreamTransport = Callable[..., Any]
 
 # Dialects this backend can speak to a cloud provider.
 _SUPPORTED_DIALECTS = (DIALECT_OPENAI, DIALECT_ANTHROPIC)
@@ -159,6 +170,32 @@ def _urlopen_transport(url: str, *, data: bytes, headers: Mapping[str, str],
         # Log the full reason server-side (may include upstream host / TLS detail)
         # and surface only a generic, client-safe message so the upstream hostname
         # and TLS internals cannot leak to callers via the 500 path.
+        print(
+            f"[anvil-serving] cloud upstream transport error: {e.reason}",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise CloudBackendError("cloud upstream request failed") from None
+
+
+def _urlopen_stream_transport(url: str, *, data: bytes,
+                              headers: Mapping[str, str],
+                              timeout: float):
+    """Default streaming transport: POST and return the OPEN response.
+
+    The caller iterates the response line-by-line (SSE events arrive as they
+    are generated upstream) and closes it. Errors are sanitized exactly like
+    :func:`_urlopen_transport` — the request object (which holds the auth
+    header) is never stringified.
+    """
+    req = urllib.request.Request(url, data=data, headers=dict(headers), method="POST")
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as e:  # status carries no secret
+        raise CloudBackendError(
+            f"cloud provider returned HTTP {e.code} {e.reason}"
+        ) from None
+    except urllib.error.URLError as e:
         print(
             f"[anvil-serving] cloud upstream transport error: {e.reason}",
             file=sys.stderr,
@@ -261,9 +298,13 @@ class CloudBackend:
     """Route an :class:`InternalRequest` to a remote provider for one tier.
 
     Implements the :class:`~anvil_serving.router.internal.Backend` protocol:
-    :meth:`generate` yields the completion as plain text deltas. The cloud call
-    is non-streaming upstream; the reply is split into deltas so the front
-    door's streaming path stays genuinely multi-chunk.
+    :meth:`generate` yields the completion as plain text deltas. A STREAMING
+    request (``request.stream``) issues a real ``stream: true`` upstream call
+    and yields the model's own deltas as they arrive (TTFT is genuinely
+    upstream-bound); a non-streaming request keeps the buffered call, whose
+    reply is split into deltas so the front door's streaming path stays
+    multi-chunk. Custom buffered transports (hermetic tests) never engage the
+    streaming path unless a ``stream_transport`` companion is injected.
     """
 
     def __init__(
@@ -274,6 +315,7 @@ class CloudBackend:
         transport: Optional[Transport] = None,
         timeout: float = 120.0,
         max_response_bytes: Optional[int] = None,
+        stream_transport: Optional[StreamTransport] = None,
         _require_key: bool = True,
     ):
         # ``_require_key`` is a PRIVATE opt-out for the local-relay subclass
@@ -313,6 +355,11 @@ class CloudBackend:
         self._timeout = timeout
         self._max_response_bytes = max_response_bytes
         self._transport: Transport = transport or _urlopen_transport
+        # Streaming seam. A caller-injected stream_transport always enables the
+        # streaming path (hermetic tests); otherwise streaming engages only on
+        # the DEFAULT buffered transport — a custom buffered transport implies
+        # a hermetic/test setup that must stay off the network.
+        self._stream_transport: Optional[StreamTransport] = stream_transport
         # Per-thread structured-result store: populated during generate() so the
         # response_view_factory (T012) and the dialect layer (#42) can read
         # finish_reason + tool_calls after the stream is drained.
@@ -409,6 +456,22 @@ class CloudBackend:
     # Backend protocol
     # ------------------------------------------------------------------ #
     def generate(self, request: InternalRequest) -> Iterator[str]:
+        """Dispatch: true streaming upstream for a streaming request, else buffered.
+
+        Streaming engages when the caller asked to stream (``request.stream``)
+        AND either a ``stream_transport`` was injected (hermetic tests) or this
+        backend is on the default urllib transport (production). A custom
+        BUFFERED transport with no stream companion keeps the old buffered
+        path so existing hermetic setups never touch the network.
+        """
+        if request.stream and (
+            self._stream_transport is not None
+            or self._transport is _urlopen_transport
+        ):
+            return self._generate_streaming(request)
+        return self._generate_buffered(request)
+
+    def _generate_buffered(self, request: InternalRequest) -> Iterator[str]:
         url = self._endpoint()
         headers = self._headers()
         data = json.dumps(self._build_body(request)).encode("utf-8")
@@ -453,6 +516,105 @@ class CloudBackend:
         text = self._extract_text(raw)
         for delta in split_into_deltas(text):
             yield delta
+
+    def _generate_streaming(self, request: InternalRequest) -> Iterator[str]:
+        """True streaming relay: ``stream: true`` upstream, SSE parsed
+        incrementally, REAL model deltas yielded as they arrive.
+
+        The per-dialect assembler (:mod:`.sse`) accumulates ``finish_reason``,
+        tool calls, and usage alongside the text; the thread-local structured
+        result is populated once the stream ends, exactly like the buffered
+        path, so the dialect renderers and the verify chain see identical
+        shapes. If the upstream ignores ``stream: true`` (or a proxy buffered
+        it away) and answers plain JSON, the body is parsed via the buffered
+        extractors instead — behaviourally a non-streaming reply, never an
+        error. The response is always closed, including on client disconnect
+        (``GeneratorExit``).
+        """
+        url = self._endpoint()
+        headers = self._headers()
+        body = self._build_body(request)
+        # Ask the upstream to stream. extra_body always wins (documented
+        # precedence): an operator who explicitly pinned `stream`/`stream_options`
+        # keeps their override.
+        extra = self._tier.extra_body or {}
+        if "stream" not in extra:
+            body["stream"] = True
+        if (
+            self._tier.dialect == DIALECT_OPENAI
+            and body.get("stream") is True
+            and "stream_options" not in extra
+        ):
+            # Standard since 2024 on OpenAI-compatible servers (incl. vLLM /
+            # SGLang): the final chunk carries the REAL usage block.
+            body["stream_options"] = {"include_usage": True}
+        data = json.dumps(body).encode("utf-8")
+
+        # Cleared up-front so a mid-stream interruption can never leave a STALE
+        # result from a previous request on this thread.
+        self._thread_local.last_result = None
+
+        transport = self._stream_transport or _urlopen_stream_transport
+        try:
+            resp = transport(url, data=data, headers=headers, timeout=self._timeout)
+        except CloudBackendError:
+            raise
+        except urllib.error.URLError as exc:
+            # Safety net for injected transports (the default already converts).
+            print(
+                f"[anvil-serving] cloud tier {self._tier.id!r} upstream error: "
+                f"{exc.reason}",
+                file=sys.stderr,
+                flush=True,
+            )
+            raise CloudBackendError(
+                f"cloud upstream request failed (tier={self._tier.id!r})"
+            ) from None
+
+        try:
+            resp_headers = getattr(resp, "headers", None)
+            ctype = ""
+            if resp_headers is not None:
+                ctype = str(resp_headers.get("Content-Type") or "").lower()
+            if "text/event-stream" not in ctype:
+                # Upstream ignored stream:true — parse the plain JSON body with
+                # the buffered extractors (same result, no streaming).
+                raw = resp.read()
+                if (self._max_response_bytes is not None
+                        and len(raw) > self._max_response_bytes):
+                    raise CloudBackendError(
+                        f"cloud response body exceeded max_response_bytes="
+                        f"{self._max_response_bytes} (tier={self._tier.id!r})"
+                    )
+                self._thread_local.last_result = self._extract_structured(raw)
+                text = self._extract_text(raw)
+                yield from split_into_deltas(text)
+                return
+
+            assembler = (
+                AnthropicStreamAssembler()
+                if self._tier.dialect == DIALECT_ANTHROPIC
+                else OpenAIStreamAssembler()
+            )
+            total = 0
+            for event, payload in iter_sse_events(resp):
+                delta = assembler.feed(event, payload)
+                if not delta:
+                    continue
+                if self._max_response_bytes is not None:
+                    total += len(delta.encode("utf-8", "surrogatepass"))
+                    if total > self._max_response_bytes:
+                        raise CloudBackendError(
+                            f"cloud response body exceeded max_response_bytes="
+                            f"{self._max_response_bytes} (tier={self._tier.id!r})"
+                        )
+                yield delta
+            self._thread_local.last_result = assembler.result()
+        finally:
+            try:
+                resp.close()
+            except Exception:  # noqa: BLE001 - best-effort close
+                pass
 
     # ------------------------------------------------------------------ #
     # request construction (the auth-bearing seam the tests inspect)
