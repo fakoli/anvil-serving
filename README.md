@@ -474,18 +474,20 @@ now lives, after the router promotion).
 
 ## Status
 
-**v0.7.1 is shipped.** The relay now forwards tools, tool history, and sampling parameters with
+**v0.7.2 is shipped.** The relay forwards tools, tool history, and sampling parameters with
 full wire fidelity, streams real SSE deltas (true TTFT), and passes through real token usage — on
 top of the v0.6.0 containerized, token-authed service (ADR-0004) and the portable-by-default
 genericity work (ADR-0003); the `harness-router` PRD is **complete — all 18
-tasks built (milestones M0–M3), 977 tests green**. v0.7.1 is a live-incident hardening pass: a
-caller-capped `length`/`max_tokens` stop (e.g. a harness-computed `max_completion_tokens` floored
-at 1) now passes structural verify instead of 503-exhausting and tripping the circuit breaker on
-every turn. v0.4.0 shipped advise-and-defer (local-only default,
-opt-in metered cloud) and the launch-hardening pass on top of the v0.3.0 harness-router. Both
-the router front door (`anvil-serving serve`) and the serving substrate (profile / models sync /
-deploy / preflight / benchmark / multiplexer) ship. See the [CHANGELOG](CHANGELOG.md) for the
-full release notes.
+tasks built (milestones M0–M3), 993 tests green**. v0.7.1/v0.7.2 are live-incident hardening
+passes: a caller-capped `length`/`max_tokens` stop (e.g. a harness-computed
+`max_completion_tokens` floored at 1) now passes structural verify instead of 503-exhausting and
+tripping the circuit breaker on every turn, and model weights mount from a named Docker volume
+instead of host bind mounts (9P/virtiofs bind mounts turned cold loads into 20–90 minute stalls —
+and this also removed the last machine-specific paths from the shipped package). v0.4.0 shipped
+advise-and-defer (local-only default, opt-in metered cloud) and the launch-hardening pass on top
+of the v0.3.0 harness-router. Both the router front door (`anvil-serving serve`) and the serving
+substrate (profile / models sync / deploy / preflight / benchmark / multiplexer) ship. See the
+[CHANGELOG](CHANGELOG.md) for the full release notes.
 
 What shipped, by milestone:
 
@@ -504,15 +506,28 @@ What shipped, by milestone:
 
 ### Known limitations
 
-- **OpenClaw live validation is manual.** Validating against a real OpenClaw install (firing
-  cadence + outbound wire `model` form) is a human step on the gateway box —
-  [`examples/openclaw/README.md`](examples/openclaw/README.md). The committed
-  `hook-fire-log.jsonl` is a representative fixture, not a live capture.
+- **Keyless 503 handoff is not a safety net for local-preferred classes under OpenClaw.** A live
+  run confirmed OpenClaw's native failover does not escape a plugin-set `providerOverride`: the
+  exhaustion-503 trips the failover, but every fallback re-resolves through anvil and 503s again
+  ([ADR-0005](docs/adr/0005-anvil-503-native-failover-unreliable.md), an OpenClaw-side defect).
+  Mitigations: move at-risk classes to cloud-preferred via `ANVIL_CLOUD_CLASSES`, or enable the
+  opt-in metered cloud tier (the durable fix).
 - **Most promotion verdicts are seed/expected.** The shipped per-work-class promotion decisions
   are hand-seeded, pending real-traffic calibration; only `planning` rests on hard eval data
   (blind-judge scores: frontier 24.75/25, fast 16.0, heavy 13.25 — full data in the companion notes repo).
+  Note the seed verdicts were measured against the models served at the time (heavy:
+  `qwen3-coder-30b`); the reference heavy serve has since moved, and the
+  [2026-07-02 review](docs/REVIEW-2026-07-02-architecture-and-models.md) recommends re-running
+  the shadow-eval against current-gen local models before trusting the `planning → deny` margin.
+- **OpenClaw live validation remains a manual step.** It has been run — it closed Gaps 1–3, found
+  Gap 4 (ADR-0005) and the `contextWindow` misdeclaration incident — but each re-validation is a
+  human step on the gateway box ([`examples/openclaw/README.md`](examples/openclaw/README.md)).
+  The committed `hook-fire-log.jsonl` is a representative fixture, not a live capture.
 - **The T017 traffic fixture is synthetic** — traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
+- **A caller-supplied `max_tokens` disables truncation-failure on that request.** The v0.7.1 fix
+  treats any explicit caller cap as compliance; since the Anthropic Messages dialect requires
+  `max_tokens`, `NotTruncated` is effectively pass-through for Anthropic-dialect callers.
 
 ### Reuse map
 
