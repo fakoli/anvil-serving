@@ -74,13 +74,38 @@ from .config import (
     load_server_config,
 )
 from .decision_log import DecisionLog
+from .dialects.translate import has_tool_artifacts
 from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
 from .front_door import make_server
 from .intent import PRESETS, resolve
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult
-from .policy import route
+from .policy import Needs, route
 from .profile_store import ProfileStore, default_profile
 from .verify import NonEmptyContent, NotTruncated, ResponseView, default_verifiers
+
+
+def _needs_for(request: InternalRequest) -> Needs:
+    """Build the hard-constraint :class:`~anvil_serving.router.policy.Needs` for
+    one request (fx-sampling gap 2).
+
+    ``needs_tools=True`` whenever the raw wire body carries tool structure —
+    a tools-array, a tool_choice, or tool_use/tool_result history from a prior
+    turn (:func:`~anvil_serving.router.dialects.translate.has_tool_artifacts`,
+    #96) — so ``policy.route`` excludes any ``tool_support=false`` tier for
+    that request, instead of only checking tool support at intent-classify time
+    (``classify.py``'s ``bounded-edit`` inference is a WORK-CLASS signal, not a
+    hard per-request constraint enforced against ``Tier.tool_support``).
+
+    ``min_context`` is deliberately left at its default (0 = no constraint):
+    the only estimator available (``internal.estimate_tokens``) is an explicit,
+    documented word-count approximation, not a real tokenizer, and comparing it
+    against a tier's real ``context_limit`` (a token count) would be an unsound
+    apples-to-oranges gate that could wrongly admit or reject a tier near the
+    boundary. Wiring a real per-request context estimate is a separate,
+    bigger piece of work (a real tokenizer or a calibrated fudge factor).
+    """
+    raw = request.raw if isinstance(request.raw, Mapping) else {}
+    return Needs(needs_tools=has_tool_artifacts(raw))
 
 
 # --------------------------------------------------------------------------- #
@@ -317,7 +342,7 @@ class RoutingBackend:
         # before the backend call), and (3) passing it to route() here and in decide().
         # The residency reorder is an optimisation (not correctness); without it,
         # route() defaults to residency=None and leaves the config cost order untouched.
-        decision = route(intent, self._config, self._profile)
+        decision = route(intent, self._config, self._profile, needs=_needs_for(request))
 
         # Narrow to tiers for which we hold a live backend (preserve gate order).
         # The policy deny-filter already ran; what remains is allow / allow-with-verify.
@@ -487,7 +512,7 @@ class RoutingBackend:
         # TODO(residency): residency not passed here either — see the same note
         # in generate() above.  decide() should mirror generate() once tracking
         # is added so /v1/route reflects the real anti-thrash order.
-        decision = route(intent, self._config, self._profile)
+        decision = route(intent, self._config, self._profile, needs=_needs_for(request))
 
         # Narrow to tiers that are both gated (allow / allow-with-verify) AND
         # have a live backend — mirrors generate()'s bound-tier logic exactly
