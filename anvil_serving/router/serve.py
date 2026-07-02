@@ -90,37 +90,52 @@ from .verify import NonEmptyContent, NotTruncated, ResponseView, default_verifie
 _WILDCARD_HOSTS = {"", "0.0.0.0", "::"}
 
 
-def _warn_if_public_bind(host: str) -> None:
+def _warn_if_public_bind(host: str, *, authed: bool = False) -> None:
     """Emit a prominent warning to stderr when ``host`` is NOT loopback.
 
-    A non-loopback bind exposes the front door on the network with NO
-    authentication — any peer can spend the operator's cloud credentials and
-    read or inject prompts.  The server starts regardless (hard-failing is a
-    separate UX decision); the warning is the safety net.
+    With no front-door auth configured, a non-loopback bind exposes the front
+    door on the network with NO authentication — any peer can spend the
+    operator's cloud credentials and read or inject prompts. With
+    ``[server].auth_env`` configured (``authed=True``), the token gate stands
+    but the exposure is still worth a (softer) note. The server starts
+    regardless (hard-failing is a separate UX decision); the warning is the
+    safety net.
 
     ``""``, ``"0.0.0.0"``, and ``"::"`` are treated as non-loopback (they
     bind all interfaces).  Non-numeric hostnames (e.g. DNS names) are also
     flagged — only a confirmed loopback IP address passes silently.
     """
     if host in _WILDCARD_HOSTS:
-        _emit_public_bind_warning(host)
+        _emit_public_bind_warning(host, authed)
         return
     try:
         if not ipaddress.ip_address(host).is_loopback:
-            _emit_public_bind_warning(host)
+            _emit_public_bind_warning(host, authed)
     except ValueError:
         # Non-numeric hostname — cannot confirm it is loopback.
-        _emit_public_bind_warning(host)
+        _emit_public_bind_warning(host, authed)
 
 
-def _emit_public_bind_warning(host: str) -> None:
+def _emit_public_bind_warning(host: str, authed: bool = False) -> None:
+    if authed:
+        print(
+            f"\n[anvil-serving] NOTE: binding to {host!r} exposes the front door "
+            f"on the network. Front-door token auth IS configured "
+            f"([server].auth_env), so requests require the bearer token — keep "
+            f"that token secret, prefer TLS/a private network in front, and see "
+            f"SECURITY.md for the threat model.\n",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
     print(
         f"\n[anvil-serving] WARNING: binding to {host!r} exposes the front door "
         f"on the network with NO authentication.\n"
         f"  Any peer can send requests that spend your cloud credentials and "
         f"read or inject prompts.\n"
-        f"  Set --host 127.0.0.1 (the default) unless you have placed your own "
-        f"authentication layer in front of this server.\n",
+        f"  Set --host 127.0.0.1 (the default), or configure [server].auth_env "
+        f"to require a token, unless you have placed your own authentication "
+        f"layer in front of this server.\n",
         file=sys.stderr,
         flush=True,
     )
@@ -596,7 +611,30 @@ def build_server(
         )
 
     if profile is None:
-        profile = default_profile()
+        if config.profile_path:
+            # A configured profile is a routing contract: fail fast if it can't
+            # be loaded rather than silently routing on seeds the operator asked
+            # to replace (mirrors the auth_env fail-fast stance above).
+            from .profile_bootstrap import load_profile_store
+
+            try:
+                profile = load_profile_store(config.profile_path)
+            except Exception as e:
+                raise ConfigError(
+                    f"[router].profile_path {config.profile_path!r} could not "
+                    f"be loaded ({type(e).__name__}: {e}); regenerate it with "
+                    f"`python -m anvil_serving.router.profile_bootstrap --replay "
+                    f"...` or remove profile_path to route on the built-in seed "
+                    f"profile"
+                ) from e
+            print(
+                f"[anvil-serving] quality profile loaded from "
+                f"{config.profile_path}",
+                file=sys.stderr,
+                flush=True,
+            )
+        else:
+            profile = default_profile()
 
     routing = RoutingBackend(config, backends, profile)
 
@@ -620,7 +658,11 @@ def serve(config_path: str, *, host: str = "127.0.0.1", port: int = 8000) -> Non
     selection, and serves both wire dialects with SSE streaming. Blocks in
     ``serve_forever`` until ``KeyboardInterrupt``; tears the server down cleanly.
     """
-    _warn_if_public_bind(host)
+    try:
+        _authed = bool(load_server_config(config_path).auth_env)
+    except ConfigError:
+        _authed = False  # build_server re-raises with the full context below
+    _warn_if_public_bind(host, authed=_authed)
     httpd = build_server(config_path, host=host, port=port)
     actual_host, actual_port = httpd.server_address[:2]
     tiers = ", ".join(httpd.anvil_tiers) or "(none)"  # type: ignore[attr-defined]

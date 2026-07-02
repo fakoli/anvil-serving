@@ -333,7 +333,21 @@ class CloudBackend:
         if not isinstance(data, Mapping):
             return StructuredResult()
 
+        # Real token accounting, normalized to Anthropic wire names. None when
+        # the upstream reported none (the dialects then keep their estimates).
+        def _usage_from(raw_usage: Any, in_key: str, out_key: str) -> Optional[Dict[str, int]]:
+            if not isinstance(raw_usage, Mapping):
+                return None
+            i, o = raw_usage.get(in_key), raw_usage.get(out_key)
+            if (
+                isinstance(i, int) and not isinstance(i, bool) and i >= 0
+                and isinstance(o, int) and not isinstance(o, bool) and o >= 0
+            ):
+                return {"input_tokens": i, "output_tokens": o}
+            return None
+
         if self._tier.dialect == DIALECT_ANTHROPIC:
+            usage = _usage_from(data.get("usage"), "input_tokens", "output_tokens")
             finish_reason = data.get("stop_reason")
             blocks = data.get("content") or []
             tool_calls: Optional[List[Dict[str, Any]]] = None
@@ -348,12 +362,15 @@ class CloudBackend:
                         })
                 if tc_list:
                     tool_calls = tc_list
-            return StructuredResult(finish_reason=finish_reason, tool_calls=tool_calls)
+            return StructuredResult(
+                finish_reason=finish_reason, tool_calls=tool_calls, usage=usage,
+            )
 
         # openai-compatible
+        usage = _usage_from(data.get("usage"), "prompt_tokens", "completion_tokens")
         choices = data.get("choices") or []
         if not choices or not isinstance(choices[0], Mapping):
-            return StructuredResult()
+            return StructuredResult(usage=usage)
         first = choices[0]
         finish_reason = first.get("finish_reason")
         message = first.get("message") or {}
@@ -372,7 +389,9 @@ class CloudBackend:
                 })
             if tc_list:
                 tool_calls = tc_list
-        return StructuredResult(finish_reason=finish_reason, tool_calls=tool_calls)
+        return StructuredResult(
+            finish_reason=finish_reason, tool_calls=tool_calls, usage=usage,
+        )
 
     # ------------------------------------------------------------------ #
     # Backend protocol
