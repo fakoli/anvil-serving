@@ -218,6 +218,10 @@ Cloud credentials go in env vars only — never in config files. The front door 
 - `docs/QUALITY-GATED-ROUTER.md` — full design (intent presets, tier ladder, verify-fallback, profile)
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — OpenClaw adapter plugin spec (verdict: go-with-caveats)
 - `docs/adr/` — **Architecture Decision Records** — the *why* behind significant design decisions
+- `docs/REVIEW-2026-07-02-architecture-and-models.md` — full architecture review record (the
+  PR #96–#102 series: wire fidelity, measured profile, bug bash, swap draining, residency +
+  streaming relay), remaining open items, and the mid-2026 sm_120 model-landscape findings
+  (Qwen3.6-27B-NVFP4 fast-tier recommendation, MoE-NVFP4 status, next actions)
 - `examples/fakoli-dark/` — real two-tier instance (heavy :30000 SGLang, fast :30001 vLLM)
 
 > **Companion repo:** internal design discussions, planning context, dated bake-off findings,
