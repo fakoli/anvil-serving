@@ -48,7 +48,8 @@ anvil_serving/
                                  init (alias onboard) | doctor
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
-  models.py            scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py)
+  models.py            `sync`: scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py);
+                       `pull`: download a HF repo into a NAMED docker volume via `hf download` (avoids 9P, gotcha #15)
   deploy.py            render tuned SGLang docker-compose for a given gpu + model
   preflight.py         correctness gate against any OpenAI-compatible endpoint
   benchmark.py         replay measured request distribution (TTFT, throughput, prefix-cache hit)
