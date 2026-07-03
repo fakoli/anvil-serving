@@ -80,6 +80,12 @@ from .fingerprint import refresh_fingerprint
 from .front_door import make_server
 from .intent import PRESETS, resolve
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult
+from .modes import (
+    ENV_MODE,
+    ENV_MODES_CONFIG,
+    KNOWN_MODES,
+    resolve_serve_config,
+)
 from .policy import Needs, route
 from .profile_store import ProfileStore, default_profile
 from .verify import NonEmptyContent, NotTruncated, ResponseView, default_verifiers
@@ -873,21 +879,53 @@ def serve(config_path: str, *, host: str = "127.0.0.1", port: int = 8000) -> Non
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """``anvil-serving serve`` CLI: parse args and run :func:`serve`."""
+    """``anvil-serving serve`` CLI: parse args and run :func:`serve`.
+
+    Two ways to select the config to serve (ADR-0011 / flexibility:T012):
+
+    * ``--config PATH`` — load that exact router config (unchanged, explicit path).
+    * ``--mode agentic|flexibility`` — resolve the global MODE to its config file,
+      so the operator never spells out a path. The active mode is chosen by
+      precedence ``--mode > ANVIL_MODE env > [modes].active_mode > default``, and a
+      mode maps to a config via ``ANVIL_CONFIG_<MODE> > [modes] manifest > built-in
+      default`` (see :mod:`anvil_serving.router.modes`). Exactly ONE mode's tiers +
+      presets are bound at startup.
+
+    The two are mutually exclusive; bare ``serve`` with NO selector is a usage
+    error (the router never silently boots a default).
+    """
     ap = argparse.ArgumentParser(
         prog="anvil-serving serve",
         description=(
             "Start the protocol-standard front door bound to the tiers in a "
-            "router config (config -> per-tier backends -> front door)."
+            "router config (config -> per-tier backends -> front door). Select the "
+            "config with --config PATH, or the global --mode agentic|flexibility "
+            "(ADR-0011); --mode resolves precedence --mode > ANVIL_MODE > "
+            "[modes].active_mode > default, and maps a mode to a file via "
+            "ANVIL_CONFIG_<MODE> > a [modes] manifest (ANVIL_MODES_CONFIG) > a "
+            "built-in default."
         ),
     )
-    ap.add_argument(
+    selector = ap.add_mutually_exclusive_group()
+    selector.add_argument(
         "--config",
-        required=True,
         metavar="PATH",
         help=(
             "path to the router TOML config whose [router] block declares the "
-            "tiers + presets (e.g. configs/example.toml)."
+            "tiers + presets (e.g. configs/example.toml). Loaded verbatim; "
+            "bypasses the --mode/ANVIL_MODE resolver."
+        ),
+    )
+    selector.add_argument(
+        "--mode",
+        choices=KNOWN_MODES,
+        help=(
+            "global mode of operation (ADR-0011): 'agentic' (SGLang cache-friendly "
+            "agent tiers) or 'flexibility' (any-engine single-turn quality tiers). "
+            "Resolves to that mode's config WITHOUT --config. Overridden by nothing; "
+            "overrides ANVIL_MODE and a [modes].active_mode default. Point a mode at "
+            "a specific file with ANVIL_CONFIG_AGENTIC / ANVIL_CONFIG_FLEXIBILITY, or "
+            "a [modes] manifest via ANVIL_MODES_CONFIG."
         ),
     )
     ap.add_argument(
@@ -906,8 +944,34 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--port", type=int, default=8000, help="bind port (default 8000)."
     )
     args = ap.parse_args(argv)
+    env = os.environ
+
+    # Bare `serve` with NO selector at all is a usage error: never silently boot a
+    # default server. A selector is --config, --mode, ANVIL_MODE, or a [modes]
+    # manifest (ANVIL_MODES_CONFIG) carrying an active_mode default.
+    if not (
+        (args.config or "").strip()
+        or args.mode
+        or (env.get(ENV_MODE) or "").strip()
+        or (env.get(ENV_MODES_CONFIG) or "").strip()
+    ):
+        ap.error(
+            "no config selected: pass --config PATH or --mode "
+            f"{{{'|'.join(KNOWN_MODES)}}} (or set {ENV_MODE} / point "
+            f"{ENV_MODES_CONFIG} at a [modes] manifest)"
+        )
+
     try:
-        serve(args.config, host=args.host, port=args.port)
+        config_path, mode = resolve_serve_config(
+            config_flag=args.config, mode_flag=args.mode, env=env
+        )
+        if mode is not None:
+            print(
+                f"anvil-serving: mode={mode!r} -> config {config_path}",
+                file=sys.stderr,
+                flush=True,
+            )
+        serve(config_path, host=args.host, port=args.port)
     except ConfigError as e:
         print(f"anvil-serving serve: {e}", file=sys.stderr)
         return 2

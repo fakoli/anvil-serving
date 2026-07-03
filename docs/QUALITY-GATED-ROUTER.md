@@ -545,3 +545,28 @@ http_headers = { "x-anvil-intent" = "planning" }   # optional Tier-2 dimension
 ```
 
 **Cursor / Amp / Devin** — not supported for self-hosted routing (backend-mediated / backend-locked).
+
+### Selecting a mode of operation (`--mode` / `ANVIL_MODE`) — ADR-0011
+
+anvil runs exactly one **mode** at a time — `agentic` (SGLang cache-friendly agent tiers,
+ADR-0008) or `flexibility` (any-engine single-turn quality tiers, ADR-0010). The whole
+router binds that one mode's tiers + presets; switching modes is a config reload/restart,
+never per-request. Two ways to point `serve` at a config:
+
+```bash
+anvil-serving serve --config configs/example.toml   # explicit path (unchanged; bypasses modes)
+anvil-serving serve --mode flexibility               # resolve the mode to its config file
+ANVIL_MODE=flexibility anvil-serving serve           # same, via env
+```
+
+**Which mode is active** — precedence `--mode > ANVIL_MODE > [modes].active_mode > default (agentic)`.
+The `active_mode` default lives in an optional `[modes]` manifest (see
+`configs/modes.example.toml`) pointed at by `ANVIL_MODES_CONFIG`.
+
+**Which file a mode maps to** — precedence `ANVIL_CONFIG_<MODE> > the [modes].<mode> entry >
+built-in default` (`configs/example.toml` for agentic, `configs/example-flexibility.toml` for
+flexibility). Point a mode at a deployed config without editing anything, e.g.
+`export ANVIL_CONFIG_FLEXIBILITY=/etc/anvil/flexibility.toml`. An unknown mode
+(`serve --mode nonsense`, or a bad `ANVIL_MODE`) errors clearly; bare `serve` with no selector
+is a usage error (the router never silently boots a default). The implementation is the thin
+resolver in `anvil_serving/router/modes.py`.

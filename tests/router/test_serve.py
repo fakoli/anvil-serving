@@ -413,3 +413,282 @@ def test_build_server_seed_only_profile_behaves_identically(tmp_path):
             assert refreshed.decision("fast-local", wc) == verdict, wc
     finally:
         httpd.server_close()
+
+
+# --------------------------------------------------------------------------- #
+# 5. Global --mode / ANVIL_MODE switch (flexibility:T012 / ADR-0011 Phase 1)
+# --------------------------------------------------------------------------- #
+# A mode NAME resolves to a config PATH; exactly one mode's tiers + presets are
+# bound at startup. Two orthogonal resolvers, both proven below:
+#   * resolve_mode        — which mode is active (--mode > ANVIL_MODE >
+#                           [modes].active_mode > default).
+#   * resolve_config_path — which file a mode maps to (ANVIL_CONFIG_<MODE> >
+#                           [modes] manifest > built-in default).
+import pytest  # noqa: E402
+
+from anvil_serving.router.config import ConfigError  # noqa: E402
+from anvil_serving.router.modes import (  # noqa: E402
+    DEFAULT_MODE,
+    KNOWN_MODES,
+    ModesManifest,
+    env_config_var,
+    load_modes_manifest,
+    resolve_config_path,
+    resolve_mode,
+    resolve_serve_config,
+)
+from anvil_serving import cli  # noqa: E402
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_AGENTIC_CONFIG = _REPO_ROOT / "configs" / "example.toml"
+_FLEXIBILITY_CONFIG = _REPO_ROOT / "configs" / "example-flexibility.toml"
+
+
+# ---- resolve_mode: strict precedence + validation ---------------------------
+def test_resolve_mode_flag_wins_over_env_and_active_mode():
+    # --mode beats ANVIL_MODE beats [modes].active_mode.
+    assert resolve_mode(mode_flag="agentic", env_mode="flexibility",
+                        active_mode="flexibility") == "agentic"
+
+
+def test_resolve_mode_env_overrides_active_mode():
+    # ANVIL_MODE overrides a config active_mode default (AC2, core precedence).
+    assert resolve_mode(mode_flag=None, env_mode="flexibility",
+                        active_mode="agentic") == "flexibility"
+
+
+def test_resolve_mode_active_mode_used_when_no_flag_or_env():
+    assert resolve_mode(mode_flag=None, env_mode=None,
+                        active_mode="flexibility") == "flexibility"
+    # An empty/whitespace ANVIL_MODE is treated as unset -> falls through.
+    assert resolve_mode(mode_flag=None, env_mode="  ",
+                        active_mode="flexibility") == "flexibility"
+
+
+def test_resolve_mode_default_when_nothing_specified():
+    assert resolve_mode() == DEFAULT_MODE == "agentic"
+
+
+def test_resolve_mode_unknown_from_env_raises_clear_error():
+    with pytest.raises(ConfigError) as exc:
+        resolve_mode(mode_flag=None, env_mode="nonsense", active_mode=None)
+    msg = str(exc.value)
+    assert "nonsense" in msg and "ANVIL_MODE" in msg
+    for m in KNOWN_MODES:
+        assert m in msg  # the error lists the known modes
+
+
+def test_resolve_mode_unknown_from_flag_raises_clear_error():
+    with pytest.raises(ConfigError):
+        resolve_mode(mode_flag="nonsense")
+
+
+# ---- resolve_config_path: env override > manifest > built-in default --------
+def test_resolve_config_path_builtin_defaults_per_mode():
+    assert resolve_config_path("agentic", env={}) == str(_AGENTIC_CONFIG)
+    assert resolve_config_path("flexibility", env={}) == str(_FLEXIBILITY_CONFIG)
+
+
+def test_resolve_config_path_env_override_wins(tmp_path):
+    custom = tmp_path / "my-flex.toml"
+    env = {env_config_var("flexibility"): str(custom)}
+    assert resolve_config_path("flexibility", env=env) == str(custom)
+
+
+def test_resolve_config_path_manifest_entry_used_when_no_env(tmp_path):
+    manifest = ModesManifest(active_mode=None,
+                             paths={"flexibility": str(tmp_path / "m-flex.toml")})
+    assert resolve_config_path("flexibility", env={}, manifest=manifest) == str(
+        tmp_path / "m-flex.toml"
+    )
+    # env override still beats the manifest entry.
+    env = {env_config_var("flexibility"): str(tmp_path / "env-flex.toml")}
+    assert resolve_config_path("flexibility", env=env, manifest=manifest) == str(
+        tmp_path / "env-flex.toml"
+    )
+
+
+def test_resolve_config_path_unknown_mode_raises():
+    with pytest.raises(ConfigError):
+        resolve_config_path("nonsense", env={})
+
+
+# ---- load_modes_manifest ----------------------------------------------------
+def test_load_modes_manifest_parses_active_mode_and_relative_paths(tmp_path):
+    (tmp_path / "a.toml").write_text("", encoding="utf-8")
+    (tmp_path / "f.toml").write_text("", encoding="utf-8")
+    manifest_path = tmp_path / "modes.toml"
+    manifest_path.write_text(
+        '[modes]\nactive_mode = "flexibility"\n'
+        'agentic = "a.toml"\nflexibility = "f.toml"\n',
+        encoding="utf-8",
+    )
+    manifest = load_modes_manifest(str(manifest_path))
+    assert manifest.active_mode == "flexibility"
+    # Relative paths are resolved against the manifest's own directory (portable).
+    assert manifest.paths["agentic"] == str(tmp_path / "a.toml")
+    assert manifest.paths["flexibility"] == str(tmp_path / "f.toml")
+
+
+def test_load_modes_manifest_missing_table_raises(tmp_path):
+    p = tmp_path / "empty.toml"
+    p.write_text("[router]\nmapping_version = \"x\"\n", encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_modes_manifest(str(p))
+
+
+def test_load_modes_manifest_bad_active_mode_raises(tmp_path):
+    p = tmp_path / "bad.toml"
+    p.write_text('[modes]\nactive_mode = "nonsense"\n', encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_modes_manifest(str(p))
+
+
+def test_load_modes_manifest_whitespace_path_raises(tmp_path):
+    """A whitespace-only per-mode path is rejected at load, not deferred to a
+    confusing 'cannot read config' downstream (Copilot review #118)."""
+    p = tmp_path / "ws.toml"
+    p.write_text('[modes]\nagentic = "   "\n', encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_modes_manifest(str(p))
+
+
+# ---- resolve_serve_config: top-level wiring ---------------------------------
+def test_resolve_serve_config_explicit_config_bypasses_modes():
+    # --config wins and the mode system is bypassed entirely (mode is None).
+    path, mode = resolve_serve_config(
+        config_flag=str(_AGENTIC_CONFIG), mode_flag="flexibility", env={}
+    )
+    assert path == str(_AGENTIC_CONFIG)
+    assert mode is None
+
+
+def test_resolve_serve_config_mode_flag_maps_to_config():
+    path, mode = resolve_serve_config(config_flag=None, mode_flag="flexibility", env={})
+    assert mode == "flexibility"
+    assert path == str(_FLEXIBILITY_CONFIG)
+
+
+def test_resolve_serve_config_env_mode_maps_to_config():
+    path, mode = resolve_serve_config(
+        config_flag=None, mode_flag=None, env={"ANVIL_MODE": "flexibility"}
+    )
+    assert mode == "flexibility"
+    assert path == str(_FLEXIBILITY_CONFIG)
+
+
+def test_resolve_serve_config_manifest_active_mode_and_env_override(tmp_path):
+    # A manifest declares active_mode=agentic; ANVIL_MODE must override it (AC2).
+    manifest_path = tmp_path / "modes.toml"
+    manifest_path.write_text('[modes]\nactive_mode = "agentic"\n', encoding="utf-8")
+
+    # No --mode, no ANVIL_MODE -> manifest active_mode (agentic) -> agentic default.
+    path, mode = resolve_serve_config(
+        config_flag=None, mode_flag=None,
+        env={"ANVIL_MODES_CONFIG": str(manifest_path)},
+    )
+    assert (mode, path) == ("agentic", str(_AGENTIC_CONFIG))
+
+    # ANVIL_MODE overrides the manifest active_mode.
+    path2, mode2 = resolve_serve_config(
+        config_flag=None, mode_flag=None,
+        env={"ANVIL_MODES_CONFIG": str(manifest_path), "ANVIL_MODE": "flexibility"},
+    )
+    assert (mode2, path2) == ("flexibility", str(_FLEXIBILITY_CONFIG))
+
+
+def test_resolve_serve_config_unknown_env_mode_raises():
+    with pytest.raises(ConfigError):
+        resolve_serve_config(config_flag=None, mode_flag=None,
+                             env={"ANVIL_MODE": "nonsense"})
+
+
+# ---- AC1: each mode binds its OWN tiers + presets at startup -----------------
+def test_serve_mode_agentic_binds_agentic_tiers():
+    """`--mode agentic` -> configs/example.toml -> the agentic tier set is bound."""
+    path, mode = resolve_serve_config(config_flag=None, mode_flag="agentic", env={})
+    assert mode == "agentic"
+    httpd = build_server(
+        path, host="127.0.0.1", port=0,
+        backends={"fast-local": StaticBackend(["x"]),
+                  "heavy-local": StaticBackend(["y"])},
+        profile=ProfileStore({}),
+    )
+    try:
+        assert set(httpd.anvil_tiers) == {"fast-local", "heavy-local"}
+        cfg = load_router_config(path)
+        assert set(cfg.presets) >= {"chat", "planning", "review"}
+    finally:
+        httpd.server_close()
+
+
+def test_serve_mode_flexibility_binds_flexibility_tiers():
+    """`--mode flexibility` -> configs/example-flexibility.toml -> the DISTINCT
+    flexibility tier set is bound (proving exactly one mode's tiers are live)."""
+    path, mode = resolve_serve_config(config_flag=None, mode_flag="flexibility", env={})
+    assert mode == "flexibility"
+    httpd = build_server(
+        path, host="127.0.0.1", port=0,
+        backends={"specialist-vllm": StaticBackend(["z"])},
+        profile=ProfileStore({}),
+    )
+    try:
+        assert set(httpd.anvil_tiers) == {"specialist-vllm"}
+        # Distinct from the agentic tier set -> the two modes are isolated.
+        assert "fast-local" not in httpd.anvil_tiers
+    finally:
+        httpd.server_close()
+
+
+# ---- CLI surface: mutually exclusive, choices-validated, guarded ------------
+def test_cli_serve_unknown_mode_errors_clearly(capsys):
+    """`serve --mode nonsense` -> argparse rejects the invalid choice (non-zero)."""
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["serve", "--mode", "nonsense"])
+    assert exc.value.code != 0
+    err = capsys.readouterr().err
+    assert "nonsense" in err
+    # The clear error names the valid modes.
+    assert "agentic" in err and "flexibility" in err
+
+
+def test_cli_serve_config_and_mode_are_mutually_exclusive(capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["serve", "--config", str(_AGENTIC_CONFIG), "--mode", "agentic"])
+    assert exc.value.code != 0
+    assert "not allowed with" in capsys.readouterr().err.lower()
+
+
+def test_cli_serve_bare_with_no_selector_is_usage_error(monkeypatch, capsys):
+    """Bare `serve` (no --config, no --mode, no ANVIL_MODE/ANVIL_MODES_CONFIG) is a
+    usage error: the router never silently boots a default (preserves the pre-T012
+    'must be told what to serve' contract)."""
+    monkeypatch.delenv("ANVIL_MODE", raising=False)
+    monkeypatch.delenv("ANVIL_MODES_CONFIG", raising=False)
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["serve"])
+    assert exc.value.code != 0
+    err = capsys.readouterr().err
+    assert "--config" in err and "--mode" in err
+
+
+def test_cli_serve_whitespace_config_is_usage_error(monkeypatch, capsys):
+    """A whitespace-only --config is treated as unset by resolve_serve_config; the
+    CLI guard now agrees and rejects it rather than slipping a blank config past to
+    a silent default boot (Copilot review #118)."""
+    monkeypatch.delenv("ANVIL_MODE", raising=False)
+    monkeypatch.delenv("ANVIL_MODES_CONFIG", raising=False)
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["serve", "--config", "   "])
+    assert exc.value.code != 0
+    err = capsys.readouterr().err
+    assert "--config" in err and "--mode" in err
+
+
+def test_cli_serve_help_documents_mode_and_config(capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["serve", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "--mode" in out and "--config" in out
+    assert "ANVIL_MODE" in out
