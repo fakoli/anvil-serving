@@ -32,8 +32,11 @@ Each JSONL line carries every ``DecisionRecord`` field by its real name
 (``work_class``, ``requested_tiers``, ``attempts`` — each an ``AttemptRecord``
 with ``tier_id``/``outcome``/``prompt_tokens``/``completion_tokens``/… —,
 ``served_tier``, ``total_prompt_tokens``, ``total_completion_tokens``,
-``fell_back``, ``intent``) so this measures ACTUAL router output, not an invented
-schema. Two capture-time enrichment fields are added (the superset):
+``fell_back``, ``intent``, ``mode``) so this measures ACTUAL router output, not an
+invented schema. The active serving ``mode`` (``agentic`` / ``flexibility``;
+ADR-0011 / flexibility:T013) rides through onto the summary's top-level ``modes``
+label (the distinct sorted modes in the window); a window with no mode yields
+``[]``. Two capture-time enrichment fields are added (the superset):
 
 * ``served_tier_privacy`` — ``"local"`` / ``"cloud"`` / ``null``: the privacy of
   the tier that served, read from ``config.Tier.privacy`` at decision time. The
@@ -197,6 +200,24 @@ def local_tokens_served(record: Mapping[str, Any]) -> int:
     )
 
 
+def observed_modes(records: Sequence[Mapping[str, Any]]) -> List[str]:
+    """Distinct non-empty ``mode`` labels present in ``records`` (sorted).
+
+    The active serving mode (``agentic`` / ``flexibility``; ADR-0011 /
+    flexibility:T013) is stamped on each :class:`~anvil_serving.router.decision_log.DecisionRecord`
+    at ``build_server`` time and rides through to a captured traffic window. A live
+    serve is single-mode, so this is usually one label; a window whose records carry
+    no mode (a ``--config`` boot, or a pre-T013 fixture) yields ``[]``. Deterministic
+    (sorted); a non-string / empty ``mode`` is ignored.
+    """
+    seen = {
+        m
+        for r in records
+        if isinstance(m := r.get("mode"), str) and m
+    }
+    return sorted(seen)
+
+
 # --------------------------------------------------------------------------- #
 # aggregation
 # --------------------------------------------------------------------------- #
@@ -284,6 +305,12 @@ def aggregate(
         "schema": SCHEMA,
         "threshold": threshold,
         "total_records": overall["total"],
+        # Active serving mode(s) observed in this window (ADR-0011 / flexibility:T013):
+        # the distinct, sorted, non-empty ``mode`` labels the records carry. A live
+        # serve is single-mode, so this is typically one label (the mode the router
+        # ran under); a window whose records carry no mode yields [] — additive, and
+        # every existing metric/gate is unchanged either way.
+        "modes": observed_modes(records),
         "work_classes": work_classes,
         "overall": _finalize(overall),
     }
@@ -322,9 +349,13 @@ def format_report(summary: Mapping[str, Any]) -> str:
     failure count), ``sf_rate`` (silent-failure rate), ``cloud_tok_saved``.
     """
     threshold = summary["threshold"]
+    # Stamp the observed serving mode(s) onto the header WHEN present (T013); a
+    # window with no mode renders byte-identically to pre-T013.
+    modes = summary.get("modes") or ()
+    mode_note = f"   mode: {', '.join(modes)}" if modes else ""
     lines: List[str] = [
         f"traffic window: {summary['total_records']} records   "
-        f"silent-failure gate: rate < {_pct(threshold)}",
+        f"silent-failure gate: rate < {_pct(threshold)}{mode_note}",
         _HEADER,
         "-" * len(_HEADER),
     ]
