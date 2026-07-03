@@ -357,6 +357,22 @@ def _seed_entry(tier_id: str, decision: str) -> ProfileEntry:
     )
 
 
+def default_profile_table() -> dict[Tuple[str, Optional[str]], ProfileEntry]:
+    """The hand-authored seed table (see :func:`default_profile`) as a raw dict.
+
+    Exposed so the offline bootstrap can MERGE measured rows OVER these seeds
+    (:func:`~anvil_serving.router.profile_bootstrap.store_from_profile`): a loaded
+    profile then keeps the seed verdict for any ``(tier, work_class)`` it did not
+    measure, instead of silently re-verdicting unmeasured classes to the store's
+    fail-closed default. Returns a fresh dict on each call (callers may mutate it).
+    """
+    table: dict[Tuple[str, Optional[str]], ProfileEntry] = {}
+    for work_class, per_tier in _SEED_VERDICTS.items():
+        for tier_id, decision in per_tier.items():
+            table[(tier_id, work_class)] = _seed_entry(tier_id, decision)
+    return table
+
+
 def default_profile() -> ProfileStore:
     """The hand-authored seed profile for the worked-example tiers.
 
@@ -367,8 +383,4 @@ def default_profile() -> ProfileStore:
     ``deny``s on the high-risk classes: the fail-closed verdict is portable, not
     hard-wired to these three named tiers.
     """
-    table: dict[Tuple[str, Optional[str]], ProfileEntry] = {}
-    for work_class, per_tier in _SEED_VERDICTS.items():
-        for tier_id, decision in per_tier.items():
-            table[(tier_id, work_class)] = _seed_entry(tier_id, decision)
-    return ProfileStore(table)
+    return ProfileStore(default_profile_table())
