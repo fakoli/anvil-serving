@@ -117,6 +117,35 @@ def test_build_backend_for_tier_direct_call_keeps_120s_default():
 
 
 # --------------------------------------------------------------------------- #
+# T007 — per-tier `timeout` overrides the global relay_timeout
+# --------------------------------------------------------------------------- #
+def test_per_tier_timeout_overrides_relay_timeout_on_local_tier():
+    """flexibility:T007 — a LOCAL tier with an explicit `timeout` uses IT (not the
+    global relay_timeout) for its backend; a sibling tier without one still uses
+    config.relay_timeout."""
+    with_override = _local_tier(id="fast-override", timeout=120.0)
+    without = _local_tier(id="fast-default")  # timeout=None -> global default
+    config = _config(with_override, without, relay_timeout=5.0)
+    backends, skipped = build_backends(config, env={})
+    assert not skipped
+    assert backends["fast-override"]._timeout == pytest.approx(120.0)
+    assert backends["fast-default"]._timeout == pytest.approx(5.0)
+
+
+def test_per_tier_timeout_overrides_cloud_default():
+    """flexibility:T007 — a CLOUD tier's explicit `timeout` overrides the 120s
+    cloud default; a cloud tier without one keeps that 120s default (unchanged)."""
+    overridden = _cloud_tier(id="cloud-fast", timeout=30.0)
+    default = _cloud_tier(id="cloud-default")  # timeout=None -> 120s default
+    config = _config(overridden, default, relay_timeout=5.0)
+    env = {"ANVIL_TEST_CLOUD_KEY": "sk-test-DEADBEEF"}
+    backends, skipped = build_backends(config, env=env)
+    assert not skipped
+    assert backends["cloud-fast"]._timeout == pytest.approx(30.0)
+    assert backends["cloud-default"]._timeout == pytest.approx(120.0)
+
+
+# --------------------------------------------------------------------------- #
 # T003 — per-tier extra_body merged into the upstream body
 # --------------------------------------------------------------------------- #
 def test_extra_body_merged_into_openai_body():
