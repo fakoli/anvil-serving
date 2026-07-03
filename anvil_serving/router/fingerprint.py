@@ -40,20 +40,24 @@ FINGERPRINT_SCHEMA = "anvil-serving.router.fingerprint/v1"
 # A spec may be a Mapping or any object with these as attributes (e.g. a
 # config.Tier); the FIRST synonym that resolves to a non-None value wins. Only
 # things that change OUTPUT QUALITY belong here — model weights/quantization, the
-# endpoint serving them, the wire dialect, the usable context window, an explicit
-# bag of serve/sampling params, and the REASONING configuration (thinking on/off,
-# reasoning effort) carried in ``extra_body``: a thinking-ON serve and a
-# thinking-OFF serve of the same model are different quality regimes (CLAUDE.md
-# gotcha #6/#9), so they must be DISTINCT fingerprints. Volatile operational
-# fields (latency, pid, load) are deliberately excluded so they don't churn the
-# profile. A tier with NO ``extra_body`` resolves ``reasoning`` to None, which
-# :func:`identity` omits — so it hashes byte-identically to before this field
-# existed (no churn); only tiers that SET a reasoning ``extra_body`` change.
+# serving ENGINE (vLLM/SGLang/…), the endpoint serving them, the wire dialect, the
+# usable context window, an explicit bag of serve/sampling params, and the REASONING
+# configuration (thinking on/off, reasoning effort) carried in ``extra_body``: a
+# thinking-ON serve and a thinking-OFF serve of the same model are different quality
+# regimes (CLAUDE.md gotcha #6/#9), so they must be DISTINCT fingerprints. The
+# ``engine`` axis (ADR-0010) makes an in-place engine swap at the SAME base_url —
+# which can shift tokenization/sampling behavior and thus output quality —
+# observable, so old measured rows go stale on the swap. Volatile operational fields
+# (latency, pid, load) are deliberately excluded so they don't churn the profile. A
+# field a tier does not set (no ``engine``, no ``extra_body``) resolves to None,
+# which :func:`identity` omits — so it hashes byte-identically to before that field
+# existed (no churn); only tiers that SET the field change.
 IDENTITY_FIELDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("tier_id", ("tier_id", "id")),
     ("model", ("model", "model_id", "served_model", "model_name")),
     ("revision", ("revision", "model_revision", "weights_revision")),
     ("quantization", ("quantization", "quant", "dtype")),
+    ("engine", ("engine",)),
     ("endpoint", ("base_url", "endpoint", "url")),
     ("dialect", ("dialect",)),
     ("context_limit", ("context_limit", "max_context", "context_window")),
