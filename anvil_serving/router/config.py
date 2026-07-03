@@ -104,6 +104,18 @@ class Tier:
     # global ``RouterConfig.relay_timeout`` for THIS tier's backend (threaded
     # through ``serve.build_backends``); absent -> the tier uses the global default.
     timeout: Optional[float] = None
+    # ---- flexibility:T009 (ADR-0010 Phase 3) — optional per-tier concurrency cap --
+    # ``max_concurrency``: the maximum number of requests DISPATCHED to this tier
+    # that may be in flight at once, enforced by a per-tier stdlib
+    # ``threading.BoundedSemaphore`` around that tier's backend in
+    # ``serve.RoutingBackend``. Absent -> None -> NO per-tier cap: only the
+    # process-global front-door limiter applies, exactly as today. Sized (from
+    # ``benchmark``) for a low-throughput specialized-engine tier that must not be
+    # hit by more than N simultaneous requests; every OTHER tier is unaffected —
+    # its dispatch stays bounded only by the global limiter. Additive and
+    # default-unset (NOT in ``_REQUIRED_TIER_KEYS``), so existing configs parse
+    # unchanged with it reading as ``None``.
+    max_concurrency: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -414,6 +426,24 @@ def _parse_tier(raw: object) -> Tier:
             )
         tier_timeout = float(raw_timeout)
 
+    # ``max_concurrency`` (flexibility:T009): per-tier cap on concurrent in-flight
+    # requests to this tier. bool is an int subclass -- reject it explicitly; must
+    # be a positive int. Absent -> None (no per-tier cap; the process-global
+    # front-door limiter is unchanged).
+    raw_max_concurrency = raw.get("max_concurrency")
+    tier_max_concurrency: Optional[int] = None
+    if raw_max_concurrency is not None:
+        if (
+            isinstance(raw_max_concurrency, bool)
+            or not isinstance(raw_max_concurrency, int)
+            or raw_max_concurrency <= 0
+        ):
+            raise ConfigError(
+                f"tier {tid!r}: max_concurrency must be a positive integer "
+                f"or absent, got {raw_max_concurrency!r}"
+            )
+        tier_max_concurrency = raw_max_concurrency
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -430,6 +460,7 @@ def _parse_tier(raw: object) -> Tier:
         quantization=quantization,
         params=params,
         timeout=tier_timeout,
+        max_concurrency=tier_max_concurrency,
     )
 
 

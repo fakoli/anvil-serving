@@ -773,6 +773,73 @@ def test_t007_timeout_non_number_raises(tmp_path):
         load(_write_toml(tmp_path, body))
 
 
+# ── flexibility:T009 — optional per-tier Tier.max_concurrency (ADR-0010 P3) ──
+def test_t009_max_concurrency_absent_defaults_to_none(tmp_path):
+    """AC (absent) — max_concurrency is optional; a config omitting it parses and
+    the field reads as None (only the process-global limiter applies)."""
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    assert cfg.tiers[0].max_concurrency is None
+
+
+def test_t009_max_concurrency_round_trips_positive_int(tmp_path):
+    """A tier declaring a positive-int max_concurrency round-trips it as an int."""
+    body = _BASE_TIER + "max_concurrency = 4\n"
+    cfg = load(_write_toml(tmp_path, body))
+    t = cfg.tiers[0]
+    assert t.max_concurrency == 4
+    assert isinstance(t.max_concurrency, int) and not isinstance(t.max_concurrency, bool)
+
+
+def test_t009_max_concurrency_is_not_a_required_key(tmp_path):
+    """max_concurrency is NOT in _REQUIRED_TIER_KEYS: a tier without it still
+    loads (proven by the base tier parsing above); this pins the intent that the
+    field never becomes mandatory."""
+    from anvil_serving.router.config import _REQUIRED_TIER_KEYS
+    assert "max_concurrency" not in _REQUIRED_TIER_KEYS
+
+
+def test_t009_shipped_configs_parse_with_none_max_concurrency():
+    """Every shipped example config parses unchanged and sets max_concurrency on
+    no tier (it reads as None everywhere): the change is a no-op for existing
+    configs."""
+    for cfg_path in sorted(_CONFIGS.glob("*.toml")):
+        cfg = load(str(cfg_path))
+        for t in cfg.tiers:
+            assert t.max_concurrency is None, f"{cfg_path.name}: {t.id!r} max_concurrency"
+
+
+def test_t009_max_concurrency_zero_raises(tmp_path):
+    body = _BASE_TIER + "max_concurrency = 0\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t009_max_concurrency_negative_raises(tmp_path):
+    body = _BASE_TIER + "max_concurrency = -2\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t009_max_concurrency_bool_raises(tmp_path):
+    """bool is an int subclass; reject it explicitly like timeout does."""
+    body = _BASE_TIER + "max_concurrency = true\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t009_max_concurrency_float_raises(tmp_path):
+    """A concurrency cap is a count: a float is not a valid slot count."""
+    body = _BASE_TIER + "max_concurrency = 2.5\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t009_max_concurrency_string_raises(tmp_path):
+    body = _BASE_TIER + 'max_concurrency = "two"\n'
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
 # ── router-service:T001 — top-level [server] table (front-door auth) ────────
 #
 # `load_server_config` reads the OPTIONAL top-level `[server]` table
