@@ -1,0 +1,26 @@
+{
+  "schema": "anvil-serving.benchmark/v1",
+  "run_id": "local-qwen-rtx6k-vllm-nvfp4-32k-c4",
+  "model": "Qwen3.6-35B-A3B-MTP",
+  "served_model_name": "qwen36-mtp-local",
+  "engine": "vLLM",
+  "engine_version": "0.10.0",
+  "gpu_model": "NVIDIA RTX PRO 6000 Blackwell 96GB",
+  "gpu_count": 1,
+  "context_limit": 32768,
+  "context_tokens": 32768,
+  "concurrency": 4,
+  "quantization": "NVFP4",
+  "kv_cache_dtype": "fp8",
+  "reasoning_parser": "qwen3",
+  "tool_call_parser": "qwen3_coder",
+  "serve_flags": {
+    "speculative_decoding": "NEXTN",
+    "prompt_cache": true
+  },
+  "metrics": {
+    "throughput_tok_s": 520.0,
+    "ttft_ms": 760.0
+  }
+}
+
