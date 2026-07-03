@@ -9,6 +9,7 @@ untouched. Stdlib only, deterministic, no network.
 from __future__ import annotations
 
 import threading
+from types import MappingProxyType
 
 from anvil_serving.router.config import Tier
 from anvil_serving.router.fingerprint import (
@@ -104,6 +105,99 @@ def test_fingerprint_accepts_tier_object_and_hashes_only_identity():
         auth_env="OTHER_KEY",
     )
     assert serve_fingerprint(t3) == serve_fingerprint(t1)
+
+
+# ── reasoning mode (extra_body) enters the fingerprint (flexibility:T003) ──────
+def _fast_tier(**overrides):
+    """A fixed fast-local Tier; ``overrides`` tweak one field for a comparison."""
+    base = dict(
+        id="fast-local",
+        base_url="http://127.0.0.1:30001/v1",
+        dialect="openai",
+        context_limit=32000,
+        privacy="local",
+        tool_support=True,
+        auth_env="FAST_KEY",
+        model="qwen",
+    )
+    base.update(overrides)
+    return Tier(**base)
+
+
+def test_reasoning_extra_body_changes_fingerprint():
+    """Criterion 1: a thinking-OFF serve is a DISTINCT fingerprint from the same
+    tier with thinking on — and from the same tier with no reasoning config."""
+    thinking_off = _fast_tier(
+        extra_body=MappingProxyType({"chat_template_kwargs": {"enable_thinking": False}})
+    )
+    thinking_on = _fast_tier(
+        extra_body=MappingProxyType({"chat_template_kwargs": {"enable_thinking": True}})
+    )
+    no_reasoning = _fast_tier()  # extra_body defaults to None
+
+    fp_off = serve_fingerprint(thinking_off)
+    fp_on = serve_fingerprint(thinking_on)
+    fp_none = serve_fingerprint(no_reasoning)
+
+    # thinking-OFF differs from thinking-ON and from no-extra_body: three regimes.
+    assert fp_off != fp_on
+    assert fp_off != fp_none
+    assert fp_on != fp_none
+
+    # It rides under the canonical ``reasoning`` identity key.
+    assert "reasoning" in identity(thinking_off)
+    assert "reasoning" not in identity(no_reasoning)
+
+    # A different reasoning knob (reasoning_effort) is likewise distinct.
+    assert serve_fingerprint(_fast_tier(extra_body={"reasoning_effort": "low"})) != fp_none
+
+
+def test_reasoning_extra_body_is_key_order_and_container_insensitive():
+    """The reasoning config is content-addressed: a MappingProxyType (as a Tier
+    stores it) hashes identically to an equivalent inline dict, and reordering
+    keys does not churn the digest — only the reasoning VALUES matter."""
+    proxy = _fast_tier(
+        extra_body=MappingProxyType({"chat_template_kwargs": {"enable_thinking": False}})
+    )
+    plain = _fast_tier(extra_body={"chat_template_kwargs": {"enable_thinking": False}})
+    assert serve_fingerprint(proxy) == serve_fingerprint(plain)
+
+    order_a = _fast_tier(
+        extra_body={"chat_template_kwargs": {"enable_thinking": False}, "reasoning_effort": "low"}
+    )
+    order_b = _fast_tier(
+        extra_body={"reasoning_effort": "low", "chat_template_kwargs": {"enable_thinking": False}}
+    )
+    assert serve_fingerprint(order_a) == serve_fingerprint(order_b)
+
+
+def test_reasoning_field_does_not_churn_extra_body_less_tiers():
+    """Criterion 2 (no-churn): a tier that sets NO reasoning ``extra_body`` hashes
+    to the exact value it did BEFORE the reasoning identity field existed. The new
+    field resolves to None -> omitted from the hash -> digest byte-identical.
+
+    The two anchors are digests captured from the pre-change code; if the reasoning
+    field ever leaks into an extra_body-less digest, these constants break."""
+    # A fixed dict spec with no extra_body.
+    dict_spec = {
+        "id": "fast-local",
+        "model": "qwen",
+        "base_url": "http://127.0.0.1:30001/v1",
+        "dialect": "openai",
+        "context_limit": 32000,
+        "quantization": "nvfp4",
+    }
+    assert (
+        serve_fingerprint(dict_spec)
+        == "f5f7e692660d4efc14ce2c71b600886fd5f147a6a38e584ee0a2457e71a7ad47"
+    )
+    # A fixed Tier with no extra_body (extra_body=None).
+    assert (
+        serve_fingerprint(_fast_tier())
+        == "d1cf852fc0d06741bfc1a6cd1027cd22a0eda54b9de19bb5c4e8461c197ac39e"
+    )
+    # And the None extra_body is simply absent from the hashed identity.
+    assert "reasoning" not in identity(_fast_tier())
 
 
 # ── mark_stale_on_change: change stales the tier; others untouched ─────────────

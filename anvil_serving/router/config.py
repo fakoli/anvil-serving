@@ -84,6 +84,26 @@ class Tier:
     # intentional passthrough, not a bug. Kept ``hash=False`` (a dict is unhashable)
     # to match ``RouterConfig.presets`` below; Tier is never used as a dict/set key.
     extra_body: Optional[Mapping[str, Any]] = field(default=None, hash=False)
+    # ---- flexibility:T007 — additive, default-unset descriptive/tuning fields ----
+    # None of these is REQUIRED (none appears in ``_REQUIRED_TIER_KEYS``); every
+    # existing config parses unchanged with all four reading as ``None``.
+    #
+    # ``engine`` / ``quantization``: free-form descriptive labels for the serving
+    # backend behind this tier (e.g. ``"vllm"``/``"sglang"``, ``"nvfp4"``/``"awq"``).
+    # Advisory metadata only — the router does not route on them today; they document
+    # what a tier is and give future tooling (fingerprinting, dashboards) a home.
+    engine: Optional[str] = None
+    quantization: Optional[str] = None
+    # ``params``: an inline-table of arbitrary JSON-serialisable tuning knobs for
+    # this tier. Distinct from ``extra_body`` (which is merged into the UPSTREAM
+    # request body): ``params`` is descriptive tier metadata, NOT forwarded to the
+    # provider. Kept ``hash=False`` for the same reason as ``extra_body`` above (a
+    # dict is unhashable; Tier is never used as a dict/set key).
+    params: Optional[Mapping[str, Any]] = field(default=None, hash=False)
+    # ``timeout``: per-tier transport timeout in seconds. When set it OVERRIDES the
+    # global ``RouterConfig.relay_timeout`` for THIS tier's backend (threaded
+    # through ``serve.build_backends``); absent -> the tier uses the global default.
+    timeout: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -344,6 +364,56 @@ def _parse_tier(raw: object) -> Tier:
             ) from e
         extra_body = MappingProxyType(dict(raw_extra_body))
 
+    # Optional (flexibility:T007): additive, default-unset descriptive/tuning
+    # fields. None is required, so an absent field reads as None and existing
+    # configs parse unchanged.
+    def _parse_str_field(raw_val: object, field_name: str) -> Optional[str]:
+        if raw_val is None:
+            return None
+        if not isinstance(raw_val, str):
+            raise ConfigError(
+                f"tier {tid!r}: {field_name} must be a string or absent, got {raw_val!r}"
+            )
+        return raw_val
+
+    engine = _parse_str_field(raw.get("engine"), "engine")
+    quantization = _parse_str_field(raw.get("quantization"), "quantization")
+
+    # ``params``: inline-table of JSON-serialisable tuning knobs (advisory tier
+    # metadata; NOT forwarded upstream -- that is extra_body). Absent -> None.
+    raw_params = raw.get("params")
+    params: Optional[Mapping[str, Any]] = None
+    if raw_params is not None:
+        if not isinstance(raw_params, dict):
+            raise ConfigError(
+                f"tier {tid!r}: params must be a table (inline dict), got "
+                f"{type(raw_params).__name__}"
+            )
+        try:
+            json.dumps(raw_params)
+        except (TypeError, ValueError) as e:
+            raise ConfigError(
+                f"tier {tid!r}: params must be JSON-serialisable: {e}"
+            ) from e
+        params = MappingProxyType(dict(raw_params))
+
+    # ``timeout``: per-tier transport timeout (seconds). Overrides the global
+    # relay_timeout for this tier's backend when set. bool is an int subclass --
+    # reject it explicitly; must be > 0. Absent -> None (use the global default).
+    raw_timeout = raw.get("timeout")
+    tier_timeout: Optional[float] = None
+    if raw_timeout is not None:
+        if (
+            isinstance(raw_timeout, bool)
+            or not isinstance(raw_timeout, (int, float))
+            or raw_timeout <= 0
+        ):
+            raise ConfigError(
+                f"tier {tid!r}: timeout must be a positive number of seconds "
+                f"or absent, got {raw_timeout!r}"
+            )
+        tier_timeout = float(raw_timeout)
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -356,6 +426,10 @@ def _parse_tier(raw: object) -> Tier:
         cost_input_per_mtok=cost_input,
         cost_output_per_mtok=cost_output,
         extra_body=extra_body,
+        engine=engine,
+        quantization=quantization,
+        params=params,
+        timeout=tier_timeout,
     )
 
 
