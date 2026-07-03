@@ -28,3 +28,6 @@ people and the chat logs.
 | [0006](0006-multiplexer-swap-draining.md) | Multiplexer swaps drain in-flight requests before evicting the resident model | Accepted |
 | [0007](0007-subscription-auth-cloud-tier.md) | Subscription-auth cloud tier: feasible via `claude` CLI subprocess — opt-in only, text-only classes, no tool broker | Accepted |
 | [0008](0008-heavy-tier-speculative-decoding.md) | Heavy tier enables NEXTN speculative decoding (self-speculation, no draft model) | Accepted |
+| [0009](0009-profile-write-back-loop.md) | Measured quality-profile write-back loop (offline-batch-first, fingerprint-keyed) | Accepted |
+| [0010](0010-specialized-engine-tier.md) | Specialized-engine tier: run any model on any engine (config-first, RelayBackend-served) | Accepted |
+| [0011](0011-two-mode-operation.md) | Two modes of operation: agentic vs maximum-flexibility (global mode switch) | Accepted |
