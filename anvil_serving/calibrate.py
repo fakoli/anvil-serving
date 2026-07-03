@@ -12,8 +12,10 @@ The verb is a thin wrapper over
 :func:`anvil_serving.router.profile_bootstrap.run_live` — the guarded batch. What
 this verb ADDS over ``python -m anvil_serving.router.profile_bootstrap --live``
 (whose stub cannot supply tiers and stops at the guard) is the one missing piece:
-it LOADS THE OPERATOR'S CONFIG and hands ``run_live`` the configured LOCAL
-``Tier`` objects to measure. Everything else is ``run_live``'s job.
+it LOADS THE OPERATOR'S CONFIG and hands ``run_live`` the configured tiers. (It
+passes ALL tiers; ``run_live`` structurally filters out ``privacy="cloud"`` tiers —
+a Claude judge must never grade a Claude tier — and measures only the LOCAL ones.)
+Everything else is ``run_live``'s job.
 
 Two structural safeties are inherited from ``run_live`` and never weakened here:
 
@@ -242,15 +244,26 @@ def main(argv: Optional[List[str]] = None) -> int:
             file=sys.stderr,
         )
         return 2
+    eval_data = Path(args.eval_data)
+    if not eval_data.is_dir():
+        print(
+            f"anvil-serving calibrate: eval-data directory does not exist: {eval_data} "
+            "(pass --eval-data pointing at your committed prompts/)",
+            file=sys.stderr,
+        )
+        return 2
     # Pass ALL configured tiers: run_live structurally filters out cloud/Claude
     # tiers (a Claude judge must never grade a Claude tier — no self-verification)
     # and measures only the LOCAL ones, requiring each to be covered by --endpoint.
+    # `mode` (resolved above) threads into the candidate fingerprints so a profile
+    # measured under `--mode flexibility` matches the live flexibility-mode serve.
     run_kwargs = dict(
         tiers=config.tiers,
         endpoints=endpoints,
-        eval_data_root=Path(args.eval_data),
+        eval_data_root=eval_data,
         out_path=out_path,
         confirm_calls_real_tiers=args.confirm_live,
+        mode=mode,
     )
     if args.max_tokens is not None:
         run_kwargs["max_tokens"] = args.max_tokens

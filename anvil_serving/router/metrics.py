@@ -309,7 +309,10 @@ def aggregate(
         # the distinct, sorted, non-empty ``mode`` labels the records carry. A live
         # serve is single-mode, so this is typically one label (the mode the router
         # ran under); a window whose records carry no mode yields [] — additive, and
-        # every existing metric/gate is unchanged either way.
+        # every existing metric/gate is unchanged either way. This is a purely
+        # additive, backward-compatible field, so the ``SCHEMA`` tag is intentionally
+        # NOT bumped: it versions BREAKING shape changes, not backward-compatible
+        # additions (a consumer that ignores unknown keys is unaffected).
         "modes": observed_modes(records),
         "work_classes": work_classes,
         "overall": _finalize(overall),

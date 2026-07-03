@@ -211,6 +211,9 @@ def test_calibrate_wires_run_live_and_prints_promote(tmp_path, monkeypatch, caps
     assert seen["tiers"] == loaded.tiers
     assert {t.id for t in seen["tiers"]} == {"fast-local", "cloud"}
     assert seen["out_path"] == out
+    # The resolved mode is forwarded to run_live (None for a --config boot) so the
+    # candidate fingerprints match the live serve's mode (ADR-0011 / T013).
+    assert seen["mode"] is None
 
     # The review -> promote instruction is printed and points [router].profile_path
     # at the candidate; nothing was auto-promoted.
@@ -236,6 +239,24 @@ def test_calibrate_rejects_missing_out_dir_before_running_batch(tmp_path, monkey
     assert rc == 2
     assert called == []  # the batch never ran — no measurement work lost
     assert "output directory does not exist" in capsys.readouterr().err
+
+
+def test_calibrate_rejects_missing_eval_data_dir(tmp_path, monkeypatch, capsys):
+    """A missing --eval-data directory is rejected cleanly (exit 2), not surfaced as a
+    late FileNotFoundError traceback after the batch starts. run_live never runs. (Copilot #119)"""
+    _clear_mode_env(monkeypatch)
+    called = []
+    monkeypatch.setattr(calibrate_mod, "run_live", lambda **k: called.append(k))
+    rc = calibrate_mod.main([
+        "--config", _write_config(tmp_path),
+        "--out", str(tmp_path / "candidate.json"),
+        "--eval-data", str(tmp_path / "no-such-fixtures"),  # missing dir
+        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
+        "--i-understand-this-calls-real-tiers",
+    ])
+    assert rc == 2
+    assert called == []
+    assert "eval-data directory does not exist" in capsys.readouterr().err
 
 
 def test_calibrate_dispatches_through_cli(tmp_path, monkeypatch):

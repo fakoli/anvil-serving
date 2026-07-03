@@ -196,10 +196,11 @@ Both emit the same portable artifact; the difference is where the numbers come f
 
 **The `calibrate` flow (the live write-back loop's operator entry):**
 
-1. **Measure.** `calibrate` loads your router config, hands `run_live` the configured
-   **LOCAL** tiers, generates one output per `(local tier × committed work-class prompt)`
+1. **Measure.** `calibrate` loads your router config and hands `run_live` **all** configured
+   tiers; `run_live` structurally filters out `privacy="cloud"` tiers (no self-verification) and
+   measures only the **LOCAL** ones — one output per `(local tier × committed work-class prompt)`
    through each tier's real backend (so `extra_body` / thinking-off is applied exactly as in
-   prod), and grades each with the independent Agent-SDK judge:
+   prod), graded by the independent Agent-SDK judge:
 
    ```bash
    anvil-serving calibrate --config configs/example.toml \
