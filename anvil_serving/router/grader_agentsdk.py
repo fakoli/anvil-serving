@@ -180,14 +180,22 @@ def _family_of_tier(tier: Any) -> Optional[str]:
     if tier is None:
         return None
 
+    # Claude signals VETO a contradictory explicit label — the "Claude detected
+    # first" invariant, enforced: a tier carrying a Claude model id or an
+    # anthropic dialect resolves to "claude" even if it ALSO declares a non-Claude
+    # ``family``, so a mislabeled Claude tier can never be waved through to the
+    # Claude judge. (Defense-in-depth: unreachable via the shipped Tier registry,
+    # which has no ``family`` field, but hardened for hand-authored metadata.)
+    if (
+        _family_from_model(_get(tier, "model")) == "claude"
+        or _norm_str(_get(tier, "dialect")) == "anthropic"
+        or _normalize_family(_get(tier, "family")) == "claude"
+    ):
+        return "claude"
+
     explicit = _normalize_family(_get(tier, "family"))
     if explicit:
         return explicit
-
-    if _family_from_model(_get(tier, "model")) == "claude":
-        return "claude"
-    if _norm_str(_get(tier, "dialect")) == "anthropic":
-        return "claude"
 
     model_family = _family_from_model(_get(tier, "model"))
     if model_family:

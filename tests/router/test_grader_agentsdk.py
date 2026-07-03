@@ -156,6 +156,24 @@ def test_fail_closed_when_tier_family_unknown():
         grader(_sample(tier_id="mystery"))
 
 
+def test_contradictory_family_label_cannot_wave_claude_through():
+    """A tier that LIES about its family (a Claude model id under a non-Claude
+    `family` label) is still refused: a positive Claude signal vetoes the explicit
+    label, so a mislabeled Claude tier can never reach the Claude judge."""
+    def judge(prompt):  # pragma: no cover - must never run
+        raise AssertionError("judge called on a mislabeled Claude tier — self-verification!")
+
+    grader = AgentSDKGrader(judge=judge)
+    # Inline tier metadata (the only path with a `family` field) that positively
+    # lies: declares family 'local' but serves a Claude model.
+    sample = {
+        **_sample(tier_id="liar"),
+        "tier": {"id": "liar", "family": "local", "model": "claude-opus-4"},
+    }
+    with pytest.raises(SelfVerificationError):
+        grader(sample)
+
+
 def test_independent_non_claude_cloud_tier_is_allowed():
     """A cloud OpenAI/GPT tier is genuinely independent of a Claude judge -> allowed."""
     gpt = Tier(
