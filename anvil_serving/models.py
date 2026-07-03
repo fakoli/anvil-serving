@@ -77,6 +77,12 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
     see "Still waiting to acquire lock", stop the other download and resume ONE; do
     NOT delete the lock file blindly.
     """
+    if any(sep in volume for sep in ("/", "\\", ":")):
+        print(f"[anvil-serving] --volume {volume!r} looks like a PATH, not a docker "
+              f"volume NAME; a host bind mount would reintroduce the 9P tax this "
+              f"command exists to avoid (gotcha #15). Pass a named docker volume.",
+              file=sys.stderr)
+        return 2
     environ = os.environ if _environ is None else _environ
     argv = build_pull_argv(repo_id, volume=volume, image=image, revision=revision,
                            include=include, exclude=exclude, token_env=token_env)
@@ -104,9 +110,9 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
     print(f"[anvil-serving] $ {printable}", file=sys.stderr)
     try:
         return _run(argv, env=child_env)
-    except FileNotFoundError:
-        print("[anvil-serving] `docker` not found on PATH — is Docker installed "
-              "and running?", file=sys.stderr)
+    except OSError as exc:
+        print(f"[anvil-serving] could not run `docker` ({exc}) — is Docker installed, "
+              "on PATH, and running?", file=sys.stderr)
         return 127
 
 
@@ -159,10 +165,14 @@ def main(argv):
     if argv and argv[0] == "pull":
         return pull_main(argv[1:])
 
-    ap = argparse.ArgumentParser(prog="anvil-serving models")
-    ap.add_argument("action", choices=["sync", "pull"],
-                    help="sync = refresh the catalog; "
-                         "pull = download a HF repo into a named docker volume")
+    ap = argparse.ArgumentParser(
+        prog="anvil-serving models",
+        description="Model catalog + fetch. `pull` is a separate sub-action with its "
+                    "own flags — run `anvil-serving models pull --help`.",
+    )
+    ap.add_argument("action", choices=["sync"],
+                    help="sync = scan HF caches + build the catalog. "
+                         "(For downloads use `models pull <repo-id>`.)")
     ap.add_argument("--out", default=os.path.join(os.getcwd(), "model-library"),
                     help="output dir for cards/ + INDEX.md")
     ap.add_argument("--hf-roots", default="", help="extra HF cache roots (os.pathsep-separated)")
