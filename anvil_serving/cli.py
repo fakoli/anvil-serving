@@ -1,4 +1,4 @@
-"""anvil-serving CLI — profile / models / deploy / init / serves / serve / preflight / benchmark / external-bench / eval / multiplexer / doctor."""
+"""anvil-serving CLI — profile / models / deploy / init / serves / serve / preflight / benchmark / external-bench / eval / calibrate / multiplexer / doctor."""
 import sys
 import os
 import subprocess
@@ -28,11 +28,12 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__ + "\n  commands: profile | models | deploy | init (alias: onboard) | serves | serve | "
-                        "preflight | benchmark | external-bench | eval | multiplexer | cache-prune | score | doctor"); return 0
+                        "preflight | benchmark | external-bench | eval | calibrate | multiplexer | cache-prune | score | doctor"); return 0
     cmd, rest = argv[0], argv[1:]
     if cmd == "serve":       from .router.serve import main as _serve_main; return _serve_main(rest)
     if cmd == "serves":      from . import serves; return serves.main(rest)
     if cmd == "eval":        from . import eval as _eval; return _eval.main(rest)
+    if cmd == "calibrate":   from . import calibrate as _calibrate; return _calibrate.main(rest)
     if cmd == "score":       from . import score; return score.main(rest)
     if cmd == "multiplexer": from . import multiplexer; return multiplexer.main(rest)
     if cmd == "cache-prune": from . import cache_prune; return cache_prune.main(rest)
