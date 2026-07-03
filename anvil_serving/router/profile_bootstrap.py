@@ -58,12 +58,21 @@ from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .classify import WORK_CLASSES
-from .profile_store import ProfileEntry, ProfileStore
+from .profile_store import ProfileEntry, ProfileStore, default_profile_table
 
 # --- Stable identifiers for the portable artifact -------------------------------
 
 #: Portable ``profile.json`` schema tag — bump if the on-disk shape changes.
-SCHEMA = "anvil-serving.router.profile_bootstrap/v1"
+#: v2 (T001, ADR-0009): each entry additionally carries ``fingerprint`` (the serve
+#: identity the row was measured under) and ``reasoning`` (reasoning-config
+#: provenance); :func:`store_from_profile` MERGES measured rows over the seed table.
+SCHEMA = "anvil-serving.router.profile_bootstrap/v2"
+#: The prior schema — still accepted by :func:`store_from_profile` for a
+#: backward-compatible load of a pre-T001 (v1) ``profile.json`` (whose rows simply
+#: carry no ``fingerprint`` / ``reasoning``).
+SCHEMA_V1 = "anvil-serving.router.profile_bootstrap/v1"
+#: Schemas :func:`store_from_profile` will accept.
+_ACCEPTED_SCHEMAS = (SCHEMA, SCHEMA_V1)
 
 # --- Eval rubric (mirrors docs/.../aggregate.py) --------------------------------
 
@@ -238,6 +247,11 @@ class BootstrapEntry:
     eval_max: float
     source_evals: Tuple[str, ...]
     last_measured: Optional[str]
+    # v2 (T001): serve identity + reasoning provenance. Both default ``None`` — the
+    # replay path grades pre-committed outputs with no live serve, so it never sets
+    # them; the live path (run_live, T005) populates them from the real serve.
+    fingerprint: Optional[str] = None
+    reasoning: Optional[Mapping[str, object]] = None
 
     def to_profile_entry(self) -> ProfileEntry:
         """Build the immutable store entry (validates ``decision`` on construction)."""
@@ -246,10 +260,11 @@ class BootstrapEntry:
             quality_score=self.quality_score,
             sample_n=self.sample_n,
             last_measured=self.last_measured,
+            fingerprint=self.fingerprint,
         )
 
     def to_dict(self) -> dict:
-        """Portable, deterministic serialization for ``profile.json``."""
+        """Portable, deterministic serialization for ``profile.json`` (v2)."""
         return {
             "tier_id": self.tier_id,
             "work_class": self.work_class,
@@ -261,6 +276,8 @@ class BootstrapEntry:
             "eval_max": self.eval_max,
             "last_measured": self.last_measured,
             "source_evals": list(self.source_evals),
+            "fingerprint": self.fingerprint,
+            "reasoning": dict(self.reasoning) if self.reasoning is not None else None,
         }
 
 
@@ -354,17 +371,35 @@ def write_profile(eval_data_root: Path, out_path: Path) -> dict:
 # --- Populate / load a ProfileStore --------------------------------------------
 
 
-def store_from_profile(profile: dict) -> ProfileStore:
-    """Build a :class:`ProfileStore` from a profile document (round-trips ``profile.json``)."""
+def store_from_profile(profile: dict, *, merge_over_seed: bool = True) -> ProfileStore:
+    """Build a :class:`ProfileStore` from a profile document (round-trips ``profile.json``).
+
+    With ``merge_over_seed=True`` (the default; T001 / ADR-0009) the measured rows
+    are overlaid on the hand-authored seed table
+    (:func:`~anvil_serving.router.profile_store.default_profile_table`): every
+    ``(tier, work_class)`` the profile did NOT measure keeps its seed verdict,
+    instead of silently re-verdicting unmeasured classes to the store's fail-closed
+    default. Pass ``merge_over_seed=False`` for the raw measured-only table
+    (the pre-T001 behaviour).
+
+    Accepts the current v2 schema and, for a backward-compatible load, a pre-T001
+    v1 document (whose rows simply carry no ``fingerprint`` / ``reasoning``).
+    """
     schema = profile.get("schema")
-    if schema != SCHEMA:
+    if schema not in _ACCEPTED_SCHEMAS:
         # A wrong/future-schema document must fail loudly here, not as an
         # opaque KeyError (or worse, load silently with missing semantics).
         raise ValueError(
-            f"profile schema mismatch: expected {SCHEMA!r}, got {schema!r}; "
-            f"regenerate the profile with this version's profile_bootstrap"
+            f"profile schema mismatch: expected one of {_ACCEPTED_SCHEMAS!r}, "
+            f"got {schema!r}; regenerate the profile with this version's "
+            f"profile_bootstrap"
         )
-    table: Dict[Tuple[str, Optional[str]], ProfileEntry] = {}
+    # Seed table first (a fresh dict), then overlay the measured rows so an
+    # unmeasured pair keeps its seed verdict rather than the store's fail-closed
+    # default. merge_over_seed=False restores the raw measured-only table.
+    table: Dict[Tuple[str, Optional[str]], ProfileEntry] = (
+        default_profile_table() if merge_over_seed else {}
+    )
     for row in profile["entries"]:
         key = (row["tier_id"], row["work_class"])
         table[key] = ProfileEntry(
@@ -372,6 +407,7 @@ def store_from_profile(profile: dict) -> ProfileStore:
             quality_score=row["quality_score"],
             sample_n=row["sample_n"],
             last_measured=row.get("last_measured"),
+            fingerprint=row.get("fingerprint"),
         )
     return ProfileStore(table)
 

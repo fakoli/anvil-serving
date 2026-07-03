@@ -687,6 +687,92 @@ def test_extra_body_non_string_key_type_is_toml_illegal(tmp_path):
         load(_write_toml(tmp_path, body))
 
 
+# ── flexibility:T007 — additive Tier engine/quantization/params/timeout ─────
+def test_t007_fields_absent_default_to_none(tmp_path):
+    """AC1 — none of the new fields is required; a config declaring NONE of them
+    parses and all four read as None (existing configs are unaffected)."""
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    t = cfg.tiers[0]
+    assert t.engine is None
+    assert t.quantization is None
+    assert t.params is None
+    assert t.timeout is None
+
+
+def test_t007_fields_round_trip(tmp_path):
+    """AC (b) — a tier declaring engine/quantization/params/timeout round-trips
+    each value with the expected type."""
+    body = _BASE_TIER + (
+        'engine        = "vllm"\n'
+        'quantization  = "nvfp4"\n'
+        'timeout       = 120\n'
+        'params        = { tensor_parallel = 2, kv_cache_dtype = "fp8" }\n'
+    )
+    cfg = load(_write_toml(tmp_path, body))
+    t = cfg.tiers[0]
+    assert t.engine == "vllm"
+    assert t.quantization == "nvfp4"
+    assert t.timeout == pytest.approx(120.0)
+    assert isinstance(t.timeout, float)
+    assert t.params == {"tensor_parallel": 2, "kv_cache_dtype": "fp8"}
+
+
+def test_t007_shipped_configs_parse_with_none_fields():
+    """AC1 — every shipped example config parses unchanged and sets none of the
+    new fields (they read as None on every tier): the change is a no-op for
+    existing configs."""
+    for cfg_path in sorted(_CONFIGS.glob("*.toml")):
+        cfg = load(str(cfg_path))
+        for t in cfg.tiers:
+            assert t.engine is None, f"{cfg_path.name}: {t.id!r} engine"
+            assert t.quantization is None, f"{cfg_path.name}: {t.id!r} quantization"
+            assert t.params is None, f"{cfg_path.name}: {t.id!r} params"
+            assert t.timeout is None, f"{cfg_path.name}: {t.id!r} timeout"
+
+
+def test_t007_engine_non_string_raises(tmp_path):
+    body = _BASE_TIER + "engine = 42\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t007_quantization_non_string_raises(tmp_path):
+    body = _BASE_TIER + "quantization = true\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t007_params_non_table_raises(tmp_path):
+    body = _BASE_TIER + "params = [1, 2, 3]\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t007_timeout_zero_raises(tmp_path):
+    body = _BASE_TIER + "timeout = 0\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t007_timeout_negative_raises(tmp_path):
+    body = _BASE_TIER + "timeout = -5\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t007_timeout_bool_raises(tmp_path):
+    """bool is an int subclass; reject it explicitly like relay_timeout does."""
+    body = _BASE_TIER + "timeout = true\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t007_timeout_non_number_raises(tmp_path):
+    body = _BASE_TIER + 'timeout = "fast"\n'
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
 # ── router-service:T001 — top-level [server] table (front-door auth) ────────
 #
 # `load_server_config` reads the OPTIONAL top-level `[server]` table
