@@ -1,0 +1,60 @@
+{
+  "source": "Millstone AI",
+  "report_url": "https://millstone.ai/example/llm-inference-rtx-pro-6000",
+  "methodology": "Single-node inference benchmark. Prompt cache disabled; no speculative decoding reported.",
+  "benchmarks": [
+    {
+      "id": "ms-rtx6k-qwen-vllm-nvfp4-32k-c4",
+      "model": "Qwen3.6-35B-A3B-MTP",
+      "engine": "vLLM OpenAI",
+      "precision": "NVFP4",
+      "gpu": "NVIDIA RTX PRO 6000 Blackwell 96GB",
+      "gpu_count": 1,
+      "vram_gb": 96,
+      "context_tokens": 32768,
+      "concurrency": 4,
+      "prompt_tokens": 32000,
+      "output_tokens": 1024,
+      "ttft_ms": 820,
+      "decode_tok_s": 405,
+      "throughput_tok_s": 410,
+      "capacity_users_32k": 8,
+      "methodology_notes": "Prompt cache disabled; no speculative decoding reported."
+    },
+    {
+      "id": "ms-rtx6k-nemotron-sglang-fp8-32k-c8",
+      "model": "Nemotron-3-Super-120B-A12B",
+      "engine": "SGLang",
+      "precision": "FP8",
+      "gpu": "RTX PRO 6000",
+      "gpu_count": 1,
+      "vram_gb": 96,
+      "context_tokens": 32768,
+      "concurrency": 8,
+      "prompt_tokens": 32000,
+      "output_tokens": 1024,
+      "ttft_ms": 1450,
+      "decode_tok_s": 185,
+      "throughput_tok_s": 190,
+      "methodology_notes": "No prompt cache. No speculative decoding."
+    },
+    {
+      "id": "ms-5090-gptoss-llamacpp-q4-32k-c1",
+      "model": "gpt-oss-20b",
+      "engine": "llamacpp",
+      "quantization": "GGUF Q4_K_M",
+      "gpu": "RTX 5090 32GB",
+      "gpu_count": 1,
+      "vram_gb": 32,
+      "context_tokens": 32768,
+      "concurrency": 1,
+      "prompt_tokens": 16000,
+      "output_tokens": 512,
+      "ttft_ms": 590,
+      "decode_tok_s": 155,
+      "throughput_tok_s": 155,
+      "methodology_notes": "llama.cpp server benchmark."
+    }
+  ]
+}
+

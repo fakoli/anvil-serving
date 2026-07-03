@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+  <head><title>Millstone sample</title></head>
+  <body>
+    <h1>Millstone AI LLM inference sample</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Model</th>
+          <th>Engine</th>
+          <th>Precision</th>
+          <th>GPU</th>
+          <th>GPU Count</th>
+          <th>VRAM GB</th>
+          <th>Context Tokens</th>
+          <th>Concurrency</th>
+          <th>TTFT ms</th>
+          <th>Decode tok/s</th>
+          <th>Throughput tok/s</th>
+          <th>Methodology Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>html-qwen</td>
+          <td>Qwen3.6-35B-A3B-MTP</td>
+          <td>vLLM</td>
+          <td>NVFP4</td>
+          <td>RTX Pro 6000</td>
+          <td>1</td>
+          <td>96</td>
+          <td>32768</td>
+          <td>4</td>
+          <td>820</td>
+          <td>405</td>
+          <td>410</td>
+          <td>Prompt cache disabled; no speculative decoding.</td>
+        </tr>
+        <tr>
+          <td>html-gemma</td>
+          <td>Gemma-4-31B</td>
+          <td>TensorRT LLM</td>
+          <td>MXFP4</td>
+          <td>NVIDIA RTX PRO 6000 Blackwell 96GB</td>
+          <td>1</td>
+          <td>96</td>
+          <td>32768</td>
+          <td>2</td>
+          <td>700</td>
+          <td>330</td>
+          <td>335</td>
+          <td>Static prompt set.</td>
+        </tr>
+        <tr>
+          <td>html-gptoss</td>
+          <td>gpt-oss-20b</td>
+          <td>llama.cpp</td>
+          <td>GGUF Q5_K_M</td>
+          <td>RTX 5090</td>
+          <td>1</td>
+          <td>32</td>
+          <td>32768</td>
+          <td>1</td>
+          <td>620</td>
+          <td>170</td>
+          <td>170</td>
+          <td>llama.cpp server benchmark.</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>
+

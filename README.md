@@ -408,6 +408,7 @@ anvil-serving models sync  # scan your HF caches -> card catalog + INDEX (GGUF v
 anvil-serving deploy       # render a tuned SGLang docker-compose for YOUR gpu + model
 anvil-serving preflight    # correctness gate against any OpenAI-compatible endpoint (sm_120-aware)
 anvil-serving benchmark    # replay YOUR measured request distribution (TTFT, throughput, prefix-cache hit)
+anvil-serving external-bench # import and compare external inference benchmark priors
 anvil-serving multiplexer  # single-resident model swap on one GPU (multi-engine: SGLang + vLLM)
 ```
 
@@ -434,6 +435,14 @@ anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model local-speci
 philosophy applied to a single endpoint. `multiplexer` is the **Backend seam** that already
 exists: it manages the single-resident fast/heavy swap pair on one GPU behind one interface.
 (`score` and `cache-prune` are additional substrate helpers.)
+
+### External benchmark priors
+
+`anvil-serving external-bench` imports, stores, reports, and compares external LLM inference
+benchmarks against local Anvil benchmark runs. External rows are advisory performance priors for
+capacity planning and candidate ranking; they never replace Anvil's local work-class evals or
+quality-profile gates. The first supported source is Millstone AI snapshots, including RTX PRO
+6000 Blackwell rows. See [`docs/EXTERNAL-BENCHMARKS.md`](docs/EXTERNAL-BENCHMARKS.md).
 
 ### What's baked in (the knowledge, not just code)
 
@@ -541,6 +550,7 @@ What shipped, by milestone:
 | Bring up + on-demand model swap on one GPU | `multiplexer` | exists |
 | Correctness gate | `preflight` | exists |
 | Throughput / capacity measurement | `benchmark` | exists |
+| External benchmark priors | `external-bench` | exists |
 | Per-work-class quality measurement | shadow-eval harness | built + generalized |
 | Front door + intent-resolve + route + verify + fallback | `router` module | **shipped** |
 
@@ -558,6 +568,8 @@ What shipped, by milestone:
 - **Serving reference:** [`docs/MODEL-SETTINGS-EXAMPLE.md`](docs/MODEL-SETTINGS-EXAMPLE.md)
   (thinking-by-default model config and sampling) ·
   [`docs/SERVES-AND-EVAL.md`](docs/SERVES-AND-EVAL.md) (serve lifecycle + eval entry point)
+- **External benchmark priors:** [`docs/EXTERNAL-BENCHMARKS.md`](docs/EXTERNAL-BENCHMARKS.md)
+  (Millstone snapshot import/fetch, reports, exports, and local comparison)
 - **Architecture decisions:** [`docs/adr/`](docs/adr/) — one ADR per significant design choice
 
 MIT licensed.

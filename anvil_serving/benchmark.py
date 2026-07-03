@@ -177,6 +177,8 @@ def main():
                          "models (Qwen3.x, GLM) emit CONTENT instead of spending the whole max_tokens "
                          "budget on hidden reasoning and reporting a FALSE 0 tok/s (TTFT==E2E). NOTE: "
                          "gpt-oss-style models IGNORE this kwarg (they gate reasoning via 'reasoning effort').")
+    ap.add_argument("--json-out", default=None,
+                    help="write a machine-readable JSON summary for external-bench compare")
     a = ap.parse_args()
 
     # Resolve the serve's context window: explicit flag wins; else best-effort probe /v1/models.
@@ -213,12 +215,42 @@ def main():
     print(f"TTFT  p50/p95:    {pctile(ttfts,50):.2f}s / {pctile(ttfts,95):.2f}s")
     print(f"E2E   p50/p95:    {pctile(e2es,50):.2f}s / {pctile(e2es,95):.2f}s")
     print(f"throughput:       {out_tot/wall:.0f} output tok/s (aggregate)")
+    summary = {
+        "schema": "anvil-serving.benchmark/v1",
+        "run_id": time.strftime("benchmark-%Y%m%dT%H%M%SZ", time.gmtime(t0)),
+        "base_url": a.base_url,
+        "model": a.model,
+        "requests": n,
+        "completed": len(results),
+        "concurrency": conc,
+        "context_tokens": a.ctx_tokens or None,
+        "max_context_tokens": max_model_len,
+        "max_tokens": a.max_tokens,
+        "serve_flags": {
+            "shared_prefix_burst": bool(a.burst),
+            "no_thinking": bool(a.no_thinking),
+        },
+        "metrics": {
+            "ttft_p50_ms": pctile(ttfts, 50) * 1000.0,
+            "ttft_p95_ms": pctile(ttfts, 95) * 1000.0,
+            "e2e_p50_ms": pctile(e2es, 50) * 1000.0,
+            "e2e_p95_ms": pctile(e2es, 95) * 1000.0,
+            "throughput_tok_s": (out_tot / wall) if wall else 0.0,
+            "output_tokens": out_tot,
+            "prefix_cache_hit_avg": statistics.mean(cfs) if cfs else None,
+        },
+    }
     if cfs:
         print(f"prefix-cache hit: {statistics.mean(cfs)*100:.1f}% avg cached prompt tokens (KEY KPI)")
     else:
         print("prefix-cache hit: endpoint did not return prompt_tokens_details.cached_tokens")
     print("-"*60)
     print("Tip: run once cold, then immediately again — TTFT should drop sharply on the 2nd run if prefix cache works.")
+    if a.json_out:
+        with open(a.json_out, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2, sort_keys=True)
+            f.write("\n")
+        print("wrote JSON summary: " + a.json_out)
 
 if __name__ == "__main__":
     main()

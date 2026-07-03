@@ -73,6 +73,7 @@ See [Model Settings Example](MODEL-SETTINGS-EXAMPLE.md) for a full annotated con
 | [How it works](QUALITY-GATED-ROUTER.md) | Full architecture — intents, tiers, quality gate, verify-and-fallback |
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Annotated config file with all options |
 | [Serves & eval](SERVES-AND-EVAL.md) | Managing model serves + running evals |
+| [External benchmarks](EXTERNAL-BENCHMARKS.md) | Millstone import/fetch, reports, exports, and local benchmark comparisons |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Plugin spec for the OpenClaw gateway |
 | [OpenClaw live validation](OPENCLAW-LIVE-VALIDATION.md) | Validation runbook for OpenClaw |
 | [Cost model](PLAN-advise-and-defer.md) | advise-and-defer plan — local-only default, opt-in metered cloud |
