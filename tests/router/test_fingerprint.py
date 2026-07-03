@@ -300,16 +300,19 @@ def test_mode_changes_fingerprint():
     )
 
 
-def test_mode_can_ride_on_the_spec_itself():
-    """A dict spec carrying a ``mode`` key resolves it under the canonical key (the
-    IDENTITY_FIELDS entry), so a mode-bearing spec and the same spec with the mode
-    threaded via the param agree; the explicit param wins over a spec-carried mode."""
+def test_mode_on_the_spec_is_ignored_keeping_no_churn_unconditional():
+    """Mode is threaded ONLY as a keyword; a ``mode`` key carried on the spec is
+    deliberately NOT resolved (it is absent from IDENTITY_FIELDS). This keeps the
+    no-churn invariant UNCONDITIONAL — a mode-less call hashes identically no matter
+    what keys the spec carries — closing the footgun where a serialized-tier dict
+    with a stray ``mode`` key would silently change a mode-less digest."""
     base = {"id": "t", "model": "m", "base_url": "http://x", "dialect": "openai"}
-    assert identity(dict(base, mode="flexibility"))["mode"] == "flexibility"
-    assert serve_fingerprint(dict(base, mode="flexibility")) == serve_fingerprint(
-        base, mode="flexibility"
-    )
-    # The explicit param overrides a mode carried on the spec.
+    # A mode key on the spec does NOT enter the identity...
+    assert "mode" not in identity(dict(base, mode="flexibility"))
+    # ...so a mode-less call is byte-identical whether or not the spec carries a mode.
+    assert serve_fingerprint(dict(base, mode="flexibility")) == serve_fingerprint(base)
+    # Only the explicit keyword sets the mode.
+    assert identity(base, mode="flexibility")["mode"] == "flexibility"
     assert serve_fingerprint(dict(base, mode="agentic"), mode="flexibility") == (
         serve_fingerprint(base, mode="flexibility")
     )

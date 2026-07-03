@@ -221,6 +221,23 @@ def test_calibrate_wires_run_live_and_prints_promote(tmp_path, monkeypatch, caps
     assert "1 measured row(s)" in printed
 
 
+def test_calibrate_rejects_missing_out_dir_before_running_batch(tmp_path, monkeypatch, capsys):
+    """A missing --out directory is rejected BEFORE the expensive live batch, not as
+    a late write error after real tiers were dialed. run_live must never be called."""
+    _clear_mode_env(monkeypatch)
+    called = []
+    monkeypatch.setattr(calibrate_mod, "run_live", lambda **k: called.append(k))
+    rc = calibrate_mod.main([
+        "--config", _write_config(tmp_path),
+        "--out", str(tmp_path / "nope" / "candidate.json"),  # 'nope' dir does not exist
+        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
+        "--i-understand-this-calls-real-tiers",
+    ])
+    assert rc == 2
+    assert called == []  # the batch never ran — no measurement work lost
+    assert "output directory does not exist" in capsys.readouterr().err
+
+
 def test_calibrate_dispatches_through_cli(tmp_path, monkeypatch):
     """The verb is wired into the top-level CLI dispatch (`anvil-serving calibrate`)."""
     _clear_mode_env(monkeypatch)

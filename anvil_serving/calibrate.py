@@ -233,6 +233,15 @@ def main(argv: Optional[List[str]] = None) -> int:
               file=sys.stderr, flush=True)
 
     out_path = Path(args.out)
+    # Pre-flight the output dir BEFORE the expensive live batch — otherwise a bad
+    # --out surfaces only as a late write error, after the real tier generations +
+    # judge grades have already run (and their measurement work is lost). (T006 critic.)
+    if not out_path.parent.is_dir():
+        print(
+            f"anvil-serving calibrate: output directory does not exist: {out_path.parent}",
+            file=sys.stderr,
+        )
+        return 2
     # Pass ALL configured tiers: run_live structurally filters out cloud/Claude
     # tiers (a Claude judge must never grade a Claude tier — no self-verification)
     # and measures only the LOCAL ones, requiring each to be covered by --endpoint.
