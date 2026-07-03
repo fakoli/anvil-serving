@@ -173,3 +173,77 @@ def test_concurrent_reads_while_appending():
 
     assert read_errors == [], f"reader errors during concurrent appends: {read_errors}"
     assert len(log) == N_WRITERS * M_PER_WRITER
+
+
+# ── active serving mode threads onto the record (flexibility:T013) ─────────────
+
+def test_decision_record_defaults_mode_none():
+    """A record built without a mode reads mode=None — existing records unchanged."""
+    rec = _record()
+    assert rec.mode is None
+    # Frozen + hashable is preserved with the new optional field.
+    assert hash(rec) == hash(rec)
+
+
+def test_decision_record_carries_mode():
+    """The active serving mode is stamped onto the record when provided."""
+    rec = DecisionRecord(
+        work_class="bounded-edit",
+        requested_tiers=("fast-local",),
+        attempts=(_attempt("fast-local"),),
+        served_tier="fast-local",
+        total_prompt_tokens=10,
+        total_completion_tokens=5,
+        fell_back=False,
+        mode="flexibility",
+    )
+    assert rec.mode == "flexibility"
+    assert hash(rec) == hash(rec)
+
+
+def test_mode_threads_through_route_with_fallback_into_the_log():
+    """End-to-end: route_with_fallback stamps the active mode onto the emitted
+    DecisionRecord (and thus the DecisionLog); None leaves it unchanged."""
+    from anvil_serving.router.backends import StaticBackend
+    from anvil_serving.router.config import RouterConfig, Tier
+    from anvil_serving.router.fallback import route_with_fallback
+    from anvil_serving.router.internal import InternalRequest, Message
+
+    def _tier(tier_id: str) -> Tier:
+        return Tier(
+            id=tier_id,
+            base_url="https://example.test",
+            dialect="openai",
+            context_limit=32_000,
+            privacy="local",
+            tool_support=True,
+            auth_env="ANVIL_TEST_KEY",
+        )
+
+    config = RouterConfig(tiers=(_tier("fast-local"),), presets={}, mapping_version="test")
+
+    class _Decision:
+        tiers = ("fast-local",)
+        work_class = "chat"
+
+    request = InternalRequest(
+        model="anvil/chat",
+        system="You are helpful",
+        messages=[Message("user", "hello there, please answer")],
+    )
+    passing = StaticBackend(["Here", " is", " the", " answer"])
+
+    # mode threaded -> stamped onto the record + the logged copy.
+    log = DecisionLog()
+    result = route_with_fallback(
+        request, _Decision(), config, lambda tier: passing, log=log, mode="flexibility"
+    )
+    assert result.served_tier == "fast-local"
+    assert result.record.mode == "flexibility"
+    assert log.last.mode == "flexibility"
+
+    # mode omitted -> record identical to pre-T013 (mode is None).
+    result_none = route_with_fallback(
+        request, _Decision(), config, lambda tier: passing
+    )
+    assert result_none.record.mode is None

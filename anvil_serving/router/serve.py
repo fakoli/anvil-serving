@@ -357,8 +357,16 @@ class RoutingBackend:
         config: RouterConfig,
         backends: Mapping[str, Backend],
         profile: ProfileStore,
+        *,
+        mode: Optional[str] = None,
     ):
         self._config = config
+        # Active serving mode (ADR-0011 / flexibility:T013): stamped onto every
+        # DecisionRecord this backend emits (via route_with_fallback), so the SAME
+        # model measured under the agentic vs flexibility config is a DISTINCT
+        # measured identity. None (a --config boot with no mode) leaves records
+        # exactly as pre-T013.
+        self._mode = mode
         # flexibility:T009 (ADR-0010 Phase 3) — apply each tier's optional per-tier
         # concurrency cap. A tier that sets ``max_concurrency=N`` has its backend
         # wrapped in a _ConcurrencyLimitedBackend(N) so at most N of ITS requests
@@ -617,6 +625,7 @@ class RoutingBackend:
             breaker=self._circuit_breaker,
             verifier_timeout=5.0,
             response_view_factory=_structured_view_factory,
+            mode=self._mode,
         )
 
     def decide(self, request: InternalRequest) -> dict:
@@ -727,6 +736,7 @@ def build_server(
     env: Optional[Mapping[str, str]] = None,
     transport: Optional[Transport] = None,
     timeout: Optional[float] = 120,
+    mode: Optional[str] = None,
 ) -> ThreadingHTTPServer:
     """Load the config and build (but do NOT start) the bound front-door server.
 
@@ -754,6 +764,14 @@ def build_server(
     :class:`~anvil_serving.router.backends.MissingCredentialError` fail-fast
     stance, except auth is the server's own security boundary so it hard-fails
     instead of skipping).
+
+    **Active mode (ADR-0011 / flexibility:T013):** ``mode`` is the resolved global
+    serving mode (``agentic`` / ``flexibility``), known at boot from
+    :func:`~anvil_serving.router.modes.resolve_serve_config`. It is folded into
+    each tier's serve fingerprint (so the same model measured in a different mode
+    goes stale + is re-measured) and stamped onto every :class:`DecisionRecord`
+    this server emits. ``None`` (a ``--config`` boot, which bypasses the mode
+    resolver) preserves the pre-T013 fingerprints and records exactly.
     """
     config = load(config_path)
     server_config = load_server_config(config_path)
@@ -822,8 +840,14 @@ def build_server(
     # marked stale (nothing was invalidated), so a seed-only deployment behaves
     # identically. No model/network call: this is a deterministic config-identity
     # digest, not a serve probe.
+    # flexibility:T013 (ADR-0011 Phase 2) — fold the active serving MODE into each
+    # tier's serve fingerprint, so the SAME model measured under the agentic vs
+    # flexibility config is a DISTINCT measured identity: a row measured in one mode
+    # goes stale (and is re-measured) when the tier is next served under the other.
+    # mode is None on a --config boot (the mode system is bypassed) -> the digest is
+    # byte-identical to pre-T013 and nothing extra goes stale.
     for tier in config.tiers:
-        staled = refresh_fingerprint(profile, tier.id, tier)
+        staled = refresh_fingerprint(profile, tier.id, tier, mode=mode)
         if staled:
             print(
                 f"[anvil-serving] tier {tier.id!r} serve identity changed since "
@@ -833,7 +857,7 @@ def build_server(
                 flush=True,
             )
 
-    routing = RoutingBackend(config, backends, profile)
+    routing = RoutingBackend(config, backends, profile, mode=mode)
 
     # Advertise the canonical intent vocabulary on GET /v1/models (T004): the
     # presets ARE the "models" a harness model picker addresses.
@@ -848,19 +872,29 @@ def build_server(
     return httpd
 
 
-def serve(config_path: str, *, host: str = "127.0.0.1", port: int = 8000) -> None:
+def serve(
+    config_path: str,
+    *,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    mode: Optional[str] = None,
+) -> None:
     """Build and run the config-bound front door until interrupted (CLI entry).
 
     Loads ``config_path``, binds a backend per tier, composes intent+policy
     selection, and serves both wire dialects with SSE streaming. Blocks in
     ``serve_forever`` until ``KeyboardInterrupt``; tears the server down cleanly.
+
+    ``mode`` (ADR-0011 / flexibility:T013) is the resolved active serving mode,
+    threaded into :func:`build_server` so it enters the serve fingerprint +
+    decision log; ``None`` (a ``--config`` boot) preserves pre-T013 behaviour.
     """
     try:
         _authed = bool(load_server_config(config_path).auth_env)
     except ConfigError:
         _authed = False  # build_server re-raises with the full context below
     _warn_if_public_bind(host, authed=_authed)
-    httpd = build_server(config_path, host=host, port=port)
+    httpd = build_server(config_path, host=host, port=port, mode=mode)
     actual_host, actual_port = httpd.server_address[:2]
     tiers = ", ".join(httpd.anvil_tiers) or "(none)"  # type: ignore[attr-defined]
     print(
@@ -971,7 +1005,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 file=sys.stderr,
                 flush=True,
             )
-        serve(config_path, host=args.host, port=args.port)
+        # Thread the resolved mode (None for a --config boot) into the serve stack
+        # so it enters the serve fingerprint + decision log (flexibility:T013).
+        serve(config_path, host=args.host, port=args.port, mode=mode)
     except ConfigError as e:
         print(f"anvil-serving serve: {e}", file=sys.stderr)
         return 2

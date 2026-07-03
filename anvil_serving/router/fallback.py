@@ -352,6 +352,7 @@ def route_with_fallback(
     response_view_factory: Optional[Callable[[Sequence[str], InternalRequest], object]] = None,
     verifier_timeout: Optional[float] = None,
     max_buffer_bytes: Optional[int] = _DEFAULT_MAX_BUFFER_BYTES,
+    mode: Optional[str] = None,
 ) -> FallbackResult:
     """Walk ``decision.tiers`` in order, serving the first tier that verifies.
 
@@ -389,6 +390,10 @@ def route_with_fallback(
     ``max_attempts``) or a session-scoped :class:`CircuitBreaker` (thread-safe,
     with cooldown + half-open probe/self-heal). Pass a :class:`CircuitBreaker`
     from :class:`~anvil_serving.router.serve.RoutingBackend` for production use.
+
+    ``mode`` (ADR-0011 / flexibility:T013) is the active serving mode stamped onto
+    the emitted :class:`DecisionRecord` (``agentic`` / ``flexibility`` / ``None``);
+    ``None`` leaves the record identical to pre-T013.
 
     Returns a :class:`FallbackResult`; appends the :class:`DecisionRecord` to
     ``log`` when one is given. Never raises for a backend fault or an empty
@@ -487,6 +492,9 @@ def route_with_fallback(
             total_completion_tokens=total_completion,
             fell_back=any(a.outcome in ("fallback", "error", "overflow") for a in attempts),
             cost_usd=cost_usd,
+            # Active serving mode (ADR-0011 / flexibility:T013); None (a --config
+            # boot with no mode) leaves the record identical to pre-T013.
+            mode=mode,
         )
         # Seam isolation: a raising observer/log must not crash a served response.
         if log is not None:
