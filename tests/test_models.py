@@ -155,6 +155,18 @@ def test_pull_missing_docker_binary_is_clean_127(capsys):
     assert "docker" in capsys.readouterr().err.lower()
 
 
+def test_pull_rejects_path_like_volume_that_would_reintroduce_9p(capsys):
+    """A --volume that looks like a host PATH is rejected before shelling out — a
+    bind mount would reintroduce the exact 9P tax this command exists to avoid
+    (gotcha #15). The named-volume default is the whole point."""
+    called = []
+    for bad in ("C:/models", "/mnt/d/models", "models\\dir"):
+        rc = models.run_pull("some/repo", volume=bad, _run=lambda *a, **k: called.append(1))
+        assert rc == 2
+    assert called == []  # never shells out to docker for a path-like volume
+    assert "9p" in capsys.readouterr().err.lower()
+
+
 def test_pull_token_env_forwards_value_into_child_env_only():
     seen = {}
 
