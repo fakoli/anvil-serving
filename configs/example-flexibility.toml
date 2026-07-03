@@ -1,0 +1,70 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# FLEXIBILITY MODE — point anvil at ANY external OpenAI-compatible engine
+# (ADR-0010 / flexibility:T010)
+#
+# Two ways to run anvil's local tiers:
+#
+#   • BATCH-SERVING (agentic) config — configs/example.toml: anvil right-sizes and
+#     serves the local models itself (deploy/serves/multiplexer), tuned for
+#     prefix-cache reuse across an agent's many turns. That is the default.
+#
+#   • FLEXIBILITY MODE (this file): anvil serves NOTHING. It relays to an engine
+#     YOU already run — vLLM, llama.cpp, SGLang, TGI, LM Studio, Ollama, anything
+#     that speaks the OpenAI /v1/chat/completions wire. The engine is a black box:
+#     anvil neither knows nor cares how it's quantized, batched, or cached
+#     (prefix-cache reuse is the engine's concern, not anvil's — cache-irrelevant).
+#
+# There is NO new backend class for this. A privacy="local" tier is served by the
+# EXISTING RelayBackend (a urllib relay to base_url); flexibility mode is entirely
+# a matter of what you put in the config. The `engine`/`quantization` tags are
+# advisory metadata (they document what's behind the tier); the routing/relay
+# path is identical to any other local tier.
+#
+# 127.0.0.1, never localhost (Windows IPv6 stall — CLAUDE.md gotcha #1).
+# auth_env names an ENV VAR; the secret itself is NEVER stored here.
+# ─────────────────────────────────────────────────────────────────────────────
+claude_logs   = "~/.claude/projects"          # where `profile` reads usage
+hf_extra_roots = []                            # extra HF cache hub dirs to scan for `models sync`
+model_dirs     = []                            # plain (non-HF-cache) model folders
+gpu_index      = 0                             # GPU to pin the serve to
+served_model_name = "local-specialist"
+
+# ── Router tier topology (harness-router; see docs/QUALITY-GATED-ROUTER.md §4/§6) ──
+[router]
+mapping_version = "2026-07-03.0"
+
+# ── SPECIALIZED-ENGINE TIER — an external gpt-oss-120b served by YOUR OWN vLLM ──
+# This is a plain privacy="local" tier: build_backend_for_tier() constructs a
+# RelayBackend for it (no CloudBackend, no new class). Everything below the
+# required keys is a flexibility-mode knob.
+[[router.tiers]]
+id            = "specialist-vllm"
+base_url      = "http://127.0.0.1:8001/v1"    # an EXTERNAL vLLM you launched yourself (OpenAI-compatible)
+model         = "gpt-oss-120b"                 # REQUIRED: the serve's --served-model-name (else the preset token is forwarded and 404s)
+dialect       = "openai"
+context_limit = 131072                         # gpt-oss-120b: 128k context
+privacy       = "local"                        # -> served by the EXISTING RelayBackend (never a new backend)
+tool_support  = true
+auth_env      = "ANVIL_SPECIALIST_KEY"         # optional for a local relay; names an ENV VAR, never a secret
+
+# ── Flexibility-mode metadata + tuning (all additive; flexibility:T007) ──
+engine        = "vllm"                          # advisory: which engine is behind this tier ("vllm"/"llamacpp"/"sglang"/…)
+quantization  = "mxfp4"                          # advisory: gpt-oss-120b ships MXFP4 weights
+timeout       = 90                               # per-tier transport timeout (s); OVERRIDES [router].relay_timeout.
+                                                 # A big high-reasoning model is slow to first byte — don't fail it
+                                                 # at the 20s local default (that's tuned for a snappy small serve).
+# extra_body merges verbatim into the UPSTREAM request body (genericity:T003).
+# gpt-oss reasoning knob: dial the harmony reasoning effort up for a planning tier.
+# (For a thinking-by-default model that returns empty content on a small budget,
+# this is also where chat_template_kwargs.enable_thinking=false would go —
+# CLAUDE.md gotcha #6/#9.)
+extra_body    = { reasoning_effort = "high" }
+
+# preset -> ordered candidate tier pool (filter then rank).
+# One specialized engine handles every work-class here; add more tiers to split.
+[router.presets]
+chat         = ["specialist-vllm"]
+quick-edit   = ["specialist-vllm"]
+review       = ["specialist-vllm"]
+planning     = ["specialist-vllm"]
+long-context = ["specialist-vllm"]

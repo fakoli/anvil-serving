@@ -253,6 +253,62 @@ def build_backends(
 
 
 # --------------------------------------------------------------------------- #
+# Per-tier concurrency cap (flexibility:T009 / ADR-0010 Phase 3)
+# --------------------------------------------------------------------------- #
+class _ConcurrencyLimitedBackend:
+    """Bound the number of in-flight requests to ONE tier (flexibility:T009).
+
+    Wraps that tier's :class:`~anvil_serving.router.internal.Backend` with a
+    per-tier :class:`threading.BoundedSemaphore(max_concurrency)`. A slot is held
+    for the FULL lifetime of each ``generate()`` stream — acquired when the
+    returned iterator is first advanced, released when it is exhausted or closed
+    (client disconnect, or the fallback buffer completing). Excess concurrent
+    requests to THIS tier BLOCK on ``acquire`` until a slot frees, serialising
+    them behind the cap rather than rejecting them — the right behaviour for a
+    low-throughput specialized-engine tier that must not be overrun (ADR-0010
+    Phase 3), distinct from the front door's process-global ``acquire(blocking=
+    False)`` -> 503 admission limiter.
+
+    Only a tier whose config sets ``max_concurrency`` is wrapped; every other
+    tier keeps its bare backend, so this cap is strictly PER-TIER and never
+    touches the process-global front-door limiter (``front_door.py``).
+
+    Implements the :class:`~anvil_serving.router.internal.Backend` protocol
+    (``generate``) and transparently delegates the optional structured-result
+    side channel (``get_last_structured``) to the wrapped backend so the dialect
+    layer still renders the real ``finish_reason`` / ``tool_calls`` (#42 / #52).
+    """
+
+    def __init__(self, inner: Backend, max_concurrency: int) -> None:
+        self._inner = inner
+        self._sem = threading.BoundedSemaphore(max_concurrency)
+        self.max_concurrency = max_concurrency
+
+    def generate(self, request: InternalRequest) -> Iterator[str]:
+        # Acquire/release INSIDE the generator so they are strictly paired with
+        # the stream's lifecycle: the slot is taken on the first advance and
+        # always returned on exhaustion OR on close (GeneratorExit runs the
+        # finally). A generator that is created but never advanced nor closed
+        # therefore never acquires a slot — no leak, no under-count. Both dispatch
+        # paths consume it immediately: the allow path streams it through the
+        # front door (which also closes it on disconnect), and the fallback path
+        # buffers it via _cap_drain — so a slot is held for exactly the tier's
+        # real in-flight window.
+        def _guarded() -> Iterator[str]:
+            self._sem.acquire()
+            try:
+                yield from self._inner.generate(request)
+            finally:
+                self._sem.release()
+
+        return _guarded()
+
+    def get_last_structured(self) -> Optional[StructuredResult]:
+        fn = getattr(self._inner, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+
+# --------------------------------------------------------------------------- #
 # Routing composition (intent T003 + policy T005)
 # --------------------------------------------------------------------------- #
 class RoutingBackend:
@@ -296,7 +352,15 @@ class RoutingBackend:
         profile: ProfileStore,
     ):
         self._config = config
-        self._backends: Dict[str, Backend] = dict(backends)
+        # flexibility:T009 (ADR-0010 Phase 3) — apply each tier's optional per-tier
+        # concurrency cap. A tier that sets ``max_concurrency=N`` has its backend
+        # wrapped in a _ConcurrencyLimitedBackend(N) so at most N of ITS requests
+        # are in flight at once; every other tier keeps its bare backend, so the
+        # cap is strictly per-tier and the process-global front-door limiter is
+        # untouched. Absent on every existing config -> this is a no-op.
+        self._backends: Dict[str, Backend] = self._apply_concurrency_caps(
+            config, dict(backends)
+        )
         self._profile = profile
         self._decision_log = DecisionLog()
         # Session-scoped circuit breaker: owned here, shared across all requests,
@@ -320,6 +384,28 @@ class RoutingBackend:
         self._local_tier_ids = frozenset(
             t.id for t in config.tiers if t.privacy == PRIVACY_LOCAL
         )
+
+    @staticmethod
+    def _apply_concurrency_caps(
+        config: RouterConfig, backends: Dict[str, Backend]
+    ) -> Dict[str, Backend]:
+        """Wrap each tier's backend in a per-tier concurrency limiter when its
+        config sets ``max_concurrency`` (flexibility:T009 / ADR-0010 Phase 3).
+
+        A tier that does NOT set ``max_concurrency`` keeps its bare backend
+        (same instance), so the cap applies ONLY to the tier that asked for it
+        and no other tier's throughput is affected. A backend keyed by an id not
+        in the config (it would never be selected by routing anyway) is left
+        bare.
+        """
+        caps: Dict[str, Optional[int]] = {t.id: t.max_concurrency for t in config.tiers}
+        wrapped: Dict[str, Backend] = {}
+        for tier_id, backend in backends.items():
+            cap = caps.get(tier_id)
+            wrapped[tier_id] = (
+                _ConcurrencyLimitedBackend(backend, cap) if cap is not None else backend
+            )
+        return wrapped
 
     def _residency(self) -> Optional[str]:
         """The local tier that last served (or ``None``) — thread-safe read."""
