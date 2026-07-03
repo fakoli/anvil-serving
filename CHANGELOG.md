@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **External benchmark priors:** new `anvil-serving external-bench` CLI and
+  `anvil_serving.external_benchmarks` package for ingesting raw external benchmark snapshots,
+  normalizing Millstone AI rows, storing them in SQLite, exporting JSON, producing Markdown
+  reports, and comparing local Anvil benchmark JSON against advisory external rows. These rows
+  are performance priors only and do not change routing quality gates.
+
 ## [0.7.3] - 2026-07-02
 
 ### Changed
