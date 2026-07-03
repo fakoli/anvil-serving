@@ -489,13 +489,36 @@ def test_run_live_defense_in_depth_mislabeled_claude_is_refused(tmp_path, monkey
         backend_factory=lambda t: _FakeBackend(),
         judge=judge,
         now=lambda: _FIXED_NOW,
-        **_CONFIRM,
+        # endpoints must COVER the measured local tier (its id), so "liar" flows
+        # PAST the endpoints safety net and reaches the grader's defense-in-depth.
+        endpoints={"liar": "http://127.0.0.1:30001/v1"},
+        confirm_calls_real_tiers=True,
     )
 
     assert judge.calls == []  # the judge never graded the Claude-family tier
     doc = json.loads(out.read_text(encoding="utf-8"))
     assert doc["entries"] == []  # nothing measured; no crash
     assert isinstance(store, ProfileStore)
+
+
+def test_run_live_refuses_endpoints_not_covering_measured_tier(tmp_path, monkeypatch):
+    """The endpoints safety net (Copilot review): endpoints that don't cover a
+    measured local tier are refused — you can't silently dial a tier you didn't
+    confirm. The judge is never reached."""
+    _no_network(monkeypatch)
+    judge = _fake_judge()
+    with pytest.raises(pb.LiveBootstrapNotConfigured, match="does not cover"):
+        pb.run_live(
+            tiers=[_fast_local_tier(tid="fast-local")],
+            prompts={"planning": ["x"]},
+            out_path=tmp_path / "c.json",
+            backend_factory=lambda t: _FakeBackend(),
+            judge=judge,
+            now=lambda: _FIXED_NOW,
+            endpoints={"some-other-tier": "http://127.0.0.1:30001/v1"},
+            confirm_calls_real_tiers=True,
+        )
+    assert judge.calls == []
 
 
 def test_run_live_averages_multiple_prompts_and_folds_via_record_grade(monkeypatch):
