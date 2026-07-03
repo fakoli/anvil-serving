@@ -40,9 +40,15 @@ FINGERPRINT_SCHEMA = "anvil-serving.router.fingerprint/v1"
 # A spec may be a Mapping or any object with these as attributes (e.g. a
 # config.Tier); the FIRST synonym that resolves to a non-None value wins. Only
 # things that change OUTPUT QUALITY belong here — model weights/quantization, the
-# endpoint serving them, the wire dialect, the usable context window, and an
-# explicit bag of serve/sampling params. Volatile operational fields (latency,
-# pid, load) are deliberately excluded so they don't churn the profile.
+# endpoint serving them, the wire dialect, the usable context window, an explicit
+# bag of serve/sampling params, and the REASONING configuration (thinking on/off,
+# reasoning effort) carried in ``extra_body``: a thinking-ON serve and a
+# thinking-OFF serve of the same model are different quality regimes (CLAUDE.md
+# gotcha #6/#9), so they must be DISTINCT fingerprints. Volatile operational
+# fields (latency, pid, load) are deliberately excluded so they don't churn the
+# profile. A tier with NO ``extra_body`` resolves ``reasoning`` to None, which
+# :func:`identity` omits — so it hashes byte-identically to before this field
+# existed (no churn); only tiers that SET a reasoning ``extra_body`` change.
 IDENTITY_FIELDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("tier_id", ("tier_id", "id")),
     ("model", ("model", "model_id", "served_model", "model_name")),
@@ -52,6 +58,7 @@ IDENTITY_FIELDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("dialect", ("dialect",)),
     ("context_limit", ("context_limit", "max_context", "context_window")),
     ("params", ("params", "serve_params", "sampling_params")),
+    ("reasoning", ("extra_body",)),
 )
 
 
@@ -107,13 +114,22 @@ def _canonical_default(o: Any) -> Any:
     ``default=str`` alone made the "stable" digest hash-seed-dependent for a
     ``set``/``frozenset`` inside ``params`` (its str() order varies across
     processes), causing spurious cross-process staleness marks. Sets are
-    canonicalized element-wise and sorted by their serialized form; everything
-    else keeps the str() fallback.
+    canonicalized element-wise and sorted by their serialized form.
+
+    A non-``dict`` :class:`~collections.abc.Mapping` (e.g. the ``MappingProxyType``
+    a :class:`~anvil_serving.router.config.Tier` stores its ``extra_body`` /
+    reasoning config in) is converted to a plain ``dict`` so the encoder
+    re-serializes it with ``sort_keys`` — it hashes identically to an equivalent
+    inline dict and is insensitive to key insertion order, rather than falling to
+    an order-dependent ``mappingproxy(...)`` repr. Everything else keeps the
+    str() fallback.
     """
     if isinstance(o, (set, frozenset)):
         return sorted(
             (json.dumps(e, sort_keys=True, default=_canonical_default) for e in o)
         )
+    if isinstance(o, Mapping):
+        return dict(o)
     return str(o)
 
 
