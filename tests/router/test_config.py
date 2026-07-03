@@ -28,6 +28,7 @@ from anvil_serving.router.config import (
 _CONFIGS = pathlib.Path(__file__).resolve().parents[2] / "configs"
 EXAMPLE = _CONFIGS / "example.toml"
 EXAMPLE_WITH_CLOUD = _CONFIGS / "example-with-cloud.toml"
+EXAMPLE_FLEXIBILITY = _CONFIGS / "example-flexibility.toml"
 
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
@@ -720,8 +721,12 @@ def test_t007_fields_round_trip(tmp_path):
 def test_t007_shipped_configs_parse_with_none_fields():
     """AC1 — every shipped example config parses unchanged and sets none of the
     new fields (they read as None on every tier): the change is a no-op for
-    existing configs."""
+    existing configs. example-flexibility.toml is the one deliberate exception —
+    it is the worked example that USES these fields (flexibility:T010) — so it is
+    excluded here and covered by its own test below."""
     for cfg_path in sorted(_CONFIGS.glob("*.toml")):
+        if cfg_path.name == "example-flexibility.toml":
+            continue
         cfg = load(str(cfg_path))
         for t in cfg.tiers:
             assert t.engine is None, f"{cfg_path.name}: {t.id!r} engine"
@@ -838,6 +843,50 @@ def test_t009_max_concurrency_string_raises(tmp_path):
     body = _BASE_TIER + 'max_concurrency = "two"\n'
     with pytest.raises(ConfigError):
         load(_write_toml(tmp_path, body))
+
+
+# ── flexibility:T010 — example-flexibility.toml (specialized-engine tier) ────
+#
+# ADR-0010: a config that points anvil at an EXTERNAL OpenAI-compatible engine
+# (gpt-oss-120b via your own vLLM). The specialized tier is a plain
+# privacy="local" tier — served by the EXISTING RelayBackend, no new backend
+# class — that additionally carries flexibility-mode knobs (engine tag, per-tier
+# timeout override, extra_body reasoning knobs).
+def test_flexibility_config_parses_with_engine_and_timeout():
+    """AC — configs/example-flexibility.toml parses and the specialized tier has
+    its `engine` and `timeout` fields populated (the flexibility-mode knobs)."""
+    cfg = load(str(EXAMPLE_FLEXIBILITY))
+    assert isinstance(cfg, RouterConfig)
+    tier = cfg.tier("specialist-vllm")
+    # The two fields the task pins explicitly.
+    assert tier.engine == "vllm"
+    assert tier.timeout == pytest.approx(90.0)
+    assert isinstance(tier.timeout, float)
+    # It's a local specialized engine: OpenAI dialect, 127.0.0.1 (never localhost),
+    # a served-model-name set, and the reasoning knob forwarded via extra_body.
+    assert tier.privacy == "local"
+    assert tier.dialect == "openai"
+    assert tier.model == "gpt-oss-120b"
+    assert "127.0.0.1" in tier.base_url and "localhost" not in tier.base_url
+    assert tier.extra_body == {"reasoning_effort": "high"}
+
+
+def test_flexibility_specialized_tier_builds_a_relay_backend(monkeypatch):
+    """AC — the specialized privacy="local" tier is selected by
+    build_backend_for_tier as a RelayBackend (NOT a CloudBackend, and NOT any new
+    backend class). Construction is network-free; `model` is set so no discovery
+    probe runs."""
+    from anvil_serving.router.backends.cloud import CloudBackend
+    from anvil_serving.router.backends.relay import RelayBackend
+    from anvil_serving.router.serve import build_backend_for_tier
+
+    monkeypatch.delenv("ANVIL_SPECIALIST_KEY", raising=False)  # auth optional for a local relay
+    tier = load(str(EXAMPLE_FLEXIBILITY)).tier("specialist-vllm")
+    backend = build_backend_for_tier(tier)
+    assert isinstance(backend, RelayBackend)
+    # RelayBackend subclasses CloudBackend; assert it's the relay, not a raw cloud tier.
+    assert type(backend) is RelayBackend
+    assert not (type(backend) is CloudBackend)
 
 
 # ── router-service:T001 — top-level [server] table (front-door auth) ────────
