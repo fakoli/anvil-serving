@@ -16,10 +16,15 @@ Two modes, sharply separated:
   the ``aggregate.py`` rubric to compute a per-``(tier, work_class)`` quality
   score + sample count, writes a portable, byte-stable ``profile.json``, and can
   build a populated ``ProfileStore``. No network, no clock, binds nothing.
-* ``--live`` / :func:`run_live` — the INTEGRATION step that would call the REAL
-  serving tiers to grade fresh outputs. It is GUARDED and **never run by the unit
-  test / CI** (it raises immediately rather than touching a tier); it is the
-  documented hand-off to live calibration (T016). See :func:`run_live`.
+* ``--live`` / :func:`run_live` — the GUARDED offline batch that measures LOCAL
+  tiers through their REAL backends (so ``Tier.extra_body`` is applied exactly as
+  in prod), grades the fresh outputs with the INDEPENDENT Agent-SDK grader (T004),
+  and writes a fingerprint-tagged candidate ``profile.json`` the operator reviews
+  and promotes. It is GUARDED (refuses without real ``endpoints`` +
+  ``confirm_calls_real_tiers``), LOCAL-tier-only (a cloud/Claude tier is refused —
+  a Claude judge must never self-verify), and its real backend/judge seams are
+  INJECTABLE, so the unit tests exercise it with fakes and CI makes ZERO
+  network/subprocess calls. See :func:`run_live`.
 
 How the eval maps to ``(tier, work_class)`` (read from the real fixture shapes):
 
@@ -55,7 +60,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .classify import WORK_CLASSES
 from .profile_store import ProfileEntry, ProfileStore, default_profile_table
@@ -427,37 +432,175 @@ def load_profile_store(profile_path: Path) -> ProfileStore:
     return store_from_profile(profile)
 
 
-# --- Live integration path (NOT run by CI) --------------------------------------
+# --- Live path: guarded offline calibration batch (fakes-injected in CI) --------
 
 
 class LiveBootstrapNotConfigured(RuntimeError):
     """Raised by :func:`run_live` — the live path is a guarded integration step."""
 
 
+#: A tier's privacy label for a cloud serve (mirrors ``config.PRIVACY_CLOUD``,
+#: referenced by literal so this module need not import ``config`` just to filter).
+_CLOUD_PRIVACY = "cloud"
+
+#: Default per-request output budget for the live batch. ``>= 4096`` tokens keeps
+#: a thinking-by-default local model from spending its whole budget reasoning and
+#: returning empty content (CLAUDE.md gotcha #6/#9); a tier that pins thinking off
+#: via ``extra_body`` is unaffected. Overridable per call.
+_LIVE_MAX_TOKENS = 4096
+
+
+def _tier_attr(tier: Any, name: str) -> Any:
+    """Read ``name`` from a Tier-like value (a Mapping or an attribute object)."""
+    if isinstance(tier, Mapping):
+        return tier.get(name)
+    return getattr(tier, name, None)
+
+
+def _tier_reasoning(tier: Any) -> Optional[Dict[str, Any]]:
+    """The tier's reasoning-config provenance (its ``extra_body``) as a plain dict.
+
+    This is the thinking-on/off (and friends) knob the REAL backend applies to the
+    upstream body; recording it on the measured row makes the score's reasoning
+    regime explicit (a thinking-ON serve and a thinking-OFF serve are different
+    quality regimes — CLAUDE.md gotcha #6/#9). ``None`` when the tier sets none.
+    """
+    extra_body = _tier_attr(tier, "extra_body")
+    return dict(extra_body) if isinstance(extra_body, Mapping) else None
+
+
+def _warn(msg: str) -> None:
+    print(f"[anvil-serving] {msg}", file=sys.stderr, flush=True)
+
+
+def _grade_score(grade: Any) -> float:
+    """Normalize a grader return (``Grade`` / number / ``{"score": ...}``) to ``[0,1]``.
+
+    The shipped grader (:class:`~anvil_serving.router.grader_agentsdk.AgentSDKGrader`)
+    returns a :class:`~anvil_serving.router.calibrate.Grade`; this also accepts a
+    bare score or a score mapping so an injected fake grader stays simple.
+    """
+    score = getattr(grade, "score", None)
+    if score is None and isinstance(grade, Mapping):
+        score = grade.get("score")
+    if score is None and isinstance(grade, (int, float)) and not isinstance(grade, bool):
+        score = grade
+    if score is None:
+        raise TypeError(
+            f"grader returned {type(grade).__name__}; expected a Grade, a number, "
+            f"or a mapping with a 'score' key"
+        )
+    return max(0.0, min(1.0, float(score)))
+
+
+def _live_now() -> str:
+    """Wall-clock ISO-8601 UTC ``last_measured`` stamp (injectable for tests)."""
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _live_request(tier: Any, work_class: str, prompt: str, max_tokens: int) -> Any:
+    """Build the dialect-neutral :class:`InternalRequest` for one live measurement.
+
+    Uses the tier's served ``model`` (so a local serve gets its ``--served-model-name``,
+    not the routing token) and its wire ``dialect``; the tier's REAL backend then
+    applies ``extra_body`` (thinking-off etc.) to the upstream body byte-identically
+    to prod (that merge is the backend's job — genericity:T003).
+    """
+    from .internal import InternalRequest, Message
+
+    return InternalRequest(
+        model=_tier_attr(tier, "model") or work_class,
+        messages=[Message(role="user", content=prompt)],
+        max_tokens=max_tokens,
+        stream=False,
+        dialect=_tier_attr(tier, "dialect") or "",
+        raw={},
+    )
+
+
+def _collect_output(backend: Any, request: Any) -> str:
+    """Drive a backend to completion and join its text deltas into one string."""
+    return "".join(backend.generate(request))
+
+
+def load_live_prompts(eval_data_root: Path) -> Dict[str, List[str]]:
+    """Read the committed per-work-class prompt sets from the eval fixtures.
+
+    For each immediate child of ``eval_data_root`` that has a ``prompts/`` subdir,
+    derive its work-class from the directory name (:func:`work_class_from_eval_dir`)
+    and read every ``prompts/*.txt`` file as one prompt for that class. Pure file
+    reads — no network — so it is safe to call from a hermetic test. Returns a
+    ``{work_class: [prompt, ...]}`` mapping (empty if no prompt dirs are present).
+    """
+    eval_data_root = Path(eval_data_root)
+    if not eval_data_root.is_dir():
+        raise FileNotFoundError(f"eval-data dir not found: {eval_data_root}")
+    prompts: Dict[str, List[str]] = {}
+    for child in sorted(eval_data_root.iterdir()):
+        prompt_dir = child / "prompts"
+        if not (child.is_dir() and prompt_dir.is_dir()):
+            continue
+        work_class, _date = work_class_from_eval_dir(child.name)
+        for pf in sorted(prompt_dir.glob("*.txt")):
+            prompts.setdefault(work_class, []).append(pf.read_text(encoding="utf-8"))
+    return prompts
+
+
 def run_live(
     *,
+    tiers: Optional[Sequence[Any]] = None,
+    prompts: Optional[Mapping[str, Sequence[str]]] = None,
     endpoints: Optional[Mapping[str, str]] = None,
     eval_data_root: Optional[Path] = None,
     out_path: Optional[Path] = None,
     confirm_calls_real_tiers: bool = False,
+    backend_factory: Optional[Callable[[Any], Any]] = None,
+    grader: Optional[Callable[[Mapping[str, Any]], Any]] = None,
+    judge: Optional[Callable[[str], Any]] = None,
+    now: Optional[Callable[[], str]] = None,
+    max_tokens: int = _LIVE_MAX_TOKENS,
 ) -> ProfileStore:
-    """INTEGRATION STEP — calls the REAL serving tiers. NOT exercised by CI.
+    """GUARDED offline calibration batch — measures LOCAL tiers through their REAL
+    backends and writes a reviewable candidate ``profile.json`` (ADR-0009 phase 4).
 
-    This is the live counterpart to ``--replay``: instead of reading committed,
-    pre-graded fixtures, it would (1) for each work-class prompt set under
-    ``eval_data_root/<eval>/prompts/``, POST to each tier ``endpoints[tier_id]``
-    (an OpenAI-compatible URL — e.g. the :mod:`anvil_serving.router.serve` front
-    door), (2) grade the fresh outputs with the same rubric, and (3) feed them
-    through the SAME aggregation/normalization as :func:`build_entries`.
+    The live counterpart to ``--replay``: instead of reading committed pre-graded
+    fixtures, for each LOCAL tier x committed work-class prompt it (1) builds the
+    tier's REAL backend — so ``Tier.extra_body`` (e.g. thinking-off) is applied
+    byte-identically to prod, (2) generates the output, (3) grades it with the
+    INDEPENDENT :class:`~anvil_serving.router.grader_agentsdk.AgentSDKGrader` (T004),
+    (4) folds the grade into a fresh :class:`ProfileStore` via
+    :meth:`~anvil_serving.router.profile_store.ProfileStore.record_grade` with an
+    explicit decision (:func:`decision_for_score`) and the serve fingerprint, and
+    (5) writes a fingerprint-tagged v2 ``profile.json``. The written file is a
+    CANDIDATE the operator reviews and promotes (via
+    :data:`~anvil_serving.router.config.RouterConfig.profile_path`); **live routing
+    is not touched** — nothing here is auto-promoted.
 
-    It is **guarded and never invoked by the unit test / CI**: it binds nothing
-    and refuses to run unless an operator passes real ``endpoints`` *and*
-    ``confirm_calls_real_tiers=True``. Even when confirmed, the network-calling
-    body is intentionally not implemented here — wiring it to live tiers is the
-    T016 live-calibration task, which owns request budgets, retries, and
-    held-out validation. Until then this raises, by design, so no test path can
-    accidentally reach out to a tier.
+    Two structural safeties, both non-negotiable:
+
+    * **Guarded.** It binds nothing and refuses (:class:`LiveBootstrapNotConfigured`)
+      unless the operator passes real ``endpoints`` *and* ``confirm_calls_real_tiers=
+      True`` — so no unit test / CI path can reach a tier by accident.
+    * **LOCAL tiers only; never self-verify.** A ``privacy == "cloud"`` tier is
+      filtered out and never measured (the Claude judge grading a Claude/cloud tier
+      is self-verification — CLAUDE.md). As defense-in-depth, if a mislabeled tier
+      still reaches the grader, the grader raises
+      :class:`~anvil_serving.router.grader_agentsdk.SelfVerificationError`, which is
+      surfaced and skipped cleanly rather than crashing the batch.
+
+    Injectable seams keep the tests hermetic (ZERO network / subprocess): ``tiers``
+    (the local :class:`~anvil_serving.router.config.Tier` set — the real path passes
+    the operator's configured tiers), ``prompts`` (``{work_class: [prompt, ...]}``;
+    absent -> :func:`load_live_prompts` reads the committed fixtures under
+    ``eval_data_root``), ``backend_factory`` (tier -> Backend; default builds the
+    REAL backend), ``grader`` (a ready grader) or ``judge`` (the Agent-SDK judge seam
+    a default :class:`AgentSDKGrader` is built around), and ``now`` (the
+    ``last_measured`` clock). With nothing injected the DEFAULTS are the real path,
+    exercised only in production.
     """
+    # --- guard: never run unless endpoints + explicit confirmation (unchanged) ---
     if not confirm_calls_real_tiers or not endpoints:
         raise LiveBootstrapNotConfigured(
             "run_live is the live integration step: it calls real serving tiers "
@@ -465,11 +608,175 @@ def run_live(
             "`confirm_calls_real_tiers=True` to run it. Use --replay for the "
             "offline, CI-safe bootstrap."
         )
-    raise NotImplementedError(
-        "Live tier calibration lands in T016 (Optuna x GuideLLM inner loop with a "
-        "correctness-preflight gate and held-out validation). The replay path "
-        "(--replay) is the committed offline bootstrap."
-    )
+
+    # --- resolve the committed work-class prompt set ---
+    if prompts is None:
+        if eval_data_root is None:
+            raise LiveBootstrapNotConfigured(
+                "run_live needs a prompt set: pass `prompts` ({work_class: [...]}) "
+                "or `eval_data_root` (committed prompts are read from its "
+                "<eval>/prompts/*.txt)."
+            )
+        prompts = load_live_prompts(Path(eval_data_root))
+    prompt_sets: Dict[str, List[str]] = {
+        wc: [p for p in ps] for wc, ps in prompts.items() if ps
+    }
+    if not prompt_sets:
+        raise LiveBootstrapNotConfigured("run_live has no work-class prompts to measure")
+
+    # --- resolve the tiers; LOCAL only (cloud/Claude tiers are structurally refused) ---
+    all_tiers = list(tiers or ())
+    if not all_tiers:
+        raise LiveBootstrapNotConfigured(
+            "run_live needs the local tiers to measure: pass `tiers` (the operator's "
+            "configured LOCAL Tier objects). The CLI --live stub cannot supply them; "
+            "drive the live batch programmatically (or via the T016 calibration loop)."
+        )
+    local_tiers = [t for t in all_tiers if _tier_attr(t, "privacy") != _CLOUD_PRIVACY]
+    refused = [
+        _tier_attr(t, "id") for t in all_tiers if _tier_attr(t, "privacy") == _CLOUD_PRIVACY
+    ]
+    if refused:
+        _warn(
+            f"run_live: NOT measuring cloud tier(s) {refused} — a Claude judge must "
+            f"never grade a cloud/Claude tier (no self-verification); local tiers only."
+        )
+
+    now_fn = now or _live_now
+
+    # Default grader: the INDEPENDENT Agent-SDK grader over these tiers. Its judge
+    # seam defaults to the real `claude` CLI; tests inject `judge` (a fake) or a
+    # ready `grader`, so CI makes no LLM/subprocess call. (Lazy import: grader_agentsdk
+    # imports THIS module, so a top-level import here would be circular.)
+    if grader is None:
+        from .grader_agentsdk import AgentSDKGrader
+
+        grader = AgentSDKGrader(tiers=all_tiers, judge=judge)
+
+    # The grader's structural no-self-verification refusal (defense-in-depth for a
+    # mislabeled tier that slipped the privacy filter).
+    from .grader_agentsdk import SelfVerificationError
+
+    # Default backend factory: build each tier's REAL backend so `extra_body` is
+    # applied byte-identically to prod. (Lazy import: serve pulls in the whole
+    # router; only the real path needs it.)
+    if backend_factory is None:
+        from .serve import build_backend_for_tier
+
+        def backend_factory(t: Any) -> Any:  # noqa: E306 - local default seam
+            timeout = _tier_attr(t, "timeout")
+            return build_backend_for_tier(t, timeout=timeout if timeout is not None else 120.0)
+
+    from .fingerprint import serve_fingerprint
+
+    # Measured-only accumulator: record_grade folds each grade into a FRESH row so
+    # the candidate reflects MEASURED numbers (not blended with the authored seed).
+    acc_store = ProfileStore({})
+    # Side metadata the store row does not carry (model label, fingerprint, reasoning).
+    meta: Dict[Tuple[str, str], Dict[str, Any]] = {}
+
+    for tier in local_tiers:
+        tier_id = str(_tier_attr(tier, "id"))
+        fingerprint = serve_fingerprint(tier)
+        reasoning = _tier_reasoning(tier)
+        model_label = _tier_attr(tier, "model") or tier_id
+        try:
+            backend = backend_factory(tier)
+        except Exception as exc:  # noqa: BLE001 - a bad tier is surfaced, never fatal
+            _warn(f"run_live: skipping tier {tier_id!r}: backend build failed: {exc}")
+            continue
+
+        refused_tier = False
+        for work_class, class_prompts in prompt_sets.items():
+            if refused_tier:
+                break
+            for prompt in class_prompts:
+                try:
+                    output = _collect_output(backend, _live_request(
+                        tier, work_class, prompt, max_tokens
+                    ))
+                except Exception as exc:  # noqa: BLE001 - a generate failure is surfaced
+                    _warn(
+                        f"run_live: tier {tier_id!r} / {work_class!r} generate failed, "
+                        f"skipping this prompt: {exc}"
+                    )
+                    continue
+                sample = {
+                    "tier_id": tier_id,
+                    "work_class": work_class,
+                    "tier": tier,  # so the grader guards on the REAL tier family
+                    "request": {"prompt": prompt},
+                    "response": output,
+                }
+                try:
+                    grade = grader(sample)
+                except SelfVerificationError as exc:
+                    # A mislabeled cloud/Claude tier that slipped the privacy filter:
+                    # REFUSED by the grader. Skip the whole tier cleanly — never grade
+                    # a judge's own family, never crash the batch.
+                    _warn(
+                        f"run_live: refusing to measure tier {tier_id!r} "
+                        f"(no self-verification): {exc}"
+                    )
+                    refused_tier = True
+                    break
+                score = _grade_score(grade)
+                acc_store.record_grade(
+                    tier_id,
+                    work_class,
+                    score=score,
+                    decision=decision_for_score(score),
+                    last_measured=now_fn(),
+                    submitted_fingerprint=fingerprint,
+                )
+                meta.setdefault(
+                    (tier_id, work_class),
+                    {
+                        "model_label": model_label,
+                        "fingerprint": fingerprint,
+                        "reasoning": reasoning,
+                    },
+                )
+
+    # Build the fingerprint-tagged v2 candidate from the measured rows.
+    entries: List[BootstrapEntry] = []
+    for (tier_id, work_class), m in meta.items():
+        row = acc_store.entry(tier_id, work_class)
+        if row is None:  # pragma: no cover - a measured pair always has a row
+            continue
+        score = round(row.quality_score, _SCORE_DP)
+        entries.append(
+            BootstrapEntry(
+                tier_id=tier_id,
+                work_class=work_class,
+                model_label=m["model_label"],
+                decision=decision_for_score(score),
+                quality_score=score,
+                sample_n=row.sample_n,
+                eval_total_avg=round(score * EVAL_MAX, _TOTAL_DP),
+                eval_max=EVAL_MAX,
+                source_evals=("live",),
+                last_measured=row.last_measured,
+                fingerprint=m["fingerprint"],
+                reasoning=m["reasoning"],
+            )
+        )
+    entries.sort(key=lambda e: (e.tier_id, e.work_class))
+    if not entries:
+        _warn("run_live: measured no local rows (no local tiers, or all were skipped)")
+
+    profile = {
+        "schema": SCHEMA,
+        "mode": "live",
+        "eval_max": EVAL_MAX,
+        "entries": [e.to_dict() for e in entries],
+    }
+    if out_path is not None:
+        Path(out_path).write_text(serialize_profile(profile), encoding="utf-8")
+
+    # Return the routable candidate store (measured rows MERGED OVER the seed, so an
+    # unmeasured class keeps its seed verdict) — the same load shape as --replay.
+    return store_from_profile(profile)
 
 
 # --- CLI ------------------------------------------------------------------------
@@ -549,10 +856,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 out_path=Path(args.out) if args.out else None,
                 confirm_calls_real_tiers=args.confirm_live,
             )
-        except (LiveBootstrapNotConfigured, NotImplementedError) as exc:
-            # Both the not-configured guard AND the confirmed-but-unimplemented
-            # body (live calibration lands in T016) exit cleanly, not as a crash.
-            print(f"--live not ready: {exc}", file=sys.stderr)
+        except LiveBootstrapNotConfigured as exc:
+            # The CLI --live flag confirms intent but cannot supply the LOCAL Tier
+            # objects (+ prompts) run_live measures, so it stops at the guard and
+            # exits cleanly: the live batch is driven programmatically (or by the
+            # T016 calibration loop), never dialing a tier from this stub.
+            print(f"--live not fully configured: {exc}", file=sys.stderr)
             return 2
         return 0
 
