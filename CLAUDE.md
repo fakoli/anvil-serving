@@ -54,7 +54,7 @@ anvil_serving/
   benchmark.py         replay measured request distribution (TTFT, throughput, prefix-cache hit)
   multiplexer.py       single-resident model swap on one GPU (SGLang + vLLM backends)
   eval.py              unified shadow-eval harness (generalised planning-capability eval)
-  score.py             quality scoring for eval outputs
+  score.py             role-suitability scorer over a transcribed benchmark table (model selection)
   serves.py            model-serve lifecycle verb
   cache_prune.py       HF cache cleanup helper
 
@@ -100,8 +100,11 @@ templates/   configs/   docs/   examples/fakoli-dark/   plugins/
    assembled response; on failure it escalates to the next tier.
 4. For streaming on fail-prone classes, **`commit_window`** buffers the local response and
    verifies before forwarding the first byte.
-5. Every decision is written to **`decision_log`** and every fallback feeds **`profile_store`**
-   as a calibration signal.
+5. Every decision is written to **`decision_log`**. (The measured calibration write-back —
+   fallbacks/grades feeding **`profile_store`** — is the *intended* moat but is NOT yet wired:
+   the deployed router routes on hand-authored seed verdicts, `Calibrator.record_grade` is never
+   instantiated outside tests, and `profile_bootstrap.run_live()` raises `NotImplementedError`.
+   Closing this loop is the top open item — see `docs/REVIEW-2026-07-02-architecture-and-models.md`.)
 
 ---
 
