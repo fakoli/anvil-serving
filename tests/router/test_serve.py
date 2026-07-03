@@ -544,6 +544,15 @@ def test_load_modes_manifest_bad_active_mode_raises(tmp_path):
         load_modes_manifest(str(p))
 
 
+def test_load_modes_manifest_whitespace_path_raises(tmp_path):
+    """A whitespace-only per-mode path is rejected at load, not deferred to a
+    confusing 'cannot read config' downstream (Copilot review #118)."""
+    p = tmp_path / "ws.toml"
+    p.write_text('[modes]\nagentic = "   "\n', encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_modes_manifest(str(p))
+
+
 # ---- resolve_serve_config: top-level wiring ---------------------------------
 def test_resolve_serve_config_explicit_config_bypasses_modes():
     # --config wins and the mode system is bypassed entirely (mode is None).
@@ -658,6 +667,19 @@ def test_cli_serve_bare_with_no_selector_is_usage_error(monkeypatch, capsys):
     monkeypatch.delenv("ANVIL_MODES_CONFIG", raising=False)
     with pytest.raises(SystemExit) as exc:
         cli.main(["serve"])
+    assert exc.value.code != 0
+    err = capsys.readouterr().err
+    assert "--config" in err and "--mode" in err
+
+
+def test_cli_serve_whitespace_config_is_usage_error(monkeypatch, capsys):
+    """A whitespace-only --config is treated as unset by resolve_serve_config; the
+    CLI guard now agrees and rejects it rather than slipping a blank config past to
+    a silent default boot (Copilot review #118)."""
+    monkeypatch.delenv("ANVIL_MODE", raising=False)
+    monkeypatch.delenv("ANVIL_MODES_CONFIG", raising=False)
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["serve", "--config", "   "])
     assert exc.value.code != 0
     err = capsys.readouterr().err
     assert "--config" in err and "--mode" in err

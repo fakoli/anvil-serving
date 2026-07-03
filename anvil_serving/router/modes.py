@@ -145,7 +145,7 @@ def load_modes_manifest(path: str) -> ModesManifest:
         raw = modes.get(mode)
         if raw is None:
             continue
-        if not isinstance(raw, str) or not raw:
+        if not isinstance(raw, str) or not raw.strip():
             raise ConfigError(
                 f"[modes].{mode} must be a non-empty config-path string in {expanded}"
             )
