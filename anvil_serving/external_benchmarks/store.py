@@ -20,6 +20,11 @@ KNOWN_SOURCES = {
         "homepage_url": "https://millstone.ai/",
         "notes": "Millstone AI LLM inference benchmark snapshots.",
     },
+    "rtx6kpro": {
+        "kind": "community-llm-inference-benchmark",
+        "homepage_url": "https://github.com/local-inference-lab/rtx6kpro",
+        "notes": "local-inference-lab RTX PRO 6000 inference throughput JSON artifacts.",
+    },
     "manual": {
         "kind": "manual-import",
         "homepage_url": None,

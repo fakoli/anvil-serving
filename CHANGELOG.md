@@ -13,6 +13,10 @@ All notable changes to this project are documented here. The format is based on
   normalizing Millstone AI rows, storing them in SQLite, exporting JSON, producing Markdown
   reports, and comparing local Anvil benchmark JSON against advisory external rows. These rows
   are performance priors only and do not change routing quality gates.
+- **`rtx6kpro` external benchmark source:** added a JSON-only adapter for
+  `local-inference-lab/rtx6kpro` RTX PRO 6000 Blackwell inference-throughput artifacts, including
+  conservative Qwen/GLM metadata normalization, DCP and speculative-decoding methodology notes,
+  and non-destructive failures for prose, CSV, or HTML imports.
 
 ## [0.7.3] - 2026-07-02
 

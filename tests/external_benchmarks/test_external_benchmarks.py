@@ -13,7 +13,9 @@ from anvil_serving.external_benchmarks.normalize import (
     normalize_gpu_name,
     normalize_model_identity,
 )
+from anvil_serving.external_benchmarks.sources import ADAPTERS
 from anvil_serving.external_benchmarks.sources.millstone import MillstoneAdapter
+from anvil_serving.external_benchmarks.sources.rtx6kpro import Rtx6kproAdapter
 
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "external_benchmarks"
@@ -130,6 +132,124 @@ def test_millstone_parser_extracts_rows_from_fixture_data():
     assert len(json_result.rows) >= 3
     assert len(html_result.rows) >= 3
     assert json_result.rows[0]["gpu_model"] == "rtx_pro_6000_blackwell_96gb"
+
+
+def test_rtx6kpro_source_is_registered_and_cli_source_choice_is_visible(capsys):
+    assert "rtx6kpro" in store.KNOWN_SOURCES
+    assert "rtx6kpro" in ADAPTERS
+    assert isinstance(ADAPTERS["rtx6kpro"], Rtx6kproAdapter)
+    try:
+        cli.main(["import", "--help"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    assert "rtx6kpro" in capsys.readouterr().out
+
+
+def test_rtx6kpro_parser_extracts_qwen_matrix_rows():
+    result = Rtx6kproAdapter().parse(
+        (FIXTURES / "rtx6kpro_qwen_vllm_mtp.json").read_bytes(),
+        original_name="benchmarks/inference-throughput/vllm_awq_mtp.json",
+    )
+    assert len(result.rows) == 3
+    row = result.rows[1]
+    assert row["model_name_raw"] == "Qwen3.5-397B-A17B-AWQ"
+    assert row["model_id_normalized"] == "qwen3.5-397b-a17b-awq"
+    assert row["model_family"] == "qwen"
+    assert row["engine"] == "vLLM"
+    assert row["quantization"] == "AWQ"
+    assert row["gpu_model"] == "rtx_pro_6000_blackwell_96gb"
+    assert row["context_tokens"] == 32768
+    assert row["concurrency"] == 4
+    assert row["throughput_tok_s"] == 268.5
+    assert row["decode_tok_s"] == 67.1
+    assert row["ttft_ms"] == 753.0
+    assert row["success_rate"] is None
+    assert "MTP speculative decoding" in row["methodology_notes"]
+    raw_metrics = json.loads(row["raw_metrics_json"])
+    assert raw_metrics["result"]["num_errors"] == 0
+    assert raw_metrics["result"]["queue_fraction"] == 0.02
+
+
+def test_rtx6kpro_glm_decode_matrix_preserves_methodology_caveats():
+    result = Rtx6kproAdapter().parse(
+        (FIXTURES / "rtx6kpro_glm_decode_matrix.json").read_bytes(),
+        original_name="models/glm5.1/benchmarks/run/glm-dcp4-mtp1/decode-matrix.json",
+    )
+    row = result.rows[0]
+    notes = row["methodology_notes"]
+    assert row["gpu_model"] == "rtx_pro_6000_blackwell_96gb"
+    assert row["gpu_count"] == 4
+    assert "DCP size 4" in notes
+    assert "skip_prefill" in notes
+    assert "P2P override" in notes
+    assert "patched NCCL" in notes
+    assert "custom allreduce" in notes
+
+
+def test_rtx6kpro_mtp_and_nomtp_notes_differ():
+    mtp = Rtx6kproAdapter().parse(
+        (FIXTURES / "rtx6kpro_qwen_vllm_mtp.json").read_bytes(),
+        original_name="vllm_awq_mtp.json",
+    ).rows[0]
+    nomtp = Rtx6kproAdapter().parse(
+        (FIXTURES / "rtx6kpro_qwen_vllm_nomtp.json").read_bytes(),
+        original_name="vllm_awq_nomtp.json",
+    ).rows[0]
+    assert "MTP speculative decoding reported/inferred" in mtp["methodology_notes"]
+    assert "No MTP speculative decoding reported/inferred" in nomtp["methodology_notes"]
+    assert mtp["methodology_notes"] != nomtp["methodology_notes"]
+
+
+def test_rtx6kpro_import_markdown_fails_non_destructively(capsys):
+    db = _scratch("rtx6kpro-md-failure") / "benchmarks.sqlite"
+    fixture = FIXTURES / "rtx6kpro_summary.md"
+    rc = cli.main(["import", "--source", "rtx6kpro", "--file", str(fixture), "--db", str(db)])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "machine-readable JSON artifacts" in captured.err
+    with store.connect(db) as conn:
+        row = conn.execute(
+            "SELECT raw_path, parse_status, parse_error FROM external_snapshots"
+        ).fetchone()
+    assert row["parse_status"] == "failed"
+    assert "machine-readable JSON artifacts" in row["parse_error"]
+    assert Path(row["raw_path"]).read_bytes() == fixture.read_bytes()
+
+
+def test_rtx6kpro_list_filters_by_source_and_gpu(capsys):
+    db = _scratch("rtx6kpro-list") / "benchmarks.sqlite"
+    fixture = FIXTURES / "rtx6kpro_qwen_vllm_mtp.json"
+    assert cli.main(["import", "--source", "rtx6kpro", "--file", str(fixture), "--db", str(db)]) == 0
+    capsys.readouterr()
+    rc = cli.main(
+        [
+            "list",
+            "--source",
+            "rtx6kpro",
+            "--gpu",
+            "RTX PRO 6000",
+            "--db",
+            str(db),
+        ]
+    )
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "rtx6kpro" in out
+    assert "qwen3.5-397b-a17b-awq" in out
+
+
+def test_rtx6kpro_compare_finds_exact_match_and_warns_for_nomtp(capsys):
+    db = _scratch("rtx6kpro-compare") / "benchmarks.sqlite"
+    fixture = FIXTURES / "rtx6kpro_qwen_vllm_nomtp.json"
+    local = FIXTURES / "local_benchmark_rtx6kpro_nextn.json"
+    assert cli.main(["import", "--source", "rtx6kpro", "--file", str(fixture), "--db", str(db)]) == 0
+    capsys.readouterr()
+    rc = cli.main(["compare", "--local", str(local), "--gpu", "RTX PRO 6000", "--db", str(db)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "exact external match" in out
+    assert "| throughput_tok_s | 260.00 | 203.25 | +27.9% |" in out
+    assert "Local run used NEXTN speculative decoding" in out
 
 
 def test_millstone_markdown_table_with_spaced_separator_parses():

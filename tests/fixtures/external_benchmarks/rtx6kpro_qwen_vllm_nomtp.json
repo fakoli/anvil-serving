@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "engine": "vllm",
+    "model": "Qwen3_5-397B-A17B-AWQ",
+    "version": "0.10.1",
+    "duration_per_test": 30.0,
+    "max_tokens": 8192,
+    "context_lengths": [32768],
+    "concurrency_levels": [4],
+    "server": "http://127.0.0.1:5199"
+  },
+  "results": [
+    {
+      "concurrency": 4,
+      "context_tokens": 32768,
+      "aggregate_tps": 203.25,
+      "per_request_avg_tps": 50.8,
+      "ttft_avg": 0.812,
+      "input_seq_len_avg": 32340,
+      "output_seq_len_avg": 900,
+      "completed_request_count": 4,
+      "num_errors": 0,
+      "queue_fraction": 0.04,
+      "server_utilization": 0.82
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "engine": "vllm",
+    "model": "GLM-5",
+    "version": "0.4.17",
+    "decode_mode": "duration",
+    "prefill_mode": "skipped",
+    "skip_prefill": true,
+    "max_tokens": 2048,
+    "dcp_size": 4,
+    "context_lengths": [0, 32768],
+    "concurrency_levels": [1, 4],
+    "server": "http://127.0.0.1:5201"
+  },
+  "startup_diagnostics": {
+    "nvidia_smi_query": {
+      "stdout": "0, NVIDIA RTX PRO 6000 Blackwell Server Edition, 98304 MiB\n1, NVIDIA RTX PRO 6000 Blackwell Server Edition, 98304 MiB\n2, NVIDIA RTX PRO 6000 Blackwell Server Edition, 98304 MiB\n3, NVIDIA RTX PRO 6000 Blackwell Server Edition, 98304 MiB\n"
+    },
+    "nvidia_p2p_override": {
+      "effective": true
+    }
+  },
+  "event_log": [
+    "patched NCCL PR2127 was detected",
+    "vLLM C++ PCIe custom allreduce was enabled"
+  ],
+  "results": [
+    {
+      "concurrency": 1,
+      "context_tokens": 0,
+      "aggregate_tps": 221.5,
+      "per_request_avg_tps": 221.5,
+      "ttft_avg": 0.018,
+      "input_seq_len_avg": 0,
+      "output_seq_len_avg": 2048,
+      "completed_request_count": 1,
+      "num_errors": 0,
+      "queue_fraction": 0.0,
+      "server_utilization": 0.27
+    },
+    {
+      "concurrency": 4,
+      "context_tokens": 32768,
+      "aggregate_tps": 611.0,
+      "per_request_avg_tps": 152.75,
+      "ttft_avg": 0.042,
+      "input_seq_len_avg": 32768,
+      "output_seq_len_avg": 2048,
+      "completed_request_count": 4,
+      "num_errors": 0,
+      "queue_fraction": 0.01,
+      "server_utilization": 0.94
+    }
+  ]
+}
