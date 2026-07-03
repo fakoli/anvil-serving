@@ -1,0 +1,78 @@
+# =============================================================================
+# CAPTURED LIVE DEPLOY CONFIG — fakoli-dark anvil-router (captured 2026-07-03)
+# -----------------------------------------------------------------------------
+# This is the EXACT config the deployed `anvil-router` container is running,
+# captured verbatim from the `anvil-router-cfg` docker volume
+# (`docker inspect anvil-router` → volume anvil-router-cfg:/etc/anvil:ro,
+#  env ANVIL_CONFIG=/etc/anvil/config.toml).
+#
+# PROVENANCE / DRIFT NOTES (why this file exists):
+#   * The running container reads its config from the `anvil-router-cfg` NAMED
+#     VOLUME, NOT from this repo. Until now no repo file matched the deployed
+#     config — this file closes that gap so the live config is reviewable and
+#     version-controlled.
+#   * `docker-compose.yml` mounts `${ANVIL_ROUTER_CONFIG:-../../configs/example-docker.toml}`
+#     as the router config — i.e. a fresh `compose up` would use example-docker.toml
+#     (fast-first presets, extra_body commented out), which is DIFFERENT from what
+#     is actually deployed here (heavy-first, extra_body uncommented). Reconciling
+#     the compose mount with this file is a follow-up (don't change deploy behavior
+#     silently).
+#   * Stale inline comment below: the tier `base_url`s use `host.docker.internal`,
+#     but the [server] header comment claims "reaches the serves by compose service
+#     name". The host.docker.internal values are what is actually deployed.
+#   * To update the live deploy FROM this file (once reconciled):
+#       docker run --rm -v anvil-router-cfg:/cfg -v "$PWD:/src:ro" alpine \
+#         cp /src/examples/fakoli-dark/anvil-router.live.toml /cfg/config.toml
+#       docker restart anvil-router
+# =============================================================================
+
+# LIVE router config for the containerized deploy on fakoli-dark (ADR-0004).
+# Based on configs/example-docker.toml, with extra_body thinking-disable UNCOMMENTED
+# (genericity:T003 / CLAUDE.md gotcha #6/#9) so the thinking-by-default local models
+# (gpt-oss-20b, qwen35-awq) return real content instead of empty output on agent turns.
+# The router runs in a container on the `fakoli-dark_default` network and reaches the
+# serves by compose service name; only the router is published (authed via the token).
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+
+[router]
+mapping_version = "2026-07-02.live"
+# verify_local_min at its default (true): an empty local 200 becomes a 503 so the gateway
+# fails over to native. (v0.7.0 note: tool-call-only replies — empty content + populated
+# tool_calls — correctly PASS this gate; regression-pinned in #94. Tools now actually reach
+# the local model since #96.)
+verify_local_min = true
+
+[[router.tiers]]
+id            = "fast-local"
+base_url      = "http://host.docker.internal:30001/v1"
+model         = "gpt-oss-20b"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FAST_LOCAL_KEY"
+# gpt-oss ignores chat_template_kwargs.enable_thinking (harmony format); reasoning_effort
+# is its knob — measured 2026-07-02: reasoning burn 310->35 chars, content intact.
+extra_body    = { reasoning_effort = "low" }
+
+[[router.tiers]]
+id            = "heavy-local"
+base_url      = "http://host.docker.internal:30000/v1"
+model         = "qwen35-awq-local"
+dialect       = "openai"
+context_limit = 131072
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
+extra_body    = { chat_template_kwargs = { enable_thinking = false } }
+
+# heavy-first: qwen35-awq honors extra_body enable_thinking=false and returns content;
+# gpt-oss (fast) uses the harmony format and ignores that knob (needs reasoning_effort) —
+# kept as a fallback until gpt-oss thinking-disable is wired.
+[router.presets]
+chat         = ["heavy-local", "fast-local"]
+quick-edit   = ["heavy-local", "fast-local"]
+review       = ["heavy-local"]
+planning     = ["heavy-local"]
+long-context = ["heavy-local"]
