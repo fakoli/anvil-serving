@@ -25,10 +25,17 @@ from anvil_serving.router.config import (
 
 # CWD-independent: example.toml lives at <repo>/configs/example.toml and this
 # file is at <repo>/tests/router/test_config.py (parents[2] == repo root).
-_CONFIGS = pathlib.Path(__file__).resolve().parents[2] / "configs"
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+_CONFIGS = _REPO_ROOT / "configs"
 EXAMPLE = _CONFIGS / "example.toml"
 EXAMPLE_WITH_CLOUD = _CONFIGS / "example-with-cloud.toml"
 EXAMPLE_FLEXIBILITY = _CONFIGS / "example-flexibility.toml"
+
+# flexibility:T011 — the fakoli-dark two-mode split (ADR-0011).
+_FAKOLI = _REPO_ROOT / "examples" / "fakoli-dark"
+FAKOLI_LIVE = _FAKOLI / "anvil-router.live.toml"
+FAKOLI_AGENTIC = _FAKOLI / "anvil-router.agentic.toml"
+FAKOLI_FLEXIBILITY = _FAKOLI / "anvil-router.flexibility.toml"
 
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
@@ -971,3 +978,74 @@ def test_server_auth_env_non_string_raises(tmp_path):
     )
     with pytest.raises(ConfigError):
         load_server_config(path)
+
+
+# ── flexibility:T011 — fakoli-dark two-mode split (ADR-0011) ─────────────────
+#
+# The deploy is split into two mode configs that never overlap: the agentic
+# config is the captured-live SGLang deploy, byte-for-byte; the flexibility
+# config is the any-engine, specialized-tier (ADR-0010) counterpart. Only one
+# mode is live at a time (a config reload/restart, never per-request).
+def test_fakoli_agentic_is_byte_identical_to_live():
+    """AC — anvil-router.agentic.toml must be BYTE-IDENTICAL to the captured-live
+    config: the agentic mode config is the live deploy, isolated + unchanged."""
+    assert FAKOLI_LIVE.exists(), "anvil-router.live.toml missing"
+    assert FAKOLI_AGENTIC.exists(), "anvil-router.agentic.toml missing"
+    assert (
+        FAKOLI_AGENTIC.read_bytes() == FAKOLI_LIVE.read_bytes()
+    ), "agentic config drifted from the captured-live config (must be byte-identical)"
+
+
+def test_fakoli_agentic_config_loads():
+    """The agentic mode config parses (it is the live SGLang two-tier deploy)."""
+    cfg = load(str(FAKOLI_AGENTIC))
+    assert isinstance(cfg, RouterConfig)
+    assert {t.id for t in cfg.tiers} == {"fast-local", "heavy-local"}
+    # It carries none of the flexibility:T007 engine fields (unchanged live config).
+    for t in cfg.tiers:
+        assert t.engine is None and t.quantization is None
+
+
+def test_fakoli_flexibility_config_loads():
+    """The flexibility mode config parses and is a distinct, separate config."""
+    cfg = load(str(FAKOLI_FLEXIBILITY))
+    assert isinstance(cfg, RouterConfig)
+    assert cfg.tiers, "flexibility config declares no tiers"
+    # Distinct tier set from the agentic config (no shared tier ids).
+    agentic_ids = {t.id for t in load(str(FAKOLI_AGENTIC)).tiers}
+    flex_ids = {t.id for t in cfg.tiers}
+    assert flex_ids.isdisjoint(agentic_ids), (
+        f"flexibility and agentic configs share tier ids: {flex_ids & agentic_ids}"
+    )
+
+
+def test_fakoli_flexibility_has_specialized_engine_tier():
+    """AC — the flexibility config declares at least one specialized-engine tier
+    using the flexibility:T007 `engine`/`timeout` fields (ADR-0010)."""
+    cfg = load(str(FAKOLI_FLEXIBILITY))
+    specialized = [t for t in cfg.tiers if t.engine is not None]
+    assert specialized, "flexibility config has no tier with an `engine` set"
+    for t in specialized:
+        # A specialized-engine tier documents its engine and overrides the global
+        # relay_timeout for its (potentially slow) large-prefill path.
+        assert isinstance(t.engine, str) and t.engine
+        assert t.timeout is not None and t.timeout > 0
+
+
+def test_fakoli_flexibility_endpoints_never_localhost():
+    """Project gotcha #1: 127.0.0.1 / host.docker.internal only, never localhost."""
+    cfg = load(str(FAKOLI_FLEXIBILITY))
+    for t in cfg.tiers:
+        assert "localhost" not in t.base_url, f"tier {t.id!r} base_url uses localhost"
+        assert (
+            "127.0.0.1" in t.base_url or "host.docker.internal" in t.base_url
+        ), f"tier {t.id!r} base_url is neither 127.0.0.1 nor host.docker.internal"
+
+
+def test_fakoli_flexibility_presets_reference_known_tiers():
+    """Every flexibility preset resolves to a declared tier (config is coherent)."""
+    cfg = load(str(FAKOLI_FLEXIBILITY))
+    known = {t.id for t in cfg.tiers}
+    for name, cands in cfg.presets.items():
+        for cid in cands:
+            assert cid in known, f"flexibility preset {name} -> unknown tier {cid}"
