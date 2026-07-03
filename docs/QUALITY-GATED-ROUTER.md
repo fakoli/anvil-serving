@@ -179,6 +179,60 @@ A table keyed `(model, work-class)` → `{quality_score, sample_n, last_measured
 
 This is what makes routing *evidence-based* instead of vibes.
 
+### 5.1 Calibration / write-back: bootstrap → review → promote
+
+The profile is a **portable `profile.json`** the router loads at startup when
+`[router].profile_path` points at it (absent → the built-in hand-authored seed). It is
+produced by an **offline batch** the operator runs deliberately — never auto-written from
+the hot path (ADR-0009). Two batches, sharply separated:
+
+| Batch | Verb | Calls a real tier? | Judge | CI-safe |
+|---|---|---|---|---|
+| **Replay** (offline bootstrap) | `anvil-serving eval bootstrap` (`profile_bootstrap --replay`) | no — re-grades committed eval fixtures | pre-committed blind-judge rows | yes |
+| **Live** (write-back / calibration) | `anvil-serving calibrate` (`profile_bootstrap.run_live`) | **yes — your configured LOCAL tiers** | independent Agent-SDK `claude` judge (ADR-0007) | **no** |
+
+Both emit the same portable artifact; the difference is where the numbers come from
+(pre-graded fixtures vs. a fresh measurement of *your* serves).
+
+**The `calibrate` flow (the live write-back loop's operator entry):**
+
+1. **Measure.** `calibrate` loads your router config and hands `run_live` **all** configured
+   tiers; `run_live` structurally filters out `privacy="cloud"` tiers (no self-verification) and
+   measures only the **LOCAL** ones — one output per `(local tier × committed work-class prompt)`
+   through each tier's real backend (so `extra_body` / thinking-off is applied exactly as in
+   prod), graded by the independent Agent-SDK judge:
+
+   ```bash
+   anvil-serving calibrate --config configs/example.toml \
+       --out ./profile.candidate.json \
+       --endpoint fast-local=http://127.0.0.1:30001/v1 \
+       --i-understand-this-calls-real-tiers
+   ```
+
+2. **Guarded — never a silent call.** The batch **refuses to run** unless you pass
+   `--endpoint TIER=URL` covering *every* measured local tier **and**
+   `--i-understand-this-calls-real-tiers`. Missing either → a clean exit 2, zero network,
+   zero `claude` calls. This is why CI never triggers it. A `privacy = "cloud"` tier is
+   structurally filtered out and never measured (a Claude judge grading a Claude tier is
+   self-verification — never allowed).
+
+3. **Review.** The written `profile.json` is a **candidate**. Diff it against your current
+   profile (or the seed) and sanity-check the verdicts before trusting it.
+
+4. **Promote — explicit, never automatic.** `calibrate` writes and instructs; it **never**
+   edits a config or swaps the live profile. To adopt the candidate, point your router at it
+   and restart:
+
+   ```toml
+   [router]
+   profile_path = "./profile.candidate.json"
+   ```
+
+   A configured-but-unreadable `profile_path` is a startup error (fail fast), never a silent
+   fall back to seeds you meant to replace. Continuous async calibration (the **Calibrate**
+   item above) is the same grade → write-back mechanism moved off the hot path; `calibrate`
+   is its manual, operator-driven form.
+
 ## 6. Routing signal: the graceful-degradation tier ladder
 
 Intent resolution degrades gracefully to the **highest tier the originating harness can reach**.

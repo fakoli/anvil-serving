@@ -502,3 +502,77 @@ def test_committed_fixture_cost_usd_present_in_summary(summary):
     assert "cost_usd" in summary["overall"]
     for _wc, block in summary["work_classes"].items():
         assert "cost_usd" in block
+
+
+# --------------------------------------------------------------------------- #
+# T013: active serving mode label on the metrics surface (ADR-0011)
+# --------------------------------------------------------------------------- #
+def _mode_record(work_class="chat", *, mode="flexibility"):
+    """A served-local record carrying an active serving ``mode`` label."""
+    rec = _served_local_record(work_class)
+    rec["mode"] = mode
+    return rec
+
+
+def test_metrics_summary_has_modes_label():
+    """The aggregate summary always carries a top-level ``modes`` label (additive)."""
+    summary = metrics.aggregate([_mode_record("chat", mode="flexibility")])
+    assert summary["modes"] == ["flexibility"]
+
+
+def test_metrics_modes_are_distinct_and_sorted():
+    """Distinct non-empty mode labels are surfaced, sorted and de-duplicated."""
+    records = [
+        _mode_record("chat", mode="flexibility"),
+        _mode_record("chat", mode="agentic"),
+        _mode_record("review", mode="flexibility"),
+    ]
+    summary = metrics.aggregate(records)
+    assert summary["modes"] == ["agentic", "flexibility"]
+
+
+def test_metrics_modes_empty_when_no_record_carries_mode():
+    """A window with no mode (a --config boot / pre-T013 fixture) yields modes=[]
+    and leaves every existing metric unchanged (additive; None = unchanged)."""
+    records = [_served_local_record("chat")]  # no mode field
+    summary = metrics.aggregate(records)
+    assert summary["modes"] == []
+    # The existing metrics are untouched.
+    assert summary["work_classes"]["chat"]["accept_rate"] == pytest.approx(1.0)
+
+
+def test_committed_fixture_has_empty_modes(summary):
+    """The pre-T013 committed fixture carries no mode -> modes == [] (no churn)."""
+    assert summary["modes"] == []
+
+
+def test_observed_modes_ignores_non_string_and_empty():
+    """observed_modes ignores null / empty / non-string mode values."""
+    records = [
+        _mode_record("chat", mode="flexibility"),
+        _mode_record("chat", mode=""),      # empty -> ignored
+        _mode_record("chat", mode=None),    # null  -> ignored
+        {"work_class": "chat", "mode": 7},  # non-string -> ignored
+    ]
+    assert metrics.observed_modes(records) == ["flexibility"]
+
+
+def test_human_report_stamps_mode_when_present():
+    """format_report surfaces the observed mode on the header WHEN present, and is
+    byte-identical to pre-T013 when absent."""
+    with_mode = metrics.format_report(
+        metrics.aggregate([_mode_record("chat", mode="flexibility")])
+    )
+    assert "mode: flexibility" in with_mode
+
+    without_mode = metrics.format_report(metrics.aggregate([_served_local_record("chat")]))
+    assert "mode:" not in without_mode
+
+
+def test_mode_label_survives_json_roundtrip(tmp_path, capsys):
+    """A captured window's mode label rides through the --json machine summary."""
+    fixture = _write_jsonl(tmp_path / "moded.jsonl", [_mode_record("chat", mode="agentic")])
+    rc = metrics.main(["--replay", str(fixture), "--json"])
+    payload = json.loads(capsys.readouterr().out)
+    assert rc == 0
+    assert payload["modes"] == ["agentic"]
