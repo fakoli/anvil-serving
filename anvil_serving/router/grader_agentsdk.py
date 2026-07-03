@@ -373,13 +373,17 @@ def _claude_cli_judge(prompt: str, *, model: Optional[str] = None, timeout: floa
 
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)  # ADR-0007: subscription OAuth, never metered API
-    argv = ["claude", "-p", "--output-format", "json"]
+    # Prompt on argv (ADR-0001 shape: `claude -p "..." --model ...`), NOT stdin —
+    # `claude -p` reads the prompt as its positional argument, and the rendered
+    # judge prompt is already length-bounded (`_clip` / `_MAX_SIDE_CHARS`), so it
+    # is well under ARG_MAX. stdin is closed so the CLI never blocks waiting on it.
+    argv = ["claude", "-p", prompt, "--output-format", "json"]
     if model:
         argv += ["--model", model]
     try:
         proc = subprocess.run(
             argv,
-            input=prompt,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             env=env,
