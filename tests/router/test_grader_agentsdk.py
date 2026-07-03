@@ -332,7 +332,8 @@ def test_real_seam_uses_claude_cli_and_scrubs_api_key(monkeypatch):
     assert "-p" in captured["argv"]                  # headless print mode
     assert "--bare" not in captured["argv"]          # ADR-0007: never --bare
     assert "ANTHROPIC_API_KEY" not in captured["env"]  # scrubbed: subscription OAuth only
-    assert "grade this please" in captured["input"]
+    assert "grade this please" in captured["argv"]   # prompt on argv (ADR-0001 shape), not stdin
+    assert captured["input"] is None                  # stdin unused for the prompt
     # The seam unwraps the CLI's {"result": ...} envelope back to the scored JSON.
     assert json.loads(text)["total"] == 20
 
