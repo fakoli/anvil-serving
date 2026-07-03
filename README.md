@@ -405,6 +405,7 @@ router routes across. Stdlib-only; the hard-won gotchas (below) are baked in as 
 ```
 anvil-serving profile      # parse ~/.claude logs -> usage baseline (context/gen/concurrency percentiles, role split)
 anvil-serving models sync  # scan your HF caches -> card catalog + INDEX (GGUF vs safetensors, ctx, quant, license, thinking)
+anvil-serving models pull  # download a HF repo INTO A NAMED DOCKER VOLUME (ext4-native; avoids the 9P bind-mount tax)
 anvil-serving deploy       # render a tuned SGLang docker-compose for YOUR gpu + model
 anvil-serving preflight    # correctness gate against any OpenAI-compatible endpoint (sm_120-aware)
 anvil-serving benchmark    # replay YOUR measured request distribution (TTFT, throughput, prefix-cache hit)
@@ -421,6 +422,16 @@ anvil-serving profile --out-dir .
 # 2) see what models you have and which a server can actually load
 anvil-serving models sync --out ./model-library
 #    -> ./model-library/INDEX.md  (the (yes/no) "SGLang-loadable" column is the one that saves you)
+
+# 2b) grab a new model straight into a NAMED DOCKER VOLUME so it serves natively.
+#     On Windows+WSL2+Docker, serving weights from a C:/ bind mount reads over 9P
+#     (~15 MB/s -> 18-90 min cold loads); a named volume is ext4-native inside WSL2
+#     (no 9P) and loads in seconds. The download runs `hf download` INSIDE a container
+#     with the volume mounted at the HF cache, so bytes land on native ext4. Serve
+#     later with the repo-id as --model. (--dry-run prints the docker command first.)
+anvil-serving models pull openai/gpt-oss-120b            # -> volume `vllm-hfcache` (unauthenticated by default)
+#    hf download is resumable/idempotent; a stalled "Still waiting to acquire lock" is
+#    the .gitignore.lock deadlock (gotcha #12) -> stop the other download, resume ONE.
 
 # 3) generate a deployment for a local model on GPU 1
 anvil-serving deploy --model /path/to/model-dir --gpu 1 --context 131072 --served-name local-specialist
