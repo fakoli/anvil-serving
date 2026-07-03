@@ -68,7 +68,6 @@ IDENTITY_FIELDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("context_limit", ("context_limit", "max_context", "context_window")),
     ("params", ("params", "serve_params", "sampling_params")),
     ("reasoning", ("extra_body",)),
-    ("mode", ("mode",)),
 )
 
 
@@ -94,13 +93,14 @@ def identity(spec: Any, *, mode: Optional[str] = None) -> dict[str, Any]:
     adding an unrelated attribute to a spec never changes its fingerprint.
 
     ``mode`` (ADR-0011 / flexibility:T013) is the active serving mode (``agentic``
-    / ``flexibility``). It is a GLOBAL, not a per-tier ``spec`` attribute, so
-    ``build_server`` threads it in explicitly rather than resolving it off the
-    tier. When set it enters the hashed identity under the canonical ``"mode"``
-    key — so the SAME model measured in agentic vs flexibility mode is a DISTINCT
-    identity — and takes precedence over any ``mode`` carried on ``spec`` itself.
-    When ``None`` (a ``--config`` boot with no mode) it is omitted, so the digest
-    is byte-identical to pre-T013 (no churn).
+    / ``flexibility``). It is a GLOBAL, not a per-tier ``spec`` attribute, so it is
+    threaded in ONLY as this keyword — a ``mode`` key on ``spec`` itself is
+    deliberately NOT resolved (it is absent from :data:`IDENTITY_FIELDS`). That
+    keeps the no-churn invariant UNCONDITIONAL: a mode-less call is byte-identical
+    to pre-T013 no matter what keys ``spec`` carries. When set, ``mode`` enters the
+    hashed identity under the canonical ``"mode"`` key — so the SAME model measured
+    in agentic vs flexibility mode is a DISTINCT identity. When ``None`` (a
+    ``--config`` boot with no mode) it is omitted (no churn).
     """
     out: dict[str, Any] = {}
     for canonical, names in IDENTITY_FIELDS:
