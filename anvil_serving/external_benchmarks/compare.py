@@ -170,7 +170,17 @@ def _external_reports_speculative(row: Mapping[str, Any]) -> bool:
         str(row.get(k) or "")
         for k in ("methodology_notes", "raw_metrics_json", "hardware_notes")
     ).lower()
-    if "no speculative" in text or "without speculative" in text:
+    if any(
+        term in text
+        for term in (
+            "no speculative",
+            "without speculative",
+            "no mtp",
+            "no-mtp",
+            "nomtp",
+            "without mtp",
+        )
+    ):
         return False
     return any(term in text for term in ("speculative", "draft model", "nextn", "mtp"))
 
