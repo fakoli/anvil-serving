@@ -23,8 +23,10 @@ from pathlib import Path
 from typing import List, Optional
 
 from anvil_serving.router.backends import StaticBackend
+from anvil_serving.router.config import load as load_router_config
+from anvil_serving.router.fingerprint import refresh_fingerprint, serve_fingerprint
 from anvil_serving.router.internal import InternalRequest, Message
-from anvil_serving.router.profile_store import ProfileStore
+from anvil_serving.router.profile_store import ProfileStore, default_profile
 from anvil_serving.router.serve import _ConcurrencyLimitedBackend, build_server
 
 
@@ -269,3 +271,145 @@ def test_per_tier_cap_bounds_dispatch_and_leaves_other_tier_unbounded(tmp_path):
     # The per-tier bound held for the entire run; the other tier was never capped.
     assert capped_backend.peak == _CAP
     assert uncapped_backend.peak == _N
+
+
+# --------------------------------------------------------------------------- #
+# 4. Startup fingerprint refresh (flexibility:T002 / ADR-0009 phase 1)
+# --------------------------------------------------------------------------- #
+# One local tier whose CURRENT config identity uses model "qwen-new". A profile
+# measured under a DIFFERENT serve identity (e.g. an older model) must go stale
+# at startup; a profile that has never recorded a fingerprint must simply adopt
+# this identity as its baseline (no spurious staleness). Custom preset -> the
+# fingerprint refresh is orthogonal to routing, so no key/env is needed.
+_ONE_TIER_CONFIG = """\
+[router]
+mapping_version = "test-t002"
+
+[[router.tiers]]
+id            = "fast-local"
+base_url      = "http://127.0.0.1:39001/v1"
+model         = "qwen-new"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FAST_KEY"
+
+[router.presets]
+solo = ["fast-local"]
+"""
+
+
+def _write_one_tier_config(tmp_path: Path) -> str:
+    p = tmp_path / "t002.toml"
+    p.write_text(_ONE_TIER_CONFIG, encoding="utf-8")
+    return str(p)
+
+
+def test_build_server_marks_drifted_rows_stale(tmp_path):
+    """Criterion 1: a serve whose identity DRIFTED since it was measured has its
+    rows marked stale by ``build_server`` at startup (routing then distrusts it).
+
+    The injected profile's ``fast-local`` rows are first baselined to an OLDER
+    serve identity (a different model). The live config declares model
+    ``qwen-new`` -> the startup refresh sees the mismatch and stales every
+    ``fast-local`` row, downgrading a stale ``allow`` to ``allow-with-verify``.
+    """
+    cfg_path = _write_one_tier_config(tmp_path)
+
+    # A seeded profile whose fast-local rows were measured under an OLDER serve
+    # identity (model "qwen-OLD" at the same endpoint).
+    store = default_profile()
+    old_spec = {
+        "id": "fast-local",
+        "model": "qwen-OLD",
+        "base_url": "http://127.0.0.1:39001/v1",
+        "dialect": "openai",
+        "context_limit": 32768,
+    }
+    assert refresh_fingerprint(store, "fast-local", old_spec) == []  # baseline only
+    assert store.stale_pairs() == []
+
+    httpd = build_server(
+        cfg_path, host="127.0.0.1", port=0,
+        backends={"fast-local": StaticBackend(["x"])},
+        profile=store,
+    )
+    try:
+        # The tier's CURRENT identity (qwen-new) differs from the measured one:
+        # every fast-local row is now stale, and no OTHER tier is touched.
+        assert {tier for (tier, _wc) in store.stale_pairs()} == {"fast-local"}
+        assert store.is_stale("fast-local", "planning") is True
+        assert store.is_stale("fast-local", "chat") is True
+        assert store.is_stale("heavy-local", "review") is False
+        assert store.is_stale("cloud", "planning") is False
+        # Routing now distrusts a stale 'allow' row: chat was seeded 'allow' for
+        # fast-local and is downgraded to 'allow-with-verify' by decision().
+        assert store.decision("fast-local", "chat") == "allow-with-verify"
+    finally:
+        httpd.server_close()
+
+
+def test_build_server_freshly_loaded_profile_not_spuriously_stale(tmp_path):
+    """Criterion 2: a freshly-loaded/seed profile (every row ``fingerprint=None``)
+    is NOT spuriously distrusted at startup — it ADOPTS the tier's current serve
+    identity as its baseline, so nothing is stale and a re-run is a no-op."""
+    cfg_path = _write_one_tier_config(tmp_path)
+    store = default_profile()  # every row carries fingerprint=None (never measured)
+    assert store.stale_pairs() == []
+
+    httpd = build_server(
+        cfg_path, host="127.0.0.1", port=0,
+        backends={"fast-local": StaticBackend(["x"])},
+        profile=store,
+    )
+    try:
+        # No row was invalidated: adoption, not staleness.
+        assert store.stale_pairs() == []
+        assert store.is_stale("fast-local", "planning") is False
+        assert store.is_stale("fast-local", "chat") is False
+        # A seeded 'allow' row stays 'allow' — it was NOT downgraded.
+        assert store.decision("fast-local", "chat") == "allow"
+
+        # The rows now carry the tier's ACTUAL config fingerprint (baseline
+        # adopted), so they hash to the live tier's serve identity.
+        tier = load_router_config(cfg_path).tier("fast-local")
+        expected_fp = serve_fingerprint(tier)
+        assert store.entry("fast-local", "chat").fingerprint == expected_fp
+        assert store.entry("fast-local", "planning").fingerprint == expected_fp
+
+        # Idempotent: a second refresh against the SAME identity stales nothing.
+        assert refresh_fingerprint(store, "fast-local", tier) == []
+        assert store.stale_pairs() == []
+    finally:
+        httpd.server_close()
+
+
+def test_build_server_seed_only_profile_behaves_identically(tmp_path):
+    """A seed-only deployment (default_profile, no configured profile_path) is
+    unchanged by the startup refresh: the seed rows adopt their baseline and stay
+    non-stale, so every trust verdict is exactly the seed's."""
+    cfg_path = _write_one_tier_config(tmp_path)
+
+    # Baseline verdicts straight from the seed (before any build_server call).
+    baseline = default_profile()
+    seed_verdicts = {
+        wc: baseline.decision("fast-local", wc)
+        for wc in ("planning", "multi-file-refactor", "long-context", "review",
+                   "bounded-edit", "chat")
+    }
+
+    httpd = build_server(
+        cfg_path, host="127.0.0.1", port=0,
+        backends={"fast-local": StaticBackend(["x"])},
+        profile=default_profile(),
+    )
+    try:
+        routing = httpd.anvil_routing
+        refreshed = routing._profile
+        assert refreshed.stale_pairs() == []
+        # Every verdict matches the untouched seed.
+        for wc, verdict in seed_verdicts.items():
+            assert refreshed.decision("fast-local", wc) == verdict, wc
+    finally:
+        httpd.server_close()
