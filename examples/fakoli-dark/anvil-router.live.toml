@@ -17,9 +17,10 @@
 #     is actually deployed here (heavy-first, extra_body uncommented). Reconciling
 #     the compose mount with this file is a follow-up (don't change deploy behavior
 #     silently).
-#   * Stale inline comment below: the tier `base_url`s use `host.docker.internal`,
-#     but the [server] header comment claims "reaches the serves by compose service
-#     name". The host.docker.internal values are what is actually deployed.
+#   * Networking: the tier `base_url`s reach the serves via `host.docker.internal`. The
+#     deployed config's inline comment originally read "by compose service name"; it is
+#     corrected to `host.docker.internal` here to match the actual URLs (a capture-fidelity
+#     fix, not a behavior change).
 #   * To update the live deploy FROM this file (once reconciled):
 #       docker run --rm -v anvil-router-cfg:/cfg -v "$PWD:/src:ro" alpine \
 #         cp /src/examples/fakoli-dark/anvil-router.live.toml /cfg/config.toml
@@ -31,7 +32,8 @@
 # (genericity:T003 / CLAUDE.md gotcha #6/#9) so the thinking-by-default local models
 # (gpt-oss-20b, qwen35-awq) return real content instead of empty output on agent turns.
 # The router runs in a container on the `fakoli-dark_default` network and reaches the
-# serves by compose service name; only the router is published (authed via the token).
+# serves via `host.docker.internal` (see the tier `base_url`s below); only the router
+# is published (authed via the token).
 [server]
 auth_env = "ANVIL_ROUTER_TOKEN"
 

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-03
-- **Relates to:** ADR-0008 (heavy-tier spec-decode — the agentic-mode workhorse), ADR-0010 (specialized-engine tier — the flexibility-mode backbone), ADR-0009 (measured write-back loop — measures both modes); the captured live agentic config `examples/fakoli-dark/anvil-router.live.toml`; memory `qwen36-27b-trial-verdict` (un-parked once cache is irrelevant), `any-model-any-engine-direction`.
+- **Relates to:** ADR-0008 (heavy-tier spec-decode — the agentic-mode workhorse), ADR-0010 (specialized-engine tier — the flexibility-mode backbone), ADR-0009 (measured write-back loop — measures both modes); the captured live agentic config `examples/fakoli-dark/anvil-router.live.toml`.
 
 ## Context
 
