@@ -950,7 +950,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # default server. A selector is --config, --mode, ANVIL_MODE, or a [modes]
     # manifest (ANVIL_MODES_CONFIG) carrying an active_mode default.
     if not (
-        args.config
+        (args.config or "").strip()
         or args.mode
         or (env.get(ENV_MODE) or "").strip()
         or (env.get(ENV_MODES_CONFIG) or "").strip()

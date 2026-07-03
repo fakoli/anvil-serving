@@ -559,7 +559,7 @@ anvil-serving serve --mode flexibility               # resolve the mode to its c
 ANVIL_MODE=flexibility anvil-serving serve           # same, via env
 ```
 
-**Which mode is active** — precedence `‑‑mode > ANVIL_MODE > [modes].active_mode > default (agentic)`.
+**Which mode is active** — precedence `--mode > ANVIL_MODE > [modes].active_mode > default (agentic)`.
 The `active_mode` default lives in an optional `[modes]` manifest (see
 `configs/modes.example.toml`) pointed at by `ANVIL_MODES_CONFIG`.
 
