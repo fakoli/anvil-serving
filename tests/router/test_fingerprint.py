@@ -200,6 +200,79 @@ def test_reasoning_field_does_not_churn_extra_body_less_tiers():
     assert "reasoning" not in identity(_fast_tier())
 
 
+# ── serving engine enters the fingerprint (flexibility:T008, ADR-0010) ─────────
+def test_engine_changes_fingerprint():
+    """Criterion 1: two tiers identical except ``engine`` are DISTINCT fingerprints
+    — an in-place engine swap (vLLM↔SGLang) at the same base_url is a different
+    quality regime, so its measured rows must go stale."""
+    vllm = _fast_tier(engine="vllm")
+    sglang = _fast_tier(engine="sglang")
+    no_engine = _fast_tier()  # engine defaults to None
+
+    fp_vllm = serve_fingerprint(vllm)
+    fp_sglang = serve_fingerprint(sglang)
+    fp_none = serve_fingerprint(no_engine)
+
+    # vLLM, SGLang, and no-engine are three distinct serve identities.
+    assert fp_vllm != fp_sglang
+    assert fp_vllm != fp_none
+    assert fp_sglang != fp_none
+
+    # It rides under the canonical ``engine`` identity key.
+    assert identity(vllm)["engine"] == "vllm"
+    assert "engine" not in identity(no_engine)
+
+    # Works for a plain Mapping spec too, not just a Tier.
+    base = {"id": "t", "model": "m", "base_url": "http://x", "dialect": "openai"}
+    assert serve_fingerprint(dict(base, engine="vllm")) != serve_fingerprint(base)
+    assert serve_fingerprint(dict(base, engine="vllm")) != serve_fingerprint(
+        dict(base, engine="sglang")
+    )
+
+
+def test_engine_field_does_not_churn_engine_less_tiers():
+    """Criterion 2 (no-churn): a tier that sets NO ``engine`` hashes to the exact
+    value it did BEFORE the engine identity axis existed. The new field resolves to
+    None -> omitted from the hash -> digest byte-identical.
+
+    The anchors are digests captured from the pre-T008 code (they are the SAME
+    engine-less/extra_body-less digests the T003 no-churn test pins); if ``engine``
+    ever leaks into an engine-less digest, these constants break."""
+    dict_spec = {
+        "id": "fast-local",
+        "model": "qwen",
+        "base_url": "http://127.0.0.1:30001/v1",
+        "dialect": "openai",
+        "context_limit": 32000,
+        "quantization": "nvfp4",
+    }
+    assert (
+        serve_fingerprint(dict_spec)
+        == "f5f7e692660d4efc14ce2c71b600886fd5f147a6a38e584ee0a2457e71a7ad47"
+    )
+    # A fixed Tier with no engine (engine=None).
+    assert (
+        serve_fingerprint(_fast_tier())
+        == "d1cf852fc0d06741bfc1a6cd1027cd22a0eda54b9de19bb5c4e8461c197ac39e"
+    )
+    # And the None engine is simply absent from the hashed identity.
+    assert "engine" not in identity(_fast_tier())
+
+
+def test_engine_is_orthogonal_to_reasoning():
+    """The engine axis and the reasoning axis are independent: setting only engine
+    leaves the reasoning key absent, and two tiers that agree on reasoning but
+    differ on engine still fingerprint differently."""
+    r = MappingProxyType({"chat_template_kwargs": {"enable_thinking": False}})
+    only_engine = _fast_tier(engine="vllm")
+    assert "reasoning" not in identity(only_engine)
+    assert "engine" in identity(only_engine)
+
+    a = _fast_tier(engine="vllm", extra_body=r)
+    b = _fast_tier(engine="sglang", extra_body=r)
+    assert serve_fingerprint(a) != serve_fingerprint(b)
+
+
 # ── mark_stale_on_change: change stales the tier; others untouched ─────────────
 def test_change_marks_affected_tier_rows_stale_only():
     store = default_profile()
