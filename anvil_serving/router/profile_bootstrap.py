@@ -561,6 +561,7 @@ def run_live(
     judge: Optional[Callable[[str], Any]] = None,
     now: Optional[Callable[[], str]] = None,
     max_tokens: int = _LIVE_MAX_TOKENS,
+    mode: Optional[str] = None,
 ) -> ProfileStore:
     """GUARDED offline calibration batch — measures LOCAL tiers through their REAL
     backends and writes a reviewable candidate ``profile.json`` (ADR-0009 phase 4).
@@ -693,7 +694,11 @@ def run_live(
 
     for tier in local_tiers:
         tier_id = str(_tier_attr(tier, "id"))
-        fingerprint = serve_fingerprint(tier)
+        # Thread the active serving mode into the candidate fingerprint (ADR-0011 /
+        # flexibility:T013) so a profile measured under `--mode flexibility` MATCHES
+        # the live flexibility-mode serve's mode-tagged fingerprint (else every row
+        # would read stale after promotion). mode=None reproduces the pre-T013 digest.
+        fingerprint = serve_fingerprint(tier, mode=mode)
         reasoning = _tier_reasoning(tier)
         model_label = _tier_attr(tier, "model") or tier_id
         try:

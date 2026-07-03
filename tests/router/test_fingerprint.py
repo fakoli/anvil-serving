@@ -13,6 +13,7 @@ from types import MappingProxyType
 
 from anvil_serving.router.config import Tier
 from anvil_serving.router.fingerprint import (
+    FINGERPRINT_SCHEMA,
     identity,
     mark_stale_on_change,
     refresh_fingerprint,
@@ -271,6 +272,118 @@ def test_engine_is_orthogonal_to_reasoning():
     a = _fast_tier(engine="vllm", extra_body=r)
     b = _fast_tier(engine="sglang", extra_body=r)
     assert serve_fingerprint(a) != serve_fingerprint(b)
+
+
+# ── active serving mode enters the fingerprint (flexibility:T013, ADR-0011) ────
+def test_mode_changes_fingerprint():
+    """Criterion 1: two serves identical except the active MODE are DISTINCT
+    fingerprints — the SAME model measured in agentic vs flexibility mode is a
+    distinct measured identity (composes with the ADR-0009 write-back loop)."""
+    agentic = serve_fingerprint(_fast_tier(), mode="agentic")
+    flexibility = serve_fingerprint(_fast_tier(), mode="flexibility")
+    no_mode = serve_fingerprint(_fast_tier())  # mode unset
+
+    # agentic, flexibility, and no-mode are three distinct serve identities.
+    assert agentic != flexibility
+    assert agentic != no_mode
+    assert flexibility != no_mode
+
+    # It rides under the canonical ``mode`` identity key.
+    assert identity(_fast_tier(), mode="flexibility")["mode"] == "flexibility"
+    assert "mode" not in identity(_fast_tier())
+
+    # Works for a plain Mapping spec threaded via the param too, not just a Tier.
+    base = {"id": "t", "model": "m", "base_url": "http://x", "dialect": "openai"}
+    assert serve_fingerprint(base, mode="agentic") != serve_fingerprint(base)
+    assert serve_fingerprint(base, mode="agentic") != serve_fingerprint(
+        base, mode="flexibility"
+    )
+
+
+def test_mode_on_the_spec_is_ignored_keeping_no_churn_unconditional():
+    """Mode is threaded ONLY as a keyword; a ``mode`` key carried on the spec is
+    deliberately NOT resolved (it is absent from IDENTITY_FIELDS). This keeps the
+    no-churn invariant UNCONDITIONAL — a mode-less call hashes identically no matter
+    what keys the spec carries — closing the footgun where a serialized-tier dict
+    with a stray ``mode`` key would silently change a mode-less digest."""
+    base = {"id": "t", "model": "m", "base_url": "http://x", "dialect": "openai"}
+    # A mode key on the spec does NOT enter the identity...
+    assert "mode" not in identity(dict(base, mode="flexibility"))
+    # ...so a mode-less call is byte-identical whether or not the spec carries a mode.
+    assert serve_fingerprint(dict(base, mode="flexibility")) == serve_fingerprint(base)
+    # Only the explicit keyword sets the mode.
+    assert identity(base, mode="flexibility")["mode"] == "flexibility"
+    assert serve_fingerprint(dict(base, mode="agentic"), mode="flexibility") == (
+        serve_fingerprint(base, mode="flexibility")
+    )
+
+
+def test_mode_field_does_not_churn_mode_less_serves():
+    """Criterion 2 (no-churn): a serve with mode=None/unset hashes to the exact
+    value it did BEFORE the mode identity axis existed — the SAME digests the T003
+    and T008 no-churn tests pin. The new field resolves to None -> omitted -> the
+    digest is byte-identical. If ``mode`` ever leaks into a mode-less digest, these
+    constants break."""
+    dict_spec = {
+        "id": "fast-local",
+        "model": "qwen",
+        "base_url": "http://127.0.0.1:30001/v1",
+        "dialect": "openai",
+        "context_limit": 32000,
+        "quantization": "nvfp4",
+    }
+    anchor_dict = "f5f7e692660d4efc14ce2c71b600886fd5f147a6a38e584ee0a2457e71a7ad47"
+    anchor_tier = "d1cf852fc0d06741bfc1a6cd1027cd22a0eda54b9de19bb5c4e8461c197ac39e"
+    # Unset and an explicit mode=None are both byte-identical to pre-T013.
+    assert serve_fingerprint(dict_spec) == anchor_dict
+    assert serve_fingerprint(dict_spec, mode=None) == anchor_dict
+    assert serve_fingerprint(_fast_tier()) == anchor_tier
+    assert serve_fingerprint(_fast_tier(), mode=None) == anchor_tier
+    # And the None mode is simply absent from the hashed identity.
+    assert "mode" not in identity(_fast_tier())
+    assert "mode" not in identity(_fast_tier(), mode=None)
+
+
+def test_mode_is_orthogonal_to_engine_and_reasoning():
+    """The mode axis is independent of the engine + reasoning axes: setting only
+    mode leaves engine/reasoning absent, and two serves that agree on engine +
+    reasoning but differ on mode still fingerprint differently."""
+    r = MappingProxyType({"chat_template_kwargs": {"enable_thinking": False}})
+    only_mode = identity(_fast_tier(), mode="flexibility")
+    assert only_mode["mode"] == "flexibility"
+    assert "engine" not in only_mode
+    assert "reasoning" not in only_mode
+
+    a = serve_fingerprint(_fast_tier(engine="vllm", extra_body=r), mode="agentic")
+    b = serve_fingerprint(_fast_tier(engine="vllm", extra_body=r), mode="flexibility")
+    assert a != b
+
+
+def test_fingerprint_schema_untouched_by_mode_axis():
+    """The identity-schema tag MUST NOT move for T013: no-churn is load-bearing, so
+    a mode-less serve's digest under new code still matches an old one."""
+    assert FINGERPRINT_SCHEMA == "anvil-serving.router.fingerprint/v1"
+
+
+def test_refresh_fingerprint_stales_rows_on_mode_change():
+    """refresh_fingerprint threads the mode into the digest: a tier measured under
+    one mode goes stale when the SAME tier is next served under another mode — while
+    a mode-less baseline (a --config boot) stays put."""
+    store = default_profile()
+    # Baseline under agentic: nothing was invalidated.
+    assert refresh_fingerprint(store, "fast-local", _fast_tier(), mode="agentic") == []
+    # Same tier, flexibility mode -> every fast-local row goes stale.
+    newly = refresh_fingerprint(store, "fast-local", _fast_tier(), mode="flexibility")
+    assert set(newly) == ALL_CLASSES
+    assert store.is_stale("fast-local", "review") is True
+    # Other tiers untouched.
+    assert store.is_stale("heavy-local", "review") is False
+
+    # A mode-less (--config) boot is a stable baseline: no drift, idempotent.
+    store2 = default_profile()
+    assert refresh_fingerprint(store2, "fast-local", _fast_tier()) == []
+    assert refresh_fingerprint(store2, "fast-local", _fast_tier()) == []
+    assert store2.stale_pairs() == []
 
 
 # ── mark_stale_on_change: change stales the tier; others untouched ─────────────

@@ -442,6 +442,36 @@ def test_run_live_measures_local_tier_and_writes_v2_candidate(tmp_path, monkeypa
     assert entry.fingerprint == serve_fingerprint(tier)
 
 
+def test_run_live_threads_mode_into_candidate_fingerprint(tmp_path, monkeypatch):
+    """The mode passed to run_live (ADR-0011 / flexibility:T013) enters the candidate
+    fingerprint, so a profile measured under `--mode flexibility` MATCHES the live
+    flexibility-mode serve — not the mode-less default (else every row would read stale
+    after promotion). Copilot review #119."""
+    _no_network(monkeypatch)
+    from anvil_serving.router.fingerprint import serve_fingerprint
+
+    tier = _fast_local_tier()
+    out = tmp_path / "candidate.json"
+    store = pb.run_live(
+        tiers=[tier],
+        prompts={"planning": ["Plan the auth refactor"]},
+        out_path=out,
+        backend_factory=lambda t: _FakeBackend(),
+        judge=_fake_judge(score_per_dim=4),
+        now=lambda: _FIXED_NOW,
+        mode="flexibility",
+        **_CONFIRM,
+    )
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    row = {(e["tier_id"], e["work_class"]): e for e in doc["entries"]}[("fast-local", "planning")]
+    # The candidate fingerprint is the MODE-TAGGED one, distinct from the mode-less default.
+    assert row["fingerprint"] == serve_fingerprint(tier, mode="flexibility")
+    assert row["fingerprint"] != serve_fingerprint(tier)
+    assert store.entry("fast-local", "planning").fingerprint == serve_fingerprint(
+        tier, mode="flexibility"
+    )
+
+
 def test_run_live_refuses_cloud_tier_never_grades_it(tmp_path, monkeypatch):
     """AC2: a cloud/Claude tier is structurally REFUSED — filtered out, never graded
     (no self-verification), while the local tier alongside it is measured."""

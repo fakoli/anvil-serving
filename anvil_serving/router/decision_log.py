@@ -96,6 +96,12 @@ class DecisionRecord:
     # Estimated $ cost for this request.  0.0 for local tiers (no metered billing).
     # For metered cloud tiers, compute with :func:`compute_cost_usd` and pass here.
     cost_usd: float = 0.0
+    # Active serving mode (ADR-0011 / flexibility:T013): "agentic" | "flexibility"
+    # | None. Global, set once at build_server time and stamped onto every record so
+    # the audit trail (and a captured traffic window replayed by metrics.py)
+    # distinguishes the SAME model measured in different modes. None (a --config boot
+    # with no mode) leaves existing records byte-for-byte unchanged.
+    mode: Optional[str] = None
 
 
 # --------------------------------------------------------------------------- #

@@ -41,17 +41,22 @@ FINGERPRINT_SCHEMA = "anvil-serving.router.fingerprint/v1"
 # config.Tier); the FIRST synonym that resolves to a non-None value wins. Only
 # things that change OUTPUT QUALITY belong here — model weights/quantization, the
 # serving ENGINE (vLLM/SGLang/…), the endpoint serving them, the wire dialect, the
-# usable context window, an explicit bag of serve/sampling params, and the REASONING
-# configuration (thinking on/off, reasoning effort) carried in ``extra_body``: a
-# thinking-ON serve and a thinking-OFF serve of the same model are different quality
-# regimes (CLAUDE.md gotcha #6/#9), so they must be DISTINCT fingerprints. The
-# ``engine`` axis (ADR-0010) makes an in-place engine swap at the SAME base_url —
-# which can shift tokenization/sampling behavior and thus output quality —
-# observable, so old measured rows go stale on the swap. Volatile operational fields
+# usable context window, an explicit bag of serve/sampling params, the REASONING
+# configuration (thinking on/off, reasoning effort) carried in ``extra_body``, and
+# the active serving MODE (agentic vs flexibility): a thinking-ON serve and a
+# thinking-OFF serve of the same model are different quality regimes (CLAUDE.md
+# gotcha #6/#9), so they must be DISTINCT fingerprints. The ``engine`` axis
+# (ADR-0010) makes an in-place engine swap at the SAME base_url — which can shift
+# tokenization/sampling behavior and thus output quality — observable, so old
+# measured rows go stale on the swap. The ``mode`` axis (ADR-0011 / flexibility:T013)
+# makes the SAME model measured under the agentic vs flexibility config a DISTINCT
+# measured identity — mode is a GLOBAL, not a per-tier attribute, so it is threaded
+# into :func:`identity` / :func:`serve_fingerprint` explicitly (a Tier carries no
+# ``mode``) rather than resolved off a tier spec. Volatile operational fields
 # (latency, pid, load) are deliberately excluded so they don't churn the profile. A
-# field a tier does not set (no ``engine``, no ``extra_body``) resolves to None,
-# which :func:`identity` omits — so it hashes byte-identically to before that field
-# existed (no churn); only tiers that SET the field change.
+# field a tier does not set (no ``engine``, no ``extra_body``, no ``mode``) resolves
+# to None, which :func:`identity` omits — so it hashes byte-identically to before
+# that field existed (no churn); only serves that SET the field change.
 IDENTITY_FIELDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("tier_id", ("tier_id", "id")),
     ("model", ("model", "model_id", "served_model", "model_name")),
@@ -79,23 +84,35 @@ def _resolve(spec: Any, names: tuple[str, ...]) -> Any:
     return None
 
 
-def identity(spec: Any) -> dict[str, Any]:
+def identity(spec: Any, *, mode: Optional[str] = None) -> dict[str, Any]:
     """The normalized serve-identity dict that feeds :func:`serve_fingerprint`.
 
     Exposed (not just inlined) so callers/tests can SEE exactly what is hashed —
     only the present, documented :data:`IDENTITY_FIELDS`, under their canonical
     names. A field that resolves to ``None`` on ``spec`` is omitted entirely, so
     adding an unrelated attribute to a spec never changes its fingerprint.
+
+    ``mode`` (ADR-0011 / flexibility:T013) is the active serving mode (``agentic``
+    / ``flexibility``). It is a GLOBAL, not a per-tier ``spec`` attribute, so it is
+    threaded in ONLY as this keyword — a ``mode`` key on ``spec`` itself is
+    deliberately NOT resolved (it is absent from :data:`IDENTITY_FIELDS`). That
+    keeps the no-churn invariant UNCONDITIONAL: a mode-less call is byte-identical
+    to pre-T013 no matter what keys ``spec`` carries. When set, ``mode`` enters the
+    hashed identity under the canonical ``"mode"`` key — so the SAME model measured
+    in agentic vs flexibility mode is a DISTINCT identity. When ``None`` (a
+    ``--config`` boot with no mode) it is omitted (no churn).
     """
     out: dict[str, Any] = {}
     for canonical, names in IDENTITY_FIELDS:
         value = _resolve(spec, names)
         if value is not None:
             out[canonical] = value
+    if mode is not None:
+        out["mode"] = mode
     return out
 
 
-def serve_fingerprint(spec: Any) -> str:
+def serve_fingerprint(spec: Any, *, mode: Optional[str] = None) -> str:
     """Stable digest over a tier's quality-affecting serve identity.
 
     ``spec`` is anything exposing the :data:`IDENTITY_FIELDS` as Mapping keys or
@@ -104,8 +121,11 @@ def serve_fingerprint(spec: Any) -> str:
     and SHA-256'd, so two specs that agree on every identity field hash the same
     and any change to a hashed field changes the digest. Returns a 64-char hex
     string.
+
+    ``mode`` (ADR-0011 / flexibility:T013) overlays the active serving mode onto
+    the hashed identity; ``None`` (unset) hashes byte-identically to pre-T013.
     """
-    blob = {"schema": FINGERPRINT_SCHEMA, "identity": identity(spec)}
+    blob = {"schema": FINGERPRINT_SCHEMA, "identity": identity(spec, mode=mode)}
     canonical = json.dumps(
         blob, sort_keys=True, separators=(",", ":"), default=_canonical_default
     )
@@ -160,12 +180,16 @@ def mark_stale_on_change(
 
 
 def refresh_fingerprint(
-    store: ProfileStore, tier_id: str, spec: Any
+    store: ProfileStore, tier_id: str, spec: Any, *, mode: Optional[str] = None
 ) -> List[Optional[str]]:
     """Convenience wire: fingerprint ``spec`` then :func:`mark_stale_on_change`.
 
     The one call a serve-startup / reconfigure hook makes to keep the profile
     honest: compute the current serve fingerprint for ``tier_id`` and stale its
     rows if the identity changed since they were measured.
+
+    ``mode`` (ADR-0011 / flexibility:T013) folds the active serving mode into the
+    fingerprint, so a row measured under one mode goes stale when the SAME tier is
+    next served under a different mode. ``None`` preserves the pre-T013 digest.
     """
-    return mark_stale_on_change(store, tier_id, serve_fingerprint(spec))
+    return mark_stale_on_change(store, tier_id, serve_fingerprint(spec, mode=mode))
