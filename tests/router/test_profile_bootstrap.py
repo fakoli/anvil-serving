@@ -13,6 +13,8 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.router import profile_bootstrap as pb
+from anvil_serving.router.calibrate import Grade
+from anvil_serving.router.config import Tier
 from anvil_serving.router.profile_store import ProfileEntry, ProfileStore
 
 # Repo root: tests/router/this_file -> parents[2].
@@ -163,9 +165,10 @@ def test_live_path_is_guarded_and_calls_no_tier():
     with pytest.raises(pb.LiveBootstrapNotConfigured):
         pb.run_live(confirm_calls_real_tiers=True)  # no endpoints
 
-    # Even with the full confirmation trio, the body is NOT implemented (T016) —
-    # it raises rather than dialing a tier.
-    with pytest.raises(NotImplementedError):
+    # Even past the endpoints+confirm guard, run_live still refuses (cleanly) when
+    # it has no LOCAL tiers / prompts to measure — it raises rather than dialing a
+    # tier. (The full measuring path is exercised hermetically below with fakes.)
+    with pytest.raises(pb.LiveBootstrapNotConfigured):
         pb.run_live(
             endpoints={"cloud": "http://example.invalid"},
             confirm_calls_real_tiers=True,
@@ -301,3 +304,340 @@ def test_unknown_schema_still_rejected():
     """A wholly unknown schema tag still fails loudly."""
     with pytest.raises(ValueError, match="schema mismatch"):
         pb.store_from_profile({"schema": "bogus/v9", "entries": []})
+
+
+# --- T005: run_live — guarded offline calibration batch (LOCAL tiers only) ------
+#
+# Every test here is HERMETIC: run_live's real seams (the REAL backend, and the
+# grader that shells to the `claude` CLI) are INJECTED as fakes, so NO test makes a
+# network / subprocess / LLM call. The default (uninjected) path is the real one,
+# exercised only in production.
+
+# Confirmation trio required to pass run_live's guard in every measuring test.
+_CONFIRM = {"endpoints": {"fast-local": "http://127.0.0.1:30001/v1"},
+            "confirm_calls_real_tiers": True}
+_FIXED_NOW = "2026-07-03T00:00:00Z"
+
+
+def _fast_local_tier(tid="fast-local", model="qwen3-32b-nvfp4", extra_body=None):
+    """A LOCAL tier carrying thinking-off `extra_body` (the reasoning provenance)."""
+    from types import MappingProxyType
+
+    return Tier(
+        id=tid,
+        base_url="http://127.0.0.1:30001/v1",
+        dialect="openai",
+        context_limit=131072,
+        privacy="local",
+        tool_support=True,
+        auth_env="LOCAL_TOKEN",
+        model=model,
+        extra_body=MappingProxyType(dict(extra_body)) if extra_body is not None else None,
+    )
+
+
+def _cloud_claude_tier(tid="cloud"):
+    return Tier(
+        id=tid,
+        base_url="https://api.anthropic.com",
+        dialect="anthropic",
+        context_limit=200000,
+        privacy="cloud",
+        tool_support=True,
+        auth_env="ANTHROPIC_API_KEY",
+        model="claude-opus-4-20250514",
+    )
+
+
+class _FakeBackend:
+    """A canned in-process backend: records the request it saw, yields fixed text."""
+
+    def __init__(self, output="1. T001 plan ... 2. T002 plan ..."):
+        self.output = output
+        self.seen = []
+
+    def generate(self, request):
+        self.seen.append(request)
+        # Yield in two deltas to prove run_live joins the stream.
+        yield self.output[: len(self.output) // 2]
+        yield self.output[len(self.output) // 2:]
+
+
+def _fake_judge(score_per_dim=4, notes="ok"):
+    """A fake Agent-SDK judge: returns a well-formed scored-rubric JSON reply."""
+    calls = []
+
+    def judge(prompt):
+        calls.append(prompt)
+        scores = {d: score_per_dim for d in pb.DIMS}
+        return json.dumps({"scores": scores, "total": sum(scores.values()), "notes": notes})
+
+    judge.calls = calls
+    return judge
+
+
+def _no_network(monkeypatch):
+    """Fail hard if any socket is opened during a supposedly-hermetic run_live."""
+    import socket
+
+    def boom(*a, **k):  # pragma: no cover - must never fire
+        raise AssertionError("run_live attempted a network connection")
+
+    monkeypatch.setattr(socket, "socket", boom)
+    monkeypatch.setattr(socket, "create_connection", boom)
+
+
+def test_run_live_measures_local_tier_and_writes_v2_candidate(tmp_path, monkeypatch):
+    """AC1/AC2: run_live measures a LOCAL tier through its (injected) real backend,
+    grades it via a default AgentSDKGrader built around a FAKE judge, and writes a
+    v2 candidate profile.json with fingerprint + last_measured set on the row."""
+    _no_network(monkeypatch)
+    from anvil_serving.router.fingerprint import serve_fingerprint
+
+    tier = _fast_local_tier(extra_body={"chat_template_kwargs": {"enable_thinking": False}})
+    backends = {}
+
+    def backend_factory(t):
+        b = _FakeBackend()
+        backends[t.id] = b
+        return b
+
+    judge = _fake_judge(score_per_dim=4)  # 20/25 -> 0.8
+    out = tmp_path / "candidate.json"
+
+    store = pb.run_live(
+        tiers=[tier],
+        prompts={"planning": ["Plan the auth refactor"]},
+        out_path=out,
+        backend_factory=backend_factory,
+        judge=judge,          # default AgentSDKGrader built around this fake judge
+        now=lambda: _FIXED_NOW,
+        **_CONFIRM,
+    )
+
+    # The real backend was actually driven (the tier's request reached it).
+    assert "fast-local" in backends and backends["fast-local"].seen
+    # The judge saw the generated output (proves generate -> grade wiring).
+    assert judge.calls and "Plan the auth refactor" in judge.calls[0]
+
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    assert doc["schema"] == pb.SCHEMA == "anvil-serving.router.profile_bootstrap/v2"
+    assert doc["mode"] == "live"
+    rows = {(e["tier_id"], e["work_class"]): e for e in doc["entries"]}
+    assert set(rows) == {("fast-local", "planning")}
+    row = rows[("fast-local", "planning")]
+    # AC1: fingerprint + last_measured set on the measured local row.
+    assert row["fingerprint"] == serve_fingerprint(tier)
+    assert row["last_measured"] == _FIXED_NOW
+    # decision is EXPLICIT via decision_for_score(score); 0.8 -> allow-with-verify.
+    assert row["quality_score"] == pytest.approx(0.8)
+    assert row["decision"] == pb.decision_for_score(0.8) == "allow-with-verify"
+    # reasoning provenance captured the tier's thinking-off extra_body.
+    assert row["reasoning"] == {"chat_template_kwargs": {"enable_thinking": False}}
+
+    # The returned store is routable and carries the measured row (merged over seed).
+    assert isinstance(store, ProfileStore)
+    entry = store.entry("fast-local", "planning")
+    assert entry is not None and entry.decision == "allow-with-verify"
+    assert entry.fingerprint == serve_fingerprint(tier)
+
+
+def test_run_live_refuses_cloud_tier_never_grades_it(tmp_path, monkeypatch):
+    """AC2: a cloud/Claude tier is structurally REFUSED — filtered out, never graded
+    (no self-verification), while the local tier alongside it is measured."""
+    _no_network(monkeypatch)
+    graded_tiers = []
+
+    def spy_grader(sample):
+        graded_tiers.append(sample["tier_id"])
+        return Grade(score=0.9)
+
+    out = tmp_path / "candidate.json"
+    store = pb.run_live(
+        tiers=[_cloud_claude_tier("cloud"), _fast_local_tier("fast-local")],
+        prompts={"planning": ["Plan it"]},
+        out_path=out,
+        backend_factory=lambda t: _FakeBackend(),
+        grader=spy_grader,
+        now=lambda: _FIXED_NOW,
+        **_CONFIRM,
+    )
+
+    # The cloud tier was never handed to the grader; only the local tier was.
+    assert graded_tiers == ["fast-local"]
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    tiers_in_doc = {e["tier_id"] for e in doc["entries"]}
+    assert tiers_in_doc == {"fast-local"}  # no cloud row
+    assert store.entry("cloud", "planning") is None or \
+        store.entry("cloud", "planning").last_measured is None  # cloud unmeasured
+
+
+def test_run_live_defense_in_depth_mislabeled_claude_is_refused(tmp_path, monkeypatch):
+    """AC2 (defense-in-depth): a tier flagged privacy=local but serving a CLAUDE
+    model slips the privacy filter, reaches the REAL grader, and is REFUSED
+    (SelfVerificationError) — surfaced + skipped cleanly, the judge never called."""
+    _no_network(monkeypatch)
+    # privacy="local" (so the privacy filter keeps it) but model is Claude.
+    liar = _fast_local_tier(tid="liar", model="claude-3-5-haiku")
+    judge = _fake_judge()  # a real AgentSDKGrader is built around this; must NOT be called
+
+    out = tmp_path / "candidate.json"
+    store = pb.run_live(
+        tiers=[liar],
+        prompts={"planning": ["Plan it"]},
+        out_path=out,
+        backend_factory=lambda t: _FakeBackend(),
+        judge=judge,
+        now=lambda: _FIXED_NOW,
+        # endpoints must COVER the measured local tier (its id), so "liar" flows
+        # PAST the endpoints safety net and reaches the grader's defense-in-depth.
+        endpoints={"liar": "http://127.0.0.1:30001/v1"},
+        confirm_calls_real_tiers=True,
+    )
+
+    assert judge.calls == []  # the judge never graded the Claude-family tier
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    assert doc["entries"] == []  # nothing measured; no crash
+    assert isinstance(store, ProfileStore)
+
+
+def test_run_live_refuses_endpoints_not_covering_measured_tier(tmp_path, monkeypatch):
+    """The endpoints safety net (Copilot review): endpoints that don't cover a
+    measured local tier are refused — you can't silently dial a tier you didn't
+    confirm. The judge is never reached."""
+    _no_network(monkeypatch)
+    judge = _fake_judge()
+    with pytest.raises(pb.LiveBootstrapNotConfigured, match="does not cover"):
+        pb.run_live(
+            tiers=[_fast_local_tier(tid="fast-local")],
+            prompts={"planning": ["x"]},
+            out_path=tmp_path / "c.json",
+            backend_factory=lambda t: _FakeBackend(),
+            judge=judge,
+            now=lambda: _FIXED_NOW,
+            endpoints={"some-other-tier": "http://127.0.0.1:30001/v1"},
+            confirm_calls_real_tiers=True,
+        )
+    assert judge.calls == []
+
+
+def test_run_live_averages_multiple_prompts_and_folds_via_record_grade(monkeypatch):
+    """Multiple prompts for one class fold into a running mean via record_grade;
+    sample_n counts the observations and the score is their average."""
+    _no_network(monkeypatch)
+    scores = iter([1.0, 0.0])  # two prompts -> mean 0.5
+
+    def grader(sample):
+        return Grade(score=next(scores))
+
+    store = pb.run_live(
+        tiers=[_fast_local_tier()],
+        prompts={"planning": ["p1", "p2"]},
+        backend_factory=lambda t: _FakeBackend(),
+        grader=grader,
+        now=lambda: _FIXED_NOW,
+        **_CONFIRM,
+    )
+    entry = store.entry("fast-local", "planning")
+    assert entry is not None
+    assert entry.sample_n == 2
+    assert entry.quality_score == pytest.approx(0.5)
+
+
+def test_run_live_reads_committed_prompts_when_not_injected(tmp_path, monkeypatch):
+    """When `prompts` is omitted, run_live reads the COMMITTED fixture prompts under
+    eval_data_root (hermetic file read) and measures the derived work-class."""
+    _no_network(monkeypatch)
+    out = tmp_path / "candidate.json"
+    store = pb.run_live(
+        tiers=[_fast_local_tier()],
+        eval_data_root=EVAL_DATA,   # committed prompts: 2026-06-28-planning-capability
+        out_path=out,
+        backend_factory=lambda t: _FakeBackend(),
+        grader=lambda s: Grade(score=0.7),
+        now=lambda: _FIXED_NOW,
+        **_CONFIRM,
+    )
+    entry = store.entry("fast-local", "planning")
+    assert entry is not None and entry.quality_score == pytest.approx(0.7)
+    # Two committed planning prompts were read + graded.
+    assert entry.sample_n == 2
+
+
+def test_load_live_prompts_reads_committed_fixtures():
+    """The committed prompt loader returns the planning prompt set (no network)."""
+    prompts = pb.load_live_prompts(EVAL_DATA)
+    assert set(prompts) == {"planning"}
+    assert len(prompts["planning"]) == 2
+    assert all(isinstance(p, str) and p.strip() for p in prompts["planning"])
+
+
+def test_run_live_backend_factory_receives_real_tier_with_extra_body(monkeypatch):
+    """AC2: run_live hands the REAL Tier (carrying extra_body) to the backend
+    builder, so the default path applies extra_body byte-identically to prod."""
+    _no_network(monkeypatch)
+    seen_tiers = []
+    tier = _fast_local_tier(extra_body={"chat_template_kwargs": {"enable_thinking": False}})
+
+    def backend_factory(t):
+        seen_tiers.append(t)
+        return _FakeBackend()
+
+    pb.run_live(
+        tiers=[tier],
+        prompts={"planning": ["p"]},
+        backend_factory=backend_factory,
+        grader=lambda s: Grade(score=0.6),
+        now=lambda: _FIXED_NOW,
+        **_CONFIRM,
+    )
+    assert seen_tiers == [tier]  # the exact Tier object, extra_body intact
+    assert seen_tiers[0].extra_body["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_run_live_does_not_touch_live_routing_state(monkeypatch):
+    """AC3: run_live builds/returns a FRESH candidate store and writes a file; it
+    never mutates a shared/seed ProfileStore (nothing is auto-promoted)."""
+    _no_network(monkeypatch)
+    from anvil_serving.router.profile_store import default_profile
+
+    live_seed = default_profile()
+    before = live_seed.entry("fast-local", "planning")
+    before_snapshot = (before.decision, before.quality_score, before.sample_n)
+
+    candidate = pb.run_live(
+        tiers=[_fast_local_tier()],
+        prompts={"planning": ["p"]},
+        backend_factory=lambda t: _FakeBackend(),
+        grader=lambda s: Grade(score=0.95),  # would be "allow" — a big change
+        now=lambda: _FIXED_NOW,
+        **_CONFIRM,
+    )
+    # The candidate reflects the measurement...
+    assert candidate.entry("fast-local", "planning").decision == "allow"
+    # ...but the untouched live/seed store is byte-for-byte unchanged.
+    after = live_seed.entry("fast-local", "planning")
+    assert (after.decision, after.quality_score, after.sample_n) == before_snapshot
+    assert candidate is not live_seed
+
+
+def test_run_live_out_path_is_byte_stable_and_v2(tmp_path, monkeypatch):
+    """The written candidate is deterministic v2 JSON and round-trips through the
+    store loader (fingerprint carried onto the ProfileEntry)."""
+    _no_network(monkeypatch)
+    a = tmp_path / "a.json"
+    b = tmp_path / "b.json"
+    kwargs = dict(
+        tiers=[_fast_local_tier()],
+        prompts={"planning": ["p"]},
+        backend_factory=lambda t: _FakeBackend(),
+        grader=lambda s: Grade(score=0.82),
+        now=lambda: _FIXED_NOW,
+        **_CONFIRM,
+    )
+    pb.run_live(out_path=a, **kwargs)
+    pb.run_live(out_path=b, **kwargs)
+    assert a.read_bytes() == b.read_bytes()
+    reloaded = pb.load_profile_store(a)
+    entry = reloaded.entry("fast-local", "planning")
+    assert entry is not None and entry.fingerprint is not None

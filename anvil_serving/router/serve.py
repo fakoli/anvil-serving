@@ -76,6 +76,7 @@ from .config import (
 from .decision_log import DecisionLog
 from .dialects.translate import has_tool_artifacts
 from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecision, route_with_fallback
+from .fingerprint import refresh_fingerprint
 from .front_door import make_server
 from .intent import PRESETS, resolve
 from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult
@@ -800,6 +801,31 @@ def build_server(
             )
         else:
             profile = default_profile()
+
+    # flexibility:T002 (ADR-0009 phase 1) — stamp/refresh each tier's serve
+    # fingerprint against the chosen profile BEFORE routing is composed. This
+    # wakes the (otherwise dormant) staleness machinery on the existing profile
+    # (seed OR loaded): for each tier, refresh_fingerprint computes a pure digest
+    # over the tier's DECLARED config identity (model/engine/endpoint/dialect/
+    # context/params/reasoning) and compares it to what the tier's profile rows
+    # were last measured under. A row whose serve identity DRIFTED since it was
+    # measured is marked stale (routing then distrusts it — decision() downgrades
+    # a stale 'allow' to 'allow-with-verify' until it is re-measured). A row that
+    # carries no fingerprint yet — the case for a freshly-loaded profile OR the
+    # built-in seed — ADOPTS the current identity as its baseline and is NOT
+    # marked stale (nothing was invalidated), so a seed-only deployment behaves
+    # identically. No model/network call: this is a deterministic config-identity
+    # digest, not a serve probe.
+    for tier in config.tiers:
+        staled = refresh_fingerprint(profile, tier.id, tier)
+        if staled:
+            print(
+                f"[anvil-serving] tier {tier.id!r} serve identity changed since "
+                f"it was last measured; {len(staled)} profile row(s) marked stale "
+                f"(distrusted until re-measured): {staled}",
+                file=sys.stderr,
+                flush=True,
+            )
 
     routing = RoutingBackend(config, backends, profile)
 
