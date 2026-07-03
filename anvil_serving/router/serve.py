@@ -218,6 +218,12 @@ def build_backends(
     cloud-tuned default that :func:`build_backend_for_tier` otherwise applies. A
     cloud tier is unaffected — it keeps the 120s default.
 
+    **flexibility:T007** — a tier that sets its own ``timeout`` overrides the
+    global ``config.relay_timeout`` for THAT tier's backend (for a local OR a
+    cloud tier). Absent (the default for every existing config) preserves the
+    T005 behaviour exactly: local tiers use ``config.relay_timeout``, cloud tiers
+    keep :func:`build_backend_for_tier`'s 120s default.
+
     ``model_discovery_transport`` is an injectable seam for the T002
     ``GET /v1/models`` auto-derive probe (hermetic tests only; production uses
     the real ``urllib`` GET).
@@ -227,7 +233,13 @@ def build_backends(
     for tier in config.tiers:
         try:
             kwargs: Dict[str, object] = {}
-            if tier.privacy != PRIVACY_CLOUD:
+            # Per-tier `timeout` (flexibility:T007) overrides the global
+            # relay_timeout for THIS tier's backend. Absent -> the T005 default:
+            # a LOCAL tier uses config.relay_timeout; a CLOUD tier keeps
+            # build_backend_for_tier's 120s cloud-tuned default.
+            if tier.timeout is not None:
+                kwargs["timeout"] = tier.timeout
+            elif tier.privacy != PRIVACY_CLOUD:
                 kwargs["timeout"] = config.relay_timeout
             backends[tier.id] = build_backend_for_tier(
                 tier, env=env, transport=transport,
