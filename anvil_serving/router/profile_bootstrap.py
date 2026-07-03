@@ -642,6 +642,22 @@ def run_live(
             f"never grade a cloud/Claude tier (no self-verification); local tiers only."
         )
 
+    # Safety net (Copilot / critic review): `endpoints` must COVER every local tier
+    # we are about to dial. Otherwise it is a vestigial confirmation token — an
+    # operator could pass unrelated endpoints (or omit one) and still hit a real
+    # backend they never confirmed. Require each measured tier's id in `endpoints`.
+    uncovered = [
+        tid
+        for t in local_tiers
+        if (tid := _tier_attr(t, "id")) is not None and tid not in endpoints
+    ]
+    if uncovered:
+        raise LiveBootstrapNotConfigured(
+            f"run_live: `endpoints` does not cover local tier(s) {uncovered} being "
+            f"measured — list each measured tier's id in `endpoints` (its confirmed "
+            f"serving URL) so the batch never dials a tier you did not confirm."
+        )
+
     now_fn = now or _live_now
 
     # Default grader: the INDEPENDENT Agent-SDK grader over these tiers. Its judge
