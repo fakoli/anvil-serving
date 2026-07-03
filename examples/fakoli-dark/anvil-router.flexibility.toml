@@ -1,0 +1,99 @@
+# =============================================================================
+# FLEXIBILITY-MODE router config — fakoli-dark anvil-router (ADR-0011)
+# -----------------------------------------------------------------------------
+# The maximum-flexibility counterpart to the agentic config
+# (`anvil-router.agentic.toml`, the captured-live SGLang deploy). Per ADR-0011
+# the router runs exactly ONE mode at a time; this file is the whole tier set +
+# model set + serving config for the FLEXIBILITY mode:
+#
+#   * Agentic mode  -> anvil-router.agentic.toml — SGLang + radix/prefix cache +
+#     NEXTN spec-decode (ADR-0008), cache-friendly agent model set (qwen35-awq).
+#     Multi-turn tool loops with long repeated prefixes; cache is load-bearing.
+#   * Flexibility   -> THIS FILE — single-turn, prefix-cache-IRRELEVANT quality
+#     generation. Dropping the cache constraint un-parks models the batch engines
+#     can't cache and makes any engine first-class (ADR-0010 specialized-engine
+#     tier), so a new/better model is NEVER gated by the agentic engine's model
+#     support.
+#
+# HOW TO SELECT THIS MODE:
+#   ANVIL_CONFIG=/etc/anvil/flexibility.toml   (or `serve --mode flexibility`,
+#   ADR-0011 Phase 1). Switching modes is a config reload/restart, never
+#   per-request.
+#
+# GATING (ADR-0010 §Decision / ADR-0011 §Open): no specialized tier joins a live
+# preset pool until `preflight` passes AND its quality enters the measured
+# profile via an independent A/B (data-driven re-measure; no self-verification).
+# The tiers below are the intended flexibility roster; treat them as unproven on
+# this box until preflight + A/B land.
+#
+# NETWORKING: identical convention to the live agentic config — the router runs
+# in a container on the `fakoli-dark_default` network and reaches each serve via
+# `host.docker.internal` (never `localhost`; 127.0.0.1/host.docker.internal only,
+# CLAUDE.md gotcha #1). Only the router is published, authed via the token.
+# =============================================================================
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+
+[router]
+mapping_version = "2026-07-03.flexibility"
+# verify_local_min at its default (true): an empty local 200 (e.g. a thinking-by-
+# default model that spent its budget reasoning — gotcha #6/#9) becomes a 503 so
+# the gateway fails over instead of serving empty content.
+verify_local_min = true
+
+# ── Specialized-engine flexibility tier (ADR-0010): gpt-oss-120b via vLLM ──────
+# The high-capability single-turn workhorse. `engine`/`quantization`/`params` are
+# additive descriptive metadata (flexibility:T007) — advisory only, NOT forwarded
+# upstream; they document what backs the tier and give the serve fingerprint an
+# engine-distinct identity (ADR-0010 Phase 2), so this tier can never inherit the
+# agentic SGLang tier's measured verdict. `timeout` is a per-tier transport
+# override of the global relay_timeout — raised for the large model's prefill so a
+# slow (but healthy) generation is not spuriously fail-fasted.
+[[router.tiers]]
+id            = "flex-gptoss-120b"
+base_url      = "http://host.docker.internal:30002/v1"
+model         = "gpt-oss-120b"
+dialect       = "openai"
+context_limit = 131072
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FLEX_GPTOSS_KEY"
+engine        = "vllm"
+quantization  = "mxfp4"
+timeout       = 180.0
+params        = { gpu_memory_utilization = 0.90, max_model_len = 131072, tool_call_parser = "openai" }
+# gpt-oss ignores chat_template_kwargs.enable_thinking (harmony format); its knob
+# is reasoning_effort. extra_body IS merged into the upstream request body.
+extra_body    = { reasoning_effort = "low" }
+
+# ── Specialized-engine flexibility tier (ADR-0010): Qwen3.6-27B-NVFP4 via ktransformers ──
+# The concrete ADR-0010 first case and a MEASURED quality win (0.66 vs 0.43,
+# ADR-0011 §Context): a GDN hybrid the batch engines (vLLM/SGLang) can't cache /
+# choke on for MoE-NVFP4 on sm_120 (gotcha #16). ktransformers has a working
+# MoE-NVFP4 path (kt-kernel), fronted by the same RelayBackend with no new backend
+# code. NVFP4 large-prefill was rough (gotcha #10), so keep the per-tier timeout
+# generous and `preflight` the large-prefill path before trusting it.
+[[router.tiers]]
+id            = "flex-qwen36-27b"
+base_url      = "http://host.docker.internal:30003/v1"
+model         = "qwen36-27b-nvfp4"
+dialect       = "openai"
+context_limit = 131072
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FLEX_QWEN36_KEY"
+engine        = "ktransformers"
+quantization  = "nvfp4"
+timeout       = 240.0
+params        = { reasoning_parser = "qwen3", tool_call_parser = "qwen3_coder", trust_remote_code = true }
+extra_body    = { chat_template_kwargs = { enable_thinking = false } }
+
+# preset -> ordered candidate tier pool (filter then rank). Flexibility mode is
+# quality-first / single-turn: the high-capability gpt-oss-120b leads, with the
+# measured-quality-win Qwen3.6-27B as the escalation/alternate on every class.
+[router.presets]
+chat         = ["flex-gptoss-120b", "flex-qwen36-27b"]
+quick-edit   = ["flex-gptoss-120b", "flex-qwen36-27b"]
+review       = ["flex-gptoss-120b", "flex-qwen36-27b"]
+planning     = ["flex-gptoss-120b", "flex-qwen36-27b"]
+long-context = ["flex-gptoss-120b", "flex-qwen36-27b"]

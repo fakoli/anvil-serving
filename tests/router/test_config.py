@@ -25,9 +25,17 @@ from anvil_serving.router.config import (
 
 # CWD-independent: example.toml lives at <repo>/configs/example.toml and this
 # file is at <repo>/tests/router/test_config.py (parents[2] == repo root).
-_CONFIGS = pathlib.Path(__file__).resolve().parents[2] / "configs"
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+_CONFIGS = _REPO_ROOT / "configs"
 EXAMPLE = _CONFIGS / "example.toml"
 EXAMPLE_WITH_CLOUD = _CONFIGS / "example-with-cloud.toml"
+EXAMPLE_FLEXIBILITY = _CONFIGS / "example-flexibility.toml"
+
+# flexibility:T011 — the fakoli-dark two-mode split (ADR-0011).
+_FAKOLI = _REPO_ROOT / "examples" / "fakoli-dark"
+FAKOLI_LIVE = _FAKOLI / "anvil-router.live.toml"
+FAKOLI_AGENTIC = _FAKOLI / "anvil-router.agentic.toml"
+FAKOLI_FLEXIBILITY = _FAKOLI / "anvil-router.flexibility.toml"
 
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
@@ -720,8 +728,12 @@ def test_t007_fields_round_trip(tmp_path):
 def test_t007_shipped_configs_parse_with_none_fields():
     """AC1 — every shipped example config parses unchanged and sets none of the
     new fields (they read as None on every tier): the change is a no-op for
-    existing configs."""
+    existing configs. example-flexibility.toml is the one deliberate exception —
+    it is the worked example that USES these fields (flexibility:T010) — so it is
+    excluded here and covered by its own test below."""
     for cfg_path in sorted(_CONFIGS.glob("*.toml")):
+        if cfg_path.name == "example-flexibility.toml":
+            continue
         cfg = load(str(cfg_path))
         for t in cfg.tiers:
             assert t.engine is None, f"{cfg_path.name}: {t.id!r} engine"
@@ -771,6 +783,117 @@ def test_t007_timeout_non_number_raises(tmp_path):
     body = _BASE_TIER + 'timeout = "fast"\n'
     with pytest.raises(ConfigError):
         load(_write_toml(tmp_path, body))
+
+
+# ── flexibility:T009 — optional per-tier Tier.max_concurrency (ADR-0010 P3) ──
+def test_t009_max_concurrency_absent_defaults_to_none(tmp_path):
+    """AC (absent) — max_concurrency is optional; a config omitting it parses and
+    the field reads as None (only the process-global limiter applies)."""
+    cfg = load(_write_toml(tmp_path, _BASE_TIER))
+    assert cfg.tiers[0].max_concurrency is None
+
+
+def test_t009_max_concurrency_round_trips_positive_int(tmp_path):
+    """A tier declaring a positive-int max_concurrency round-trips it as an int."""
+    body = _BASE_TIER + "max_concurrency = 4\n"
+    cfg = load(_write_toml(tmp_path, body))
+    t = cfg.tiers[0]
+    assert t.max_concurrency == 4
+    assert isinstance(t.max_concurrency, int) and not isinstance(t.max_concurrency, bool)
+
+
+def test_t009_max_concurrency_is_not_a_required_key(tmp_path):
+    """max_concurrency is NOT in _REQUIRED_TIER_KEYS: a tier without it still
+    loads (proven by the base tier parsing above); this pins the intent that the
+    field never becomes mandatory."""
+    from anvil_serving.router.config import _REQUIRED_TIER_KEYS
+    assert "max_concurrency" not in _REQUIRED_TIER_KEYS
+
+
+def test_t009_shipped_configs_parse_with_none_max_concurrency():
+    """Every shipped example config parses unchanged and sets max_concurrency on
+    no tier (it reads as None everywhere): the change is a no-op for existing
+    configs."""
+    for cfg_path in sorted(_CONFIGS.glob("*.toml")):
+        cfg = load(str(cfg_path))
+        for t in cfg.tiers:
+            assert t.max_concurrency is None, f"{cfg_path.name}: {t.id!r} max_concurrency"
+
+
+def test_t009_max_concurrency_zero_raises(tmp_path):
+    body = _BASE_TIER + "max_concurrency = 0\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t009_max_concurrency_negative_raises(tmp_path):
+    body = _BASE_TIER + "max_concurrency = -2\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t009_max_concurrency_bool_raises(tmp_path):
+    """bool is an int subclass; reject it explicitly like timeout does."""
+    body = _BASE_TIER + "max_concurrency = true\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t009_max_concurrency_float_raises(tmp_path):
+    """A concurrency cap is a count: a float is not a valid slot count."""
+    body = _BASE_TIER + "max_concurrency = 2.5\n"
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+def test_t009_max_concurrency_string_raises(tmp_path):
+    body = _BASE_TIER + 'max_concurrency = "two"\n'
+    with pytest.raises(ConfigError):
+        load(_write_toml(tmp_path, body))
+
+
+# ── flexibility:T010 — example-flexibility.toml (specialized-engine tier) ────
+#
+# ADR-0010: a config that points anvil at an EXTERNAL OpenAI-compatible engine
+# (gpt-oss-120b via your own vLLM). The specialized tier is a plain
+# privacy="local" tier — served by the EXISTING RelayBackend, no new backend
+# class — that additionally carries flexibility-mode knobs (engine tag, per-tier
+# timeout override, extra_body reasoning knobs).
+def test_flexibility_config_parses_with_engine_and_timeout():
+    """AC — configs/example-flexibility.toml parses and the specialized tier has
+    its `engine` and `timeout` fields populated (the flexibility-mode knobs)."""
+    cfg = load(str(EXAMPLE_FLEXIBILITY))
+    assert isinstance(cfg, RouterConfig)
+    tier = cfg.tier("specialist-vllm")
+    # The two fields the task pins explicitly.
+    assert tier.engine == "vllm"
+    assert tier.timeout == pytest.approx(90.0)
+    assert isinstance(tier.timeout, float)
+    # It's a local specialized engine: OpenAI dialect, 127.0.0.1 (never localhost),
+    # a served-model-name set, and the reasoning knob forwarded via extra_body.
+    assert tier.privacy == "local"
+    assert tier.dialect == "openai"
+    assert tier.model == "gpt-oss-120b"
+    assert "127.0.0.1" in tier.base_url and "localhost" not in tier.base_url
+    assert tier.extra_body == {"reasoning_effort": "high"}
+
+
+def test_flexibility_specialized_tier_builds_a_relay_backend(monkeypatch):
+    """AC — the specialized privacy="local" tier is selected by
+    build_backend_for_tier as a RelayBackend (NOT a CloudBackend, and NOT any new
+    backend class). Construction is network-free; `model` is set so no discovery
+    probe runs."""
+    from anvil_serving.router.backends.cloud import CloudBackend
+    from anvil_serving.router.backends.relay import RelayBackend
+    from anvil_serving.router.serve import build_backend_for_tier
+
+    monkeypatch.delenv("ANVIL_SPECIALIST_KEY", raising=False)  # auth optional for a local relay
+    tier = load(str(EXAMPLE_FLEXIBILITY)).tier("specialist-vllm")
+    backend = build_backend_for_tier(tier)
+    assert isinstance(backend, RelayBackend)
+    # RelayBackend subclasses CloudBackend; assert it's the relay, not a raw cloud tier.
+    assert type(backend) is RelayBackend
+    assert type(backend) is not CloudBackend
 
 
 # ── router-service:T001 — top-level [server] table (front-door auth) ────────
@@ -855,3 +978,74 @@ def test_server_auth_env_non_string_raises(tmp_path):
     )
     with pytest.raises(ConfigError):
         load_server_config(path)
+
+
+# ── flexibility:T011 — fakoli-dark two-mode split (ADR-0011) ─────────────────
+#
+# The deploy is split into two mode configs that never overlap: the agentic
+# config is the captured-live SGLang deploy, byte-for-byte; the flexibility
+# config is the any-engine, specialized-tier (ADR-0010) counterpart. Only one
+# mode is live at a time (a config reload/restart, never per-request).
+def test_fakoli_agentic_is_byte_identical_to_live():
+    """AC — anvil-router.agentic.toml must be BYTE-IDENTICAL to the captured-live
+    config: the agentic mode config is the live deploy, isolated + unchanged."""
+    assert FAKOLI_LIVE.exists(), "anvil-router.live.toml missing"
+    assert FAKOLI_AGENTIC.exists(), "anvil-router.agentic.toml missing"
+    assert (
+        FAKOLI_AGENTIC.read_bytes() == FAKOLI_LIVE.read_bytes()
+    ), "agentic config drifted from the captured-live config (must be byte-identical)"
+
+
+def test_fakoli_agentic_config_loads():
+    """The agentic mode config parses (it is the live SGLang two-tier deploy)."""
+    cfg = load(str(FAKOLI_AGENTIC))
+    assert isinstance(cfg, RouterConfig)
+    assert {t.id for t in cfg.tiers} == {"fast-local", "heavy-local"}
+    # It carries none of the flexibility:T007 engine fields (unchanged live config).
+    for t in cfg.tiers:
+        assert t.engine is None and t.quantization is None
+
+
+def test_fakoli_flexibility_config_loads():
+    """The flexibility mode config parses and is a distinct, separate config."""
+    cfg = load(str(FAKOLI_FLEXIBILITY))
+    assert isinstance(cfg, RouterConfig)
+    assert cfg.tiers, "flexibility config declares no tiers"
+    # Distinct tier set from the agentic config (no shared tier ids).
+    agentic_ids = {t.id for t in load(str(FAKOLI_AGENTIC)).tiers}
+    flex_ids = {t.id for t in cfg.tiers}
+    assert flex_ids.isdisjoint(agentic_ids), (
+        f"flexibility and agentic configs share tier ids: {flex_ids & agentic_ids}"
+    )
+
+
+def test_fakoli_flexibility_has_specialized_engine_tier():
+    """AC — the flexibility config declares at least one specialized-engine tier
+    using the flexibility:T007 `engine`/`timeout` fields (ADR-0010)."""
+    cfg = load(str(FAKOLI_FLEXIBILITY))
+    specialized = [t for t in cfg.tiers if t.engine is not None]
+    assert specialized, "flexibility config has no tier with an `engine` set"
+    for t in specialized:
+        # A specialized-engine tier documents its engine and overrides the global
+        # relay_timeout for its (potentially slow) large-prefill path.
+        assert isinstance(t.engine, str) and t.engine
+        assert t.timeout is not None and t.timeout > 0
+
+
+def test_fakoli_flexibility_endpoints_never_localhost():
+    """Project gotcha #1: 127.0.0.1 / host.docker.internal only, never localhost."""
+    cfg = load(str(FAKOLI_FLEXIBILITY))
+    for t in cfg.tiers:
+        assert "localhost" not in t.base_url, f"tier {t.id!r} base_url uses localhost"
+        assert (
+            "127.0.0.1" in t.base_url or "host.docker.internal" in t.base_url
+        ), f"tier {t.id!r} base_url is neither 127.0.0.1 nor host.docker.internal"
+
+
+def test_fakoli_flexibility_presets_reference_known_tiers():
+    """Every flexibility preset resolves to a declared tier (config is coherent)."""
+    cfg = load(str(FAKOLI_FLEXIBILITY))
+    known = {t.id for t in cfg.tiers}
+    for name, cands in cfg.presets.items():
+        for cid in cands:
+            assert cid in known, f"flexibility preset {name} -> unknown tier {cid}"
