@@ -8,10 +8,22 @@ They are not routing-quality truth. Anvil's local work-class evals and quality p
 
 ## Supported Sources
 
-The first supported source adapter is `millstone`, for Millstone AI LLM inference benchmark snapshots. The adapter does not assume a stable public API. It supports:
+Supported source adapters:
+
+- `millstone`: Millstone AI LLM inference benchmark snapshots.
+- `rtx6kpro`: `local-inference-lab/rtx6kpro` RTX PRO 6000 Blackwell community inference-throughput JSON artifacts.
+
+The Millstone adapter does not assume a stable public API. It supports:
 
 - `fetch` mode for downloading and storing a raw snapshot from a configured URL.
 - `import` mode for importing a previously saved JSON, CSV, Markdown, or HTML snapshot from disk.
+
+The `rtx6kpro` v1 adapter is intentionally narrower. It imports individual raw JSON artifacts only:
+
+- `benchmarks/inference-throughput/*.json`
+- `models/glm5.1/benchmarks/**/decode-matrix.json`
+
+It does not crawl the whole GitHub repository or wiki, and it does not ingest Markdown, CSV, quality benchmarks, hardware/network/power benchmarks, or prose as routing truth. Non-JSON imports still store the raw snapshot and mark parsing `failed` with a message pointing users to the machine-readable JSON artifacts.
 
 Import mode is the foundation for tests and reproducible comparisons. It never needs network access.
 
@@ -34,6 +46,15 @@ anvil-serving external-bench import \
   --db .anvil/benchmarks.sqlite
 ```
 
+For `rtx6kpro`, save a raw JSON artifact first, then import that file:
+
+```bash
+anvil-serving external-bench import \
+  --source rtx6kpro \
+  --file tests/fixtures/external_benchmarks/rtx6kpro_qwen_vllm_mtp.json \
+  --db .anvil/benchmarks.sqlite
+```
+
 The raw snapshot is copied under `.anvil/external-benchmarks/raw/` when the DB lives under `.anvil/`. Parser failures are non-destructive: the raw snapshot stays stored, the snapshot row is marked `failed`, and the CLI prints the parse error.
 
 ## Fetch A Live Snapshot
@@ -42,6 +63,15 @@ The raw snapshot is copied under `.anvil/external-benchmarks/raw/` when the DB l
 anvil-serving external-bench fetch \
   --source millstone \
   --url https://example.com/millstone-snapshot.html \
+  --db .anvil/benchmarks.sqlite
+```
+
+For `rtx6kpro`, fetch individual raw GitHub JSON files rather than repository or wiki pages:
+
+```bash
+anvil-serving external-bench fetch \
+  --source rtx6kpro \
+  --url https://raw.githubusercontent.com/local-inference-lab/rtx6kpro/master/benchmarks/inference-throughput/vllm_awq_mtp.json \
   --db .anvil/benchmarks.sqlite
 ```
 
@@ -148,6 +178,7 @@ The fingerprint hash is stored with comparison records so an engine, quant, pars
 
 - External benchmarks are advisory only. They never silently become quality gates.
 - Millstone is parsed from snapshots, not from a guaranteed API contract.
+- `rtx6kpro` v1 supports individual JSON artifacts only. Whole-repo crawling, wiki ingestion, quality CSVs such as GPQA/GSM8K/HardMath, and hardware/network/power benchmarks are out of scope until Anvil has separate schemas for those priors.
 - HTML and Markdown parsing is table-oriented. Highly irregular pages may require saving a cleaner snapshot or adding source-specific extraction logic.
 - Methodology fields are best-effort. If a source does not report prompt cache, speculative decoding, tokenizer details, or sampling settings, Anvil reports that as a comparison caveat.
 - Wrapper names such as LM Studio or Ollama UI should be treated as wrappers. Store the underlying engine when known, such as `vLLM`, `SGLang`, `TensorRT-LLM`, `llama.cpp`, `ExLlamaV3`, `Transformers`, or `KTransformers`.

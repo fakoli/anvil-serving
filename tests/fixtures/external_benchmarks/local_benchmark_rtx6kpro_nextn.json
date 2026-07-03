@@ -1,0 +1,18 @@
+{
+  "run_id": "local-rtx6kpro-nextn",
+  "model": "Qwen3.5-397B-A17B-AWQ",
+  "engine": "vLLM",
+  "quantization": "AWQ",
+  "gpu_model": "RTX PRO 6000",
+  "context_tokens": 32768,
+  "concurrency": 4,
+  "serve_flags": {
+    "speculative": {
+      "method": "NEXTN"
+    }
+  },
+  "metrics": {
+    "throughput_tok_s": 260.0,
+    "ttft_ms": 900.0
+  }
+}
