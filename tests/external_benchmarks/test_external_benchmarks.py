@@ -57,6 +57,66 @@ def test_import_mode_stores_raw_snapshot_and_sha256():
     assert Path(row["raw_path"]).read_bytes() == fixture.read_bytes()
 
 
+def test_store_snapshot_uses_unique_raw_paths_for_same_second(monkeypatch):
+    db = _scratch("unique-snapshot") / "benchmarks.sqlite"
+    raw = b'{"benchmarks":[]}'
+    monkeypatch.setattr(store.time, "strftime", lambda *args: "20260101T000000Z")
+    monkeypatch.setattr(store.time, "time_ns", lambda: 123456789)
+
+    first = store.store_snapshot(
+        db,
+        source_name="millstone",
+        raw_bytes=raw,
+        original_name="snapshot.json",
+        parser_name="millstone",
+        parser_version="1",
+        imported_at="2026-01-01T00:00:00Z",
+    )
+    second = store.store_snapshot(
+        db,
+        source_name="millstone",
+        raw_bytes=raw,
+        original_name="snapshot.json",
+        parser_name="millstone",
+        parser_version="1",
+        imported_at="2026-01-01T00:00:00Z",
+    )
+
+    assert first["raw_path"] != second["raw_path"]
+    assert Path(first["raw_path"]).read_bytes() == raw
+    assert Path(second["raw_path"]).read_bytes() == raw
+
+
+def test_raw_root_for_current_directory_db_stays_beside_db():
+    assert store.raw_root_for_db("benchmarks.sqlite") == Path("external-benchmarks") / "raw"
+    assert (
+        store.raw_root_for_db(".anvil/benchmarks.sqlite")
+        == Path(".anvil") / "external-benchmarks" / "raw"
+    )
+
+
+def test_import_marks_snapshot_failed_when_insert_rows_raises(monkeypatch, capsys):
+    db = _scratch("insert-failure") / "benchmarks.sqlite"
+    fixture = FIXTURES / "millstone_sample.json"
+
+    def fail_insert(*args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(store, "insert_rows", fail_insert)
+    rc = cli.main(["import", "--source", "millstone", "--file", str(fixture), "--db", str(db)])
+    captured = capsys.readouterr()
+
+    assert rc == 1
+    assert "importing rows failed" in captured.err
+    with store.connect(db) as conn:
+        row = conn.execute(
+            "SELECT raw_path, parse_status, parse_error FROM external_snapshots"
+        ).fetchone()
+    assert row["parse_status"] == "failed"
+    assert "database is locked" in row["parse_error"]
+    assert Path(row["raw_path"]).read_bytes() == fixture.read_bytes()
+
+
 def test_millstone_parser_extracts_rows_from_fixture_data():
     adapter = MillstoneAdapter()
     json_result = adapter.parse(

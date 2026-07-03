@@ -98,7 +98,16 @@ def _import_bytes(
             file=sys.stderr,
         )
         return 1
-    count = store.insert_rows(db, snap["snapshot_id"], result.rows)
+    try:
+        count = store.insert_rows(db, snap["snapshot_id"], result.rows)
+    except Exception as exc:
+        store.update_snapshot_status(db, snap["snapshot_id"], "failed", str(exc))
+        print(
+            "stored raw snapshot but importing rows failed: %s\nraw: %s"
+            % (exc, snap["raw_path"]),
+            file=sys.stderr,
+        )
+        return 1
     status = "parsed" if count else "empty"
     store.update_snapshot_status(db, snap["snapshot_id"], status, None)
     print(

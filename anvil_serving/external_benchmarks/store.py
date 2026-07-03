@@ -87,8 +87,8 @@ def ensure_source(
 
 def raw_root_for_db(db_path: str | os.PathLike[str]) -> Path:
     parent = fs_path(db_path).parent
-    if str(parent) in ("", "."):
-        parent = Path(".anvil")
+    if str(parent) == "":
+        parent = Path(".")
     return parent / "external-benchmarks" / "raw"
 
 
@@ -109,6 +109,19 @@ def _suffix(original_name: str | None, content_type: str | None) -> str:
     return ".txt"
 
 
+def _write_unique_bytes(raw_root: Path, stem: str, suffix: str, raw_bytes: bytes) -> Path:
+    for attempt in range(100):
+        extra = f"-{attempt}" if attempt else ""
+        candidate = raw_root / f"{stem}{extra}{suffix}"
+        try:
+            with candidate.open("xb") as fh:
+                fh.write(raw_bytes)
+            return candidate
+        except FileExistsError:
+            continue
+    raise FileExistsError(f"could not create unique raw snapshot path under {raw_root}")
+
+
 def store_snapshot(
     db_path: str | os.PathLike[str],
     *,
@@ -127,8 +140,8 @@ def store_snapshot(
     raw_root.mkdir(parents=True, exist_ok=True)
     sha = hashlib.sha256(raw_bytes).hexdigest()
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-    raw_path = raw_root / f"{source_name}-{stamp}-{sha[:12]}{_suffix(original_name, content_type)}"
-    raw_path.write_bytes(raw_bytes)
+    stem = f"{source_name}-{stamp}-{time.time_ns()}-{sha[:12]}"
+    raw_path = _write_unique_bytes(raw_root, stem, _suffix(original_name, content_type), raw_bytes)
     with connect(db_path) as conn:
         source_info = KNOWN_SOURCES.get(source_name, {})
         source_id = ensure_source(conn, source_name, **source_info)
