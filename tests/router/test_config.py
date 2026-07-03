@@ -893,7 +893,7 @@ def test_flexibility_specialized_tier_builds_a_relay_backend(monkeypatch):
     assert isinstance(backend, RelayBackend)
     # RelayBackend subclasses CloudBackend; assert it's the relay, not a raw cloud tier.
     assert type(backend) is RelayBackend
-    assert not (type(backend) is CloudBackend)
+    assert type(backend) is not CloudBackend
 
 
 # ── router-service:T001 — top-level [server] table (front-door auth) ────────
