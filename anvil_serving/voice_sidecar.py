@@ -31,8 +31,19 @@ class ConfigError(ValueError):
     """Raised when a voice sidecar manifest is not safe to render."""
 
 
-def load_manifest(path: str = DEFAULT_CONFIG) -> dict:
-    with open(path, "rb") as f:
+def _resolve_config_path(path: str | None) -> str:
+    if path:
+        return path
+    if os.path.isfile(DEFAULT_CONFIG):
+        return DEFAULT_CONFIG
+    raise ConfigError(
+        "no default voice sidecar manifest is available in this installation; pass --config PATH"
+    )
+
+
+def load_manifest(path: str | None = None) -> dict:
+    config_path = _resolve_config_path(path)
+    with open(config_path, "rb") as f:
         data = tomllib.load(f)
     validate_manifest(data)
     return data
@@ -227,13 +238,14 @@ def _tomlish_quote(value: str) -> str:
     return json.dumps(value)
 
 
-def _load_for_cli(path: str) -> dict:
+def _load_for_cli(path: str | None) -> tuple[dict, str]:
+    config_path = _resolve_config_path(path)
     try:
-        return load_manifest(path)
+        return load_manifest(config_path), config_path
     except FileNotFoundError:
-        raise ConfigError("config not found: %s" % path)
+        raise ConfigError("config not found: %s" % config_path)
     except tomllib.TOMLDecodeError as exc:
-        raise ConfigError("cannot parse %s: %s" % (path, exc))
+        raise ConfigError("cannot parse %s: %s" % (config_path, exc))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -247,7 +259,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="action", required=True)
 
     def add_config(sp):
-        sp.add_argument("--config", default=DEFAULT_CONFIG, help="sidecar manifest TOML")
+        sp.add_argument(
+            "--config",
+            help="sidecar manifest TOML; defaults to the source-checkout example when present",
+        )
 
     sp = sub.add_parser("validate", help="validate the sidecar manifest")
     add_config(sp)
@@ -268,12 +283,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     args = build_parser().parse_args(list(sys.argv[1:] if argv is None else argv))
     try:
-        data = _load_for_cli(args.config)
+        data, config_path = _load_for_cli(args.config)
         if args.action == "validate":
             if args.json:
-                print(json.dumps({"ok": True, "config": args.config}, sort_keys=True))
+                print(json.dumps({"ok": True, "config": config_path}, sort_keys=True))
             else:
-                print("OK: %s" % args.config)
+                print("OK: %s" % config_path)
             return 0
         if args.action == "command":
             rendered = command_args(data, include_auth=not args.no_auth)

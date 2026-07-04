@@ -104,6 +104,24 @@ def test_cli_dispatches_voice_sidecar_validate(capsys):
     assert "OK:" in capsys.readouterr().out
 
 
+def test_cli_uses_source_checkout_default_config(capsys):
+    rc = cli.main(["voice-sidecar", "validate"])
+    assert rc == 0
+    assert str(EXAMPLE) in capsys.readouterr().out
+
+
+def test_cli_without_config_explains_missing_installed_default(monkeypatch, capsys, tmp_path):
+    missing = tmp_path / "missing-example.toml"
+    monkeypatch.setattr(voice_sidecar, "DEFAULT_CONFIG", str(missing))
+
+    rc = voice_sidecar.main(["validate"])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "pass --config PATH" in err
+    assert "config not found" not in err
+
+
 def test_cli_dispatches_voice_sidecar_command_json(capsys):
     rc = cli.main(["voice-sidecar", "command", "--config", str(EXAMPLE), "--json"])
     assert rc == 0
