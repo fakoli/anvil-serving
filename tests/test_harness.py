@@ -20,13 +20,16 @@ class _FakeSCP:
     non-"no such file" simulates an unreachable host."""
     def __init__(self, host="mini", remote=None, read_err="", write_rc=0):
         self.host, self.remote, self.read_err, self.write_rc = host, remote, read_err, write_rc
-        self.calls, self.written, self.backed_up = [], None, False
+        self.calls, self.written, self.backed_up, self.restarted = [], None, False, False
 
     def _is_remote(self, arg):
         return arg.startswith(self.host + ":")
 
     def __call__(self, argv, **kw):
         self.calls.append(argv)
+        if argv[0] == "ssh" and "gateway" in argv and "restart" in argv:  # `openclaw gateway restart`
+            self.restarted = True
+            return _proc(0)
         src, dst = argv[-2], argv[-1]
         if self._is_remote(dst):                      # WRITE or BACKUP (dest is remote)
             if dst.endswith(".bak"):
@@ -212,6 +215,68 @@ def test_transport_is_scp_only_no_remote_shell():
     assert scp.calls and all(c[0] == "scp" for c in scp.calls)
 
 
+# ---- gateway restart (pick up settings) --------------------------------------
+
+def test_restart_local_runs_openclaw_gateway_restart(capsys):
+    seen = {}
+    def fake(argv, **kw):
+        seen["argv"] = argv
+        return _proc(0)
+    rc = harness.cmd_restart_openclaw(_run=fake)
+    assert rc == 0
+    assert seen["argv"] == ["openclaw", "gateway", "restart"]
+    assert "restarted" in capsys.readouterr().out
+
+
+def test_restart_remote_over_ssh():
+    seen = {}
+    def fake(argv, **kw):
+        seen["argv"] = argv
+        return _proc(0)
+    rc = harness.cmd_restart_openclaw(gateway_host="mini", gateway_user="sd", _run=fake)
+    assert rc == 0
+    assert seen["argv"] == ["ssh", "sd@mini", "openclaw", "gateway", "restart"]  # single cmd, no shell
+
+
+def test_restart_failure_reported(capsys):
+    rc = harness.cmd_restart_openclaw(gateway_host="mini",
+                                      _run=lambda a, **k: _proc(1, "", "openclaw: command not found"))
+    assert rc == 1
+    assert "FAILED to restart" in capsys.readouterr().err
+
+
+def test_restart_binary_missing(capsys):
+    def boom(argv, **kw):
+        raise FileNotFoundError()
+    rc = harness.cmd_restart_openclaw(_run=boom)
+    assert rc == 1
+    assert "not available" in capsys.readouterr().err
+
+
+def test_sync_gateway_restarts_after_success():
+    scp = _FakeSCP(remote=None)  # absent -> created
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", restart=True,
+                                   _load=lambda p: _cfg(), _run=scp)
+    assert rc == 0 and scp.restarted  # gateway restarted after the config landed
+
+
+def test_sync_no_restart_without_flag():
+    scp = _FakeSCP(remote=None)
+    harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                              gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+    assert not scp.restarted
+
+
+def test_sync_no_restart_when_sync_fails():
+    # remote is JSON5 -> merge refused -> rc 1 -> the gateway must NOT be restarted
+    scp = _FakeSCP(remote="// json5\n{ }")
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", restart=True,
+                                   _load=lambda p: _cfg(), _run=scp)
+    assert rc == 1 and not scp.restarted
+
+
 # ---- CLI dispatch ------------------------------------------------------------
 
 def test_main_dispatches_sync_openclaw(monkeypatch):
@@ -225,3 +290,24 @@ def test_main_dispatches_sync_openclaw(monkeypatch):
     assert seen["cfg"] == "r.toml"
     assert seen["k"]["base_url"] == "http://h:8000/v1"
     assert seen["k"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
+
+
+def test_main_sync_forwards_restart_flag(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(harness, "cmd_sync_openclaw", lambda cfg, **k: seen.update(k) or 0)
+    harness.main(["sync", "openclaw", "--config", "r.toml", "--gateway-host", "mini", "--restart"])
+    assert seen["restart"] is True and seen["gateway_host"] == "mini"
+
+
+def test_main_dispatches_restart_action(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(harness, "cmd_restart_openclaw", lambda **k: seen.update(k) or 0)
+    rc = harness.main(["restart", "openclaw", "--gateway-host", "mini", "--gateway-user", "sd"])
+    assert rc == 0 and seen["gateway_host"] == "mini" and seen["gateway_user"] == "sd"
+
+
+def test_main_sync_requires_config(capsys):
+    # `sync` needs --config now that it's optional (so `restart` can omit it)
+    rc = harness.main(["sync", "openclaw"])
+    assert rc == 2
+    assert "requires --config" in capsys.readouterr().err
