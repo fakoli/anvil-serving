@@ -27,7 +27,7 @@ class _FakeSCP:
 
     def __call__(self, argv, **kw):
         self.calls.append(argv)
-        if argv[0] == "ssh" and "gateway" in argv and "restart" in argv:  # `openclaw gateway restart`
+        if argv[0] == "ssh" and any("gateway restart" in str(a) for a in argv):  # gateway restart
             self.restarted = True
             return _proc(0)
         src, dst = argv[-2], argv[-1]
@@ -173,6 +173,22 @@ def test_scp_merge_preserves_others_and_drops_stale_anvil_overrides():
     assert scp.backed_up                                       # remote backed up first
 
 
+def test_scp_merge_preserves_live_baseurl_and_apikey():
+    # a working literal apiKey + baseUrl on the remote must SURVIVE the sync (not be clobbered by the
+    # rendered ${ENV} placeholder / default host) — else re-syncing Mini would 401 every request.
+    remote = json.dumps({"models": {"providers": {"anvil": {
+        "baseUrl": "http://100.87.34.66:8000/v1", "apiKey": "LITERAL-TOKEN-xyz"}}}})
+    scp = _FakeSCP(remote=remote)
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://default-host/v1",
+                                   api_key_env="ANVIL_ROUTER_TOKEN", gateway_host="mini",
+                                   _load=lambda p: _cfg(), _run=scp)
+    assert rc == 0
+    anvil = json.loads(scp.written)["models"]["providers"]["anvil"]
+    assert anvil["baseUrl"] == "http://100.87.34.66:8000/v1"   # live URL preserved
+    assert anvil["apiKey"] == "LITERAL-TOKEN-xyz"              # live token preserved (not ${ENV})
+    assert all(m["reasoning"] is True for m in anvil["models"])  # but models ARE updated
+
+
 def test_scp_overwrite_clobbers_other_providers():
     scp = _FakeSCP(remote=json.dumps({"models": {"providers": {"openai": {}}}}))
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
@@ -241,7 +257,8 @@ def test_restart_remote_over_ssh():
         return _proc(0)
     rc = harness.cmd_restart_openclaw(gateway_host="mini", gateway_user="sd", _run=fake)
     assert rc == 0
-    assert seen["argv"] == ["ssh", "sd@mini", "openclaw", "gateway", "restart"]  # single cmd, no shell
+    # login shell so the remote PATH resolves `openclaw` (a bare `ssh host openclaw …` can't).
+    assert seen["argv"] == ["ssh", "sd@mini", '$SHELL -lc "openclaw gateway restart"']
 
 
 def test_restart_failure_reported(capsys):

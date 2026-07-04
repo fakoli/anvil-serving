@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **harness sync preserves the gateway's LIVE credentials, and `--restart` uses a login shell.** The
+  gateway-merge now KEEPS an existing anvil-provider `baseUrl`/`apiKey` (the rendered ones are just a
+  default host + a `${ENV}` placeholder), so re-syncing a gateway that pins a LITERAL token no longer
+  clobbers it into a 401 (hit live re-syncing Mini). And `harness … --restart` runs `openclaw gateway
+  restart` via `$SHELL -lc` so the remote PATH resolves `openclaw` — a bare non-login ssh shell
+  couldn't find it (installed under `~/.local/bin`/a brew prefix/etc.).
+
 ## [0.9.0] - 2026-07-04
 
 ### Added

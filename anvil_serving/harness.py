@@ -110,7 +110,18 @@ def _merge_anvil_provider(existing, rendered):
     out = json.loads(json.dumps(existing))  # deep copy
     models = out.setdefault("models", {})
     models["mode"] = "merge"
-    models.setdefault("providers", {})["anvil"] = rendered["models"]["providers"]["anvil"]
+    providers = models.setdefault("providers", {})
+    existing_anvil = providers.get("anvil") or {}
+    new_anvil = dict(rendered["models"]["providers"]["anvil"])
+    # PRESERVE the operator's LIVE baseUrl + apiKey if already set on the remote — the rendered ones
+    # are a default host + a `${ENV}` placeholder, and a sync must NEVER clobber a working URL/token
+    # (e.g. the Mini gateway pins a LITERAL token its env may not otherwise provide; overwriting it
+    # with `${ANVIL_ROUTER_TOKEN}` would 401 every request). The models[] (reasoning, contextWindow,
+    # …) DO get updated — that is the point of the sync.
+    for k in ("baseUrl", "apiKey"):
+        if existing_anvil.get(k):
+            new_anvil[k] = existing_anvil[k]
+    providers["anvil"] = new_anvil
     defaults = out.setdefault("agents", {}).setdefault("defaults", {})
     defaults.setdefault("model", {}).setdefault("primary", "anvil/chat")
     # drop any stale per-preset overrides for anvil/* — the router owns reasoning/thinking now.
@@ -198,7 +209,12 @@ def _restart_openclaw_gateway(host, user, *, _run):
     Returns 0/1."""
     if host:
         target = _ssh_target(host, user)
-        argv, where, missing = ["ssh", target, "openclaw", "gateway", "restart"], target, "ssh"
+        # Run via a LOGIN shell so the remote PATH is sourced: `ssh host openclaw …` runs a
+        # NON-login, NON-interactive shell that usually can't find `openclaw` (it lives under
+        # ~/.local/bin, a brew prefix, an nvm dir, …). `$SHELL -lc` uses the remote user's own
+        # login shell (zsh/bash) to resolve it — verified against the macOS (zsh) gateway.
+        argv = ["ssh", target, '$SHELL -lc "openclaw gateway restart"']
+        where, missing = target, "ssh"
     else:
         argv, where, missing = ["openclaw", "gateway", "restart"], "localhost", "openclaw"
     try:
