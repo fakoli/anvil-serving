@@ -27,6 +27,7 @@ the config/profile basic-checks. Docker + HTTP + sleep are dependency-injected
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -52,15 +53,33 @@ DEFAULT_CFG_VOLUME = "anvil-router-cfg"
 # with the LIVE image's own loader is what makes promote version-safe — a newer local
 # checkout must not re-verdict a profile the deployed router would reject.
 DEFAULT_IMAGE = "anvil-serving:0.7.1"
-# Router-visible paths (where the router READS them, its config volume mounted at
-# /etc/anvil). The side-container mounts the SAME volume at /cfg, so we translate to
-# the /cfg mount by basename below — a bare filename in the volume shows up at both
-# /etc/anvil/<name> (router) and /cfg/<name> (side container).
-DEFAULT_PROFILE_DEST = "/etc/anvil/profile.json"
-DEFAULT_CONFIG_DEST = "/etc/anvil/config.toml"
+# The router READS its config volume mounted at ROUTER_CFG_MOUNT (/etc/anvil); the
+# side-container mounts the SAME volume at _SIDE_MOUNT (/cfg). `_volume_path` translates a
+# router-visible dest to its /cfg path, PRESERVING subdirectories (so /etc/anvil/x/p.json
+# -> /cfg/x/p.json, not a flattened /cfg/p.json the router would never read).
+ROUTER_CFG_MOUNT = "/etc/anvil"
+DEFAULT_PROFILE_DEST = ROUTER_CFG_MOUNT + "/profile.json"
+DEFAULT_CONFIG_DEST = ROUTER_CFG_MOUNT + "/config.toml"
 
 # Mount point for the config volume inside the ROOT side-container (writes go here).
 _SIDE_MOUNT = "/cfg"
+
+# Dest paths are interpolated into a root `sh -c`, so restrict them to safe characters
+# (no shell metacharacters, no `..`) BEFORE building any command string.
+_SAFE_DEST = re.compile(r"^[A-Za-z0-9._/-]+$")
+
+
+def _volume_path(dest):
+    """Router-visible dest under ROUTER_CFG_MOUNT -> its path inside the /cfg side-container
+    mount of the SAME volume, PRESERVING subdirectories. Raises ValueError if dest is not
+    under ROUTER_CFG_MOUNT, contains shell-unsafe characters, or uses `..`."""
+    if not _SAFE_DEST.match(dest or "") or ".." in dest.split("/"):
+        raise ValueError("unsafe destination %r (allowed [A-Za-z0-9._/-], no '..')" % dest)
+    root = ROUTER_CFG_MOUNT.rstrip("/") + "/"
+    if not dest.startswith(root):
+        raise ValueError("destination %r must be under the router config mount %s/"
+                         % (dest, ROUTER_CFG_MOUNT))
+    return _SIDE_MOUNT.rstrip("/") + "/" + dest[len(root):]
 
 # Validate a profile document against the DEPLOYED image's OWN loader: import
 # store_from_profile and run it on the profile fed via stdin. A non-zero exit /
@@ -150,6 +169,15 @@ def cmd_status(container, _run=subprocess.run, _open=urllib.request.urlopen):
 
 
 def cmd_token(container, _run=subprocess.run):
+    # Rule out "can't reach the container" FIRST, so a stopped/absent container or a docker
+    # error is reported as such — not silently as "auth UNSET" (a false success).
+    st = docker_state(container, _run=_run)
+    if st == "error":
+        print("cannot read token: docker not available / daemon down / permission?")
+        return 1
+    if st != "running":
+        print("cannot read token: container %s is %s (not running)." % (container, st))
+        return 1
     try:
         r = _run(["docker", "exec", container, "printenv", "ANVIL_ROUTER_TOKEN"],
                  capture_output=True, text=True)
@@ -157,12 +185,13 @@ def cmd_token(container, _run=subprocess.run):
         print("cannot read token: docker not available")
         return 1
     token = (r.stdout or "").strip()
-    if r.returncode != 0 or not token:
-        # printenv exits non-zero when the var is unset; empty value == auth off.
-        print("auth is UNSET: ANVIL_ROUTER_TOKEN is not set on %s (the router "
-              "accepts unauthenticated requests — see SECURITY.md)." % container)
+    if r.returncode == 0 and token:
+        print(token)
         return 0
-    print(token)
+    # The container IS running (checked above), so a non-zero printenv / empty value means
+    # the var is genuinely UNSET (auth off) — not an unreachable-container false positive.
+    print("auth is UNSET: ANVIL_ROUTER_TOKEN is not set on %s (the router accepts "
+          "unauthenticated requests — see SECURITY.md)." % container)
     return 0
 
 
@@ -258,15 +287,35 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
             return 1
         config_text = raw.decode("utf-8")
 
-    # In-volume paths (translate the router-visible dest to the /cfg side mount by
-    # basename, so the temp+mv stays within the SAME filesystem — the volume — and is
-    # genuinely atomic).
-    prof = _SIDE_MOUNT + "/" + os.path.basename(profile_dest)
+    # In-volume paths: translate each router-visible dest to the /cfg side mount (PRESERVING
+    # subdirs), so the temp+mv stays within the SAME filesystem (the volume) and is atomic.
+    try:
+        prof = _volume_path(profile_dest)
+        cfg_file = _volume_path(config_dest)
+    except ValueError as e:
+        print("  ABORT: %s" % e)
+        return 1
     prof_bak, prof_new = prof + ".bak", prof + ".new"
-    cfg_file = _SIDE_MOUNT + "/" + os.path.basename(config_dest)
     cfg_bak, cfg_new = cfg_file + ".bak", cfg_file + ".new"
+    prof_dir, cfg_dir = prof.rsplit("/", 1)[0], cfg_file.rsplit("/", 1)[0]
 
     vol_mount = cfg_volume + ":" + _SIDE_MOUNT
+
+    def _rollback(reason):
+        """Restore the pre-promote profile/config from backups (mv .bak back, or rm the new
+        file if there was no prior — first-ever promote). Returns True iff it ran OK."""
+        rb = ["if [ -f %s ]; then mv %s %s; else rm -f %s; fi" % (prof_bak, prof_bak, prof, prof)]
+        if config_text is not None:
+            rb.append("if [ -f %s ]; then mv %s %s; else rm -f %s; fi"
+                      % (cfg_bak, cfg_bak, cfg_file, cfg_file))
+        r = _run(["docker", "run", "--rm", "--user", "0", "-v", vol_mount,
+                  "--entrypoint", "sh", image, "-c", " ; ".join(rb)],
+                 capture_output=True, text=True)
+        if r.returncode != 0:
+            print("  WARNING: rollback (%s) may have FAILED: %s — inspect the %s volume by hand."
+                  % (reason, (r.stderr or r.stdout or "").strip(), cfg_volume))
+            return False
+        return True
 
     # -- (a) VALIDATE against the DEPLOYED image's own loader ------------------
     val_argv = ["docker", "run", "--rm", "-i", "--entrypoint", "python",
@@ -302,7 +351,7 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
     # -- (c) ATOMICALLY write the new profile (and config, if given) ----------
     write_argv = ["docker", "run", "--rm", "-i", "--user", "0", "-v", vol_mount,
                   "--entrypoint", "sh", image, "-c",
-                  "cat > %s && mv %s %s" % (prof_new, prof_new, prof)]
+                  "mkdir -p %s && cat > %s && mv %s %s" % (prof_dir, prof_new, prof_new, prof)]
     print("  write profile: %s (atomic mv within the volume)" % prof)
     if not dry_run:
         r = _run(write_argv, input=profile_text, capture_output=True, text=True)
@@ -313,12 +362,15 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
     if config_text is not None:
         write_cfg_argv = ["docker", "run", "--rm", "-i", "--user", "0", "-v", vol_mount,
                           "--entrypoint", "sh", image, "-c",
-                          "cat > %s && mv %s %s" % (cfg_new, cfg_new, cfg_file)]
+                          "mkdir -p %s && cat > %s && mv %s %s" % (cfg_dir, cfg_new, cfg_new, cfg_file)]
         print("  write config: %s (atomic mv within the volume)" % cfg_file)
         if not dry_run:
             r = _run(write_cfg_argv, input=config_text, capture_output=True, text=True)
             if r.returncode != 0:
                 print("  FAILED to write config: %s" % (r.stderr or r.stdout or "").strip())
+                # The profile was already written; restore it so the volume isn't left with a
+                # NEW profile paired with the OLD config (a mixed promotion on the next reload).
+                _rollback("config write failed")
                 return 1
 
     # -- (d) reload + verify it didn't crash-loop -----------------------------
@@ -344,21 +396,17 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
         print("  OK: %s is running with the promoted profile." % container)
         return 0
 
-    # Crash-loop: restore the previous profile/config and restart again, then report.
-    # First-ever promote has no `.bak` (nothing pre-existed): restoring = REMOVING the
-    # bad file (back to the pre-promote 'no profile' state) — else it keeps crash-looping.
+    # Crash-loop: restore the previous profile/config (via _rollback — which handles the
+    # first-ever case by REMOVING the bad file) and restart again, reporting any failure.
     print("  CRASH: %s did not stay up (state %r) — rolling back." % (container, st))
-    rb_cmds = ["if [ -f %s ]; then mv %s %s; else rm -f %s; fi"
-               % (prof_bak, prof_bak, prof, prof)]
-    if config_text is not None:
-        rb_cmds.append("if [ -f %s ]; then mv %s %s; else rm -f %s; fi"
-                       % (cfg_bak, cfg_bak, cfg_file, cfg_file))
-    rollback_argv = ["docker", "run", "--rm", "--user", "0", "-v", vol_mount,
-                     "--entrypoint", "sh", image, "-c", " ; ".join(rb_cmds)]
-    _run(rollback_argv, capture_output=True, text=True)
-    _run(restart_argv, capture_output=True, text=True)
-    print("  rolled back to the previous profile/config and restarted %s; promote FAILED."
-          % container)
+    rolled = _rollback("crash-loop")
+    rr = _run(restart_argv, capture_output=True, text=True)
+    if rr.returncode != 0:
+        print("  WARNING: restart after rollback FAILED: %s — %s may be DOWN; check it."
+              % ((rr.stderr or rr.stdout or "").strip(), container))
+    elif rolled:
+        print("  rolled back to the previous profile/config and restarted %s; promote FAILED."
+              % container)
     return 1
 
 

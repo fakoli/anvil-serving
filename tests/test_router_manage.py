@@ -153,6 +153,8 @@ def test_status_docker_error_returns_1(capsys):
 
 def test_token_prints_value(capsys):
     def run(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")  # container is up
         assert argv == ["docker", "exec", "anvil-router", "printenv", "ANVIL_ROUTER_TOKEN"]
         return proc(0, "s3cr3t\n")
     out_rc = rm.cmd_token("anvil-router", _run=run)
@@ -162,9 +164,18 @@ def test_token_prints_value(capsys):
 
 def test_token_unset_reports_auth_off(capsys):
     def run(argv, **kw):
-        return proc(1, "", "")  # printenv exits 1 when unset
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")  # container IS up -> a non-zero printenv means UNSET
+        return proc(1, "", "")  # printenv exits 1 when the var is unset
     assert rm.cmd_token("anvil-router", _run=run) == 0
     assert "UNSET" in capsys.readouterr().out
+
+
+def test_token_container_down_is_error(capsys):
+    # a stopped/absent container must NOT be misreported as "auth UNSET" (Copilot #166).
+    run = FakeRun(state="exited")
+    assert rm.cmd_token("anvil-router", _run=run) == 1
+    assert "not running" in capsys.readouterr().out
 
 
 # ---- promote: happy path ----------------------------------------------------
@@ -320,6 +331,56 @@ def test_promote_first_ever_rollback_removes_the_bad_profile(tmp_path, capsys):
     assert rc == 1
     # rollback command handles the no-.bak case with an `rm -f` of the live profile.
     assert any(any("rm -f /cfg/profile.json" in tok for tok in a) for a in run.calls)
+
+
+# ---- promote: dest path handling (review fixes) -----------------------------
+
+def test_promote_preserves_subdirs_in_dest(tmp_path):
+    # A subdir dest must map to /cfg/<subdir>/... (NOT a flattened /cfg/<file>), and the
+    # side-container must mkdir -p the subdir — else the router reads the old path and the
+    # promotion is silently ignored (Greptile #282).
+    run = FakeRun(state="running")
+    rc = rm.cmd_promote(_profile(tmp_path), profile_dest="/etc/anvil/profiles/heavy.json",
+                        _run=run, _sleep=lambda *a: None)
+    assert rc == 0
+    assert any(any("mkdir -p /cfg/profiles" in tok for tok in a) for a in run.calls)
+    assert any(any("mv /cfg/profiles/heavy.json.new /cfg/profiles/heavy.json" in tok for tok in a)
+               for a in run.calls)
+    # never the flattened /cfg/heavy.json target
+    assert not any(any("/cfg/heavy.json.new" in tok for tok in a) for a in run.calls)
+
+
+def test_promote_rejects_unsafe_dest(tmp_path, capsys):
+    # A dest with shell metacharacters is interpolated into a root `sh -c`; reject it BEFORE
+    # touching docker (Copilot #268).
+    run = FakeRun(state="running")
+    rc = rm.cmd_promote(_profile(tmp_path), profile_dest="/etc/anvil/p;rm -rf x",
+                        _run=run, _sleep=lambda *a: None)
+    assert rc == 1
+    assert "ABORT" in capsys.readouterr().out
+    assert run.calls == []  # aborted before any docker call
+
+
+def test_promote_config_write_failure_rolls_back_profile(tmp_path):
+    # Profile write succeeds, config write fails -> restore the profile so the volume isn't
+    # left with a new profile + old config (a mixed promotion on next reload) (Greptile #348).
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[router]\nprofile_path = "/etc/anvil/profile.json"\n', encoding="utf-8")
+    calls = []
+    def run(argv, **kw):
+        calls.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        if "--entrypoint" in argv and "python" in argv:
+            return proc(0)  # validate ok
+        if "config.toml.new" in " ".join(argv):  # the CONFIG write fails
+            return proc(1, "", "disk full")
+        return proc(0)
+    rc = rm.cmd_promote(_profile(tmp_path), config_path=str(cfg), _run=run, _sleep=lambda *a: None)
+    assert rc == 1
+    # the profile backup was restored, and the router was NOT restarted with the mixed state
+    assert any(any("mv /cfg/profile.json.bak /cfg/profile.json" in tok for tok in a) for a in calls)
+    assert all(a[:2] != ["docker", "restart"] for a in calls)
 
 
 # ---- CLI dispatch -----------------------------------------------------------

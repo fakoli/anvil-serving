@@ -363,17 +363,20 @@ def cmd_rm(serves, names, dry_run=False, _run=subprocess.run):
     if not names:
         print("no containers named to remove")
         return 1
-    # resolve tokens -> container names: manifest name/container match wins, else literal.
-    containers = []
+    # resolve tokens -> container names: an EXACT single manifest match (name OR container)
+    # wins; a token matching >1 serve is AMBIGUOUS — refuse it rather than remove a serve the
+    # operator didn't target; 0 matches is a literal container name (the non-manifest squatter).
+    containers, rc = [], 0
     for tok in names:
         matched = _select(serves, [tok])
-        if matched:
-            for s in matched:
-                if s["container"] not in containers:
-                    containers.append(s["container"])
-        elif tok not in containers:
-            containers.append(tok)
-    rc = 0
+        if len(matched) > 1:
+            print("  %s: ambiguous — matches serves %s; pass the exact container name to remove one"
+                  % (tok, ", ".join(s["name"] for s in matched)))
+            rc = 1
+            continue
+        c = matched[0]["container"] if matched else tok
+        if c not in containers:
+            containers.append(c)
     for container in containers:
         st = docker_state(container, _run=_run)
         if st == "error":

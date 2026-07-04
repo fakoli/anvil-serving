@@ -132,8 +132,10 @@ services:
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
     volumes:
       # Config + promoted profile live in the anvil-router-cfg volume (/etc/anvil), read-only
-      # into the container. Edited out-of-band (the write-back / promotion path) — see the
-      # router-config management gap in the reconcile notes.
+      # into the container, edited out-of-band via `anvil-serving router promote` (ADR-0012).
+      # SEED IT on a fresh host before the first `up`: an EMPTY volume has no config.toml so the
+      # router crash-loops; on an UPGRADE the persisted volume may still hold OLD tier ports, so
+      # re-promote the current config (`router promote --config`) after changing the topology.
       - "anvil-router-cfg:/etc/anvil:ro"
 
 volumes:

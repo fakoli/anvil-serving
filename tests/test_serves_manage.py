@@ -90,6 +90,17 @@ def test_cmd_rm_no_names_errors():
     assert serves.cmd_rm([], [], _run=_inspect_returning("running")) == 1
 
 
+def test_cmd_rm_ambiguous_token_refuses(capsys):
+    # token "shared" is serve A's NAME and serve B's CONTAINER -> ambiguous -> refuse (rc 1)
+    # and remove NOTHING, rather than destroy an untargeted serve (Greptile #373).
+    serv = [{"name": "shared", "container": "cont-a", "port": 1, "health": "/health"},
+            {"name": "b", "container": "shared", "port": 2, "health": "/health"}]
+    run = _inspect_returning("running")
+    assert serves.cmd_rm(serv, ["shared"], _run=run) == 1
+    assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)  # removed nothing
+    assert "ambiguous" in capsys.readouterr().out
+
+
 # ---- adopt ------------------------------------------------------------------
 
 def test_cmd_adopt_recreates_manifest_serve_under_compose(capsys):
