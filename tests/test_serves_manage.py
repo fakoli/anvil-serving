@@ -263,3 +263,75 @@ def test_main_adopt_dispatches(tmp_path, monkeypatch):
     rc = serves.main(["adopt", "heavy", "--manifest", path])
     assert rc == 0
     assert seen == {"names": ["heavy"], "dry_run": False}
+
+
+# ---- logs -------------------------------------------------------------------
+
+_TWO = [{"name": "heavy", "container": "vllm-heavy"}, {"name": "fast", "container": "vllm-fast"}]
+
+
+def test_serves_logs_resolves_name_and_prints(capsys):
+    def fake(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        return proc(0, "HEAVY LOG\n", "warn\n")
+    rc = serves.cmd_logs(_TWO, ["heavy"], tail="5", _run=fake)
+    assert rc == 0
+    out = capsys.readouterr()
+    assert "HEAVY LOG" in out.out and "warn" in out.err
+
+
+def test_serves_logs_argv_targets_the_named_container():
+    seen = {}
+    def fake(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        seen["argv"] = argv
+        return proc(0)
+    serves.cmd_logs(_TWO, ["fast"], _run=fake)
+    assert seen["argv"][:2] == ["docker", "logs"] and seen["argv"][-1] == "vllm-fast"
+
+
+def test_serves_logs_requires_a_name(capsys):
+    # `logs` targets ONE serve, so no name is an error — NOT "all" (which would pick the sole
+    # serve on a 1-serve manifest but error on a 2-serve one). Never touches docker.
+    rc = serves.cmd_logs(_TWO, [], _run=lambda *a, **k: proc(0, "running\n"))
+    assert rc == 2
+    assert "needs a serve name" in capsys.readouterr().err
+
+
+def test_serves_logs_multiple_names_refuses(capsys):
+    rc = serves.cmd_logs(_TWO, ["heavy", "fast"], _run=lambda *a, **k: proc(0, "running\n"))
+    assert rc == 2
+    assert "ONE serve" in capsys.readouterr().err
+
+
+def test_serves_logs_no_match_errors(capsys):
+    rc = serves.cmd_logs(_TWO, ["nope"], _run=lambda *a, **k: proc(0))
+    assert rc == 1
+    assert "no matching serve" in capsys.readouterr().err
+
+
+def test_serves_logs_absent_container(capsys):
+    def fake(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(1, "", "No such object")
+        return proc(0)
+    rc = serves.cmd_logs([{"name": "heavy", "container": "c"}], ["heavy"], _run=fake)
+    assert rc == 1
+    assert "does not exist" in capsys.readouterr().err
+
+
+def test_serves_logs_dispatched_from_main(tmp_path, monkeypatch):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "heavy"
+        container = "vllm-heavy"
+        port = 30002
+        base_url = "http://127.0.0.1:30002/v1"
+    """)
+    seen = {}
+    monkeypatch.setattr(serves, "cmd_logs",
+                        lambda s, names, **k: seen.update(names=names, **k) or 0)
+    rc = serves.main(["logs", "heavy", "--tail", "3", "--manifest", path])
+    assert rc == 0 and seen["names"] == ["heavy"] and seen["tail"] == "3"

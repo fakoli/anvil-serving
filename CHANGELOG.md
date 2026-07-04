@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **`anvil-serving router logs` + `serves logs` — `docker logs` through the management verbs.**
+  Diagnosing a router crash-loop or a serve no longer means reaching for raw `docker` (the same
+  gap ADR-0012 closed for lifecycle). `router logs` and `serves logs <name>` take `--tail`/`--since`/
+  `--follow`, check the container exists first (a clean message beats docker's raw error), and
+  surface BOTH stdout and stderr (a router's fail-closed startup errors — e.g. a missing auth token —
+  go to stderr). `serves logs` requires exactly one serve. Docker is dependency-injected, so tests
+  run with no docker.
+
 - **flexibility:T016 — Qwen3.5-122B-A10B (MXFP4) serves on sm_120 via a patched vLLM Marlin W4A16
   path**, proving the any-engine seam on the hardest case. Standard vLLM routes this W4A4 MXFP4
   checkpoint to FlashInfer's cute-dsl `mm_fp4`, which dies on sm_120 (`does not support backend

@@ -432,14 +432,58 @@ def cmd_up_compose(compose_file, services, dry_run=False, _run=subprocess.run):
     return 0
 
 
+def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subprocess.run):
+    """`docker logs` for ONE model serve's container (resolved from its manifest name), so
+    diagnosing a serve doesn't mean reaching for raw docker. `--follow` streams to the terminal."""
+    # `logs` targets ONE serve, so a name is REQUIRED — don't inherit `_select`'s empty-means-all
+    # (which would silently pick the sole serve on a 1-serve manifest but error on a 2-serve one).
+    if not names:
+        print("serves logs needs a serve name (e.g. `serves logs heavy`).", file=sys.stderr)
+        return 2
+    targets = _select(serves, names)
+    if not targets:
+        print("no matching serve in the manifest (names: %s)" % ", ".join(names), file=sys.stderr)
+        return 1
+    if len(targets) > 1:
+        print("`logs` needs ONE serve; matched %d: %s — name just one."
+              % (len(targets), ", ".join(s["name"] for s in targets)), file=sys.stderr)
+        return 2
+    container = targets[0]["container"]
+    st = docker_state(container, _run=_run)
+    if st == "error":
+        print("cannot read logs: docker not available / daemon down / permission?", file=sys.stderr)
+        return 1
+    if st == "absent":
+        print("cannot read logs: container %s does not exist (bring it up first)." % container,
+              file=sys.stderr)
+        return 1
+    argv = ["docker", "logs", "--tail", str(tail)]
+    if since:
+        argv += ["--since", since]
+    if follow:
+        argv.append("--follow")
+    argv.append(container)
+    try:
+        if follow:
+            return _run(argv).returncode  # stream to the terminal; capturing would block
+        r = _run(argv, capture_output=True, text=True)
+    except FileNotFoundError:
+        print("cannot read logs: docker not available", file=sys.stderr)
+        return 1
+    sys.stdout.write(r.stdout or "")
+    sys.stderr.write(r.stderr or "")  # serve startup errors go to stderr
+    return r.returncode
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     p = argparse.ArgumentParser(
         prog="anvil-serving serves",
         description="Stop/start/inspect the local GPU model serves (declared in a "
                     "serves manifest). The router connects to these; this manages them.")
-    p.add_argument("action", choices=["status", "up", "down", "rm", "adopt"],
-                   help="status: show docker + health; up: start (restart if stopped, "
+    p.add_argument("action", choices=["status", "up", "down", "rm", "adopt", "logs"],
+                   help="status: show docker + health; logs: docker logs for ONE serve "
+                        "(--tail/--since/--follow); up: start (restart if stopped, "
                         "unpause if paused, else run the manifest `up`; with --compose, "
                         "run an ad-hoc compose file NOT in the manifest); down: docker "
                         "stop the serves; rm: `docker rm -f` container(s) — works for a "
@@ -461,6 +505,12 @@ def main(argv=None):
     p.add_argument("--compose", metavar="FILE",
                    help="for `up`: bring up an ad-hoc/experiment serve from this compose "
                         "file (NOT in the manifest); `names` are compose service names.")
+    p.add_argument("--tail", default="200",
+                   help="for `logs`: trailing lines to show (default: %(default)s; 'all').")
+    p.add_argument("--since",
+                   help="for `logs`: only logs since a timestamp or relative time (e.g. 10m, 1h).")
+    p.add_argument("--follow", action="store_true",
+                   help="for `logs`: stream new output (Ctrl-C to stop).")
     # parse_intermixed_args (not parse_args): on py3.11 a `nargs="*"` positional that
     # follows an option-with-value (e.g. `up --compose FILE svc-a svc-b`) is dropped as
     # "unrecognized arguments" — py3.12 fixed plain parse_args, but intermixed is the
@@ -494,6 +544,8 @@ def main(argv=None):
 
     if a.action == "status":
         return cmd_status(serves)
+    if a.action == "logs":
+        return cmd_logs(serves, a.names, tail=a.tail, since=a.since, follow=a.follow)
     if a.action == "down":
         return cmd_down(serves, a.names, dry_run=a.dry_run)
     if a.action == "up":
