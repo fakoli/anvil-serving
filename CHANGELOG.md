@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **flexibility:T016 — Qwen3.5-122B-A10B (MXFP4) serves on sm_120 via a patched vLLM Marlin W4A16
+  path**, proving the any-engine seam on the hardest case. Standard vLLM routes this W4A4 MXFP4
+  checkpoint to FlashInfer's cute-dsl `mm_fp4`, which dies on sm_120 (`does not support backend
+  'cute-dsl' with capability 120`); removing the (sm_120-broken) `flashinfer.cute_dsl` module at
+  startup forces vLLM's *designed* Marlin W4A16 fallback. New reusable recipe
+  `examples/fakoli-dark/docker-compose.flexibility.yml` + a `docs/findings/blackwell-sm120-lab-notebook.md`
+  writeup. Correctness preflight = **ALL PASS** (smoke, structured JSON, 14k needle, 20/20 tool batch)
+  with `--no-thinking`.
+
 ### Changed
 
 - **fakoli-dark router redeployed to the v0.8.0 release image** (from the transitional `0.7.1` pin

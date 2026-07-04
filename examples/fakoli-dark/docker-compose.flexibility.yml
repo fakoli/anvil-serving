@@ -1,0 +1,55 @@
+# FLEXIBILITY-ONLY tier: Qwen3.5-122B-A10B-MXFP4 on sm_120 via the vLLM Marlin W4A16 fallback.
+# (flexibility:T016 — prove the any-engine seam on the hardest case.)
+#
+# The flagship 122B MoE is flexibility-only: standard vLLM classifies its MXFP4 as W4A4 and routes
+# the linear layers to FlashInfer's cute-dsl `mm_fp4`, which DIES on sm_120
+# (`BackendSupportedError: mm_fp4 does not support backend 'cute-dsl' with capability 120`). vLLM is
+# DESIGNED to fall back to Marlin W4A16 "otherwise", but FlashInfer.is_supported() wrongly claims
+# sm_120 (cap 120 >= 100). `has_flashinfer_cutedsl()` only checks module importability (no env), so we
+# remove `flashinfer/cute_dsl` at startup — it is broken on sm_120 anyway (CLAUDE.md gotcha #16) —
+# which forces the working Marlin path. Correctness preflight = ALL PASS (with --no-thinking); see
+# docs/findings/blackwell-sm120-lab-notebook.md.
+#
+#   GPU_UUID=GPU-d0f446cf-... PORT=30004 \
+#     docker compose -f examples/fakoli-dark/docker-compose.flexibility.yml up -d
+#   anvil-serving preflight --base-url http://127.0.0.1:30004/v1 --model qwen35-122b --no-thinking --needle-ctx 14000
+name: fakoli-flexibility
+services:
+  qwen35-122b:
+    image: vllm/vllm-openai:nightly
+    container_name: vllm-qwen35-122b
+    restart: "no"                     # flexibility experiment/validation serve, not a production tier
+    ipc: host
+    ports:
+      - "127.0.0.1:${PORT:-30004}:${PORT:-30004}"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"   # 74 GB weights, native ext4 (never a C:/ 9P bind)
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
+      VLLM_USE_V2_MODEL_RUNNER: "0"   # WSL2 has no UVA (gotcha #14)
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"   # sm_120 `f` suffix (gotcha #10/#20)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    # Remove the sm_120-broken cute_dsl module so the W4A4-MXFP4 scheme falls back to Marlin W4A16,
+    # then exec the serve. (entrypoint overridden from the image default `vllm`.)
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        rm -rf /usr/local/lib/python3.12/dist-packages/flashinfer/cute_dsl 2>/dev/null || true;
+        exec vllm serve olka-fi/Qwen3.5-122B-A10B-MXFP4
+        --served-model-name qwen35-122b
+        --quantization compressed-tensors
+        --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --trust-remote-code
+        --max-model-len ${MAX_MODEL_LEN:-16384} --max-num-seqs ${MAX_NUM_SEQS:-2}
+        --gpu-memory-utilization ${GPU_MEM_UTIL:-0.90} --kv-cache-dtype fp8
+        --host 0.0.0.0 --port ${PORT:-30004}
+
+volumes:
+  vllm-hfcache:
+    external: true
