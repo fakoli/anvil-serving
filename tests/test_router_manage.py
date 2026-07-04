@@ -405,3 +405,62 @@ def test_defaults_match_deployed_compose():
     assert rm.DEFAULT_CFG_VOLUME == "anvil-router-cfg"
     assert rm.DEFAULT_COMPOSE.endswith("docker-compose.yml")
     assert "fakoli-dark" in rm.DEFAULT_COMPOSE
+
+
+# ---- logs -------------------------------------------------------------------
+
+def test_logs_builds_argv_and_prints_both_streams(capsys):
+    def fake(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        return proc(0, "STDOUT LINE\n", "STDERR LINE\n")
+    rc = rm.cmd_logs("anvil-router", tail="50", since="10m", _run=fake)
+    assert rc == 0
+    out = capsys.readouterr()
+    assert "STDOUT LINE" in out.out and "STDERR LINE" in out.err  # both streams surfaced
+
+
+def test_logs_argv_has_tail_since_and_container():
+    seen = {}
+    def fake(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        seen["argv"] = argv
+        return proc(0)
+    rm.cmd_logs("anvil-router", tail="7", since="1h", _run=fake)
+    a = seen["argv"]
+    assert a[:2] == ["docker", "logs"] and "--tail" in a and "7" in a
+    assert "--since" in a and "1h" in a and a[-1] == "anvil-router"
+
+
+def test_logs_follow_streams_without_capture():
+    seen = {}
+    def fake(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        seen["argv"], seen["kw"] = argv, kw
+        return proc(0)
+    rc = rm.cmd_logs("anvil-router", follow=True, _run=fake)
+    assert rc == 0
+    assert "--follow" in seen["argv"]
+    assert "capture_output" not in seen["kw"]  # streamed to the terminal, not captured
+
+
+def test_logs_absent_container_errors(capsys):
+    rc = rm.cmd_logs("anvil-router", _run=FakeRun(state="absent"))
+    assert rc == 1
+    assert "does not exist" in capsys.readouterr().err
+
+
+def test_logs_docker_error_reported(capsys):
+    rc = rm.cmd_logs("anvil-router", _run=FakeRun(state="error"))
+    assert rc == 1
+    assert "daemon down" in capsys.readouterr().err
+
+
+def test_logs_dispatched_from_main(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(rm, "cmd_logs", lambda c, **k: seen.update(container=c, **k) or 0)
+    rc = rm.main(["logs", "--tail", "9", "--follow"])
+    assert rc == 0 and seen["container"] == "anvil-router"
+    assert seen["tail"] == "9" and seen["follow"] is True
