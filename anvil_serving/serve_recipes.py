@@ -77,7 +77,7 @@ def _toml_string(s: str) -> str:
     for ch in s:
         if ch in _TOML_ESCAPES:
             out.append(_TOML_ESCAPES[ch])
-        elif ord(ch) < 0x20:
+        elif ord(ch) < 0x20 or ord(ch) == 0x7F:
             out.append("\\u%04X" % ord(ch))
         else:
             out.append(ch)
