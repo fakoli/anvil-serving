@@ -160,6 +160,37 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
             )
 
+        def _no_tier_response(self, e: NoAvailableTierError,
+                              dialect: Optional[Dialect] = None) -> None:
+            """Render a :class:`NoAvailableTierError` to the right HTTP status.
+
+            An ``over_context`` error (the request exceeds every tier's
+            context window) is a CALLER problem -> a clean **413 Payload Too
+            Large**, refusing the over-sized request up front instead of
+            forwarding it to a too-small tier that would 400 at the model. Every
+            other kind (``unbound`` / ``exhausted``) is a server availability
+            signal -> the operator-configured ``exhaustion_status`` (default 503,
+            the keyless-handoff signal per ADR-0001 §Mechanism). The detailed
+            message is logged server-side; the client gets a sanitised generic
+            message (tier identities / remediation are internal-operator info).
+            """
+            if getattr(e, "kind", None) == "over_context":
+                print(f"[anvil] 413 over-context request: {e}", file=sys.stderr)
+                self._error(
+                    413, "payload_too_large",
+                    "request exceeds the context window of every available "
+                    "tier; send a smaller request",
+                    dialect=dialect,
+                )
+                return
+            print(f"[anvil] {exhaustion_status} no available tier: {e}",
+                  file=sys.stderr)
+            self._error(
+                exhaustion_status, "service_unavailable",
+                "no quality-gated tier is available for this request",
+                dialect=dialect,
+            )
+
         def _error(self, status: int, etype: str, message: str,
                    dialect: Optional[Dialect] = None) -> None:
             # Errors raised once a dialect is known speak that dialect's native
@@ -232,14 +263,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 # C3 holds: the commit-window fully buffered + verified the local
                 # tier's response before raising — nothing local was streamed before
                 # this point. This is an honest availability signal, not partial output.
-                # Log the detail server-side; send a sanitised generic message to the
-                # client (tier identities / remediation are internal-operator info).
-                print(f"[anvil] {exhaustion_status} no available tier: {e}", file=sys.stderr)
-                self._error(
-                    exhaustion_status, "service_unavailable",
-                    "no quality-gated tier is available for this request",
-                    dialect=dialect,
-                )
+                # (An over_context error is instead a clean 413 — see
+                # _no_tier_response — refused up front, never forwarded.)
+                self._no_tier_response(e, dialect=dialect)
                 return
             except Exception as e:
                 print(f"[anvil] 500 backend error in generate(): {e}", file=sys.stderr)
@@ -374,6 +400,20 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             try:
                 result = decide_fn(request)
             except NoAvailableTierError as e:
+                # over_context -> a clean 413 (caller sent too large a request):
+                # the decision endpoint must not imply a too-small tier is
+                # servable. Every other kind keeps /v1/route's existing 503.
+                if getattr(e, "kind", None) == "over_context":
+                    print(
+                        f"[anvil] 413 /v1/route over-context request: {e}",
+                        file=sys.stderr,
+                    )
+                    self._error(
+                        413, "payload_too_large",
+                        "request exceeds the context window of every available "
+                        "tier; send a smaller request",
+                    )
+                    return
                 print(
                     f"[anvil] 503 /v1/route no available tier: {e}",
                     file=sys.stderr,
@@ -692,13 +732,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 except NoAvailableTierError as e:
                     # Keyless handoff contract — see the streaming path above for
                     # the full rationale (ADR-0001 §Mechanism, advise-and-defer:T004).
-                    # Log the detail server-side; send a sanitised generic message.
-                    print(f"[anvil] {exhaustion_status} no available tier: {e}", file=sys.stderr)
-                    self._error(
-                        exhaustion_status, "service_unavailable",
-                        "no quality-gated tier is available for this request",
-                        dialect=dialect,
-                    )
+                    # over_context -> 413; unbound/exhausted -> exhaustion_status.
+                    self._no_tier_response(e, dialect=dialect)
                     return
                 except Exception as e:
                     # Unexpected backend fault: log the detail server-side; send

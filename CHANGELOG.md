@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **Conservative per-request context gate: an over-context request is refused, not forwarded to a
+  too-small tier.** A live incident routed a ~94k-token request to a 65k/32k-context local tier
+  (heavy tier was down, so the preset fell back to fast), which 400'd at the model with "Input
+  length exceeds maximum context length" plus an ASGI traceback. `policy.route()` has always had
+  the hard-constraint filter (`needs.min_context > tier.context_limit` -> drop tier), but
+  `serve.RoutingBackend` left `Needs.min_context` at 0, so it never fired.
+  `serve._needs_for` now wires `min_context` from `internal.estimate_tokens` (a whitespace WORD
+  count — a strict lower bound on real tokens: >= 1 token per word, English ~1.3x, dense code/JSON
+  2-4x). The raw word count is used with **no** extra discount, so the filter drops a tier only when
+  even this underestimate exceeds the tier's real-token `context_limit` (effectively real
+  `tokens > ~1.3x limit`): a built-in cushion that catches the 1.4x incident while never
+  false-rejecting a request merely near a tier's limit. When the gate drops EVERY candidate tier,
+  `NoAvailableTierError(kind="over_context")` is raised and the front door renders a clean **413
+  Payload Too Large** (distinct from the availability 503/`exhaustion_status`), instead of
+  forwarding a doomed request or emitting a bare 500. `policy.route` records the specific tiers in a
+  new additive `dropped_by_context` note bucket. stdlib-only, additive; normal-size requests route
+  exactly as before.
+
 ### Added
 
 - **External benchmark priors:** new `anvil-serving external-bench` CLI and
@@ -159,10 +179,8 @@ deltas, real token counts), with a full-codebase hardening pass behind it.
   request could route to a tier with no tool support (the model would then be unable to call any
   tool it needed). Wired via `dialects.translate.has_tool_artifacts` (#96): both `RoutingBackend.generate`
   and `RoutingBackend.decide` now build a `Needs(needs_tools=...)` from the raw wire body before
-  calling `route()`. `Needs.min_context` is deliberately left unwired — the only estimator
-  available (`internal.estimate_tokens`) is an explicit word-count approximation, not a real
-  tokenizer, and comparing it against a tier's real `context_limit` would be an unsound gate; wiring
-  a real per-request context estimate is separate, larger work.
+  calling `route()`. (`Needs.min_context` was wired conservatively later — see the Unreleased
+  "Conservative per-request context gate" entry above.)
 - **Verify: empty-content false-negative on tool-call-only local replies (regression coverage).**
   Live end-to-end testing with a real OpenClaw agent turn reported a local model reply with empty
   text `content` but a populated `tool_calls` being wrongly treated as thinking-budget starvation
