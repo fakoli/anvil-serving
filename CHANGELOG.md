@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **`anvil-serving router up` now passes `--no-deps`** so it manages ONLY the router. Without it,
+  `docker compose up router` re-runs `depends_on` and RECREATES the model serves whenever their
+  resolved config drifts (e.g. a changed `--env-file`) — a gpt-oss-120b reload is minutes of 503s.
+  (Hit live redeploying to 0.9.0.) The serves are `serves`' responsibility, not the router verb's.
 - **harness sync preserves the gateway's LIVE credentials, and `--restart` uses a login shell.** The
   gateway-merge now KEEPS an existing anvil-provider `baseUrl`/`apiKey` (the rendered ones are just a
   default host + a `${ENV}` placeholder), so re-syncing a gateway that pins a LITERAL token no longer
