@@ -22,8 +22,10 @@ full write. stdlib-only (ssh via `subprocess`, injected for tests).
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
+import tempfile
 
 # Per-preset OpenClaw hints (advisory display/caps; contextWindow is computed from the router).
 # maxTokens is the harness's output cap; input declares modalities (review accepts images).
@@ -105,49 +107,72 @@ def _merge_anvil_provider(existing, rendered):
     return out
 
 
+def _tmpfile():
+    fd, p = tempfile.mkstemp(prefix="anvil-harness-", suffix=".json")
+    os.close(fd)
+    return p
+
+
 def _sync_over_ssh(host, user, path, rendered, *, overwrite, _run):
-    """Push the rendered config to a REMOTE gateway over ssh, backing up the remote file first.
-
-    Default MERGES the anvil provider into the existing remote config (preserving the operator's
-    other settings); `overwrite` writes the full rendered config. A merge is REFUSED if the remote
-    file isn't plain JSON (JSON5/comments) — re-run with --overwrite (a timestamped .bak is always
-    taken first). Returns 0 on success, 1 on failure. All ssh goes through the injected `_run`."""
+    """Push the rendered config to a REMOTE gateway via **scp** — deliberately NO remote shell, so it
+    works FROM a Windows or Linux local host AND against a Windows / macOS / Linux gateway (all ship
+    OpenSSH's `scp`/sftp-server; a POSIX remote-shell script would break on a Windows gateway). Reads
+    the remote with scp, MERGES/overwrites LOCALLY, backs the remote up (pushes the ORIGINAL back as
+    `<path>.bak`), then writes. A merge is REFUSED if the remote isn't plain JSON (JSON5/comments) —
+    re-run with --overwrite (backup still taken). Returns 0/1; scp runs through the injected `_run`."""
     tgt = _ssh_target(host, user)
+    remote = "%s:%s" % (tgt, path)
+    read_tmp, write_tmp = _tmpfile(), _tmpfile()
     try:
-        r = _run(["ssh", tgt, "cat %s 2>/dev/null || true" % path],
-                 capture_output=True, text=True)
-    except FileNotFoundError:
-        print("ssh not available on PATH", file=sys.stderr)
-        return 1
-    if r.returncode != 0:
-        print("cannot reach %s over ssh: %s" % (tgt, (r.stderr or "").strip()), file=sys.stderr)
-        return 1
-    existing_text = r.stdout or ""
-
-    if overwrite or not existing_text.strip():
-        payload, mode = rendered, ("overwrite" if existing_text.strip() else "created")
-    else:
+        # 1. READ the remote via scp. A MISSING file is a clean "create", not a hard error.
         try:
-            payload = _merge_anvil_provider(json.loads(existing_text), rendered)
-            mode = "merged"
-        except ValueError:
-            print("refusing to merge: remote %s is not plain JSON (JSON5/comments?). Re-run with "
-                  "--overwrite (a .bak is taken first), or edit it by hand." % path, file=sys.stderr)
+            r = _run(["scp", "-q", remote, read_tmp], capture_output=True, text=True)
+        except FileNotFoundError:
+            print("scp not available on PATH (install the OpenSSH client)", file=sys.stderr)
             return 1
+        existed = r.returncode == 0
+        err = (r.stderr or "").strip()
+        if not existed and err and "no such file" not in err.lower():
+            print("cannot reach %s over scp: %s" % (remote, err), file=sys.stderr)
+            return 1
+        with open(read_tmp, "r", encoding="utf-8") as f:
+            existing_text = f.read() if existed else ""
 
-    text = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
-    # backup (if present) then ATOMICALLY write via temp + mv on the remote.
-    script = ("[ -f %(p)s ] && cp %(p)s %(p)s.bak.$(date +%%s) || true; "
-              "cat > %(p)s.anvil-new && mv %(p)s.anvil-new %(p)s") % {"p": path}
-    w = _run(["ssh", tgt, script], input=text, capture_output=True, text=True)
-    if w.returncode != 0:
-        print("FAILED to write %s on %s: %s"
-              % (path, tgt, (w.stderr or w.stdout or "").strip()), file=sys.stderr)
-        return 1
-    n = len(rendered["models"]["providers"]["anvil"]["models"])
-    print("synced OpenClaw provider (%d preset models, %s) -> %s:%s (backup taken)"
-          % (n, mode, tgt, path))
-    return 0
+        # 2. MERGE / OVERWRITE locally.
+        if overwrite or not existing_text.strip():
+            payload, mode = rendered, ("overwrite" if existed else "created")
+        else:
+            try:
+                payload = _merge_anvil_provider(json.loads(existing_text), rendered)
+                mode = "merged"
+            except ValueError:
+                print("refusing to merge: remote %s is not plain JSON (JSON5/comments?). Re-run with "
+                      "--overwrite (a .bak is taken first), or edit it by hand." % path, file=sys.stderr)
+                return 1
+        with open(write_tmp, "w", encoding="utf-8") as f:
+            f.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+
+        # 3. BACKUP (push the ORIGINAL content back as .bak — portable, no remote shell) then WRITE.
+        if existed:
+            b = _run(["scp", "-q", read_tmp, "%s.bak" % remote], capture_output=True, text=True)
+            if b.returncode != 0:
+                print("WARNING: could not back up %s: %s"
+                      % (remote, (b.stderr or "").strip()), file=sys.stderr)
+        w = _run(["scp", "-q", write_tmp, remote], capture_output=True, text=True)
+        if w.returncode != 0:
+            print("FAILED to write %s: %s" % (remote, (w.stderr or w.stdout or "").strip()),
+                  file=sys.stderr)
+            return 1
+        n = len(rendered["models"]["providers"]["anvil"]["models"])
+        print("synced OpenClaw provider (%d preset models, %s) -> %s%s"
+              % (n, mode, remote, " (backup taken)" if existed else ""))
+        return 0
+    finally:
+        for t in (read_tmp, write_tmp):
+            try:
+                os.unlink(t)
+            except OSError:
+                pass
 
 
 def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,

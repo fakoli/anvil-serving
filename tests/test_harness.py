@@ -13,19 +13,34 @@ def _proc(rc=0, out="", err=""):
     return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
 
-class _FakeSSH:
-    """Fake `_run`: the READ ssh call (no stdin) returns `remote`; the WRITE call (payload piped
-    on stdin) captures it. `read_rc`/`write_rc` simulate ssh failures."""
-    def __init__(self, remote="", read_rc=0, write_rc=0):
-        self.remote, self.read_rc, self.write_rc = remote, read_rc, write_rc
-        self.calls, self.written = [], None
+class _FakeSCP:
+    """Fake `_run` for scp (portable transport). `remote` = the remote file's content (None =
+    absent). READ (`scp host:path localtmp`) materializes `remote` to the local dest; WRITE
+    (`scp localtmp host:path`) captures the payload; a `.bak` dest records a backup. `read_err`
+    non-"no such file" simulates an unreachable host."""
+    def __init__(self, host="mini", remote=None, read_err="", write_rc=0):
+        self.host, self.remote, self.read_err, self.write_rc = host, remote, read_err, write_rc
+        self.calls, self.written, self.backed_up = [], None, False
+
+    def _is_remote(self, arg):
+        return arg.startswith(self.host + ":")
 
     def __call__(self, argv, **kw):
         self.calls.append(argv)
-        if kw.get("input") is None:      # the READ (`cat ... || true`)
-            return _proc(self.read_rc, self.remote, "")
-        self.written = kw.get("input")   # the WRITE (payload on stdin)
-        return _proc(self.write_rc, "", "")
+        src, dst = argv[-2], argv[-1]
+        if self._is_remote(dst):                      # WRITE or BACKUP (dest is remote)
+            if dst.endswith(".bak"):
+                self.backed_up = True
+                return _proc(0)
+            with open(src, "r", encoding="utf-8") as f:
+                self.written = f.read()
+            return _proc(self.write_rc, "", "" if self.write_rc == 0 else "write failed")
+        # READ (source is remote) -> materialize the remote content to the local dest
+        if self.remote is None:
+            return _proc(1, "", self.read_err or "scp: %s: No such file or directory" % src)
+        with open(dst, "w", encoding="utf-8") as f:
+            f.write(self.remote)
+        return _proc(0)
 
 
 class _Tier:
@@ -125,19 +140,19 @@ def test_sync_no_presets_errors(capsys):
     assert "no [router.presets]" in capsys.readouterr().err
 
 
-# ---- ssh sync (the OpenClaw gateway is remote) -------------------------------
+# ---- ssh/scp sync (the OpenClaw gateway is remote; scp = portable on windows + linux) --------
 
-def test_ssh_merge_preserves_others_and_drops_stale_anvil_overrides():
+def test_scp_merge_preserves_others_and_drops_stale_anvil_overrides():
     remote = json.dumps({
         "models": {"providers": {"openai": {"baseUrl": "https://api.openai.com/v1"}}},
         "agents": {"defaults": {"models": {"anvil/planning": {"params": {"x": 1}},
                                            "openai/gpt": {"y": 2}}}},
     })
-    ssh = _FakeSSH(remote=remote)
+    scp = _FakeSCP(remote=remote)
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=ssh)
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
-    merged = json.loads(ssh.written)
+    merged = json.loads(scp.written)
     provs = merged["models"]["providers"]
     assert "openai" in provs                                   # other provider preserved
     assert provs["anvil"]["api"] == "openai-completions"       # anvil provider (re)written
@@ -145,54 +160,55 @@ def test_ssh_merge_preserves_others_and_drops_stale_anvil_overrides():
     assert "anvil/planning" not in dm                          # stale anvil/* override dropped
     assert "openai/gpt" in dm                                  # other agent model preserved
     assert merged["models"]["mode"] == "merge"
+    assert scp.backed_up                                       # remote backed up first
 
 
-def test_ssh_overwrite_clobbers_other_providers():
-    ssh = _FakeSSH(remote=json.dumps({"models": {"providers": {"openai": {}}}}))
+def test_scp_overwrite_clobbers_other_providers():
+    scp = _FakeSCP(remote=json.dumps({"models": {"providers": {"openai": {}}}}))
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
                                    gateway_host="mini", overwrite=True,
-                                   _load=lambda p: _cfg(), _run=ssh)
+                                   _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
-    written = json.loads(ssh.written)
+    written = json.loads(scp.written)
     assert "openai" not in written["models"]["providers"]      # clobbered by overwrite
     assert "anvil" in written["models"]["providers"]
 
 
-def test_ssh_refuses_merge_on_json5_remote(capsys):
-    ssh = _FakeSSH(remote="// json5 comment\n{ models: {} }")   # not plain JSON
+def test_scp_refuses_merge_on_json5_remote(capsys):
+    scp = _FakeSCP(remote="// json5 comment\n{ models: {} }")   # not plain JSON
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=ssh)
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
     assert rc == 1
-    assert ssh.written is None                                  # nothing written
+    assert scp.written is None                                  # nothing written
     assert "refusing to merge" in capsys.readouterr().err
 
 
-def test_ssh_created_when_remote_absent(capsys):
-    ssh = _FakeSSH(remote="")
+def test_scp_created_when_remote_absent(capsys):
+    scp = _FakeSCP(remote=None)                                # file absent -> create
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=ssh)
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
     assert rc == 0
-    assert json.loads(ssh.written)["models"]["providers"]["anvil"]
+    assert json.loads(scp.written)["models"]["providers"]["anvil"]
+    assert not scp.backed_up                                    # nothing to back up
     assert "created" in capsys.readouterr().out
 
 
-def test_ssh_unreachable_errors(capsys):
-    ssh = _FakeSSH(read_rc=255)                                 # ssh connection failed
+def test_scp_unreachable_errors(capsys):
+    scp = _FakeSCP(remote=None, read_err="ssh: connect to host mini port 22: Connection refused")
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                                   gateway_host="mini", _load=lambda p: _cfg(), _run=ssh)
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
     assert rc == 1
-    assert ssh.written is None
+    assert scp.written is None
     assert "cannot reach" in capsys.readouterr().err
 
 
-def test_ssh_write_backs_up_and_is_atomic():
-    ssh = _FakeSSH(remote="")
+def test_transport_is_scp_only_no_remote_shell():
+    # portability: a POSIX remote-shell script would break on a Windows gateway, so EVERY transport
+    # call must be scp — never `ssh <host> <shell-command>`.
+    scp = _FakeSCP(remote=None)
     harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
-                              gateway_host="mini", gateway_path="~/.openclaw/openclaw.json",
-                              _load=lambda p: _cfg(), _run=ssh)
-    write_cmd = next(c for c in ssh.calls if len(c) >= 3 and ".anvil-new" in c[2])
-    assert ".bak." in write_cmd[2]                              # timestamped backup
-    assert "mv" in write_cmd[2]                                 # atomic temp + mv
+                              gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+    assert scp.calls and all(c[0] == "scp" for c in scp.calls)
 
 
 # ---- CLI dispatch ------------------------------------------------------------
