@@ -10,6 +10,8 @@ Subcommands:
                         this restarts the container and prints that note (no in-process
                         reload exists).
   status                docker state + whether it's running + a loopback health probe
+  logs                  docker logs for the router container (--tail/--since/--follow) — so
+                        diagnosing a crash-loop doesn't mean reaching for raw docker
   token                 print the router bearer token (ANVIL_ROUTER_TOKEN) — a local
                         secret the operator owns — or report auth is unset
   promote               THE HIGH-VALUE VERB: the containerized profile/config write-back.
@@ -142,6 +144,39 @@ def cmd_reload(container, dry_run=False, _run=subprocess.run):
     print("  note: the router loads config/profile at STARTUP; there is no live "
           "reload, so `reload` restarts the container to pick up changes.")
     return cmd_restart(container, dry_run=dry_run, _run=_run)
+
+
+def cmd_logs(container, tail="200", since=None, follow=False, _run=subprocess.run):
+    """`docker logs` for the router container, so operators (and this session) don't reach for
+    raw docker to diagnose it. Checks the container exists first — a clean message beats docker's
+    raw error. `--follow` streams to the terminal (no capture, or it would block)."""
+    st = docker_state(container, _run=_run)
+    if st == "error":
+        print("cannot read logs: docker not available / daemon down / permission?", file=sys.stderr)
+        return 1
+    if st == "absent":
+        print("cannot read logs: container %s does not exist (bring it up first)." % container,
+              file=sys.stderr)
+        return 1
+    argv = ["docker", "logs", "--tail", str(tail)]
+    if since:
+        argv += ["--since", since]
+    if follow:
+        argv.append("--follow")
+    argv.append(container)
+    try:
+        if follow:
+            # stream straight to the terminal (Ctrl-C to stop); capturing would block forever.
+            return _run(argv).returncode
+        r = _run(argv, capture_output=True, text=True)
+    except FileNotFoundError:
+        print("cannot read logs: docker not available", file=sys.stderr)
+        return 1
+    # docker routes container stdout -> stdout and stderr -> stderr; surface BOTH (the router's
+    # startup errors — e.g. a missing auth token — go to stderr).
+    sys.stdout.write(r.stdout or "")
+    sys.stderr.write(r.stderr or "")
+    return r.returncode
 
 
 def _health(_open, port=8000, path="/"):
@@ -422,9 +457,9 @@ def main(argv=None):
         description="Manage the DEPLOYED (containerized, ADR-0004) anvil-router: "
                     "lifecycle, token, status, and the promote write-back path.")
     p.add_argument("action",
-                   choices=["up", "down", "restart", "reload", "status", "token", "promote"],
-                   help="up/down/restart/reload lifecycle; status; token (print the "
-                        "bearer token); promote (validate + write a new profile/config).")
+                   choices=["up", "down", "restart", "reload", "status", "logs", "token", "promote"],
+                   help="up/down/restart/reload lifecycle; status; logs (docker logs); token "
+                        "(print the bearer token); promote (validate + write a new profile/config).")
     p.add_argument("--container", default=DEFAULT_CONTAINER,
                    help="router container name (default: %(default)s).")
     p.add_argument("--compose", default=DEFAULT_COMPOSE,
@@ -433,6 +468,13 @@ def main(argv=None):
                    help="compose service name for the router (default: %(default)s).")
     p.add_argument("--dry-run", action="store_true",
                    help="print what would run without executing any docker command.")
+    # logs-only options
+    p.add_argument("--tail", default="200",
+                   help="logs: number of trailing lines to show (default: %(default)s; 'all').")
+    p.add_argument("--since",
+                   help="logs: only show logs since a timestamp or relative time (e.g. 10m, 1h).")
+    p.add_argument("--follow", action="store_true",
+                   help="logs: stream new log output (Ctrl-C to stop).")
     # promote-only options
     p.add_argument("--profile", help="promote: path to the profile.json to promote.")
     p.add_argument("--config", help="promote: optional config.toml to write alongside it.")
@@ -459,6 +501,8 @@ def main(argv=None):
         return cmd_reload(a.container, dry_run=a.dry_run)
     if a.action == "status":
         return cmd_status(a.container)
+    if a.action == "logs":
+        return cmd_logs(a.container, tail=a.tail, since=a.since, follow=a.follow)
     if a.action == "token":
         return cmd_token(a.container)
     if a.action == "promote":
