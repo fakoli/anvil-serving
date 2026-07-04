@@ -458,7 +458,11 @@ def main(argv=None):
     p.add_argument("--compose", metavar="FILE",
                    help="for `up`: bring up an ad-hoc/experiment serve from this compose "
                         "file (NOT in the manifest); `names` are compose service names.")
-    a = p.parse_args(argv)
+    # parse_intermixed_args (not parse_args): on py3.11 a `nargs="*"` positional that
+    # follows an option-with-value (e.g. `up --compose FILE svc-a svc-b`) is dropped as
+    # "unrecognized arguments" — py3.12 fixed plain parse_args, but intermixed is the
+    # documented cross-version fix. No REMAINDER/subparsers here, so it's safe.
+    a = p.parse_intermixed_args(argv)
 
     # `up --compose <file>`: ad-hoc/experiment serve from a compose file that is NOT in the
     # manifest — independent of serves.toml, so we neither require nor load a manifest here.

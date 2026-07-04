@@ -6,8 +6,6 @@ no docker, no network, and no real waiting.
 import json
 import types
 
-import pytest
-
 from anvil_serving import router_manage as rm
 
 
@@ -163,7 +161,8 @@ def test_token_prints_value(capsys):
 
 
 def test_token_unset_reports_auth_off(capsys):
-    run = lambda argv, **kw: proc(1, "", "")  # printenv exits 1 when unset
+    def run(argv, **kw):
+        return proc(1, "", "")  # printenv exits 1 when unset
     assert rm.cmd_token("anvil-router", _run=run) == 0
     assert "UNSET" in capsys.readouterr().out
 
