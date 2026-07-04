@@ -115,3 +115,132 @@ def test_detect_max_model_len_returns_none_on_error(monkeypatch):
 
     monkeypatch.setattr(bm.urllib.request, "urlopen", boom)
     assert bm.detect_max_model_len("http://x/v1", "coder") is None
+
+
+# ---- GENERATE: benchmarking a serve ALSO records its recipe (--recipe-out) ---------
+# Hermetic: capture_from_container / capture_hardware are injected as fakes, so no
+# real docker / GPU / network is touched. The emitted block is proven parseable.
+import argparse       # noqa: E402
+import tomllib        # noqa: E402
+
+
+def _recipe_args(**over):
+    base = dict(
+        model="local-heavy", recipe_model=None, recipe_status="verified",
+        recipe_from_container="heavy-serve", recipe_intent="flexibility,quality",
+        recipe_mode="flexibility", recipe_out="-",
+    )
+    base.update(over)
+    return argparse.Namespace(**base)
+
+
+_STUB_SUMMARY = {
+    "run_id": "benchmark-20260703T000000Z",
+    "max_context_tokens": 131072,
+    "context_tokens": None,
+    "metrics": {"throughput_tok_s": 183.24, "ttft_p50_ms": 412.7},
+}
+
+_FAKE_CAP = {
+    "serve": {
+        "engine": "vllm",
+        "image": "vllm/vllm-openai:nightly",
+        "port": 30002,
+        "env": ["FLASHINFER_CUDA_ARCH_LIST=12.0f"],
+        "flags": ["--kv-cache-dtype fp8"],
+    },
+    "hardware": {"gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c"},
+}
+
+
+def _fake_capture(name):
+    assert name == "heavy-serve"
+    return _FAKE_CAP
+
+
+def _fake_hardware(gpu_uuid=None):
+    assert gpu_uuid == "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+    return {"gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q", "vram_total_gb": 96}
+
+
+def test_build_recipe_assembles_measured_serve_and_intent():
+    r = bm.build_recipe(_recipe_args(), _STUB_SUMMARY,
+                        capture=_fake_capture, hardware=_fake_hardware)
+    assert r["model"] == "local-heavy"  # defaults to --model
+    assert r["status"] == "verified"
+    assert r["hardware"] == {
+        "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q",
+        "vram_total_gb": 96,
+        "gpu_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    }
+    assert r["serve"]["image"] == "vllm/vllm-openai:nightly"
+    assert r["serve"]["context_tokens"] == 131072
+    assert r["measured"]["throughput_single_tok_s"] == 183.2  # rounded from THIS run
+    assert r["measured"]["context_tokens"] == 131072
+    assert r["intent"] == {"suited": ["flexibility", "quality"], "mode": "flexibility"}
+
+
+def test_build_recipe_labels_concurrent_throughput_as_aggregate():
+    """At concurrency>1, throughput_tok_s is an AGGREGATE across streams — it must NOT
+    be recorded under the single-stream field the registry treats as its headline
+    (critic SHOULD-FIX: default benchmark concurrency is 20)."""
+    summary = dict(_STUB_SUMMARY, concurrency=20)
+    r = bm.build_recipe(_recipe_args(), summary,
+                        capture=_fake_capture, hardware=_fake_hardware)
+    m = r["measured"]
+    assert "throughput_single_tok_s" not in m
+    assert m["throughput_aggregate_tok_s"] == 183.2
+    assert m["concurrency"] == 20
+
+
+def test_recipe_model_overrides_model_field():
+    r = bm.build_recipe(_recipe_args(recipe_model="openai/gpt-oss-120b"), _STUB_SUMMARY,
+                        capture=_fake_capture, hardware=_fake_hardware)
+    assert r["model"] == "openai/gpt-oss-120b"
+
+
+def test_emit_recipe_to_stdout_is_a_parseable_recipe_block(capsys):
+    bm.emit_recipe(_recipe_args(recipe_out="-"), _STUB_SUMMARY,
+                   capture=_fake_capture, hardware=_fake_hardware)
+    block = capsys.readouterr().out
+    assert block.startswith("[[recipe]]")
+    parsed = tomllib.loads("schema='x'\n" + block)["recipe"][0]
+    assert parsed["model"] == "local-heavy"
+    assert parsed["measured"]["throughput_single_tok_s"] == 183.2
+    # the reconstructed docker run works off exactly this captured block.
+    cmd = bm._serve_recipes().reconstruct_docker_run(parsed)
+    assert "vllm/vllm-openai:nightly local-heavy --kv-cache-dtype fp8" in cmd
+
+
+def test_emit_recipe_appends_to_file(tmp_path):
+    reg = tmp_path / "serve-recipes.toml"
+    reg.write_text('schema = "v1"\n', encoding="utf-8")
+    bm.emit_recipe(_recipe_args(recipe_out=str(reg)), _STUB_SUMMARY,
+                   capture=_fake_capture, hardware=_fake_hardware)
+    data = tomllib.loads(reg.read_text(encoding="utf-8"))
+    assert data["recipe"][0]["model"] == "local-heavy"
+
+
+def test_main_recipe_out_end_to_end_is_hermetic(monkeypatch, capsys):
+    """`benchmark ... --recipe-out -` through main(): the benchmark itself is stubbed
+    (fake stream_chat, no /v1/models probe) and capture is faked -> ZERO network."""
+    from anvil_serving import serve_recipes as sr
+
+    monkeypatch.setattr(bm, "stream_chat",
+                        lambda *a, **k: dict(ttft=0.1, e2e=0.2, out_toks=64, usage=None))
+    monkeypatch.setattr(sr, "capture_from_container", _fake_capture)
+    monkeypatch.setattr(sr, "capture_hardware", _fake_hardware)
+
+    rc = bm.main([
+        "--base-url", "http://127.0.0.1:30002/v1", "--model", "local-heavy",
+        "--requests", "2", "--concurrency", "2", "--max-model-len", "131072",
+        "--recipe-out", "-", "--recipe-from-container", "heavy-serve",
+        "--recipe-intent", "flexibility", "--recipe-mode", "flexibility",
+    ])
+    assert rc in (0, None)
+    out = capsys.readouterr().out
+    assert "[[recipe]]" in out
+    block = out[out.index("[[recipe]]"):]
+    parsed = tomllib.loads("schema='x'\n" + block)["recipe"][0]
+    assert parsed["model"] == "local-heavy"
+    assert parsed["intent"]["mode"] == "flexibility"

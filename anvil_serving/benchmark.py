@@ -19,6 +19,7 @@ import json
 import time
 import random
 import statistics
+import sys
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -156,7 +157,96 @@ def sample_ctx():
         if r <= p: return v
     return 262144
 
-def main():
+def _serve_recipes():
+    """Import the shared serve-recipe helpers, working whether benchmark.py is imported
+    as `anvil_serving.benchmark` (package) or run as a bare script (via cli._run_script)."""
+    try:
+        from . import serve_recipes as sr  # package import
+    except ImportError:
+        import serve_recipes as sr  # bare-script import (same dir on sys.path)
+    return sr
+
+def build_recipe(a, summary, *, capture=None, hardware=None):
+    """Assemble a serve-recipe dict from a completed benchmark run + a live container.
+
+    The reproducible half (image/env/flags/port + gpu_uuid) comes from
+    `capture_from_container`; the hardware name/VRAM from `capture_hardware`; the
+    [recipe.measured] numbers from THIS run's `summary`; and [recipe.intent] from the
+    --recipe-* flags. `capture` / `hardware` are injectable for hermetic tests.
+    """
+    sr = _serve_recipes()
+    capture = capture or sr.capture_from_container
+    hardware = hardware or sr.capture_hardware
+
+    cap = capture(a.recipe_from_container) if a.recipe_from_container else {}
+    serve = dict(cap.get("serve") or {})
+    hw = dict(cap.get("hardware") or {})
+    gpu_uuid = hw.get("gpu_uuid")
+    # Only capture hardware when the GPU is KNOWN — capture_hardware(None) would pick the
+    # FIRST GPU row, silently recording the wrong card on a multi-GPU box (Copilot review).
+    gpu = hardware(gpu_uuid) if gpu_uuid else {}
+
+    recipe = {"model": a.recipe_model or a.model, "status": a.recipe_status}
+    recipe["source"] = "measured via anvil-serving benchmark (%s)" % summary.get("run_id", "")
+
+    hardware_block = {}
+    if gpu.get("gpu"): hardware_block["gpu"] = gpu["gpu"]
+    if gpu.get("vram_total_gb") is not None: hardware_block["vram_total_gb"] = gpu["vram_total_gb"]
+    if gpu_uuid: hardware_block["gpu_uuid"] = gpu_uuid
+    if hardware_block: recipe["hardware"] = hardware_block
+
+    ctx = summary.get("context_tokens") or summary.get("max_context_tokens")
+    if ctx and "context_tokens" not in serve:
+        serve["context_tokens"] = ctx
+    if serve: recipe["serve"] = serve
+
+    metrics = summary.get("metrics") or {}
+    measured = {}
+    tps = metrics.get("throughput_tok_s")
+    if tps is not None:
+        # throughput_tok_s is the AGGREGATE across all concurrent streams. Only label
+        # it single-stream when concurrency==1; otherwise record it as aggregate + the
+        # concurrency, so a generated recipe never mislabels a ~20-way number as the
+        # single-stream stat the registry treats as its headline. (critic SHOULD-FIX)
+        conc = summary.get("concurrency") or 1
+        if conc == 1:
+            measured["throughput_single_tok_s"] = round(tps, 1)
+        else:
+            measured["throughput_aggregate_tok_s"] = round(tps, 1)
+            measured["concurrency"] = conc
+    ttft = metrics.get("ttft_p50_ms")
+    if ttft is not None:
+        measured["ttft_p50_ms"] = round(ttft, 1)
+    if ctx:
+        measured["context_tokens"] = ctx
+    if measured: recipe["measured"] = measured
+
+    intent = {}
+    if a.recipe_intent:
+        suited = [s.strip() for s in a.recipe_intent.split(",") if s.strip()]
+        if suited: intent["suited"] = suited
+    if a.recipe_mode:
+        intent["mode"] = a.recipe_mode
+    if intent: recipe["intent"] = intent
+
+    return recipe
+
+def emit_recipe(a, summary, *, capture=None, hardware=None, append=None):
+    """Render + persist the recipe for this benchmark run (stdout if --recipe-out '-')."""
+    sr = _serve_recipes()
+    recipe = build_recipe(a, summary, capture=capture, hardware=hardware)
+    if a.recipe_out == "-":
+        print(sr.format_recipe(recipe), end="")
+    else:
+        try:
+            (append or sr.append_recipe)(a.recipe_out, recipe)
+        except OSError as exc:
+            print("could not write serve recipe to %s: %s" % (a.recipe_out, exc), file=sys.stderr)
+            return recipe
+        print("recorded serve recipe for %s -> %s" % (recipe["model"], a.recipe_out))
+    return recipe
+
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", required=True); ap.add_argument("--model", required=True)
     ap.add_argument("--api-key", default=None)
@@ -179,7 +269,24 @@ def main():
                          "gpt-oss-style models IGNORE this kwarg (they gate reasoning via 'reasoning effort').")
     ap.add_argument("--json-out", default=None,
                     help="write a machine-readable JSON summary for external-bench compare")
-    a = ap.parse_args()
+    # --- GENERATE a serve recipe as a side effect of benchmarking a live serve ------
+    # (READ them back with `anvil-serving models recipe list|show`.) All optional.
+    ap.add_argument("--recipe-out", default=None,
+                    help="after the run, record a [[recipe]] block: PATH to append to the "
+                         "serve-recipe registry, or '-' for stdout. Captures the live serve's "
+                         "reproducible docker config + THIS run's measured numbers.")
+    ap.add_argument("--recipe-from-container", default=None, metavar="NAME",
+                    help="docker container NAME of the serve to capture (image/env/flags/port + "
+                         "gpu_uuid via `docker inspect`) for the recorded recipe")
+    ap.add_argument("--recipe-intent", default=None, metavar="CSV",
+                    help="comma-separated work-classes the serve is suited for (-> [recipe.intent].suited)")
+    ap.add_argument("--recipe-mode", default=None,
+                    help="the mode this recipe belongs to (-> [recipe.intent].mode)")
+    ap.add_argument("--recipe-status", default="verified",
+                    help="recipe provenance status (default %(default)s = measured on-box)")
+    ap.add_argument("--recipe-model", default=None, metavar="NAME",
+                    help="model id recorded in the recipe (default: --model)")
+    a = ap.parse_args(argv)
 
     # Resolve the serve's context window: explicit flag wins; else best-effort probe /v1/models.
     max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, a.api_key)
@@ -214,7 +321,7 @@ def main():
     print(f"completed:        {len(results)}/{n} in {wall:.1f}s")
     print(f"TTFT  p50/p95:    {pctile(ttfts,50):.2f}s / {pctile(ttfts,95):.2f}s")
     print(f"E2E   p50/p95:    {pctile(e2es,50):.2f}s / {pctile(e2es,95):.2f}s")
-    print(f"throughput:       {out_tot/wall:.0f} output tok/s (aggregate)")
+    print(f"throughput:       {(out_tot / wall if wall else 0.0):.0f} output tok/s (aggregate)")
     summary = {
         "schema": "anvil-serving.benchmark/v1",
         "run_id": time.strftime("benchmark-%Y%m%dT%H%M%SZ", time.gmtime(t0)),
@@ -251,6 +358,9 @@ def main():
             json.dump(summary, f, indent=2, sort_keys=True)
             f.write("\n")
         print("wrote JSON summary: " + a.json_out)
+    # Benchmarking a serve ALSO records its reproducible recipe when asked.
+    if a.recipe_out:
+        emit_recipe(a, summary)
 
 if __name__ == "__main__":
     main()
