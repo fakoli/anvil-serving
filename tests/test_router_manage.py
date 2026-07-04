@@ -468,12 +468,13 @@ def test_logs_dispatched_from_main(monkeypatch):
 
 # ---- up --env-file (persist ANVIL_ROUTER_TOKEN / ROUTER_PUBLISH across deploys) ---------------
 
-def test_up_passes_env_file_before_compose_file():
+def test_up_passes_env_file_before_compose_file_as_absolute():
     run = FakeRun()
-    rm.cmd_up("compose.yml", "router", env_file="/home/u/.env", _run=run)
+    rm.cmd_up("compose.yml", "router", env_file="myenv", _run=run)   # relative
     up = next(c for c in run.calls if c[:2] == ["docker", "compose"])
-    assert "--env-file" in up and up[up.index("--env-file") + 1] == "/home/u/.env"
-    assert up.index("--env-file") < up.index("-f")  # must precede -f to interpolate
+    ef = up[up.index("--env-file") + 1]
+    assert ef == rm.os.path.abspath("myenv")                          # resolved to absolute
+    assert up.index("--env-file") < up.index("-f")                    # must precede -f to interpolate
 
 
 def test_up_omits_env_file_when_none():
