@@ -259,6 +259,46 @@ quick-edit = ["no-tools-local", "cloud"]
     assert dec.tiers == ("cloud",)
 
 
+# ── context gate: dropped_by_context note + over-context-of-every-tier ────────
+def test_min_context_drop_is_also_recorded_in_dropped_by_context():
+    # A min_context drop lands in BOTH dropped_by_constraint (back-compat) and
+    # the new, context-specific dropped_by_context bucket; a needs_tools drop
+    # does NOT pollute dropped_by_context.
+    intent = _intent(None, ("fast-local", "heavy-local"))  # local-only pool
+    dec = route(intent, CONFIG, PROFILE, needs=Needs(min_context=100000))
+    assert "fast-local" not in dec.tiers          # 32768 < 100000
+    assert "heavy-local" in dec.tiers             # 131072 fits
+    assert dec.notes["dropped_by_context"] == ("fast-local",)
+    assert "fast-local" in dec.notes["dropped_by_constraint"]
+
+
+def test_over_context_of_every_tier_yields_empty_result():
+    # A request larger than EVERY tier's context_limit drops all of them; the
+    # result is empty and dropped_by_context lists every tier — with NO deny or
+    # metered drops, this is the clean signal the serve boundary maps to a 413.
+    intent = _intent(None, ("fast-local", "heavy-local"))
+    dec = route(intent, CONFIG, PROFILE, needs=Needs(min_context=200000))
+    assert dec.tiers == ()
+    assert dec.notes["empty"] is True
+    assert set(dec.notes["dropped_by_context"]) == {"fast-local", "heavy-local"}
+    assert dec.notes["dropped_by_deny"] == ()
+    assert dec.notes["dropped_by_metered_gate"] == ()
+
+
+def test_conservative_margin_request_just_under_limit_is_not_dropped():
+    # A request whose estimated size is just UNDER a tier's context_limit must
+    # NOT be dropped (no boundary false-reject). The filter is strict `>`, so at
+    # or below the limit the tier is kept.
+    intent = _intent(None, ("fast-local",))  # fast-local context_limit = 32768
+    below = route(intent, CONFIG, PROFILE, needs=Needs(min_context=32767))
+    assert below.tiers == ("fast-local",)
+    at = route(intent, CONFIG, PROFILE, needs=Needs(min_context=32768))
+    assert at.tiers == ("fast-local",)          # == limit is NOT over
+    over = route(intent, CONFIG, PROFILE, needs=Needs(min_context=32769))
+    assert over.tiers == ()                     # one past the limit -> dropped
+    assert over.notes["dropped_by_context"] == ("fast-local",)
+
+
 # ── None work class skips the deny filter (custom preset trusts the pool) ─────
 def test_none_work_class_skips_deny_filter():
     # A local-only pool isolates the deny-filter behaviour from the T002 metered
