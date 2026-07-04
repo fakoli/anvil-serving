@@ -311,3 +311,32 @@ def test_main_sync_requires_config(capsys):
     rc = harness.main(["sync", "openclaw"])
     assert rc == 2
     assert "requires --config" in capsys.readouterr().err
+
+
+def test_restart_action_rejects_sync_only_flags(capsys):
+    # `restart openclaw --config r.toml` would silently discard --config; reject it instead.
+    rc = harness.main(["restart", "openclaw", "--config", "r.toml"])
+    assert rc == 2
+    assert "does not sync" in capsys.readouterr().err
+
+
+def test_stdout_sync_with_restart_rejected(capsys):
+    # a stdout-only sync isn't applied, so --restart would reload the OLD gateway config.
+    rc = harness.main(["sync", "openclaw", "--config", "r.toml", "--restart"])
+    assert rc == 2
+    assert "stdout-only" in capsys.readouterr().err
+
+
+def test_sync_restart_allowed_with_gateway_host(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(harness, "cmd_sync_openclaw", lambda cfg, **k: seen.update(k) or 0)
+    rc = harness.main(["sync", "openclaw", "--config", "r.toml",
+                       "--gateway-host", "mini", "--restart"])
+    assert rc == 0 and seen["restart"] is True
+
+
+def test_sync_restart_allowed_with_out(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(harness, "cmd_sync_openclaw", lambda cfg, **k: seen.update(k) or 0)
+    rc = harness.main(["sync", "openclaw", "--config", "r.toml", "--out", "cfg.json", "--restart"])
+    assert rc == 0 and seen["restart"] is True
