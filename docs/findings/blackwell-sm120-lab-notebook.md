@@ -43,19 +43,22 @@ vLLM's `compressed_tensors_w4a4_mxfp4` scheme is **designed** to fall back:
 `has_flashinfer_cutedsl()` is `has_flashinfer() and importlib.util.find_spec("flashinfer.cute_dsl") is not None`
 — no env toggle. So make the module un-importable at container start (it is broken on sm_120 anyway):
 
+The full, reproducible recipe — **with the required env vars actually set** (`FLASHINFER_CUDA_ARCH_LIST=12.0f`,
+`VLLM_USE_V2_MODEL_RUNNER=0`, `CUDA_VISIBLE_DEVICES=<PRO 6000 UUID>`), GPU pinning, and the volume — is
+**`examples/fakoli-dark/docker-compose.flexibility.yml`**. Do NOT hand-assemble it from a partial snippet
+(a missing `FLASHINFER_CUDA_ARCH_LIST` re-breaks engine init). Its sm_120-specific core is the entrypoint:
+
 ```yaml
-# examples/fakoli-dark/docker-compose.experiment.yml + this override:
 entrypoint: ["sh", "-c"]
 command:
   - >
-    rm -rf /usr/local/lib/python3.12/dist-packages/flashinfer/cute_dsl 2>/dev/null || true;
-    exec vllm serve olka-fi/Qwen3.5-122B-A10B-MXFP4 --served-model-name qwen35-122b
-    --quantization compressed-tensors
+    rm -rf /usr/local/lib/python*/dist-packages/flashinfer/cute_dsl
+    /usr/local/lib/python*/site-packages/flashinfer/cute_dsl 2>/dev/null || true;
+    exec vllm serve olka-fi/Qwen3.5-122B-A10B-MXFP4 --quantization compressed-tensors
     --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --trust-remote-code
-    --max-model-len 16384 --max-num-seqs 2 --gpu-memory-utilization 0.90 --kv-cache-dtype fp8
-    --host 0.0.0.0 --port 30004
-# env: FLASHINFER_CUDA_ARCH_LIST=12.0f, VLLM_USE_V2_MODEL_RUNNER=0, CUDA_VISIBLE_DEVICES=<PRO 6000 UUID>
+    --max-model-len 16384 --gpu-memory-utilization 0.90 --kv-cache-dtype fp8 --host 0.0.0.0 --port 30004
 ```
+(the `python*` glob keeps the `rm` working if the image's python version/layout changes.)
 
 With cute_dsl gone the scheme logs and takes the working path:
 > *"Weight-only FP4 compression will be used leveraging the **Marlin kernel**."*
