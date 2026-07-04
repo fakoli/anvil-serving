@@ -65,3 +65,25 @@ def test_positional_construction_still_works_default_kind():
     # must not break (kind stays a keyword-only param with a default).
     err = NoAvailableTierError("planning", ["cloud"])
     assert err.kind == "unbound"
+
+
+def test_over_context_kind_message_is_a_size_problem_not_credentials():
+    err = NoAvailableTierError(
+        "chat", ["fast-local", "heavy-local"], kind="over_context")
+    assert err.kind == "over_context"
+    assert err.candidates == ("fast-local", "heavy-local")
+    msg = str(err).lower()
+    # It is a payload-size problem, NOT a credentials/availability one.
+    assert "too large" in msg
+    assert "context_limit" in msg or "context" in msg
+    assert "configure that tier's" not in msg
+    # Carries the work class + the offending candidate tiers.
+    assert "chat" in msg
+    assert "fast-local" in msg and "heavy-local" in msg
+
+
+def test_over_context_message_distinct_from_unbound_and_exhausted():
+    over = str(NoAvailableTierError("chat", ["fast-local"], kind="over_context"))
+    unbound = str(NoAvailableTierError("chat", ["fast-local"]))
+    exhausted = str(NoAvailableTierError("chat", ["fast-local"], kind="exhausted"))
+    assert over != unbound and over != exhausted

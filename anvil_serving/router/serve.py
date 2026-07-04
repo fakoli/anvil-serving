@@ -79,7 +79,13 @@ from .fallback import Budget, CircuitBreaker, RoutingDecision as _FallbackDecisi
 from .fingerprint import refresh_fingerprint
 from .front_door import make_server
 from .intent import PRESETS, resolve
-from .internal import Backend, InternalRequest, NoAvailableTierError, StructuredResult
+from .internal import (
+    Backend,
+    InternalRequest,
+    NoAvailableTierError,
+    StructuredResult,
+    estimate_tokens,
+)
 from .modes import (
     ENV_MODE,
     ENV_MODES_CONFIG,
@@ -103,16 +109,74 @@ def _needs_for(request: InternalRequest) -> Needs:
     (``classify.py``'s ``bounded-edit`` inference is a WORK-CLASS signal, not a
     hard per-request constraint enforced against ``Tier.tool_support``).
 
-    ``min_context`` is deliberately left at its default (0 = no constraint):
-    the only estimator available (``internal.estimate_tokens``) is an explicit,
-    documented word-count approximation, not a real tokenizer, and comparing it
-    against a tier's real ``context_limit`` (a token count) would be an unsound
-    apples-to-oranges gate that could wrongly admit or reject a tier near the
-    boundary. Wiring a real per-request context estimate is a separate,
-    bigger piece of work (a real tokenizer or a calibrated fudge factor).
+    ``min_context`` is wired CONSERVATIVELY, so the hard-constraint filter in
+    ``policy.route`` catches a GROSS over-context request (which would 400 at
+    the model with "input exceeds maximum context length") without ever
+    wrongly rejecting a request merely NEAR a tier's limit.
+
+    The margin comes for free from what the estimator returns. The only stdlib
+    estimator, :func:`~anvil_serving.router.internal.estimate_tokens`, counts
+    whitespace-separated WORDS, which is a strict LOWER BOUND on the real token
+    count: a tokenizer needs >= 1 token per whitespace word, and English runs
+    ~1.3 tokens/word (dense code/JSON 2-4x more). So we set ``min_context`` to
+    the RAW word count with NO extra discount: the filter then drops a tier
+    ONLY when even this underestimate exceeds the tier's real-token
+    ``context_limit``, which guarantees the real request genuinely does not fit.
+
+    Concretely, dropping when ``words > limit`` means dropping only when real
+    ``tokens > ~1.3 x limit`` — a built-in ~30%+ cushion. That catches the
+    live incident (94218 tokens vs a 65536 tier ≈ 1.4x over: ~72k words > 65536
+    -> dropped) while a request sitting AT a tier's limit (~50k words for 65536
+    real tokens) stays well under and routes normally — no boundary
+    false-reject. Deliberately NO ``* 0.85``-style discount on top: that would
+    push the drop threshold to ~1.5x the limit and let the very incident this
+    gate exists to catch (1.4x) slip through to a 400.
+
+    Non-text blocks (images, tool_use/tool_result) are dropped by
+    ``flatten_content`` before ``request.messages`` is built, so the word count
+    only UNDER-counts the true payload here — which keeps the gate conservative
+    (it never over-rejects), at the cost of missing a request whose bulk is in
+    tool/image blocks (an acceptable trade for a gross-over-context floor).
     """
     raw = request.raw if isinstance(request.raw, Mapping) else {}
-    return Needs(needs_tools=has_tool_artifacts(raw))
+    # System + every message body; estimate_tokens sums per-string word counts.
+    # OpenAI keeps the system message in `messages` (role="system") AND mirrors it into
+    # `request.system`, while Anthropic keeps system ONLY in `request.system`. So add
+    # `request.system` to the estimate ONLY when no system-role message is already in
+    # `messages` — otherwise an OpenAI request double-counts the system prompt, inflating
+    # min_context and risking a boundary false-reject (Copilot review).
+    texts = [m.content for m in request.messages]
+    if request.system and not any(getattr(m, "role", None) == "system" for m in request.messages):
+        texts.append(request.system)
+    return Needs(
+        min_context=estimate_tokens(texts),
+        needs_tools=has_tool_artifacts(raw),
+    )
+
+
+def _over_context_candidates(decision) -> Optional[Tuple[str, ...]]:
+    """Return the context-dropped tiers when the routing result is empty PURELY
+    because the request is over-context, else ``None``.
+
+    This tells a genuinely un-fittable request ("no tier can hold this size" ->
+    a clean 413) apart from every other empty-decision reason (quality deny,
+    metered-cloud gate, unbound backends -> the existing 503 handoff). It fires
+    only when ``policy.route`` returned NO tiers AND at least one was dropped for
+    ``min_context`` AND nothing was dropped by the deny or metered gates. Given
+    the filter ordering in ``policy.route`` (context -> metered -> deny), if the
+    context filter already emptied the survivor set the later filters have
+    nothing to drop, so those two lists being empty means context — not quality
+    or billing — is what left the request unroutable.
+    """
+    notes = decision.notes
+    if (
+        not decision.tiers
+        and notes.get("dropped_by_context")
+        and not notes.get("dropped_by_deny")
+        and not notes.get("dropped_by_metered_gate")
+    ):
+        return tuple(notes["dropped_by_context"])
+    return None
 
 
 # --------------------------------------------------------------------------- #
@@ -482,6 +546,22 @@ class RoutingBackend:
         # The policy deny-filter already ran; what remains is allow / allow-with-verify.
         bound_tiers = tuple(tid for tid in decision.tiers if tid in self._backends)
         if not bound_tiers:
+            # Over-context: the request exceeds every tier's context_limit, so
+            # nothing can hold it. Refuse up front with a 413 (via kind=
+            # "over_context") rather than forwarding to a too-small tier that
+            # would 400 at the model ("input exceeds maximum context length").
+            over_ctx = _over_context_candidates(decision)
+            if over_ctx is not None:
+                print(
+                    f"[anvil-serving] over-context request for work_class="
+                    f"{decision.work_class!r}: exceeds context_limit of every "
+                    f"candidate tier {list(over_ctx)}; refusing (413)",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                raise NoAvailableTierError(
+                    decision.work_class, over_ctx, kind="over_context"
+                )
             print(
                 f"[anvil-serving] no bound tier for work_class="
                 f"{decision.work_class!r}: gated candidates {list(decision.tiers)} "
@@ -672,6 +752,18 @@ class RoutingBackend:
         # so decide() is faithful to what the serve path would actually pick.
         bound_tiers = tuple(tid for tid in decision.tiers if tid in self._backends)
         if not bound_tiers:
+            over_ctx = _over_context_candidates(decision)
+            if over_ctx is not None:
+                print(
+                    f"[anvil-serving] /v1/route: over-context request for "
+                    f"work_class={decision.work_class!r}: exceeds context_limit "
+                    f"of every candidate tier {list(over_ctx)} (413)",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                raise NoAvailableTierError(
+                    decision.work_class, over_ctx, kind="over_context"
+                )
             print(
                 f"[anvil-serving] /v1/route: no bound tier for work_class="
                 f"{decision.work_class!r}: gated candidates {list(decision.tiers)} "
