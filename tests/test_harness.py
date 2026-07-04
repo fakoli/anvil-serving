@@ -1,10 +1,31 @@
 """Tests for `anvil-serving harness` — render the OpenClaw harness config from the router config.
 
-The RouterConfig loader is injected (`_load`), so these run with no config file and no network.
+The RouterConfig loader is injected (`_load`) and ssh via `_run`, so these run with no config
+file, no network, and no ssh.
 """
 import json
+import types
 
 from anvil_serving import harness
+
+
+def _proc(rc=0, out="", err=""):
+    return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
+
+
+class _FakeSSH:
+    """Fake `_run`: the READ ssh call (no stdin) returns `remote`; the WRITE call (payload piped
+    on stdin) captures it. `read_rc`/`write_rc` simulate ssh failures."""
+    def __init__(self, remote="", read_rc=0, write_rc=0):
+        self.remote, self.read_rc, self.write_rc = remote, read_rc, write_rc
+        self.calls, self.written = [], None
+
+    def __call__(self, argv, **kw):
+        self.calls.append(argv)
+        if kw.get("input") is None:      # the READ (`cat ... || true`)
+            return _proc(self.read_rc, self.remote, "")
+        self.written = kw.get("input")   # the WRITE (payload on stdin)
+        return _proc(self.write_rc, "", "")
 
 
 class _Tier:
@@ -102,6 +123,76 @@ def test_sync_no_presets_errors(capsys):
                                    _load=lambda p: empty)
     assert rc == 1
     assert "no [router.presets]" in capsys.readouterr().err
+
+
+# ---- ssh sync (the OpenClaw gateway is remote) -------------------------------
+
+def test_ssh_merge_preserves_others_and_drops_stale_anvil_overrides():
+    remote = json.dumps({
+        "models": {"providers": {"openai": {"baseUrl": "https://api.openai.com/v1"}}},
+        "agents": {"defaults": {"models": {"anvil/planning": {"params": {"x": 1}},
+                                           "openai/gpt": {"y": 2}}}},
+    })
+    ssh = _FakeSSH(remote=remote)
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=ssh)
+    assert rc == 0
+    merged = json.loads(ssh.written)
+    provs = merged["models"]["providers"]
+    assert "openai" in provs                                   # other provider preserved
+    assert provs["anvil"]["api"] == "openai-completions"       # anvil provider (re)written
+    dm = merged["agents"]["defaults"]["models"]
+    assert "anvil/planning" not in dm                          # stale anvil/* override dropped
+    assert "openai/gpt" in dm                                  # other agent model preserved
+    assert merged["models"]["mode"] == "merge"
+
+
+def test_ssh_overwrite_clobbers_other_providers():
+    ssh = _FakeSSH(remote=json.dumps({"models": {"providers": {"openai": {}}}}))
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", overwrite=True,
+                                   _load=lambda p: _cfg(), _run=ssh)
+    assert rc == 0
+    written = json.loads(ssh.written)
+    assert "openai" not in written["models"]["providers"]      # clobbered by overwrite
+    assert "anvil" in written["models"]["providers"]
+
+
+def test_ssh_refuses_merge_on_json5_remote(capsys):
+    ssh = _FakeSSH(remote="// json5 comment\n{ models: {} }")   # not plain JSON
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=ssh)
+    assert rc == 1
+    assert ssh.written is None                                  # nothing written
+    assert "refusing to merge" in capsys.readouterr().err
+
+
+def test_ssh_created_when_remote_absent(capsys):
+    ssh = _FakeSSH(remote="")
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=ssh)
+    assert rc == 0
+    assert json.loads(ssh.written)["models"]["providers"]["anvil"]
+    assert "created" in capsys.readouterr().out
+
+
+def test_ssh_unreachable_errors(capsys):
+    ssh = _FakeSSH(read_rc=255)                                 # ssh connection failed
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=ssh)
+    assert rc == 1
+    assert ssh.written is None
+    assert "cannot reach" in capsys.readouterr().err
+
+
+def test_ssh_write_backs_up_and_is_atomic():
+    ssh = _FakeSSH(remote="")
+    harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                              gateway_host="mini", gateway_path="~/.openclaw/openclaw.json",
+                              _load=lambda p: _cfg(), _run=ssh)
+    write_cmd = next(c for c in ssh.calls if len(c) >= 3 and ".anvil-new" in c[2])
+    assert ".bak." in write_cmd[2]                              # timestamped backup
+    assert "mv" in write_cmd[2]                                 # atomic temp + mv
 
 
 # ---- CLI dispatch ------------------------------------------------------------

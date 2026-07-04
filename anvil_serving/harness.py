@@ -14,12 +14,15 @@ does NOT emit per-preset thinking overrides: the router owns reasoning/thinking 
 Skills / agent-config sync is the next step (`--skills`, not yet implemented) — the harness's
 `before_model_resolve` plugin + skills are the follow-on scope.
 
-The OpenClaw GATEWAY is typically REMOTE from the router (e.g. Fakoli Mini -> fakoli-dark), so v1
-EMITS the config (stdout or `--out`) for the operator to place at `~/.openclaw/openclaw.json` on the
-gateway; a future `--gateway-host` can apply it over ssh. stdlib-only.
+The OpenClaw GATEWAY is typically REMOTE from the router (e.g. Fakoli Mini -> fakoli-dark), so this
+either EMITS the config (stdout or `--out`) OR pushes it to the remote gateway over ssh with
+`--gateway-host` — MERGING the anvil provider into the remote `~/.openclaw/openclaw.json` (preserving
+the operator's other providers/agents/plugins) and backing up the remote first; `--overwrite` does a
+full write. stdlib-only (ssh via `subprocess`, injected for tests).
 """
 import argparse
 import json
+import subprocess
 import sys
 
 # Per-preset OpenClaw hints (advisory display/caps; contextWindow is computed from the router).
@@ -75,8 +78,82 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
     }
 
 
+# --------------------------------------------------------------------------- #
+# remote (ssh) sync — the OpenClaw gateway is typically REMOTE from the router
+# --------------------------------------------------------------------------- #
+
+def _ssh_target(host, user):
+    return ("%s@%s" % (user, host)) if user else host
+
+
+def _merge_anvil_provider(existing, rendered):
+    """Merge ONLY anvil-owned keys of `rendered` into the operator's existing OpenClaw config,
+    preserving their OTHER providers / agents / plugins. Returns a NEW dict (existing untouched)."""
+    out = json.loads(json.dumps(existing))  # deep copy
+    models = out.setdefault("models", {})
+    models["mode"] = "merge"
+    models.setdefault("providers", {})["anvil"] = rendered["models"]["providers"]["anvil"]
+    defaults = out.setdefault("agents", {}).setdefault("defaults", {})
+    defaults.setdefault("model", {}).setdefault("primary", "anvil/chat")
+    # drop any stale per-preset overrides for anvil/* — the router owns reasoning/thinking now.
+    dmodels = defaults.get("models")
+    if isinstance(dmodels, dict):
+        for k in [k for k in dmodels if str(k).startswith("anvil/")]:
+            del dmodels[k]
+    out.setdefault("plugins", {}).setdefault("entries", {})["anvil-intent-router"] = \
+        rendered["plugins"]["entries"]["anvil-intent-router"]
+    return out
+
+
+def _sync_over_ssh(host, user, path, rendered, *, overwrite, _run):
+    """Push the rendered config to a REMOTE gateway over ssh, backing up the remote file first.
+
+    Default MERGES the anvil provider into the existing remote config (preserving the operator's
+    other settings); `overwrite` writes the full rendered config. A merge is REFUSED if the remote
+    file isn't plain JSON (JSON5/comments) — re-run with --overwrite (a timestamped .bak is always
+    taken first). Returns 0 on success, 1 on failure. All ssh goes through the injected `_run`."""
+    tgt = _ssh_target(host, user)
+    try:
+        r = _run(["ssh", tgt, "cat %s 2>/dev/null || true" % path],
+                 capture_output=True, text=True)
+    except FileNotFoundError:
+        print("ssh not available on PATH", file=sys.stderr)
+        return 1
+    if r.returncode != 0:
+        print("cannot reach %s over ssh: %s" % (tgt, (r.stderr or "").strip()), file=sys.stderr)
+        return 1
+    existing_text = r.stdout or ""
+
+    if overwrite or not existing_text.strip():
+        payload, mode = rendered, ("overwrite" if existing_text.strip() else "created")
+    else:
+        try:
+            payload = _merge_anvil_provider(json.loads(existing_text), rendered)
+            mode = "merged"
+        except ValueError:
+            print("refusing to merge: remote %s is not plain JSON (JSON5/comments?). Re-run with "
+                  "--overwrite (a .bak is taken first), or edit it by hand." % path, file=sys.stderr)
+            return 1
+
+    text = json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    # backup (if present) then ATOMICALLY write via temp + mv on the remote.
+    script = ("[ -f %(p)s ] && cp %(p)s %(p)s.bak.$(date +%%s) || true; "
+              "cat > %(p)s.anvil-new && mv %(p)s.anvil-new %(p)s") % {"p": path}
+    w = _run(["ssh", tgt, script], input=text, capture_output=True, text=True)
+    if w.returncode != 0:
+        print("FAILED to write %s on %s: %s"
+              % (path, tgt, (w.stderr or w.stdout or "").strip()), file=sys.stderr)
+        return 1
+    n = len(rendered["models"]["providers"]["anvil"]["models"])
+    print("synced OpenClaw provider (%d preset models, %s) -> %s:%s (backup taken)"
+          % (n, mode, tgt, path))
+    return 0
+
+
 def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,
-                      _load=None):
+                      gateway_host=None, gateway_user=None,
+                      gateway_path="~/.openclaw/openclaw.json", overwrite=False,
+                      _load=None, _run=subprocess.run):
     if skills:
         print("harness sync openclaw --skills: skills/agent-config sync is not implemented yet "
               "(v1 syncs models only); tracking as the next scope.", file=sys.stderr)
@@ -96,14 +173,19 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
               file=sys.stderr)
         return 1
     provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
+
+    if gateway_host:  # push to the REMOTE gateway over ssh (Mini -> the router)
+        return _sync_over_ssh(gateway_host, gateway_user, gateway_path, provider,
+                              overwrite=overwrite, _run=_run)
+
     text = json.dumps(provider, indent=2, ensure_ascii=False) + "\n"
     if out:
         with open(out, "w", encoding="utf-8") as f:
             f.write(text)
         n = len(provider["models"]["providers"]["anvil"]["models"])
         print("wrote OpenClaw provider config (%d preset models) -> %s" % (n, out))
-        print("  apply on the OpenClaw gateway at ~/.openclaw/openclaw.json (merge mode); the "
-              "gateway may be REMOTE from the router (set --base-url to the router's reachable host).")
+        print("  apply on the OpenClaw gateway at ~/.openclaw/openclaw.json, or push directly with "
+              "--gateway-host <mini> (ssh; merges by default, backs up the remote first).")
     else:
         sys.stdout.write(text)
     return 0
@@ -128,13 +210,24 @@ def main(argv=None):
     p.add_argument("--api-key-env", default="ANVIL_ROUTER_TOKEN",
                    help="env var name holding the router bearer token (default: %(default)s); the "
                         "emitted config references it by name, never the secret.")
+    p.add_argument("--gateway-host",
+                   help="push the config to a REMOTE OpenClaw gateway over ssh (e.g. fakoli-mini); "
+                        "MERGES the anvil provider into the remote config by default (backup taken).")
+    p.add_argument("--gateway-user", help="ssh user for --gateway-host (default: your ssh config).")
+    p.add_argument("--gateway-path", default="~/.openclaw/openclaw.json",
+                   help="remote OpenClaw config path for --gateway-host (default: %(default)s).")
+    p.add_argument("--overwrite", action="store_true",
+                   help="with --gateway-host: OVERWRITE the remote config instead of merging "
+                        "(a timestamped .bak is taken first either way).")
     p.add_argument("--skills", action="store_true",
                    help="(not yet implemented) also sync skills/agent config.")
     a = p.parse_args(argv)
 
     if a.action == "sync" and a.harness == "openclaw":
         return cmd_sync_openclaw(a.config, out=a.out, base_url=a.base_url,
-                                 api_key_env=a.api_key_env, skills=a.skills)
+                                 api_key_env=a.api_key_env, skills=a.skills,
+                                 gateway_host=a.gateway_host, gateway_user=a.gateway_user,
+                                 gateway_path=a.gateway_path, overwrite=a.overwrite)
     return 2
 
 
