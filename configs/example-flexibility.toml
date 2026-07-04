@@ -53,12 +53,13 @@ quantization  = "mxfp4"                          # advisory: gpt-oss-120b ships 
 timeout       = 90                               # per-tier transport timeout (s); OVERRIDES [router].relay_timeout.
                                                  # A big high-reasoning model is slow to first byte — don't fail it
                                                  # at the 20s local default (that's tuned for a snappy small serve).
-# extra_body merges verbatim into the UPSTREAM request body (genericity:T003).
-# gpt-oss reasoning knob: dial the harmony reasoning effort up for a planning tier.
-# (For a thinking-by-default model that returns empty content on a small budget,
-# this is also where chat_template_kwargs.enable_thinking=false would go —
-# CLAUDE.md gotcha #6/#9.)
-extra_body    = { reasoning_effort = "high" }
+# extra_body merges verbatim into the UPSTREAM request body (genericity:T003); a HARD override.
+# extra_body_defaults is the SOFT variant — applied only if the request didn't set the key, so the
+# caller can override it. gpt-oss reasoning: default the harmony effort to "high" for this planning
+# tier, but let a request (e.g. OpenClaw's per-message reasoning selector) dial it down to low/medium.
+extra_body_defaults = { reasoning_effort = "high" }
+# (For a thinking-by-default model that returns empty content on a small budget, a HARD
+# chat_template_kwargs.enable_thinking=false would go in `extra_body` instead — CLAUDE.md gotcha #6/#9.)
 
 # preset -> ordered candidate tier pool (filter then rank).
 # One specialized engine handles every work-class here; add more tiers to split.

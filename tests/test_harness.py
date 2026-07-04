@@ -86,6 +86,12 @@ def test_render_one_model_per_preset_with_max_routed_context():
     assert models["chat"]["input"] == ["text"]
 
 
+def test_render_enables_reasoning_selector():
+    # reasoning:true surfaces OpenClaw's per-message reasoning selector (heavy honors reasoning_effort).
+    prov = harness.render_openclaw_provider(_cfg(), base_url="http://x/v1")
+    assert all(m["reasoning"] is True for m in prov["models"]["providers"]["anvil"]["models"])
+
+
 def test_no_stale_thinking_overrides():
     # the router owns reasoning/thinking per tier now, so the harness must NOT re-declare them.
     prov = harness.render_openclaw_provider(_cfg(), base_url="http://x/v1")

@@ -277,6 +277,55 @@ def test_penalties_not_invented_for_anthropic_origin_request():
     assert "frequency_penalty" not in body
 
 
+# --------------------------------------------------------------------------- #
+# reasoning_effort passthrough + extra_body_defaults (per-request reasoning)
+# --------------------------------------------------------------------------- #
+def _openai_req(**extra):
+    return OpenAIDialect().parse_request(
+        {"model": "chat", "messages": [{"role": "user", "content": "hi"}], **extra})
+
+
+def test_reasoning_effort_forwarded_openai_to_openai():
+    # OpenClaw's per-message reasoning selector arrives as reasoning_effort -> forwarded verbatim.
+    body = _backend("openai")._build_body(_openai_req(reasoning_effort="medium"))
+    assert body["reasoning_effort"] == "medium"
+
+
+def test_reasoning_effort_not_invented_for_anthropic_origin():
+    req = AnthropicDialect().parse_request(
+        {"model": "claude", "max_tokens": 64, "messages": [{"role": "user", "content": "hi"}]})
+    assert "reasoning_effort" not in _backend("openai")._build_body(req)
+
+
+def test_extra_body_defaults_fills_when_request_absent():
+    # tier soft-default applies only when the caller didn't set it.
+    body = _backend("openai", extra_body_defaults={"reasoning_effort": "high"})._build_body(_openai_req())
+    assert body["reasoning_effort"] == "high"
+
+
+def test_request_reasoning_effort_overrides_soft_default():
+    body = _backend("openai", extra_body_defaults={"reasoning_effort": "high"})._build_body(
+        _openai_req(reasoning_effort="low"))
+    assert body["reasoning_effort"] == "low"          # request wins over the SOFT default
+
+
+def test_hard_extra_body_still_wins_over_request():
+    # the hard-override contract is preserved: extra_body clobbers even a request value.
+    body = _backend("openai", extra_body={"reasoning_effort": "high"})._build_body(
+        _openai_req(reasoning_effort="low"))
+    assert body["reasoning_effort"] == "high"
+
+
+def test_extra_body_both_hard_wins_over_soft_default():
+    body = _backend("openai", extra_body={"reasoning_effort": "high"},
+                    extra_body_defaults={"reasoning_effort": "low"})._build_body(_openai_req())
+    assert body["reasoning_effort"] == "high"          # hard extra_body wins over the soft default
+
+
+def test_no_reasoning_config_no_key():
+    assert "reasoning_effort" not in _backend("openai")._build_body(_openai_req())
+
+
 def test_logit_bias_seed_user_metadata_never_forwarded():
     """Deliberately-excluded provider-account/session-scoped fields never leak
     into the upstream body even when the caller sends them."""

@@ -84,6 +84,11 @@ class Tier:
     # intentional passthrough, not a bug. Kept ``hash=False`` (a dict is unhashable)
     # to match ``RouterConfig.presets`` below; Tier is never used as a dict/set key.
     extra_body: Optional[Mapping[str, Any]] = field(default=None, hash=False)
+    # Like ``extra_body`` but applied as a DEFAULT the request can override (via
+    # ``body.setdefault``, not ``update``): e.g. a tier's ``reasoning_effort`` becomes a
+    # default a caller can dial per request. A key present in BOTH -> ``extra_body`` (the
+    # hard override) still wins. ``hash=False`` for the same reason as ``extra_body``.
+    extra_body_defaults: Optional[Mapping[str, Any]] = field(default=None, hash=False)
     # ---- flexibility:T007 — additive, default-unset descriptive/tuning fields ----
     # None of these is REQUIRED (none appears in ``_REQUIRED_TIER_KEYS``); every
     # existing config parses unchanged with all four reading as ``None``.
@@ -360,21 +365,24 @@ def _parse_tier(raw: object) -> Tier:
     # Optional: extra keys merged verbatim into the upstream request body
     # (genericity:T003), e.g. a local server's thinking-disable knob. Absent ->
     # None (no-op; body is unchanged, matching today's behaviour exactly).
-    raw_extra_body = raw.get("extra_body")
-    extra_body: Optional[Mapping[str, Any]] = None
-    if raw_extra_body is not None:
-        if not isinstance(raw_extra_body, dict):
+    def _parse_body(raw_val: object, field_name: str) -> Optional[Mapping[str, Any]]:
+        if raw_val is None:
+            return None
+        if not isinstance(raw_val, dict):
             raise ConfigError(
-                f"tier {tid!r}: extra_body must be a table (inline dict), got "
-                f"{type(raw_extra_body).__name__}"
+                f"tier {tid!r}: {field_name} must be a table (inline dict), got "
+                f"{type(raw_val).__name__}"
             )
         try:
-            json.dumps(raw_extra_body)
+            json.dumps(raw_val)
         except (TypeError, ValueError) as e:
             raise ConfigError(
-                f"tier {tid!r}: extra_body must be JSON-serialisable: {e}"
+                f"tier {tid!r}: {field_name} must be JSON-serialisable: {e}"
             ) from e
-        extra_body = MappingProxyType(dict(raw_extra_body))
+        return MappingProxyType(dict(raw_val))
+
+    extra_body = _parse_body(raw.get("extra_body"), "extra_body")
+    extra_body_defaults = _parse_body(raw.get("extra_body_defaults"), "extra_body_defaults")
 
     # Optional (flexibility:T007): additive, default-unset descriptive/tuning
     # fields. None is required, so an absent field reads as None and existing
@@ -456,6 +464,7 @@ def _parse_tier(raw: object) -> Tier:
         cost_input_per_mtok=cost_input,
         cost_output_per_mtok=cost_output,
         extra_body=extra_body,
+        extra_body_defaults=extra_body_defaults,
         engine=engine,
         quantization=quantization,
         params=params,
