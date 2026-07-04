@@ -23,6 +23,7 @@ dependency-injected so tests run with no docker, no WSL, no prompts.
 """
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 
@@ -37,16 +38,14 @@ RECOMMENDED_WINDOWS_RESERVE_GB = 14
 # --------------------------------------------------------------------------- #
 
 def _host_total_gb(_run=subprocess.run):
-    """Total physical host RAM in GB, or None."""
+    """Total physical host RAM in GB, or None if it can't be read."""
     if sys.platform == "win32":
-        try:
-            r = _run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                      "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory"],
-                     capture_output=True, text=True, timeout=15)
-            if r.returncode == 0:
+        r = _ps("(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory", _run)
+        if r is not None and r.returncode == 0:
+            try:
                 return int((r.stdout or "").strip()) / (1024 ** 3)
-        except (OSError, ValueError, subprocess.TimeoutExpired):
-            pass
+            except ValueError:
+                return None
         return None
     try:
         with open("/proc/meminfo") as f:
@@ -112,12 +111,26 @@ def _fmt(gb):
 # outcomes come from PowerShell's ErrorCategory enum, not taskkill's localized text)
 # --------------------------------------------------------------------------- #
 
-def _ps(script, _run=subprocess.run):
-    """Run a PowerShell one-liner. Returns the CompletedProcess, or None if PowerShell can't launch."""
+def _powershell_exe():
+    """The PowerShell executable to use: Windows PowerShell (`powershell`) or PowerShell 7 (`pwsh`),
+    or None if neither is on PATH. Resolving both means the host verb works on a box where only pwsh
+    is installed (legacy Windows PowerShell removed) instead of just failing closed."""
+    for exe in ("powershell", "pwsh"):
+        if shutil.which(exe):
+            return exe
+    return None
+
+
+def _ps(script, _run=subprocess.run, timeout=15):
+    """Run a PowerShell one-liner via `powershell` or `pwsh`. Returns the CompletedProcess, or None if
+    neither PowerShell is on PATH or the call fails/times out."""
+    exe = _powershell_exe()
+    if exe is None:
+        return None
     try:
-        return _run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
-                    capture_output=True, text=True)
-    except OSError:
+        return _run([exe, "-NoProfile", "-NonInteractive", "-Command", script],
+                    capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
         return None
 
 

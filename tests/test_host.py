@@ -6,11 +6,21 @@ on any OS with no docker, no WSL, no prompts.
 import os
 import types
 
+import pytest
+
 from anvil_serving import host
 
 
 def proc(rc=0, out="", err=""):
     return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
+
+
+@pytest.fixture(autouse=True)
+def _powershell_present(monkeypatch):
+    # Default: pretend Windows PowerShell is on PATH so _ps() reaches the injected _run on any CI/OS
+    # (CI has no real powershell/pwsh). The resolver tests override this to exercise the fallback.
+    monkeypatch.setattr(host.shutil, "which",
+                        lambda exe: (r"C:\ps\%s" % exe) if exe == "powershell" else None)
 
 
 def _bytes(gb):
@@ -191,7 +201,28 @@ def test_kill_process_parses_status_tokens():
     assert host._kill_process("x", _run=lambda a, **k: proc(0, "weird")) == "error"   # unknown -> error
     def boom(a, **k):
         raise OSError("no powershell")
-    assert host._kill_process("x", _run=boom) == "error"                              # PowerShell missing
+    assert host._kill_process("x", _run=boom) == "error"                              # launch failed
+
+
+def test_powershell_exe_prefers_powershell_then_falls_back_to_pwsh(monkeypatch):
+    monkeypatch.setattr(host.shutil, "which", lambda e: "x" if e == "powershell" else None)
+    assert host._powershell_exe() == "powershell"                 # prefer Windows PowerShell
+    monkeypatch.setattr(host.shutil, "which", lambda e: "x" if e == "pwsh" else None)
+    assert host._powershell_exe() == "pwsh"                       # fall back to PowerShell 7
+    monkeypatch.setattr(host.shutil, "which", lambda e: None)
+    assert host._powershell_exe() is None                         # neither on PATH
+
+
+def test_ps_short_circuits_without_powershell(monkeypatch):
+    monkeypatch.setattr(host.shutil, "which", lambda e: None)     # no powershell AND no pwsh
+    ran = []
+    assert host._ps("anything", _run=lambda *a, **k: ran.append(a) or proc(0)) is None
+    assert ran == []                                              # never attempted to run
+    # and the pwsh chosen exe reaches _run when present:
+    monkeypatch.setattr(host.shutil, "which", lambda e: "x" if e == "pwsh" else None)
+    seen = []
+    host._ps("cmd", _run=lambda a, **k: seen.append(a[0]) or proc(0))
+    assert seen == ["pwsh"]
 
 
 # ---- cmd_reset_wsl: un-wedge a hung WSL subsystem ----------------------------
