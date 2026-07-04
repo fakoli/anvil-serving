@@ -369,26 +369,53 @@ def _claude_cli_judge(prompt: str, *, model: Optional[str] = None, timeout: floa
     entire test suite — never needs the CLI. Requires the ``claude`` CLI on PATH
     at call time only.
     """
+    import shutil  # lazy: resolve the CLI cross-platform (Windows claude.CMD needs PATHEXT)
     import subprocess  # lazy: only the real call needs it (never at import/in tests)
+    import tempfile  # lazy: prompt goes on stdin via a temp file (robust vs a pipe race)
+
+    # Resolve the executable. `ANVIL_CLAUDE_BIN` (if set) pins an explicit path; else
+    # `shutil.which("claude")` — which finds the executable on Linux/Mac, and on Windows
+    # resolves the `claude.CMD` npm shim (a bare `subprocess.run(["claude", ...])` raises
+    # FileNotFoundError there because CreateProcess ignores PATHEXT for a bare name).
+    # WINDOWS CAVEAT: cmd.exe does NOT forward piped stdin to the node process behind the
+    # `.CMD` shim, and the prompt goes on stdin (below) — so on Windows point
+    # `ANVIL_CLAUDE_BIN` at the real `…\node_modules\@anthropic-ai\claude-code\bin\claude.exe`.
+    # fakoli-dark runs on Windows, so this path matters for the write-back loop there.
+    claude_exe = os.environ.get("ANVIL_CLAUDE_BIN") or shutil.which("claude")
+    if not claude_exe:
+        raise GraderError(
+            "the `claude` CLI is not on PATH; the Agent-SDK judge requires it (mint a "
+            "token with `claude setup-token`; see ADR-0007). On Windows, set "
+            "ANVIL_CLAUDE_BIN to the real claude.exe if the npm shim drops stdin."
+        )
 
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)  # ADR-0007: subscription OAuth, never metered API
-    # Prompt on argv (ADR-0001 shape: `claude -p "..." --model ...`), NOT stdin —
-    # `claude -p` reads the prompt as its positional argument, and the rendered
-    # judge prompt is already length-bounded (`_clip` / `_MAX_SIDE_CHARS`), so it
-    # is well under ARG_MAX. stdin is closed so the CLI never blocks waiting on it.
-    argv = ["claude", "-p", prompt, "--output-format", "json"]
+    # The prompt goes on stdin via a TEMP FILE redirected as the child's stdin — NOT
+    # argv and NOT an `input=` pipe. Argv overflows Windows cmd.exe's ~8191-char limit;
+    # an `input=` pipe races claude's ~3s stdin check under repeated calls on Windows
+    # (flaky "no stdin data received in 3s"). A file redirect is OS-level, size-unbounded,
+    # and reliable on Windows AND Linux/Mac.
+    argv = [claude_exe, "-p", "--output-format", "json"]
     if model:
         argv += ["--model", model]
+    # mkstemp creates the file 0600 (owner-only readable). Close its fd IMMEDIATELY and
+    # reopen by path — avoids fd-ownership edge cases (no leak if a later step raises),
+    # and the file is unlinked in `finally` so the on-disk window is minimal.
+    fd, prompt_path = tempfile.mkstemp(suffix=".txt")
+    os.close(fd)
     try:
-        proc = subprocess.run(
-            argv,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=timeout,
-        )
+        with open(prompt_path, "w", encoding="utf-8") as pf:
+            pf.write(prompt)
+        with open(prompt_path, "r", encoding="utf-8") as stdin_fh:
+            proc = subprocess.run(
+                argv,
+                stdin=stdin_fh,
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=timeout,
+            )
     except FileNotFoundError as exc:
         raise GraderError(
             "the `claude` CLI is not on PATH; the Agent-SDK judge requires it "
@@ -396,6 +423,11 @@ def _claude_cli_judge(prompt: str, *, model: Optional[str] = None, timeout: floa
         ) from exc
     except subprocess.TimeoutExpired as exc:
         raise GraderError(f"the `claude` judge timed out after {timeout}s") from exc
+    finally:
+        try:
+            os.unlink(prompt_path)
+        except OSError:
+            pass
     if proc.returncode != 0:
         raise GraderError(
             f"the `claude` judge exited {proc.returncode}: {(proc.stderr or '').strip()[:200]}"
