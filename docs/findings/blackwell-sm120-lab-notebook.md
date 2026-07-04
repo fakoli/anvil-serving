@@ -116,15 +116,26 @@ Two failure modes hit, both benign config (NOT sm_120/NVFP4/Mamba hazards):
   the hybrid Mamba-2 needs ONE cache block per decode seq; cap `--max-num-seqs ≤ 940` (used 256).
 - **OMIT `--speculative-config`** (MTP): MTP spec-decode consumes 20 GB+ at startup and OOMs the
   6000 Pro (HF disc #9); dropping it lands the footprint at ~73–77 GB.
-- `--dtype auto` (NVFP4 auto-detected; do NOT pass `--quantization modelopt_fp4` for this ckpt).
-  `VLLM_NVFP4_GEMM_BACKEND=marlin` did NOT override the CUTLASS selection — it ran CUTLASS and worked.
+- `--dtype auto` (NVFP4 auto-detected as `modelopt_mixed`; do NOT pass `--quantization` for this ckpt).
+- **MoE backend — `FLASHINFER_CUTLASS` is the ONLY working one on sm_120 here.** The env vars from the
+  NVIDIA guide (`VLLM_NVFP4_GEMM_BACKEND=marlin`, `VLLM_USE_FLASHINFER_MOE_FP4=0`) are **"Unknown vLLM
+  env"** in this nightly → silently ignored. The real lever is the CLI flag **`--moe-backend marlin`**
+  (sets `kernel_config.moe_backend`) — and it DOES force it (`Using 'MARLIN' NvFp4 MoE backend`) — but
+  MARLIN NvFp4 MoE then **CRASHES at load**: `torch.AcceleratorError: CUDA error: unknown error` at
+  `torch.cuda.empty_cache()` right after `load_model` (an ASYNC kernel failure surfaced at the next sync
+  point; gotcha #16 consumer-`mma` path). So leave the MoE on the AUTO `FLASHINFER_CUTLASS` (which loads
+  and serves) — ironic, since FlashInfer was the suspected instability source, but for Nemotron it's the stable one.
 
 ### Correctness + quality
 `anvil-serving preflight ... --model nemotron-3-super --needle-ctx 14000` → **3/4 PASS**: smoke
-(coding) ✅, 14k needle ✅, 20/20 tool batch ✅; **structured JSON ✗ only because no reasoning parser**
-was set — the model's chain-of-thought bleeds into `content` before the JSON (add
-`--reasoning-parser super_v3` + its plugin file to separate it). So a correctness ✅ with a
-serving-completeness caveat, not a model defect.
+(coding) ✅, 14k needle ✅, 20/20 tool batch ✅; **structured JSON ✗** — for THIS (reasoning) model the
+cause is the missing reasoning parser: its chain-of-thought bleeds into `content` before the JSON. The
+`super_v3` parser is **BUNDLED in the model snapshot** (`…/snapshots/<hash>/super_v3_reasoning_parser.py`
+inside the `vllm-hfcache` volume — no separate download), so load it with `--reasoning-parser-plugin
+<that path> --reasoning-parser super_v3`. So a correctness ✅ with a serving-completeness caveat, not a
+model defect. (NB: a structured-JSON preflight fail has a SECOND, DISTINCT cause on *thinking-by-default*
+models — thinking-budget starvation returns empty content unless thinking is disabled/given a big budget,
+gotcha #6/#9 — a different mechanism from this reasoning-parser bleed.)
 
 Quality gut-check — an adversarial eval workflow (independent judge + skeptic per probe → synthesis)
 over a distributed-rate-limiter **planning** probe + a thread-safe-LRU-cache **coding** probe:
@@ -143,13 +154,28 @@ over a distributed-rate-limiter **planning** probe + a thread-safe-LRU-cache **c
   plausibly DEPRESSED the 0.45 planning output), and (2) the 74.8 GB > 53 GB WSL-RAM load. Add the parser,
   raise WSL memory, re-probe planning, and only A/B if planning closes materially toward 0.92.
 
+### The community-validated 128k single-seq baseline (for OpenClaw daily use)
+Instead of 32k/`--max-num-seqs 256`, the "don't make the machine lie to you" profile caps concurrency
+to **1** to free KV for full 128k context, and loads the bundled parser:
+```
+--max-model-len 131072 --max-num-seqs 1 --gpu-memory-utilization 0.88 --kv-cache-dtype fp8
+--mamba-ssm-cache-dtype float32 --attention-backend TRITON_ATTN --enable-chunked-prefill
+--reasoning-parser-plugin <snapshot>/super_v3_reasoning_parser.py --reasoning-parser super_v3
+--enable-auto-tool-choice --tool-call-parser qwen3_coder
+# NO --moe-backend marlin (crashes; see above), NO --speculative-config (MTP OOMs), NO --swap-space (rejected)
+```
+`--max-num-seqs 1` is not optional: vLLM V1 defaults it to 1024, which > the Mamba cache blocks on a
+70 GB+ card and dies at cudagraph capture. `--reasoning-parser super_v3` is what makes structured
+JSON pass (separates reasoning → `reasoning_content`).
+
 ### Caveats / next
-- **Slow cold load (~7 min):** the 74.8 GB checkpoint exceeds WSL2 RAM (53 GB) so vLLM can't
-  page-cache/prefetch it — reads shard-by-shard from ext4 (~25–30 s/shard). Raising `.wslconfig`
-  `memory=` toward the checkpoint size would help (gotcha #3).
-- **KV budget is tight:** ~73–77 GB weights on 96 GB leaves ~19 GB → `--max-model-len 32768` here;
-  the 1M-context claim is not reachable on a single 6000 Pro.
-- **Coexistence:** ~74 GB means it needs the PRO 6000 to ITSELF — cannot run alongside the
-  gpt-oss-120b heavy tier (both ~74 GB). A tier swap, not a colocation.
-- For a real tier, wire the `super_v3` reasoning parser (separates reasoning → `reasoning_content`)
-  and run a measured A/B vs the gpt-oss-120b incumbent on the same planning board.
+- **Slow cold load (~7–10 min):** the 74.8 GB checkpoint exceeds WSL2 available RAM so vLLM can't
+  prefetch it — reads shard-by-shard from ext4. Raising `.wslconfig` `memory=` helps (less thrashing)
+  but **can't fully fit** the checkpoint on this 93.7 GB host (would need ~94 GB WSL, starving Windows).
+  Use `anvil-serving host doctor` for a SAFE cap (it recommends 80 GB; do NOT exceed the Windows floor —
+  a hand-set 84 GB starved Windows and a `wsl --shutdown` retry loop wedged WSL — 2026-07-04).
+- **KV budget:** ~73–77 GB weights on 96 GB → `--max-num-seqs 1` is what buys the full 128k context; the
+  1M-context claim is not reachable on a single 6000 Pro.
+- **Coexistence:** ~74 GB means it needs the PRO 6000 to ITSELF — a tier SWAP vs gpt-oss-120b, not a colocation.
+- **Next:** re-probe planning WITH the `super_v3` parser (its absence plausibly depressed the 0.45), then
+  a measured A/B vs the gpt-oss-120b incumbent (0.92-at-high) on the same planning board before any tier swap.
