@@ -109,6 +109,19 @@ def test_needs_for_sets_min_context_to_raw_word_count():
     assert _needs_for(req).min_context == expected == 7
 
 
+def test_needs_for_does_not_double_count_openai_system():
+    # OpenAI keeps the system message in `messages` (role="system") AND mirrors it into
+    # `request.system`. _needs_for must count it ONCE, not twice (Copilot review).
+    req = InternalRequest(
+        model="chat",
+        messages=[Message("system", "sys words here"), Message("user", "one two three")],
+        system="sys words here",  # OpenAIDialect mirrors the system message here too
+    )
+    # system(3) + user(3) = 6 words counted ONCE — NOT 9 (which would double-count system).
+    expected = estimate_tokens(["sys words here", "one two three"])
+    assert _needs_for(req).min_context == expected == 6
+
+
 def test_needs_for_small_request_is_effectively_unconstrained():
     req = InternalRequest(model="chat", messages=[Message("user", "hello there")])
     assert _needs_for(req).min_context == 2  # nowhere near any real tier limit
