@@ -92,10 +92,13 @@ def test_render_enables_reasoning_selector():
     assert all(m["reasoning"] is True for m in prov["models"]["providers"]["anvil"]["models"])
 
 
-def test_no_stale_thinking_overrides():
-    # the router owns reasoning/thinking per tier now, so the harness must NOT re-declare them.
+def test_allowlist_lists_every_preset_with_empty_params():
+    # agents.defaults.models is OpenClaw's DROPDOWN ALLOWLIST — a preset shows only if listed here.
+    # So every preset must appear, with EMPTY params (no stale thinking override — router owns that).
     prov = harness.render_openclaw_provider(_cfg(), base_url="http://x/v1")
-    assert prov["agents"]["defaults"]["models"] == {}
+    dm = prov["agents"]["defaults"]["models"]
+    assert set(dm) == {"anvil/planning", "anvil/chat", "anvil/quick-edit", "anvil/review"}
+    assert all(v == {} for v in dm.values())               # allowlisted, no per-preset override
 
 
 def test_provider_shape_and_token_by_reference():
@@ -167,7 +170,7 @@ def test_scp_merge_preserves_others_and_drops_stale_anvil_overrides():
     assert "openai" in provs                                   # other provider preserved
     assert provs["anvil"]["api"] == "openai-completions"       # anvil provider (re)written
     dm = merged["agents"]["defaults"]["models"]
-    assert "anvil/planning" not in dm                          # stale anvil/* override dropped
+    assert dm["anvil/planning"] == {}                          # allowlisted, stale params STRIPPED
     assert "openai/gpt" in dm                                  # other agent model preserved
     assert merged["models"]["mode"] == "merge"
     assert scp.backed_up                                       # remote backed up first

@@ -89,9 +89,13 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
                 }
             },
         },
-        # Default slot only. NO per-preset thinking overrides — the router owns reasoning/thinking
-        # per tier (heavy reasoning_effort / fast enable_thinking); declaring them here would drift.
-        "agents": {"defaults": {"model": {"primary": "anvil/chat"}, "models": {}}},
+        # agents.defaults.models is OpenClaw's DROPDOWN ALLOWLIST — a preset only shows in the picker
+        # if it has an entry here. So list EVERY preset, with EMPTY params (no per-preset thinking
+        # override — the router owns reasoning/thinking per tier). Deleting these entries removes the
+        # anvil presets from OpenClaw entirely (the 2026-07-04 regression); the goal is to strip only
+        # the stale params, KEEPING the allowlist entry.
+        "agents": {"defaults": {"model": {"primary": "anvil/chat"},
+                                "models": {"anvil/" + m["id"]: {} for m in models}}},
         "plugins": {"entries": {_PLUGIN_ID: {"hooks": {"allowConversationAccess": True}}}},
     }
 
@@ -124,11 +128,14 @@ def _merge_anvil_provider(existing, rendered):
     providers["anvil"] = new_anvil
     defaults = out.setdefault("agents", {}).setdefault("defaults", {})
     defaults.setdefault("model", {}).setdefault("primary", "anvil/chat")
-    # drop any stale per-preset overrides for anvil/* — the router owns reasoning/thinking now.
-    dmodels = defaults.get("models")
+    # Re-assert the anvil/* DROPDOWN ALLOWLIST: drop any stale entries (they may carry an old
+    # thinking override) then re-add the rendered ones (EMPTY params). Keeping the entries is
+    # essential — deleting them removes the presets from OpenClaw's picker entirely.
+    dmodels = defaults.setdefault("models", {})
     if isinstance(dmodels, dict):
         for k in [k for k in dmodels if str(k).startswith("anvil/")]:
             del dmodels[k]
+        dmodels.update(rendered["agents"]["defaults"]["models"])
     out.setdefault("plugins", {}).setdefault("entries", {})[_PLUGIN_ID] = \
         rendered["plugins"]["entries"][_PLUGIN_ID]
     return out

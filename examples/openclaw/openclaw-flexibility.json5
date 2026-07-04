@@ -38,9 +38,14 @@
   },
   agents: { defaults: {
     model: { primary: "anvil/chat" },
-    // NO per-preset thinking overrides: the router sets reasoning_effort (heavy) / enable_thinking
-    // (fast) on the tiers. Re-adding them here would be stale (heavy ignores enable_thinking).
-    models: {}
+    // agents.defaults.models is OpenClaw's DROPDOWN ALLOWLIST — a preset appears only if listed
+    // here. List EVERY preset with EMPTY params: keep the allowlist entry, but strip per-preset
+    // thinking overrides (the router owns reasoning_effort (heavy) / enable_thinking (fast) on the
+    // tiers). Deleting these entries removes the anvil presets from OpenClaw's picker entirely.
+    models: {
+      "anvil/planning": {}, "anvil/quick-edit": {}, "anvil/review": {},
+      "anvil/chat": {}, "anvil/long-context": {}
+    }
   } },
   // key MUST be the packaged plugin id (plugins/openclaw-anvil-intent-router/), or the hook's
   // allowConversationAccess gate is never applied and intent routing silently no-ops.
