@@ -413,7 +413,7 @@ anvil-serving external-bench # import and compare external inference benchmark p
 anvil-serving multiplexer  # single-resident model swap on one GPU (multi-engine: SGLang + vLLM)
 anvil-serving serves       # manage the local model serves via compose: status | logs | up | down | rm | adopt | up --compose
 anvil-serving router       # manage the DEPLOYED router container: up|down|restart|reload|status|logs|token + promote (write-back)
-anvil-serving harness      # own the harness-side config: `sync openclaw` renders OpenClaw models from the live router presets
+anvil-serving harness      # own the harness-side config: `sync openclaw` renders OpenClaw models from the live router presets; `restart openclaw` / `sync --restart` reloads the gateway
 ```
 
 ### Substrate quickstart
