@@ -135,6 +135,47 @@ def test_restart_docker_force_kills_and_relaunches(monkeypatch):
     assert any("start" in c for c in calls)                 # relaunches Docker Desktop
 
 
+# ---- cmd_reset_wsl: un-wedge a hung WSL subsystem ----------------------------
+
+def test_reset_wsl_declined_without_force(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    rc = host.cmd_reset_wsl(force=False, _run=lambda *a, **k: proc(0), _input=lambda p: "n")
+    assert rc == 1 and "aborted" in capsys.readouterr().out
+
+
+def test_reset_wsl_force_kills_vm_and_frontends_then_restarts(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    monkeypatch.setattr(host.os.path, "exists", lambda p: True)   # for the inner restart-docker exe check
+    calls = []
+    rc = host.cmd_reset_wsl(force=True, _run=lambda a, **k: calls.append(a) or proc(0),
+                            _input=lambda p: "n")
+    assert rc == 0
+    flat = [" ".join(c) for c in calls]
+    assert any("vmmemWSL.exe" in c for c in flat)                 # force-kills the WSL VM
+    assert any("taskkill" in c and "IM wsl.exe" in c for c in flat)   # clears the hung wsl.exe front-ends
+    assert any("Docker Desktop.exe" in c for c in flat)          # restarts Docker Desktop (rebuilds backend)
+
+
+def test_reset_wsl_access_denied_prints_elevated_fallback(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    monkeypatch.setattr(host.os.path, "exists", lambda p: True)
+    def denied(argv, **k):
+        if "vmmemWSL.exe" in argv:
+            return proc(1, "", "ERROR: The process could not be terminated. Access is denied.")
+        return proc(0)
+    rc = host.cmd_reset_wsl(force=True, _run=denied, _input=lambda p: "n")
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "Restart-Service WSLService -Force" in out            # the elevated fallback is surfaced
+    assert "access denied" in out.lower()
+
+
+def test_reset_wsl_rejected_off_windows(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "linux")
+    assert host.cmd_reset_wsl(force=True) == 2
+    assert "Windows only" in capsys.readouterr().err
+
+
 # ---- cmd_doctor --------------------------------------------------------------
 
 def test_doctor_reports_and_recommends(monkeypatch, capsys):

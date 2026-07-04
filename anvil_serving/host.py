@@ -13,6 +13,9 @@ hand-set `memory=84GB` on a 93.7 GB host starved Windows, Docker Desktop failed 
   restart-docker  restart Docker Desktop — the RIGHT way to apply a WSL-backend memory change. NOT
                   `wsl --shutdown` (it does not cycle the docker-desktop distro and, in a retry loop, can
                   wedge WSL). Confirms unless --force.
+  reset-wsl       un-wedge a HUNG WSL subsystem (`wsl` times out, Docker Desktop can't start): force-kill
+                  the WSL VM (vmmemWSL) + hung `wsl.exe`, then restart Docker Desktop. Codifies the manual
+                  Task-Manager 'End task on vmmemWSL' recovery; prints the elevated fallback if kill is denied.
 
 Cross-cutting standards (the user's directive): back up before any change, offer a revert, confirm
 before a disruptive action + a --force for autonomous runs. stdlib-only; subprocess/`input` are
@@ -300,20 +303,61 @@ def cmd_restart_docker(force=False, _run=subprocess.run, _input=input):
     return 0
 
 
+def cmd_reset_wsl(force=False, _run=subprocess.run, _input=input):
+    """Un-wedge a HUNG WSL2 subsystem (`wsl` commands time out, Docker Desktop can't start, hundreds of
+    stuck `wsl.exe` pile up). Codifies the manual Task-Manager 'End task on vmmemWSL' recovery
+    (2026-07-04): force-kill the WSL VM's backing process + the hung `wsl.exe` front-ends, then restart
+    Docker Desktop so it rebuilds the backend. Deliberately does NOT use `wsl --shutdown` — when the
+    subsystem is already wedged the CLI front-end blocks (that loop is what wedged it in the first place).
+    Non-elevated best-effort; if the kill is denied it prints the elevated `Restart-Service` fallback."""
+    if sys.platform != "win32":
+        print("host reset-wsl un-wedges a hung WSL2 subsystem (Windows only).", file=sys.stderr)
+        return 2
+    if not _confirm("Reset the WSL subsystem? Force-kills the WSL VM (vmmemWSL) + hung wsl.exe, then "
+                    "restarts Docker Desktop (engine + all containers cycle; unless-stopped auto-restart).",
+                    force, _input):
+        print("aborted (no --force / declined).")
+        return 1
+    killed_vm = False
+    denied = False
+    for image in ("vmmemWSL.exe", "wsl.exe"):  # the VM backing process, then the piled-up front-ends
+        try:
+            r = _run(["taskkill", "/F", "/IM", image], capture_output=True, text=True)
+            out = ((r.stdout or "") + (r.stderr or "")).strip()
+            ok = r.returncode == 0
+            if image == "vmmemWSL.exe":
+                killed_vm = ok
+            if "access is denied" in out.lower():
+                denied = True
+            first = out.splitlines()[0] if out else ("killed" if ok else "not running")
+            print("  taskkill %-14s -> %s" % (image, "killed" if ok else first))
+        except OSError as e:
+            print("  taskkill %s failed: %s" % (image, e))
+    print("restarting Docker Desktop to rebuild the WSL backend...")
+    cmd_restart_docker(force=True, _run=_run, _input=_input)
+    if not killed_vm:
+        print("\nWSL VM was not killed%s. If it's still wedged, run in an ELEVATED PowerShell:" % (
+            " (access denied — needs elevation)" if denied else ""))
+        print("  Restart-Service WSLService -Force; Start-Process 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe'")
+    print("\nThen verify:  anvil-serving host doctor   (WSL cap reads live; GPUs repopulate as models reload)")
+    return 0
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     p = argparse.ArgumentParser(
         prog="anvil-serving host",
         description="Own the host (WSL / Docker Desktop) config, with backup/revert + safe caps.")
-    p.add_argument("action", choices=["doctor", "wsl-config", "restart-docker"],
+    p.add_argument("action", choices=["doctor", "wsl-config", "restart-docker", "reset-wsl"],
                    help="doctor: inspect + recommend safe WSL memory; wsl-config: edit .wslconfig "
                         "memory/swap (backup+safe-cap+--revert); restart-docker: apply via a Docker "
-                        "Desktop restart.")
+                        "Desktop restart; reset-wsl: un-wedge a hung WSL subsystem.")
     p.add_argument("--memory", type=int, help="wsl-config: WSL memory cap in GB.")
     p.add_argument("--swap", type=int, help="wsl-config: WSL swap in GB.")
     p.add_argument("--revert", action="store_true", help="wsl-config: restore the newest anvil backup.")
     p.add_argument("--force", action="store_true",
-                   help="skip the safe-cap refusal (wsl-config) / the confirm prompt (restart-docker).")
+                   help="skip the safe-cap refusal (wsl-config) / the confirm prompt "
+                        "(restart-docker, reset-wsl).")
     p.add_argument("--dry-run", action="store_true", help="wsl-config: show the change, write nothing.")
     a = p.parse_args(argv)
 
@@ -324,6 +368,8 @@ def main(argv=None):
                               force=a.force, dry_run=a.dry_run)
     if a.action == "restart-docker":
         return cmd_restart_docker(force=a.force)
+    if a.action == "reset-wsl":
+        return cmd_reset_wsl(force=a.force)
     return 2
 
 

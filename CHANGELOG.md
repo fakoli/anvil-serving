@@ -18,6 +18,13 @@ All notable changes to this project are documented here. The format is based on
   `wsl --shutdown`), confirming unless `--force`. Encodes the backup-on-change / revert / confirm +
   `--force` pattern a live incident taught (a hand-set `memory=84GB` on a 93.7 GB host starved Windows
   and a `wsl --shutdown` loop wedged WSL — `host wsl-config` now refuses exactly that).
+- **`anvil-serving host reset-wsl` — un-wedge a hung WSL subsystem.** When `wsl` commands time out and
+  Docker Desktop can't start (hundreds of stuck `wsl.exe` pile up), this force-kills the WSL VM
+  (`vmmemWSL`) + the hung `wsl.exe` front-ends and restarts Docker Desktop to rebuild the backend —
+  codifying the manual Task-Manager "End task on `vmmemWSL`" recovery (confirmed from the Windows System
+  log for the same 2026-07-04 incident). Deliberately does NOT use `wsl --shutdown` (the wedged CLI
+  front-end blocks — that loop is what wedged it). Confirms unless `--force`; if the kill is denied it
+  surfaces the elevated `Restart-Service WSLService -Force` fallback. +4 tests (DI'd; no WSL needed).
 
 ### Fixed
 
