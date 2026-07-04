@@ -137,7 +137,10 @@ def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run):
     # (fail-closed crash) and loopback binding.
     argv = ["docker", "compose"]
     if env_file:
-        argv += ["--env-file", env_file]
+        # ABSOLUTE path: compose resolves a RELATIVE --env-file in its own project context (the
+        # compose file's dir via -f), not the operator's CWD — so `router up --env-file .env` from
+        # elsewhere could silently miss the file and start the router without the token/publish.
+        argv += ["--env-file", os.path.abspath(os.path.expanduser(env_file))]
     argv += ["-f", compose, "up", "-d", service]
     return _run_argv(argv, _run, desc="up %s: %s" % (service, " ".join(argv)),
                      dry_run=dry_run)
