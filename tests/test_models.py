@@ -229,3 +229,82 @@ def test_models_sync_still_dispatches(tmp_path, monkeypatch):
     rc = models.main(["sync", "--out", str(tmp_path / "model-library")])
     assert rc == 0
     assert len(calls) == 1  # _sync.py was shelled out exactly once
+
+
+# --- serve-recipe READ tests (models recipe) ---
+
+
+def _registry(request):
+    return str(request.config.rootpath / "configs" / "serve-recipes.toml")
+
+
+def test_recipe_list_tables_recorded_recipes(request, capsys):
+    rc = models.main(["recipe", "list", "--registry", _registry(request)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    # header + the three shipped rows.
+    assert "status" in out and "throughput" in out and "intent" in out
+    assert "openai/gpt-oss-120b" in out
+    assert "183.2 tok/s" in out
+    assert "nvidia/Qwen3-32B-NVFP4" in out
+    assert "Qwen/Qwen3.6-27B" in out
+
+
+def test_recipe_show_prints_reconstructed_command_and_stats(request, capsys):
+    rc = models.main(["recipe", "show", "gpt-oss-120b", "--registry", _registry(request)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "183.2" in out  # measured throughput
+    # the reconstructed, reproducible docker run (positional model after the image).
+    assert "docker run -d --gpus device=GPU-d0f446cf" in out
+    assert "vllm/vllm-openai:nightly openai/gpt-oss-120b" in out
+    assert "-v vllm-hfcache:/root/.cache/huggingface" in out
+    # intent + download surfaced.
+    assert "flexibility" in out
+    assert "anvil-serving models pull openai/gpt-oss-120b" in out
+
+
+def test_recipe_show_unknown_model_is_clean_error(request, capsys):
+    rc = models.main(["recipe", "show", "no-such-model", "--registry", _registry(request)])
+    err = capsys.readouterr().err
+    assert rc == 1
+    assert "no serve recipe" in err
+
+
+def test_recipe_show_missing_registry_is_clean_error(tmp_path, capsys):
+    rc = models.main(["recipe", "show", "x", "--registry", str(tmp_path / "nope.toml")])
+    err = capsys.readouterr().err
+    assert rc == 1
+    assert "registry not found" in err
+
+
+def test_recipe_default_registry_resolves_without_explicit_flag(request, capsys):
+    # No --registry: the default resolves to the shipped configs/serve-recipes.toml.
+    rc = models.main(["recipe", "list"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "openai/gpt-oss-120b" in out
+
+
+def test_recipe_dispatches_through_cli(request, capsys):
+    rc = cli.main(["models", "recipe", "show", "gpt-oss-120b",
+                   "--registry", _registry(request)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "docker run -d" in out
+
+
+def test_models_sync_action_still_accepted(monkeypatch, tmp_path):
+    # Additive change must not break `models sync`: it still shells out to _sync.py.
+    calls = {}
+
+    def fake_call(cmd, env=None):
+        calls["cmd"] = cmd
+        calls["env"] = env
+        return 0
+
+    monkeypatch.setattr(models.subprocess, "call", fake_call)
+    rc = models.main(["sync", "--out", str(tmp_path / "lib")])
+    assert rc == 0
+    assert calls["cmd"][1].endswith("_sync.py")
+    assert calls["env"]["ANVIL_MODELS_OUT"] == str(tmp_path / "lib")
