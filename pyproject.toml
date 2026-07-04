@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anvil-serving"
-version = "0.8.0"
+version = "0.9.0"
 description = "A quality-gated local-model router for coding harnesses — local where it's proven, cloud where it isn't, verified with automatic fallback."
 readme = "README.md"
 license = { file = "LICENSE" }

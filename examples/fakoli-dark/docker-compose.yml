@@ -121,7 +121,7 @@ services:
   # `build:`) so `up` reproduces the deployment and `router promote --image` validates against it.
   # Bump this tag + router_manage.DEFAULT_IMAGE together on each router release.
   router:
-    image: anvil-serving:0.8.0
+    image: anvil-serving:0.9.0
     container_name: anvil-router
     restart: unless-stopped
     depends_on:
