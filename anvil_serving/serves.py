@@ -435,13 +435,17 @@ def cmd_up_compose(compose_file, services, dry_run=False, _run=subprocess.run):
 def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subprocess.run):
     """`docker logs` for ONE model serve's container (resolved from its manifest name), so
     diagnosing a serve doesn't mean reaching for raw docker. `--follow` streams to the terminal."""
+    # `logs` targets ONE serve, so a name is REQUIRED — don't inherit `_select`'s empty-means-all
+    # (which would silently pick the sole serve on a 1-serve manifest but error on a 2-serve one).
+    if not names:
+        print("serves logs needs a serve name (e.g. `serves logs heavy`).", file=sys.stderr)
+        return 2
     targets = _select(serves, names)
     if not targets:
-        print("no matching serve in the manifest (names: %s)" % (", ".join(names) or "<all>"),
-              file=sys.stderr)
+        print("no matching serve in the manifest (names: %s)" % ", ".join(names), file=sys.stderr)
         return 1
     if len(targets) > 1:
-        print("`logs` needs ONE serve; matched %d: %s — name one."
+        print("`logs` needs ONE serve; matched %d: %s — name just one."
               % (len(targets), ", ".join(s["name"] for s in targets)), file=sys.stderr)
         return 2
     container = targets[0]["container"]

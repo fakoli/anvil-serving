@@ -292,9 +292,16 @@ def test_serves_logs_argv_targets_the_named_container():
     assert seen["argv"][:2] == ["docker", "logs"] and seen["argv"][-1] == "vllm-fast"
 
 
-def test_serves_logs_ambiguous_refuses(capsys):
-    # no name -> all serves -> more than one -> refuse (never touches docker)
+def test_serves_logs_requires_a_name(capsys):
+    # `logs` targets ONE serve, so no name is an error — NOT "all" (which would pick the sole
+    # serve on a 1-serve manifest but error on a 2-serve one). Never touches docker.
     rc = serves.cmd_logs(_TWO, [], _run=lambda *a, **k: proc(0, "running\n"))
+    assert rc == 2
+    assert "needs a serve name" in capsys.readouterr().err
+
+
+def test_serves_logs_multiple_names_refuses(capsys):
+    rc = serves.cmd_logs(_TWO, ["heavy", "fast"], _run=lambda *a, **k: proc(0, "running\n"))
     assert rc == 2
     assert "ONE serve" in capsys.readouterr().err
 
