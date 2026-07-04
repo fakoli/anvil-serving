@@ -139,9 +139,15 @@ def _needs_for(request: InternalRequest) -> Needs:
     tool/image blocks (an acceptable trade for a gross-over-context floor).
     """
     raw = request.raw if isinstance(request.raw, Mapping) else {}
-    # Same text set the classifier + dialects estimate over (system + every
-    # message body); estimate_tokens sums per-string word counts.
-    texts = [request.system or ""] + [m.content for m in request.messages]
+    # System + every message body; estimate_tokens sums per-string word counts.
+    # OpenAI keeps the system message in `messages` (role="system") AND mirrors it into
+    # `request.system`, while Anthropic keeps system ONLY in `request.system`. So add
+    # `request.system` to the estimate ONLY when no system-role message is already in
+    # `messages` — otherwise an OpenAI request double-counts the system prompt, inflating
+    # min_context and risking a boundary false-reject (Copilot review).
+    texts = [m.content for m in request.messages]
+    if request.system and not any(getattr(m, "role", None) == "system" for m in request.messages):
+        texts.append(request.system)
     return Needs(
         min_context=estimate_tokens(texts),
         needs_tools=has_tool_artifacts(raw),
