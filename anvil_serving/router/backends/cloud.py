@@ -788,7 +788,7 @@ class CloudBackend:
         self._apply_tier_extra_body(body)
         return body
 
-    def _apply_tier_extra_body(self, body):
+    def _apply_tier_extra_body(self, body: Dict[str, Any]) -> Dict[str, Any]:
         """Apply the tier's SOFT defaults (request wins, via ``setdefault``) then the HARD
         ``extra_body`` (tier wins, via ``update``). A key present in both -> ``extra_body`` wins.
         This is what lets a tier set e.g. ``reasoning_effort`` as a DEFAULT that a caller (OpenClaw's
