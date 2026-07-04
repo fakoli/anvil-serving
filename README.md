@@ -9,7 +9,7 @@
 > *Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.3-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 [![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
@@ -414,7 +414,7 @@ anvil-serving multiplexer  # single-resident model swap on one GPU (multi-engine
 anvil-serving serves       # manage the local model serves via compose: status | logs | up | down | rm | adopt | up --compose
 anvil-serving router       # manage the DEPLOYED router container: up|down|restart|reload|status|logs|token + promote (write-back)
 anvil-serving harness      # own the harness-side config: `sync openclaw` renders OpenClaw models from the live router presets; `restart openclaw` / `sync --restart` reloads the gateway
-anvil-serving host         # own the WSL/Docker-Desktop host config: `doctor` (recommend a SAFE WSL memory), `wsl-config` (edit .wslconfig w/ backup + safe-cap + --revert), `restart-docker`
+anvil-serving host         # own the WSL/Docker-Desktop host config: `doctor` (recommend a SAFE WSL memory), `wsl-config` (edit .wslconfig w/ backup + safe-cap + --revert), `restart-docker`, `reset-wsl` (un-wedge a hung WSL)
 ```
 
 ### Substrate quickstart

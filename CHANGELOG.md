@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-04
+
 ### Added
 
 - **`anvil-serving host` verb — own the WSL / Docker Desktop host config, with safety rails.** Closes
@@ -18,6 +20,26 @@ All notable changes to this project are documented here. The format is based on
   `wsl --shutdown`), confirming unless `--force`. Encodes the backup-on-change / revert / confirm +
   `--force` pattern a live incident taught (a hand-set `memory=84GB` on a 93.7 GB host starved Windows
   and a `wsl --shutdown` loop wedged WSL — `host wsl-config` now refuses exactly that).
+- **`anvil-serving host reset-wsl` — un-wedge a hung WSL subsystem.** When `wsl` commands time out and
+  Docker Desktop can't start (hundreds of stuck `wsl.exe` pile up), this force-kills the WSL VM
+  (`vmmemWSL`) + the hung `wsl.exe` front-ends and restarts Docker Desktop to rebuild the backend —
+  codifying the manual Task-Manager "End task on `vmmemWSL`" recovery (confirmed from the Windows System
+  log for the same 2026-07-04 incident). Deliberately does NOT use `wsl --shutdown` (the wedged CLI
+  front-end blocks — that loop is what wedged it). Confirms unless `--force`; if the kill is denied it
+  surfaces the elevated `Restart-Service WSLService -Force` fallback. +4 tests (DI'd; no WSL needed).
+- **`host` verb hardening (adversarial review + Greptile/Copilot).** Process control moved from
+  `taskkill`/`cmd start` to PowerShell `Stop-Process`/`Start-Process` — outcomes come from PowerShell's
+  `ErrorCategory` **enum**, so denial detection is **locale-independent** (`taskkill`'s "Access is denied"
+  text would silently miss on non-English Windows). `wsl-config` now **fails CLOSED** when host RAM is
+  unreadable (`_host_total_gb` → None): it REFUSES rather than silently skipping the Windows-floor check
+  (the fail-open that would have reproduced the starvation incident), and `_host_total_gb` checks the exit
+  code + has a timeout. `reset-wsl` **propagates failure** (non-zero exit when the VM kill is denied/errors
+  or Docker Desktop can't relaunch — automation can detect an incomplete reset). Backups number from
+  `max(suffix)+1` (not the count) and write with exclusive mode, so a pruned/gapped backup can't collide
+  with or overwrite an existing one; `recommend` clamps to the appliable ceiling (never suggests a value
+  `wsl-config` would refuse, `None` on too-small hosts); `.wslconfig` section detection tolerates a trailing
+  comment on the `[wsl2]` header (no duplicate section); and all non-ASCII was purged from the module's
+  output (an em-dash/minus would mojibake/crash the cp1252 Windows console).
 
 ### Fixed
 
