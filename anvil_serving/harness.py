@@ -298,11 +298,26 @@ def main(argv=None):
     a = p.parse_args(argv)
 
     if a.action == "restart" and a.harness == "openclaw":
+        # `restart` only restarts the gateway; sync-only flags would be silently discarded, which
+        # reads as "it did something" — reject them so the misuse is visible.
+        stray = [f for f, v in (("--config", a.config), ("--out", a.out),
+                                ("--overwrite", a.overwrite), ("--skills", a.skills)) if v]
+        if stray:
+            print("restart openclaw takes only --gateway-host/--gateway-user; drop %s (it does not "
+                  "sync)." % ", ".join(stray), file=sys.stderr)
+            return 2
         return cmd_restart_openclaw(gateway_host=a.gateway_host, gateway_user=a.gateway_user)
 
     if a.action == "sync" and a.harness == "openclaw":
         if not a.config:
             print("harness sync openclaw requires --config <router.toml>", file=sys.stderr)
+            return 2
+        # A stdout-only sync isn't applied to the gateway's config file, so restarting would just
+        # reload the OLD config and falsely report success. Require an APPLIED target for --restart.
+        if a.restart and not a.gateway_host and not a.out:
+            print("--restart with a stdout-only sync would reload the gateway's OLD config (nothing "
+                  "was applied). Use --gateway-host <host>, or --out <the gateway's config path>.",
+                  file=sys.stderr)
             return 2
         return cmd_sync_openclaw(a.config, out=a.out, base_url=a.base_url,
                                  api_key_env=a.api_key_env, skills=a.skills,

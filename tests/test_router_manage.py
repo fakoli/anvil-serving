@@ -464,3 +464,44 @@ def test_logs_dispatched_from_main(monkeypatch):
     rc = rm.main(["logs", "--tail", "9", "--follow"])
     assert rc == 0 and seen["container"] == "anvil-router"
     assert seen["tail"] == "9" and seen["follow"] is True
+
+
+# ---- up --env-file (persist ANVIL_ROUTER_TOKEN / ROUTER_PUBLISH across deploys) ---------------
+
+def test_up_passes_env_file_before_compose_file_as_absolute():
+    run = FakeRun()
+    rm.cmd_up("compose.yml", "router", env_file="myenv", _run=run)   # relative
+    up = next(c for c in run.calls if c[:2] == ["docker", "compose"])
+    ef = up[up.index("--env-file") + 1]
+    assert ef == rm.os.path.abspath("myenv")                          # resolved to absolute
+    assert up.index("--env-file") < up.index("-f")                    # must precede -f to interpolate
+
+
+def test_up_omits_env_file_when_none():
+    run = FakeRun()
+    rm.cmd_up("compose.yml", "router", env_file=None, _run=run)
+    up = next(c for c in run.calls if c[:2] == ["docker", "compose"])
+    assert "--env-file" not in up
+
+
+def test_default_env_file_prefers_anvil_env(tmp_path, monkeypatch):
+    monkeypatch.setattr(rm.os.path, "expanduser", lambda p: str(tmp_path) if p == "~" else p)
+    assert rm._default_env_file() is None                       # neither exists
+    (tmp_path / ".env").write_text("X=1", encoding="utf-8")
+    assert rm._default_env_file().endswith(".env")
+    (tmp_path / ".anvil_env").write_text("X=1", encoding="utf-8")
+    assert rm._default_env_file().endswith(".anvil_env")        # ~/.anvil_env preferred over ~/.env
+
+
+def test_up_main_threads_env_file(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(rm, "cmd_up", lambda c, s, **k: seen.update(k) or 0)
+    rm.main(["up", "--env-file", "/x/.env"])
+    assert seen["env_file"] == "/x/.env"
+
+
+def test_up_main_empty_env_file_disables_autodetect(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(rm, "cmd_up", lambda c, s, **k: seen.update(k) or 0)
+    rm.main(["up", "--env-file", ""])                            # explicit '' -> no env file
+    assert seen["env_file"] is None
