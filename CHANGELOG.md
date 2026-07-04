@@ -16,6 +16,12 @@ All notable changes to this project are documented here. The format is based on
   `examples/fakoli-dark/docker-compose.flexibility.yml` + a `docs/findings/blackwell-sm120-lab-notebook.md`
   writeup. Correctness preflight = **ALL PASS** (smoke, structured JSON, 14k needle, 20/20 tool batch)
   with `--no-thinking`.
+- **OpenClaw provider config reconciled for flexibility mode + a harness-config-lockstep rule.** New
+  `examples/openclaw/openclaw-flexibility.json5` recipe (5 presets, `contextWindow=131072`, per-preset
+  thinking overrides REMOVED since the router now owns `reasoning_effort`/`enable_thinking` per tier),
+  and a CLAUDE.md golden rule: **anvil-serving owns the harness-side config too** — keep it in lockstep
+  with the router's intent/tier config, and close the gap with an `anvil-serving harness sync openclaw`
+  verb. (The OpenClaw gateway runs on Fakoli Mini.)
 
 ### Changed
 

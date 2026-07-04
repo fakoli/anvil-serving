@@ -222,6 +222,36 @@ Cloud credentials go in env vars only — never in config files. The front door 
 
 ---
 
+## Golden rule: anvil-serving owns the harness-side config too, not just the router
+
+anvil-serving manages the model serves (`serves`) and the deployed router (`router`) as first-class
+verbs (ADR-0012). That ownership MUST extend to the **harness** it fronts: anvil-serving is the
+source of truth for the harness's model/provider config, its per-preset knobs, and its
+skills/modules/agent configuration — **starting with OpenClaw**.
+
+1. **Keep the harness config in lockstep with the router — in the SAME change.** Any change to the
+   router's intent configuration (presets, tier topology, per-tier reasoning/thinking knobs, context
+   limits) REQUIRES a matching harness-config update. Updating the router's intent config but leaving
+   the OpenClaw setup stale is the anti-pattern to avoid. Example (2026-07-04): promoting heavy to
+   gpt-oss-120b `reasoning_effort=high` (which IGNORES `enable_thinking`) and fast to Qwen3.6-27B
+   (which sets `enable_thinking=false` on the tier) means the OpenClaw provider's per-preset
+   `agents.defaults.models["anvil/*"].params.chat_template_kwargs.enable_thinking` overrides are now
+   the ROUTER's job and must be REMOVED; each preset's `contextWindow` must still equal the LARGEST
+   routed tier window (131072 = heavy), per the contextWindow-clamp gotcha in
+   `docs/OPENCLAW-INTEGRATION-SPEC.md`.
+2. **This is a capability gap to close, not a manual chore.** Just as raw `docker` for serve
+   management is a gap, hand-editing the harness config out-of-band is a gap. anvil-serving should be
+   able to LOAD/PUSH the harness's config itself — e.g. an `anvil-serving harness sync openclaw` verb
+   that RENDERS the correct OpenClaw provider + agent config from the live router config and applies
+   it to the gateway. Start with OpenClaw; the front door is protocol-standard so the pattern
+   generalizes to any harness.
+
+Note: the OpenClaw **gateway** runs on **Fakoli Mini** (this box, fakoli-dark, holds only the Tray
+client + the adapter plugin source). Until the sync verb exists, a router change here means producing
+the reconciled OpenClaw config and applying it on Mini.
+
+---
+
 ## Docs map
 
 - `README.md` — product framing, quickstart, substrate commands, worked example
