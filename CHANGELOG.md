@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-04
+
 ### Added
 
 - **Per-request reasoning selection (gpt-oss `reasoning_effort`).** New tier field
