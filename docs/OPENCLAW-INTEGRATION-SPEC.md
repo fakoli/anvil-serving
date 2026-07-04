@@ -92,7 +92,7 @@ function classify(prompt: string, attachments?: { kind: string }[]): AnvilPreset
 }
 
 export default definePluginEntry({
-  id: "anvil-intent-router",
+  id: "openclaw-anvil-intent-router",   // MUST match the packaged plugin id + the plugins.entries key below
   name: "Anvil intent router",
   register(api) {
     api.on(
@@ -119,9 +119,9 @@ export default definePluginEntry({
   "openclaw": { "extensions": ["./index.ts"],
     "compat": { "pluginApi": ">=2026.3.24-beta.2" } } }  // UNCONFIRMED exact floor; before_model_resolve reportedly added ~2026.4.21 — confirm against CHANGELOG/release tags and pin.
 // openclaw.plugin.json
-{ "id": "anvil-intent-router", "activation": { "onStartup": true } }
+{ "id": "openclaw-anvil-intent-router", "activation": { "onStartup": true } }
 ```
-Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/anvil-intent-router`; then `openclaw gateway restart`; verify `openclaw plugins inspect anvil-intent-router --runtime --json`. **`--link` is required on OpenClaw >=2026.6.11** — that compiled-runtime loader rejects a copy-install (`openclaw plugins install <path>` without the flag) for TypeScript/compiled plugins like this one; only a linked (symlinked) install is accepted.
+Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/openclaw-anvil-intent-router`; then `openclaw gateway restart`; verify `openclaw plugins inspect openclaw-anvil-intent-router --runtime --json`. **`--link` is required on OpenClaw >=2026.6.11** — that compiled-runtime loader rejects a copy-install (`openclaw plugins install <path>` without the flag) for TypeScript/compiled plugins like this one; only a linked (symlinked) install is accepted.
 
 ## 2. OpenClaw provider config recipe (point at anvil-serving)
 
@@ -157,7 +157,7 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/anvil
       "anvil/long-context": { params: { chat_template_kwargs: { enable_thinking: false } } }
     }
   } },
-  plugins: { entries: { "anvil-intent-router": { hooks: { allowConversationAccess: true } } } } // CONFIRMED required gate
+  plugins: { entries: { "openclaw-anvil-intent-router": { hooks: { allowConversationAccess: true } } } } // key = packaged plugin id (CONFIRMED required gate)
 }
 ```
 
