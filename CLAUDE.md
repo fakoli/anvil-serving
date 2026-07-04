@@ -236,9 +236,11 @@ skills/modules/agent configuration — **starting with OpenClaw**.
    gpt-oss-120b `reasoning_effort=high` (which IGNORES `enable_thinking`) and fast to Qwen3.6-27B
    (which sets `enable_thinking=false` on the tier) means the OpenClaw provider's per-preset
    `agents.defaults.models["anvil/*"].params.chat_template_kwargs.enable_thinking` overrides are now
-   the ROUTER's job and must be REMOVED; each preset's `contextWindow` must still equal the LARGEST
-   routed tier window (131072 = heavy), per the contextWindow-clamp gotcha in
-   `docs/OPENCLAW-INTEGRATION-SPEC.md`.
+   the ROUTER's job and the PARAMS must be stripped — but KEEP the `agents.defaults.models["anvil/*"]`
+   ENTRIES themselves (set to `{}`): that map is OpenClaw's DROPDOWN ALLOWLIST, so deleting the
+   entries removes the presets from the picker entirely (2026-07-04 regression). Each preset's
+   `contextWindow` must still equal the LARGEST routed tier window (131072 = heavy), per the
+   contextWindow-clamp gotcha in `docs/OPENCLAW-INTEGRATION-SPEC.md`.
 2. **This is a capability gap to close, not a manual chore.** Just as raw `docker` for serve
    management is a gap, hand-editing the harness config out-of-band is a gap. anvil-serving should be
    able to LOAD/PUSH the harness's config itself — e.g. an `anvil-serving harness sync openclaw` verb
