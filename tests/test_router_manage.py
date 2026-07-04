@@ -66,11 +66,12 @@ def _find_index(calls, *needles):
 
 # ---- lifecycle: up / down / restart / reload --------------------------------
 
-def test_up_delegates_to_compose_up_d():
+def test_up_delegates_to_compose_up_d_no_deps():
     run = FakeRun()
     rc = rm.cmd_up("/c.yml", "router", _run=run)
     assert rc == 0
-    assert run.calls == [["docker", "compose", "-f", "/c.yml", "up", "-d", "router"]]
+    # --no-deps: never recreate the model serves (they're `serves`' job).
+    assert run.calls == [["docker", "compose", "-f", "/c.yml", "up", "-d", "--no-deps", "router"]]
 
 
 def test_down_delegates_to_compose_stop():
