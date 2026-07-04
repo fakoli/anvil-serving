@@ -108,5 +108,6 @@ See [Terminology](TERMINOLOGY.md) for the naming guide.
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Use the reference gateway integration. |
 | [OpenClaw operations ADRs](adr/0013-openclaw-layers-and-mcp-control-plane.md) | Understand hook, router, MCP, and tailnet-controller layers. |
+| [Hugging Face speech-to-speech](../examples/huggingface-speech-to-speech/) | Run Realtime audio with anvil-routed LLM turns. |
 | [ADRs](adr/README.md) | Read why major decisions were made. |
 | [Changelog](changelog.md) | Track release history. |

@@ -608,6 +608,34 @@ aider --model openai/planning --editor-model openai/quick-edit --weak-model open
 **Cline / Continue.dev** — select "OpenAI Compatible"; Base URL `http://127.0.0.1:8000/v1`, Model (ID)
 = a preset token. Continue can attach Tier-2 hints via `requestOptions.headers`.
 
+**Hugging Face `speech-to-speech`** — use anvil as the voice agent's LLM backend, not as the
+Realtime audio server. Start anvil normally, then run:
+
+```bash
+speech-to-speech \
+  --mode realtime \
+  --stt parakeet-tdt \
+  --llm_backend chat-completions \
+  --tts qwen3 \
+  --model_name chat \
+  --responses_api_base_url "http://127.0.0.1:8000/v1" \
+  --responses_api_api_key "" \
+  --responses_api_stream \
+  --enable_live_transcription
+```
+
+If `[server].auth_env` is configured on the anvil router, set
+`--responses_api_api_key "$ANVIL_ROUTER_TOKEN"`. `speech-to-speech` still owns its
+`/v1/realtime` WebSocket and VAD/STT/TTS stages; anvil only handles the
+`/v1/chat/completions` LLM call. Use `chat` first for voice latency; see
+[`examples/huggingface-speech-to-speech/`](../examples/huggingface-speech-to-speech/) for the
+full recipe. For true token-by-token voice latency, use a voice-specific router config with
+`[router].verify_local_min = false` after the local chat tier has passed preflight; the default
+keeps the minimal local-output safety check on. Use
+`anvil-serving voice-sidecar validate|command|compose --config
+examples/huggingface-speech-to-speech/openclaw-gateway.example.toml` to check the manifest, render
+the host command, or emit a compose service skeleton without adding a router-owned Realtime API.
+
 **OpenAI Codex CLI** (`~/.codex/config.toml`) — Tier 1 + optional Tier 2 side-channel:
 ```toml
 model = "planning"
