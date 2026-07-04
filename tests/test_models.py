@@ -308,3 +308,26 @@ def test_models_sync_action_still_accepted(monkeypatch, tmp_path):
     assert rc == 0
     assert calls["cmd"][1].endswith("_sync.py")
     assert calls["env"]["ANVIL_MODELS_OUT"] == str(tmp_path / "lib")
+
+
+def test_recipe_list_shows_aggregate_throughput(tmp_path, capsys):
+    """A recipe recorded at concurrency>1 stores throughput_aggregate_tok_s; the list
+    table shows it (labeled agg), not '-' (Copilot review)."""
+    reg = tmp_path / "r.toml"
+    reg.write_text(
+        'schema="x"\n[[recipe]]\nmodel="m"\nstatus="verified"\n'
+        '[recipe.measured]\nthroughput_aggregate_tok_s=250.0\nconcurrency=20\n',
+        encoding="utf-8")
+    rc = models.main(["recipe", "list", "--registry", str(reg)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "250.0 tok/s (agg x20)" in out
+
+
+def test_recipe_malformed_registry_is_clean_error(tmp_path, capsys):
+    """A malformed registry TOML is a clean rc=1, not a TOMLDecodeError traceback (Copilot)."""
+    reg = tmp_path / "bad.toml"
+    reg.write_text("this is [not valid toml", encoding="utf-8")
+    rc = models.main(["recipe", "list", "--registry", str(reg)])
+    assert rc == 1
+    assert "cannot read serve-recipe registry" in capsys.readouterr().err

@@ -17,6 +17,7 @@ import os
 import argparse
 import shlex
 import subprocess
+import tomllib
 import sys
 from . import config
 from . import serve_recipes
@@ -176,8 +177,15 @@ def _default_registry():
 
 
 def _fmt_throughput(measured):
-    tps = (measured or {}).get("throughput_single_tok_s")
-    return ("%.1f tok/s" % tps) if isinstance(tps, (int, float)) else "-"
+    m = measured or {}
+    tps = m.get("throughput_single_tok_s")
+    if isinstance(tps, (int, float)):
+        return "%.1f tok/s" % tps
+    agg = m.get("throughput_aggregate_tok_s")  # recorded at concurrency>1 (Copilot review)
+    if isinstance(agg, (int, float)):
+        conc = m.get("concurrency")
+        return ("%.1f tok/s (agg x%s)" % (agg, conc)) if conc else ("%.1f tok/s (agg)" % agg)
+    return "-"
 
 
 def _fmt_intent(intent):
@@ -249,7 +257,11 @@ def _recipe_main(argv):
     if not os.path.exists(registry_path):
         print("serve-recipe registry not found: %s" % registry_path, file=sys.stderr)
         return 1
-    registry = serve_recipes.load_registry(registry_path)
+    try:
+        registry = serve_recipes.load_registry(registry_path)
+    except (tomllib.TOMLDecodeError, OSError) as exc:
+        print("cannot read serve-recipe registry %s: %s" % (registry_path, exc), file=sys.stderr)
+        return 1
 
     if a.recipe_action == "list":
         _print_recipe_table(registry)
