@@ -1,0 +1,144 @@
+# anvil-serving — serve recipe registry
+# =============================================================================
+# A repeatable record of HOW to serve each model on our hardware: the exact
+# reproducible config (GPU, engine, image, env, flags, quant), the MEASURED
+# stats (throughput, VRAM, context, preflight), a provenance flag, and the
+# intent / work-classes each config is best suited for. So when we want to
+# "pull out this model again," we have the settings AND the numbers on record.
+#
+# status:
+#   "verified"   — measured on OUR hardware (a real serve + preflight/benchmark here).
+#                  These are reproducible: copy the [recipe.serve] block and go.
+#   "unverified" — an external prior (e.g. local-inference-lab/rtx6kpro via
+#                  `anvil-serving external-bench`) or a config we have NOT measured
+#                  on-box. Treat as advisory only — PREFLIGHT before trusting.
+#
+# Fields align with the `anvil_serving.external_benchmarks` schema (model, engine,
+# quantization, gpu_model, vram_gb, context_tokens, throughput_tok_s, ...) so a row
+# here and an external prior can be compared directly. Enrich external priors with:
+#   anvil-serving external-bench import <snapshot.json> --source rtx6kpro
+#   anvil-serving external-bench compare <our-benchmark.json>
+# A row graduates unverified -> verified once we measure it on-box (preflight ALL
+# PASS + a benchmark number).
+
+schema = "anvil-serving.serve-recipes/v1"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED — gpt-oss-120b : the flexibility-mode quality ceiling-raise (T014/T015)
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "openai/gpt-oss-120b"
+status = "verified"
+source = "measured on fakoli-dark, 2026-07-03 — preflight ALL PASS + benchmark"
+family = "gpt-oss"
+total_params_b = 116.8
+active_params_b = 5.1        # MoE: 128 experts, top-4 routing; MXFP4 MoE + bf16 attention
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+  arch = "sm_120"
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"   # fakoli-dark heavy card
+  vram_total_gb = 96
+  vram_weights_gb = 66
+  vram_note = "66 GiB weights; full 131072-ctx fp8 KV fits easily (~5 GiB) -> 5.69x max concurrency at 128k"
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"   # ENTRYPOINT is ["vllm","serve"] -> pass model as POSITIONAL, do NOT add another 'serve'
+  quantization = "mxfp4"               # auto-detected as gpt_oss_mxfp4; MoE backend = MARLIN (FlashInfer-TRTLLM MXFP4 is sm_100-only)
+  context_tokens = 131072
+  port = 30002
+  # env: FLASHINFER_CUDA_ARCH_LIST=12.0f is MAKE-OR-BREAK on sm_120 — the 'f' suffix.
+  # Plain '12.0' -> runtime "Feature 'cvt.e2m1x2.f32' not supported on .target 'sm_120'".
+  env = [
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+    "VLLM_USE_V2_MODEL_RUNNER=0",       # WSL2 UVA fix
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  ]
+  flags = [
+    "--kv-cache-dtype fp8",
+    "--tool-call-parser openai",
+    "--enable-auto-tool-choice",
+    "--gpu-memory-utilization 0.88",
+    "--max-model-len 131072",
+  ]
+  # DO NOT add --enforce-eager: measured eager=33.6 tok/s vs CUDA-graphs=183 (5.4x).
+  # CUDA graphs capture cleanly on sm_120 (83 piecewise + 83 full-decode) and are
+  # stable under a 12-concurrent stress. (The NVIDIA-forum recipe's mandatory
+  # --enforce-eager was for a custom build; it does NOT apply to this stock nightly.)
+
+  [recipe.measured]
+  throughput_single_tok_s = 183.2      # warmed, reasoning_effort=low, 700-tok generation
+  throughput_eager_tok_s = 33.6        # reference only (with --enforce-eager) — NOT recommended
+  preflight = "ALL PASS — smoke(coding), structured-JSON, needle@128k, 20/20 tool calls"
+  stable_under_load = "12-concurrent burst: 12/12, no crash / NaN / CUDA error"
+  reasoning = "reasoning-by-default (parser=openai_gptoss); gate via reasoning_effort, NOT enable_thinking; needs adequate max_tokens"
+
+  [recipe.intent]
+  suited = ["flexibility", "quality", "long-context", "planning", "review"]
+  not_suited = ["agentic-interactive"]  # 183 tok/s single-stream; the agentic heavy qwen35-awq does ~268 w/ NEXTN spec-decode
+  mode = "flexibility"
+  rationale = "A 120B-class quality ceiling-raise for NON-agentic single-turn work, where prefix/radix cache is irrelevant."
+
+  [recipe.download]
+  note = "HF repo is 182 GB = 3 copies (root MXFP4 60.8 / metal 60.8 / original 60.8). vLLM needs ONLY root."
+  command = "anvil-serving models pull openai/gpt-oss-120b --token-env HF_TOKEN   # then hf --exclude 'metal/*' --exclude 'original/*'"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED (prior) — dense Qwen3-32B-NVFP4 : heavy-tier NVFP4 candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/Qwen3-32B-NVFP4"     # RedHatAI variant also cached — OMIT --quantization for that one (compressed-tensors auto-detect)
+status = "verified"
+source = "prior fakoli-dark heavy-tier trial (dense NVFP4)"
+family = "qwen3"
+total_params_b = 32
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+  arch = "sm_120"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  quantization = "modelopt_fp4"        # NVIDIA nvidia/* checkpoints take --quantization modelopt_fp4; RedHatAI *-NVFP4 => OMIT (auto)
+  context_tokens = 131072
+
+  [recipe.measured]
+  throughput_single_tok_s = 340        # ~1.8x faster than FP8 (190) — the FP4:FP8 hardware ceiling on sm_120
+  preflight = "validated in trial; NOT swapped into prod (pending measured A/B vs the qwen35-awq incumbent)"
+
+  [recipe.intent]
+  suited = ["heavy", "quality", "agentic-candidate"]
+  mode = "either"
+  rationale = "DENSE (not MoE) so it sidesteps the sm_120 MoE-NVFP4 grouped-GEMM crash; NVFP4 ~1.8x faster than FP8, ~half the VRAM."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED / PARKED — Qwen3.6-27B (GDN hybrid) : flexibility-only quality candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "Qwen/Qwen3.6-27B"           # FP8 + NVFP4 variants cached in the volume
+status = "unverified"
+source = "fakoli-dark trial (PARKED) — quality measured, serving path blocked"
+family = "qwen3.6"
+total_params_b = 27
+
+  [recipe.serve]
+  engine = "vllm"                      # or llama.cpp — but both hit the GDN re-prefill wall on sm_120
+  quantization = "nvfp4"
+  note = "GDN-hybrid (Gated-DeltaNet): NO prefix/radix-cache serving path on sm_120 (SGLang/AWQ/vLLM-APC all blocked, vLLM #26201/#45238). Preflight the large-prefill path before trusting."
+
+  [recipe.measured]
+  quality_note = "MEASURED planning-quality WIN: 0.66 vs 0.43 for the incumbent — a real quality lift"
+  preflight = "NOT re-validated; parked pending a cached serving path"
+
+  [recipe.intent]
+  suited = ["flexibility", "quality"]
+  mode = "flexibility"
+  rationale = "Prefix cache is load-bearing for AGENTIC work but IRRELEVANT for single-turn FLEXIBILITY work — so a GDN hybrid becomes viable precisely in flexibility mode. Cache-off is a feature here, not a bug."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Add new recipes above. External priors (unverified) can also be pulled from
+# local-inference-lab/rtx6kpro and other sources via `anvil-serving external-bench`;
+# copy a row here (status="unverified", source=...) to keep it alongside our verified
+# recipes, then graduate it to "verified" once measured on-box.
