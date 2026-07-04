@@ -8,6 +8,13 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **`anvil-serving harness restart openclaw` + `sync --restart` — reload the gateway so settings
+  apply.** OpenClaw reads its config at gateway STARTUP, so a synced config change is inert until a
+  restart. `harness restart openclaw [--gateway-host <mini>]` runs `openclaw gateway restart` (locally
+  or over ssh); `harness sync openclaw … --restart` restarts right after a successful push. It's a
+  single command invocation (not a shell script), so it stays portable against a Windows/macOS/Linux
+  gateway. `--config` is now optional (required only for `sync`).
+
 - **`anvil-serving router logs` + `serves logs` — `docker logs` through the management verbs.**
   Diagnosing a router crash-loop or a serve no longer means reaching for raw `docker` (the same
   gap ADR-0012 closed for lifecycle). `router logs` and `serves logs <name>` take `--tail`/`--since`/

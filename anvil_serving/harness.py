@@ -18,7 +18,14 @@ The OpenClaw GATEWAY is typically REMOTE from the router (e.g. Fakoli Mini -> fa
 either EMITS the config (stdout or `--out`) OR pushes it to the remote gateway over ssh with
 `--gateway-host` — MERGING the anvil provider into the remote `~/.openclaw/openclaw.json` (preserving
 the operator's other providers/agents/plugins) and backing up the remote first; `--overwrite` does a
-full write. stdlib-only (ssh via `subprocess`, injected for tests).
+full write.
+
+OpenClaw reads its config at gateway STARTUP, so a config change is only picked up after a restart:
+`harness sync openclaw ... --restart` restarts the gateway after the push, and `harness restart
+openclaw [--gateway-host <mini>]` restarts it on its own — `openclaw gateway restart`, run locally or
+over ssh (a single command invocation, not a shell script, so it stays portable against any-OS gateway).
+
+stdlib-only (ssh via `subprocess`, injected for tests).
 """
 import argparse
 import json
@@ -181,9 +188,36 @@ def _sync_over_ssh(host, user, path, rendered, *, overwrite, _run):
                 pass
 
 
+def _restart_openclaw_gateway(host, user, *, _run):
+    """Restart the OpenClaw gateway so it picks up config changes — `openclaw gateway restart`,
+    locally or over ssh when the gateway is remote (--gateway-host). It's a single command
+    invocation (NOT a shell script), so it stays portable against a Windows/macOS/Linux gateway.
+    Returns 0/1."""
+    if host:
+        target = _ssh_target(host, user)
+        argv, where, missing = ["ssh", target, "openclaw", "gateway", "restart"], target, "ssh"
+    else:
+        argv, where, missing = ["openclaw", "gateway", "restart"], "localhost", "openclaw"
+    try:
+        r = _run(argv, capture_output=True, text=True)
+    except FileNotFoundError:
+        print("cannot restart gateway: %s not available on PATH" % missing, file=sys.stderr)
+        return 1
+    if r.returncode != 0:
+        print("FAILED to restart the OpenClaw gateway on %s: %s"
+              % (where, (r.stderr or r.stdout or "").strip()), file=sys.stderr)
+        return 1
+    print("restarted the OpenClaw gateway on %s (settings reloaded)" % where)
+    return 0
+
+
+def cmd_restart_openclaw(gateway_host=None, gateway_user=None, _run=subprocess.run):
+    return _restart_openclaw_gateway(gateway_host, gateway_user, _run=_run)
+
+
 def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,
                       gateway_host=None, gateway_user=None,
-                      gateway_path="~/.openclaw/openclaw.json", overwrite=False,
+                      gateway_path="~/.openclaw/openclaw.json", overwrite=False, restart=False,
                       _load=None, _run=subprocess.run):
     if skills:
         print("harness sync openclaw --skills: skills/agent-config sync is not implemented yet "
@@ -206,8 +240,11 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
     provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
 
     if gateway_host:  # push to the REMOTE gateway over ssh (Mini -> the router)
-        return _sync_over_ssh(gateway_host, gateway_user, gateway_path, provider,
-                              overwrite=overwrite, _run=_run)
+        rc = _sync_over_ssh(gateway_host, gateway_user, gateway_path, provider,
+                            overwrite=overwrite, _run=_run)
+        if rc == 0 and restart:  # so the gateway picks up the new config
+            return _restart_openclaw_gateway(gateway_host, gateway_user, _run=_run)
+        return rc
 
     text = json.dumps(provider, indent=2, ensure_ascii=False) + "\n"
     if out:
@@ -219,6 +256,8 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
               "--gateway-host <mini> (ssh; merges by default, backs up the remote first).")
     else:
         sys.stdout.write(text)
+    if restart:  # config emitted locally; restart the LOCAL gateway to pick it up
+        return _restart_openclaw_gateway(None, None, _run=_run)
     return 0
 
 
@@ -228,12 +267,13 @@ def main(argv=None):
         prog="anvil-serving harness",
         description="Own the harness-side config: render a harness's model/provider config FROM "
                     "the live router config so the two never drift. v1: OpenClaw models.")
-    p.add_argument("action", choices=["sync"],
-                   help="sync: render the harness config from the router config.")
+    p.add_argument("action", choices=["sync", "restart"],
+                   help="sync: render the harness config from the router config; restart: restart "
+                        "the gateway so it picks up config changes.")
     p.add_argument("harness", choices=["openclaw"], help="target harness (v1: openclaw).")
-    p.add_argument("--config", required=True,
-                   help="router config TOML to render the harness models from (its presets + tier "
-                        "context limits).")
+    p.add_argument("--config",
+                   help="sync: router config TOML to render the harness models from (its presets + "
+                        "tier context limits). Required for `sync`.")
     p.add_argument("--out", help="write the harness config here (default: stdout).")
     p.add_argument("--base-url", default="http://127.0.0.1:8000/v1",
                    help="the router front door the harness dials (default: %(default)s; use the "
@@ -250,15 +290,25 @@ def main(argv=None):
     p.add_argument("--overwrite", action="store_true",
                    help="with --gateway-host: OVERWRITE the remote config instead of merging "
                         "(a timestamped .bak is taken first either way).")
+    p.add_argument("--restart", action="store_true",
+                   help="after `sync`: restart the OpenClaw gateway so it picks up the new config "
+                        "(over ssh when --gateway-host is set). Also the `restart` action on its own.")
     p.add_argument("--skills", action="store_true",
                    help="(not yet implemented) also sync skills/agent config.")
     a = p.parse_args(argv)
 
+    if a.action == "restart" and a.harness == "openclaw":
+        return cmd_restart_openclaw(gateway_host=a.gateway_host, gateway_user=a.gateway_user)
+
     if a.action == "sync" and a.harness == "openclaw":
+        if not a.config:
+            print("harness sync openclaw requires --config <router.toml>", file=sys.stderr)
+            return 2
         return cmd_sync_openclaw(a.config, out=a.out, base_url=a.base_url,
                                  api_key_env=a.api_key_env, skills=a.skills,
                                  gateway_host=a.gateway_host, gateway_user=a.gateway_user,
-                                 gateway_path=a.gateway_path, overwrite=a.overwrite)
+                                 gateway_path=a.gateway_path, overwrite=a.overwrite,
+                                 restart=a.restart)
     return 2
 
 
