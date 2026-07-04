@@ -141,7 +141,10 @@ def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run):
         # compose file's dir via -f), not the operator's CWD — so `router up --env-file .env` from
         # elsewhere could silently miss the file and start the router without the token/publish.
         argv += ["--env-file", os.path.abspath(os.path.expanduser(env_file))]
-    argv += ["-f", compose, "up", "-d", service]
+    # --no-deps: manage ONLY the router. Without it, `compose up router` re-runs its `depends_on`
+    # and RECREATES the model serves when their resolved config drifts (e.g. a changed --env-file) —
+    # a gpt-oss-120b reload is minutes of 503s. The serves are `serves`' job, not the router verb's.
+    argv += ["-f", compose, "up", "-d", "--no-deps", service]
     return _run_argv(argv, _run, desc="up %s: %s" % (service, " ".join(argv)),
                      dry_run=dry_run)
 

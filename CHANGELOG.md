@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **`anvil-serving router up` now passes `--no-deps`** so it manages ONLY the router. Without it,
+  `docker compose up router` re-runs `depends_on` and RECREATES the model serves whenever their
+  resolved config drifts (e.g. a changed `--env-file`) — a gpt-oss-120b reload is minutes of 503s.
+  (Hit live redeploying to 0.9.0.) The serves are `serves`' responsibility, not the router verb's.
+
 ## [0.9.0] - 2026-07-04
 
 ### Added
