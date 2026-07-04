@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **fakoli-dark router redeployed to the v0.8.0 release image** (from the transitional `0.7.1` pin
+  in #125): the `router` compose service and `router_manage.DEFAULT_IMAGE` now pin
+  `anvil-serving:0.8.0` — rebuilt from main, so the deployed router has flexibility mode + the v2
+  profile loader (backward-compatible with the live v1 profile), and `router promote --image`
+  validates against 0.8.0. Live routing verified after the swap (planning/chat/quick-edit → 200).
+
 ## [0.8.0] - 2026-07-04
 
 ### Fixed
