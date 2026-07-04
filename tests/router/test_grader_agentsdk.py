@@ -306,8 +306,12 @@ def test_calibrator_swallows_self_verification_on_cloud_tier():
 
 # ── the real Agent-SDK seam: CLI subprocess, key-scrub, NO raw API ────────────
 def test_real_seam_uses_claude_cli_and_scrubs_api_key(monkeypatch):
-    """Proves the DEFAULT judge shells out to the `claude` CLI (Agent-SDK path)
-    and scrubs ANTHROPIC_API_KEY — WITHOUT spawning a real process."""
+    """Proves the DEFAULT judge shells out to the `claude` CLI (Agent-SDK path) and
+    scrubs ANTHROPIC_API_KEY — WITHOUT spawning a real process. The exe is resolved
+    via shutil.which (cross-platform: a Windows claude.CMD needs PATHEXT), and the
+    prompt is passed on STDIN (no command-line-length limit; Windows cmd.exe caps
+    argv at ~8191 chars, which a long judge prompt overflows)."""
+    import shutil
     import subprocess
 
     captured = {}
@@ -321,21 +325,55 @@ def test_real_seam_uses_claude_cli_and_scrubs_api_key(monkeypatch):
         captured["argv"] = argv
         captured["env"] = kwargs.get("env")
         captured["input"] = kwargs.get("input")
+        stdin = kwargs.get("stdin")
+        captured["stdin_content"] = stdin.read() if stdin is not None else None
         return _FakeProc()
 
+    monkeypatch.delenv("ANVIL_CLAUDE_BIN", raising=False)
+    monkeypatch.setattr(shutil, "which", lambda n: "/fake/bin/claude" if n == "claude" else None)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-SHOULD-BE-SCRUBBED")
 
     text = ga._claude_cli_judge("grade this please")
 
-    assert captured["argv"][0] == "claude"          # the Agent-SDK CLI, not raw API
-    assert "-p" in captured["argv"]                  # headless print mode
-    assert "--bare" not in captured["argv"]          # ADR-0007: never --bare
+    assert captured["argv"][0] == "/fake/bin/claude"  # resolved via shutil.which (Windows-safe)
+    assert "-p" in captured["argv"]                    # headless print mode
+    assert "--bare" not in captured["argv"]            # ADR-0007: never --bare
     assert "ANTHROPIC_API_KEY" not in captured["env"]  # scrubbed: subscription OAuth only
-    assert "grade this please" in captured["argv"]   # prompt on argv (ADR-0001 shape), not stdin
-    assert captured["input"] is None                  # stdin unused for the prompt
+    assert "grade this please" not in captured["argv"]  # prompt is NOT on argv (Windows length)...
+    assert captured["input"] is None                    # ...and NOT an input= pipe (Windows race)...
+    assert captured["stdin_content"] == "grade this please"  # ...it's a temp-file stdin redirect
     # The seam unwraps the CLI's {"result": ...} envelope back to the scored JSON.
     assert json.loads(text)["total"] == 20
+
+
+def test_real_seam_raises_clean_error_when_claude_not_on_path(monkeypatch):
+    """shutil.which -> None (claude not installed) is a clean GraderError, not a
+    FileNotFoundError traceback."""
+    import shutil
+    monkeypatch.delenv("ANVIL_CLAUDE_BIN", raising=False)
+    monkeypatch.setattr(shutil, "which", lambda n: None)
+    with pytest.raises(ga.GraderError, match="not on PATH"):
+        ga._claude_cli_judge("grade this")
+
+
+def test_real_seam_anvil_claude_bin_overrides_which(monkeypatch):
+    """ANVIL_CLAUDE_BIN pins the executable (Windows: the real claude.exe so stdin isn't
+    dropped by the cmd.exe shim); it takes precedence over shutil.which."""
+    import shutil
+    import subprocess
+    captured = {}
+
+    class _FakeProc:
+        returncode = 0
+        stdout = json.dumps({"result": _scored_json(per_dim=4)})
+        stderr = ""
+
+    monkeypatch.setenv("ANVIL_CLAUDE_BIN", r"C:\bin\claude.exe")
+    monkeypatch.setattr(shutil, "which", lambda n: "/should/not/be/used")
+    monkeypatch.setattr(subprocess, "run", lambda argv, **k: captured.update(argv=argv) or _FakeProc())
+    ga._claude_cli_judge("grade this")
+    assert captured["argv"][0] == r"C:\bin\claude.exe"
 
 
 def test_grader_module_imports_no_anthropic_sdk():
