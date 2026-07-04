@@ -119,8 +119,26 @@ def _run_argv(argv, _run, desc=None, dry_run=False, **kw):
     return 0
 
 
-def cmd_up(compose, service, dry_run=False, _run=subprocess.run):
-    argv = ["docker", "compose", "-f", compose, "up", "-d", service]
+def _default_env_file():
+    """First existing conventional deploy env-file — `~/.anvil_env` preferred, then `~/.env` — so
+    `router up` picks up ANVIL_ROUTER_TOKEN / ROUTER_PUBLISH without the operator re-exporting them
+    each deploy (the router fail-closes without its token, and reverts to loopback without the
+    publish). None if neither exists."""
+    for name in (".anvil_env", ".env"):
+        p = os.path.join(os.path.expanduser("~"), name)
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run):
+    # `--env-file` FIRST (before -f) so compose interpolates ${ANVIL_ROUTER_TOKEN}/${ROUTER_PUBLISH}
+    # from the persisted deploy env; without it a bare `up` recreates the router with an empty token
+    # (fail-closed crash) and loopback binding.
+    argv = ["docker", "compose"]
+    if env_file:
+        argv += ["--env-file", env_file]
+    argv += ["-f", compose, "up", "-d", service]
     return _run_argv(argv, _run, desc="up %s: %s" % (service, " ".join(argv)),
                      dry_run=dry_run)
 
@@ -466,6 +484,10 @@ def main(argv=None):
                    help="docker-compose.yml for up/down (default: the fakoli-dark example).")
     p.add_argument("--service", default=DEFAULT_SERVICE,
                    help="compose service name for the router (default: %(default)s).")
+    p.add_argument("--env-file", default=None,
+                   help="env file for `up` (docker compose --env-file), so ANVIL_ROUTER_TOKEN / "
+                        "ROUTER_PUBLISH persist across deploys. Default: ~/.anvil_env or ~/.env if "
+                        "present (pass '' to disable).")
     p.add_argument("--dry-run", action="store_true",
                    help="print what would run without executing any docker command.")
     # logs-only options
@@ -492,7 +514,9 @@ def main(argv=None):
     a = p.parse_args(argv)
 
     if a.action == "up":
-        return cmd_up(a.compose, a.service, dry_run=a.dry_run)
+        # explicit --env-file wins; unset -> auto-detect ~/.anvil_env/~/.env; '' -> disable.
+        env_file = _default_env_file() if a.env_file is None else (a.env_file or None)
+        return cmd_up(a.compose, a.service, env_file=env_file, dry_run=a.dry_run)
     if a.action == "down":
         return cmd_down(a.compose, a.service, dry_run=a.dry_run)
     if a.action == "restart":

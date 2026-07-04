@@ -8,6 +8,13 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **`anvil-serving router up --env-file` — persist the deploy secrets so a redeploy is reproducible.**
+  The router fail-closes without `ANVIL_ROUTER_TOKEN` and reverts to loopback without `ROUTER_PUBLISH`;
+  those lived only in the deploy shell env, so a bare `router up` / `docker compose up` would break the
+  running router. `router up` now passes `--env-file` to compose (auto-detecting `~/.anvil_env` then
+  `~/.env`, override with `--env-file`, disable with `--env-file ''`), so the token + tailnet publish
+  come from a persisted file (which also carries `HF_TOKEN` for the serves).
+
 - **`anvil-serving harness restart openclaw` + `sync --restart` — reload the gateway so settings
   apply.** OpenClaw reads its config at gateway STARTUP, so a synced config change is inert until a
   restart. `harness restart openclaw [--gateway-host <mini>]` runs `openclaw gateway restart` (locally
@@ -52,6 +59,13 @@ All notable changes to this project are documented here. The format is based on
   `anvil-serving:0.8.0` — rebuilt from main, so the deployed router has flexibility mode + the v2
   profile loader (backward-compatible with the live v1 profile), and `router promote --image`
   validates against 0.8.0. Live routing verified after the swap (planning/chat/quick-edit → 200).
+
+### Fixed
+
+- **harness `--restart` guards (Greptile #130):** reject `--restart` on a stdout-only sync (the config
+  isn't applied, so restarting would reload the OLD config and falsely report success) — require
+  `--gateway-host` or `--out`; and reject sync-only flags (`--config`/`--out`/…) on the `restart`
+  action instead of silently discarding them.
 
 ## [0.8.0] - 2026-07-04
 
