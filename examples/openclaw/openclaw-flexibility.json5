@@ -18,8 +18,11 @@
     mode: "merge",
     providers: {
       anvil: {
-        // REPLACE <fakoli-dark-host> with fakoli-dark's LAN/Tailscale address (the router publishes
+        // REPLACE <fakoli-dark-host> with fakoli-dark's Tailscale address (the router publishes
         // 0.0.0.0:8000 with token auth — ADR-0004). NOT 127.0.0.1 from Mini.
+        // SECURITY: this sends the bearer token below. Use an ENCRYPTED path (Tailscale/WireGuard, or
+        // a TLS-terminating reverse proxy → https). On a plain untrusted LAN, `http://` exposes the
+        // token to on-net observers who could replay it against the router — don't use bare http there.
         baseUrl: "http://<fakoli-dark-host>:8000/v1",
         apiKey: "${ANVIL_ROUTER_TOKEN}",     // the router's bearer token (required off-loopback)
         api: "openai-completions",
@@ -39,5 +42,7 @@
     // (fast) on the tiers. Re-adding them here would be stale (heavy ignores enable_thinking).
     models: {}
   } },
-  plugins: { entries: { "anvil-intent-router": { hooks: { allowConversationAccess: true } } } }
+  // key MUST be the packaged plugin id (plugins/openclaw-anvil-intent-router/), or the hook's
+  // allowConversationAccess gate is never applied and intent routing silently no-ops.
+  plugins: { entries: { "openclaw-anvil-intent-router": { hooks: { allowConversationAccess: true } } } }
 }

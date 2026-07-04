@@ -36,6 +36,12 @@ _PRESET_MAX_TOKENS = {
 _PRESET_INPUT = {"review": ["text", "image"]}
 _DEFAULT_MAX_TOKENS = 8192
 
+# The OpenClaw `plugins.entries` key MUST equal the PACKAGED plugin id
+# (plugins/openclaw-anvil-intent-router/openclaw.plugin.json), or the before_model_resolve hook never
+# gets its allowConversationAccess gate and intent routing silently no-ops. (The OPENCLAW-INTEGRATION-
+# SPEC recipe predates the plugin's `openclaw-` rename; the plugin README + LIVE-VALIDATION are right.)
+_PLUGIN_ID = "openclaw-anvil-intent-router"
+
 
 def _title(preset_id):
     """`quick-edit` -> `Quick Edit` for the OpenClaw display name."""
@@ -76,7 +82,7 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
         # Default slot only. NO per-preset thinking overrides — the router owns reasoning/thinking
         # per tier (heavy reasoning_effort / fast enable_thinking); declaring them here would drift.
         "agents": {"defaults": {"model": {"primary": "anvil/chat"}, "models": {}}},
-        "plugins": {"entries": {"anvil-intent-router": {"hooks": {"allowConversationAccess": True}}}},
+        "plugins": {"entries": {_PLUGIN_ID: {"hooks": {"allowConversationAccess": True}}}},
     }
 
 
@@ -102,8 +108,8 @@ def _merge_anvil_provider(existing, rendered):
     if isinstance(dmodels, dict):
         for k in [k for k in dmodels if str(k).startswith("anvil/")]:
             del dmodels[k]
-    out.setdefault("plugins", {}).setdefault("entries", {})["anvil-intent-router"] = \
-        rendered["plugins"]["entries"]["anvil-intent-router"]
+    out.setdefault("plugins", {}).setdefault("entries", {})[_PLUGIN_ID] = \
+        rendered["plugins"]["entries"][_PLUGIN_ID]
     return out
 
 

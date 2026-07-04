@@ -96,7 +96,8 @@ def test_provider_shape_and_token_by_reference():
     assert anvil["apiKey"] == "${TOK}"          # by name, never the secret
     assert anvil["api"] == "openai-completions"
     assert prov["models"]["mode"] == "merge"
-    assert prov["plugins"]["entries"]["anvil-intent-router"]["hooks"]["allowConversationAccess"] is True
+    # the entries key MUST match the packaged plugin id, not the stale spec's "anvil-intent-router"
+    assert prov["plugins"]["entries"]["openclaw-anvil-intent-router"]["hooks"]["allowConversationAccess"] is True
 
 
 # ---- cmd_sync_openclaw -------------------------------------------------------
