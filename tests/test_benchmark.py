@@ -180,6 +180,19 @@ def test_build_recipe_assembles_measured_serve_and_intent():
     assert r["intent"] == {"suited": ["flexibility", "quality"], "mode": "flexibility"}
 
 
+def test_build_recipe_labels_concurrent_throughput_as_aggregate():
+    """At concurrency>1, throughput_tok_s is an AGGREGATE across streams — it must NOT
+    be recorded under the single-stream field the registry treats as its headline
+    (critic SHOULD-FIX: default benchmark concurrency is 20)."""
+    summary = dict(_STUB_SUMMARY, concurrency=20)
+    r = bm.build_recipe(_recipe_args(), summary,
+                        capture=_fake_capture, hardware=_fake_hardware)
+    m = r["measured"]
+    assert "throughput_single_tok_s" not in m
+    assert m["throughput_aggregate_tok_s"] == 183.2
+    assert m["concurrency"] == 20
+
+
 def test_recipe_model_overrides_model_field():
     r = bm.build_recipe(_recipe_args(recipe_model="openai/gpt-oss-120b"), _STUB_SUMMARY,
                         capture=_fake_capture, hardware=_fake_hardware)

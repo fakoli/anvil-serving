@@ -201,7 +201,16 @@ def build_recipe(a, summary, *, capture=None, hardware=None):
     measured = {}
     tps = metrics.get("throughput_tok_s")
     if tps is not None:
-        measured["throughput_single_tok_s"] = round(tps, 1)
+        # throughput_tok_s is the AGGREGATE across all concurrent streams. Only label
+        # it single-stream when concurrency==1; otherwise record it as aggregate + the
+        # concurrency, so a generated recipe never mislabels a ~20-way number as the
+        # single-stream stat the registry treats as its headline. (critic SHOULD-FIX)
+        conc = summary.get("concurrency") or 1
+        if conc == 1:
+            measured["throughput_single_tok_s"] = round(tps, 1)
+        else:
+            measured["throughput_aggregate_tok_s"] = round(tps, 1)
+            measured["concurrency"] = conc
     ttft = metrics.get("ttft_p50_ms")
     if ttft is not None:
         measured["ttft_p50_ms"] = round(ttft, 1)
