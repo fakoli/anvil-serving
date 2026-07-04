@@ -716,8 +716,8 @@ class CloudBackend:
             # explicitly configures a colliding key gets the override they asked
             # for; absent extra_body this is a no-op (no regression). This is also
             # the documented precedence for the sampling fields above: a tier's
-            # extra_body always wins over a request's top_p/stop/top_k (fx-sampling).
-            body.update(self._tier.extra_body or {})
+            # extra_body_defaults are SOFT (the request wins); extra_body is the HARD override.
+            self._apply_tier_extra_body(body)
             return body
 
         # openai-compatible: the system prompt rides as a role=system message.
@@ -766,6 +766,12 @@ class CloudBackend:
                 body["presence_penalty"] = raw["presence_penalty"]
             if raw.get("frequency_penalty") is not None:
                 body["frequency_penalty"] = raw["frequency_penalty"]
+            # reasoning_effort (gpt-oss / harmony): forward the CALLER's value verbatim, so it lands
+            # in the body BEFORE _apply_tier_extra_body and thus OVERRIDES a tier's soft
+            # extra_body_defaults reasoning_effort — this is what makes OpenClaw's per-message
+            # reasoning selector actually take effect (a tier `extra_body` hard-override still wins).
+            if raw.get("reasoning_effort") is not None:
+                body["reasoning_effort"] = raw["reasoning_effort"]
         if preserve_tools:
             if request.dialect == DIALECT_OPENAI:
                 tools = raw.get("tools")
@@ -778,8 +784,17 @@ class CloudBackend:
             if choice is not None:
                 body["tool_choice"] = choice
         # genericity:T003 -- see the Anthropic branch above for the rationale.
-        # Also the documented precedence for the sampling fields above: a tier's
-        # extra_body always wins over a request's top_p/stop/penalties (fx-sampling).
+        # extra_body_defaults are SOFT (the request wins); extra_body is the HARD override.
+        self._apply_tier_extra_body(body)
+        return body
+
+    def _apply_tier_extra_body(self, body):
+        """Apply the tier's SOFT defaults (request wins, via ``setdefault``) then the HARD
+        ``extra_body`` (tier wins, via ``update``). A key present in both -> ``extra_body`` wins.
+        This is what lets a tier set e.g. ``reasoning_effort`` as a DEFAULT that a caller (OpenClaw's
+        reasoning selector) can override per request, without loosening the hard-override contract."""
+        for k, v in (self._tier.extra_body_defaults or {}).items():
+            body.setdefault(k, v)
         body.update(self._tier.extra_body or {})
         return body
 

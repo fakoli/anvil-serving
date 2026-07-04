@@ -69,7 +69,10 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
         models.append({
             "id": preset_id,
             "name": "Anvil · " + _title(preset_id),
-            "reasoning": False,
+            # reasoning:true surfaces OpenClaw's per-message reasoning selector. Every preset can
+            # route to the reasoning-capable heavy tier, whose reasoning_effort is a soft default
+            # (extra_body_defaults) the request overrides; a fast-only fallback ignores it harmlessly.
+            "reasoning": True,
             "input": _PRESET_INPUT.get(preset_id, ["text"]),
             "contextWindow": ctx,
             "maxTokens": _PRESET_MAX_TOKENS.get(preset_id, _DEFAULT_MAX_TOKENS),

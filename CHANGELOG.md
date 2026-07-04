@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Per-request reasoning selection (gpt-oss `reasoning_effort`).** New tier field
+  **`extra_body_defaults`** — like `extra_body` but applied via `setdefault` (the request WINS), so a
+  tier's `reasoning_effort` becomes a DEFAULT a caller can override instead of a hard pin. The router
+  now also forwards a request's `reasoning_effort` to the upstream (OpenAI dialect), and the harness
+  renders the OpenClaw models with `reasoning: true` — so OpenClaw's per-message reasoning selector
+  actually takes effect. The flexibility heavy tier now defaults to `high` via `extra_body_defaults`
+  (was a hard `extra_body`), so planning/etc. can be dialed low/medium per message; a hard `extra_body`
+  key still always wins (contract preserved). Requires a router redeploy + a harness re-sync to pick up.
+
 - **`anvil-serving router up --env-file` — persist the deploy secrets so a redeploy is reproducible.**
   The router fail-closes without `ANVIL_ROUTER_TOKEN` and reverts to loopback without `ROUTER_PUBLISH`;
   those lived only in the deploy shell env, so a bare `router up` / `docker compose up` would break the
