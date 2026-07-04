@@ -77,6 +77,8 @@ def _parsed_url(value: str, *, key: str, schemes: tuple[str, ...]) -> urllib.par
     parsed = urllib.parse.urlparse(value)
     if parsed.scheme not in schemes or not parsed.netloc:
         raise ConfigError("%s must be a %s URL" % (key, "/".join(schemes)))
+    if parsed.username is not None or parsed.password is not None:
+        raise ConfigError("%s must not embed credentials; use env vars instead" % key)
     if parsed.hostname == ("local" + "host"):
         raise ConfigError("%s must use 127.0.0.1 or an explicit LAN/tailnet host" % key)
     return parsed
@@ -195,6 +197,8 @@ def compose_service(data: dict, *, service_name: str = "speech-to-speech") -> st
 
     lines = [
         "services:",
+        "  # Replace speech-to-speech:local with the image you build or publish",
+        "  # for Hugging Face speech-to-speech before running this compose file.",
         "  %s:" % service_name,
         "    image: %s" % _string(sidecar, "container_image", "speech-to-speech:local"),
         "    entrypoint:",

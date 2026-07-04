@@ -38,6 +38,7 @@ def test_command_can_omit_auth_for_unauthenticated_router():
 
 def test_compose_service_uses_loopback_port_and_env_reference_only():
     text = voice_sidecar.compose_service(_manifest())
+    assert "Replace speech-to-speech:local with the image you build or publish" in text
     assert "image: speech-to-speech:local" in text
     assert '"127.0.0.1:8765:8765"' in text
     assert '${ANVIL_ROUTER_TOKEN}' in text
@@ -72,6 +73,21 @@ def test_validate_rejects_realtime_url_that_does_not_point_at_realtime_path():
     data = _manifest()
     data["voice_sidecar"]["same_host_realtime_url"] = "ws://127.0.0.1:8765/v1/chat/completions"
     with pytest.raises(voice_sidecar.ConfigError, match="/v1/realtime"):
+        voice_sidecar.validate_manifest(data)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("base_url", "http://" + "user:pass@" + "127.0.0.1:8000/v1"),
+        ("same_host_realtime_url", "ws://" + "user:pass@" + "127.0.0.1:8765/v1/realtime"),
+    ],
+)
+def test_validate_rejects_urls_with_embedded_credentials(field, value):
+    data = _manifest()
+    target = data["voice_sidecar"]["llm_backend"] if field == "base_url" else data["voice_sidecar"]
+    target[field] = value
+    with pytest.raises(voice_sidecar.ConfigError, match="must not embed credentials"):
         voice_sidecar.validate_manifest(data)
 
 
