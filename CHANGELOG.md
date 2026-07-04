@@ -16,12 +16,14 @@ All notable changes to this project are documented here. The format is based on
   `examples/fakoli-dark/docker-compose.flexibility.yml` + a `docs/findings/blackwell-sm120-lab-notebook.md`
   writeup. Correctness preflight = **ALL PASS** (smoke, structured JSON, 14k needle, 20/20 tool batch)
   with `--no-thinking`.
-- **OpenClaw provider config reconciled for flexibility mode + a harness-config-lockstep rule.** New
-  `examples/openclaw/openclaw-flexibility.json5` recipe (5 presets, `contextWindow=131072`, per-preset
-  thinking overrides REMOVED since the router now owns `reasoning_effort`/`enable_thinking` per tier),
-  and a CLAUDE.md golden rule: **anvil-serving owns the harness-side config too** — keep it in lockstep
-  with the router's intent/tier config, and close the gap with an `anvil-serving harness sync openclaw`
-  verb. (The OpenClaw gateway runs on Fakoli Mini.)
+- **`anvil-serving harness` verb — own the harness-side config, not just the router.** `harness sync
+  openclaw --config <router.toml>` RENDERS the OpenClaw provider config from the live router config —
+  one selectable model per preset, each `contextWindow` = the LARGEST tier that preset can route to
+  (the clamp gotcha), and NO per-preset thinking overrides (the router owns `reasoning_effort`/
+  `enable_thinking` per tier now). Closes the "hand-edit the gateway out-of-band" gap named by the new
+  CLAUDE.md golden rule (**anvil-serving owns the harness-side config too** — keep it in lockstep with
+  the router's intent/tier config). Also ships the reconciled `examples/openclaw/openclaw-flexibility.json5`
+  recipe. Skills/agent-config sync is the next scope. (The OpenClaw gateway runs on Fakoli Mini.)
 
 ### Changed
 

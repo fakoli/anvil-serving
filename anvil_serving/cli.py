@@ -1,4 +1,4 @@
-"""anvil-serving CLI — profile / models / deploy / init / serves / serve / router / preflight / benchmark / external-bench / eval / calibrate / multiplexer / doctor."""
+"""anvil-serving CLI — profile / models / deploy / init / serves / serve / router / harness / preflight / benchmark / external-bench / eval / calibrate / multiplexer / doctor."""
 import sys
 import os
 import subprocess
@@ -33,6 +33,7 @@ def main(argv=None):
     if cmd == "serve":       from .router.serve import main as _serve_main; return _serve_main(rest)
     if cmd == "serves":      from . import serves; return serves.main(rest)
     if cmd == "router":      from . import router_manage; return router_manage.main(rest)
+    if cmd == "harness":     from . import harness; return harness.main(rest)
     if cmd == "eval":        from . import eval as _eval; return _eval.main(rest)
     if cmd == "calibrate":   from . import calibrate as _calibrate; return _calibrate.main(rest)
     if cmd == "score":       from . import score; return score.main(rest)
