@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-04
+
 ### Added
 
 - **`anvil-serving host` verb — own the WSL / Docker Desktop host config, with safety rails.** Closes
