@@ -172,9 +172,13 @@ escalation, `before_agent_finalize`, retries the *same* model). So "local respon
    **native subscription provider**. Local was tried (free); the miss falls to flat-rate cloud; **no
    API key in anvil.**
 
-**Must validate live (currently UNCONFIRMED):** that anvil's exhaustion-503 maps to OpenClaw
-2026.6.6's "overloaded" failover category. If not, emit whatever status OpenClaw classifies as a
-transport-failover trigger. (Plan, Phase 1.)
+**Validated live — RESOLVED (advise-and-defer:T005, 2026-07-04):** anvil's exhaustion-503 maps to
+OpenClaw 2026.6.x's "overloaded" failover category (confirmed), with the `providerOverride` reliability
+caveat in [ADR-0005](0005-anvil-503-native-failover-unreliable.md). Confirmed `exhaustion_status = 503`;
+an operator on a gateway that classifies a different status as its failover trigger overrides via
+`[router].exhaustion_status` (proven configurable). Full evidence + the C3-clean router-side contract:
+[`docs/findings/2026-07-04-openclaw-keyless-failover.md`](../findings/2026-07-04-openclaw-keyless-failover.md).
+(Plan, Phase 1.)
 
 > **2026-07-01 update — partially validated, with a caveat: see [ADR-0005](0005-anvil-503-native-failover-unreliable.md).**
 > Live testing confirmed the exhaustion-503 DOES trip OpenClaw's "overloaded" failover category (step
