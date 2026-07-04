@@ -19,6 +19,7 @@ import json
 import time
 import random
 import statistics
+import sys
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -181,7 +182,9 @@ def build_recipe(a, summary, *, capture=None, hardware=None):
     serve = dict(cap.get("serve") or {})
     hw = dict(cap.get("hardware") or {})
     gpu_uuid = hw.get("gpu_uuid")
-    gpu = hardware(gpu_uuid) if (a.recipe_from_container or gpu_uuid) else {}
+    # Only capture hardware when the GPU is KNOWN — capture_hardware(None) would pick the
+    # FIRST GPU row, silently recording the wrong card on a multi-GPU box (Copilot review).
+    gpu = hardware(gpu_uuid) if gpu_uuid else {}
 
     recipe = {"model": a.recipe_model or a.model, "status": a.recipe_status}
     recipe["source"] = "measured via anvil-serving benchmark (%s)" % summary.get("run_id", "")
@@ -235,7 +238,11 @@ def emit_recipe(a, summary, *, capture=None, hardware=None, append=None):
     if a.recipe_out == "-":
         print(sr.format_recipe(recipe), end="")
     else:
-        (append or sr.append_recipe)(a.recipe_out, recipe)
+        try:
+            (append or sr.append_recipe)(a.recipe_out, recipe)
+        except OSError as exc:
+            print("could not write serve recipe to %s: %s" % (a.recipe_out, exc), file=sys.stderr)
+            return recipe
         print("recorded serve recipe for %s -> %s" % (recipe["model"], a.recipe_out))
     return recipe
 
@@ -314,7 +321,7 @@ def main(argv=None):
     print(f"completed:        {len(results)}/{n} in {wall:.1f}s")
     print(f"TTFT  p50/p95:    {pctile(ttfts,50):.2f}s / {pctile(ttfts,95):.2f}s")
     print(f"E2E   p50/p95:    {pctile(e2es,50):.2f}s / {pctile(e2es,95):.2f}s")
-    print(f"throughput:       {out_tot/wall:.0f} output tok/s (aggregate)")
+    print(f"throughput:       {(out_tot / wall if wall else 0.0):.0f} output tok/s (aggregate)")
     summary = {
         "schema": "anvil-serving.benchmark/v1",
         "run_id": time.strftime("benchmark-%Y%m%dT%H%M%SZ", time.gmtime(t0)),
