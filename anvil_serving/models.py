@@ -4,6 +4,8 @@ Two sub-actions:
   * ``sync`` — scan HF caches + model dirs, pull cards, build the catalog (-> `_sync.py`).
   * ``pull`` — download a Hugging Face repo INTO A NAMED DOCKER VOLUME so it's ready
     to serve natively (see ``pull_main`` / ``build_pull_argv`` below).
+  * ``recipe`` — READ recorded serve recipes (``recipe list`` / ``recipe show <model>``);
+    the GENERATE half is ``benchmark --recipe-out``.
 
 Why ``pull`` mounts a NAMED VOLUME and not a host ``C:/…`` path (CLAUDE.md gotcha #15):
 on this Windows + WSL2 + Docker box, serving weights from a ``C:/…`` bind mount reads
@@ -15,8 +17,10 @@ import os
 import argparse
 import shlex
 import subprocess
+import tomllib
 import sys
 from . import config
+from . import serve_recipes
 HERE = os.path.dirname(__file__)
 
 # `pull` defaults. The vLLM nightly image ships the `hf` CLI (huggingface_hub), so
@@ -158,12 +162,128 @@ def pull_main(argv):
                     dry_run=a.dry_run)
 
 
+# The serve-recipe registry ships at <repo>/configs/serve-recipes.toml.
+DEFAULT_REGISTRY = os.path.join("configs", "serve-recipes.toml")
+
+
+def _default_registry():
+    """Resolve the default registry path regardless of cwd (cwd-relative first, then
+    repo-root-relative so `python -m anvil_serving.cli models recipe ...` works anywhere)."""
+    if os.path.exists(DEFAULT_REGISTRY):
+        return DEFAULT_REGISTRY
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidate = os.path.join(repo_root, "configs", "serve-recipes.toml")
+    return candidate if os.path.exists(candidate) else DEFAULT_REGISTRY
+
+
+def _fmt_throughput(measured):
+    m = measured or {}
+    tps = m.get("throughput_single_tok_s")
+    if isinstance(tps, (int, float)):
+        return "%.1f tok/s" % tps
+    agg = m.get("throughput_aggregate_tok_s")  # recorded at concurrency>1 (Copilot review)
+    if isinstance(agg, (int, float)):
+        conc = m.get("concurrency")
+        return ("%.1f tok/s (agg x%s)" % (agg, conc)) if conc else ("%.1f tok/s (agg)" % agg)
+    return "-"
+
+
+def _fmt_intent(intent):
+    intent = intent or {}
+    if intent.get("mode"):
+        return intent["mode"]
+    suited = intent.get("suited") or []
+    return ", ".join(suited) if suited else "-"
+
+
+def _print_recipe_table(registry):
+    recipes = registry.get("recipe") or []
+    headers = ["status", "model", "throughput", "intent"]
+    rows = [[r.get("status", ""), r.get("model", ""),
+             _fmt_throughput(r.get("measured")), _fmt_intent(r.get("intent"))]
+            for r in recipes]
+    widths = [len(h) for h in headers]
+    for row in rows:
+        for i, val in enumerate(row):
+            widths[i] = max(widths[i], len(str(val)))
+    print("  ".join(headers[i].ljust(widths[i]) for i in range(len(headers))))
+    print("  ".join("-" * widths[i] for i in range(len(headers))))
+    for row in rows:
+        print("  ".join(str(row[i]).ljust(widths[i]) for i in range(len(headers))))
+
+
+def _print_recipe_show(recipe):
+    print("model:  " + str(recipe.get("model", "")))
+    print("status: " + str(recipe.get("status", "")))
+    if recipe.get("source"):
+        print("source: " + str(recipe["source"]))
+    print()
+    print("reproducible docker run:")
+    print("  " + serve_recipes.reconstruct_docker_run(recipe))
+    measured = recipe.get("measured") or {}
+    if measured:
+        print()
+        print("measured:")
+        for k, v in measured.items():
+            print("  %s = %s" % (k, v))
+    intent = recipe.get("intent") or {}
+    if intent:
+        print()
+        print("intent:")
+        for k in ("mode", "suited", "not_suited", "rationale"):
+            if k in intent:
+                v = intent[k]
+                if isinstance(v, list):
+                    v = ", ".join(str(x) for x in v)
+                print("  %s: %s" % (k, v))
+    download = recipe.get("download") or {}
+    if download.get("command"):
+        print()
+        print("download:")
+        print("  " + str(download["command"]))
+
+
+def _recipe_main(argv):
+    ap = argparse.ArgumentParser(prog="anvil-serving models recipe")
+    sub = ap.add_subparsers(dest="recipe_action", required=True)
+    p_list = sub.add_parser("list", help="table the recorded serve recipes")
+    p_list.add_argument("--registry", default=None, help="registry TOML (default: %s)" % DEFAULT_REGISTRY)
+    p_show = sub.add_parser("show", help="reproducible docker run + measured stats for a model")
+    p_show.add_argument("model", help="model id (exact or basename, e.g. gpt-oss-120b)")
+    p_show.add_argument("--registry", default=None, help="registry TOML (default: %s)" % DEFAULT_REGISTRY)
+    a = ap.parse_args(argv)
+
+    registry_path = a.registry or _default_registry()
+    if not os.path.exists(registry_path):
+        print("serve-recipe registry not found: %s" % registry_path, file=sys.stderr)
+        return 1
+    try:
+        registry = serve_recipes.load_registry(registry_path)
+    except (tomllib.TOMLDecodeError, OSError) as exc:
+        print("cannot read serve-recipe registry %s: %s" % (registry_path, exc), file=sys.stderr)
+        return 1
+
+    if a.recipe_action == "list":
+        _print_recipe_table(registry)
+        return 0
+    if a.recipe_action == "show":
+        recipe = serve_recipes.find_recipe(registry, a.model)
+        if recipe is None:
+            print("no serve recipe for %r in %s" % (a.model, registry_path), file=sys.stderr)
+            return 1
+        _print_recipe_show(recipe)
+        return 0
+    return 2
+
+
 def main(argv):
     argv = list(argv)
     # `pull` has a wholly different arg surface than `sync`; branch it out before
     # the `sync` argparser (which owns the `action` positional) ever sees it.
     if argv and argv[0] == "pull":
         return pull_main(argv[1:])
+    if argv and argv[0] == "recipe":
+        return _recipe_main(argv[1:])
 
     ap = argparse.ArgumentParser(
         prog="anvil-serving models",

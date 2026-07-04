@@ -736,6 +736,8 @@ def test_t007_shipped_configs_parse_with_none_fields():
             continue
         if cfg_path.name.startswith("modes"):
             continue  # a [modes] mode-manifest (ADR-0011), not a [router] config
+        if cfg_path.name == "serve-recipes.toml":
+            continue  # a serve-recipe registry ([[recipe]] rows), not a [router] config
         cfg = load(str(cfg_path))
         for t in cfg.tiers:
             assert t.engine is None, f"{cfg_path.name}: {t.id!r} engine"
@@ -819,6 +821,8 @@ def test_t009_shipped_configs_parse_with_none_max_concurrency():
     for cfg_path in sorted(_CONFIGS.glob("*.toml")):
         if cfg_path.name.startswith("modes"):
             continue  # a [modes] mode-manifest (ADR-0011), not a [router] config
+        if cfg_path.name == "serve-recipes.toml":
+            continue  # a serve-recipe registry ([[recipe]] rows), not a [router] config
         cfg = load(str(cfg_path))
         for t in cfg.tiers:
             assert t.max_concurrency is None, f"{cfg_path.name}: {t.id!r} max_concurrency"
