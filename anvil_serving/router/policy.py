@@ -178,6 +178,12 @@ def route(
         dropped_missing: list[str] = []
         dropped_duplicate: list[str] = []
         dropped_by_constraint: list[str] = []
+        # Subset of dropped_by_constraint dropped SPECIFICALLY for min_context
+        # (not tool support). Kept separate so the serve boundary can tell a
+        # genuinely over-context request ("no tier can physically hold this" ->
+        # a clean 413) apart from other no-tier reasons. Additive: the union
+        # still appears in dropped_by_constraint for back-compat.
+        dropped_by_context: list[str] = []
         dropped_by_deny: list[str] = []
 
         # 0a. De-dup the pool, preserving first-occurrence order: a duplicate tier
@@ -206,6 +212,7 @@ def route(
                 t = config.tier(tid)  # safe: tid is in valid_ids
                 if needs.min_context > t.context_limit:
                     dropped_by_constraint.append(tid)
+                    dropped_by_context.append(tid)
                     continue
                 if needs.needs_tools and not t.tool_support:
                     dropped_by_constraint.append(tid)
@@ -292,6 +299,7 @@ def route(
             "dropped_missing": tuple(dropped_missing),
             "dropped_duplicate": tuple(dropped_duplicate),
             "dropped_by_constraint": tuple(dropped_by_constraint),
+            "dropped_by_context": tuple(dropped_by_context),
             "dropped_by_metered_gate": tuple(dropped_by_metered_gate),
             "dropped_by_deny": tuple(dropped_by_deny),
             "residency_deferred": tuple(residency_deferred),

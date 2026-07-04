@@ -57,6 +57,14 @@ class NoAvailableTierError(Exception):
       the tiers were reachable and credentialed the whole time. The message
       says so instead of pointing at credentials/reachability — see the
       decision log for which candidate failed which check.
+    * ``kind="over_context"`` — the request's estimated size exceeds the
+      ``context_limit`` of EVERY candidate tier, so no tier can physically hold
+      it. This is a caller problem (too-large request), not a server
+      availability problem: the front door renders it as a clean **413 Payload
+      Too Large** rather than the exhaustion status, so an over-context request
+      is refused up front instead of being forwarded to a too-small tier (which
+      would 400 at the model with an "input exceeds maximum context length"
+      traceback).
 
     Both kinds are the SAME exception type (the front door's
     ``except NoAvailableTierError`` contract is unchanged; only the message —
@@ -86,6 +94,15 @@ class NoAvailableTierError(Exception):
                 f"and failed (verification or relay error); see the decision "
                 f"log for the per-tier failure reasons. The tiers were bound "
                 f"and reachable -- this is not a credentials/endpoint problem."
+            )
+        elif kind == "over_context":
+            super().__init__(
+                f"request too large for work_class={work_class!r}: its "
+                f"estimated context exceeds the context_limit of every "
+                f"candidate tier {cands}, so no tier can hold it. Send a "
+                f"smaller request, or add/route to a larger-context tier -- "
+                f"this is a payload-size problem, not a credentials/endpoint "
+                f"or availability problem."
             )
         else:
             super().__init__(
