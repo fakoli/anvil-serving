@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **`anvil-serving host` verb — own the WSL / Docker Desktop host config, with safety rails.** Closes
+  the "reach for raw `wsl` / hand-edit `.wslconfig` / restart Docker Desktop" gap so anvil is the
+  one-stop shop. `host doctor` inspects host RAM / GPUs / the WSL-VM cap and RECOMMENDS a SAFE WSL
+  memory (host − a Windows reserve). `host wsl-config --memory/--swap` edits `.wslconfig` — BACKS UP
+  first, changes only those lines (preserves a custom kernel/networking), and REFUSES a value that
+  starves Windows (< 10 GB floor) unless `--force`; `--revert` restores the newest backup. `host
+  restart-docker` applies a WSL-backend change the RIGHT way (a Docker Desktop restart, NOT
+  `wsl --shutdown`), confirming unless `--force`. Encodes the backup-on-change / revert / confirm +
+  `--force` pattern a live incident taught (a hand-set `memory=84GB` on a 93.7 GB host starved Windows
+  and a `wsl --shutdown` loop wedged WSL — `host wsl-config` now refuses exactly that).
+
 ### Fixed
 
 - **harness sync KEEPS OpenClaw's dropdown allowlist.** `agents.defaults.models["anvil/*"]` is

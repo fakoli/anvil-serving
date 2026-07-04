@@ -414,6 +414,7 @@ anvil-serving multiplexer  # single-resident model swap on one GPU (multi-engine
 anvil-serving serves       # manage the local model serves via compose: status | logs | up | down | rm | adopt | up --compose
 anvil-serving router       # manage the DEPLOYED router container: up|down|restart|reload|status|logs|token + promote (write-back)
 anvil-serving harness      # own the harness-side config: `sync openclaw` renders OpenClaw models from the live router presets; `restart openclaw` / `sync --restart` reloads the gateway
+anvil-serving host         # own the WSL/Docker-Desktop host config: `doctor` (recommend a SAFE WSL memory), `wsl-config` (edit .wslconfig w/ backup + safe-cap + --revert), `restart-docker`
 ```
 
 ### Substrate quickstart
