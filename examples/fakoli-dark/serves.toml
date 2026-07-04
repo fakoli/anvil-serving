@@ -1,32 +1,31 @@
-# Declarative serves manifest for the fakoli-dark topology.
+# Declarative serves manifest for the fakoli-dark (flexibility-mode) topology.
 #
-# `anvil-serving serves {status|up|down}` reads this. It is the single source of
-# truth for "which model containers exist, on which ports" — the gap that made
-# stopping/starting the serves a manual `docker` chore.
+# `anvil-serving serves {status|up|down}` reads this — the single source of truth for
+# "which model containers exist, on which ports". Manage the serves ONLY through
+# `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
 #
-# These two serves back the router tiers in configs/example.toml
-# (heavy-local -> :30000, fast-local -> :30001). `{dir}` resolves to this file's
-# directory.
+# 2026-07-04 reconcile: heavy = gpt-oss-120b @high (promoted heavy tier, :30002, PRO 6000);
+# fast = Qwen3.6-27B-NVFP4 (:30003, RTX 5090). These back the router tiers in the live
+# config (heavy-local -> :30002, fast-local -> :30003). `{dir}` resolves to this file's dir.
 #
-# BOTH serves are now Docker-Compose-defined (docker-compose.yml holds a service per
-# tier) — see docs/adr/0002-serves-are-compose-defined.md. Each `up` targets its own
-# compose service by name, so `serves up heavy` and `serves up fast` stay independent.
-# `docker compose up -d` is drift-safe: it natively recreates a service whose config has
-# changed, fixing the old bug where a stopped `docker run` container kept serving a stale
-# model. The old serve-fast-gptoss-vllm.sh is superseded (kept only as reference).
+# BOTH serves are Docker-Compose-defined (docker-compose.yml holds a service per tier) — see
+# docs/adr/0002-serves-are-compose-defined.md. Each `up` targets its own compose service by
+# name, so `serves up heavy` and `serves up fast` stay independent. `docker compose up -d` is
+# drift-safe (natively recreates a service whose config changed). Use `serves up --recreate
+# <name>` to force a fresh container.
 
 [[serve]]
-name = "heavy"                 # heavy coder tier (qwen35-awq on the 96 GB card)
-container = "sglang"
-port = 30000
-model = "qwen35-awq-local"     # served-model-name (used by `anvil-serving eval`)
+name = "heavy"                 # heavy planning tier — gpt-oss-120b @ reasoning_effort=high
+container = "vllm-gptoss120"
+port = 30002
+model = "gpt-oss-120b"         # served-model-name (used by `anvil-serving eval`)
 health = "/health"
-up = "docker compose -f {dir}/docker-compose.yml up -d sglang"
+up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
 
 [[serve]]
-name = "fast"                  # fast tier (gpt-oss-20b on the RTX 5090)
-container = "vllm-gptoss"
-port = 30001
-model = "gpt-oss-20b"          # served-model-name (used by `anvil-serving eval`)
+name = "fast"                  # fast tier — Qwen3.6-27B-NVFP4 on the RTX 5090
+container = "vllm-qwen36"
+port = 30003
+model = "qwen36-27b"           # served-model-name (used by `anvil-serving eval`)
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"

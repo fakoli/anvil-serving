@@ -78,12 +78,21 @@ def test_router_service_restart_unless_stopped():
     )
 
 
-def test_router_service_builds_the_repo_dockerfile():
+def test_router_service_pins_the_deployed_image():
+    # 2026-07-04 flexibility reconcile: the compose reproduces the LIVE deployment, which
+    # runs a PINNED image (not a fresh build). Pinning is load-bearing: a `build:` here
+    # would produce a newer (v2-schema) router that rejects the live v1 profile.json, and
+    # it would diverge from what is actually deployed. Redeploying to a freshly-built image
+    # (to get flexibility-mode/v2) is a separate, deliberate step — not what `serves`/compose
+    # does implicitly. So the router service must pin an image and must NOT build.
     services = _service_blocks(_compose_text())
     router = services["router"]
-    assert "build:" in router, "router service must build the repo Dockerfile (not pull an image)"
-    assert "dockerfile: Dockerfile" in router or re.search(r"dockerfile:\s*\.?/?Dockerfile", router), (
-        "router service build must reference the repo-root Dockerfile"
+    assert re.search(r"^\s*image:\s*anvil-serving:", router, re.MULTILINE), (
+        "router service must pin the deployed anvil-serving image"
+    )
+    assert "build:" not in router, (
+        "router service must NOT build (a fresh build produces a v2 image that rejects the "
+        "live v1 profile); redeploying to a built image is a deliberate separate step"
     )
 
 
@@ -99,11 +108,15 @@ def test_router_service_passes_token_from_environment():
     )
 
 
-def test_router_service_bind_mounts_a_config():
+def test_router_service_mounts_the_config_volume():
+    # The router reads config + profile from the anvil-router-cfg VOLUME at /etc/anvil
+    # (mounted read-only). This replaced the old repo bind-mount because `anvil-serving
+    # router promote` writes the promoted profile/config INTO that volume out-of-band — a
+    # read-only repo bind-mount cannot be a promotion target.
     services = _service_blocks(_compose_text())
     router = services["router"]
-    assert "/etc/anvil/config.toml" in router, (
-        "router service must bind-mount a config to /etc/anvil/config.toml"
+    assert re.search(r'anvil-router-cfg:/etc/anvil(:ro)?', router), (
+        "router service must mount the anvil-router-cfg volume at /etc/anvil (the promote target)"
     )
 
 

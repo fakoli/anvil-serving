@@ -1,69 +1,56 @@
-# fakoli-dark serves — the Docker-Compose source of truth for BOTH local tiers.
+# fakoli-dark serves — the Docker-Compose source of truth for the LIVE (flexibility) tiers.
 #
-# `anvil-serving serves up` delegates here (see serves.toml + docs/adr/0002). One
-# `docker compose up -d <service>` per tier; Compose recreates a service natively when its
-# config drifts — which fixes the stale-container drift bug the old ad-hoc `docker run`
-# scripts had (a stopped container silently kept serving a stale model) and drops the MSYS
-# path-mangling / quoting traps of hand-built `docker run --model /model` one-liners.
+# `anvil-serving serves {status|up|down}` delegates here via serves.toml (docs/adr/0002):
+# one `docker compose up -d <service>` per tier. Compose recreates a service natively when
+# its config drifts, which fixes the stale-container drift bug the old ad-hoc `docker run`
+# scripts had. DO NOT manage these serves with raw `docker`/`docker compose` — go through
+# `anvil-serving serves` so the management experience stays consistent.
 #
-#   heavy  -> service `sglang`  (Qwen3.5-35B-A3B AWQ, SGLang, :30000, RTX PRO 6000 96GB / GPU 1)
-#   fast   -> service `fast`    (gpt-oss-20b, vLLM, :30001, RTX 5090 / GPU 0)
-#   router -> service `router`  (anvil-serving front door, :8000 — see docs/adr/0004)
+#   heavy  -> service `heavy`  (gpt-oss-120b, vLLM/MXFP4, :30002, RTX PRO 6000 96GB / GPU 1)
+#   fast   -> service `fast`   (Qwen3.6-27B-NVFP4, vLLM, :30003, RTX 5090 / GPU 0)
+#   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
-# `router` is the only service published beyond loopback (ADR-0004 — router as a
-# service): it is the single authenticated, network-facing endpoint. `sglang` and
-# `fast` stay loopback-only (see their `ports:` below) and are reached by the router
-# over the default Compose network by SERVICE NAME (http://sglang:30000/v1,
-# http://fast:30001/v1 — see configs/example-docker.toml), never published themselves.
+# 2026-07-04 flexibility-mode reconcile: heavy is now gpt-oss-120b @ reasoning_effort=high
+# (measured planning 0.92 — the promoted heavy tier) and fast is Qwen3.6-27B-NVFP4 (measured
+# 0.70). Both replaced the agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live in
+# git history. The convention also shifted: weights now resolve as HF REPO-IDS from the
+# `vllm-hfcache` docker volume (the `anvil-serving models pull` path) — NOT `/models/<dir>`
+# bind paths from `fakoli-models`. A named volume is native ext4 inside WSL2 (~15s loads); a
+# C:/ bind rides 9P and turns a cold load into 20-90 min (CLAUDE.md gotcha #15).
 #
-# heavy: Qwen3.5-35B-A3B AWQ 4-bit (copied from the WSL HF cache into a plain Windows dir).
-# Why AWQ-35B and not Qwen3-Coder-Next-FP8: the FP8 80B (~75GB) hung post-load on this build
-# AND leaves only ~8GB KV; a 4-bit 35B-A3B (~24GB) loads faster and leaves room for real fan-out.
-# Pinned to GPU 1 (RTX PRO 6000 96GB); the 5090 (GPU 0) stays free for the fast tier.
+# `router` is the only service published beyond loopback (ADR-0004). `heavy`/`fast` stay
+# loopback-only and are reached by the router over host.docker.internal:<port> (the router's
+# config volume; see the anvil-router-cfg volume, edited via `anvil-serving`).
 #
-# Machine-specific values are env-var placeholders (genericity:T012), matching
-# docker-compose.experiment.yml's pattern, so this file is portable to another box —
-# but every `${VAR:-default}` defaults to THIS fakoli-dark box's actual values, so it
-# is runnable UNCHANGED with no env vars set at all:
-#   HEAVY_GPU_UUID   default GPU-d0f446cf-1771-414c-e116-a39138798a8c (RTX PRO 6000 96GB)
-#   FAST_GPU_UUID    default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
-# Model weights live in the `fakoli-models` DOCKER VOLUME (native ext4 inside Docker's
-# data root — ~15s reloads), NEVER a host bind mount: on Docker Desktop/WSL2 a C:/ bind
-# rides 9P/virtiofs and turns a cold load into 20-90 minutes (hit live 2026-07-02).
-# Create + populate the volume once:
-#   docker volume create fakoli-models
-#   docker run --rm -v /path/to/your/models:/src:ro -v fakoli-models:/dst alpine \
-#     sh -c 'cp -a /src/qwen35-awq /src/gpt-oss-20b /dst/'
-# On a different box, find your GPU UUIDs with `nvidia-smi --query-gpu=index,uuid --format=csv`
-# (or `anvil-serving doctor`), then e.g.:
-#   HEAVY_GPU_UUID=GPU-... FAST_GPU_UUID=GPU-... \
-#     docker compose -f examples/fakoli-dark/docker-compose.yml up -d
+# GPU UUIDs (env-overridable; default to THIS box so the file runs unchanged):
+#   HEAVY_GPU_UUID  default GPU-d0f446cf-1771-414c-e116-a39138798a8c (RTX PRO 6000 96GB)
+#   FAST_GPU_UUID   default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
+# Find yours with `nvidia-smi --query-gpu=index,uuid --format=csv` (or `anvil-serving doctor`).
 services:
-  sglang:
-    image: lmsysorg/sglang:latest
-    container_name: sglang
+  # Heavy tier: gpt-oss-120b on vLLM (RTX PRO 6000 / GPU 1, :30002). MXFP4 weights auto-detect.
+  heavy:
+    image: vllm/vllm-openai:nightly
+    container_name: vllm-gptoss120
     restart: unless-stopped
-    shm_size: "16g"
+    ipc: host
     ports:
-      # Bind to loopback only — the vLLM/SGLang endpoints are unauthenticated; publishing
-      # on 0.0.0.0 would LAN-expose them (repo is 127.0.0.1-only, CLAUDE.md gotcha #1 /
-      # SECURITY.md). The router (which does the auth/routing) is what fronts these.
-      - "127.0.0.1:30000:30000"
+      # Loopback-only: unauthenticated vLLM endpoint must not be LAN-exposed (gotcha #1 / SECURITY.md).
+      - "127.0.0.1:30002:30002"
     volumes:
-      # Weights from the fakoli-models docker volume (see header) — never a host bind mount.
-      - "fakoli-models:/models:ro"
-      # Persist the engine caches (FlashInfer JIT kernels, torch inductor/triton) across
-      # container recreates: without this every fresh container re-JITs its CUDA kernels
-      # during graph capture — measured 286s of a 12.5-min cold start (2026-07-02).
-      - "sglang-cache:/root/.cache"
+      # Weights resolved as an HF repo-id from the native-ext4 vllm-hfcache volume (never a C:/ 9P bind).
+      - "vllm-hfcache:/root/.cache/huggingface"
     environment:
-      # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (CLAUDE.md
-      # gotcha #13), so also pin the heavy card the proven way — CUDA_VISIBLE_DEVICES=<UUID>
-      # + PCI_BUS_ID ordering — so the heavy tier can never land on the 5090 and collide
-      # with the fast tier on cuda:0 (OOM). Belt-and-suspenders with device_ids below.
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      # REPLACE: your GPU's UUID — find it with `nvidia-smi -L` (env override: HEAVY_GPU_UUID).
+      # Pin the PRO 6000 by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
       CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
+      # Mandatory on this WSL2 box: no UVA -> vLLM v2 runner's UvaBuffer dies (gotcha #14).
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      # MAKE-OR-BREAK on sm_120: the `f` suffix; plain 12.0 -> `cvt.e2m1x2.f32 not supported`.
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      # Weights are already in vllm-hfcache, but vLLM still does an HF-hub metadata check at
+      # startup; a token authenticates it (avoids the anonymous rate-limit warning). By-reference,
+      # empty if unset (set HF_TOKEN in your shell/.env before `anvil-serving serves up`).
+      HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
@@ -71,128 +58,88 @@ services:
             - driver: nvidia
               device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]   # RTX PRO 6000 96GB
               capabilities: [gpu]
+    # Pin entrypoint (upstream flipped :nightly default to `vllm serve`); explicit is vintage-stable.
+    entrypoint: ["vllm"]
+    # Do NOT add --enforce-eager: CUDA graphs give 183 vs 33.6 tok/s (5.4x) and are stable.
     command: >
-      python3 -m sglang.launch_server
-      --model-path /models/qwen35-awq
-      --kv-cache-dtype fp8_e5m2
-      --reasoning-parser qwen3
-      --tool-call-parser qwen3_coder
-      --language-only
-      --context-length 131072
-      --max-running-requests 16
-      --mem-fraction-static 0.88
-      --cuda-graph-max-bs-decode 8
-      --speculative-algorithm NEXTN
-      --speculative-num-steps 3
-      --speculative-eagle-topk 1
-      --speculative-num-draft-tokens 4
-      --enable-metrics
-      --served-model-name qwen35-awq-local
-      --host 0.0.0.0 --port 30000
-    # Speculative decoding (NEXTN self-speculation via the model's own MTP head — no separate
-    # draft model/VRAM budget needed): +30-43% decode throughput depending on load, ~80%
-    # acceptance rate, validated live 2026-07-02 with radix cache (prefix caching) left ON —
-    # SGLang #19796 (SM120 NaN-on-prefix-hit) did NOT reproduce across 78.6%/96.2% cache-hit-rate
-    # trials incl. concurrent multi-turn traffic. Known tradeoff: TTFT regresses under concurrency
-    # (+37% at concurrency=4) — monitor post-rollout. First cold start after adding these flags
-    # takes ~9.5 min (one-time CUDA graph JIT for the new verify path); subsequent restarts stay
-    # fast once cached in the sglang-cache volume. Full trial writeup: see CHANGELOG.md and memory.
-    # REPLACE (or keep in sync): --served-model-name above must match configs/example.toml
-    # ([[router.tiers]] heavy-local .model), examples/fakoli-dark/serves.toml, and
-    # docker-compose.heavy.yml — the router 404s if the wire model doesn't match.
+      serve openai/gpt-oss-120b
+      --served-model-name gpt-oss-120b
+      --kv-cache-dtype fp8
+      --tool-call-parser openai
+      --enable-auto-tool-choice
+      --gpu-memory-utilization 0.88
+      --max-model-len 131072
+      --host 0.0.0.0 --port 30002
 
-  # Fast tier: gpt-oss-20b on vLLM (RTX 5090 / GPU 0, :30001).
-  # Converted from the old serve-fast-gptoss-vllm.sh `docker run` one-liner so the fast serve
-  # is Compose-defined like heavy: drift-safe, no MSYS path-mangling, no shell-quoting traps.
+  # Fast tier: Qwen3.6-27B-NVFP4 on vLLM (RTX 5090 / GPU 0, :30003). Hybrid Gated-DeltaNet.
   fast:
     image: vllm/vllm-openai:nightly
-    container_name: vllm-gptoss
+    container_name: vllm-qwen36
     restart: unless-stopped
-    ipc: host                       # was --ipc=host (vLLM needs a large shared-memory segment)
+    ipc: host
     ports:
-      # Loopback-only publish: unauthenticated vLLM endpoint must not be LAN-exposed
-      # (127.0.0.1-only repo, CLAUDE.md gotcha #1 / SECURITY.md).
-      - "127.0.0.1:30001:30001"
+      - "127.0.0.1:30003:30003"
     volumes:
-      # Weights from the fakoli-models docker volume (see header) — never a host bind mount.
-      - "fakoli-models:/models:ro"
-      # Persist vLLM's torch.compile + FlashInfer JIT caches across recreates (measured
-      # ~46s compile + graph-capture JIT per fresh container, 2026-07-02).
-      - "vllm-cache:/root/.cache"
+      - "vllm-hfcache:/root/.cache/huggingface"
     environment:
-      # Force PCI-bus ordering so the pinned card is selected regardless of enumeration order
-      # (hard-won: multi-GPU pinning needs CUDA_DEVICE_ORDER=PCI_BUS_ID — CLAUDE.md gotcha #13).
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (gotcha #13),
-      # so pin the card the proven way too — CUDA_VISIBLE_DEVICES=<UUID> — so the fast tier
-      # can never collide with the heavy tier on cuda:0 (OOM). Belt-and-suspenders with the
-      # device_ids reservation below.
-      # REPLACE: your GPU's UUID — find it with `nvidia-smi -L` (env override: FAST_GPU_UUID).
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
-      # Mandatory on this WSL2/Docker box: WSL2 exposes no UVA, so vLLM's v2 model runner's
-      # UvaBuffer dies with "RuntimeError: UVA is not available" at engine init (gotcha #14).
       VLLM_USE_V2_MODEL_RUNNER: "0"
+      # Fixes the GDN illegal-instruction crash at ~13k prefill on sm_120 (make-or-break).
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
+      HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
           devices:
-            # Pin the RTX 5090 by UUID (not index) so the fast tier can never land on the heavy
-            # card. If a future Docker Desktop build ignores device_ids isolation on WSL2, fall
-            # back to `count: all` + environment CUDA_VISIBLE_DEVICES=<this UUID> (the mechanism
-            # the old serve-fast-*.sh scripts used).
-            # REPLACE: your GPU's UUID — find it with `nvidia-smi -L`.
             - driver: nvidia
               device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
-    # Pin the entrypoint (same rationale as docker-compose.experiment.yml): upstream flipped
-    # :latest's default from `vllm` to `vllm serve`; explicit is stable against either vintage.
     entrypoint: ["vllm"]
+    # nvidia/*-NVFP4 is modelopt-packed -> --quantization modelopt_fp4 (gotcha #10). Qwen NVFP4
+    # needs the qwen3 reasoning/tool parsers + trust-remote-code. 32K ctx / max-num-seqs 4 keeps
+    # the KV+Mamba cache inside the 5090's 32GB (dodges the ~16GB hidden WSL2 allocator overhead).
     command: >
-      serve /models/gpt-oss-20b
-      --served-model-name gpt-oss-20b
-      --max-model-len 65536
-      --gpu-memory-utilization 0.90
+      serve nvidia/Qwen3.6-27B-NVFP4
+      --served-model-name qwen36-27b
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8
+      --reasoning-parser qwen3
       --enable-auto-tool-choice
-      --tool-call-parser openai
-      --host 0.0.0.0 --port 30001
+      --tool-call-parser qwen3_coder
+      --trust-remote-code
+      --max-model-len 32768
+      --max-num-seqs 4
+      --gpu-memory-utilization 0.85
+      --host 0.0.0.0 --port 30003
 
-  # Router: the single network-facing, token-authed endpoint (ADR-0004 — router as a
-  # service). Reaches `sglang`/`fast` by service name on the default Compose network;
-  # they are NOT published beyond loopback (see their `ports:` above). Only this
-  # service is published, and only to ${ROUTER_PUBLISH:-127.0.0.1} — never 0.0.0.0 —
-  # keeping the CLAUDE.md gotcha #1 / SECURITY.md loopback-only invariant on the host
-  # side while the in-container bind (Dockerfile ENTRYPOINT) is 0.0.0.0 by design.
+  # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
+  # host.docker.internal:<port>. NOTE: pinned to the DEPLOYED image anvil-serving:0.7.1 and a
+  # config VOLUME (anvil-router-cfg) to match what is live — do NOT `build:` here, or compose
+  # would produce a newer (v2-schema) image that rejects the live v1 profile.json. Rebuilding
+  # from current main (to get flexibility-mode + v2) is a separate, deliberate redeploy.
   router:
-    build:
-      context: ../..            # repo root (the Dockerfile lives at the repo root)
-      dockerfile: Dockerfile
+    image: anvil-serving:0.7.1
     container_name: anvil-router
     restart: unless-stopped
     depends_on:
-      - sglang
+      - heavy
       - fast
     ports:
-      # Publish ONLY the router, and only to loopback by default. Override
-      # ROUTER_PUBLISH (e.g. to a Tailscale IP) to expose it beyond this host — the
-      # token check (ANVIL_ROUTER_TOKEN, ADR-0004) is the auth boundary at that point.
       - "${ROUTER_PUBLISH:-127.0.0.1}:8000:8000"
     environment:
-      # The router's own bearer/x-api-key token (ADR-0004); referenced by NAME via
-      # configs/example-docker.toml's [server].auth_env, never stored in the config.
-      # Set it in your shell/`.env` before `docker compose up` -- unset means auth is
-      # OFF (RouterConfig's [server].auth_env is unset -> back-compat, front door
-      # accepts unauthenticated requests, same as today's loopback default).
       ANVIL_ROUTER_TOKEN: ${ANVIL_ROUTER_TOKEN:-}
     volumes:
-      # Bind-mount the router config (tiers reach the serves by service name; see
-      # configs/example-docker.toml). REPLACE with your own config path if you fork this.
-      - "${ANVIL_ROUTER_CONFIG:-../../configs/example-docker.toml}:/etc/anvil/config.toml:ro"
+      # Config + promoted profile live in the anvil-router-cfg volume (/etc/anvil), read-only
+      # into the container. Edited out-of-band (the write-back / promotion path) — see the
+      # router-config management gap in the reconcile notes.
+      - "anvil-router-cfg:/etc/anvil:ro"
 
-# Weights volume — pre-created + populated once (see header). External so a compose
-# `down -v` can never delete the model weights.
 volumes:
-  fakoli-models:
+  # Model weights (HF cache). External so `down -v` can never delete the pulled weights.
+  vllm-hfcache:
     external: true
-  # Engine JIT/compile caches — safe to delete (rebuilt on next start), so compose-managed.
-  sglang-cache:
-  vllm-cache:
+  # Router config + profile. External so it survives recreates and is edited independently.
+  anvil-router-cfg:
+    external: true

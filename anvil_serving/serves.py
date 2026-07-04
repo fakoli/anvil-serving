@@ -1,10 +1,24 @@
-"""anvil-serving serves — lifecycle for the local model serves (status / up / down).
+"""anvil-serving serves — lifecycle for the local model serves
+(status / up / down / rm / adopt).
 
 The router (`anvil-serving serve`) only *connects* to model backends; it never
 controls their containers. This verb fills that gap: a small, declarative way to
 stop, start, and inspect the GPU-backed model serves — so you can free the cards
 between sessions (`serves down`) and bring them back (`serves up`) without
 remembering two different launch mechanisms.
+
+Three companion verbs handle the messier day-to-day around experiments:
+  - `serves rm <name-or-container>...` force-removes container(s) — and crucially works
+    for a container that is NOT in the manifest (an experiment squatting a port): a token
+    matching a manifest serve's name/container removes that serve's container, any other
+    token is treated literally as a container name. An absent container is a no-op success.
+  - `serves adopt <name>...` brings an externally-started (non-compose-managed) manifest
+    serve under compose management by recreating it via its manifest `up` (the `--recreate`
+    path: `docker rm -f` + `up`).
+  - `serves up --compose <file> [service...]` brings up an ad-hoc/experiment serve straight
+    from a compose file that is NOT in the manifest (`docker compose -f <file> up -d
+    [service...]`) — independent of serves.toml; with `--compose`, `names` are compose
+    SERVICE names.
 
 It reads a manifest (default `./serves.toml` — what `deploy`/`init` write; the shipped
 reference is `examples/fakoli-dark/serves.toml`) that declares
@@ -141,7 +155,7 @@ def cmd_status(serves, _run=subprocess.run, _open=urllib.request.urlopen):
     return 0
 
 
-def cmd_down(serves, names, _run=subprocess.run):
+def cmd_down(serves, names, dry_run=False, _run=subprocess.run):
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
@@ -157,7 +171,12 @@ def cmd_down(serves, names, _run=subprocess.run):
         if st == "absent" or st in _STOPPED:
             print("  %s: %s (nothing to stop)" % (s["container"], st))
             continue
-        # running / paused / restarting / removing / unknown -> stop (frees the GPU)
+        # running / paused / restarting / removing / unknown -> stop (frees the GPU).
+        # Honor --dry-run: `down` is state-changing (it frees GPUs / kills in-flight
+        # serving), so a preview must NOT actually stop anything.
+        print("  stop %s" % s["container"])
+        if dry_run:
+            continue
         r = _run(["docker", "stop", s["container"]], capture_output=True, text=True)
         if r.returncode == 0:
             print("  stopped %s" % s["container"])
@@ -331,26 +350,127 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
     return rc
 
 
+def cmd_rm(serves, names, dry_run=False, _run=subprocess.run):
+    """Force-remove serve container(s) — `docker rm -f <container>`.
+
+    THE key case: this works for a container that is NOT in the manifest — an experiment
+    container squatting a serve's port. Each token is resolved independently: if it matches
+    a manifest serve's name/container (via `_select`), that serve's container is removed;
+    otherwise the token is treated LITERALLY as a container name. A container that's already
+    'absent' is a no-op success ("nothing to remove"); an 'error' state (docker down /
+    daemon unreachable) is NOT reported as success. Docker calls are argv lists (no shell).
+    """
+    if not names:
+        print("no containers named to remove")
+        return 1
+    # resolve tokens -> container names: manifest name/container match wins, else literal.
+    containers = []
+    for tok in names:
+        matched = _select(serves, [tok])
+        if matched:
+            for s in matched:
+                if s["container"] not in containers:
+                    containers.append(s["container"])
+        elif tok not in containers:
+            containers.append(tok)
+    rc = 0
+    for container in containers:
+        st = docker_state(container, _run=_run)
+        if st == "error":
+            print("  %s: cannot determine state (docker missing / daemon down / "
+                  "permission?)" % container)
+            rc = 1
+            continue
+        if st == "absent":
+            print("  %s: absent (nothing to remove)" % container)
+            continue
+        print("  rm -f %s" % container)
+        if dry_run:
+            continue
+        r = _run(["docker", "rm", "-f", container], capture_output=True, text=True)
+        if r.returncode == 0:
+            print("  removed %s" % container)
+        else:
+            print("  FAILED to remove %s: %s" % (container, (r.stderr or "").strip()))
+            rc = 1
+    return rc
+
+
+def cmd_adopt(serves, names, dry_run=False, _run=subprocess.run):
+    """Bring externally-started (non-compose-managed) manifest serve(s) under compose
+    management by recreating them via their manifest `up` — i.e. the `cmd_up` recreate
+    path (`docker rm -f` + `up`). Use when a serve was started by hand / outside compose
+    and you want compose to own its lifecycle going forward.
+    """
+    targets = _select(serves, names)
+    if not targets:
+        print("no matching serves in manifest")
+        return 1
+    for s in targets:
+        print("  adopting %s under compose management "
+              "(recreate via manifest `up`)" % s["name"])
+    # reuse the recreate path: `docker rm -f` the hand-started container + fresh `up`.
+    return cmd_up(serves, names, dry_run=dry_run, recreate=True, _run=_run)
+
+
+def cmd_up_compose(compose_file, services, dry_run=False, _run=subprocess.run):
+    """Bring up an ad-hoc/experiment serve from a compose file that is NOT in the manifest:
+    `docker compose -f <file> up -d [service...]`. Fully independent of serves.toml — the
+    file's services need not be declared there. argv list (no shell) for path/quoting safety.
+    """
+    argv = ["docker", "compose", "-f", compose_file, "up", "-d", *services]
+    print("  compose up: %s" % " ".join(argv))
+    if dry_run:
+        return 0
+    r = _run(argv, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("  FAILED: %s" % (r.stderr or r.stdout or "").strip())
+        return 1
+    return 0
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     p = argparse.ArgumentParser(
         prog="anvil-serving serves",
         description="Stop/start/inspect the local GPU model serves (declared in a "
                     "serves manifest). The router connects to these; this manages them.")
-    p.add_argument("action", choices=["status", "up", "down"],
+    p.add_argument("action", choices=["status", "up", "down", "rm", "adopt"],
                    help="status: show docker + health; up: start (restart if stopped, "
-                        "unpause if paused, else run the manifest `up`); down: docker "
-                        "stop the serves.")
+                        "unpause if paused, else run the manifest `up`; with --compose, "
+                        "run an ad-hoc compose file NOT in the manifest); down: docker "
+                        "stop the serves; rm: `docker rm -f` container(s) — works for a "
+                        "container NOT in the manifest (an experiment squatting a port); "
+                        "adopt: bring an externally-started manifest serve under compose "
+                        "management (recreate via its `up`).")
     p.add_argument("names", nargs="*",
-                   help="serve names/containers to act on (default: all in the manifest).")
+                   help="serve names/containers to act on (default: all in the manifest). "
+                        "For `rm`, an unrecognised name is treated literally as a container. "
+                        "With `up --compose`, these are compose SERVICE names.")
     p.add_argument("--manifest", default=DEFAULT_MANIFEST,
                    help="path to the serves manifest TOML (default: %(default)s).")
     p.add_argument("--dry-run", action="store_true",
-                   help="for `up`: print what would run without starting any container.")
+                   help="print what would run without touching any container "
+                        "(for up / down / rm / adopt).")
     p.add_argument("--recreate", action="store_true",
                    help="for `up`: force `docker rm -f` + a fresh `up` for an existing "
                         "container instead of `docker start`.")
+    p.add_argument("--compose", metavar="FILE",
+                   help="for `up`: bring up an ad-hoc/experiment serve from this compose "
+                        "file (NOT in the manifest); `names` are compose service names.")
     a = p.parse_args(argv)
+
+    # `up --compose <file>`: ad-hoc/experiment serve from a compose file that is NOT in the
+    # manifest — independent of serves.toml, so we neither require nor load a manifest here.
+    if a.action == "up" and a.compose:
+        if a.recreate:
+            print("--recreate has no meaning with --compose (`docker compose up -d` already "
+                  "recreates a service when its config changed)", file=sys.stderr)
+            return 2
+        return cmd_up_compose(a.compose, a.names, dry_run=a.dry_run)
+    if a.compose:
+        print("--compose is only valid with `up`", file=sys.stderr)
+        return 2
 
     try:
         serves = load_manifest(a.manifest)
@@ -368,9 +488,13 @@ def main(argv=None):
     if a.action == "status":
         return cmd_status(serves)
     if a.action == "down":
-        return cmd_down(serves, a.names)
+        return cmd_down(serves, a.names, dry_run=a.dry_run)
     if a.action == "up":
         return cmd_up(serves, a.names, dry_run=a.dry_run, recreate=a.recreate)
+    if a.action == "rm":
+        return cmd_rm(serves, a.names, dry_run=a.dry_run)
+    if a.action == "adopt":
+        return cmd_adopt(serves, a.names, dry_run=a.dry_run)
     return 2
 
 
