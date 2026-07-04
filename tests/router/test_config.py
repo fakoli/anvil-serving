@@ -883,7 +883,9 @@ def test_flexibility_config_parses_with_engine_and_timeout():
     assert tier.dialect == "openai"
     assert tier.model == "gpt-oss-120b"
     assert "127.0.0.1" in tier.base_url and "localhost" not in tier.base_url
-    assert tier.extra_body == {"reasoning_effort": "high"}
+    # reasoning_effort is now a SOFT default (a request can override it), not a hard extra_body.
+    assert tier.extra_body is None
+    assert tier.extra_body_defaults == {"reasoning_effort": "high"}
 
 
 def test_flexibility_specialized_tier_builds_a_relay_backend(monkeypatch):
