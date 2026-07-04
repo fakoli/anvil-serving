@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-04
+
 ### Fixed
 
 - **Conservative per-request context gate: an over-context request is refused, not forwarded to a
@@ -37,6 +39,18 @@ All notable changes to this project are documented here. The format is based on
   `local-inference-lab/rtx6kpro` RTX PRO 6000 Blackwell inference-throughput artifacts, including
   conservative Qwen/GLM metadata normalization, DCP and speculative-decoding methodology notes,
   and non-destructive failures for prose, CSV, or HTML imports.
+- **Serve & router management verbs (ADR-0012):** every serve/router lifecycle op now flows through an
+  `anvil-serving` verb instead of raw docker. `anvil-serving router {up|down|restart|reload|status|token}`
+  manages the deployed (ADR-0004) containerized router; `anvil-serving router promote --profile [--config]`
+  is the containerized profile write-back (the ADR-0009 moat) done safely — validate against the deployed
+  image's OWN loader, back up, ATOMICALLY write into the read-only-mounted config volume via a root
+  side-container, reload, and ROLL BACK on a crash-loop (settle + consecutive-`running` + `RestartCount`).
+  New `serves rm` (retire any container incl. a non-manifest port squatter), `serves adopt` (recreate an
+  externally-started serve under compose management), and `serves up --compose <file>` (bring up an
+  experiment serve not in the manifest); `serves down` now honors `--dry-run` (was silently stopping
+  serves). The fakoli-dark `docker-compose.yml`/`serves.toml` are reconciled to the live flexibility
+  topology (heavy=gpt-oss-120b :30002, fast=Qwen3.6-27B-NVFP4 :30003, `vllm-hfcache` + HF repo-ids) so
+  `anvil-serving serves` manages the real serves again.
 
 ## [0.7.3] - 2026-07-02
 

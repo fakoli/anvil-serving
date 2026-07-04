@@ -31,3 +31,4 @@ people and the chat logs.
 | [0009](0009-profile-write-back-loop.md) | Measured quality-profile write-back loop (offline-batch-first, fingerprint-keyed) | Accepted |
 | [0010](0010-specialized-engine-tier.md) | Specialized-engine tier: run any model on any engine (config-first, RelayBackend-served) | Accepted |
 | [0011](0011-two-mode-operation.md) | Two modes of operation: agentic vs maximum-flexibility (global mode switch) | Accepted |
+| [0012](0012-serve-and-router-management-verbs.md) | Serve & router management flows through anvil-serving verbs; deployed router config is a mutable volume promoted via validate→atomic-write→reload→rollback | Accepted |
