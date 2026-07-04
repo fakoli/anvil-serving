@@ -1,4 +1,4 @@
-"""anvil-serving host — own the HOST (WSL / Docker Desktop) config, not just the containers.
+"""anvil-serving host - own the HOST (WSL / Docker Desktop) config, not just the containers.
 
 Closes the "reach for raw `wsl` / hand-edit `.wslconfig` / restart Docker Desktop" gap so anvil is
 the one-stop shop. Bakes in the safety rails that a 2026-07-04 incident taught the hard way (a
@@ -6,11 +6,11 @@ hand-set `memory=84GB` on a 93.7 GB host starved Windows, Docker Desktop failed 
 `wsl --shutdown` retry loop wedged the WSL subsystem):
 
   doctor          inspect host RAM / GPUs / the WSL-VM memory cap, and RECOMMEND a SAFE WSL memory
-                  (host − a Windows reserve) — enough headroom for a big-model load without OOM'ing Windows.
+                  (host - a Windows reserve) - enough headroom for a big-model load without OOM'ing Windows.
   wsl-config      edit `%USERPROFILE%\\.wslconfig` `memory`/`swap` (Windows). BACKS UP first, changes ONLY
                   those lines (preserves a custom kernel/networking), and REFUSES a value that leaves less
                   than the Windows floor (unless --force). `--revert` restores the newest backup.
-  restart-docker  restart Docker Desktop — the RIGHT way to apply a WSL-backend memory change. NOT
+  restart-docker  restart Docker Desktop - the RIGHT way to apply a WSL-backend memory change. NOT
                   `wsl --shutdown` (it does not cycle the docker-desktop distro and, in a retry loop, can
                   wedge WSL). Confirms unless --force.
   reset-wsl       un-wedge a HUNG WSL subsystem (`wsl` times out, Docker Desktop can't start): force-kill
@@ -28,7 +28,7 @@ import sys
 
 # Leave AT LEAST this much for Windows (hard floor: refuse a WSL memory that leaves less, unless --force).
 MIN_WINDOWS_RESERVE_GB = 10
-# The doctor's RECOMMENDED reserve (more generous — room for AV scans / Windows Update / cache spikes).
+# The doctor's RECOMMENDED reserve (more generous - room for AV scans / Windows Update / cache spikes).
 RECOMMENDED_WINDOWS_RESERVE_GB = 14
 
 
@@ -40,12 +40,14 @@ def _host_total_gb(_run=subprocess.run):
     """Total physical host RAM in GB, or None."""
     if sys.platform == "win32":
         try:
-            r = _run(["powershell", "-NoProfile", "-Command",
+            r = _run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
                       "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory"],
-                     capture_output=True, text=True)
-            return int((r.stdout or "").strip()) / (1024 ** 3)
-        except (OSError, ValueError):
-            return None
+                     capture_output=True, text=True, timeout=15)
+            if r.returncode == 0:
+                return int((r.stdout or "").strip()) / (1024 ** 3)
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            pass
+        return None
     try:
         with open("/proc/meminfo") as f:
             for line in f:
@@ -88,13 +90,17 @@ def _gpus(_run=subprocess.run):
 
 
 def recommend_wsl_memory_gb(host_gb, reserve_gb=RECOMMENDED_WINDOWS_RESERVE_GB):
-    """A SAFE WSL memory: host − a Windows reserve, rounded to the nearest 2 GB, floored at 4 GB.
-    On a 93.7 GB host with the default 14 GB reserve this yields 80 GB (not the 84 GB that broke it)."""
+    """A SAFE WSL memory: host - a Windows reserve, rounded to the nearest 2 GB, and CLAMPED to the
+    largest value wsl-config will accept (host - the hard floor). None if the host is too small to
+    leave even the hard floor - so `doctor` never recommends a value wsl-config would refuse. On a
+    93.7 GB host with the default 14 GB reserve this yields 80 GB (not the 84 GB that broke it)."""
     if not host_gb:
         return None
-    val = host_gb - reserve_gb
-    val = round(val / 2) * 2  # nearest 2 GB
-    return max(4, int(val))
+    ceiling = int(host_gb - MIN_WINDOWS_RESERVE_GB)   # largest value wsl-config won't refuse
+    if ceiling < 4:
+        return None                                    # host too small to leave even the hard floor
+    val = round((host_gb - reserve_gb) / 2) * 2        # nearest 2 GB
+    return max(4, min(int(val), ceiling))
 
 
 def _fmt(gb):
@@ -102,7 +108,36 @@ def _fmt(gb):
 
 
 # --------------------------------------------------------------------------- #
-# .wslconfig editing (Windows) — pure transform + backup/revert
+# process control (PowerShell — consistent with _host_total_gb, and locale-independent:
+# outcomes come from PowerShell's ErrorCategory enum, not taskkill's localized text)
+# --------------------------------------------------------------------------- #
+
+def _ps(script, _run=subprocess.run):
+    """Run a PowerShell one-liner. Returns the CompletedProcess, or None if PowerShell can't launch."""
+    try:
+        return _run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                    capture_output=True, text=True)
+    except OSError:
+        return None
+
+
+def _kill_process(name, _run=subprocess.run):
+    """Force-kill every process whose image name is `name` (no `.exe`). Returns one of
+    'killed' | 'notfound' | 'denied' | 'error'. Detection is via PowerShell's ErrorCategory (an enum),
+    so it is LOCALE-INDEPENDENT — unlike parsing taskkill's 'Access is denied' text."""
+    script = ("try { Stop-Process -Name '%s' -Force -ErrorAction Stop; 'killed' } "
+              "catch { switch ($_.CategoryInfo.Category) "
+              "{ 'PermissionDenied' { 'denied' } 'ObjectNotFound' { 'notfound' } default { 'error' } } }"
+              % name)
+    r = _ps(script, _run)
+    if r is None:
+        return "error"
+    token = ((r.stdout or "").strip().splitlines() or ["error"])[-1].strip()
+    return token if token in ("killed", "notfound", "denied") else "error"
+
+
+# --------------------------------------------------------------------------- #
+# .wslconfig editing (Windows) - pure transform + backup/revert
 # --------------------------------------------------------------------------- #
 
 def _wslconfig_path():
@@ -126,8 +161,10 @@ def set_wslconfig_values(content, memory_gb=None, swap_gb=None):
     wsl2_idx = None
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("[") and stripped.endswith("]"):
-            in_wsl2 = (stripped.lower() == "[wsl2]")
+        if stripped.startswith("[") and "]" in stripped:
+            # match the leading [token] only, tolerating a trailing comment/space after the ']'
+            section = stripped[1:].split("]", 1)[0].strip().lower()
+            in_wsl2 = (section == "wsl2")
             if in_wsl2:
                 wsl2_idx = len(out)
         key = stripped.split("=", 1)[0].strip().lower() if "=" in stripped else None
@@ -158,8 +195,10 @@ def _backups(path):
 
 
 def _next_backup(path):
-    n = 1 + len(_backups(path))
-    return path + ".anvil.bak.%d" % n
+    """Next backup name, numbered from the MAX existing suffix + 1 (never the count) so a gap from a
+    deleted/pruned backup can't collide with - and silently overwrite - an existing one."""
+    nums = [int(os.path.basename(b).rsplit(".", 1)[-1]) for b in _backups(path)]
+    return path + ".anvil.bak.%d" % ((max(nums) + 1) if nums else 1)
 
 
 # --------------------------------------------------------------------------- #
@@ -230,14 +269,21 @@ def cmd_wsl_config(memory_gb=None, swap_gb=None, revert=False, force=False, dry_
     # SAFE-CAP CHECK: refuse a memory that starves Windows (the 84GB-on-93.7GB incident) unless --force.
     if memory_gb is not None:
         host = _host_total_gb(_run=_run)
-        if host is not None:
-            leaves = host - memory_gb
-            if leaves < MIN_WINDOWS_RESERVE_GB and not force:
-                print("REFUSING: memory=%dGB leaves only %.1f GB for Windows on a %.1f GB host "
-                      "(< %d GB floor). This can prevent Docker Desktop/WSL from starting. Use a "
-                      "lower value (try `host doctor`) or --force." % (
-                          int(memory_gb), leaves, host, MIN_WINDOWS_RESERVE_GB), file=sys.stderr)
+        if host is None:
+            # FAIL CLOSED: can't read host RAM -> can't verify the Windows floor -> refuse, don't skip.
+            # (Skipping is the exact fail-open that would silently reproduce the starvation incident.)
+            if not force:
+                print("REFUSING: cannot read host RAM to verify memory=%dGB leaves the %d GB Windows "
+                      "floor (PowerShell/WMI unavailable). Re-run when it's readable (`host doctor`) or "
+                      "pass --force to override." % (int(memory_gb), MIN_WINDOWS_RESERVE_GB),
+                      file=sys.stderr)
                 return 2
+        elif host - memory_gb < MIN_WINDOWS_RESERVE_GB and not force:
+            print("REFUSING: memory=%dGB leaves only %.1f GB for Windows on a %.1f GB host "
+                  "(< %d GB floor). This can prevent Docker Desktop/WSL from starting. Use a "
+                  "lower value (try `host doctor`) or --force." % (
+                      int(memory_gb), host - memory_gb, host, MIN_WINDOWS_RESERVE_GB), file=sys.stderr)
+            return 2
 
     try:
         with open(path, encoding="utf-8") as f:
@@ -252,12 +298,12 @@ def cmd_wsl_config(memory_gb=None, swap_gb=None, revert=False, force=False, dry_
     for c in changes:
         print("  " + c)
     if dry_run:
-        print("(dry-run — not written)")
+        print("(dry-run - not written)")
         return 0
 
     if os.path.exists(path):
         bak = _next_backup(path)
-        with open(bak, "w", encoding="utf-8") as f:
+        with open(bak, "x", encoding="utf-8") as f:   # "x": fail loud, never silently clobber a backup
             f.write(content)
         print("backed up -> %s" % os.path.basename(bak))
     with open(path, "w", encoding="utf-8") as f:
@@ -282,23 +328,18 @@ def cmd_restart_docker(force=False, _run=subprocess.run, _input=input):
     exe = os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"),
                        "Docker", "Docker", "Docker Desktop.exe")
     if sys.platform == "win32":
-        try:
-            _run(["taskkill", "/IM", "Docker Desktop.exe", "/F"], capture_output=True, text=True)
-        except OSError:
-            pass
+        _kill_process("Docker Desktop", _run)   # stop the (possibly failed) instance
         if not os.path.exists(exe):
-            print("Docker Desktop.exe not found at %s — start it from the Start menu." % exe,
+            print("Docker Desktop.exe not found at %s - start it from the Start menu." % exe,
                   file=sys.stderr)
             return 1
-        try:
-            _run(["cmd", "/c", "start", "", exe])
-        except OSError as e:
-            print("could not launch Docker Desktop: %s" % e, file=sys.stderr)
+        if _ps("Start-Process '%s'" % exe, _run) is None:
+            print("could not launch Docker Desktop (PowerShell unavailable).", file=sys.stderr)
             return 1
     else:  # darwin
         _run(["osascript", "-e", 'quit app "Docker Desktop"'], capture_output=True, text=True)
         _run(["open", "-a", "Docker"])
-    print("Docker Desktop restarting — the engine + unless-stopped containers take ~1-2 min to return.")
+    print("Docker Desktop restarting - the engine + unless-stopped containers take ~1-2 min to return.")
     print("  verify with:  anvil-serving router status   and   anvil-serving serves status")
     return 0
 
@@ -307,7 +348,7 @@ def cmd_reset_wsl(force=False, _run=subprocess.run, _input=input):
     """Un-wedge a HUNG WSL2 subsystem (`wsl` commands time out, Docker Desktop can't start, hundreds of
     stuck `wsl.exe` pile up). Codifies the manual Task-Manager 'End task on vmmemWSL' recovery
     (2026-07-04): force-kill the WSL VM's backing process + the hung `wsl.exe` front-ends, then restart
-    Docker Desktop so it rebuilds the backend. Deliberately does NOT use `wsl --shutdown` — when the
+    Docker Desktop so it rebuilds the backend. Deliberately does NOT use `wsl --shutdown` - when the
     subsystem is already wedged the CLI front-end blocks (that loop is what wedged it in the first place).
     Non-elevated best-effort; if the kill is denied it prints the elevated `Restart-Service` fallback."""
     if sys.platform != "win32":
@@ -318,29 +359,33 @@ def cmd_reset_wsl(force=False, _run=subprocess.run, _input=input):
                     force, _input):
         print("aborted (no --force / declined).")
         return 1
-    killed_vm = False
+    kill_failed = False   # vmmemWSL could NOT be killed (denied / error) -> WSL may still be wedged
     denied = False
-    for image in ("vmmemWSL.exe", "wsl.exe"):  # the VM backing process, then the piled-up front-ends
-        try:
-            r = _run(["taskkill", "/F", "/IM", image], capture_output=True, text=True)
-            out = ((r.stdout or "") + (r.stderr or "")).strip()
-            ok = r.returncode == 0
-            if image == "vmmemWSL.exe":
-                killed_vm = ok
-            if "access is denied" in out.lower():
-                denied = True
-            first = out.splitlines()[0] if out else ("killed" if ok else "not running")
-            print("  taskkill %-14s -> %s" % (image, "killed" if ok else first))
-        except OSError as e:
-            print("  taskkill %s failed: %s" % (image, e))
+    for name in ("vmmemWSL", "wsl"):   # the VM backing process, then the piled-up front-ends
+        status = _kill_process(name, _run)   # 'killed' | 'notfound' | 'denied' | 'error'
+        if name == "vmmemWSL" and status in ("denied", "error"):
+            kill_failed = True            # 'notfound' is benign (VM already gone; Docker rebuilds it)
+        if status == "denied":
+            denied = True
+        print("  kill %-10s -> %s" % (name, status))
     print("restarting Docker Desktop to rebuild the WSL backend...")
-    cmd_restart_docker(force=True, _run=_run, _input=_input)
-    if not killed_vm:
-        print("\nWSL VM was not killed%s. If it's still wedged, run in an ELEVATED PowerShell:" % (
-            " (access denied — needs elevation)" if denied else ""))
-        print("  Restart-Service WSLService -Force; Start-Process 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe'")
+    restart_rc = cmd_restart_docker(force=True, _run=_run, _input=_input)
+
+    # Propagate failure so `reset-wsl --force` automation can detect an INCOMPLETE reset.
+    rc = 0
+    if kill_failed:
+        print("\nCould not force-kill the WSL VM (vmmemWSL)%s. If WSL is still wedged, run in an "
+              "ELEVATED PowerShell, then rebuild the backend:" % (" - access denied" if denied else ""))
+        print("  Restart-Service WSLService -Force    (then:  anvil-serving host restart-docker)")
+        rc = 1
+    elif denied:
+        print("\n(some wsl.exe front-ends could not be killed - access denied; harmless once the VM is gone.)")
+    if restart_rc != 0:
+        print("\nDocker Desktop could not be restarted (exit %d) - launch it manually (or "
+              "`anvil-serving host restart-docker`) to rebuild the backend." % restart_rc)
+        rc = rc or restart_rc
     print("\nThen verify:  anvil-serving host doctor   (WSL cap reads live; GPUs repopulate as models reload)")
-    return 0
+    return rc
 
 
 def main(argv=None):
