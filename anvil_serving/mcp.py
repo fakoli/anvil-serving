@@ -15,6 +15,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -24,6 +25,8 @@ from typing import Any, Callable, Dict, Iterable, Optional
 
 SERVER_INFO = {"name": "anvil-serving", "version": "0.1.0"}
 PROTOCOL_VERSION = "2024-11-05"
+_ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+_PROXY_METHODS = {"tools/list", "tools/call"}
 
 
 class ToolError(Exception):
@@ -49,6 +52,96 @@ def _capture(fn: Callable[[], int]) -> tuple[int, str, str]:
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         rc = fn()
     return rc, out.getvalue(), err.getvalue()
+
+
+def _redact_secret(value: Any, token: str) -> Any:
+    if not token:
+        return value
+    if isinstance(value, str):
+        return value.replace(token, "<redacted>")
+    if isinstance(value, list):
+        return [_redact_secret(item, token) for item in value]
+    if isinstance(value, dict):
+        return {_redact_secret(key, token): _redact_secret(item, token) for key, item in value.items()}
+    return value
+
+
+def _jsonrpc_error(req_id: Any, code: int, message: str, data: Optional[dict] = None) -> dict:
+    error: dict[str, Any] = {"code": code, "message": message}
+    if data:
+        error["data"] = data
+    return {"jsonrpc": "2.0", "id": req_id, "error": error}
+
+
+def resolve_controller_token(auth_env: str, environ: Optional[dict[str, str]] = None) -> str:
+    """Resolve a controller auth token from an env-var name, never a raw value."""
+
+    if not auth_env or not _ENV_NAME_RE.fullmatch(auth_env):
+        raise ToolError(
+            "bad_auth_env",
+            "auth-env must name an ENV VAR matching ^[A-Z][A-Z0-9_]*$",
+            {"auth_env": auth_env},
+        )
+    env = os.environ if environ is None else environ
+    token = (env.get(auth_env) or "").strip()
+    if not token:
+        raise ToolError("missing_auth_env", "auth env var is unset or empty", {"auth_env": auth_env})
+    return token
+
+
+def controller_auth_headers(token: str) -> dict[str, str]:
+    """Headers accepted by the controller/front-door token gate."""
+
+    return {
+        "Authorization": "Bearer " + token,
+        "x-api-key": token,
+    }
+
+
+def remote_controller_request(
+    controller_url: str,
+    request: dict,
+    token: str,
+    *,
+    timeout: int = 30,
+    opener: Optional[Callable[..., Any]] = None,
+) -> dict:
+    """POST one JSON-RPC request to a remote controller endpoint."""
+
+    if not token:
+        raise ToolError("missing_controller_token", "controller token is required")
+    if opener is None:
+        opener = urllib.request.urlopen
+    body = json.dumps(request, separators=(",", ":")).encode("utf-8")
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        **controller_auth_headers(token),
+    }
+    req = urllib.request.Request(controller_url, data=body, headers=headers, method="POST")
+    try:
+        with opener(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", "replace")
+        message = "controller returned HTTP %s" % exc.code
+        details = {"status": exc.code}
+        if raw:
+            details["body"] = raw
+        raise ToolError("controller_http_error", message, _redact_secret(details, token))
+    except Exception as exc:
+        raise ToolError(
+            "controller_request_failed",
+            _redact_secret(str(exc), token),
+            {"controller_url": controller_url},
+        )
+    try:
+        parsed = json.loads(raw or "{}")
+    except ValueError as exc:
+        raise ToolError("bad_controller_response", str(exc), {"controller_url": controller_url})
+    if not isinstance(parsed, dict):
+        raise ToolError("bad_controller_response", "controller response must be a JSON object")
+    return _redact_secret(parsed, token)
 
 
 def _arg_bool(value: Any, default: bool = False) -> bool:
@@ -464,7 +557,33 @@ def handle_request(request: dict) -> Optional[dict]:
         }
 
 
-def serve_stdio(stdin: Iterable[str] = sys.stdin, stdout: Any = sys.stdout) -> int:
+def handle_proxy_request(request: dict, controller_url: str, token: str) -> Optional[dict]:
+    if request.get("method") not in _PROXY_METHODS:
+        return handle_request(request)
+    req_id = request.get("id")
+    try:
+        response = remote_controller_request(controller_url, request, token)
+    except ToolError as exc:
+        if req_id is None:
+            return None
+        return _jsonrpc_error(
+            req_id,
+            -32000,
+            exc.message,
+            {"code": exc.code, **exc.details},
+        )
+    if req_id is None:
+        return None
+    return response
+
+
+def serve_stdio(
+    stdin: Iterable[str] = sys.stdin,
+    stdout: Any = sys.stdout,
+    *,
+    controller_url: str = "",
+    controller_token: str = "",
+) -> int:
     for line in stdin:
         if not line.strip():
             continue
@@ -473,20 +592,68 @@ def serve_stdio(stdin: Iterable[str] = sys.stdin, stdout: Any = sys.stdout) -> i
         except ValueError as exc:
             response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": str(exc)}}
         else:
-            response = handle_request(request)
+            if not isinstance(request, dict):
+                response = _jsonrpc_error(None, -32600, "request must be a JSON object")
+            elif controller_url:
+                response = handle_proxy_request(request, controller_url, controller_token)
+            else:
+                response = handle_request(request)
         if response is not None:
             stdout.write(json.dumps(response, separators=(",", ":")) + "\n")
             stdout.flush()
     return 0
 
 
+def _parse_main_args(argv: list[str]) -> tuple[str, str, bool]:
+    controller_url = ""
+    auth_env = ""
+    list_tools_requested = False
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--list-tools" or arg == "list-tools":
+            list_tools_requested = True
+            i += 1
+        elif arg == "--controller-url":
+            if i + 1 >= len(argv):
+                raise ToolError("bad_usage", "--controller-url requires a value")
+            controller_url = argv[i + 1]
+            i += 2
+        elif arg == "--auth-env":
+            if i + 1 >= len(argv):
+                raise ToolError("bad_usage", "--auth-env requires a value")
+            auth_env = argv[i + 1]
+            i += 2
+        else:
+            raise ToolError("bad_usage", "unknown argument %r" % arg)
+    if list_tools_requested and (controller_url or auth_env):
+        raise ToolError("bad_usage", "--list-tools cannot be combined with proxy mode")
+    if bool(controller_url) != bool(auth_env):
+        raise ToolError("bad_usage", "--controller-url and --auth-env must be provided together")
+    return controller_url, auth_env, list_tools_requested
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if argv in (["--list-tools"], ["list-tools"]):
+    try:
+        controller_url, auth_env, list_tools_requested = _parse_main_args(argv)
+    except ToolError as exc:
+        print("usage: anvil-serving mcp [--list-tools] [--controller-url URL --auth-env ENV]", file=sys.stderr)
+        print(exc.message, file=sys.stderr)
+        return 2
+    if list_tools_requested:
         print(json.dumps({"tools": list_tools()}, indent=2, sort_keys=True))
         return 0
+    if controller_url:
+        try:
+            token = resolve_controller_token(auth_env)
+        except ToolError as exc:
+            print("usage: anvil-serving mcp [--list-tools] [--controller-url URL --auth-env ENV]", file=sys.stderr)
+            print(exc.message, file=sys.stderr)
+            return 2
+        return serve_stdio(controller_url=controller_url, controller_token=token)
     if argv:
-        print("usage: anvil-serving mcp [--list-tools]", file=sys.stderr)
+        print("usage: anvil-serving mcp [--list-tools] [--controller-url URL --auth-env ENV]", file=sys.stderr)
         return 2
     return serve_stdio()
 

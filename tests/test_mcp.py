@@ -7,6 +7,7 @@ import io
 import json
 import textwrap
 import types
+import urllib.error
 
 from anvil_serving import cli, mcp
 
@@ -273,6 +274,109 @@ def test_probe_cli_helpers_resolve_api_key_env(monkeypatch):
     assert preflight.resolve_api_key(api_key_env="ANVIL_ROUTER_TOKEN") == "super-secret-token"
     assert benchmark.resolve_api_key(api_key_env="ANVIL_ROUTER_TOKEN") == "super-secret-token"
     assert preflight.resolve_api_key() is None
+
+
+def test_remote_controller_request_sends_env_token_headers_and_redacts(monkeypatch):
+    seen = {}
+
+    def open_ok(req, timeout=30):
+        seen["url"] = req.full_url
+        seen["authorization"] = req.get_header("Authorization")
+        seen["x_api_key"] = req.get_header("X-api-key")
+        seen["body"] = json.loads(req.data.decode("utf-8"))
+        return Resp(b'{"jsonrpc":"2.0","id":1,"result":{"tools":[]}}')
+
+    token = "controller-secret-token"
+    response = mcp.remote_controller_request(
+        "http://127.0.0.1:8765",
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        token,
+        opener=open_ok,
+    )
+    assert response["result"]["tools"] == []
+    assert seen == {
+        "url": "http://127.0.0.1:8765",
+        "authorization": "Bearer " + token,
+        "x_api_key": token,
+        "body": {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+    }
+
+    def open_fail(req, timeout=30):
+        raise urllib.error.HTTPError(
+            req.full_url,
+            401,
+            "nope",
+            {},
+            io.BytesIO(("bad " + token).encode("utf-8")),
+        )
+
+    try:
+        mcp.remote_controller_request(
+            "http://127.0.0.1:8765",
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            token,
+            opener=open_fail,
+        )
+    except mcp.ToolError as exc:
+        rendered = json.dumps({"message": exc.message, "details": exc.details})
+        assert exc.code == "controller_http_error"
+        assert token not in rendered
+        assert "<redacted>" in rendered
+    else:  # pragma: no cover - must raise
+        raise AssertionError("expected controller_http_error")
+
+
+def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
+    seen = []
+
+    def fake_remote(controller_url, request, token, **kwargs):
+        seen.append((controller_url, token, request))
+        if request["method"] == "tools/list":
+            return {"jsonrpc": "2.0", "id": request["id"], "result": {"tools": []}}
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {
+                "content": [],
+                "structuredContent": {"ok": True, "data": {"proxied": True}},
+                "isError": False,
+            },
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    reqs = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {"name": "preflight_probe", "arguments": {"confirm": False}},
+        },
+    ]
+    stdout = io.StringIO()
+    assert mcp.serve_stdio(
+        [json.dumps(r) + "\n" for r in reqs],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    lines = [json.loads(ln) for ln in stdout.getvalue().splitlines()]
+    assert lines[0]["result"]["serverInfo"]["name"] == "anvil-serving"
+    assert lines[1]["result"]["tools"] == []
+    assert lines[2]["result"]["structuredContent"]["data"]["proxied"] is True
+    assert [item[2]["method"] for item in seen] == ["tools/list", "tools/call"]
+    assert all(item[0] == "http://127.0.0.1:8765" and item[1] == "secret" for item in seen)
+
+
+def test_mcp_proxy_main_requires_env_token(monkeypatch, capsys):
+    monkeypatch.delenv("ANVIL_CONTROLLER_TOKEN", raising=False)
+    rc = mcp.main([
+        "--controller-url", "http://127.0.0.1:8765",
+        "--auth-env", "ANVIL_CONTROLLER_TOKEN",
+    ])
+    assert rc == 2
+    assert "auth env var is unset" in capsys.readouterr().err
 
 
 def test_cli_dispatches_mcp(monkeypatch):
