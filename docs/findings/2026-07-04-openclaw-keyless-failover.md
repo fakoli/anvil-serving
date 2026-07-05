@@ -65,16 +65,17 @@ provider, not `openai`. Root cause (source-grounded): OpenClaw applies the `befo
 `providerOverride` for the run's **entire attempt loop**, so the fallback walk's model strings
 re-resolve against the pinned provider instead of each fallback entry's own provider.
 
-- **The keyless 503 → native-failover handoff is reliable ONLY for classes where the plugin emits no
-  `providerOverride`** — i.e. cloud-preferred classes (`planning` returns `{}`). For local-preferred
-  classes (quick-edit/review/chat/long-context — the majority of traffic) a local-unable condition can
+- **The keyless 503 → native-failover handoff is unreliable once the plugin emits
+  `providerOverride:"anvil"`**. Cloud-preferred presets now avoid the path by routing directly to a
+  configured native provider/model. For local-preferred presets (quick-edit/review/chat/long-context
+  — the majority of traffic) a local-unable condition can
   surface as a **failed turn** rather than a graceful cloud handoff.
 - **No repo-side code fix** exists (it is OpenClaw's attempt-loop provider resolution, not anvil's or
   the plugin's). Mitigations (both already shipped, no silent behavior change):
-  - **A — `ANVIL_CLOUD_CLASSES`:** move a flaky/exhausted class into the cloud-preferred set; its turns
+  - **A — `ANVIL_CLOUD_CLASSES`:** move a flaky/exhausted preset into the cloud-preferred set; its turns
     never touch anvil, so nothing is inherited by the failover walk.
   - **B — anvil's own opt-in metered cloud tier (recommended durable fix):** enable
-    `configs/example-with-cloud.toml` + add at-risk classes to `[router].metered_cloud`. anvil's own
+    `configs/example-with-cloud.toml` + add at-risk work-classes to `[router].metered_cloud`. anvil's own
     `fallback.py` escalates to the bound cloud tier **inside the same `provider="anvil"` response** —
     anvil never returns 503 for those classes, so OpenClaw's (un)reliable failover is never invoked.
     Requires the explicit billing opt-in ADR-0001 already gates.
@@ -101,6 +102,7 @@ ADR-0001 spec they are two intentionally-distinct contracts, so no change is war
 
 The ADR-0001 UNCONFIRMED is **RESOLVED**: anvil's exhaustion-`exhaustion_status` (default 503, C3-clean,
 operator-configurable) **does** trip OpenClaw's transport failover; the handoff to the native
-subscription is **reliable for no-`providerOverride` classes** and **unreliable once a `providerOverride`
-is pinned** (ADR-0005), for which mitigation B is the durable fix. No anvil-serving runtime change is
+subscription is **unreliable once `providerOverride:"anvil"` is pinned** (ADR-0005); current
+cloud-preferred presets avoid that path with an explicit native route, and mitigation B is the
+durable fix for local-preferred presets. No router data-plane runtime change is
 required by this validation.

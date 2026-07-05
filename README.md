@@ -52,7 +52,7 @@ anvil-serving routes with evidence:
 Callers send a workload intent in the `model` field:
 
 ```text
-planning   quick-edit   review   chat   long-context
+planning   quick-edit   review   chat   chat-fast   long-context
 ```
 
 The router maps that intent to candidate tiers, filters them by hard constraints, ranks by the
@@ -143,7 +143,8 @@ Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
 - **Token before exposure:** configure `[server].auth_env = "ANVIL_ROUTER_TOKEN"` before publishing
   the router beyond loopback.
 - **Controller token required:** bind `anvil-serving controller serve` only to `127.0.0.1` or a
-  private/tailnet address and set `ANVIL_CONTROLLER_TOKEN` through `--auth-token-env`.
+  private/tailnet address and set `ANVIL_CONTROLLER_TOKEN` through `--auth-token-env`; unauthenticated
+  loopback is an explicit development opt-out, not the default.
 
 See [SECURITY.md](SECURITY.md) for the threat model and vulnerability reporting path.
 

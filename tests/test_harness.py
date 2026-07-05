@@ -21,13 +21,15 @@ class _FakeSCP:
     def __init__(self, host="mini", remote=None, read_err="", write_rc=0):
         self.host, self.remote, self.read_err, self.write_rc = host, remote, read_err, write_rc
         self.calls, self.written, self.backed_up, self.restarted = [], None, False, False
+        self.kwargs = []
 
     def _is_remote(self, arg):
         return arg.startswith(self.host + ":")
 
     def __call__(self, argv, **kw):
         self.calls.append(argv)
-        if argv[0] == "ssh" and any("gateway restart" in str(a) for a in argv):  # gateway restart
+        self.kwargs.append(kw)
+        if argv[0] == "ssh" and argv[-1] == harness._REMOTE_RESTART_COMMAND:
             self.restarted = True
             return _proc(0)
         src, dst = argv[-2], argv[-1]
@@ -109,7 +111,11 @@ def test_provider_shape_and_token_by_reference():
     assert anvil["api"] == "openai-completions"
     assert prov["models"]["mode"] == "merge"
     # the entries key MUST match the packaged plugin id, not the stale spec's "anvil-intent-router"
-    assert prov["plugins"]["entries"]["openclaw-anvil-intent-router"]["hooks"]["allowConversationAccess"] is True
+    entry = prov["plugins"]["entries"]["openclaw-anvil-intent-router"]
+    assert entry["hooks"]["allowConversationAccess"] is True
+    assert entry["config"]["nativeProvider"] == "anthropic"
+    assert entry["config"]["nativeModel"] == "claude-sonnet-4-5"
+    assert entry["config"]["routeTimeoutMs"] == 30
 
 
 # ---- cmd_sync_openclaw -------------------------------------------------------
@@ -192,6 +198,32 @@ def test_scp_merge_preserves_live_baseurl_and_apikey():
     assert all(m["reasoning"] is True for m in anvil["models"])  # but models ARE updated
 
 
+def test_scp_merge_preserves_existing_plugin_config():
+    remote = json.dumps({
+        "plugins": {
+            "entries": {
+                "openclaw-anvil-intent-router": {
+                    "hooks": {"allowPromptInjection": False},
+                    "config": {
+                        "routeEndpoint": "http://127.0.0.1:8000/v1/route",
+                        "routeAuthEnv": "ANVIL_ROUTER_TOKEN",
+                        "cloudClasses": ["planning", "long-context"],
+                    },
+                }
+            }
+        }
+    })
+    scp = _FakeSCP(remote=remote)
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+    assert rc == 0
+    entry = json.loads(scp.written)["plugins"]["entries"]["openclaw-anvil-intent-router"]
+    assert entry["hooks"]["allowConversationAccess"] is True
+    assert entry["hooks"]["allowPromptInjection"] is False
+    assert entry["config"]["routeAuthEnv"] == "ANVIL_ROUTER_TOKEN"
+    assert entry["config"]["nativeProvider"] == "anthropic"
+
+
 def test_scp_overwrite_clobbers_other_providers():
     scp = _FakeSCP(remote=json.dumps({"models": {"providers": {"openai": {}}}}))
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
@@ -238,6 +270,9 @@ def test_transport_is_scp_only_no_remote_shell():
     harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
                               gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
     assert scp.calls and all(c[0] == "scp" for c in scp.calls)
+    assert all("--" in c for c in scp.calls)
+    assert all(c[c.index("--") - 2:c.index("--")] == ["-o", "ServerAliveCountMax=1"] for c in scp.calls)
+    assert all(kw["timeout"] == harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS for kw in scp.kwargs)
 
 
 # ---- gateway restart (pick up settings) --------------------------------------
@@ -260,8 +295,22 @@ def test_restart_remote_over_ssh():
         return _proc(0)
     rc = harness.cmd_restart_openclaw(gateway_host="mini", gateway_user="sd", _run=fake)
     assert rc == 0
-    # login shell so the remote PATH resolves `openclaw` (a bare `ssh host openclaw …` can't).
-    assert seen["argv"] == ["ssh", "sd@mini", '$SHELL -lc "openclaw gateway restart"']
+    assert seen["argv"] == [
+        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=60",
+        "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
+        "--", "sd@mini", harness._REMOTE_RESTART_COMMAND,
+    ]
+
+
+def test_gateway_target_rejects_ssh_options(capsys):
+    rc = harness.cmd_restart_openclaw(gateway_host="-oProxyCommand=sh", _run=lambda a, **k: _proc(0))
+    assert rc == 2
+    assert "gateway host" in capsys.readouterr().err
+
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="-oProxyCommand=sh",
+                                   _load=lambda p: _cfg(), _run=lambda a, **k: _proc(0))
+    assert rc == 2
 
 
 def test_restart_failure_reported(capsys):
@@ -277,6 +326,14 @@ def test_restart_binary_missing(capsys):
     rc = harness.cmd_restart_openclaw(_run=boom)
     assert rc == 1
     assert "not available" in capsys.readouterr().err
+
+
+def test_restart_timeout_reported(capsys):
+    def timeout(argv, **kw):
+        raise harness.subprocess.TimeoutExpired(argv, kw["timeout"])
+    rc = harness.cmd_restart_openclaw(gateway_host="mini", _run=timeout, timeout_seconds=2)
+    assert rc == 1
+    assert "timed out restarting" in capsys.readouterr().err
 
 
 def test_sync_gateway_restarts_after_success():
@@ -301,6 +358,13 @@ def test_sync_no_restart_when_sync_fails():
                                    gateway_host="mini", restart=True,
                                    _load=lambda p: _cfg(), _run=scp)
     assert rc == 1 and not scp.restarted
+
+
+def test_sync_out_restart_rejects_preview_file(capsys):
+    rc = harness.cmd_sync_openclaw("r.toml", out="cfg.json", base_url="http://h/v1",
+                                   api_key_env="T", restart=True, _load=lambda p: _cfg())
+    assert rc == 2
+    assert "preview file" in capsys.readouterr().err
 
 
 # ---- CLI dispatch ------------------------------------------------------------
@@ -361,8 +425,16 @@ def test_sync_restart_allowed_with_gateway_host(monkeypatch):
     assert rc == 0 and seen["restart"] is True
 
 
-def test_sync_restart_allowed_with_out(monkeypatch):
+def test_sync_restart_rejects_arbitrary_out(capsys):
+    rc = harness.main(["sync", "openclaw", "--config", "r.toml",
+                       "--out", "cfg.json", "--restart"])
+    assert rc == 2
+    assert "preview file" in capsys.readouterr().err
+
+
+def test_sync_restart_allowed_with_local_openclaw_config(monkeypatch):
     seen = {}
     monkeypatch.setattr(harness, "cmd_sync_openclaw", lambda cfg, **k: seen.update(k) or 0)
-    rc = harness.main(["sync", "openclaw", "--config", "r.toml", "--out", "cfg.json", "--restart"])
+    rc = harness.main(["sync", "openclaw", "--config", "r.toml",
+                       "--out", "~/.openclaw/openclaw.json", "--restart"])
     assert rc == 0 and seen["restart"] is True

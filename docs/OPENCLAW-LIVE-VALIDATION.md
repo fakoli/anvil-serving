@@ -8,7 +8,7 @@
 >
 > **⚠️ NEW DEFECT FOUND (2026-07-01), Gap 4.** A real agent turn caught a fourth issue: the
 > keyless-503 → native-failover safety net is **not reliable** once `before_model_resolve` has
-> emitted a `providerOverride`. See Gap 4 below — this is a live-confirmed, unresolved gap with no
+> emitted `providerOverride:"anvil"`. See Gap 4 below — this is a live-confirmed, unresolved gap with no
 > known repo-side fix (OpenClaw-side behavior).
 >
 > **Original status:** the tooling, plugins, and fixtures (T013 + T014) are merged and pass against
@@ -31,10 +31,12 @@ plugin is correct-by-construction but not field-proven.
   and the **required** `anvil` provider block with `models[]` for every preset id).
 
 ## Gap 1 — wire value (bare `<preset>` vs `anvil/<preset>`)
-The plugin emits `modelOverride: "anvil/<preset>"`. Confirm what actually goes out on the wire.
+The plugin emits `providerOverride: "anvil"` plus a bare `modelOverride: "<preset>"` for local
+presets. Confirm what actually goes out on the wire.
 1. Point the `anvil` provider's `baseUrl` at the router (or a capture proxy).
 2. Send one user message; capture the outbound request body.
-3. Inspect the `model` field. Record whether it is `anvil/planning` or bare `planning`.
+3. Inspect the `model` field. Record whether OpenClaw forwards bare `planning` or a namespaced
+   variant such as `anvil/planning`.
 4. **Acceptance:** the router accepts **both** (verified: `validate.py` `WIRE_FORM_RE` +
    `intent.parse_model` strips the `anvil/` prefix). So either is fine — but record which OpenClaw
    sends, and pin the README to it.
@@ -56,12 +58,13 @@ message**, above the attempt loop.
    message; a repeated `runId` for the same message → cadence violation, flagged non-zero).
 
 ## Gap 3 — `pluginApi` compat floor
-`package.json` pins `compat.pluginApi: ">=2026.4.21"` — the spec's **UNCONFIRMED** estimate for when
-`before_model_resolve` landed.
+`package.json` pins `compat.pluginApi: ">=2026.4.21"` — the floor currently used by the checked-in
+plugin for `before_model_resolve`.
 1. On the gateway, check the installed OpenClaw version and its CHANGELOG/release tags for the
    `before_model_resolve` introduction.
-2. **Acceptance:** pin `compat.pluginApi` to the confirmed floor; if the installed version is older,
-   the hook won't fire and the plugin must declare a higher floor (or document the minimum).
+2. **Acceptance:** keep `compat.pluginApi` aligned across `package.json`, this runbook, and the
+   integration spec; if a gateway release proves the hook requires a higher floor, raise all three
+   together.
 
 ## Gap 4 — anvil-503 native-failover loop (LIVE-CONFIRMED DEFECT, 2026-07-01)
 A real OpenClaw agent turn hit this live: with the T008 plugin routing a local-preferred class to

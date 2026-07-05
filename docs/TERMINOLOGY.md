@@ -20,7 +20,7 @@ profile, reference integration, product differentiator, and local serving tools.
 
 | Term | Definition |
 |------|------------|
-| Intent preset | A closed vocabulary value sent in the wire `model` field, such as `planning`, `quick-edit`, `review`, `chat`, or `long-context`. |
+| Intent preset | A closed vocabulary value sent in the wire `model` field, such as `planning`, `quick-edit`, `review`, `chat`, `chat-fast`, or `long-context`. |
 | Work class | The task category used for quality decisions, such as planning, bounded edit, review, or long-context retrieval. |
 | Tier | A configured backend candidate. Common tiers are `fast-local`, `heavy-local`, and an explicit cloud tier. |
 | Quality profile | The per-tier, per-work-class trust table that decides `allow`, `allow-with-verify`, or `deny`. |

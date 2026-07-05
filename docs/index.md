@@ -33,8 +33,8 @@ control plane handles operations.
 Token proxies move requests. They do not know whether a specific local model is good enough for a
 specific coding task on your workload. anvil-serving adds the missing quality gate:
 
-- **Intent presets** let clients ask for `planning`, `quick-edit`, `review`, `chat`, or
-  `long-context` instead of pinning a model everywhere.
+- **Intent presets** let clients ask for `planning`, `quick-edit`, `review`, `chat`, `chat-fast`,
+  or `long-context` instead of pinning a model everywhere.
 - **Quality profiles** record per-tier, per-work-class trust decisions.
 - **Structural verification** catches cheap, concrete failures before the agent sees them.
 - **Transparent responses** report what actually served the request.

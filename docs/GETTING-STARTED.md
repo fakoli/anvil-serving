@@ -92,7 +92,7 @@ export ANTHROPIC_MODEL="planning"
 export OPENAI_API_BASE="http://127.0.0.1:8000/v1"
 ```
 
-Use preset tokens such as `planning`, `quick-edit`, `review`, `chat`, and `long-context` as the
+Use preset tokens such as `planning`, `quick-edit`, `review`, `chat`, `chat-fast`, and `long-context` as the
 model id.
 
 ## Auth Before Exposure

@@ -55,7 +55,7 @@ CONFIG_PATH = REPO_ROOT / "configs" / "example.toml"
 # The wire-form contract (docs/OPENCLAW-INTEGRATION-SPEC.md §3). The OpenClaw
 # selection string is ``anvil/<preset>``; the openai-completions convention puts
 # the bare id on the wire — anvil must accept BOTH, so the optional prefix.
-WIRE_FORM_RE = re.compile(r"^(anvil/)?(planning|quick-edit|review|chat|long-context)$")
+WIRE_FORM_RE = re.compile(r"^(anvil/)?(planning|quick-edit|review|chat|chat-fast|long-context)$")
 
 
 # --------------------------------------------------------------------------- #
@@ -209,7 +209,7 @@ def check_wire_form(
         return InternalRequest(model=model, messages=[Message("user", "hello")], raw={})
 
     # drift guard: the literal regex must enumerate exactly the canonical presets.
-    regex_ids = {"planning", "quick-edit", "review", "chat", "long-context"}
+    regex_ids = {"planning", "quick-edit", "review", "chat", "chat-fast", "long-context"}
     canonical_ids = {p.id for p in PRESETS}
     if regex_ids != canonical_ids:
         _fail(

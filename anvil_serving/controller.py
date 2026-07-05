@@ -32,13 +32,28 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 DEFAULT_AUTH_TOKEN_ENV = "ANVIL_CONTROLLER_TOKEN"
 DEFAULT_MAX_BODY_BYTES = 1024 * 1024
+DEFAULT_READ_TIMEOUT_SECONDS = 30.0
 
 _MAX_BODY_BYTES = int(
     os.environ.get("ANVIL_CONTROLLER_MAX_BODY_BYTES", str(DEFAULT_MAX_BODY_BYTES))
 )
+_READ_TIMEOUT_SECONDS = float(
+    os.environ.get("ANVIL_CONTROLLER_READ_TIMEOUT_SECONDS", str(DEFAULT_READ_TIMEOUT_SECONDS))
+)
 _TAILSCALE_V4 = ipaddress.ip_network("100.64.0.0/10")
 _TAILSCALE_V6 = ipaddress.ip_network("fd7a:115c:a1e0::/48")
-_WILDCARD_BINDS = {"", "0.0.0.0", "::"}
+_RFC1918_V4 = (
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+)
+_ULA_V6 = ipaddress.ip_network("fc00::/7")
+_DOCUMENTATION_V4 = (
+    ipaddress.ip_network("192.0.2.0/24"),
+    ipaddress.ip_network("198.51.100.0/24"),
+    ipaddress.ip_network("203.0.113.0/24"),
+)
+_WILDCARD_BINDS = {"", "0", "0.0.0.0", "::"}
 _TOKEN_HEADER = "x-api-key"
 _REQUEST_ID_HEADER = "X-Request-Id"
 _REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,96}$")
@@ -119,7 +134,23 @@ def _is_tailscale_ip(addr: IPAddress) -> bool:
 
 
 def _is_safe_private_ip(addr: IPAddress) -> bool:
-    return bool(addr.is_loopback or addr.is_private or _is_tailscale_ip(addr))
+    if addr.is_unspecified or addr.is_link_local or addr.is_multicast or addr.is_reserved:
+        return False
+    if addr.version == 4:
+        return bool(
+            addr.is_loopback
+            or _is_tailscale_ip(addr)
+            or any(addr in network for network in _RFC1918_V4)
+        )
+    return bool(addr.is_loopback or addr in _ULA_V6 or _is_tailscale_ip(addr))
+
+
+def _is_forbidden_bind_ip(addr: IPAddress) -> bool:
+    if addr.is_unspecified or addr.is_link_local or addr.is_multicast or addr.is_reserved:
+        return True
+    if addr.version == 4 and any(addr in network for network in _DOCUMENTATION_V4):
+        return True
+    return False
 
 
 def _resolve_bind_ips(
@@ -187,6 +218,7 @@ def validate_bind_safety(
     host: str,
     *,
     allow_public_bind: bool = False,
+    allow_unauthenticated_loopback: bool = False,
     auth_token_env: Optional[str] = DEFAULT_AUTH_TOKEN_ENV,
     env: Optional[Mapping[str, str]] = None,
     resolver: Optional[Callable[..., Sequence[Any]]] = None,
@@ -199,24 +231,33 @@ def validate_bind_safety(
     - Tailscale IPv4 CGNAT addresses in ``100.64.0.0/10``
 
     Public and wildcard binds are refused unless ``allow_public_bind`` is true.
-    Any non-loopback bind, including private and Tailscale binds, requires an
-    auth token environment variable whose value is set.
+    All binds require an auth token by default. Loopback can opt out only with
+    ``allow_unauthenticated_loopback`` for explicit local development tests.
     """
     effective_env = os.environ if env is None else env
     addrs = _resolve_bind_ips(host, resolver=resolver)
 
-    if host in _WILDCARD_BINDS:
+    wildcard_resolved = bool(addrs and any(addr.is_unspecified for addr in addrs))
+    if host in _WILDCARD_BINDS or wildcard_resolved:
         loopback = False
         private = False
         tailscale = False
         public = True
-        addresses: tuple[str, ...] = (host,)
+        addresses: tuple[str, ...] = (host,) if host in _WILDCARD_BINDS else tuple(str(addr) for addr in addrs)
     else:
         loopback = all(addr.is_loopback for addr in addrs)
         private = all(addr.is_private for addr in addrs)
         tailscale = any(_is_tailscale_ip(addr) for addr in addrs)
         public = any(not _is_safe_private_ip(addr) for addr in addrs)
         addresses = tuple(str(addr) for addr in addrs)
+
+    if not (host in _WILDCARD_BINDS or wildcard_resolved) and any(_is_forbidden_bind_ip(addr) for addr in addrs):
+        raise BindSafetyError(
+            "unsafe_bind_address",
+            "refusing to bind controller to a link-local, reserved, multicast, or documentation address",
+            status=400,
+            details={"host": host, "addresses": [str(addr) for addr in addrs]},
+        )
 
     if public and not allow_public_bind:
         raise BindSafetyError(
@@ -226,11 +267,11 @@ def validate_bind_safety(
             details={"host": host, "addresses": list(addresses)},
         )
 
-    requires_auth = not loopback
+    requires_auth = not (loopback and allow_unauthenticated_loopback)
     if requires_auth and not _env_has_token(auth_token_env, effective_env):
         raise BindSafetyError(
             "auth_token_required",
-            "non-loopback controller binds require an auth token environment variable",
+            "controller binds require an auth token environment variable",
             status=400,
             details={
                 "host": host,
@@ -297,6 +338,13 @@ def _safe_request_id(value: Optional[str]) -> str:
     return uuid.uuid4().hex
 
 
+def _content_type_is_json(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    media_type = value.split(";", 1)[0].strip().lower()
+    return media_type == "application/json" or media_type.endswith("+json")
+
+
 def _error_body(
     code: str,
     message: str,
@@ -344,6 +392,7 @@ def make_handler(
     auth_token: Optional[str] = None,
     audit_logger: Optional[AuditLogger] = None,
     max_body_bytes: int = _MAX_BODY_BYTES,
+    read_timeout_seconds: float = _READ_TIMEOUT_SECONDS,
 ):
     """Build a request handler class for controller tests or ``make_server``."""
 
@@ -353,6 +402,11 @@ def make_handler(
         protocol_version = "HTTP/1.1"
         server_version = "anvil-controller"
         sys_version = ""
+
+        def setup(self) -> None:
+            super().setup()
+            if read_timeout_seconds > 0:
+                self.connection.settimeout(read_timeout_seconds)
 
         def log_message(self, format: str, *args: Any) -> None:
             return
@@ -464,6 +518,20 @@ def make_handler(
             raw_length = self.headers.get("Content-Length")
             if raw_length is None:
                 return {}
+            if len(self.headers.get_all("Content-Length") or []) != 1:
+                self.close_connection = True
+                raise ControllerError(
+                    "bad_content_length",
+                    "exactly one Content-Length header is required",
+                    status=400,
+                )
+            if not _content_type_is_json(self.headers.get("Content-Type")):
+                self.close_connection = True
+                raise ControllerError(
+                    "unsupported_media_type",
+                    "POST request bodies must use Content-Type: application/json",
+                    status=415,
+                )
             if not raw_length.isdigit():
                 self.close_connection = True
                 raise ControllerError(
@@ -482,7 +550,50 @@ def make_handler(
                 )
             if length == 0:
                 return {}
-            raw = self.rfile.read(length)
+            chunks: list[bytes] = []
+            remaining = length
+            deadline = (
+                time.perf_counter() + read_timeout_seconds
+                if read_timeout_seconds > 0
+                else None
+            )
+            try:
+                while remaining > 0:
+                    if deadline is not None:
+                        seconds_left = deadline - time.perf_counter()
+                        if seconds_left <= 0:
+                            self.close_connection = True
+                            raise ControllerError(
+                                "request_timeout",
+                                "request body read timed out",
+                                status=408,
+                                details={"read_timeout_seconds": read_timeout_seconds},
+                            )
+                        self.connection.settimeout(seconds_left)
+                    reader = self.rfile.read1 if hasattr(self.rfile, "read1") else self.rfile.read
+                    chunk = reader(min(remaining, 65536))
+                    if not chunk:
+                        self.close_connection = True
+                        raise ControllerError(
+                            "incomplete_body",
+                            "request body ended before Content-Length bytes were received",
+                            status=400,
+                            details={"expected_body_bytes": length, "received_body_bytes": length - remaining},
+                        )
+                    chunks.append(chunk)
+                    remaining -= len(chunk)
+            except socket.timeout as exc:
+                self.close_connection = True
+                raise ControllerError(
+                    "request_timeout",
+                    "request body read timed out",
+                    status=408,
+                    details={"read_timeout_seconds": read_timeout_seconds},
+                ) from exc
+            finally:
+                if read_timeout_seconds > 0:
+                    self.connection.settimeout(read_timeout_seconds)
+            raw = b"".join(chunks)
             try:
                 obj = json.loads(raw.decode("utf-8"))
             except (UnicodeDecodeError, ValueError) as exc:
@@ -504,6 +615,12 @@ def make_handler(
             if "id" not in body:
                 return None
             req_id = body.get("id")
+            if req_id is None:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32600, "message": "id must not be null"},
+                }
             method = body.get("method")
             if method == "initialize":
                 result = {
@@ -514,7 +631,9 @@ def make_handler(
             elif method == "tools/list":
                 result = {"tools": list_tools_func()}
             elif method == "tools/call":
-                params = body.get("params") or {}
+                params = body.get("params", {})
+                if params is None:
+                    params = {}
                 if not isinstance(params, dict):
                     return {
                         "jsonrpc": "2.0",
@@ -524,9 +643,38 @@ def make_handler(
                             "message": "params must be an object",
                         },
                     }
+                tool_name = params.get("name")
+                available = {
+                    tool.get("name")
+                    for tool in list_tools_func()
+                    if isinstance(tool, dict) and isinstance(tool.get("name"), str)
+                }
+                if not isinstance(tool_name, str) or tool_name not in available:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {
+                            "code": -32602,
+                            "message": "unknown tool %r" % tool_name,
+                            "data": {"code": "unknown_tool"},
+                        },
+                    }
+                arguments = params.get("arguments", {})
+                if arguments is None:
+                    arguments = {}
+                if not isinstance(arguments, dict):
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {
+                            "code": -32602,
+                            "message": "tool arguments must be an object",
+                            "data": {"code": "bad_arguments"},
+                        },
+                    }
                 result = _tool_result(call_tool_func(
-                    params.get("name"),
-                    params.get("arguments") or {},
+                    tool_name,
+                    arguments,
                 ))
             elif method == "notifications/initialized":
                 return None
@@ -656,9 +804,13 @@ def make_handler(
                 if route in ("/", "/mcp"):
                     body = self._read_json_body(request_id=request_id)
                     if "id" in body and body.get("method") == "tools/call":
-                        params = body.get("params") or {}
+                        params = body.get("params", {})
+                        if params is None:
+                            params = {}
                         if isinstance(params, dict):
-                            raw_arguments = params.get("arguments") or {}
+                            raw_arguments = params.get("arguments", {})
+                            if raw_arguments is None:
+                                raw_arguments = {}
                             if isinstance(raw_arguments, dict):
                                 tool = params.get("name") if isinstance(params.get("name"), str) else None
                                 if isinstance(raw_arguments.get("dry_run"), bool):
@@ -667,7 +819,25 @@ def make_handler(
                                     confirm = raw_arguments["confirm"]
                     response = self._jsonrpc_response(body)
                     status = 200
-                    ok = response is None or "error" not in response
+                    ok = response is None
+                    if response is not None:
+                        if "error" in response:
+                            ok = False
+                            error = response.get("error")
+                            data = error.get("data") if isinstance(error, dict) else None
+                            if isinstance(data, dict) and isinstance(data.get("code"), str):
+                                error_code = data["code"]
+                            elif isinstance(error, dict) and isinstance(error.get("message"), str):
+                                error_code = error["message"]
+                        else:
+                            ok = True
+                            result = response.get("result")
+                            structured = result.get("structuredContent") if isinstance(result, dict) else None
+                            if isinstance(structured, dict) and structured.get("ok") is False:
+                                ok = False
+                                err = structured.get("error")
+                                if isinstance(err, dict) and isinstance(err.get("code"), str):
+                                    error_code = err["code"]
                     if response is not None:
                         self._send_json(status, response, request_id=request_id)
                     else:
@@ -806,12 +976,14 @@ def make_server(
     *,
     auth_token_env: Optional[str] = DEFAULT_AUTH_TOKEN_ENV,
     allow_public_bind: bool = False,
+    allow_unauthenticated_loopback: bool = False,
     env: Optional[Mapping[str, str]] = None,
     server_class: Optional[type[ThreadingHTTPServer]] = None,
     list_tools_func: ListToolsFunc = mcp.list_tools,
     call_tool_func: CallToolFunc = mcp.call_tool,
     audit_logger: Optional[AuditLogger] = None,
     max_body_bytes: int = _MAX_BODY_BYTES,
+    read_timeout_seconds: float = _READ_TIMEOUT_SECONDS,
     resolver: Optional[Callable[..., Sequence[Any]]] = None,
 ) -> ThreadingHTTPServer:
     """Return an unstarted controller server.
@@ -824,6 +996,7 @@ def make_server(
     assessment = validate_bind_safety(
         host,
         allow_public_bind=allow_public_bind,
+        allow_unauthenticated_loopback=allow_unauthenticated_loopback,
         auth_token_env=auth_token_env,
         env=effective_env,
         resolver=resolver,
@@ -839,6 +1012,7 @@ def make_server(
         auth_token=token,
         audit_logger=audit_logger,
         max_body_bytes=max_body_bytes,
+        read_timeout_seconds=read_timeout_seconds,
     )
     cls = server_class or _server_class_for_host(host)
     httpd = cls((host, port), handler)
@@ -854,6 +1028,7 @@ def serve(
     port: int = DEFAULT_PORT,
     auth_token_env: Optional[str] = DEFAULT_AUTH_TOKEN_ENV,
     allow_public_bind: bool = False,
+    allow_unauthenticated_loopback: bool = False,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
     httpd = server_factory(
@@ -861,6 +1036,7 @@ def serve(
         port=port,
         auth_token_env=auth_token_env,
         allow_public_bind=allow_public_bind,
+        allow_unauthenticated_loopback=allow_unauthenticated_loopback,
     )
     actual_host, actual_port = httpd.server_address[:2]
     print(
@@ -895,6 +1071,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="allow a public or wildcard bind; still requires --auth-token-env to be set",
     )
+    serve_parser.add_argument(
+        "--allow-unauthenticated-loopback",
+        action="store_true",
+        help="development only: allow loopback binds without ANVIL_CONTROLLER_TOKEN",
+    )
     return parser
 
 
@@ -912,6 +1093,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 port=args.port,
                 auth_token_env=args.auth_token_env,
                 allow_public_bind=args.allow_public_bind,
+                allow_unauthenticated_loopback=args.allow_unauthenticated_loopback,
             )
         except ControllerError as exc:
             print(

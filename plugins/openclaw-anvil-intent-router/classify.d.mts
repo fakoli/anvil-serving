@@ -2,8 +2,9 @@
 // Lets index.ts import a typed `classify` while the implementation stays plain
 // ESM so `node make-fixture.mjs` runs without transpilation.
 
-// The CLOSED preset enum = anvil's wire vocabulary. Must match the router's
-// anvil_serving.router.intent.PRESETS ids and validate.py's WIRE_FORM_RE.
+// The CLOSED preset enum = the automatic OpenClaw classifier vocabulary.
+// The router may expose additional manual presets such as "chat-fast"; this
+// plugin does not currently emit them automatically.
 export type AnvilPreset = "planning" | "quick-edit" | "review" | "chat" | "long-context";
 
 export declare const PRESETS: readonly AnvilPreset[];

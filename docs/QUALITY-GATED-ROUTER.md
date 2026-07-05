@@ -137,7 +137,7 @@ flowchart TD
 Key reads:
 - **Solid green (local tiers):** the default path — a `deny`-free, quality-gated request never leaves the GPU box.
 - **Dashed blue arrow → cloud:** only drawn when `[router].metered_cloud` is set and an API key is present; absent from `configs/example.toml`.
-- **Amber (503 / escape):** the keyless-default path — anvil exhausts local, returns 503 with no local tokens committed; the upstream gateway (e.g. OpenClaw) treats this as a transport failure and re-runs on its native flat-rate subscription.
+- **Amber (503 / escape):** the keyless-default path — anvil exhausts local and returns 503 with no local tokens committed. Gateways may treat this as a transport failure and re-run on a native subscription provider, but only when their failover is supported/configured; OpenClaw has the `providerOverride:"anvil"` caveat documented below.
 
 ### `POST /v1/route` decision flow
 
@@ -260,11 +260,12 @@ calibration. (claude-code-router is the production existence proof for Tier 0+1.
 **Client-side classification (the hook-plugin pattern).** A harness with an in-process
 model-resolution hook can declare per-request intent *itself*, escaping the session-coarse limit
 without any wire-schema change. **OpenClaw** is the live example: its `before_model_resolve` hook
-runs per turn, so a small client plugin classifies the turn and emits an anvil preset id as the
-`modelOverride`. The router then receives a *declared* per-request intent (verbatim in the model
-field) and needs no new field — it just needs a stable preset vocabulary. This is the preferred
-shape where available: push Tier-0 classification to the client (cheaper, better-informed; it sees
-full turn context) and keep the router a clean executor. Closed harnesses (Claude Code, Codex) lack
+fires before the model-attempt loop with the prompt and attachment metadata, so a small client plugin
+classifies the run turn and emits an anvil preset id as the `modelOverride`. The router then receives
+a *declared* request intent (verbatim in the model field) and needs no new field — it just needs a
+stable preset vocabulary. This is the preferred shape where available: push Tier-0 classification to
+the client (cheaper, better-informed about the gateway event payload) and keep the router a clean
+executor. Closed harnesses (Claude Code, Codex) lack
 the hook, so the router's own Tier-0 classifier remains their floor.
 
 ## 7. Verify-and-fallback: two modes (contract C4)
@@ -293,7 +294,7 @@ sequenceDiagram
         R-->>H: local response (200)
     else verify fails or all candidates exhausted
         R-->>H: exhaustion_status (503 by default) — no partial local tokens
-        Note over H: gateway transport failover re-routes<br/>on native subscription provider
+        Note over H: supported gateway transport failover may re-route<br/>on native subscription provider
     end
 ```
 
@@ -305,10 +306,11 @@ gateway's transport-failover trigger). The **commit window** guarantees no parti
 reach the harness before the error response — the harness sees an unambiguous availability signal,
 not a corrupt partial response.
 
-For a gateway like OpenClaw that fronts the harness, the 503 triggers native transport failover
-("overloaded" category), which re-runs the request on the gateway's native subscription provider —
-the flat-rate subscription the operator already holds. anvil holds **no cloud key**; the metered
-surface is absent from the default path. **$0 metered API billing.**
+For gateways with supported transport failover, the 503 can re-run the request on the gateway's
+native subscription provider — the flat-rate subscription the operator already holds. OpenClaw has an
+important exception: when a plugin-pinned `providerOverride:"anvil"` reached anvil first, the
+fallback walk can remain pinned to that provider instead of escaping to native. anvil holds **no cloud
+key**; the metered surface is absent from the default path. **$0 metered API billing.**
 
 > **Live-validation finding (T005 — resolved with an OpenClaw-side defect):** anvil's
 > exhaustion-503 does trip OpenClaw's "overloaded" transport-failover category, but a turn whose
@@ -450,8 +452,9 @@ routing — Cursor mediates through its own backend (Verify-gated), and Amp/Devi
 at a custom endpoint at all. anvil-serving fits clients that allow a custom base URL **and** a
 free-form model string.
 
-**OpenClaw is the one in-scope client that crosses into per-request routing** (open-source TS Plugin
-SDK; its `before_model_resolve` hook runs *per turn* and can set `modelOverride`/`providerOverride`).
+**OpenClaw is the one in-scope client that crosses into gateway-side request routing** (open-source
+TS Plugin SDK; its `before_model_resolve` hook sees prompt plus attachment metadata before the model
+attempt loop and can set `modelOverride`/`providerOverride`).
 **Hermes Agent** (open-source MIT) is a clean, *rich* Tier-1 consumer — notably more model slots than
 Claude Code — but its hooks can't alter the outgoing request, so it stays Tier-1 short of a fork
 (OpenClaw/Hermes customization findings in `fakoli/anvil-serving-notes`).

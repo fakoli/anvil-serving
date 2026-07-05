@@ -9,12 +9,13 @@
 // classify fails generation loudly), and writes one decision-log line per turn
 // in the exact shape index.ts emits (T008 routing split):
 //   { synthetic, ts, runId, sessionKey, source:"openclaw", intent, destination,
-//     providerOverride, modelOverride, authoritative, prompt_chars }
+//     providerOverride, modelOverride, authoritative, routeEndpointConfigured,
+//     routingSource, prompt_chars }
 //
 // T008 split (mirrors index.ts): a CLOUD-preferred intent (default: planning)
-// routes to the native provider -> { } (no override) -> destination:"native",
-// providerOverride:null, modelOverride:null. A LOCAL intent routes to anvil ->
-// { providerOverride:"anvil", modelOverride:"<bare preset>" } -> destination:"anvil".
+// routes to the configured native provider/model -> destination:"native".
+// A LOCAL intent routes to anvil -> { providerOverride:"anvil",
+// modelOverride:"<bare preset>" } -> destination:"anvil".
 // `authoritative` is always false here (the fixture never calls /v1/route).
 //
 // Run:  node plugins/openclaw-anvil-intent-router/make-fixture.mjs
@@ -27,7 +28,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { classify, PRESETS } from "./classify.mjs";
-import { makeRoutingDecision, getCloudClasses } from "./route.mjs";
+import { makeRoutingDecision, DEFAULT_CLOUD_CLASSES } from "./route.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "decision_log.fixture.jsonl");
@@ -125,9 +126,10 @@ const TURNS = [
 const BASE_MS = Date.parse("2026-06-30T17:00:00.000Z");
 const STEP_MS = 47_000;
 
-// Resolve the cloud-class set ONCE (same call index.ts makes per fire). Reads
-// ANVIL_CLOUD_CLASSES if set; otherwise the default {"planning"}.
-const CLOUD_CLASSES = getCloudClasses();
+// Use the default cloud-preferred preset set directly. The committed fixture is
+// deterministic and must not change because a developer has ANVIL_CLOUD_CLASSES
+// in their shell while regenerating it.
+const CLOUD_CLASSES = new Set(DEFAULT_CLOUD_CLASSES);
 
 const lines = [];
 const failures = [];
@@ -141,7 +143,7 @@ TURNS.forEach((turn, i) => {
   }
   // T008 routing split — the SAME decision index.ts makes (route.mjs), so the
   // fixture is provably the plugin's real output: cloud-preferred intents ->
-  // {} (native); local intents -> {providerOverride:"anvil", modelOverride:intent}.
+  // explicit native route; local intents -> {providerOverride:"anvil", modelOverride:intent}.
   const routeOverride = makeRoutingDecision(intent, CLOUD_CLASSES);
   const destination =
     routeOverride.providerOverride === "anvil" ? "anvil" : "native";
@@ -156,6 +158,8 @@ TURNS.forEach((turn, i) => {
     providerOverride: routeOverride.providerOverride ?? null,
     modelOverride: routeOverride.modelOverride ?? null,
     authoritative: false,
+    routeEndpointConfigured: false,
+    routingSource: "client-side",
     prompt_chars: turn.prompt.length,
   };
   lines.push(JSON.stringify(record));

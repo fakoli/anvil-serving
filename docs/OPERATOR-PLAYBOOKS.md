@@ -331,7 +331,8 @@ a restart.
    Use the router base URL reachable from the OpenClaw gateway. If the gateway
    is remote, that may be a private host address rather than `127.0.0.1`.
 
-2. Push to a remote gateway only with an explicit target.
+2. Prefer gateway-local apply when possible. If the gateway cannot yet pull/apply the
+   rendered config itself, push to a remote gateway only with an explicit confirmed target.
 
    ```bash
    anvil-serving harness sync openclaw \
@@ -341,8 +342,10 @@ a restart.
      --restart
    ```
 
-   The tool merges Anvil-owned OpenClaw keys by default and takes a backup. Use
-   `--overwrite` only when the operator explicitly requested replacement.
+   The SSH push is the current explicit fallback described in ADR-0014, not the
+   long-term default contract. The tool merges Anvil-owned OpenClaw keys by default
+   and takes a backup. Use `--overwrite` only when the operator explicitly requested
+   replacement.
 
 3. Do not pass `--skills` as part of the deterministic workflow; the current CLI
    documents that skills/agent-config sync is not implemented yet.
