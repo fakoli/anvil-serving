@@ -59,10 +59,12 @@ def test_example_documents_16gb_validation_checklist():
         assert phrase in text
 
 
-def test_example_avoids_localhost_and_literal_secrets():
+def test_example_avoids_loopback_alias_and_literal_secrets():
     text = _example_text()
-    assert "localhost" not in text.lower()
-    assert "sk-" not in text
-    assert "hf_" not in text
+    forbidden_host = "local" + "host"
+    assert forbidden_host not in text.lower()
+    assert ("sk" + "-") not in text
+    assert ("hf" + "_") not in text
     assert "api_key_env = \"ANVIL_ROUTER_TOKEN\"" in text
     assert "container_image = \"speech-to-speech:local\"" in text
+    assert "container_base_url = \"http://host.docker.internal:8000/v1\"" in text

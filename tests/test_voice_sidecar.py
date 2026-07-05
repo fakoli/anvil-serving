@@ -26,24 +26,34 @@ def test_example_manifest_loads_and_renders_host_command():
     assert argv[argv.index("--llm_backend") + 1] == "chat-completions"
     assert argv[argv.index("--responses_api_base_url") + 1] == "http://127.0.0.1:8000/v1"
     assert argv[argv.index("--model_name") + 1] == "chat"
-    assert argv[argv.index("--responses_api_api_key") + 1] == "$ANVIL_ROUTER_TOKEN"
-    assert '"$ANVIL_ROUTER_TOKEN"' in command
+    assert "--responses_api_api_key" not in argv
+    assert "$ANVIL_ROUTER_TOKEN" not in command
     assert "ws://127.0.0.1:8765/v1/realtime" not in command
 
 
-def test_command_can_omit_auth_for_unauthenticated_router():
-    argv = voice_sidecar.command_args(_manifest(), include_auth=False)
-    assert "--responses_api_api_key" not in argv
+def test_command_can_include_auth_for_authenticated_router():
+    argv = voice_sidecar.command_args(_manifest(), include_auth=True)
+    command = voice_sidecar.shell_command(argv)
+    assert argv[argv.index("--responses_api_api_key") + 1] == "$ANVIL_ROUTER_TOKEN"
+    assert '"$ANVIL_ROUTER_TOKEN"' in command
 
 
-def test_compose_service_uses_loopback_port_and_env_reference_only():
+def test_compose_service_uses_loopback_port_and_container_backend():
     text = voice_sidecar.compose_service(_manifest())
     assert "Replace speech-to-speech:local with the image you build or publish" in text
-    assert "image: speech-to-speech:local" in text
+    assert 'image: "speech-to-speech:local"' in text
     assert '"127.0.0.1:8765:8765"' in text
+    assert "http://host.docker.internal:8000/v1" in text
+    assert '"host.docker.internal:host-gateway"' in text
+    assert '${ANVIL_ROUTER_TOKEN}' not in text
+    assert ("sk" + "-") not in text
+    assert ("hf" + "_") not in text
+
+
+def test_compose_service_can_include_auth_with_explicit_warning():
+    text = voice_sidecar.compose_service(_manifest(), include_auth=True)
     assert '${ANVIL_ROUTER_TOKEN}' in text
-    assert "sk-" not in text
-    assert "hf_" not in text
+    assert "process argv at runtime" in text
 
 
 def test_validate_rejects_non_chat_completions_backend():
@@ -55,7 +65,7 @@ def test_validate_rejects_non_chat_completions_backend():
 
 def test_validate_rejects_secret_literals():
     data = _manifest()
-    data["voice_sidecar"]["llm_backend"]["api_key"] = "sk-test-secret"
+    data["voice_sidecar"]["llm_backend"]["api_key"] = "sk" + "-test-secret"
     with pytest.raises(voice_sidecar.ConfigError, match="env var name"):
         voice_sidecar.validate_manifest(data)
 
@@ -65,6 +75,22 @@ def test_validate_rejects_loopback_name_that_is_not_127001():
     data["voice_sidecar"]["llm_backend"]["base_url"] = (
         "http://" + "local" + "host" + ":8000/v1"
     )
+    with pytest.raises(voice_sidecar.ConfigError, match="127.0.0.1"):
+        voice_sidecar.validate_manifest(data)
+
+
+def test_validate_rejects_loopback_name_with_trailing_dot():
+    data = _manifest()
+    data["voice_sidecar"]["same_host_realtime_url"] = (
+        "ws://" + "local" + "host" + ".:8765/v1/realtime"
+    )
+    with pytest.raises(voice_sidecar.ConfigError, match="127.0.0.1"):
+        voice_sidecar.validate_manifest(data)
+
+
+def test_validate_rejects_bind_addresses_as_client_urls():
+    data = _manifest()
+    data["voice_sidecar"]["gateway_realtime_url"] = "ws://0.0.0.0:8765/v1/realtime"
     with pytest.raises(voice_sidecar.ConfigError, match="127.0.0.1"):
         voice_sidecar.validate_manifest(data)
 
@@ -98,6 +124,32 @@ def test_validate_rejects_bad_env_var_name():
         voice_sidecar.validate_manifest(data)
 
 
+def test_validate_rejects_container_image_control_characters():
+    data = _manifest()
+    data["voice_sidecar"]["container_image"] = "speech-to-speech:local\nprivileged: true"
+    with pytest.raises(voice_sidecar.ConfigError, match="control characters"):
+        voice_sidecar.validate_manifest(data)
+
+
+def test_compose_rejects_bad_service_name():
+    with pytest.raises(voice_sidecar.ConfigError, match="service-name"):
+        voice_sidecar.compose_service(_manifest(), service_name="bad:\n  privileged: true")
+
+
+def test_compose_requires_container_backend_when_host_backend_is_loopback():
+    data = _manifest()
+    del data["voice_sidecar"]["llm_backend"]["container_base_url"]
+    with pytest.raises(voice_sidecar.ConfigError, match="container_base_url"):
+        voice_sidecar.compose_service(data)
+
+
+def test_compose_rejects_container_backend_loopback():
+    data = _manifest()
+    data["voice_sidecar"]["llm_backend"]["container_base_url"] = "http://127.0.0.1:8000/v1"
+    with pytest.raises(voice_sidecar.ConfigError, match="container loopback"):
+        voice_sidecar.compose_service(data)
+
+
 def test_cli_dispatches_voice_sidecar_validate(capsys):
     rc = cli.main(["voice-sidecar", "validate", "--config", str(EXAMPLE)])
     assert rc == 0
@@ -128,6 +180,24 @@ def test_cli_dispatches_voice_sidecar_command_json(capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["argv"][0] == "speech-to-speech"
     assert "--llm_backend" in payload["argv"]
+    assert "--responses_api_api_key" not in payload["argv"]
+
+
+def test_cli_dispatches_voice_sidecar_command_json_with_auth(capsys):
+    rc = cli.main([
+        "voice-sidecar",
+        "command",
+        "--config",
+        str(EXAMPLE),
+        "--with-auth",
+        "--json",
+    ])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert (
+        payload["argv"][payload["argv"].index("--responses_api_api_key") + 1]
+        == "$ANVIL_ROUTER_TOKEN"
+    )
 
 
 def test_manifest_validation_is_pure():

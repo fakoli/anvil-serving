@@ -56,9 +56,15 @@ anvil-serving voice-sidecar command \
   --config examples/huggingface-speech-to-speech/openclaw-gateway.example.toml
 ```
 
-Add `--no-auth` when your anvil router uses the unauthenticated local-only default.
-
 If the anvil router is token-authenticated:
+
+```bash
+anvil-serving voice-sidecar command \
+  --config examples/huggingface-speech-to-speech/openclaw-gateway.example.toml \
+  --with-auth
+```
+
+That renders the same argument shape as:
 
 ```bash
 speech-to-speech \
@@ -74,7 +80,10 @@ speech-to-speech \
 ```
 
 The API key is only the router bearer token in this setup. It is not a cloud provider key unless
-your anvil config explicitly opts into a metered cloud tier.
+your anvil config explicitly opts into a metered cloud tier. Hugging Face `speech-to-speech` accepts
+this token as a command argument today; `--with-auth` expands the env var into process argv at
+runtime, so use it only on private hosts where process listings, shell history, and Docker metadata
+are protected. Prefer the unauthenticated loopback default for single-host development.
 
 For a containerized sidecar, render a Docker Compose service skeleton and replace
 `speech-to-speech:local` with the image you build or publish for the Hugging Face runtime:
@@ -84,8 +93,16 @@ anvil-serving voice-sidecar compose \
   --config examples/huggingface-speech-to-speech/openclaw-gateway.example.toml
 ```
 
-The generated compose service keeps the Realtime port loopback-published and references
-`ANVIL_ROUTER_TOKEN` by environment variable name only.
+The generated compose service keeps the Realtime port loopback-published. Host commands use
+`base_url = "http://127.0.0.1:8000/v1"`; the compose renderer uses
+`container_base_url = "http://host.docker.internal:8000/v1"` so the sidecar container reaches the
+host router instead of its own loopback interface. Replace that value with a Docker service DNS name
+or private/tailnet host if your router runs elsewhere.
+
+Add `--with-auth` to `voice-sidecar compose` only when the sidecar container must call an
+authenticated router. The generated compose file then passes `ANVIL_ROUTER_TOKEN` into the container
+and expands it into the `speech-to-speech` process argv, with the same metadata-exposure caveat as
+the host command.
 
 ## 3. Connect a Realtime client
 
