@@ -241,6 +241,23 @@ def cmd_restart_openclaw(gateway_host=None, gateway_user=None, _run=subprocess.r
     return _restart_openclaw_gateway(gateway_host, gateway_user, _run=_run)
 
 
+def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN", _load=None):
+    """Return the rendered OpenClaw sync payload without writing it anywhere."""
+    if _load is None:
+        from .router.config import load as _load
+    config = _load(config_path)
+    provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
+    models = provider["models"]["providers"]["anvil"]["models"]
+    return {
+        "provider": provider,
+        "model_count": len(models),
+        "model_ids": [m["id"] for m in models],
+        "plugin_id": _PLUGIN_ID,
+        "base_url": provider["models"]["providers"]["anvil"]["baseUrl"],
+        "api_key": provider["models"]["providers"]["anvil"]["apiKey"],
+    }
+
+
 def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,
                       gateway_host=None, gateway_user=None,
                       gateway_path="~/.openclaw/openclaw.json", overwrite=False, restart=False,

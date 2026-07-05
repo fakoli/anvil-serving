@@ -88,8 +88,11 @@ That worked but wasted a round-trip.  T008 short-circuits that path.
    provider resolves normally via `agents.defaults.model.primary`).
 4. Otherwise → returns `{ providerOverride: "anvil", modelOverride: "<preset>" }`.
 
-The decision log now includes a `destination` field (`"anvil"` or `"native"`)
-and an `authoritative` flag (true when the `/v1/route` mode is active).
+The decision log includes a `destination` field (`"anvil"` or `"native"`), an
+`authoritative` flag, and a `routingSource` field. `authoritative` is true only
+when `/v1/route` returns a valid tier; if the configured route endpoint is
+unreachable, unauthorized, or malformed, the plugin falls back to the client-side
+classifier and logs `routingSource: "client-side-fallback"`.
 
 ### Cloud-class set
 
@@ -97,15 +100,18 @@ and an `authoritative` flag (true when the `/v1/route` mode is active).
 Default: { "planning" }
 ```
 
-Extend via the `ANVIL_CLOUD_CLASSES` environment variable (comma-separated
-preset names; replaces the default entirely):
+Configure via `api.pluginConfig.cloudClasses` (the `cloudClasses` field in
+`openclaw.plugin.json`'s config schema) or via the `ANVIL_CLOUD_CLASSES`
+environment variable. The env var takes precedence when it is non-empty.
+Either source replaces the default set entirely:
 
 ```bash
 export ANVIL_CLOUD_CLASSES="planning,long-context"
 ```
 
-The `configSchema.cloudClasses` field in `openclaw.plugin.json` documents the
-same knob for the gateway's plugin config UI (the env var takes precedence).
+Empty / whitespace-only values are treated as unset and fall through to the
+next source, so an empty env var does not accidentally clear the configured
+plugin set or the default.
 
 ### Native failover requirement (REQUIRED)
 
@@ -133,12 +139,25 @@ can fail silently if the native model is not in the catalog.
 
 ### Optional authoritative mode: POST /v1/route (T007)
 
-Set `ANVIL_ROUTE_ENDPOINT` to call anvil's `POST /v1/route` (T007) as the
-**authoritative** tier decision instead of the fast client-side heuristic:
+Set `api.pluginConfig.routeEndpoint` or `ANVIL_ROUTE_ENDPOINT` to call anvil's
+`POST /v1/route` (T007) as the **authoritative** tier decision instead of the
+fast client-side heuristic. The env var takes precedence when it is non-empty:
 
 ```bash
 export ANVIL_ROUTE_ENDPOINT="http://127.0.0.1:8000/v1/route"
 ```
+
+If the route endpoint is protected by the router front-door token, provide the
+token by env var name, not by raw value:
+
+```bash
+export ANVIL_ROUTE_AUTH_ENV="ANVIL_ROUTER_TOKEN"
+export ANVIL_ROUTER_TOKEN="..."
+```
+
+`api.pluginConfig.routeAuthEnv` provides the same env-var-name setting when
+`ANVIL_ROUTE_AUTH_ENV` is unset. The plugin sends both `Authorization: Bearer`
+and `x-api-key` headers to match anvil-serving's accepted auth forms.
 
 Trade-off:
 - **Pro:** uses the router's full quality profile + config; catches edge cases
@@ -147,7 +166,7 @@ Trade-off:
   by 30 ms default timeout). Falls back to client-side classify on any
   error/timeout — no run is ever broken.
 
-**Default: client-side classify (ANVIL_ROUTE_ENDPOINT unset).** Use the
+**Default: client-side classify (no route endpoint configured).** Use the
 authoritative mode only when anvil is co-located (loopback or LAN) and the
 extra classification accuracy outweighs the latency.
 
@@ -240,8 +259,13 @@ only.
    ```
 5. **Restart the gateway:** `openclaw gateway restart`.
 6. **(Optional) set environment variables:**
-   - `ANVIL_CLOUD_CLASSES` — comma-separated preset names to route to native.
-   - `ANVIL_ROUTE_ENDPOINT` — full URL of anvil's `/v1/route` (authoritative mode).
+   - `ANVIL_CLOUD_CLASSES` — comma-separated preset names to route to native;
+     overrides `api.pluginConfig.cloudClasses`.
+  - `ANVIL_ROUTE_ENDPOINT` — full URL of anvil's `/v1/route` (authoritative mode);
+     overrides `api.pluginConfig.routeEndpoint`.
+   - `ANVIL_ROUTE_AUTH_ENV` — env var name containing the optional `/v1/route`
+     auth token, for example `ANVIL_ROUTER_TOKEN`; overrides
+     `api.pluginConfig.routeAuthEnv`.
    - `ANVIL_DECISION_LOG` — absolute path for the decision log (defaults to
      `./decision_log.jsonl` relative to the gateway's CWD).
 
@@ -261,6 +285,8 @@ Tests cover:
 - `planning` prompt → `planning` preset → `{}` (native, no anvil contact)
 - `quick-edit` / `review` / `chat` prompts → correct wire form `{ providerOverride:"anvil", modelOverride:"<preset>" }`
 - `ANVIL_CLOUD_CLASSES` env var override
+- `api.pluginConfig.cloudClasses` / `api.pluginConfig.routeEndpoint` fallback
+  behavior, with env-var precedence
 - Wire-form assertion: `modelOverride` is bare preset, never `"anvil/<preset>"`
 
 ## LIVE validation (PENDING — T008)
