@@ -34,11 +34,10 @@ response" instead of a graceful handoff to their native subscription.
 — not just the first (primary) attempt — so the fallback walk's model strings get re-resolved
 against the same pinned provider rather than the provider named in each fallback entry.
 
-**Scope.** This affects every turn where `before_model_resolve` emits a `providerOverride` — i.e.
-every local-preferred-class turn under the current classify table (quick-edit, review, chat,
+**Scope.** This affects every turn where `before_model_resolve` emits `providerOverride:"anvil"` — i.e.
+every local-preferred preset turn under the current classify table (quick-edit, review, chat,
 long-context; the majority of traffic). It does **not** affect cloud-preferred turns (`planning` by
-default): those return `{}` (no override at all), so nothing sticks and OpenClaw's normal resolution
-runs.
+default): those route directly to the configured native provider/model and never touch anvil.
 
 ## Considered options
 
@@ -50,7 +49,7 @@ runs.
    source-confirmed evidence — the defect is in provider resolution across the attempt loop, not in
    which transport-error category is matched (the fallback DID fire; it just resolved wrong).
    Speculative, not grounded; rejected.
-3. **Stop the plugin from ever emitting `providerOverride` for local-preferred classes, i.e. drop
+3. **Stop the plugin from ever emitting `providerOverride:"anvil"` for local-preferred presets, i.e. drop
    T008's upfront split entirely and route everything through anvil's own Tier-0 classifier via a
    static `agents.defaults.model.primary: "anvil/chat"`.** Defeats the entire local-first design —
    nothing would ever route to anvil deliberately with tier fidelity. Rejected.
@@ -64,12 +63,12 @@ provider resolution, not anvil-serving's or the plugin's. Ship the following ins
 
 1. **Correct the previously-inaccurate "safety net" claims** in `plugins/openclaw-anvil-intent-router/`
    (`route.mjs`, `index.ts`, `README.md`) and `docs/OPENCLAW-INTEGRATION-SPEC.md` §0/§7 — the
-   keyless-503 → native-failover handoff is reliable ONLY for cloud-preferred classes (no
-   `providerOverride` emitted); it is NOT reliable once a `providerOverride` is in play.
-2. **Operator mitigation A — `ANVIL_CLOUD_CLASSES`.** Move a work-class whose local tier is known to
+   keyless-503 → native-failover handoff is reliable ONLY when the plugin does not route to anvil;
+   it is NOT reliable once `providerOverride:"anvil"` is in play.
+2. **Operator mitigation A — `ANVIL_CLOUD_CLASSES`.** Move a preset whose local tier is known to
    be flaky/exhausted into the cloud-preferred set (already-shipped T008 knob). Its turns never touch
    anvil at all, so there is nothing for the failover walk to inherit. Zero anvil-side config change;
-   trades away local-first routing for that class.
+   trades away local-first routing for that preset.
 3. **Operator mitigation B — anvil's own opt-in metered cloud tier (durable fix).** Per ADR-0001,
    enable `configs/example-with-cloud.toml` and add the at-risk work-classes to
    `[router].metered_cloud`. anvil's own `fallback.py` serve→verify→escalate ladder then escalates to
@@ -89,8 +88,8 @@ trustworthy when the plugin has not itself pinned a provider for the run.
 ## Consequences
 
 - **Local-only (keyless) operators using this plugin should not treat `agents.defaults.model.fallbacks`
-  as a reliable safety net** for local-preferred classes. They must pick mitigation A or B per
-  at-risk work-class, or accept that a local-unable condition on those classes can surface as a
+  as a reliable safety net** for local-preferred presets. They must pick mitigation A or B per
+  at-risk preset/work-class, or accept that a local-unable condition on those presets can surface as a
   failed turn rather than a graceful cloud handoff.
 - **Mitigation B is the recommended default for anyone who wants the keyless design's original
   promise (graceful cloud handoff on local-unable) to actually hold** — it moves the escalation

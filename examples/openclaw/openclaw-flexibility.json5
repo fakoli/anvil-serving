@@ -9,7 +9,7 @@
 //     `enable_thinking=false` set on the tier itself. So the old per-preset
 //     `agents.defaults.models["anvil/planning"|"anvil/long-context"].params...enable_thinking`
 //     overrides are now the router's job and are REMOVED here (leaving them is harmless-but-stale).
-//   - Presets (5) and contextWindow (131072 = heavy-local's window) are UNCHANGED — every preset can
+//   - Presets and contextWindow (131072 = heavy-local's window) are UNCHANGED — every preset can
 //     route to heavy, so 131072 is the largest routed window (contextWindow-clamp gotcha).
 //   - baseUrl/apiKey: the gateway is REMOTE from the router (Mini -> fakoli-dark), so this is NOT the
 //     loopback/no-auth case. Point at fakoli-dark's reachable address and pass the router token.
@@ -27,11 +27,12 @@
         apiKey: "${ANVIL_ROUTER_TOKEN}",     // the router's bearer token (required off-loopback)
         api: "openai-completions",
         models: [
-          { id: "planning",     name: "Anvil · Planning",     reasoning: false, input: ["text"],         contextWindow: 131072, maxTokens: 32000 },
-          { id: "quick-edit",   name: "Anvil · Quick Edit",   reasoning: false, input: ["text"],         contextWindow: 131072, maxTokens: 8192  },
-          { id: "review",       name: "Anvil · Review",       reasoning: false, input: ["text","image"], contextWindow: 131072, maxTokens: 16000 },
-          { id: "chat",         name: "Anvil · Chat",         reasoning: false, input: ["text"],         contextWindow: 131072, maxTokens: 8192  },
-          { id: "long-context", name: "Anvil · Long Context", reasoning: false, input: ["text"],         contextWindow: 131072, maxTokens: 16000 }
+          { id: "planning",     name: "Anvil · Planning",     reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 32000 },
+          { id: "quick-edit",   name: "Anvil · Quick Edit",   reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 8192  },
+          { id: "review",       name: "Anvil · Review",       reasoning: true, input: ["text","image"], contextWindow: 131072, maxTokens: 16000 },
+          { id: "chat",         name: "Anvil · Chat",         reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 8192  },
+          { id: "chat-fast",    name: "Anvil · Chat Fast",    reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 8192  },
+          { id: "long-context", name: "Anvil · Long Context", reasoning: true, input: ["text"],         contextWindow: 131072, maxTokens: 16000 }
         ]
       }
     }
@@ -44,10 +45,13 @@
     // tiers). Deleting these entries removes the anvil presets from OpenClaw's picker entirely.
     models: {
       "anvil/planning": {}, "anvil/quick-edit": {}, "anvil/review": {},
-      "anvil/chat": {}, "anvil/long-context": {}
+      "anvil/chat": {}, "anvil/chat-fast": {}, "anvil/long-context": {}
     }
   } },
   // key MUST be the packaged plugin id (plugins/openclaw-anvil-intent-router/), or the hook's
   // allowConversationAccess gate is never applied and intent routing silently no-ops.
-  plugins: { entries: { "openclaw-anvil-intent-router": { hooks: { allowConversationAccess: true } } } }
+  plugins: { entries: { "openclaw-anvil-intent-router": {
+    hooks: { allowConversationAccess: true },
+    config: { nativeProvider: "anthropic", nativeModel: "claude-sonnet-4-5" }
+  } } }
 }

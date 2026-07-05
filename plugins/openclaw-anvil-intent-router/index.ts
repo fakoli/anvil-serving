@@ -1,10 +1,10 @@
 // openclaw-anvil-intent-router — upfront routing split (advise-and-defer:T008)
 //
 // Purpose (T008): classify the current turn client-side and route UPFRONT:
-//   - cloud-preferred work-classes (e.g. `planning`) → no override → native provider.
+//   - cloud-preferred presets (e.g. `planning`) → explicit native provider/model.
 //     This avoids a wasted anvil round-trip for classes eval-proven to work better
 //     on the cloud subscription tier.
-//   - local work-classes (quick-edit, review, chat, long-context) → anvil.
+//   - local presets (quick-edit, review, chat, long-context) → anvil.
 //     Emits { providerOverride: "anvil", modelOverride: "<bare preset>" }.
 //
 // T008 is an OPTIMISATION (no unnecessary anvil contact for eval-proven-cloud
@@ -13,12 +13,12 @@
 // KNOWN DEFECT (anvil-503 native-failover loop — LIVE-CONFIRMED 2026-07-01):
 // The keyless-503 -> `agents.defaults.model.fallbacks` handoff is NOT reliable
 // for any turn where this plugin emitted `providerOverride:"anvil"` (i.e. every
-// local-preferred-class turn): OpenClaw resolves the hook's override once,
+// local-preferred preset turn): OpenClaw resolves the hook's override once,
 // above the attempt loop, and that resolution appears to stick across the
 // native-failover walk too, so the configured fallback models also resolve
 // through the `anvil` provider and 503 again instead of reaching the native
-// cloud provider. It IS reliable for cloud-preferred classes (no override is
-// ever emitted for them, so nothing sticks). See route.mjs's module docstring,
+// cloud provider. Cloud-preferred presets avoid that path by routing directly to
+// the configured native provider/model. See route.mjs's module docstring,
 // docs/OPENCLAW-INTEGRATION-SPEC.md, and
 // docs/adr/0005-anvil-503-native-failover-unreliable.md for the root cause and
 // the operator-side mitigations (`ANVIL_CLOUD_CLASSES`, anvil's opt-in metered
@@ -28,6 +28,10 @@
 //   Default: {"planning"} (eval-proven cloud-preferred, T005 bake-off).
 //   Extend via ANVIL_CLOUD_CLASSES env var (comma-separated preset names), or
 //   api.pluginConfig.cloudClasses when the env var is unset.
+//
+// NATIVE ROUTE:
+//   Default: { providerOverride:"anthropic", modelOverride:"claude-sonnet-4-5" }.
+//   Override with ANVIL_NATIVE_PROVIDER / ANVIL_NATIVE_MODEL or plugin config.
 //
 // OPTIONAL AUTHORITATIVE MODE:
 //   Set ANVIL_ROUTE_ENDPOINT (e.g. "http://127.0.0.1:8000/v1/route") to call
@@ -51,7 +55,9 @@ import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { classify, type AnvilPreset } from "./classify.mjs";
 import {
   getCloudClasses,
+  getNativeRoute,
   getRouteEndpoint,
+  getRouteTimeoutMs,
   makeRoutingDecision,
   fetchAnvilTier,
   resolveRouteAuthToken,
@@ -69,7 +75,10 @@ type BeforeModelResolveResult = { modelOverride?: string; providerOverride?: str
 type OpenClawAnvilPluginConfig = {
   cloudClasses?: unknown;
   routeEndpoint?: unknown;
+  routeTimeoutMs?: unknown;
   routeAuthEnv?: unknown;
+  nativeProvider?: unknown;
+  nativeModel?: unknown;
 };
 
 // Decision log: one JSONL line per fire. Default is the gateway CWD; override
@@ -110,8 +119,8 @@ export default definePluginEntry({
           // Two paths:
           //   A. AUTHORITATIVE (opt-in): call POST /v1/route (T007) when
           //      ANVIL_ROUTE_ENDPOINT is set.  Uses the router's full quality
-          //      profile; adds one loopback round-trip.  Falls back to B on
-          //      any error/timeout.
+          //      profile; adds one controller round-trip.  Falls back to B on
+          //      any non-route error/timeout.
           //   B. CLIENT-SIDE (default): fast, zero-round-trip heuristic.
           //      Uses DEFAULT_CLOUD_CLASSES (+ env/plugin config override).
           //
@@ -120,17 +129,19 @@ export default definePluginEntry({
           let routingSource = "client-side";
 
           const pluginConfig = getPluginConfig(api);
+          const nativeRoute = getNativeRoute(pluginConfig);
           const routeEndpoint = getRouteEndpoint(pluginConfig);
+          const routeTimeoutMs = getRouteTimeoutMs(pluginConfig);
           if (routeEndpoint) {
             // Path A: authoritative POST /v1/route.
             const tier = await fetchAnvilTier(
               promptText,
               event?.attachments as Array<{ kind: string }> | undefined,
               routeEndpoint,
-              { authToken: resolveRouteAuthToken(pluginConfig) },
+              { timeoutMs: routeTimeoutMs, authToken: resolveRouteAuthToken(pluginConfig), workClass: preset },
             );
             if (tier === "cloud") {
-              routeOverride = {}; // native provider, no anvil contact
+              routeOverride = nativeRoute; // native provider, no anvil contact
               authoritative = true;
               routingSource = "anvil-route";
             } else if (tier === "local") {
@@ -140,12 +151,12 @@ export default definePluginEntry({
             } else {
               // /v1/route unreachable / timed out / unexpected response →
               // fall back to client-side classify (no run breakage).
-              routeOverride = makeRoutingDecision(preset, getCloudClasses(pluginConfig));
+              routeOverride = makeRoutingDecision(preset, getCloudClasses(pluginConfig), nativeRoute);
               routingSource = "client-side-fallback";
             }
           } else {
             // Path B: fast client-side classify (default).
-            routeOverride = makeRoutingDecision(preset, getCloudClasses(pluginConfig));
+            routeOverride = makeRoutingDecision(preset, getCloudClasses(pluginConfig), nativeRoute);
           }
 
           // "anvil" if routed to anvil; "native" if left to native provider.

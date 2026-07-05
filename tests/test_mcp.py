@@ -5,9 +5,11 @@ HTTP seams are faked at the module boundary.
 """
 import io
 import json
+import threading
 import textwrap
 import types
 import urllib.error
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from anvil_serving import cli, mcp
 
@@ -69,6 +71,21 @@ class Resp:
         return self.status
 
 
+class _HandlerServer:
+    def __init__(self, handler):
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+
+    def __enter__(self):
+        self.thread.start()
+        return self.httpd.server_address
+
+    def __exit__(self, *exc):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        self.thread.join(timeout=5)
+
+
 def test_tools_list_has_json_schemas():
     tools = {t["name"]: t for t in mcp.list_tools()}
     for name in [
@@ -90,6 +107,8 @@ def test_tools_list_has_json_schemas():
         props = tools[name]["inputSchema"]["properties"]
         assert "api_key" not in props
         assert props["api_key_env"]["type"] == "string"
+    assert tools["benchmark_probe"]["inputSchema"]["properties"]["requests"]["maximum"] == 200
+    assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
 
 
 def test_stdio_tools_list_and_call(tmp_path):
@@ -172,7 +191,7 @@ def test_route_decision_posts_to_v1_route(monkeypatch):
         seen["body"] = json.loads(req.data.decode("utf-8"))
         return Resp(b'{"tier":"local","model":"m","provider":"fast"}')
 
-    monkeypatch.setattr(mcp.urllib.request, "urlopen", open_route)
+    monkeypatch.setattr(mcp, "_urlopen_no_proxy_no_redirect", open_route)
     env = mcp.call_tool("route_decision", {
         "base_url": "http://127.0.0.1:8000/v1",
         "prompt": "fix this",
@@ -181,6 +200,52 @@ def test_route_decision_posts_to_v1_route(monkeypatch):
     assert seen["url"] == "http://127.0.0.1:8000/v1/route"
     assert seen["body"]["messages"][0]["content"] == "fix this"
     assert env["data"]["response"]["tier"] == "local"
+
+
+def test_route_decision_redacts_resolved_router_token_from_responses(monkeypatch):
+    token = "router-secret-token"
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", token)
+
+    def open_echo(req, timeout=5):
+        assert req.get_header("Authorization") == "Bearer " + token
+        return Resp(json.dumps({"echo": token}).encode("utf-8"))
+
+    monkeypatch.setattr(mcp, "_urlopen_no_proxy_no_redirect", open_echo)
+    env = mcp.call_tool("route_decision", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "prompt": "fix this",
+        "api_key_env": "ANVIL_ROUTER_TOKEN",
+    })
+    rendered = json.dumps(env)
+    assert env["ok"] is True
+    assert token not in rendered
+    assert "<redacted>" in rendered
+
+
+def test_route_decision_redacts_resolved_router_token_from_http_errors(monkeypatch):
+    token = "router-secret-token"
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", token)
+
+    def open_500(req, timeout=5):
+        raise urllib.error.HTTPError(
+            req.full_url,
+            500,
+            "boom",
+            {},
+            io.BytesIO(json.dumps({"echo": token}).encode("utf-8")),
+        )
+
+    monkeypatch.setattr(mcp, "_urlopen_no_proxy_no_redirect", open_500)
+    env = mcp.call_tool("route_decision", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "prompt": "fix this",
+        "api_key_env": "ANVIL_ROUTER_TOKEN",
+    })
+    rendered = json.dumps(env)
+    assert env["ok"] is False
+    assert env["error"]["code"] == "route_http_error"
+    assert token not in rendered
+    assert "<redacted>" in rendered
 
 
 def test_openclaw_sync_preview_uses_harness_logic_and_env_ref(tmp_path):
@@ -196,6 +261,26 @@ def test_openclaw_sync_preview_uses_harness_logic_and_env_ref(tmp_path):
     assert preview["model_ids"] == ["chat"]
     # Secret hygiene: config references the env var by name; no literal secret is resolved.
     assert preview["api_key"] == "${ANVIL_ROUTER_TOKEN}"
+
+
+def test_openclaw_sync_rejects_non_anvil_api_key_env(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "api_key_env": "ANTHROPIC_API_KEY",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "unsafe_api_key_env"
+
+
+def test_openclaw_sync_rejects_unsafe_gateway_target_in_preview(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "gateway_host": "-oProxyCommand=bad",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_gateway_target"
 
 
 def test_openclaw_sync_apply_requires_confirmed_target(tmp_path):
@@ -216,7 +301,29 @@ def test_gateway_restart_is_gated_and_uses_argv_preview():
     })
     assert env["ok"] is True
     assert env["data"]["restarted"] is False
-    assert env["data"]["command"] == ["ssh", "sd@mini", '$SHELL -lc "openclaw gateway restart"']
+    assert env["data"]["command"] == [
+        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=60",
+        "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
+        "--", "sd@mini", 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"',
+    ]
+
+
+def test_gateway_restart_rejects_unsafe_gateway_target_in_preview():
+    env = mcp.call_tool("openclaw_gateway_restart", {
+        "gateway_host": "mini -oProxyCommand=bad",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_gateway_target"
+
+
+def test_bool_arguments_must_be_real_booleans():
+    env = mcp.call_tool("openclaw_gateway_restart", {
+        "gateway_host": "mini",
+        "dry_run": False,
+        "confirm": "false",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
 
 
 def test_preflight_and_benchmark_probe_are_argv_not_shell():
@@ -265,6 +372,44 @@ def test_probe_tools_use_api_key_env_and_reject_raw_keys(monkeypatch):
     })
     assert bad["ok"] is False
     assert bad["error"]["code"] == "raw_secret_not_allowed"
+
+    unsafe_env = mcp.call_tool("route_decision", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "prompt": "hello",
+        "api_key_env": "ANTHROPIC_API_KEY",
+    })
+    assert unsafe_env["ok"] is False
+    assert unsafe_env["error"]["code"] == "unsafe_api_key_env"
+
+    controller_token = mcp.call_tool("route_decision", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "prompt": "hello",
+        "api_key_env": "ANVIL_CONTROLLER_TOKEN",
+    })
+    assert controller_token["ok"] is False
+    assert controller_token["error"]["code"] == "unsafe_api_key_env"
+
+    unsafe_url = mcp.call_tool("route_decision", {
+        "base_url": "http://8.8.8.8/v1",
+        "prompt": "hello",
+        "api_key_env": "ANVIL_ROUTER_TOKEN",
+    })
+    assert unsafe_url["ok"] is False
+    assert unsafe_url["error"]["code"] == "unsafe_base_url"
+
+    wildcard_url = mcp.call_tool("preflight_probe", {
+        "base_url": "http://0.0.0.0:30000/v1",
+        "model": "local",
+    })
+    assert wildcard_url["ok"] is False
+    assert wildcard_url["error"]["code"] == "unsafe_base_url"
+
+    metadata_url = mcp.call_tool("route_decision", {
+        "base_url": "http://169.254.169.254/v1",
+        "prompt": "hello",
+    })
+    assert metadata_url["ok"] is False
+    assert metadata_url["error"]["code"] == "unsafe_base_url"
 
 
 def test_probe_cli_helpers_resolve_api_key_env(monkeypatch):
@@ -326,6 +471,154 @@ def test_remote_controller_request_sends_env_token_headers_and_redacts(monkeypat
         raise AssertionError("expected controller_http_error")
 
 
+def test_remote_controller_request_rejects_unsafe_urls_before_auth_headers():
+    called = False
+
+    def opener(req, timeout=30):
+        nonlocal called
+        called = True
+        return Resp(b"{}")
+
+    try:
+        mcp.remote_controller_request(
+            "http://8.8.8.8:8765",
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            "controller-secret-token",
+            opener=opener,
+        )
+    except mcp.ToolError as exc:
+        rendered = json.dumps({"message": exc.message, "details": exc.details})
+        assert exc.code == "unsafe_base_url"
+        assert "controller-secret-token" not in rendered
+    else:  # pragma: no cover - must raise
+        raise AssertionError("expected unsafe_base_url")
+    assert called is False
+
+
+def test_remote_controller_request_ignores_environment_proxies(monkeypatch):
+    proxy_hits = []
+    target_hits = []
+
+    class ProxyHandler(BaseHTTPRequestHandler):
+        def log_message(self, format, *args):
+            return
+
+        def do_POST(self):
+            proxy_hits.append(self.headers.get("Authorization"))
+            self.send_response(502)
+            self.end_headers()
+
+    class TargetHandler(BaseHTTPRequestHandler):
+        def log_message(self, format, *args):
+            return
+
+        def do_POST(self):
+            target_hits.append(self.headers.get("Authorization"))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"jsonrpc":"2.0","id":1,"result":{"ok":true}}')
+
+    with _HandlerServer(ProxyHandler) as (_, proxy_port), _HandlerServer(TargetHandler) as (_, target_port):
+        monkeypatch.setenv("http_proxy", f"http://127.0.0.1:{proxy_port}")
+        monkeypatch.setenv("HTTP_PROXY", f"http://127.0.0.1:{proxy_port}")
+        monkeypatch.setenv("no_proxy", "")
+        response = mcp.remote_controller_request(
+            f"http://127.0.0.1:{target_port}",
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            "controller-secret-token",
+        )
+
+    assert response["result"]["ok"] is True
+    assert target_hits == ["Bearer controller-secret-token"]
+    assert proxy_hits == []
+
+
+def test_remote_controller_request_does_not_follow_redirects_with_token():
+    redirected_hits = []
+
+    class RedirectTargetHandler(BaseHTTPRequestHandler):
+        def log_message(self, format, *args):
+            return
+
+        def do_POST(self):
+            redirected_hits.append(self.headers.get("Authorization"))
+            self.send_response(200)
+            self.end_headers()
+
+    class RedirectHandler(BaseHTTPRequestHandler):
+        redirect_location = ""
+
+        def log_message(self, format, *args):
+            return
+
+        def do_POST(self):
+            self.send_response(302)
+            self.send_header("Location", self.redirect_location)
+            self.end_headers()
+
+    with _HandlerServer(RedirectTargetHandler) as (_, target_port):
+        RedirectHandler.redirect_location = f"http://127.0.0.1:{target_port}/capture"
+        with _HandlerServer(RedirectHandler) as (_, redirect_port):
+            try:
+                mcp.remote_controller_request(
+                    f"http://127.0.0.1:{redirect_port}",
+                    {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                    "controller-secret-token",
+                )
+            except mcp.ToolError as exc:
+                rendered = json.dumps({"message": exc.message, "details": exc.details})
+                assert exc.code == "controller_http_error"
+                assert exc.details["status"] == 302
+                assert exc.details["location"] == RedirectHandler.redirect_location
+                assert "body" not in exc.details
+                assert "controller-secret-token" not in rendered
+            else:  # pragma: no cover - must raise
+                raise AssertionError("expected controller_http_error")
+
+    assert redirected_hits == []
+
+
+def test_remote_controller_request_truncates_http_error_body():
+    body = b"x" * (mcp._MAX_ERROR_BODY_BYTES + 8)
+
+    def open_fail(req, timeout=30):
+        raise urllib.error.HTTPError(
+            req.full_url,
+            500,
+            "boom",
+            {},
+            io.BytesIO(body),
+        )
+
+    try:
+        mcp.remote_controller_request(
+            "http://127.0.0.1:8765",
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            "controller-secret-token",
+            opener=open_fail,
+        )
+    except mcp.ToolError as exc:
+        assert exc.code == "controller_http_error"
+        assert exc.details["status"] == 500
+        assert len(exc.details["body"]) == mcp._MAX_ERROR_BODY_BYTES
+        assert exc.details["body_truncated"] is True
+    else:  # pragma: no cover - must raise
+        raise AssertionError("expected controller_http_error")
+
+
+def test_mcp_proxy_main_rejects_unsafe_controller_url(monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_CONTROLLER_TOKEN", "controller-secret-token")
+    rc = mcp.main([
+        "--controller-url", "http://localhost:8765",
+        "--auth-env", "ANVIL_CONTROLLER_TOKEN",
+    ])
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert "not localhost" in captured.err
+    assert "controller-secret-token" not in captured.err
+
+
 def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
     seen = []
 
@@ -367,6 +660,132 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
     assert lines[2]["result"]["structuredContent"]["data"]["proxied"] is True
     assert [item[2]["method"] for item in seen] == ["tools/list", "tools/call"]
     assert all(item[0] == "http://127.0.0.1:8765" and item[1] == "secret" for item in seen)
+
+
+def test_stdio_proxy_does_not_forward_notifications_or_null_ids(monkeypatch):
+    seen = []
+
+    def fake_remote(controller_url, request, token, **kwargs):
+        seen.append(request)
+        return {"jsonrpc": "2.0", "id": request.get("id"), "result": {}}
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    reqs = [
+        {"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "fake"}},
+        {"jsonrpc": "2.0", "id": None, "method": "tools/list"},
+    ]
+    stdout = io.StringIO()
+    assert mcp.serve_stdio(
+        [json.dumps(r) + "\n" for r in reqs],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    assert seen == []
+    lines = [json.loads(ln) for ln in stdout.getvalue().splitlines()]
+    assert len(lines) == 1
+    assert lines[0]["error"]["code"] == -32600
+
+
+def test_stdio_tools_call_notification_does_not_execute(monkeypatch):
+    calls = []
+
+    def fake_call(name, arguments=None):
+        calls.append((name, arguments))
+        return {"ok": True}
+
+    monkeypatch.setattr(mcp, "call_tool", fake_call)
+    stdout = io.StringIO()
+    assert mcp.serve_stdio([
+        json.dumps({
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": "fake", "arguments": {"confirm": True}},
+        }) + "\n"
+    ], stdout) == 0
+    assert calls == []
+    assert stdout.getvalue() == ""
+
+
+def test_stdio_tools_call_id_null_is_protocol_error(monkeypatch):
+    calls = []
+    monkeypatch.setattr(mcp, "call_tool", lambda name, arguments=None: calls.append((name, arguments)) or {"ok": True})
+    stdout = io.StringIO()
+    assert mcp.serve_stdio([
+        json.dumps({
+            "jsonrpc": "2.0",
+            "id": None,
+            "method": "tools/call",
+            "params": {"name": "fake", "arguments": {"confirm": True}},
+        }) + "\n"
+    ], stdout) == 0
+    response = json.loads(stdout.getvalue())
+    assert calls == []
+    assert response["error"]["code"] == -32600
+
+
+def test_stdio_tools_call_falsey_non_object_arguments_are_rejected():
+    stdout = io.StringIO()
+    assert mcp.serve_stdio([
+        json.dumps({
+            "jsonrpc": "2.0",
+            "id": 11,
+            "method": "tools/call",
+            "params": {"name": "router_status", "arguments": False},
+        }) + "\n"
+    ], stdout) == 0
+    response = json.loads(stdout.getvalue())
+    assert response["error"]["code"] == -32602
+    assert response["error"]["data"]["code"] == "bad_arguments"
+
+
+def test_stdio_tools_call_falsey_non_object_params_are_rejected():
+    for value in (False, 0, "", []):
+        stdout = io.StringIO()
+        assert mcp.serve_stdio([
+            json.dumps({
+                "jsonrpc": "2.0",
+                "id": 12,
+                "method": "tools/call",
+                "params": value,
+            }) + "\n"
+        ], stdout) == 0
+        response = json.loads(stdout.getvalue())
+        assert response["error"]["code"] == -32602
+        assert response["error"]["data"]["code"] == "bad_params"
+
+
+def test_route_decision_503_is_structured_probe_result(monkeypatch):
+    def open_503(req, timeout=5):
+        raise urllib.error.HTTPError(
+            req.full_url,
+            503,
+            "unavailable",
+            {},
+            io.BytesIO(b'{"error":{"code":"no_available_tier"}}'),
+        )
+
+    monkeypatch.setattr(mcp, "_urlopen_no_proxy_no_redirect", open_503)
+    env = mcp.call_tool("route_decision", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "prompt": "hello",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "no_available_tier"
+    assert env["error"]["details"]["status"] == 503
+
+
+def test_confirmed_probe_nonzero_returncode_is_tool_error(monkeypatch):
+    monkeypatch.setattr(mcp.subprocess, "run", lambda *a, **k: proc(1, "bad", "worse"))
+    env = mcp.call_tool("preflight_probe", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "confirm": True,
+        "timeout_seconds": 1,
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "command_failed"
+    assert env["error"]["details"]["returncode"] == 1
 
 
 def test_mcp_proxy_main_requires_env_token(monkeypatch, capsys):

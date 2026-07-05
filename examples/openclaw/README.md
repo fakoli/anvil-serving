@@ -1,8 +1,10 @@
-# OpenClaw integration — validate-first tooling (anvil task T013)
+# OpenClaw integration — validate-first tooling (historical T013)
 
-This directory holds the **validate-FIRST** tooling for the anvil-serving ×
-OpenClaw integration. Before any routing plugin is built (that is T014), we
-settle the **two CRITICAL live gaps** called out in
+This directory holds the historical **validate-FIRST** tooling for the
+anvil-serving × OpenClaw integration. The production routing plugin now lives in
+[`plugins/openclaw-anvil-intent-router/`](../../plugins/openclaw-anvil-intent-router/);
+keep using this directory for the wire-form/cadence validator and logging hook.
+The original T013 purpose was to settle the **two CRITICAL live gaps** called out in
 [`docs/OPENCLAW-INTEGRATION-SPEC.md`](../../docs/OPENCLAW-INTEGRATION-SPEC.md) §6:
 
 | # | Gap | What "pass" means |
@@ -48,8 +50,11 @@ python examples/openclaw/validate.py \
 
 The logging-only hook (`index.ts`) records cadence and writes
 `"modelOverride": null` — it never routes. The **fixture** additionally pre-fills
-`modelOverride` with representative `anvil/<preset>` selection strings so the one
+`modelOverride` with representative legacy `anvil/<preset>` selection strings so the one
 committed file can drive *both* checks (cadence **and** wire-form `(a)`) in CI.
+The current routing plugin emits `providerOverride:"anvil"` plus a bare preset
+`modelOverride`; this fixture remains useful because the front door must accept
+both bare and namespaced model strings.
 In a real run these come from two different artifacts: cadence from the hook's
 log, wire-form `(a)` from a separately **captured outbound request** (`--capture`).
 
@@ -102,7 +107,7 @@ log, wire-form `(a)` from a separately **captured outbound request** (`--capture
    in front of `:8000`. Save the request body (or just its `model` field) to a
    JSON/JSONL file, e.g. `captured-request.json`:
    ```json
-   { "model": "anvil/chat", "messages": [ ... ] }
+   { "model": "chat", "messages": [ ... ] }
    ```
 3. **Validate the captured wire form**:
    ```bash
@@ -120,11 +125,11 @@ python examples/openclaw/validate.py \
     --assert-fire-cadence /abs/path/hook-fire-log.jsonl
 ```
 
-## Scope (what this task is and isn't)
+## Scope (what this directory is and isn't)
 
-T013 is **validate-first**: it ships the wire-form acceptance (already present in
+This is **validate-first** tooling: it ships the wire-form acceptance (already present in
 `anvil_serving/router/intent.py` — `parse_model()` strips an optional `anvil/` /
 `anvil:` prefix), the validator, the logging instrument, the fixture, and these
-docs. It deliberately does **not** build the routing/classifier plugin or the
-router-side adapter — that is T014, to be built only once the live capture above
-confirms the contract.
+docs. The routing/classifier plugin has since been built in
+`plugins/openclaw-anvil-intent-router/`; do not treat this directory as the
+current plugin implementation.

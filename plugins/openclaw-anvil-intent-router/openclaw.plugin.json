@@ -14,9 +14,23 @@
         "type": "string",
         "description": "If set, POST to this URL (anvil's /v1/route, T007) for an authoritative local/cloud tier decision instead of the fast client-side keyword heuristic. Falls back to client-side on any error/timeout. Used when ANVIL_ROUTE_ENDPOINT is unset; overridden by the env var when non-empty. Leave unset (the default) for the zero-round-trip client-side path."
       },
+      "routeTimeoutMs": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 5000,
+        "description": "Timeout in milliseconds for routeEndpoint authoritative probes. Used when ANVIL_ROUTE_TIMEOUT_MS is unset. Default: 30; raise for split-host/Tailscale deployments."
+      },
       "routeAuthEnv": {
         "type": "string",
         "description": "Optional env var name containing the token for an authenticated routeEndpoint, for example ANVIL_ROUTER_TOKEN. Used when ANVIL_ROUTE_AUTH_ENV is unset; overridden by the env var when non-empty. This is an env var name, never the raw token."
+      },
+      "nativeProvider": {
+        "type": "string",
+        "description": "OpenClaw provider id used for cloud-preferred presets and authoritative route exhaustion. Used when ANVIL_NATIVE_PROVIDER is unset. Default: anthropic."
+      },
+      "nativeModel": {
+        "type": "string",
+        "description": "Model id within nativeProvider used for cloud-preferred presets and authoritative route exhaustion. Used when ANVIL_NATIVE_MODEL is unset. Default: claude-sonnet-4-5."
       }
     }
   }

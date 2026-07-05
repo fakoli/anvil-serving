@@ -367,6 +367,13 @@ def main(argv=None):
             json.dump(summary, f, indent=2, sort_keys=True)
             f.write("\n")
         print("wrote JSON summary: " + a.json_out)
+    if len(results) != n:
+        if a.recipe_out:
+            print(
+                "skipping serve recipe: benchmark completed %d/%d requests" % (len(results), n),
+                file=sys.stderr,
+            )
+        raise SystemExit(1)
     # Benchmarking a serve ALSO records its reproducible recipe when asked.
     if a.recipe_out:
         emit_recipe(a, summary)

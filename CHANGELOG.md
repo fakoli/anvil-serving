@@ -14,8 +14,8 @@ All notable changes to this project are documented here. The format is based on
   `anvil-serving controller serve` as a stdlib-only HTTP controller for the anvil-serving host, plus
   gateway-side proxy mode (`anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`)
   so `fakoli-mini` can operate a GPU/router host over a private tailnet without raw SSH/shell as the
-  product contract. The controller reuses the MCP tool registry, requires env-token auth for
-  non-loopback binds, rejects unsafe public/wildcard binds unless explicitly gated, exposes
+  product contract. The controller reuses the MCP tool registry, requires env-token auth by default,
+  rejects unsafe public/wildcard binds unless explicitly gated, exposes
   `/health`, redacts controller-token values, and writes structured audit records.
 - **ADR-0013 / ADR-0014 and operator playbooks.** Documented the clean OpenClaw layers
   (hook adapter for per-turn intent, router data plane for quality, MCP/controller for operations)
@@ -28,12 +28,39 @@ All notable changes to this project are documented here. The format is based on
 - **OpenClaw authoritative route probes are now auth-aware and truthfully logged.** The
   OpenClaw intent plugin can resolve a `/v1/route` token by env-var name
   (`ANVIL_ROUTE_AUTH_ENV` or `routeAuthEnv`) and sends both bearer and `x-api-key` headers. Decision
-  logs mark `authoritative:true` only when `/v1/route` returns a valid tier; route failures fall back
-  to the deterministic client classifier with `routingSource:"client-side-fallback"`.
+  logs mark `authoritative:true` only when `/v1/route` returns a valid tier; route-endpoint 503s
+  route explicitly to the configured native provider/model, while other route failures fall back to
+  the deterministic client classifier with `routingSource:"client-side-fallback"`.
+- **Benchmark probes now fail closed on incomplete runs.** `anvil-serving benchmark` exits non-zero
+  when completed requests are fewer than requested, so MCP/controller benchmark probes surface partial
+  runs as tool errors instead of successful evidence. Recipe emission now happens only after a complete
+  run, preventing partial benchmarks from appending default `verified` serve recipes.
 - **Controller JSON-RPC notifications are side-effect safe.** A no-id JSON-RPC notification no
   longer executes `tools/call`; the controller returns `204 No Content` for such notifications.
+- **MCP/controller operational-safety hardening.** Strict boolean parsing prevents string values such
+  as `"false"` from satisfying `confirm:true`; stdio MCP no longer executes no-id `tools/call`
+  notifications; `id:null` returns a protocol error without side effects; probe URLs must resolve to
+  loopback/RFC1918/IPv6-ULA/tailnet addresses; probe auth env vars are limited to
+  `ANVIL_ROUTER_TOKEN`; confirmed probe
+  subprocesses are timeout-bounded and non-zero exits surface as tool errors; numeric wildcard bind
+  aliases such as `--host 0` are refused without the public-bind gate. Controller auth is required by
+  default even on loopback; unauthenticated loopback now requires the explicit
+  `--allow-unauthenticated-loopback` development flag. Auth-bearing MCP HTTP calls disable environment
+  proxies and redirects, duplicate `Content-Length` headers are rejected, and controller binds now
+  allow only loopback/RFC1918/IPv6-ULA/tailnet or explicitly gated public addresses.
+- **OpenClaw harness/plugin safety fixes.** Harness sync preserves existing plugin `config`
+  (`cloudClasses`, `routeEndpoint`, `routeTimeoutMs`, `routeAuthEnv`, native route overrides) while reasserting
+  Anvil-owned hooks; SSH/SCP gateway targets reject option-injection strings; remote SSH/SCP
+  operations are timeout-bounded; remote restart uses a fixed login-shell command after the validated
+  SSH target so user-level OpenClaw installs are found without shelling user input; authoritative
+  `/v1/route` probes send the classified work class instead of hard-coding `chat`; fixture generation
+  ignores operator `ANVIL_CLOUD_CLASSES`; arbitrary `--out --restart` syncs are rejected unless the
+  output is the real local OpenClaw config path.
 
 ## [0.10.0] - 2026-07-04
+
+> Package version on main only. The latest Git tag in `origin` is still `v0.7.3`;
+> compare `[Unreleased]` for all main-line changes after that tag.
 
 ### Added
 
@@ -604,7 +631,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/fakoli/anvil-serving/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/fakoli/anvil-serving/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/fakoli/anvil-serving/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/fakoli/anvil-serving/compare/v0.6.0...v0.7.0

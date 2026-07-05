@@ -10,8 +10,9 @@ method: "5 source-level facet finders over the OpenClaw repo (docs/ + src/) + ad
 
 > **Provenance.** Source-verified against the OpenClaw repo (`src/plugins/hook-before-agent-start.types.ts`,
 > `src/plugins/hook-types.ts`, `src/agents/embedded-agent-runner/run.ts`, `docs/plugins/hooks.md`,
-> `docs/concepts/model-providers.md`) and adversarially checked. Items not byte-confirmed are tagged
-> **UNCONFIRMED**. Companion to [`QUALITY-GATED-ROUTER.md`](QUALITY-GATED-ROUTER.md).
+> `docs/concepts/model-providers.md`) and adversarially checked. This document preserves historical
+> validation context, but the current operational contract is the checked-in plugin, ADR-0013,
+> ADR-0014, and Operator Playbooks. Companion to [`QUALITY-GATED-ROUTER.md`](QUALITY-GATED-ROUTER.md).
 
 ## READ FIRST — verdict, caveats, and one correction
 
@@ -41,12 +42,10 @@ user's message determines the work-class). The live-validation record and ADR-00
 important operational consequence: the resolved provider can stick through OpenClaw's native
 fallback walk, so router-side fallback remains load-bearing.
 
-**Original validate-first gaps** (now retained as provenance; see `OPENCLAW-LIVE-VALIDATION.md`,
-ADR-0005, and the plugin README for settled behavior):
-1. **Wire `model` value** — does the outbound HTTP request carry the bare id (`planning`) or the full
-   ref (`anvil/planning`)? Capture a real outbound request. (anvil should accept **both** to be safe.)
-2. **Firing cadence** — confirm `before_model_resolve` fires per user message (see correction above),
-   by logging every fire with `ctx.runId`/`ctx.sessionKey` across a multi-turn conversation.
+**Original validate-first gaps** are settled and retained only as provenance; see
+`OPENCLAW-LIVE-VALIDATION.md`, ADR-0005, and the plugin README. The live wire form is
+`providerOverride:"anvil"` plus a bare preset `modelOverride`, and the hook fires once per run above
+OpenClaw's attempt loop.
 
 **API-churn risk + mitigation.** OpenClaw is real, MIT, and very active, but **young** (CalVer
 `v2026.6.x`, no semver 1.0, multiple releases/week) and the extension surface is mid-refactor —
@@ -62,12 +61,9 @@ already assumes this — OpenClaw has no response-swap hook, so this is the only
 
 
 
-> Status: buildable spec, rev 2026-06-29. Derived from source-verified facet findings
-> (`src/plugins/hook-before-agent-start.types.ts`, `src/plugins/hook-types.ts`,
-> `src/agents/embedded-agent-runner/run.ts`, `docs/plugins/hooks.md`,
-> `docs/concepts/model-providers.md`, `docs/gateway/config-tools.md`) and anvil's own
-> `docs/QUALITY-GATED-ROUTER.md`. Every item not byte-confirmed against OpenClaw source/docs is
-> tagged **UNCONFIRMED — validate before relying on in build code**.
+> Status: buildable spec, rev 2026-06-29, with implementation notes through 2026-07-05. Derived
+> from source-verified facet findings and anvil's own `docs/QUALITY-GATED-ROUTER.md`. Historical
+> open questions remain below only when they are still genuinely unresolved.
 
 ## 0. What is CONFIRMED (build against these)
 
@@ -89,8 +85,10 @@ The plugin classifies the current turn and emits an anvil preset id. Because the
 // index.ts  — package "type":"module", ESM, Node 22.19+
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 
-// Closed preset enum = anvil's wire vocabulary (must match models[] ids in §2 and the router).
+// Closed plugin-emitted preset enum = the automatic OpenClaw intent vocabulary.
+// The router may expose additional presets such as chat-fast for other surfaces.
 type AnvilPreset = "planning" | "quick-edit" | "review" | "chat" | "long-context";
+const NATIVE = { providerOverride: "anthropic", modelOverride: "claude-sonnet-4-5" };
 
 function classify(prompt: string, attachments?: { kind: string }[]): AnvilPreset {
   const p = prompt.toLowerCase();
@@ -108,29 +106,42 @@ export default definePluginEntry({
   register(api) {
     api.on(
       "before_model_resolve",
-      (event, _ctx) => ({
-        providerOverride: "anvil",
-        modelOverride: classify(event.prompt, event.attachments),
-      }),
+      (event, _ctx) => {
+        const preset = classify(event.prompt, event.attachments);
+        // Cloud-preferred presets, currently planning by default, explicitly
+        // route to native instead of entering anvil's providerOverride trap.
+        if (preset === "planning") return NATIVE;
+        return { providerOverride: "anvil", modelOverride: preset };
+      },
       { priority: 50 /*, timeoutMs: 50 */ }
     );
   },
 });
 ```
 
-**UNCONFIRMED — must validate on a live gateway before shipping:**
-- **Firing cadence (load-bearing).** Source structure says once-per-run, and the doc comment says "before session messages load" — confirm empirically that `before_model_resolve` fires **per agent turn** (so per-turn classification is real) and not once per session. The entire "classify each turn" premise hinges on this. Validate by logging every fire with `ctx.runId`/`ctx.sessionKey` across a multi-turn conversation.
-- **`registerEntry` arg shape.** Two doc/example forms appear: object form `definePluginEntry({ id, name, register(api){...} })` and callback form `definePluginEntry(async (api) => {...})`. Pin the form against the installed SDK's `plugin-entry` export.
-- **`ctx` field availability.** `PluginHookAgentContext` is documented to include `workspaceDir`, `channel`, `contextTokenBudget`, etc., but which fields are populated at the `before_model_resolve` phase is UNCONFIRMED — the classifier above deliberately uses only `event` to stay safe.
+The checked-in plugin adds env/plugin-config driven `cloudClasses`, optional authoritative
+`/v1/route`, route auth by env-var name, and decision logging. Use
+`plugins/openclaw-anvil-intent-router/` as the reference implementation rather than copying this
+abridged snippet.
 
-**Packaging (CONFIRMED shape, version string UNCONFIRMED):**
+**Packaging (confirmed shape; keep the plugin API floor aligned with the checked-in plugin and
+re-run live validation on gateway upgrades):**
 ```jsonc
 // package.json
 { "type": "module",
   "openclaw": { "extensions": ["./index.ts"],
-    "compat": { "pluginApi": ">=2026.3.24-beta.2" } } }  // UNCONFIRMED exact floor; before_model_resolve reportedly added ~2026.4.21 — confirm against CHANGELOG/release tags and pin.
+    "compat": { "pluginApi": ">=2026.4.21" } } }
 // openclaw.plugin.json
-{ "id": "openclaw-anvil-intent-router", "activation": { "onStartup": true } }
+{ "id": "openclaw-anvil-intent-router",
+  "activation": { "onStartup": true },
+  "configSchema": { "type": "object", "additionalProperties": false,
+    "properties": {
+      "cloudClasses": { "type": "array", "items": { "type": "string" } },
+      "routeEndpoint": { "type": "string" },
+      "routeTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 5000 },
+      "routeAuthEnv": { "type": "string" },
+      "nativeProvider": { "type": "string" },
+      "nativeModel": { "type": "string" } } } }
 ```
 Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/openclaw-anvil-intent-router`; then `openclaw gateway restart`; verify `openclaw plugins inspect openclaw-anvil-intent-router --runtime --json`. **`--link` is required on OpenClaw >=2026.6.11** — that compiled-runtime loader rejects a copy-install (`openclaw plugins install <path>` without the flag) for TypeScript/compiled plugins like this one; only a linked (symlinked) install is accepted.
 
@@ -146,15 +157,17 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/openc
     mode: "merge",                          // CONFIRMED default; ADDS to built-in catalog
     providers: {
       anvil: {
-        baseUrl: "http://127.0.0.1:8000/v1", // anvil-serving OpenAI-compat front door (loopback ⇒ no TLS/auth)
-        apiKey: "${ANVIL_API_KEY}",          // env interpolation CONFIRMED; anvil may ignore on loopback
+        baseUrl: "http://anvil-gpu.tailnet.example:8000/v1", // split-host gateway -> router host
+        // Use http://127.0.0.1:8000/v1 only when OpenClaw and anvil-serving are same-host.
+        apiKey: "${ANVIL_ROUTER_TOKEN}",     // env interpolation; no literal secrets in config
         api: "openai-completions",           // CONFIRMED for self-hosted vLLM/SGLang
         models: [
-          { id: "planning",     name: "Anvil · Planning",     reasoning: false, input: ["text"],          contextWindow: 131072, maxTokens: 32000 },
-          { id: "quick-edit",   name: "Anvil · Quick Edit",   reasoning: false, input: ["text"],          contextWindow: 131072, maxTokens: 8192  },
-          { id: "review",       name: "Anvil · Review",       reasoning: false, input: ["text","image"],  contextWindow: 131072, maxTokens: 16000 },
-          { id: "chat",         name: "Anvil · Chat",         reasoning: false, input: ["text"],          contextWindow: 131072, maxTokens: 8192  },
-          { id: "long-context", name: "Anvil · Long Context", reasoning: false, input: ["text"],          contextWindow: 131072, maxTokens: 16000 }
+          { id: "planning",     name: "Anvil · Planning",     reasoning: true, input: ["text"],          contextWindow: 131072, maxTokens: 32000 },
+          { id: "quick-edit",   name: "Anvil · Quick Edit",   reasoning: true, input: ["text"],          contextWindow: 131072, maxTokens: 8192  },
+          { id: "review",       name: "Anvil · Review",       reasoning: true, input: ["text","image"],  contextWindow: 131072, maxTokens: 16000 },
+          { id: "chat",         name: "Anvil · Chat",         reasoning: true, input: ["text"],          contextWindow: 131072, maxTokens: 8192  },
+          { id: "chat-fast",    name: "Anvil · Chat Fast",    reasoning: true, input: ["text"],          contextWindow: 131072, maxTokens: 8192  },
+          { id: "long-context", name: "Anvil · Long Context", reasoning: true, input: ["text"],          contextWindow: 131072, maxTokens: 16000 }
         ]
       }
     }
@@ -162,13 +175,21 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/openc
   agents: { defaults: {
     // Default slot when the plugin is absent → router's own Tier-0 classifier still applies.
     model: { primary: "anvil/chat" },
-    // anvil gotcha #5 (thinking-by-default models) — per-preset:
+    // Dropdown allowlist. Keep entries present, but leave params empty:
+    // the router owns per-tier reasoning/thinking defaults now.
     models: {
-      "anvil/planning":     { params: { chat_template_kwargs: { enable_thinking: false } } },
-      "anvil/long-context": { params: { chat_template_kwargs: { enable_thinking: false } } }
+      "anvil/planning": {},
+      "anvil/quick-edit": {},
+      "anvil/review": {},
+      "anvil/chat": {},
+      "anvil/chat-fast": {},
+      "anvil/long-context": {}
     }
   } },
-  plugins: { entries: { "openclaw-anvil-intent-router": { hooks: { allowConversationAccess: true } } } } // key = packaged plugin id (CONFIRMED required gate)
+  plugins: { entries: { "openclaw-anvil-intent-router": {
+    hooks: { allowConversationAccess: true },
+    config: { nativeProvider: "anthropic", nativeModel: "claude-sonnet-4-5", routeTimeoutMs: 30 }
+  } } } // key = packaged plugin id (CONFIRMED required gate)
 }
 ```
 
@@ -213,11 +234,19 @@ misdeclaration once the real prompt exceeds it.
 
 ## 3. Preset / model-id contract
 
-- **Vocabulary:** closed enum `{ planning, quick-edit, review, chat, long-context }` (matches `docs/QUALITY-GATED-ROUTER.md` §9). Same strings in three places: plugin `modelOverride`, provider `models[].id`, anvil router's accepted `model` names.
+- **Vocabulary:** the OpenClaw intent plugin emits `{ planning, quick-edit, review, chat, long-context }`.
+  The router can expose additional presets, such as `chat-fast`, for non-OpenClaw or manually selected
+  surfaces. Same emitted strings appear in three places: plugin `modelOverride`, provider `models[].id`,
+  and anvil router accepted `model` names.
 - **Selection string** inside OpenClaw is `"anvil/<preset>"` (CONFIRMED ref format).
-- **Wire value — UNCONFIRMED (CRITICAL build gap).** It is NOT documented whether the upstream HTTP `model` field receives the bare id (`"planning"`) or the full ref (`"anvil/planning"`). The `openai-completions` convention is the bare id, so **anvil-serving must accept `planning`/`quick-edit`/… as servable model names** — but **capture an actual outbound request** (local echo server or proxy log) to confirm before building the router's model-name parser. To be robust, anvil should accept BOTH the bare preset and the `anvil/<preset>` form. This is the single most important thing to verify hands-on.
-- **`/v1/models` discovery:** anvil should serve the preset tokens with human names so they also surface for non-plugin/closed harnesses (Tier-1). Whether OpenClaw auto-imports a custom provider's catalog from `/v1/models` vs requiring the inline `models[]` is UNCONFIRMED — the inline `models[]` above is the safe, CONFIRMED path; treat catalog auto-pull as a bonus to verify.
-- **Override resolution — UNCONFIRMED.** Whether `modelOverride` must name a model already in the resolved catalog (i.e. it MUST be pre-registered in `models[]`) or can be an arbitrary opaque preset id is not confirmed. Build defensively: always pre-register every preset in `models[]` (§2).
+- **Wire value:** live validation confirmed OpenClaw forwards the bare model id (`"planning"`, not
+  `"anvil/planning"`) when the plugin returns `providerOverride:"anvil"` with a bare `modelOverride`.
+  anvil-serving accepts both bare presets and the `anvil/<preset>` form for robustness.
+- **`/v1/models` discovery:** anvil serves preset tokens with human names for non-plugin/closed
+  harnesses. Inline provider `models[]` remains the safe OpenClaw path; catalog auto-import should be
+  treated as optional convenience, not a dependency.
+- **Override resolution:** pre-register every emitted preset in `models[]`; that is the supported
+  operational path.
 
 ## 4. Where each stage lives (client plugin vs router)
 
@@ -237,27 +266,30 @@ Net: this matches anvil's existing design (`QUALITY-GATED-ROUTER.md` §7) — ve
 > reference plugin, harness sync verbs, stdio MCP server, and tailnet controller transport. Use
 > [Operator Playbooks](OPERATOR-PLAYBOOKS.md) for day-to-day operations.
 
-1. **Router accepts presets (no OpenClaw needed).** Make anvil-serving's OpenAI front door accept `{planning,quick-edit,review,chat,long-context}` (and `anvil/<preset>`) as `model`, map to tier, serve. Add `/v1/models` listing the presets. (anvil M0–M1.)
-2. **Use the available OpenClaw install on the gateway** (already installed; no fresh stand-up). Confirm/pin its version (`openclaw --version`), then add the §2 provider block pointing at the router. Smoke-test `openclaw models list` shows `anvil/*`; send a turn with `agents.defaults.model.primary="anvil/chat"`; **capture the outbound request to settle §3 wire-value gap.** (Reproducing elsewhere: `npm i -g openclaw@<pinned stable>` + `openclaw onboard --install-daemon`.)
-3. **Reference plugin.** Build §1, `openclaw plugins install --link ./local`, set `allowConversationAccess=true`, restart. Log every `before_model_resolve` fire → **confirm per-turn cadence**. Verify a returned `modelOverride` actually routes the turn to the anvil endpoint with the expected wire model.
+1. **Router accepts presets (no OpenClaw needed).** Done: anvil-serving's OpenAI front door accepts the
+   configured router presets and `anvil/<preset>` as `model`, maps them to tiers, serves them, and lists
+   them through `/v1/models`.
+2. **Use the available OpenClaw install on the gateway.** Done for the original wire/cadence gaps; future
+   gateway upgrades should re-run the live-validation playbook before changing the plugin contract.
+3. **Reference plugin.** Done: install with `openclaw plugins install --link`, set
+   `allowConversationAccess=true`, and restart. The current plugin also supports cloud-preferred preset config,
+   optional `/v1/route`, and route auth by env-var name.
 4. **Router-side verify+fallback.** Implement cheap structural verify + tier fallback server-side (anvil M2). Optionally add a client `llm_output` observer that logs verdicts for next-turn biasing.
-5. **Harden + publish.** Pin `pluginApi` compat once confirmed; publish plugin to ClawHub; document the `security.installPolicy`/`plugins.allow` install path.
+5. **Harden + publish.** Keep `pluginApi` compat aligned with the checked-in plugin; publish plugin to ClawHub; document the `security.installPolicy`/`plugins.allow` install path.
 
-## 6. Open questions needing hands-on validation (all UNCONFIRMED)
+## 6. Remaining OpenClaw upgrade questions
 
-- Wire `model` field = bare id vs `anvil/<preset>` (step 2 capture). **CRITICAL.**
-- `before_model_resolve` per-turn vs per-session firing cadence (step 3 logging). **CRITICAL.**
-- Whether `modelOverride` must reference a catalog-registered model (build defensively: always register).
-- Exact `pluginApi` compat floor string + the release that introduced `before_model_resolve` (pin from CHANGELOG/tags).
-- `definePluginEntry` arg form (object vs callback) in the installed SDK.
-- Whether a `before_agent_finalize` "revise" instruction can be parsed by the router to coerce escalation (likely no clean channel — treat router fallback as the real path).
-- Plugin runtime config/secret access (`plugins.entries.<id>.config`) and whether plugins are sandboxed (affects shipping-safety claims).
-- Timeout key name(s) on the provider (`timeoutSeconds` vs `timeoutMs`) — not byte-confirmed.
+- Whether future OpenClaw releases require raising the checked-in `pluginApi` compat floor.
+- Whether future OpenClaw releases change the object-form `definePluginEntry` contract.
+- Whether provider timeout key names are stable across OpenClaw releases.
+- Whether future plugin runtime sandboxing changes env-var access for
+  `ANVIL_CLOUD_CLASSES`, `ANVIL_ROUTE_ENDPOINT`, `ANVIL_ROUTE_TIMEOUT_MS`,
+  `ANVIL_ROUTE_AUTH_ENV`, and `ANVIL_DECISION_LOG`.
 
 ## 7. LIVE-CONFIRMED DEFECT (2026-07-01): the anvil-503 native-failover loop
 
 **Symptom (observed live, real OpenClaw agent turn, v0.6.0):** `before_model_resolve` set
-`providerOverride:"anvil"` for a local-preferred-class turn (quick-edit/review/chat/long-context —
+`providerOverride:"anvil"` for a local-preferred preset turn (quick-edit/review/chat/long-context —
 `plugins/openclaw-anvil-intent-router`'s T008 upfront split). anvil returned 503 (`"no
 quality-gated tier is available for this request"` — the keyless-handoff signal, ADR-0001).
 OpenClaw's native failover (`agents.defaults.model.fallbacks -> [openai/gpt-5.5,
@@ -276,16 +308,15 @@ stay pinned to whatever `before_model_resolve` returned, regardless of the provi
 fallback entry itself (`openai/gpt-5.5` still resolved through `anvil`). This would explain why
 **both** fallback attempts hit anvil's 503 rather than the native provider.
 
-This is consistent with, and sharpens, the "validate live (currently UNCONFIRMED)" item in
+This is consistent with, and sharpens, the previously open live-validation item in
 `docs/adr/0001-cloud-cost-and-subscription-auth.md` — the exhaustion-503 DOES trip OpenClaw's
 "overloaded" failover category (that part of ADR-0001's mechanism holds), but the *result* of that
 failover is not the native provider when a `providerOverride` is in play.
 
 **Scope of the defect:** every turn where the plugin emits `{ providerOverride: "anvil", ... }` —
-i.e. every local-preferred-class turn (quick-edit, review, chat, long-context; the large majority of
+i.e. every local-preferred preset turn (quick-edit, review, chat, long-context; the large majority of
 traffic in the default classify table). It does **not** affect cloud-preferred turns (`planning` by
-default): those return `{}` (no override at all), so there is no `providerOverride` to stick, and
-OpenClaw's own default/native resolution runs normally.
+default): those now route directly to the configured native provider/model and never touch anvil.
 
 **No repo-side code fix exists.** The router (`anvil_serving/router/`) is behaving correctly per its
 own contract (503 with zero streamed local tokens, C3) — the bug is in how OpenClaw's attempt loop
@@ -293,8 +324,8 @@ re-resolves the fallback chain after a `before_model_resolve` override. This rep
 OpenClaw. Two operator-side mitigations (see `plugins/openclaw-anvil-intent-router/README.md` for
 the exact config):
 
-1. **`ANVIL_CLOUD_CLASSES`** — move a work-class whose local tier is known to be flaky/exhausted into
-   the cloud-preferred set. Its turns then never touch anvil (no `providerOverride` emitted), so
+1. **`ANVIL_CLOUD_CLASSES`** — move a preset whose local tier is known to be flaky/exhausted into
+   the cloud-preferred set. Its turns then never touch anvil (no `providerOverride:"anvil"` emitted), so
    there is nothing for the failover walk to inherit. Zero-cost, but drops local-first routing for
    that class.
 2. **anvil's own opt-in metered cloud tier** (ADR-0001, `configs/example-with-cloud.toml` +

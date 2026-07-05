@@ -30,6 +30,7 @@ stdlib-only (ssh via `subprocess`, injected for tests).
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -48,6 +49,13 @@ _DEFAULT_MAX_TOKENS = 8192
 # gets its allowConversationAccess gate and intent routing silently no-ops. (The OPENCLAW-INTEGRATION-
 # SPEC recipe predates the plugin's `openclaw-` rename; the plugin README + LIVE-VALIDATION are right.)
 _PLUGIN_ID = "openclaw-anvil-intent-router"
+_GATEWAY_HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_GATEWAY_USER_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+DEFAULT_TRANSPORT_TIMEOUT_SECONDS = 120
+_DEFAULT_NATIVE_PROVIDER = "anthropic"
+_DEFAULT_NATIVE_MODEL = "claude-sonnet-4-5"
+_REMOTE_RESTART_COMMAND = 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"'
+_DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
 
 
 def _title(preset_id):
@@ -96,7 +104,15 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
         # the stale params, KEEPING the allowlist entry.
         "agents": {"defaults": {"model": {"primary": "anvil/chat"},
                                 "models": {"anvil/" + m["id"]: {} for m in models}}},
-        "plugins": {"entries": {_PLUGIN_ID: {"hooks": {"allowConversationAccess": True}}}},
+        "plugins": {"entries": {_PLUGIN_ID: {
+            "hooks": {"allowConversationAccess": True},
+            "config": {
+                "cloudClasses": ["planning"],
+                "routeTimeoutMs": 30,
+                "nativeProvider": _DEFAULT_NATIVE_PROVIDER,
+                "nativeModel": _DEFAULT_NATIVE_MODEL,
+            },
+        }}},
     }
 
 
@@ -105,7 +121,40 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
 # --------------------------------------------------------------------------- #
 
 def _ssh_target(host, user):
+    _validate_gateway_target(host, user)
     return ("%s@%s" % (user, host)) if user else host
+
+
+def _normalize_timeout_seconds(value):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1 or value > 7200:
+        raise ValueError("timeout_seconds must be an integer between 1 and 7200")
+    return value
+
+
+def _ssh_options(timeout_seconds):
+    timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
+    connect_timeout = max(1, min(int(timeout_seconds), 60))
+    return [
+        "-o", "BatchMode=yes",
+        "-o", "ConnectTimeout=%d" % connect_timeout,
+        "-o", "ServerAliveInterval=5",
+        "-o", "ServerAliveCountMax=1",
+    ]
+
+
+def _validate_gateway_target(host, user=None):
+    """Reject SSH/SCP option injection before user strings reach OpenSSH."""
+    if not host or not isinstance(host, str) or not _GATEWAY_HOST_RE.fullmatch(host):
+        raise ValueError("gateway host must be a DNS name or IPv4-style token, not an SSH option")
+    if user and (not isinstance(user, str) or not _GATEWAY_USER_RE.fullmatch(user) or user.startswith("-")):
+        raise ValueError("gateway user must not be an SSH option")
+
+
+def _is_default_openclaw_config_path(path):
+    return (
+        os.path.abspath(os.path.expanduser(path))
+        == os.path.abspath(os.path.expanduser(_DEFAULT_OPENCLAW_CONFIG_PATH))
+    )
 
 
 def _merge_anvil_provider(existing, rendered):
@@ -136,8 +185,23 @@ def _merge_anvil_provider(existing, rendered):
         for k in [k for k in dmodels if str(k).startswith("anvil/")]:
             del dmodels[k]
         dmodels.update(rendered["agents"]["defaults"]["models"])
-    out.setdefault("plugins", {}).setdefault("entries", {})[_PLUGIN_ID] = \
-        rendered["plugins"]["entries"][_PLUGIN_ID]
+    entries = out.setdefault("plugins", {}).setdefault("entries", {})
+    rendered_entry = rendered["plugins"]["entries"][_PLUGIN_ID]
+    existing_entry = entries.get(_PLUGIN_ID)
+    if isinstance(existing_entry, dict):
+        merged_entry = json.loads(json.dumps(existing_entry))
+        hooks = merged_entry.setdefault("hooks", {})
+        if not isinstance(hooks, dict):
+            hooks = {}
+        hooks.update(rendered_entry["hooks"])
+        merged_entry["hooks"] = hooks
+        config = merged_entry.setdefault("config", {})
+        if isinstance(config, dict):
+            for key, value in rendered_entry.get("config", {}).items():
+                config.setdefault(key, value)
+        entries[_PLUGIN_ID] = merged_entry
+    else:
+        entries[_PLUGIN_ID] = rendered_entry
     return out
 
 
@@ -147,22 +211,37 @@ def _tmpfile():
     return p
 
 
-def _sync_over_ssh(host, user, path, rendered, *, overwrite, _run):
+def _sync_over_ssh(host, user, path, rendered, *, overwrite,
+                   timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _run):
     """Push the rendered config to a REMOTE gateway via **scp** — deliberately NO remote shell, so it
     works FROM a Windows or Linux local host AND against a Windows / macOS / Linux gateway (all ship
     OpenSSH's `scp`/sftp-server; a POSIX remote-shell script would break on a Windows gateway). Reads
     the remote with scp, MERGES/overwrites LOCALLY, backs the remote up (pushes the ORIGINAL back as
     `<path>.bak`), then writes. A merge is REFUSED if the remote isn't plain JSON (JSON5/comments) —
     re-run with --overwrite (backup still taken). Returns 0/1; scp runs through the injected `_run`."""
-    tgt = _ssh_target(host, user)
+    try:
+        tgt = _ssh_target(host, user)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
+        timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     remote = "%s:%s" % (tgt, path)
     read_tmp, write_tmp = _tmpfile(), _tmpfile()
+    ssh_opts = _ssh_options(timeout_seconds)
     try:
         # 1. READ the remote via scp. A MISSING file is a clean "create", not a hard error.
         try:
-            r = _run(["scp", "-q", remote, read_tmp], capture_output=True, text=True)
+            r = _run(["scp", "-q", *ssh_opts, "--", remote, read_tmp],
+                     capture_output=True, text=True, timeout=timeout_seconds)
         except FileNotFoundError:
             print("scp not available on PATH (install the OpenSSH client)", file=sys.stderr)
+            return 1
+        except subprocess.TimeoutExpired:
+            print("timed out reading %s over scp" % remote, file=sys.stderr)
             return 1
         existed = r.returncode == 0
         err = (r.stderr or "").strip()
@@ -188,11 +267,21 @@ def _sync_over_ssh(host, user, path, rendered, *, overwrite, _run):
 
         # 3. BACKUP (push the ORIGINAL content back as .bak — portable, no remote shell) then WRITE.
         if existed:
-            b = _run(["scp", "-q", read_tmp, "%s.bak" % remote], capture_output=True, text=True)
-            if b.returncode != 0:
+            try:
+                b = _run(["scp", "-q", *ssh_opts, "--", read_tmp, "%s.bak" % remote],
+                         capture_output=True, text=True, timeout=timeout_seconds)
+            except subprocess.TimeoutExpired:
+                print("WARNING: timed out backing up %s" % remote, file=sys.stderr)
+                b = None
+            if b is not None and b.returncode != 0:
                 print("WARNING: could not back up %s: %s"
                       % (remote, (b.stderr or "").strip()), file=sys.stderr)
-        w = _run(["scp", "-q", write_tmp, remote], capture_output=True, text=True)
+        try:
+            w = _run(["scp", "-q", *ssh_opts, "--", write_tmp, remote],
+                     capture_output=True, text=True, timeout=timeout_seconds)
+        except subprocess.TimeoutExpired:
+            print("timed out writing %s over scp" % remote, file=sys.stderr)
+            return 1
         if w.returncode != 0:
             print("FAILED to write %s: %s" % (remote, (w.stderr or w.stdout or "").strip()),
                   file=sys.stderr)
@@ -209,25 +298,33 @@ def _sync_over_ssh(host, user, path, rendered, *, overwrite, _run):
                 pass
 
 
-def _restart_openclaw_gateway(host, user, *, _run):
+def _restart_openclaw_gateway(host, user, *, timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _run):
     """Restart the OpenClaw gateway so it picks up config changes — `openclaw gateway restart`,
     locally or over ssh when the gateway is remote (--gateway-host). It's a single command
     invocation (NOT a shell script), so it stays portable against a Windows/macOS/Linux gateway.
     Returns 0/1."""
+    try:
+        timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     if host:
-        target = _ssh_target(host, user)
-        # Run via a LOGIN shell so the remote PATH is sourced: `ssh host openclaw …` runs a
-        # NON-login, NON-interactive shell that usually can't find `openclaw` (it lives under
-        # ~/.local/bin, a brew prefix, an nvm dir, …). `$SHELL -lc` uses the remote user's own
-        # login shell (zsh/bash) to resolve it — verified against the macOS (zsh) gateway.
-        argv = ["ssh", target, '$SHELL -lc "openclaw gateway restart"']
+        try:
+            target = _ssh_target(host, user)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        argv = ["ssh", *_ssh_options(timeout_seconds), "--", target, _REMOTE_RESTART_COMMAND]
         where, missing = target, "ssh"
     else:
-        argv, where, missing = ["openclaw", "gateway", "restart"], "localhost", "openclaw"
+        argv, where, missing = ["openclaw", "gateway", "restart"], "local", "openclaw"
     try:
-        r = _run(argv, capture_output=True, text=True)
+        r = _run(argv, capture_output=True, text=True, timeout=timeout_seconds)
     except FileNotFoundError:
         print("cannot restart gateway: %s not available on PATH" % missing, file=sys.stderr)
+        return 1
+    except subprocess.TimeoutExpired:
+        print("timed out restarting the OpenClaw gateway on %s" % where, file=sys.stderr)
         return 1
     if r.returncode != 0:
         print("FAILED to restart the OpenClaw gateway on %s: %s"
@@ -237,8 +334,10 @@ def _restart_openclaw_gateway(host, user, *, _run):
     return 0
 
 
-def cmd_restart_openclaw(gateway_host=None, gateway_user=None, _run=subprocess.run):
-    return _restart_openclaw_gateway(gateway_host, gateway_user, _run=_run)
+def cmd_restart_openclaw(gateway_host=None, gateway_user=None,
+                         timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _run=subprocess.run):
+    return _restart_openclaw_gateway(gateway_host, gateway_user,
+                                     timeout_seconds=timeout_seconds, _run=_run)
 
 
 def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN", _load=None):
@@ -260,8 +359,8 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
 
 def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,
                       gateway_host=None, gateway_user=None,
-                      gateway_path="~/.openclaw/openclaw.json", overwrite=False, restart=False,
-                      _load=None, _run=subprocess.run):
+                      gateway_path=_DEFAULT_OPENCLAW_CONFIG_PATH, overwrite=False, restart=False,
+                      timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _load=None, _run=subprocess.run):
     if skills:
         print("harness sync openclaw --skills: skills/agent-config sync is not implemented yet "
               "(v1 syncs models only); tracking as the next scope.", file=sys.stderr)
@@ -284,10 +383,17 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
 
     if gateway_host:  # push to the REMOTE gateway over ssh (Mini -> the router)
         rc = _sync_over_ssh(gateway_host, gateway_user, gateway_path, provider,
-                            overwrite=overwrite, _run=_run)
+                            overwrite=overwrite, timeout_seconds=timeout_seconds, _run=_run)
         if rc == 0 and restart:  # so the gateway picks up the new config
-            return _restart_openclaw_gateway(gateway_host, gateway_user, _run=_run)
+            return _restart_openclaw_gateway(gateway_host, gateway_user,
+                                             timeout_seconds=timeout_seconds, _run=_run)
         return rc
+
+    if restart and out and not _is_default_openclaw_config_path(out):
+        print("--restart with --out requires the real local OpenClaw config path (%s); "
+              "%s looks like a preview file." % (_DEFAULT_OPENCLAW_CONFIG_PATH, out),
+              file=sys.stderr)
+        return 2
 
     text = json.dumps(provider, indent=2, ensure_ascii=False) + "\n"
     if out:
@@ -300,7 +406,7 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
     else:
         sys.stdout.write(text)
     if restart:  # config emitted locally; restart the LOCAL gateway to pick it up
-        return _restart_openclaw_gateway(None, None, _run=_run)
+        return _restart_openclaw_gateway(None, None, timeout_seconds=timeout_seconds, _run=_run)
     return 0
 
 
@@ -328,7 +434,7 @@ def main(argv=None):
                    help="push the config to a REMOTE OpenClaw gateway over ssh (e.g. fakoli-mini); "
                         "MERGES the anvil provider into the remote config by default (backup taken).")
     p.add_argument("--gateway-user", help="ssh user for --gateway-host (default: your ssh config).")
-    p.add_argument("--gateway-path", default="~/.openclaw/openclaw.json",
+    p.add_argument("--gateway-path", default=_DEFAULT_OPENCLAW_CONFIG_PATH,
                    help="remote OpenClaw config path for --gateway-host (default: %(default)s).")
     p.add_argument("--overwrite", action="store_true",
                    help="with --gateway-host: OVERWRITE the remote config instead of merging "
@@ -336,6 +442,8 @@ def main(argv=None):
     p.add_argument("--restart", action="store_true",
                    help="after `sync`: restart the OpenClaw gateway so it picks up the new config "
                         "(over ssh when --gateway-host is set). Also the `restart` action on its own.")
+    p.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                   help="bound each ssh/scp/openclaw subprocess call (default: %(default)s).")
     p.add_argument("--skills", action="store_true",
                    help="(not yet implemented) also sync skills/agent config.")
     a = p.parse_args(argv)
@@ -349,7 +457,8 @@ def main(argv=None):
             print("restart openclaw takes only --gateway-host/--gateway-user; drop %s (it does not "
                   "sync)." % ", ".join(stray), file=sys.stderr)
             return 2
-        return cmd_restart_openclaw(gateway_host=a.gateway_host, gateway_user=a.gateway_user)
+        return cmd_restart_openclaw(gateway_host=a.gateway_host, gateway_user=a.gateway_user,
+                                    timeout_seconds=a.timeout_seconds)
 
     if a.action == "sync" and a.harness == "openclaw":
         if not a.config:
@@ -359,14 +468,19 @@ def main(argv=None):
         # reload the OLD config and falsely report success. Require an APPLIED target for --restart.
         if a.restart and not a.gateway_host and not a.out:
             print("--restart with a stdout-only sync would reload the gateway's OLD config (nothing "
-                  "was applied). Use --gateway-host <host>, or --out <the gateway's config path>.",
+                  "was applied). Use --gateway-host <host>, or --out %s." % _DEFAULT_OPENCLAW_CONFIG_PATH,
+                  file=sys.stderr)
+            return 2
+        if a.restart and a.out and not a.gateway_host and not _is_default_openclaw_config_path(a.out):
+            print("--restart with --out requires the real local OpenClaw config path (%s); "
+                  "%s looks like a preview file." % (_DEFAULT_OPENCLAW_CONFIG_PATH, a.out),
                   file=sys.stderr)
             return 2
         return cmd_sync_openclaw(a.config, out=a.out, base_url=a.base_url,
                                  api_key_env=a.api_key_env, skills=a.skills,
                                  gateway_host=a.gateway_host, gateway_user=a.gateway_user,
                                  gateway_path=a.gateway_path, overwrite=a.overwrite,
-                                 restart=a.restart)
+                                 restart=a.restart, timeout_seconds=a.timeout_seconds)
     return 2
 
 

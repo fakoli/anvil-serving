@@ -6,6 +6,14 @@ existing router-internal verify+fallback (PR #39) stays valid for the *opt-in ke
 makes the cloud tier optional, adds the keyless handoff, the decision endpoint, and the cost
 dimension. Nothing here tears down what shipped.
 
+> **Status update (2026-07-05):** the router-side keyless exhaustion contract shipped, but the
+> OpenClaw-native handoff assumption in this early plan is superseded by
+> [ADR-0005](adr/0005-anvil-503-native-failover-unreliable.md). OpenClaw's fallback walk can fire
+> on anvil's exhaustion status, but if `before_model_resolve` pinned `providerOverride:"anvil"`, the
+> fallback attempts can remain pinned to that provider. Treat Phase 1 below as the router guarantee
+> only; use cloud-preferred upfront routing or anvil's opt-in metered cloud tier for OpenClaw
+> local-preferred turns.
+
 **Sequencing note:** Phase 0 + Phase 1 are the launch-relevant core (they make the shipped default
 keyless and prove the handoff). Phases 2–5 are incremental and can land after the public flip.
 
@@ -19,11 +27,11 @@ explicitly meters, and explicitly maps to intents.
 - `config.py` `Tier`: add optional `cost_input_per_mtok` / `cost_output_per_mtok` (USD per **million**
   tokens; `None` = unknown), and keep `privacy=="cloud"` as the metered marker. `_parse_tier` parses +
   validates them (floats ≥ 0 or absent).
-- `config.py` `RouterConfig`: add an explicit **metered-intent map** — e.g. `[routing] metered_cloud =
+- `config.py` `RouterConfig`: add an explicit **metered-intent list** — e.g. `[router] metered_cloud =
   ["planning"]` — listing the intents/work-classes permitted to use a metered cloud tier. **Empty/absent
   by default.** A cloud tier is only ever a candidate for an intent that appears here.
 - Ship `configs/example.toml` as **local-only** (no cloud tier). Add `configs/example-with-cloud.toml`
-  showing the opt-in cloud tier + `metered_cloud` mapping + cost fields, with a loud "this is metered $"
+  showing the opt-in cloud tier + `metered_cloud` list + cost fields, with a loud "this is metered $"
   comment.
 - `policy.route()` already filters candidates; add the metered-intent gate so a cloud tier is dropped
   from the candidate pool for any work-class not in `metered_cloud`.
@@ -36,17 +44,16 @@ the public flip** (so the shipped default is keyless).
 
 ## Phase 1 — Keyless fallback handoff  *(the keystone; must live-validate)*
 
-**Goal:** in the local-only default, an `allow-with-verify` miss cleanly defers to OpenClaw's native
-subscription provider, with no partial local tokens.
+**Goal:** in the local-only default, an `allow-with-verify` miss cleanly returns a gateway handoff
+signal with no partial local tokens. OpenClaw native-provider recovery is caveated by ADR-0005 when a
+plugin-pinned `providerOverride` reached anvil first.
 
 - Confirm `route_with_fallback` (`fallback.py`) on exhaustion (no remaining tier) raises
   `NoAvailableTierError`, and `front_door.py` maps that to a **503** — *already the behavior*. The
   commit-window (`commit_window.py`) guarantees nothing local was streamed before the 503 (C3).
-- **LIVE-VALIDATE (the one UNCONFIRMED):** against OpenClaw **2026.6.6**, confirm anvil's exhaustion-503
-  triggers OpenClaw's native failover ("overloaded" category) → the request re-runs on the native
-  provider. Capture the real request/response. If 503 does **not** trip it, find the status OpenClaw
-  classifies as a transport-failover trigger and emit that on exhaustion (configurable
-  `exhaustion_status`, default 503). Record the result in the companion notes repo (`fakoli/anvil-serving-notes`).
+- **LIVE-VALIDATED WITH CAVEAT:** against OpenClaw **2026.6.6**, anvil's exhaustion status can trigger
+  OpenClaw's overloaded/transport fallback category, but ADR-0005 proved the native fallback is not a
+  reliable escape when the failing attempt was resolved through `providerOverride:"anvil"`.
 - Make the exhaustion status + body explicit and documented (it is now a *contract* with the gateway,
   not an internal detail).
 
@@ -106,8 +113,9 @@ intents; never triggers a backend call; malformed → 400. **Incremental.**
   instead of embedding the classifier, to keep one source of routing truth (trade-off: a round-trip vs
   client-side duplication — keep the deterministic client classifier as the fast path, `/v1/route` as
   the authoritative override).
-- Ensure OpenClaw's `agents.defaults.model.fallbacks` lists the native provider so the Phase-1
-  exhaustion-503 handoff works.
+- Configure cloud-preferred presets to route directly to the native provider/model. Optional
+  `agents.defaults.model.fallbacks` may still help native-provider transport failures, but must not
+  be presented as a reliable rescue for local-preferred anvil 503s; see ADR-0005.
 
 **Tests:** plugin unit tests for the routing split; the keyword-parity test already guards classifier
 drift. **Incremental.**
@@ -127,6 +135,8 @@ drift. **Incremental.**
 ---
 
 ## Open / to-confirm during build
-- The exact OpenClaw failover trigger (Phase 1 live validation) — the one hard unknown.
+- OpenClaw failover trigger status is no longer unknown: ADR-0005 records the live caveat. Future work
+  is an OpenClaw-side fix or a confirmed provider-resolution change that lets fallback attempts escape
+  a hook-emitted `providerOverride`.
 - Whether the plugin embeds the classifier or calls `/v1/route` (Phase 4) — decide after `/v1/route` lands.
 - A follow-up ADR if the optional cost-sync grows beyond a single static-JSON fetch.
