@@ -88,8 +88,11 @@ That worked but wasted a round-trip.  T008 short-circuits that path.
    provider resolves normally via `agents.defaults.model.primary`).
 4. Otherwise → returns `{ providerOverride: "anvil", modelOverride: "<preset>" }`.
 
-The decision log now includes a `destination` field (`"anvil"` or `"native"`)
-and an `authoritative` flag (true when the `/v1/route` mode is active).
+The decision log includes a `destination` field (`"anvil"` or `"native"`), an
+`authoritative` flag, and a `routingSource` field. `authoritative` is true only
+when `/v1/route` returns a valid tier; if the configured route endpoint is
+unreachable, unauthorized, or malformed, the plugin falls back to the client-side
+classifier and logs `routingSource: "client-side-fallback"`.
 
 ### Cloud-class set
 
@@ -143,6 +146,18 @@ fast client-side heuristic. The env var takes precedence when it is non-empty:
 ```bash
 export ANVIL_ROUTE_ENDPOINT="http://127.0.0.1:8000/v1/route"
 ```
+
+If the route endpoint is protected by the router front-door token, provide the
+token by env var name, not by raw value:
+
+```bash
+export ANVIL_ROUTE_AUTH_ENV="ANVIL_ROUTER_TOKEN"
+export ANVIL_ROUTER_TOKEN="..."
+```
+
+`api.pluginConfig.routeAuthEnv` provides the same env-var-name setting when
+`ANVIL_ROUTE_AUTH_ENV` is unset. The plugin sends both `Authorization: Bearer`
+and `x-api-key` headers to match anvil-serving's accepted auth forms.
 
 Trade-off:
 - **Pro:** uses the router's full quality profile + config; catches edge cases
@@ -246,8 +261,11 @@ only.
 6. **(Optional) set environment variables:**
    - `ANVIL_CLOUD_CLASSES` — comma-separated preset names to route to native;
      overrides `api.pluginConfig.cloudClasses`.
-   - `ANVIL_ROUTE_ENDPOINT` — full URL of anvil's `/v1/route` (authoritative mode);
+  - `ANVIL_ROUTE_ENDPOINT` — full URL of anvil's `/v1/route` (authoritative mode);
      overrides `api.pluginConfig.routeEndpoint`.
+   - `ANVIL_ROUTE_AUTH_ENV` — env var name containing the optional `/v1/route`
+     auth token, for example `ANVIL_ROUTER_TOKEN`; overrides
+     `api.pluginConfig.routeAuthEnv`.
    - `ANVIL_DECISION_LOG` — absolute path for the decision log (defaults to
      `./decision_log.jsonl` relative to the gateway's CWD).
 

@@ -22,6 +22,17 @@ export declare function getCloudClasses(pluginConfig?: unknown): Set<string>;
 export declare function getRouteEndpoint(pluginConfig?: unknown): string | undefined;
 
 /**
+ * Return the env var name containing the optional /v1/route auth token.
+ * Reads ANVIL_ROUTE_AUTH_ENV if set, then pluginConfig.routeAuthEnv.
+ */
+export declare function getRouteAuthEnv(pluginConfig?: unknown): string | undefined;
+
+/**
+ * Resolve the optional /v1/route auth token from getRouteAuthEnv().
+ */
+export declare function resolveRouteAuthToken(pluginConfig?: unknown): string | undefined;
+
+/**
  * Make the before_model_resolve routing decision for a classified preset.
  *
  * Returns {} for cloud-preferred presets (native provider),
@@ -41,5 +52,6 @@ export declare function fetchAnvilTier(
   prompt: string,
   attachments: Array<{ kind: string }> | undefined,
   endpoint: string,
-  timeoutMs?: number,
+  timeoutOrOptions?: number | { timeoutMs?: number; authToken?: string },
+  authToken?: string,
 ): Promise<"local" | "cloud" | null>;

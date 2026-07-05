@@ -64,6 +64,8 @@
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 
+const ENV_NAME_RE = /^[A-Z][A-Z0-9_]*$/;
+
 // ---------------------------------------------------------------------------
 // Cloud-class configuration
 // ---------------------------------------------------------------------------
@@ -107,6 +109,12 @@ function parseClassList(value) {
     .map((s) => typeof s === "string" ? s.trim() : "")
     .filter(Boolean);
   return normalized.length > 0 ? new Set(normalized) : null;
+}
+
+function normalizeEnvName(value) {
+  if (typeof value !== "string") return undefined;
+  const name = value.trim();
+  return ENV_NAME_RE.test(name) ? name : undefined;
 }
 
 /**
@@ -157,6 +165,38 @@ export function getRouteEndpoint(pluginConfig) {
   }
 
   return undefined;
+}
+
+/**
+ * Return the env var name that stores the optional `/v1/route` auth token.
+ *
+ * Priority:
+ *   1. ANVIL_ROUTE_AUTH_ENV env var.
+ *   2. api.pluginConfig.routeAuthEnv.
+ *
+ * The value is an env var name such as ANVIL_ROUTER_TOKEN, not a raw token.
+ *
+ * @param {unknown} [pluginConfig]
+ * @returns {string|undefined}
+ */
+export function getRouteAuthEnv(pluginConfig) {
+  const envVal = normalizeEnvName(process.env.ANVIL_ROUTE_AUTH_ENV);
+  if (envVal) return envVal;
+
+  return normalizeEnvName(configValue(pluginConfig, "routeAuthEnv"));
+}
+
+/**
+ * Resolve the optional `/v1/route` auth token from the configured env var name.
+ *
+ * @param {unknown} [pluginConfig]
+ * @returns {string|undefined}
+ */
+export function resolveRouteAuthToken(pluginConfig) {
+  const envName = getRouteAuthEnv(pluginConfig);
+  if (!envName) return undefined;
+  const token = process.env[envName];
+  return typeof token === "string" && token !== "" ? token : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -220,13 +260,31 @@ export function makeRoutingDecision(preset, cloudClasses) {
  * @param {string} prompt
  * @param {Array<{kind:string}>|undefined} attachments
  * @param {string} endpoint - full URL (http://host:port/v1/route)
- * @param {number} [timeoutMs=30] - request timeout in ms (30ms keeps hook
- *   overhead < 5% for co-located anvil; raise if anvil is on a separate host)
+ * @param {number|{timeoutMs?:number,authToken?:string}} [timeoutOrOptions=30]
+ *   request timeout in ms (30ms keeps hook overhead < 5% for co-located anvil;
+ *   raise if anvil is on a separate host), or an options object.
+ * @param {string|undefined} [authToken] - optional resolved token; callers
+ *   should get this from resolveRouteAuthToken(), never plugin config.
  * @returns {Promise<"local"|"cloud"|null>}
  */
-export function fetchAnvilTier(prompt, attachments, endpoint, timeoutMs = 30) {
+export function fetchAnvilTier(
+  prompt,
+  attachments,
+  endpoint,
+  timeoutOrOptions = 30,
+  authToken = undefined,
+) {
   return new Promise((resolve) => {
     try {
+      const options = typeof timeoutOrOptions === "object" && timeoutOrOptions !== null
+        ? timeoutOrOptions
+        : { timeoutMs: timeoutOrOptions, authToken };
+      const timeoutMs = Number.isFinite(options.timeoutMs)
+        ? Number(options.timeoutMs)
+        : 30;
+      const routeAuthToken = typeof options.authToken === "string" && options.authToken !== ""
+        ? options.authToken
+        : undefined;
       // Build a minimal completions-shaped body (POST /v1/route contract).
       const body = JSON.stringify({
         model: "chat",
@@ -241,6 +299,14 @@ export function fetchAnvilTier(prompt, attachments, endpoint, timeoutMs = 30) {
           : url.protocol === "https:"
             ? 443
             : 80;
+      const headers = {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body),
+      };
+      if (routeAuthToken) {
+        headers.Authorization = "Bearer " + routeAuthToken;
+        headers["x-api-key"] = routeAuthToken;
+      }
 
       const req = lib(
         {
@@ -248,10 +314,7 @@ export function fetchAnvilTier(prompt, attachments, endpoint, timeoutMs = 30) {
           port,
           path: url.pathname + (url.search || ""),
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(body),
-          },
+          headers,
           timeout: timeoutMs,
         },
         (res) => {

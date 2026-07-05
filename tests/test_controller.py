@@ -201,6 +201,31 @@ def test_controller_bad_tool_call_is_structured_and_audited():
     assert audits[-1]["error_code"] == "bad_request"
 
 
+def test_jsonrpc_notification_does_not_execute_tool_call():
+    calls = []
+
+    def fake_call_tool(name, arguments=None):
+        calls.append((name, arguments))
+        return {"ok": True}
+
+    with running_controller(call_tool_func=fake_call_tool) as (host, port):
+        status, _, body, raw = _request(
+            host,
+            port,
+            "POST",
+            "/",
+            body={
+                "jsonrpc": "2.0",
+                "method": "tools/call",
+                "params": {"name": "fake", "arguments": {"confirm": True}},
+            },
+        )
+    assert status == 204
+    assert body is None
+    assert raw == b""
+    assert calls == []
+
+
 def test_controller_cli_dispatch(monkeypatch):
     from anvil_serving import controller as controller_mod
 
