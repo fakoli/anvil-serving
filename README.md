@@ -28,6 +28,11 @@ model cataloging, tuned deployment, a correctness gate, capacity benchmarking, a
 single-GPU model multiplexer. Those tools (documented below) right-size and stand up the local
 tiers; the router decides what each one is *trusted* to serve.
 
+For OpenClaw and agent-assisted operations, anvil-serving now also exposes a structured control
+plane: `anvil-serving mcp` for same-host stdio MCP, and `anvil-serving controller serve` for a
+token-authenticated tailnet controller that lets a gateway on `fakoli-mini` operate a separate
+GPU/router host without raw SSH as the product contract.
+
 ---
 
 ## Why a router, and not just another proxy
@@ -202,12 +207,15 @@ harness → │ front door → resolve intent → route → [verify] → return 
 
 The core stays **protocol-standard** (Anthropic Messages + OpenAI Chat Completions) with **zero
 OpenClaw coupling.** OpenClaw is the near-first-class beachhead because its `before_model_resolve`
-hook (fires per run — plausibly one user message; exact cadence is a documented validate-first gap)
-unlocks client-side per-request intent the closed harnesses can't do
+hook (source-confirmed once per run, above the attempt loop; live behavior and caveats are recorded
+in the OpenClaw docs) unlocks client-side per-request intent the closed harnesses can't do
 — but it ships as a **thin, swappable adapter plugin**, not a dependency. Focus, not couple.
 Full design: [`docs/QUALITY-GATED-ROUTER.md`](docs/QUALITY-GATED-ROUTER.md). OpenClaw spec
 (verdict: go-with-caveats, medium risk / API churn):
-[`docs/OPENCLAW-INTEGRATION-SPEC.md`](docs/OPENCLAW-INTEGRATION-SPEC.md).
+[`docs/OPENCLAW-INTEGRATION-SPEC.md`](docs/OPENCLAW-INTEGRATION-SPEC.md). Operational layering:
+[ADR-0013](docs/adr/0013-openclaw-layers-and-mcp-control-plane.md),
+[ADR-0014](docs/adr/0014-tailnet-controller-transport.md), and
+[`docs/OPERATOR-PLAYBOOKS.md`](docs/OPERATOR-PLAYBOOKS.md).
 
 ---
 
@@ -388,6 +396,12 @@ carries no cloud key, but the risk still applies if you later add one.) Treat a 
 credentials are referenced by env-var name and redacted from logs; see [`SECURITY.md`](SECURITY.md)
 for the full threat model and how to report a vulnerability.
 
+The controller is a management plane, not a model data plane. For split-host operation, bind
+`anvil-serving controller serve` only to `127.0.0.1` or a private/tailnet address and set
+`ANVIL_CONTROLLER_TOKEN` through `--auth-token-env`; `anvil-serving mcp --controller-url ... --auth-env
+ANVIL_CONTROLLER_TOKEN` resolves the same token on the gateway side. Tailnet ACLs are
+defense-in-depth, not a replacement for the controller token.
+
 ---
 
 ## The serving substrate (the foundation the router builds on)
@@ -415,6 +429,8 @@ anvil-serving serves       # manage the local model serves via compose: status |
 anvil-serving router       # manage the DEPLOYED router container: up|down|restart|reload|status|logs|token + promote (write-back)
 anvil-serving harness      # own the harness-side config: `sync openclaw` renders OpenClaw models from the live router presets; `restart openclaw` / `sync --restart` reloads the gateway
 anvil-serving host         # own the WSL/Docker-Desktop host config: `doctor` (recommend a SAFE WSL memory), `wsl-config` (edit .wslconfig w/ backup + safe-cap + --revert), `restart-docker`, `reset-wsl` (un-wedge a hung WSL)
+anvil-serving mcp          # stdio MCP control plane for status, route probes, OpenClaw sync, preflight, and benchmark probes
+anvil-serving controller   # tailnet-safe HTTP controller that exposes the same MCP tool contract to a remote gateway/agent
 ```
 
 ### Substrate quickstart
@@ -484,7 +500,8 @@ context for the router:
   RTX PRO 6000 96GB.
 - **fast** `:30001` — `gpt-oss-20b` on **vLLM**, RTX 5090 32GB.
 - **gateway** — **Fakoli Mini** runs **OpenClaw** (already installed), the beachhead harness; the
-  router sits between it and the serves — see
+  router sits between it and the serves, and the MCP bridge/controller pair gives Mini a typed
+  operational path back to the GPU host — see
   [`examples/fakoli-dark/README.md`](examples/fakoli-dark/README.md) for the cross-box exposure
   model (the gateway and the GPU box are separate machines) and every hardcoded value (GPU UUIDs,
   model paths, ports) you must replace with your own before reusing this topology.
@@ -498,23 +515,13 @@ now lives, after the router promotion).
 
 ## Status
 
-**v0.7.3 is shipped.** The fakoli-dark heavy tier enables NEXTN speculative decoding
-(self-speculation from the model's own MTP head, no separate draft model) — validated live before
-merging (ADR-0008): +30-43% decode throughput depending on concurrency, no wire-level change. On
-top of that, the relay forwards tools, tool history, and sampling parameters with
-full wire fidelity, streams real SSE deltas (true TTFT), and passes through real token usage — on
-top of the v0.6.0 containerized, token-authed service (ADR-0004) and the portable-by-default
-genericity work (ADR-0003); the `harness-router` PRD is **complete — all 18
-tasks built (milestones M0–M3), 993 tests green**. v0.7.1/v0.7.2 are live-incident hardening
-passes: a caller-capped `length`/`max_tokens` stop (e.g. a harness-computed
-`max_completion_tokens` floored at 1) now passes structural verify instead of 503-exhausting and
-tripping the circuit breaker on every turn, and model weights mount from a named Docker volume
-instead of host bind mounts (9P/virtiofs bind mounts turned cold loads into 20–90 minute stalls —
-and this also removed the last machine-specific paths from the shipped package). v0.4.0 shipped
-advise-and-defer (local-only default, opt-in metered cloud) and the launch-hardening pass on top
-of the v0.3.0 harness-router. Both the router front door (`anvil-serving serve`) and the serving
-substrate (profile / models sync / deploy / preflight / benchmark / multiplexer) ship. See the
-[CHANGELOG](CHANGELOG.md) for the full release notes.
+**v0.10.0 is the latest tagged release; main also contains post-0.10.0 control-plane work.** The
+router, serving substrate, host management, router/serve lifecycle verbs, harness sync, and
+OpenClaw MCP/controller control plane all ship on main. The control plane keeps the request data
+plane clean: OpenClaw's hook plugin handles per-turn intent, the router handles quality and
+fallback, and MCP/controller tools handle explicit operations such as status, preflight,
+benchmarking, and OpenClaw config sync. See the [CHANGELOG](CHANGELOG.md) for the full release
+notes.
 
 What shipped, by milestone:
 
@@ -580,6 +587,10 @@ What shipped, by milestone:
 - **OpenClaw integration:** [`docs/OPENCLAW-INTEGRATION-SPEC.md`](docs/OPENCLAW-INTEGRATION-SPEC.md)
   (source-verified buildable spec, go-with-caveats verdict) ·
   [`docs/OPENCLAW-LIVE-VALIDATION.md`](docs/OPENCLAW-LIVE-VALIDATION.md) (live-validation runbook)
+- **OpenClaw operations:** [ADR-0013](docs/adr/0013-openclaw-layers-and-mcp-control-plane.md)
+  (hook/router/MCP layers) · [ADR-0014](docs/adr/0014-tailnet-controller-transport.md)
+  (split-host controller over Tailscale) · [`docs/OPERATOR-PLAYBOOKS.md`](docs/OPERATOR-PLAYBOOKS.md)
+  (MCP/controller runbooks)
 - **Serving reference:** [`docs/MODEL-SETTINGS-EXAMPLE.md`](docs/MODEL-SETTINGS-EXAMPLE.md)
   (thinking-by-default model config and sampling) ·
   [`docs/SERVES-AND-EVAL.md`](docs/SERVES-AND-EVAL.md) (serve lifecycle + eval entry point)
