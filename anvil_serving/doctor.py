@@ -158,6 +158,24 @@ def run_checks(config_path=None, config_explicit=False, _run=subprocess.run,
     return checks
 
 
+def checks_summary(config_path=None, config_explicit=False, _run=subprocess.run,
+                   _gpu_run=subprocess.check_output, _open=urllib.request.urlopen):
+    """Machine-readable doctor summary for MCP/automation."""
+    checks = run_checks(config_path=config_path, config_explicit=config_explicit,
+                        _run=_run, _gpu_run=_gpu_run, _open=_open)
+    ok = all((not c.required) or c.ok for c in checks)
+    return {
+        "ok": ok,
+        "checks": [{
+            "name": c.name,
+            "ok": c.ok,
+            "status": c.status,
+            "detail": c.detail,
+            "required": c.required,
+        } for c in checks],
+    }
+
+
 def main(argv):
     ap = argparse.ArgumentParser(
         prog="anvil-serving doctor",

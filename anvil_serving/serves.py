@@ -140,6 +140,34 @@ def _gpu_lines(_run=subprocess.run):
     return [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
 
 
+def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request.urlopen):
+    """Machine-readable serve status for MCP/automation.
+
+    Mirrors :func:`cmd_status` without printing. The shape is intentionally
+    simple and stable so agent tools do not scrape the human table.
+    """
+    selected = _select(serves, names or [])
+    rows = []
+    for s in selected:
+        st = docker_state(s["container"], _run=_run)
+        health = _health(s["port"], s.get("health", "/health"), _open=_open) if st == "running" else None
+        rows.append({
+            "name": s["name"],
+            "container": s["container"],
+            "port": s["port"],
+            "health_path": s.get("health", "/health"),
+            "docker_state": st,
+            "running": st == "running",
+            "health_status": health,
+            "model": s.get("model"),
+        })
+    return {
+        "serves": rows,
+        "selected": [r["name"] for r in rows],
+        "gpu_memory_lines": _gpu_lines(_run=_run),
+    }
+
+
 def cmd_status(serves, _run=subprocess.run, _open=urllib.request.urlopen):
     print("%-16s %-16s %-6s %-9s %s" % ("SERVE", "CONTAINER", "PORT", "DOCKER", "HEALTH"))
     for s in serves:
