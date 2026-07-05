@@ -11,6 +11,8 @@ import io
 import json
 import random
 
+import pytest
+
 from anvil_serving import benchmark as bm
 
 
@@ -244,3 +246,31 @@ def test_main_recipe_out_end_to_end_is_hermetic(monkeypatch, capsys):
     parsed = tomllib.loads("schema='x'\n" + block)["recipe"][0]
     assert parsed["model"] == "local-heavy"
     assert parsed["intent"]["mode"] == "flexibility"
+
+
+def test_main_incomplete_run_skips_verified_recipe(monkeypatch, tmp_path, capsys):
+    outcomes = iter([
+        RuntimeError("boom"),
+        dict(ttft=0.1, e2e=0.2, out_toks=64, usage=None),
+    ])
+
+    def fake_stream_chat(*args, **kwargs):
+        outcome = next(outcomes)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    recipe_path = tmp_path / "serve-recipes.toml"
+    monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
+
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "--base-url", "http://127.0.0.1:30002/v1", "--model", "local-heavy",
+            "--requests", "2", "--concurrency", "1", "--max-model-len", "131072",
+            "--recipe-out", str(recipe_path),
+        ])
+
+    assert exc.value.code == 1
+    assert not recipe_path.exists()
+    captured = capsys.readouterr()
+    assert "skipping serve recipe" in captured.err

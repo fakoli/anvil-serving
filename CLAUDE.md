@@ -77,7 +77,7 @@ anvil_serving/
     serve.py           `anvil-serving serve` entrypoint: config → backends → front door
     front_door.py      ThreadingHTTPServer accepting Anthropic Messages + OpenAI Chat Completions,
                        binding 127.0.0.1 (never localhost — see gotchas), SSE streaming
-    intent.py          PRESETS enum (planning/quick-edit/review/chat/long-context) + resolve()
+    intent.py          PRESETS enum (planning/quick-edit/review/chat/chat-fast/long-context) + resolve()
     classify.py        Tier-0 work-class classifier (infers intent from raw payload)
     policy.py          residency-aware routing: hard constraints → profile deny → cost order
     fallback.py        ordered tier walk: serve → verify → escalate; retry cap + circuit breaker
@@ -136,6 +136,14 @@ anvil-serving models sync --out ./model-library
 anvil-serving deploy --model /path/to/model --gpu 1 --context 131072 --served-name local
 anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model local
 anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model local --burst 20
+
+# Harness/control-plane operations:
+anvil-serving harness sync openclaw --config configs/example.toml --dry-run
+anvil-serving harness restart openclaw --dry-run
+anvil-serving mcp --list-tools
+export ANVIL_CONTROLLER_TOKEN="<controller-secret>"
+anvil-serving controller serve --host 100.64.0.10 --auth-token-env ANVIL_CONTROLLER_TOKEN
+anvil-serving mcp --controller-url http://100.64.0.10:8765 --auth-env ANVIL_CONTROLLER_TOKEN
 ```
 
 Point a harness at the router:
@@ -220,8 +228,8 @@ Cloud credentials go in env vars only — never in config files. The front door 
 
 - **The `model` field is the routing channel.** It's present in both Anthropic Messages and
   OpenAI Chat Completions, forwarded verbatim, and free-form. Named presets in the model
-  field (`planning`, `quick-edit`, `review`, `chat`, `long-context`) is the right wire
-  surface for harnesses that can be configured (Claude Code, Aider, Codex CLI).
+  field (`planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`) is the right
+  wire surface for harnesses that can be configured (Claude Code, Aider, Codex CLI).
 - **Tier-0 classifier is the universal floor.** For harnesses that can't set the model
   field (or don't), `classify.py` infers work-class from the raw payload (token count,
   `thinking` flag, tool types, image content, system-prompt fingerprint).
@@ -261,10 +269,27 @@ skills/modules/agent configuration — **starting with OpenClaw**.
    prefer `anvil-serving mcp`; in split-host mode, run `anvil-serving controller serve` on the
    anvil-serving host and bridge from `fakoli-mini` with
    `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
+3. **Know the MCP verbs and their safety gates.** `anvil-serving mcp --list-tools` exposes
+   `router_status`, `serves_status`, `doctor_summary`, `route_decision`, `openclaw_sync`,
+   `openclaw_gateway_restart`, `preflight_probe`, and `benchmark_probe`. Mutating or expensive
+   probes stay dry-run unless `confirm=true`; numeric knobs are bounded; booleans must be real
+   booleans; raw `api_key` values are rejected. Probe tools only accept `ANVIL_ROUTER_TOKEN` as
+   `api_key_env`, redact the resolved token from responses/errors, and restrict target URLs to
+   loopback/private/tailnet hosts (never `localhost`, wildcard, link-local, metadata, or public IPs).
+   Proxy mode likewise validates `--controller-url` before sending `ANVIL_CONTROLLER_TOKEN`.
+4. **Treat the OpenClaw plugin as an expanded adapter, not just a classifier.** The checked-in plugin
+   supports `cloudClasses`, optional authoritative `routeEndpoint` + `routeAuthEnv` + `routeTimeoutMs`,
+   `nativeProvider`/`nativeModel` for cloud-preferred and route-exhausted turns, and JSONL decision
+   logging with `routingSource` and `routeEndpointConfigured`. Keep `openclaw.plugin.json`
+   `configSchema`, `route.d.mts`, `package.json` `compat.pluginApi`, generated fixtures, and docs in
+   sync whenever those capabilities change.
 
 Note: the OpenClaw **gateway** runs on **Fakoli Mini**. The anvil-serving host owns router, serve,
 model, benchmark, preflight, and harness-rendering operations; Mini owns gateway-local apply/restart
 actions. Keep that boundary intact unless a tool explicitly supports crossing it.
+
+Controller auth is required by default even on `127.0.0.1`; use
+`--allow-unauthenticated-loopback` only for explicit local development tests.
 
 ---
 

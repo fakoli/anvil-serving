@@ -97,7 +97,8 @@ The implemented split-host shape is:
   pull/local-apply model: the gateway host asks the controller for rendered config or
   instructions, then applies the gateway-local action itself. Controller-initiated
   push or SSH back to the gateway remains possible only as an explicit, confirmed
-  tool target.
+  tool target. The current `harness sync openclaw --gateway-host ...` path is that
+  explicit fallback; it is not the long-term default contract.
 
 The controller is a management plane only. It must not become a model-response data
 plane or a general shell relay. Model requests continue to use the router HTTP

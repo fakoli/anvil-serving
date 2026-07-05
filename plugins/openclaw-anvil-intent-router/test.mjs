@@ -8,37 +8,52 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   DEFAULT_CLOUD_CLASSES,
+  DEFAULT_NATIVE_MODEL,
+  DEFAULT_NATIVE_PROVIDER,
+  DEFAULT_ROUTE_TIMEOUT_MS,
   fetchAnvilTier,
   getCloudClasses,
+  getNativeRoute,
   getRouteAuthEnv,
   getRouteEndpoint,
+  getRouteTimeoutMs,
   makeRoutingDecision,
   resolveRouteAuthToken,
 } from "./route.mjs";
 
 import { classify } from "./classify.mjs";
 
+const DEFAULT_NATIVE_ROUTE = {
+  providerOverride: DEFAULT_NATIVE_PROVIDER,
+  modelOverride: DEFAULT_NATIVE_MODEL,
+};
+const HERE = dirname(fileURLToPath(import.meta.url));
+
 // ── makeRoutingDecision unit tests ──────────────────────────────────────────
 
-describe("makeRoutingDecision — cloud-preferred presets → native (no override)", () => {
-  test("planning → {} (native)", () => {
+describe("makeRoutingDecision — cloud-preferred presets → explicit native route", () => {
+  test("planning → native provider/model override", () => {
     const result = makeRoutingDecision("planning", DEFAULT_CLOUD_CLASSES);
-    assert.deepEqual(result, {}, "planning is cloud-preferred; must return no override");
+    assert.deepEqual(result, DEFAULT_NATIVE_ROUTE, "planning is cloud-preferred; must bypass anvil");
   });
 
-  test("planning → {} with explicit single-item set", () => {
+  test("planning → native route with explicit single-item set", () => {
     const result = makeRoutingDecision("planning", new Set(["planning"]));
-    assert.deepEqual(result, {});
+    assert.deepEqual(result, DEFAULT_NATIVE_ROUTE);
   });
 
   test("any preset in an extended cloud set → native", () => {
     const extended = new Set(["planning", "long-context"]);
-    assert.deepEqual(makeRoutingDecision("planning", extended), {});
-    assert.deepEqual(makeRoutingDecision("long-context", extended), {});
+    assert.deepEqual(makeRoutingDecision("planning", extended), DEFAULT_NATIVE_ROUTE);
+    assert.deepEqual(makeRoutingDecision("long-context", extended), DEFAULT_NATIVE_ROUTE);
   });
 
   test("empty cloud set → nothing is cloud-preferred (everything routes to anvil)", () => {
@@ -210,6 +225,36 @@ describe("getRouteEndpoint — env var then api.pluginConfig.routeEndpoint", () 
   });
 });
 
+describe("getRouteTimeoutMs — env var then api.pluginConfig fallback", () => {
+  test("defaults to the bounded hook timeout", () => {
+    delete process.env.ANVIL_ROUTE_TIMEOUT_MS;
+    assert.equal(getRouteTimeoutMs(), DEFAULT_ROUTE_TIMEOUT_MS);
+  });
+
+  test("plugin config routeTimeoutMs is used when env var is unset", () => {
+    delete process.env.ANVIL_ROUTE_TIMEOUT_MS;
+    assert.equal(getRouteTimeoutMs({ routeTimeoutMs: 250 }), 250);
+  });
+
+  test("ANVIL_ROUTE_TIMEOUT_MS wins over plugin config", () => {
+    process.env.ANVIL_ROUTE_TIMEOUT_MS = "750";
+    try {
+      assert.equal(getRouteTimeoutMs({ routeTimeoutMs: 250 }), 750);
+    } finally {
+      delete process.env.ANVIL_ROUTE_TIMEOUT_MS;
+    }
+  });
+
+  test("invalid timeout values fall back instead of hanging the hook", () => {
+    process.env.ANVIL_ROUTE_TIMEOUT_MS = "999999";
+    try {
+      assert.equal(getRouteTimeoutMs({ routeTimeoutMs: -1 }), DEFAULT_ROUTE_TIMEOUT_MS);
+    } finally {
+      delete process.env.ANVIL_ROUTE_TIMEOUT_MS;
+    }
+  });
+});
+
 describe("route endpoint auth — env-name based token resolution", () => {
   test("plugin config routeAuthEnv is used when env var is unset", () => {
     delete process.env.ANVIL_ROUTE_AUTH_ENV;
@@ -250,24 +295,61 @@ describe("route endpoint auth — env-name based token resolution", () => {
   });
 });
 
+describe("native route config — env var then api.pluginConfig fallback", () => {
+  test("defaults to the documented native provider/model", () => {
+    delete process.env.ANVIL_NATIVE_PROVIDER;
+    delete process.env.ANVIL_NATIVE_MODEL;
+    assert.deepEqual(getNativeRoute(), DEFAULT_NATIVE_ROUTE);
+  });
+
+  test("plugin config native route is used when env vars are unset", () => {
+    delete process.env.ANVIL_NATIVE_PROVIDER;
+    delete process.env.ANVIL_NATIVE_MODEL;
+    assert.deepEqual(
+      getNativeRoute({ nativeProvider: "openai", nativeModel: "gpt-5.5" }),
+      { providerOverride: "openai", modelOverride: "gpt-5.5" },
+    );
+  });
+
+  test("ANVIL_NATIVE_PROVIDER and ANVIL_NATIVE_MODEL win over plugin config", () => {
+    process.env.ANVIL_NATIVE_PROVIDER = "openai";
+    process.env.ANVIL_NATIVE_MODEL = "gpt-5.4-mini";
+    try {
+      assert.deepEqual(
+        getNativeRoute({ nativeProvider: "anthropic", nativeModel: "claude-sonnet-4-5" }),
+        { providerOverride: "openai", modelOverride: "gpt-5.4-mini" },
+      );
+    } finally {
+      delete process.env.ANVIL_NATIVE_PROVIDER;
+      delete process.env.ANVIL_NATIVE_MODEL;
+    }
+  });
+});
+
 describe("fetchAnvilTier — authenticated route endpoint", () => {
   test("sends bearer and x-api-key headers when authToken is provided", async () => {
     const seen = [];
     const server = createServer((req, res) => {
-      seen.push({
-        authorization: req.headers.authorization,
-        apiKey: req.headers["x-api-key"],
+      let body = "";
+      req.on("data", (chunk) => { body += chunk; });
+      req.on("end", () => {
+        const parsedBody = JSON.parse(body);
+        seen.push({
+          authorization: req.headers.authorization,
+          apiKey: req.headers["x-api-key"],
+          body: parsedBody,
+        });
+        if (
+          req.headers.authorization !== "Bearer route-secret"
+          || req.headers["x-api-key"] !== "route-secret"
+        ) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "unauthorized" }));
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ tier: "local" }));
       });
-      if (
-        req.headers.authorization !== "Bearer route-secret"
-        || req.headers["x-api-key"] !== "route-secret"
-      ) {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "unauthorized" }));
-        return;
-      }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ tier: "local" }));
     });
 
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -276,15 +358,104 @@ describe("fetchAnvilTier — authenticated route endpoint", () => {
     try {
       assert.equal(await fetchAnvilTier("hello", undefined, endpoint), null);
       assert.equal(
-        await fetchAnvilTier("hello", undefined, endpoint, { authToken: "route-secret" }),
+        await fetchAnvilTier("hello", undefined, endpoint, {
+          authToken: "route-secret",
+          workClass: "planning",
+        }),
         "local",
       );
       assert.deepEqual(seen[1], {
         authorization: "Bearer route-secret",
         apiKey: "route-secret",
+        body: {
+          model: "planning",
+          messages: [{ role: "user", content: "hello" }],
+          signals: { work_class: "planning" },
+        },
       });
     } finally {
       await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
+  test("maps route exhaustion 503 to cloud/native", async () => {
+    const server = createServer((req, res) => {
+      req.resume();
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ tier: "local" }));
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address();
+    try {
+      assert.equal(
+        await fetchAnvilTier("hello", undefined, `http://127.0.0.1:${port}/v1/route`, {
+          workClass: "planning",
+        }),
+        "cloud",
+      );
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
+  test("ignores non-503 non-2xx route responses even if body contains a tier", async () => {
+    const server = createServer((req, res) => {
+      req.resume();
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ tier: "local" }));
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address();
+    try {
+      assert.equal(
+        await fetchAnvilTier("hello", undefined, `http://127.0.0.1:${port}/v1/route`, {
+          workClass: "planning",
+        }),
+        null,
+      );
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
+  test("honors raised route timeout for split-host route endpoints", async () => {
+    const server = createServer((req, res) => {
+      req.resume();
+      setTimeout(() => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ tier: "local" }));
+      }, 80);
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address();
+    try {
+      assert.equal(
+        await fetchAnvilTier("hello", undefined, `http://127.0.0.1:${port}/v1/route`, {
+          timeoutMs: 200,
+          workClass: "planning",
+        }),
+        "local",
+      );
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+});
+
+describe("fixture generation", () => {
+  test("make-fixture ignores ANVIL_CLOUD_CLASSES from the developer shell", () => {
+    const fixturePath = join(HERE, "decision_log.fixture.jsonl");
+    const before = readFileSync(fixturePath, "utf8");
+    try {
+      execFileSync(process.execPath, ["make-fixture.mjs"], {
+        cwd: HERE,
+        env: { ...process.env, ANVIL_CLOUD_CLASSES: "none" },
+        stdio: "pipe",
+      });
+      const after = readFileSync(fixturePath, "utf8");
+      assert.equal(after, before);
+    } finally {
+      writeFileSync(fixturePath, before);
     }
   });
 });
@@ -294,11 +465,11 @@ describe("fetchAnvilTier — authenticated route endpoint", () => {
 describe("e2e: classify → makeRoutingDecision (T008 routing split)", () => {
   // These are the CONFIRMED live-validation turns (2026-06-30):
 
-  test("planning prompt → planning → {} (native, no anvil round-trip)", () => {
+  test("planning prompt → planning → explicit native route", () => {
     const preset = classify("Plan the migration across all services step by step");
     assert.equal(preset, "planning", "step-by-step planning → planning preset");
     const result = makeRoutingDecision(preset, DEFAULT_CLOUD_CLASSES);
-    assert.deepEqual(result, {}, "planning must route to native, not anvil");
+    assert.deepEqual(result, DEFAULT_NATIVE_ROUTE, "planning must route to native, not anvil");
   });
 
   test("quick-edit prompt → quick-edit → anvil", () => {
@@ -346,7 +517,7 @@ describe("e2e: classify → makeRoutingDecision (T008 routing split)", () => {
       const preset = classify(prompt);
       assert.equal(preset, "planning", `"${prompt}" should classify as planning`);
       const result = makeRoutingDecision(preset, DEFAULT_CLOUD_CLASSES);
-      assert.deepEqual(result, {}, `planning from "${prompt}" must route to native`);
+      assert.deepEqual(result, DEFAULT_NATIVE_ROUTE, `planning from "${prompt}" must route to native`);
     }
   });
 
@@ -365,12 +536,12 @@ describe("e2e: classify → makeRoutingDecision (T008 routing split)", () => {
     assert.deepEqual(result, { providerOverride: "anvil", modelOverride: "long-context" });
   });
 
-  test("long-context → native when explicitly added to cloud classes", () => {
+  test("long-context → native when explicitly added to cloud-preferred presets", () => {
     const extended = new Set(["planning", "long-context"]);
     const preset = classify("a".repeat(25_000));
     assert.equal(preset, "long-context");
     const result = makeRoutingDecision(preset, extended);
-    assert.deepEqual(result, {}, "long-context in cloud set must route to native");
+    assert.deepEqual(result, DEFAULT_NATIVE_ROUTE, "long-context in cloud set must route to native");
   });
 });
 

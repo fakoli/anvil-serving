@@ -67,9 +67,9 @@ anvil-serving will present three clean integration layers around OpenClaw.
 The native OpenClaw plugin lives in `plugins/openclaw-anvil-intent-router/`. It is a thin
 `before_model_resolve` adapter. It classifies the current prompt and either:
 
-- returns `{}` for cloud-preferred classes, leaving OpenClaw's native provider resolution alone; or
+- returns a configured native provider/model override for cloud-preferred presets; or
 - returns `{ providerOverride: "anvil", modelOverride: "<bare preset>" }` for local-preferred
-  classes, sending the turn to the anvil provider.
+  presets, sending the turn to the anvil provider.
 
 The plugin may call anvil's `POST /v1/route` endpoint when configured for authoritative routing,
 but it must degrade to the local deterministic classifier on timeout or error. It must never break a
@@ -171,8 +171,8 @@ while keeping promotion and destructive operations behind the product's existing
   capacity and GPU checks, serve start or swap, preflight, benchmark, profile comparison, and an
   explicit human promotion gate before router policy changes.
 - ADR-0005 remains in force. The OpenClaw hook plugin must not promise native fallback recovery for
-  local-preferred classes after it emits `providerOverride:"anvil"`. Durable recovery for those
-  classes belongs inside the anvil router through a bound cloud tier, or by classifying them as
+  local-preferred presets after it emits `providerOverride:"anvil"`. Durable recovery for those
+  presets belongs inside the anvil router through a bound cloud tier, or by classifying them as
   cloud-preferred before they touch anvil.
 - Native OpenClaw tool plugins are optional packaging, not the primary architecture. If ClawHub-style
   distribution later needs a native tool plugin, it should be a small wrapper around the MCP/control

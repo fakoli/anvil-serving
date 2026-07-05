@@ -2,8 +2,8 @@
 //
 // PURPOSE (advise-and-defer:T008 — upfront routing split):
 //   Classify the turn client-side and emit either:
-//     - {} (no override)  → native provider  for cloud-preferred work-classes
-//     - { providerOverride:"anvil", modelOverride:"<preset>" } → anvil for local work-classes
+//     - explicit native provider/model override for cloud-preferred presets
+//     - { providerOverride:"anvil", modelOverride:"<preset>" } → anvil for local presets
 //
 //   This avoids a wasted anvil round-trip for classes (e.g. `planning`) that are
 //   eval-proven to work better on cloud models.
@@ -12,7 +12,7 @@
 //   The M0 design assumed `agents.defaults.model.fallbacks` was a safety net for
 //   ANY turn that reaches anvil and exhausts (returns 503).  Live E2E testing
 //   against a real OpenClaw gateway falsified that for turns where THIS plugin
-//   emitted `providerOverride:"anvil"` (i.e. every local-preferred-class turn —
+//   emitted `providerOverride:"anvil"` (i.e. every local-preferred preset turn —
 //   quick-edit/review/chat/long-context, the majority of traffic): OpenClaw
 //   resolves `before_model_resolve`'s override ONCE, "above the attempt loop"
 //   (source-confirmed, see docs/OPENCLAW-INTEGRATION-SPEC.md §0), and that
@@ -20,12 +20,12 @@
 //   walk over `agents.defaults.model.fallbacks` — so a 503 from anvil is
 //   followed by fallback attempts that ALSO resolve through the `anvil`
 //   provider (and 503 again), never reaching the native cloud provider.
-//   The safety net IS reliable for cloud-preferred classes (this function
-//   returns `{}` — no override is ever set, so there is nothing to stick).
+//   Cloud-preferred presets avoid this path by routing directly to the configured
+//   native provider/model instead of touching anvil.
 //   Root cause + operator workaround: docs/OPENCLAW-INTEGRATION-SPEC.md
 //   ("anvil-503 native-failover loop") and docs/adr/0005-anvil-503-native-failover-unreliable.md.
 //   Practical mitigations (no OpenClaw-side fix available from this repo):
-//     1. Add a work-class whose local tier is known to be flaky/exhausted to
+//     1. Add a preset whose local tier is known to be flaky/exhausted to
 //        `ANVIL_CLOUD_CLASSES` so this plugin never emits a `providerOverride`
 //        for it (sidesteps the stickiness entirely — the turn never touches
 //        anvil, so there's nothing for the failover walk to inherit).
@@ -85,6 +85,10 @@ const ENV_NAME_RE = /^[A-Z][A-Z0-9_]*$/;
  * (see getCloudClasses).
  */
 export const DEFAULT_CLOUD_CLASSES = new Set(["planning"]);
+export const DEFAULT_NATIVE_PROVIDER = "anthropic";
+export const DEFAULT_NATIVE_MODEL = "claude-sonnet-4-5";
+export const DEFAULT_ROUTE_TIMEOUT_MS = 30;
+export const MAX_ROUTE_TIMEOUT_MS = 5000;
 
 function configValue(pluginConfig, key) {
   try {
@@ -115,6 +119,16 @@ function normalizeEnvName(value) {
   if (typeof value !== "string") return undefined;
   const name = value.trim();
   return ENV_NAME_RE.test(name) ? name : undefined;
+}
+
+function normalizeRouteTimeoutMs(value) {
+  if (typeof value !== "number" && typeof value !== "string") return undefined;
+  const raw = typeof value === "string" ? value.trim() : value;
+  if (raw === "") return undefined;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) return undefined;
+  if (parsed < 1 || parsed > MAX_ROUTE_TIMEOUT_MS) return undefined;
+  return parsed;
 }
 
 /**
@@ -168,6 +182,29 @@ export function getRouteEndpoint(pluginConfig) {
 }
 
 /**
+ * Return the effective authoritative route timeout in milliseconds.
+ *
+ * Priority:
+ *   1. ANVIL_ROUTE_TIMEOUT_MS env var.
+ *   2. api.pluginConfig.routeTimeoutMs.
+ *   3. DEFAULT_ROUTE_TIMEOUT_MS.
+ *
+ * Values must be integers from 1 to MAX_ROUTE_TIMEOUT_MS.
+ *
+ * @param {unknown} [pluginConfig]
+ * @returns {number}
+ */
+export function getRouteTimeoutMs(pluginConfig) {
+  const envVal = normalizeRouteTimeoutMs(process.env.ANVIL_ROUTE_TIMEOUT_MS);
+  if (envVal !== undefined) return envVal;
+
+  const configVal = normalizeRouteTimeoutMs(configValue(pluginConfig, "routeTimeoutMs"));
+  if (configVal !== undefined) return configVal;
+
+  return DEFAULT_ROUTE_TIMEOUT_MS;
+}
+
+/**
  * Return the env var name that stores the optional `/v1/route` auth token.
  *
  * Priority:
@@ -199,6 +236,31 @@ export function resolveRouteAuthToken(pluginConfig) {
   return typeof token === "string" && token !== "" ? token : undefined;
 }
 
+/**
+ * Return the explicit native-provider route used for cloud-preferred presets.
+ *
+ * Priority:
+ *   1. ANVIL_NATIVE_PROVIDER / ANVIL_NATIVE_MODEL env vars.
+ *   2. api.pluginConfig.nativeProvider / nativeModel.
+ *   3. DEFAULT_NATIVE_PROVIDER / DEFAULT_NATIVE_MODEL.
+ *
+ * @param {unknown} [pluginConfig]
+ * @returns {{ providerOverride: string; modelOverride: string }}
+ */
+export function getNativeRoute(pluginConfig) {
+  const provider =
+    (typeof process.env.ANVIL_NATIVE_PROVIDER === "string" && process.env.ANVIL_NATIVE_PROVIDER.trim())
+    || (typeof configValue(pluginConfig, "nativeProvider") === "string"
+      && configValue(pluginConfig, "nativeProvider").trim())
+    || DEFAULT_NATIVE_PROVIDER;
+  const model =
+    (typeof process.env.ANVIL_NATIVE_MODEL === "string" && process.env.ANVIL_NATIVE_MODEL.trim())
+    || (typeof configValue(pluginConfig, "nativeModel") === "string"
+      && configValue(pluginConfig, "nativeModel").trim())
+    || DEFAULT_NATIVE_MODEL;
+  return { providerOverride: provider, modelOverride: model };
+}
+
 // ---------------------------------------------------------------------------
 // Routing decision
 // ---------------------------------------------------------------------------
@@ -206,9 +268,7 @@ export function resolveRouteAuthToken(pluginConfig) {
 /**
  * Make the before_model_resolve routing decision for a classified preset.
  *
- * Cloud-preferred presets → `{}` (no provider/model override; OpenClaw
- * resolves against its configured native provider via
- * `agents.defaults.model.primary` / `agents.defaults.model.fallbacks`).
+ * Cloud-preferred presets → explicit native provider/model override.
  *
  * Local-preferred presets → `{ providerOverride: "anvil", modelOverride: preset }`
  * (LIVE-CONFIRMED wire form, OpenClaw 2026.6.6, 2026-06-30: provider MUST be
@@ -217,15 +277,15 @@ export function resolveRouteAuthToken(pluginConfig) {
  *
  * @param {string} preset - the classified anvil preset (from classify.mjs)
  * @param {Set<string>} cloudClasses - cloud-preferred preset names
+ * @param {{providerOverride:string,modelOverride:string}} [nativeRoute]
  * @returns {{ providerOverride?: string; modelOverride?: string }}
  */
-export function makeRoutingDecision(preset, cloudClasses) {
+export function makeRoutingDecision(preset, cloudClasses, nativeRoute = getNativeRoute()) {
   if (cloudClasses.has(preset)) {
-    // Cloud-preferred: return no override.  OpenClaw uses its native provider.
-    // This is the ONE routing path where the keyless 503 -> native-failover
-    // story is actually sound: no providerOverride is ever emitted here, so
-    // there is nothing for OpenClaw's attempt loop to stick to.
-    return {};
+    // Cloud-preferred: explicitly name the native provider/model. Generated
+    // OpenClaw configs use anvil/chat as the default primary, so "{}" would
+    // fall back into anvil instead of bypassing it.
+    return nativeRoute;
   }
   // Local-preferred: route to anvil.
   // Wire form (LIVE-CONFIRMED): providerOverride names the provider;
@@ -260,7 +320,7 @@ export function makeRoutingDecision(preset, cloudClasses) {
  * @param {string} prompt
  * @param {Array<{kind:string}>|undefined} attachments
  * @param {string} endpoint - full URL (http://host:port/v1/route)
- * @param {number|{timeoutMs?:number,authToken?:string}} [timeoutOrOptions=30]
+ * @param {number|{timeoutMs?:number,authToken?:string,workClass?:string}} [timeoutOrOptions=30]
  *   request timeout in ms (30ms keeps hook overhead < 5% for co-located anvil;
  *   raise if anvil is on a separate host), or an options object.
  * @param {string|undefined} [authToken] - optional resolved token; callers
@@ -280,15 +340,19 @@ export function fetchAnvilTier(
         ? timeoutOrOptions
         : { timeoutMs: timeoutOrOptions, authToken };
       const timeoutMs = Number.isFinite(options.timeoutMs)
-        ? Number(options.timeoutMs)
-        : 30;
+        ? normalizeRouteTimeoutMs(options.timeoutMs) ?? DEFAULT_ROUTE_TIMEOUT_MS
+        : DEFAULT_ROUTE_TIMEOUT_MS;
       const routeAuthToken = typeof options.authToken === "string" && options.authToken !== ""
         ? options.authToken
         : undefined;
+      const workClass = typeof options.workClass === "string" && options.workClass !== ""
+        ? options.workClass
+        : undefined;
       // Build a minimal completions-shaped body (POST /v1/route contract).
       const body = JSON.stringify({
-        model: "chat",
+        model: workClass ?? "",
         messages: [{ role: "user", content: String(prompt ?? "") }],
+        ...(workClass ? { signals: { work_class: workClass } } : {}),
       });
 
       const url = new URL(endpoint);
@@ -321,6 +385,18 @@ export function fetchAnvilTier(
           let data = "";
           res.on("data", (chunk) => { data += chunk; });
           res.on("end", () => {
+            if (res.statusCode === 503) {
+              // The route endpoint uses 503 for "no local tier can serve this
+              // request". Treat authoritative exhaustion as a cloud/native
+              // decision; falling back to client-side routing can re-enter the
+              // providerOverride loop for local-preferred presets.
+              resolve("cloud");
+              return;
+            }
+            if ((res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
+              resolve(null);
+              return;
+            }
             try {
               const parsed = JSON.parse(data);
               const tier = parsed?.tier;
