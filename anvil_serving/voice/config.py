@@ -40,7 +40,11 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 DEFAULT_CONFIG = os.path.join(REPO_ROOT, "examples", "voice", "voice.example.toml")
 
 _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
-_SECRET_KEY_NAMES = {"api_key", "token", "secret", "password"}
+# Q2 hardening: `realtime_token` is listed explicitly (not just `token`) --
+# `_reject_secret_literals` below matches on the LITERAL key name, not a
+# substring/suffix, so `voice.realtime_token = "..."` would otherwise sail
+# through unrejected even though `token` is already in this set.
+_SECRET_KEY_NAMES = {"api_key", "token", "secret", "password", "realtime_token"}
 _SECRET_VALUE_PREFIXES = ("sk-", "hf_", "hf-", "ghp_", "ghp-")
 
 

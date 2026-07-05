@@ -35,6 +35,7 @@ pool is usable when it is not.
 """
 import argparse
 import json
+import os
 import sys
 import threading
 import time
@@ -130,52 +131,97 @@ def cmd_down(args):
 
 
 def _probe_endpoint(
-    name: str, base_url: str, *, timeout: float = ENDPOINT_PROBE_TIMEOUT_S, _open: Callable[..., Any] = urllib.request.urlopen,
+    name: str, base_url: str, *, timeout: float = ENDPOINT_PROBE_TIMEOUT_S,
+    token: Optional[str] = None, _open: Callable[..., Any] = urllib.request.urlopen,
 ) -> Optional[str]:
     """Cheap reachability probe: ``GET {base_url}/models`` (every
     OpenAI-compatible server -- the anvil router included, see
     ``anvil_serving/router/discovery.py`` -- exposes this).
 
-    Returns ``None`` if it answers 2xx; otherwise a short, human-readable
-    problem string (never raises). This backs `run`'s "fail loudly, don't
-    pretend a live capability is proven" preflight -- see the module
-    docstring and CLAUDE.md's own rule of the same name. Injectable
+    Returns ``None`` if the endpoint is REACHABLE; otherwise a short,
+    human-readable problem string (never raises). This backs `run`'s "fail
+    loudly, don't pretend a live capability is proven" preflight -- see the
+    module docstring and CLAUDE.md's own rule of the same name. Injectable
     (``_open``) so tests can simulate reachable/unreachable without a real
-    socket.
+    socket. If ``token`` is given, it is sent as ``Authorization: Bearer
+    <token>`` -- see :func:`_resolve_probe_token`, which resolves it the same
+    way the LLM/STT/TTS stages resolve their own bearer token.
 
-    U2-b fix: ``urllib.error.HTTPError`` IS a ``URLError`` subclass, and real
-    ``urlopen()`` RAISES it for a 4xx/5xx response instead of returning a
-    response object with a non-2xx ``.status`` -- so the ``200 <= status <
-    300`` check below was unreachable against a real endpoint: a
-    running-but-unhealthy serve (e.g. a 500 from a half-initialized model
-    server) was misreported as "unreachable" (indistinguishable from a
-    genuine connection failure). ``HTTPError`` is now caught FIRST and
-    reported distinctly as "unhealthy"; the generic ``URLError``/``OSError``
-    branch is left in place both for a real connection failure and as a
-    defensive fallback for any injected ``_open`` fake that returns (rather
-    than raises) a non-2xx response.
+    B1 fix -- REACHABILITY vs HEALTH are different questions. A serve that
+    RESPONDS at all -- including a 401/403 (auth required/rejected), 404/405
+    (path not routed the way we guessed), or any other status < 500 -- is
+    reachable and actively routing traffic: something is definitely up and
+    answering HTTP on that socket, so `run` must NOT refuse to start over it.
+    Before this fix, a token-authed router that correctly requires auth on
+    ``GET /v1/models`` was probed with NO token, got a 401, and was
+    misreported "unhealthy" -- blocking a perfectly healthy `voice run`.
+    Only a genuine connection failure (``URLError`` that is NOT an
+    ``HTTPError``, or ``OSError`` -- see the U2-b note below) is
+    "unreachable", and only an actual 5xx (a running-but-broken serve, e.g. a
+    500 from a half-initialized model server) is "unhealthy". Both of those
+    still block startup (the caller keeps returning rc=1 for them); anything
+    else (2xx, or a 4xx meaning "up and routing, just didn't like this exact
+    unauthenticated/guessed-path probe request") is treated as OK.
+
+    U2-b note (still applies): ``urllib.error.HTTPError`` IS a ``URLError``
+    subclass, and real ``urlopen()`` RAISES it for a 4xx/5xx response instead
+    of returning a response object with a non-2xx ``.status`` -- so
+    ``HTTPError`` is caught FIRST and classified by ``exc.code`` (5xx vs
+    everything else); the generic ``URLError``/``OSError`` branch below it is
+    both the real connection-failure path and a defensive fallback for any
+    injected ``_open`` fake that returns (rather than raises) a status.
     """
     url = base_url.rstrip("/") + "/models"
+    headers = {"Authorization": "Bearer %s" % token} if token else {}
+    req = urllib.request.Request(url, headers=headers)
     try:
-        with _open(url, timeout=timeout) as resp:
+        with _open(req, timeout=timeout) as resp:
             status = getattr(resp, "status", None) or resp.getcode()
     except urllib.error.HTTPError as exc:
-        return "%s at %s returned HTTP %s (unhealthy)" % (name, url, exc.code)
+        if exc.code >= 500:
+            return "%s at %s returned HTTP %s (unhealthy)" % (name, url, exc.code)
+        return None  # up and routing (e.g. 401/403/404/405) -- reachable, not blocking
     except (urllib.error.URLError, OSError, ValueError) as exc:
         return "%s at %s is unreachable (%s)" % (name, url, exc)
-    if not (200 <= status < 300):
+    if status >= 500:
         return "%s at %s returned HTTP %s (unhealthy)" % (name, url, status)
     return None
+
+
+def _resolve_probe_token(table: Dict[str, Any]) -> Optional[str]:
+    """Resolve `table`'s configured bearer token the SAME way the LLM/STT/TTS
+    stages resolve their own (see ``stages/llm.py``'s ``_post_stream``,
+    ``stages/stt.py``'s ``transcribe_stream``, ``stages/tts.py``'s
+    ``stream_speech`` -- all three do ``if config.api_key_env:
+    os.environ.get(config.api_key_env)``), so the preflight probe
+    authenticates exactly like the real request traffic will.
+
+    Returns ``None`` when this endpoint has no `api_key_env` configured, or
+    when it names an environment variable that is not currently set --
+    mirroring the stages' own silent-no-header fallback (never raises;
+    ``voice_config.resolve_secret``'s ``required=True`` semantics are
+    deliberately NOT used here, since a missing token should make the probe
+    request unauthenticated -- exactly what the real stage traffic would also
+    send -- not crash the preflight check)."""
+    api_key_env = table.get("api_key_env")
+    if not api_key_env:
+        return None
+    return os.environ.get(api_key_env)
 
 
 def _check_required_endpoints_reachable(voice: Dict[str, Any]) -> Optional[str]:
     """Probe the LLM router + STT/TTS serves declared in the manifest; return
     the first problem found, or ``None`` if all three answer. Calls the
     MODULE-LEVEL ``_probe_endpoint`` (not a private closure) so tests can
-    monkeypatch it directly."""
+    monkeypatch it directly. Each endpoint's own configured `api_key_env` is
+    resolved (:func:`_resolve_probe_token`) and sent along -- a token-authed
+    endpoint is probed WITH its token, not bare (see the B1 fix note on
+    :func:`_probe_endpoint`)."""
     for name, table_key in (("anvil router (voice.llm)", "llm"), ("STT serve (voice.stt)", "stt"), ("TTS serve (voice.tts)", "tts")):
-        base_url = voice.get(table_key, {}).get("base_url", "")
-        problem = _probe_endpoint(name, base_url)
+        table = voice.get(table_key, {})
+        base_url = table.get("base_url", "")
+        token = _resolve_probe_token(table)
+        problem = _probe_endpoint(name, base_url, token=token)
         if problem:
             return problem
     return None

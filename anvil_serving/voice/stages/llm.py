@@ -237,6 +237,17 @@ class LLMStage(BaseStage):
     of this stage currently drops a stale item on its own. (The real
     ``stages/tts.py::TTSStage`` DOES already check ``is_stale``, but it is not
     yet the stage ``VoicePipeline`` wires by default.)
+
+    Q1 fix (Opus gate): a mid-turn EXCEPTION (e.g. ``self._stream_fn`` raising
+    because the upstream connection dropped) still guarantees a terminal
+    :class:`EndOfResponse` is emitted before the exception propagates -- a
+    client can no longer hang on an unterminated turn just because the
+    upstream call failed partway through. This is distinct from the
+    barge-in/stale ``return`` path above, which stays deliberately silent (no
+    terminal from this stage) because a superseded turn's own terminal is the
+    realtime service's job (``RealtimeService._on_response_cancel`` emits a
+    ``cancelled`` terminal on the wire for that case) -- only a genuine
+    exception reaches the new error-path terminal.
     """
 
     name = "llm"
@@ -263,26 +274,51 @@ class LLMStage(BaseStage):
             return  # superseded by a barge-in before we even started
 
         batcher = SentenceBatcher()
-        for delta in self._stream_fn(item.text, self.config):
-            if self.cancel_scope.is_stale(item.generation):
-                # A barge-in landed mid-stream: stop emitting further chunks
-                # for this now-stale generation. Whatever was already YIELDED
-                # (and, per BaseStage._run, therefore already put() on the
-                # downstream queue) stays forwarded -- there's no reason to
-                # try to withhold it here. Dropping it instead of forwarding
-                # it is a LATER-unit obligation: the real downstream stage(s)
-                # (real TTS / the realtime unit) must check
-                # cancel_scope.is_stale themselves and drop it there (see the
-                # class docstring's HONESTY NOTE -- today's default stub
-                # wiring does not).
-                return
-            for sentence in batcher.feed(delta):
-                yield LLMChunk(
-                    turn_id=item.turn_id,
-                    turn_revision=item.turn_revision,
-                    generation=item.generation,
-                    text=sentence,
-                )
+        try:
+            for delta in self._stream_fn(item.text, self.config):
+                if self.cancel_scope.is_stale(item.generation):
+                    # A barge-in landed mid-stream: stop emitting further
+                    # chunks for this now-stale generation. Whatever was
+                    # already YIELDED (and, per BaseStage._run, therefore
+                    # already put() on the downstream queue) stays forwarded
+                    # -- there's no reason to try to withhold it here.
+                    # Dropping it instead of forwarding it is a LATER-unit
+                    # obligation: the real downstream stage(s) (real TTS /
+                    # the realtime unit) must check cancel_scope.is_stale
+                    # themselves and drop it there (see the class docstring's
+                    # HONESTY NOTE -- today's default stub wiring does not).
+                    #
+                    # Deliberately NOT a terminal EndOfResponse here: a
+                    # superseded (barge-in'd) turn must stay silent on the
+                    # wire -- the realtime service's own cancel path
+                    # (`RealtimeService._on_response_cancel`) emits the
+                    # cancelled turn's terminal instead (see Q1's docstring
+                    # note below). This `return` is UNCHANGED by the Q1 fix.
+                    return
+                for sentence in batcher.feed(delta):
+                    yield LLMChunk(
+                        turn_id=item.turn_id,
+                        turn_revision=item.turn_revision,
+                        generation=item.generation,
+                        text=sentence,
+                    )
+        except Exception:
+            # Q1 fix: a mid-turn failure (the streaming HTTP call raising --
+            # e.g. the upstream connection dropping mid-reply) used to leave
+            # this turn dangling with no terminal EndOfResponse ever reaching
+            # the client, since the code path that yields it below is never
+            # reached when the loop above raises instead of completing. Emit
+            # the terminal here on the way out so a client can never hang on
+            # an unterminated turn, then re-raise so BaseStage._run's own
+            # per-item exception isolation still logs the failure (this does
+            # NOT apply to the barge-in `return` above -- only a genuine
+            # exception reaches this branch).
+            yield EndOfResponse(
+                turn_id=item.turn_id,
+                turn_revision=item.turn_revision,
+                generation=item.generation,
+            )
+            raise
 
         if self.cancel_scope.is_stale(item.generation):
             return

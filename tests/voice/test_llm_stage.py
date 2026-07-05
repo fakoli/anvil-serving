@@ -13,6 +13,8 @@ from __future__ import annotations
 import io
 import json
 
+import pytest
+
 from anvil_serving.voice.cancel_scope import CancelScope
 from anvil_serving.voice.messages import EndOfResponse, GenerateRequest, LLMChunk
 from anvil_serving.voice.stages.llm import (
@@ -246,3 +248,36 @@ def test_llm_stage_stops_emitting_after_mid_stream_barge_in():
 def test_llm_stage_ignores_non_generate_request_items():
     stage = LLMStage(in_queue=None, stream_fn=lambda t, c: iter(()))
     assert list(stage.process("not a GenerateRequest")) == []
+
+
+# --------------------------------------------------------------------------- #
+# Q1 (Opus gate, quality) -- a mid-turn exception must still terminate the
+# turn on the wire (exactly one EndOfResponse), while a barge-in mid-turn
+# (the test above) must stay silent -- no terminal from this stage at all.
+# --------------------------------------------------------------------------- #
+def test_llm_stage_emits_exactly_one_terminal_on_mid_stream_exception():
+    """Before the Q1 fix, a mid-turn exception (e.g. the streaming HTTP call
+    dropping partway through) propagated straight out of `process()` with NO
+    terminal `EndOfResponse` ever yielded -- a client downstream would hang on
+    an unterminated turn. The fix must emit exactly one terminal on the way
+    out, then still let the exception propagate (so `BaseStage._run`'s
+    per-item exception isolation keeps logging real failures)."""
+    scope = CancelScope()
+
+    def fake_stream(text, config):
+        yield "First sentence. "
+        raise RuntimeError("simulated upstream failure")
+
+    stage = LLMStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
+    gen = stage.process(_gen_request())
+
+    out = []
+    with pytest.raises(RuntimeError, match="simulated upstream failure"):
+        for item in gen:
+            out.append(item)
+
+    chunks = [m for m in out if isinstance(m, LLMChunk)]
+    ends = [m for m in out if isinstance(m, EndOfResponse)]
+    assert [c.text for c in chunks] == ["First sentence."]
+    assert len(ends) == 1
+    assert ends[0].turn_id == "t1"
