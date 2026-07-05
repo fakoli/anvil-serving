@@ -1,93 +1,112 @@
-![anvil-serving — the quality-gated local-model router for coding harnesses](assets/banner.png)
+![anvil-serving - the quality-gated local-model router for coding agents](assets/banner.png)
 
 # anvil-serving
 
-> **The quality-gated local-model router for coding harnesses.**
+> **The quality-gated local-model router for coding agents.**
 >
-> *Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.*
+> *Run local where it is measured safe. Verify risky local output. Keep cloud explicit.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/fakoli/anvil-serving/blob/main/LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.2-blue.svg)](https://github.com/fakoli/anvil-serving/blob/main/CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.10.0-blue.svg)](https://github.com/fakoli/anvil-serving/blob/main/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
-Point your coding harness (Claude Code, Codex, Aider, Cline, Continue — OpenClaw as the
-near-first-class beachhead) at **one** anvil-serving endpoint. Per request, the router resolves an
-**intent** to a **tier** — fast-local, heavy-local, or cloud — using a **measured per-(model,
-work-class) quality profile**, cheaply **verifies** the output, and **falls back** to the next
-tier (ultimately cloud) when the local answer fails. The harness sees one reliable endpoint and
-never silently eats a local-quality failure mid-run.
+anvil-serving sits between coding agents and local/cloud model tiers. It speaks Anthropic Messages
+and OpenAI Chat Completions, routes each request by workload intent, checks risky local output before
+returning it, and keeps metered cloud usage explicit.
 
----
+For OpenClaw and remote operations, it also exposes explicit MCP/controller tools for status,
+preflight, benchmark, OpenClaw sync, and promotion evidence. The router stays the data plane; the
+control plane handles operations.
 
-## Why a router, and not just another proxy
+## The Product Promise
 
-Transport is a commodity — LiteLLM, claude-code-router, Ollama, OpenRouter all move tokens.
-None of them know **whether local can actually do *this* work.** They route by static rules
-(model name, cost, regex). On anvil's real PRD→tasks planning prompt, the gap was measured
-directly:
+| Question | anvil-serving answer |
+|----------|----------------------|
+| Can this run local? | Only if the quality profile says the tier is trusted for that work class. |
+| What if local output is risky? | Buffer and structurally verify before committing the response. |
+| What if local cannot serve it? | Exhaust cleanly or use an explicitly configured cloud tier. |
+| Will this lock me into one harness? | No. The front door is protocol-standard; OpenClaw is the reference integration. |
+| How do agents operate it? | Through explicit MCP/controller tools, not raw SSH as the product contract. |
 
-- Local output is **structurally valid ≥92%** of the time — structural validity is **not** the differentiator.
-- But on **dependency/ordering reasoning** local collapses: frontier **24.75/25**, fast **16.0**, heavy **13.25** (local ≈ 55–65% of frontier).
+## Why Not Just Use A Proxy?
 
-A dumb proxy sends that planning request to local and silently corrupts a long agent run. The
-defensible asset is therefore **not** the transport — it's the **quality profile** (per model ×
-work-class, measured on the operator's own workload) plus the **verify-and-fallback loop.**
+Token proxies move requests. They do not know whether a specific local model is good enough for a
+specific coding task on your workload. anvil-serving adds the missing quality gate:
 
----
+- **Intent presets** let clients ask for `planning`, `quick-edit`, `review`, `chat`, or
+  `long-context` instead of pinning a model everywhere.
+- **Quality profiles** record per-tier, per-work-class trust decisions.
+- **Structural verification** catches cheap, concrete failures before the agent sees them.
+- **Transparent responses** report what actually served the request.
 
-## Intent presets in the `model` field
+## Evaluate It
 
-Callers declare an **intent** — a closed enum of named presets — instead of a model name:
-
-```
-planning   quick-edit   review   chat   long-context
-```
-
-Accepted bare (`planning`) or namespaced (`anvil/planning`). Each preset resolves internally to
-hard constraints (context length, privacy, tool support, cost ceiling) that *filter* the candidate pool,
-plus a quality intent that *ranks* the survivors via the profile. **Filter, then rank.**
-
----
-
-## Quickstart
+Start with the no-GPU front door smoke test:
 
 ```bash
-pip install anvil-serving
-
-# copy and edit the local-only example config
-cp configs/example.toml ~/.config/anvil-serving/config.toml
-
-# start the router
-anvil-serving serve --config ~/.config/anvil-serving/config.toml
+pip install -e .
+python -m anvil_serving.router
 ```
 
-See [Model Settings Example](MODEL-SETTINGS-EXAMPLE.md) for a full annotated configuration, and
-[How it works](QUALITY-GATED-ROUTER.md) for the full design reference.
+Install from this clone when evaluating the current `main` docs. Published packages can lag the
+source tree and may not include main-only MCP/controller commands yet.
 
----
+If port `8000` is already in use, pass `--port <free-port>` and use that port in the URLs below.
 
-## Navigation
+Then query the protocol surface:
 
-| Section | What's there |
-|---------|-------------|
-| [How it works](QUALITY-GATED-ROUTER.md) | Full architecture — intents, tiers, quality gate, verify-and-fallback |
-| [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Annotated config file with all options |
-| [Serves & eval](SERVES-AND-EVAL.md) | Managing model serves + running evals |
-| [External benchmarks](EXTERNAL-BENCHMARKS.md) | Millstone import/fetch, reports, exports, and local benchmark comparisons |
-| [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Deterministic agent/skill workflows for model swaps, preflight, benchmark, OpenClaw sync, and promotion gates |
-| [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Plugin spec for the OpenClaw gateway |
-| [OpenClaw live validation](OPENCLAW-LIVE-VALIDATION.md) | Validation runbook for OpenClaw |
-| [OpenClaw layers and MCP control plane](adr/0013-openclaw-layers-and-mcp-control-plane.md) | ADR-0013: clean product layers for hook intent, router data plane, and explicit MCP operations |
-| [Tailnet controller transport](adr/0014-tailnet-controller-transport.md) | ADR-0014: split-host fakoli-mini to anvil-serving host transport over Tailscale |
-| [Cost model](PLAN-advise-and-defer.md) | advise-and-defer plan — local-only default, opt-in metered cloud |
-| [ADRs](adr/README.md) | Architecture decisions |
-| [Changelog](changelog.md) | Release history |
+```bash
+curl -s http://127.0.0.1:8000/v1/models
+curl -s http://127.0.0.1:8000/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{"model":"chat","messages":[{"role":"user","content":"hello from anvil-serving"}]}'
+```
 
----
+That proves the front door, model discovery, request parsing, and response rendering. To evaluate
+real routing, run compatible local model serves at the `base_url` values in `configs/example.toml`
+and start:
 
-## Cloud is off by default
+```bash
+anvil-serving serve --config configs/example.toml
+```
 
-The default config ships **local-only, $0 metered API billing.** Cloud is opt-in and explicit —
-you must declare a `CloudBackend` section in your config to unlock it. See
-[ADR-0001](adr/0001-cloud-cost-and-subscription-auth.md) and the
-[advise-and-defer plan](PLAN-advise-and-defer.md) for the full rationale.
+Follow the full path in [Getting started](GETTING-STARTED.md).
+
+## Operating Defaults
+
+- Default config is local-only and contains no cloud API key.
+- Metered cloud requires an explicit cloud tier plus `[router].metered_cloud`.
+- Local URLs use `127.0.0.1`.
+- Credentials are referenced by env-var name only.
+- Token auth is required before exposing the router beyond loopback.
+- OpenClaw's native fallback is not a reliable safety net for plugin-pinned local-preferred classes;
+  use `ANVIL_CLOUD_CLASSES` or anvil-serving's opt-in cloud tier for at-risk work.
+- The MCP/controller control plane is for explicit operations; the router remains the model data plane.
+
+## Core Terms
+
+| Term | Meaning |
+|------|---------|
+| Intent preset | The value a client sends in `model`, such as `planning` or `quick-edit`. |
+| Tier | A configured backend candidate, usually fast-local, heavy-local, or cloud. |
+| Quality profile | The trust table that decides `allow`, `allow-with-verify`, or `deny`. |
+| Verify-and-fallback | The response path that checks local output and escalates when it fails. |
+| Local serving tools | The CLI surface for profiling usage, cataloging models, managing serves, and validating endpoints. |
+| Control plane | MCP/controller tools for status, route probes, preflight, benchmark, OpenClaw sync, and promotion evidence. |
+
+See [Terminology](TERMINOLOGY.md) for the naming guide.
+
+## Documentation Map
+
+| Read this | When you need |
+|-----------|---------------|
+| [Getting started](GETTING-STARTED.md) | Evaluate the front door, then route real local tiers. |
+| [Product architecture](QUALITY-GATED-ROUTER.md) | Understand intents, routing, verification, and fallback. |
+| [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Run MCP/controller workflows. |
+| [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Tune thinking/sampling behavior for a served model. |
+| [Serves & eval](SERVES-AND-EVAL.md) | Manage model serves and run evals. |
+| [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |
+| [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Use the reference gateway integration. |
+| [OpenClaw operations ADRs](adr/0013-openclaw-layers-and-mcp-control-plane.md) | Understand hook, router, MCP, and tailnet-controller layers. |
+| [ADRs](adr/README.md) | Read why major decisions were made. |
+| [Changelog](changelog.md) | Track release history. |

@@ -1,9 +1,11 @@
 # anvil-serving as a harness product: the quality-gated router
 
-> **Status:** shipped (v0.7.2) — design reference, rev 2026-06-30 (status line updated 2026-07-02).
+> **Status:** shipped on `main`; source version v0.10.0. Published tags/packages can lag `main`,
+> so install from a clone when evaluating the full control-plane surface described here. This is the
+> router design reference, originally revised 2026-06-30 and status-updated for the v0.10.0 docs pass.
 > Sets the product direction for anvil-serving
-> as a **harness-facing** tool (Claude Code, Codex, Cline, Aider, Continue, any OpenAI/Anthropic
-> client) rather than an anvil-coupled serving tier.
+> as a **harness-facing** tool for clients that can point at a custom Anthropic/OpenAI-compatible
+> base URL and send a free-form model string, rather than an anvil-coupled serving tier.
 > **Grounded in** (full findings in the companion notes repo `fakoli/anvil-serving-notes`):
 > the integration-point audit (the integration point is the runtime, not anvil),
 > the planning-capability eval (local quality is work-class-dependent and *measurable*), and
@@ -12,16 +14,17 @@
 ## 1. Thesis
 
 > anvil-serving is the **workload-aware, correctness-gated local-model router** for coding
-> harnesses. **Local where it's been proven, cloud where it hasn't — verified, with automatic
-> fallback.**
+> harnesses. **Run local where it is measured safe. Verify risky local output. Keep cloud explicit.**
 
 A coding harness points at one anvil-serving endpoint. Per request, anvil-serving decides which
 **tier** (fast-local / heavy-local / cloud) should serve it, based on a **measured per-(model,
-work-class) quality profile**; cheaply **verifies** the result; and **falls back** to the next
-tier (ultimately cloud) when the local answer fails. The harness sees one reliable endpoint and
-never eats a silent local-quality failure mid-run.
+work-class) quality profile**. Rows marked `allow-with-verify` are buffered and structurally checked
+before any local tokens are committed. If verification fails, the router either escalates to an
+explicitly configured cloud tier or returns a clean exhaustion signal for gateway failover. Rows
+marked `allow` use the low-latency streaming fast path and carry the tradeoff described in
+section 7.
 
-## 2. Why this is the wedge (and not "another proxy")
+## 2. Why this is different from a proxy
 
 Transport is commodity (LiteLLM, claude-code-router, Ollama, OpenRouter). None of them know
 **whether local can actually do *this* work** — they route by static rules (model name, cost,
@@ -74,12 +77,13 @@ harness → │ front door → resolve intent → route → [verify] → return 
           │                                   quality profile)                   │
           └───────────────────────────────┬──────────────┴────────────────────┘
                                            ▼
-                fast-local :30001   heavy-local :30000   cloud (Anthropic/OpenAI)
-                  (multiplexer-managed)                    (user's existing key/sub)
+                fast-local :30001   heavy-local :30000   cloud is opt-in only
+                  (multiplexer-managed)                    (metered tier or gateway-owned)
 ```
 
-**Control plane (slow, offline):** `profile` → shadow-eval → **routing table** (the quality
-profile). Refreshed on demand and continuously calibrated from sampled production traffic.
+**Control plane (slow, offline):** `profile` → shadow-eval / guarded live calibration →
+**routing table** (the quality profile). Refreshed on demand by the operator; no production
+traffic is sampled or auto-promoted by default.
 
 **Data plane (fast, per-request):** resolve intent → route → optional inline verify → fallback.
 Must add negligible latency and must stream.
@@ -161,7 +165,7 @@ flowchart TD
 Status codes: **200** (decision made, even when `tier: cloud`), **400** (malformed / missing `model`
 field), **503** (no tier survives the quality + metered-cloud gate).
 
-## 5. The quality profile (the moat)
+## 5. The quality profile
 
 ![The quality gate — work proven on a tier stays local ($0 metered); unproven work is deferred to the harness's own opt-in cloud subscription; measured per (model, work-class)](assets/explainer-quality-gate.png)
 
@@ -172,8 +176,9 @@ A table keyed `(model, work-class)` → `{quality_score, sample_n, last_measured
    replay representative requests per work-class to each local tier, grade against cloud
    (deterministic checks + blind/LLM judge), emit the table. Generalize that harness from
    "planning" to arbitrary work-classes.
-2. **Calibrate** continuously: async-sample a small % of production responses, grade with cloud
-   off the hot path, update scores. The table tracks model/quant/serve changes over time.
+2. **Calibrate** deliberately: run the guarded `anvil-serving calibrate` batch against explicitly
+   confirmed local endpoints, grade off the hot path with an independent Agent-SDK judge, and review
+   the candidate profile before promotion. Continuous production sampling remains a future extension.
 3. **Right-size** from the user's real usage via existing `profile` (which work-classes dominate
    *their* traffic — focus measurement where it matters).
 
@@ -305,7 +310,7 @@ For a gateway like OpenClaw that fronts the harness, the 503 triggers native tra
 the flat-rate subscription the operator already holds. anvil holds **no cloud key**; the metered
 surface is absent from the default path. **$0 metered API billing.**
 
-> **Live-validation caveat (T005 — resolved with an OpenClaw-side defect):** anvil's
+> **Live-validation finding (T005 — resolved with an OpenClaw-side defect):** anvil's
 > exhaustion-503 does trip OpenClaw's "overloaded" transport-failover category, but a turn whose
 > `before_model_resolve` hook emitted `providerOverride:"anvil"` does not reliably escape that
 > provider during OpenClaw's native fallback walk. Local-preferred classes therefore need one of the
@@ -442,8 +447,8 @@ Verified support grid (full detail + citations in the finding):
 
 **Scope qualification (important):** **Cursor, Amp, and Devin are out of scope** for self-hosted
 routing — Cursor mediates through its own backend (Verify-gated), and Amp/Devin can't be repointed
-at a custom endpoint at all. The README's "any OpenAI/Anthropic client" claim must be qualified to
-"any client that allows a custom base URL **and** a free-form model string."
+at a custom endpoint at all. anvil-serving fits clients that allow a custom base URL **and** a
+free-form model string.
 
 **OpenClaw is the one in-scope client that crosses into per-request routing** (open-source TS Plugin
 SDK; its `before_model_resolve` hook runs *per turn* and can set `modelOverride`/`providerOverride`).
@@ -451,14 +456,14 @@ SDK; its `before_model_resolve` hook runs *per turn* and can set `modelOverride`
 Claude Code — but its hooks can't alter the outgoing request, so it stays Tier-1 short of a fork
 (OpenClaw/Hermes customization findings in `fakoli/anvil-serving-notes`).
 
-**Beachhead decision — OpenClaw-first (focus, not couple).** anvil-serving concentrates integration
+**Reference integration decision — OpenClaw-first (focus, not couple).** anvil-serving concentrates integration
 *depth* on OpenClaw as the first-class client, because it's the one harness that unlocks per-request
 intent (the `before_model_resolve` hook → the client-side classification pattern in §6), it's
 open-source (we can ship a reference plugin and patch upstream), and one OpenClaw integration reaches
 the many chat surfaces it already bridges. **This is focus, not coupling:** the core router stays
 protocol-standard (Anthropic + OpenAI dialects), so every other harness still gets Tier 0/1 for free,
 and the OpenClaw piece is a **thin, swappable adapter/plugin** — if OpenClaw stalls, the core survives
-and another hook-capable harness takes the beachhead. (Same lesson as not coupling to Anvil:
+and another hook-capable harness can take the reference-integration role. (Same lesson as not coupling to Anvil:
 integrate at a standard seam, focus effort at one client.) This is anvil-serving's choice and does
 **not** affect Anvil-the-ledger's harness-agnostic mandate — different products, different mandates.
 Risk to manage: OpenClaw is young and the extension surface is churning (medium risk) — keep the
@@ -506,7 +511,7 @@ The router is a pipeline, so "plugin architecture" mostly means **naming its sta
 | `Observer`/hook | logging, metrics, fallback events | cross | yes |
 
 **Contract rules from day one:** (1) **failure isolation = fallback** — a plugin that throws/times
-out is treated as another fallback trigger (composes with the wedge; wrap + circuit-break); (2)
+out is treated as another fallback trigger (composes with verify-and-fallback; wrap + circuit-break); (2)
 **latency budget** — data-plane plugins declare & respect a budget, heavy work goes async; (3)
 **versioned contracts** — registry refuses incompatible plugins (why the public SDK waits); (4)
 **trust** — plugins run arbitrary code in the request path (fine for local-first/own; signing/allowlist
@@ -521,11 +526,10 @@ for third-party). Don't build dynamic loading or a manifest spec until a seam ha
 | Bring up + on-demand model swap on one GPU | `multiplexer` (multi-engine, single-resident) | exists |
 | Correctness gate | `preflight` | exists |
 | Throughput / capacity measurement | `benchmark` | exists |
-| Per-work-class quality measurement | shadow-eval harness | **built** (generalize) |
-| **Front door + intent-resolve + route + verify + fallback** | new `router` module | **the build** |
+| Per-work-class quality measurement | shadow-eval harness + calibration artifacts | built; operator-promoted write-back |
+| **Front door + intent-resolve + route + verify + fallback** | `router` module | **shipped** |
 
-The genuinely-new surface is the router data plane + the quality-profile control plane. The serving
-substrate is already here.
+The router data plane and quality-profile control plane now ship alongside the local serving tools.
 
 ## 12. MVP milestones
 
@@ -535,15 +539,19 @@ substrate is already here.
   the `model` field (Tier 1) — *not Tier 1 alone*, because most traffic arrives without a declared
   intent. Tier rules over the multiplexer (bounded→fast, long-ctx→heavy, planning/review→cloud);
   hand-authored table. Serve `/v1/models` preset discovery.
-- **M2 — the wedge:** cheap structural verify + verify-gated fallback (streaming commit window;
+- **M2 — verify-and-fallback:** cheap structural verify + verify-gated fallback (streaming commit window;
   cloud escalation is the opt-in keyed mode — the keyless default returns an exhaustion-503 for
   gateway handoff) **and transparent responses** (echo the served model/tier). First release
   delivering the unique promise.
 - **M3 — measured table + plugin SDK:** generalize the shadow-eval to populate the quality profile
-  per work-class; replace the hand-authored table; add async calibration; expose public plugin entry
-  points. The moat turning on.
+  per work-class; replace the hand-authored table with operator-promoted artifacts; add guarded live
+  calibration; expose public plugin entry points. Continuous async production sampling remains a
+  future extension.
 
-Ship M0–M2 to be *useful and unique*; M3 makes it *defensible*.
+M0-M2 are shipped, and M3's replay/live calibration tooling plus extension seams are in place for
+operator-promoted profiles. Later releases hardened the live ops surface around the same design:
+containerized auth, serve/router lifecycle verbs, harness sync, external benchmark priors, mode
+selection, and host safety helpers.
 
 ## 13. Risks / open questions
 
@@ -576,7 +584,7 @@ Ship M0–M2 to be *useful and unique*; M3 makes it *defensible*.
 
 **Claude Code** (intent preset per slot):
 ```bash
-export ANTHROPIC_BASE_URL="https://anvil.local"
+export ANTHROPIC_BASE_URL="http://127.0.0.1:8000"
 export ANTHROPIC_AUTH_TOKEN="…"                  # → Authorization header
 export ANTHROPIC_MODEL="planning"                # main-loop intent, sent verbatim
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="quick-edit" # background/utility intent
@@ -588,13 +596,13 @@ export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1   # optional: enumerate rout
 
 **Aider** (preset rides in the model string; `openai/` prefix forces compat routing):
 ```bash
-export OPENAI_API_BASE="https://anvil.local/v1"
+export OPENAI_API_BASE="http://127.0.0.1:8000/v1"
 export OPENAI_API_KEY="…"
 aider --model openai/planning --editor-model openai/quick-edit --weak-model openai/chat
 # the "model … not familiar with" warning is cosmetic; routing works
 ```
 
-**Cline / Continue.dev** — select "OpenAI Compatible"; Base URL `https://anvil.local/v1`, Model (ID)
+**Cline / Continue.dev** — select "OpenAI Compatible"; Base URL `http://127.0.0.1:8000/v1`, Model (ID)
 = a preset token. Continue can attach Tier-2 hints via `requestOptions.headers`.
 
 **OpenAI Codex CLI** (`~/.codex/config.toml`) — Tier 1 + optional Tier 2 side-channel:
@@ -603,7 +611,7 @@ model = "planning"
 model_provider = "anvil"
 
 [model_providers.anvil]
-base_url = "https://anvil.local/v1"
+base_url = "http://127.0.0.1:8000/v1"
 wire_api = "chat"                                  # third-party gateways commonly use "chat" (version-dependent)
 http_headers = { "x-anvil-intent" = "planning" }   # optional Tier-2 dimension
 ```
