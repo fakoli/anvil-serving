@@ -7,6 +7,7 @@ from __future__ import annotations
 import base64
 import json
 
+from anvil_serving.voice.messages import AudioOut
 from anvil_serving.voice.pipeline import VoicePipeline
 from anvil_serving.voice.realtime.service import RealtimeService
 from anvil_serving.voice.stages.vad import VADConfig
@@ -188,5 +189,66 @@ def test_response_cancel_bumps_the_shared_cancel_scope():
         before = pipeline.cancel_scope.current()
         service.handle_client_message(json.dumps({"type": "response.cancel"}))
         assert pipeline.cancel_scope.current() == before + 1
+    finally:
+        pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_response_cancel_with_nothing_in_flight_emits_no_terminal_event():
+    """A ``response.cancel`` with no ``response.create`` in progress (the
+    scenario the test above exercises) must NOT emit a spurious
+    ``response.done`` -- there is no matching ``response.created`` to pair
+    it against."""
+    pipeline, service, sent = _make_service()
+    try:
+        service.handle_client_message(json.dumps({"type": "response.cancel"}))
+        assert not any(e["type"] == "response.done" for e in sent)
+    finally:
+        pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_barge_in_drops_stale_audio_and_emits_exactly_one_terminal_done():
+    """Regression for B1 (stale-generation drop in ``drain_pipeline_events``)
+    and B2 (a cancelled turn must still terminate on the wire), exercised
+    together as the review requires: drive a real response, queue an
+    ``audio_out`` item under its generation, cancel (bumping the
+    generation), queue ANOTHER (now doubly-stale) ``audio_out`` item, then
+    drain -- neither stale item may surface as ``response.audio.delta``, and
+    exactly one terminal ``response.done`` (status ``cancelled``) must have
+    been sent for the interrupted turn.
+    """
+    pipeline, service, sent = _make_service()
+    try:
+        item = {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "hello"}]}
+        service.handle_client_message(json.dumps({"type": "conversation.item.create", "item": item}))
+        service.handle_client_message(json.dumps({"type": "response.create"}))
+        turn_id = service.state.current_turn_id
+        assert turn_id is not None
+        generation = pipeline.cancel_scope.current()
+
+        # An AudioOut synthesized under the pre-cancel generation, already
+        # queued before the barge-in lands.
+        pipeline.audio_out.put(
+            AudioOut(turn_id=turn_id, turn_revision=0, generation=generation, pcm=b"pre-cancel-tail")
+        )
+
+        service.handle_client_message(json.dumps({"type": "response.cancel"}))
+        assert pipeline.cancel_scope.current() == generation + 1
+        assert service.state.current_turn_id is None  # cleared once terminated
+
+        # A second, doubly-stale item landing on the queue AFTER the cancel
+        # (e.g. a slow TTS stage still finishing the superseded turn).
+        pipeline.audio_out.put(
+            AudioOut(turn_id=turn_id, turn_revision=0, generation=generation, pcm=b"post-cancel-tail")
+        )
+
+        drained = service.drain_pipeline_events()
+        audio_deltas = [e for e in drained if e["type"] == "response.audio.delta"]
+        assert audio_deltas == [], "stale-generation audio must be dropped, got: %r" % (audio_deltas,)
+
+        all_events = sent + drained
+        done_events = [e for e in all_events if e["type"] == "response.done"]
+        assert len(done_events) == 1, "expected exactly one terminal response.done, got: %r" % (done_events,)
+        assert done_events[0]["response"]["status"] == "cancelled"
+        assert done_events[0]["response"]["turn_id"] == turn_id
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)

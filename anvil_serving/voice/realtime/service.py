@@ -88,6 +88,13 @@ class SessionState:
     session_config: Dict[str, Any] = field(default_factory=dict)
     pending_text: List[str] = field(default_factory=list)
     turn_counter: "itertools.count" = field(default_factory=lambda: itertools.count(1))
+    #: ``turn_id`` of the response currently in flight (set by
+    #: ``response.create``, cleared once a terminal ``response.done`` has
+    #: been sent for it -- either normal completion via ``drain_pipeline_events``
+    #: or a ``response.cancel`` interruption). ``None`` when no response is
+    #: in progress, which also guards ``_on_response_cancel`` against
+    #: emitting a spurious terminal event with no matching ``response.created``.
+    current_turn_id: Optional[str] = None
 
 
 class RealtimeService:
@@ -231,6 +238,7 @@ class RealtimeService:
         text = "\n".join(self.state.pending_text)
         self.state.pending_text = []
         turn_id = "rt-turn-%d" % next(self.state.turn_counter)
+        self.state.current_turn_id = turn_id
         generation = self.pipeline.cancel_scope.begin_new_generation()
         request = GenerateRequest(turn_id=turn_id, turn_revision=0, generation=generation, text=text)
         # Bridges the client-supplied (already-final) transcript straight
@@ -247,6 +255,32 @@ class RealtimeService:
         # working on the now-superseded turn recognizes it as stale (see
         # ``cancel_scope.py``) and stops emitting further output for it.
         self.pipeline.cancel_scope.cancel()
+        # B2 fix: a cancelled turn must still terminate on the wire. Before
+        # this fix, termination relied on the (now-superseded) turn's own
+        # ``EndOfResponse`` reaching ``drain_pipeline_events`` -- but B1's
+        # staleness guard means that item is now correctly DROPPED as stale,
+        # so without an explicit terminal event here a client that saw
+        # ``response.created`` would simply never see a matching
+        # ``response.done`` for an interrupted turn. Emit it directly, using
+        # this connection's own event-id source (see ``_evt_id``'s docstring
+        # for why every event on one connection must share one id sequence).
+        turn_id = self.state.current_turn_id
+        if turn_id is None:
+            # No response is in flight (already completed, or cancel with
+            # nothing pending) -- nothing to terminate, and there is no
+            # matching ``response.created`` to pair a ``response.done``
+            # against, so stay silent (avoids a spurious extra terminal
+            # event and keeps "exactly one response.done per response.created"
+            # true).
+            return
+        self.state.current_turn_id = None
+        self.send_event(
+            {
+                "type": "response.done",
+                "event_id": self._evt_id(),
+                "response": {"turn_id": turn_id, "status": "cancelled"},
+            }
+        )
 
     # -- outbound: pipeline output -> server events ----------------------------
     def drain_pipeline_events(self, *, max_items: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -259,6 +293,18 @@ class RealtimeService:
         arrival order; does NOT call ``send_event`` itself -- callers decide
         whether to loop-and-send (as ``pool.py``'s session-drive loop does) or
         just collect (as tests do).
+
+        B1 fix -- staleness guard: a ``response.cancel`` bumps
+        ``pipeline.cancel_scope``'s generation, but items produced by the
+        now-superseded turn (e.g. an ``AudioOut`` synthesized before the
+        cancel landed) may still be sitting in ``audio_out`` when this drains
+        it. Every per-generation-tagged item (``AudioOut``, ``LLMChunk``,
+        ``EndOfResponse``, ``Transcription`` -- anything carrying
+        ``.generation``) is dropped here if it predates the CURRENT
+        generation, so no stale audio/text from a superseded reply ever
+        reaches the client. (A stale ``EndOfResponse`` is intentionally
+        dropped too -- ``_on_response_cancel`` emits its own terminal
+        ``response.done`` for the cancelled turn instead, see B2.)
         """
         out: List[Dict[str, Any]] = []
         count = 0
@@ -267,9 +313,18 @@ class RealtimeService:
                 item = self.pipeline.audio_out.get_nowait()
             except queue.Empty:
                 break
+            count += 1
+            gen = getattr(item, "generation", None)
+            if gen is not None and self.pipeline.cancel_scope.is_stale(gen):
+                continue
             for server_event in dispatch_internal_event(item, id_source=self._evt_id):
                 out.append(server_event_to_dict(server_event))
-            count += 1
+                if server_event.type == "response.done":
+                    # Normal completion path: mirror the bookkeeping
+                    # ``_on_response_cancel`` does, so a later cancel with
+                    # nothing left in flight is correctly a no-op instead of
+                    # emitting a second, spurious terminal event.
+                    self.state.current_turn_id = None
         return out
 
 

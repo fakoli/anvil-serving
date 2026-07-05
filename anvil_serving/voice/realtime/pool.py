@@ -96,6 +96,14 @@ class PoolUnit:
     #: The :class:`~anvil_serving.voice.realtime.service.RealtimeService`
     #: bound to this unit for the current session (``None`` when idle).
     service: Any = None
+    #: ``True`` for the ENTIRE duration of an in-flight :meth:`SessionPool.release`
+    #: call on this unit (grace-sleep + drain + reconstruct), while ``in_use``
+    #: is ALSO still ``True`` over that same window (see B3 fix note on
+    #: :meth:`SessionPool.release`). Exists only to keep ``release`` itself
+    #: idempotent -- a second concurrent/duplicate ``release`` call sees
+    #: ``in_use and releasing`` and no-ops, the same way it previously
+    #: no-op'd on ``not in_use``.
+    releasing: bool = False
 
 
 PipelineFactory = Callable[[], VoicePipeline]
@@ -149,21 +157,38 @@ class SessionPool:
     def release(self, unit: PoolUnit, *, drain_timeout: Optional[float] = 2.0) -> None:
         """Drain ``unit``'s outgoing session, then free it for reuse.
 
-        Idempotent: releasing an already-idle unit is a no-op (guards against
-        a connection handler's ``finally`` block double-releasing after an
-        error path already released it).
+        Idempotent: releasing an already-idle unit, or a unit already mid-
+        release, is a no-op (guards against a connection handler's
+        ``finally`` block double-releasing after an error path already
+        released it).
+
+        B3 fix -- claim/release race: ``unit.in_use`` now stays ``True`` for
+        the ENTIRE drain+reconstruct window below, only flipping to
+        ``False`` right at the end once the fresh pipeline is installed.
+        Previously ``in_use`` was cleared FIRST, before the (slow,
+        lock-free) grace-sleep + ``shutdown_gracefully()`` + reconstruct, so
+        a concurrent :meth:`claim` could see the unit as idle, grab it, and
+        ``start()`` the still-dying pipeline -- which this method would then
+        immediately clobber with a fresh UNSTARTED instance out from under
+        the new session (the new session would get a pipeline that never
+        actually started producing anything, and the old pipeline's threads
+        would leak). Keeping ``in_use`` set is what keeps :meth:`claim` away
+        from this unit now, not the lock (the lock is only ever held for the
+        two quick state-flip sections below, never across the slow drain).
         """
         with self._lock:
-            if not unit.in_use:
+            if not unit.in_use or unit.releasing:
                 return
-            unit.in_use = False
+            unit.releasing = True
             unit.session_id = None
             unit.service = None
             self._releases_total += 1
 
         # Drain OUTSIDE the lock -- shutdown_gracefully blocks on thread joins
         # and must never hold the pool lock while doing so (would stall every
-        # other connection's claim/release).
+        # other connection's claim/release). ``unit.in_use`` is still ``True``
+        # here (see B3 fix note above), so a concurrent ``claim`` cannot grab
+        # this unit while it is mid-drain/reconstruct.
         #
         # The grace sleep works around the BaseStage.stop() race documented
         # in this module's docstring (second honesty note): give already-
@@ -173,6 +198,12 @@ class SessionPool:
             time.sleep(min(_DRAIN_GRACE_SECONDS, drain_timeout))
         unit.pipeline.shutdown_gracefully(join_timeout=drain_timeout)
         unit.pipeline = self._pipeline_factory()
+
+        # Only NOW -- once the fresh, unstarted pipeline is installed -- is
+        # it safe to let claim() hand this unit out again.
+        with self._lock:
+            unit.in_use = False
+            unit.releasing = False
 
     def cancel_active_response(self, session_id: str) -> bool:
         """Barge-in helper: bump the cancel-scope generation for the unit

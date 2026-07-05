@@ -7,6 +7,8 @@ no network.
 """
 from __future__ import annotations
 
+import threading
+
 import pytest
 
 from anvil_serving.voice.messages import AudioOut, EndOfResponse
@@ -102,6 +104,114 @@ def test_release_is_idempotent(pool):
     unit_a = pool.claim("session-a")
     pool.release(unit_a, drain_timeout=2.0)
     pool.release(unit_a, drain_timeout=2.0)  # must not raise or double-count
+    assert pool.usage_stats()["releases_total"] == 1
+
+
+# --------------------------------------------------------------------------- #
+# B3 regression: claim/release race
+# --------------------------------------------------------------------------- #
+
+
+def test_concurrent_claim_cannot_grab_a_unit_mid_release(pool):
+    """A ``claim`` that lands WHILE a unit is still draining/reconstructing
+    inside ``release`` must never receive that unit.
+
+    Before the B3 fix, ``release`` cleared ``unit.in_use = False`` BEFORE
+    the slow grace-sleep + ``shutdown_gracefully()`` + pipeline reconstruct,
+    so a concurrent ``claim`` landing in that window could grab the unit and
+    ``start()`` its still-dying pipeline -- which ``release`` would then
+    immediately clobber with a fresh, unstarted pipeline out from under the
+    new session (new session produces nothing; the old pipeline's threads
+    leak).
+
+    Deterministic (no reliance on winning a real-time race): the unit's
+    pipeline's ``shutdown_gracefully`` is monkeypatched to block on an
+    ``Event`` so the test can pause ``release`` mid-flight, assert against
+    that exact window, then let it finish.
+    """
+    unit_a = pool.claim("session-a")
+    pool.claim("session-b")  # occupy the pool's only other slot: with both
+    # slots taken, a concurrent claim has nowhere to go BUT unit_a -- the
+    # sharpest possible proof that it was never handed out mid-release.
+
+    old_pipeline = unit_a.pipeline
+    real_shutdown = old_pipeline.shutdown_gracefully
+    release_entered = threading.Event()
+    proceed = threading.Event()
+
+    def blocking_shutdown(*, join_timeout=2.0):
+        release_entered.set()
+        assert proceed.wait(timeout=5.0), "test never released the block"
+        return real_shutdown(join_timeout=join_timeout)
+
+    old_pipeline.shutdown_gracefully = blocking_shutdown
+
+    release_thread = threading.Thread(
+        target=pool.release, args=(unit_a,), kwargs={"drain_timeout": 2.0}
+    )
+    release_thread.start()
+    try:
+        assert release_entered.wait(timeout=2.0), "release() never reached shutdown_gracefully"
+
+        # Mid-release: in_use must still be True (the B3 fix), so claim()
+        # has nowhere to go -- both slots are (correctly) occupied.
+        assert unit_a.in_use is True
+        with pytest.raises(SessionPoolExhausted):
+            pool.claim("session-c")
+    finally:
+        proceed.set()
+        release_thread.join(timeout=5.0)
+    assert not release_thread.is_alive()
+
+    # Release has now fully completed: the old pipeline's threads are gone
+    # (no leak) and a fresh instance is installed.
+    assert not old_pipeline.manager.all_alive()
+    assert unit_a.pipeline is not old_pipeline
+    assert unit_a.in_use is False
+    assert unit_a.releasing is False
+
+    # The slot is genuinely reusable: claim() hands back the SAME unit,
+    # started fresh.
+    reclaimed = pool.claim("session-c")
+    assert reclaimed is unit_a
+    assert reclaimed.pipeline.manager.all_alive()
+    assert reclaimed.pipeline.audio_out.empty()
+
+    pool.release(reclaimed, drain_timeout=2.0)
+
+
+def test_concurrent_release_of_the_same_unit_is_not_double_processed(pool):
+    """Two overlapping ``release`` calls on the SAME unit (e.g. a connection
+    handler's ``finally`` racing a duplicate cleanup path) must still count
+    as exactly one release -- the ``releasing`` flag added by the B3 fix
+    must guard the mid-drain window the same way the pre-existing ``not
+    unit.in_use`` check guarded the pre-fix window.
+    """
+    unit_a = pool.claim("session-a")
+
+    release_entered = threading.Event()
+    proceed = threading.Event()
+    real_shutdown = unit_a.pipeline.shutdown_gracefully
+
+    def blocking_shutdown(*, join_timeout=2.0):
+        release_entered.set()
+        proceed.wait(timeout=5.0)
+        return real_shutdown(join_timeout=join_timeout)
+
+    unit_a.pipeline.shutdown_gracefully = blocking_shutdown
+
+    t1 = threading.Thread(target=pool.release, args=(unit_a,), kwargs={"drain_timeout": 2.0})
+    t1.start()
+    assert release_entered.wait(timeout=2.0)
+
+    # A second, concurrent release attempt while the first is still draining
+    # must no-op rather than racing the reconstruct.
+    pool.release(unit_a, drain_timeout=2.0)
+
+    proceed.set()
+    t1.join(timeout=5.0)
+    assert not t1.is_alive()
+
     assert pool.usage_stats()["releases_total"] == 1
 
 
