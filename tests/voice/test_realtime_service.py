@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import base64
 import json
+import queue
+from types import SimpleNamespace
 
 from anvil_serving.voice.messages import AudioOut
 from anvil_serving.voice.pipeline import VoicePipeline
@@ -181,6 +183,46 @@ def test_event_ids_are_unique_across_direct_and_dispatched_events():
         assert len(all_ids) == len(set(all_ids)), "duplicate event_id across direct+dispatched events: %r" % all_ids
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+# --------------------------------------------------------------------------- #
+# F5 -- audio_in backpressure: drop-oldest once the cap is reached, never
+# grows without bound, and the enqueue itself never blocks.
+# --------------------------------------------------------------------------- #
+def test_audio_commit_bounds_audio_in_via_drop_oldest():
+    """A fake pipeline with NO consumer draining `audio_in`: committing far
+    more frames than `max_audio_in_queue` in one shot must leave the queue
+    bounded at the cap (drop-oldest), not grow unboundedly, and the commit
+    call itself must return (never block)."""
+    fake_pipeline = SimpleNamespace(audio_in=queue.Queue())
+    cap = 5
+    service = RealtimeService(
+        pipeline=fake_pipeline, send_event=lambda e: None, session_id="s1",
+        frame_bytes=4, flush_silence_frames=0, max_audio_in_queue=cap,
+    )
+    # 40 bytes / 4 bytes-per-frame == 10 frames -- double the cap.
+    audio = base64.b64encode(b"\x01\x02\x03\x04" * 10).decode("ascii")
+    service.handle_client_message(json.dumps({"type": "input_audio_buffer.append", "audio": audio}))
+    service.handle_client_message(json.dumps({"type": "input_audio_buffer.commit"}))
+
+    assert fake_pipeline.audio_in.qsize() == cap
+
+
+def test_audio_commit_drop_oldest_keeps_the_newest_frames():
+    """Drop-OLDEST specifically: after overflow, the frames actually left in
+    the queue must be the tail of the committed audio, not the head."""
+    fake_pipeline = SimpleNamespace(audio_in=queue.Queue())
+    cap = 2
+    service = RealtimeService(
+        pipeline=fake_pipeline, send_event=lambda e: None, session_id="s1",
+        frame_bytes=1, flush_silence_frames=0, max_audio_in_queue=cap,
+    )
+    audio = base64.b64encode(bytes([1, 2, 3, 4, 5])).decode("ascii")
+    service.handle_client_message(json.dumps({"type": "input_audio_buffer.append", "audio": audio}))
+    service.handle_client_message(json.dumps({"type": "input_audio_buffer.commit"}))
+
+    remaining = [fake_pipeline.audio_in.get_nowait() for _ in range(fake_pipeline.audio_in.qsize())]
+    assert remaining == [bytes([4]), bytes([5])]
 
 
 def test_response_cancel_bumps_the_shared_cancel_scope():

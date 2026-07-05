@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import base64
 import itertools
+import os
 import queue
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
@@ -78,6 +79,22 @@ DEFAULT_FRAME_BYTES = 640
 #: ``round(200/20) == 10``; 12 gives headroom without depending on the exact
 #: configured threshold.
 DEFAULT_FLUSH_SILENCE_FRAMES = 12
+
+#: F5 fix -- backpressure cap on ``pipeline.audio_in``. A ``queue.Queue()``
+#: (``VoicePipeline``'s default) has no ``maxsize``, so a client committing
+#: audio faster than the VAD stage consumes it grows the queue without limit.
+#: Rather than give the queue itself a blocking ``maxsize`` (a blocking
+#: ``put()`` on a full queue would wedge THIS connection's own thread --
+#: exactly the "block the WS thread forever" failure mode the fix must
+#: avoid), :meth:`RealtimeService._enqueue_audio_frame` enforces this cap
+#: itself with a non-blocking, deterministic DROP-OLDEST policy: once the
+#: queue is at capacity, the oldest buffered frame is discarded to make room
+#: for the new one. Dropping the oldest (not the newest) keeps the tail of a
+#: committed utterance -- the audio VAD/STT need to actually reach a final
+#: transcript -- rather than truncating it. Default is 500 frames (
+#: ``DEFAULT_FRAME_BYTES`` * 500 == 10s of buffered 20ms audio at 16kHz mono
+#: 16-bit), comfortably above real-time commit bursts.
+DEFAULT_MAX_AUDIO_IN_QUEUE = int(os.environ.get("ANVIL_VOICE_MAX_AUDIO_IN_QUEUE", "500"))
 
 
 @dataclass
@@ -121,12 +138,18 @@ class RealtimeService:
         session_id: str,
         frame_bytes: int = DEFAULT_FRAME_BYTES,
         flush_silence_frames: int = DEFAULT_FLUSH_SILENCE_FRAMES,
+        max_audio_in_queue: int = DEFAULT_MAX_AUDIO_IN_QUEUE,
     ) -> None:
         self.pipeline = pipeline
         self.send_event = send_event
         self.state = SessionState(session_id=session_id)
         self.frame_bytes = frame_bytes
         self.flush_silence_frames = flush_silence_frames
+        #: F5 fix: bounds ``pipeline.audio_in`` via drop-oldest (see
+        #: DEFAULT_MAX_AUDIO_IN_QUEUE / _enqueue_audio_frame), not a blocking
+        #: queue maxsize -- a fast committer must never be able to block this
+        #: connection's own thread.
+        self.max_audio_in_queue = max_audio_in_queue
         self._audio_buffer = bytearray()
         # ONE id source, owned by THIS instance (i.e. per-connection, since
         # one RealtimeService == one connection) -- shared between the
@@ -205,6 +228,23 @@ class RealtimeService:
         # downstream.
         self._audio_buffer = bytearray()
 
+    def _enqueue_audio_frame(self, frame: bytes) -> None:
+        """Push one PCM frame onto ``pipeline.audio_in``, enforcing
+        ``max_audio_in_queue`` with a non-blocking DROP-OLDEST policy (F5
+        fix -- see ``DEFAULT_MAX_AUDIO_IN_QUEUE``'s module-level note).
+
+        Never blocks: uses ``get_nowait``/``put_nowait`` only, so a client
+        committing audio far faster than the VAD stage consumes it can never
+        wedge this connection's own thread waiting on a full queue.
+        """
+        q = self.pipeline.audio_in
+        while q.qsize() >= self.max_audio_in_queue:
+            try:
+                q.get_nowait()
+            except queue.Empty:
+                break
+        q.put_nowait(frame)
+
     def _on_audio_commit(self, event: InputAudioBufferCommit) -> None:
         if not self._audio_buffer:
             self._send_error("invalid_request", "input_audio_buffer.commit: buffer is empty")
@@ -212,10 +252,10 @@ class RealtimeService:
         pcm = bytes(self._audio_buffer)
         self._audio_buffer = bytearray()
         for offset in range(0, len(pcm), self.frame_bytes):
-            self.pipeline.audio_in.put(pcm[offset : offset + self.frame_bytes])
+            self._enqueue_audio_frame(pcm[offset : offset + self.frame_bytes])
         silence_frame = b"\x00" * self.frame_bytes
         for _ in range(self.flush_silence_frames):
-            self.pipeline.audio_in.put(silence_frame)
+            self._enqueue_audio_frame(silence_frame)
 
     def _on_item_create(self, event: ConversationItemCreate) -> None:
         item = event.item or {}

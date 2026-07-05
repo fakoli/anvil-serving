@@ -21,6 +21,7 @@ from anvil_serving.voice.messages import Transcription, VADAudio
 from anvil_serving.voice.serves._common import ServeNotConfigured
 from anvil_serving.voice.serves.stt import STTServe, STTServeConfig
 from anvil_serving.voice.stages.stt import (
+    STTClientError,
     STTStage,
     STTStageConfig,
     STTStreamAssembler,
@@ -304,6 +305,54 @@ def test_transcribe_stream_non_streaming_returns_single_final_result():
     config = STTStageConfig(stream=False)
     results = list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
     assert results == [("non streaming result", True)]
+
+
+def test_transcribe_stream_non_streaming_raises_on_non_json_body():
+    """F6 regression: a non-JSON body must raise, not silently succeed empty."""
+    transport = FakeTransport(FakeReadResponse(b"not json at all"))
+    config = STTStageConfig(stream=False)
+    with pytest.raises(STTClientError):
+        list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
+
+
+def test_transcribe_stream_non_streaming_raises_on_missing_text_field():
+    """F6 regression: valid JSON with an unexpected shape (no 'text' field)
+    must raise rather than being treated as a successful empty transcription."""
+    transport = FakeTransport(FakeReadResponse(json.dumps({"error": "bad request"}).encode()))
+    config = STTStageConfig(stream=False)
+    with pytest.raises(STTClientError):
+        list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
+
+
+def test_transcribe_stream_non_streaming_raises_when_text_is_not_a_string():
+    transport = FakeTransport(FakeReadResponse(json.dumps({"text": None}).encode()))
+    config = STTStageConfig(stream=False)
+    with pytest.raises(STTClientError):
+        list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
+
+
+def test_transcribe_stream_non_streaming_succeeds_on_valid_empty_transcription():
+    """The legitimately-empty-but-valid case must still succeed (not raise)."""
+    transport = FakeTransport(FakeReadResponse(json.dumps({"text": ""}).encode()))
+    config = STTStageConfig(stream=False)
+    results = list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
+    assert results == [("", True)]
+
+
+def test_stt_stage_propagates_non_streaming_malformed_response_error():
+    """End-to-end through the stage: a malformed non-streaming STT response
+    must propagate as an error out of `process()`, not a false empty
+    Transcription -- BaseStage's per-item isolation is what actually stops it
+    from wedging the pipeline, but `process()` itself must not swallow it."""
+    scope = CancelScope()
+
+    def fake_stream(pcm, sample_rate, config):
+        transport = FakeTransport(FakeReadResponse(b"not json"))
+        yield from transcribe_stream(pcm, sample_rate, STTStageConfig(stream=False), transport=transport)
+
+    stage = STTStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
+    with pytest.raises(STTClientError):
+        stage.process(_vad_audio())
 
 
 def test_transcribe_stream_sends_bearer_token_from_env_var(monkeypatch):

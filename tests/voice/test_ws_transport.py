@@ -14,6 +14,7 @@ import pytest
 
 from anvil_serving.voice.realtime.ws import (
     OP_BINARY,
+    OP_CONTINUATION,
     OP_TEXT,
     WebSocketConnection,
     WebSocketError,
@@ -380,6 +381,224 @@ def test_handshake_rejects_non_upgrade_get_request():
         sock.sendall(b"GET /v1/realtime HTTP/1.1\r\nHost: %s:%d\r\n\r\n" % (host.encode(), port))
         response = sock.recv(4096)
         assert response.startswith(b"HTTP/1.1 400")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+# --------------------------------------------------------------------------- #
+# F1 -- fragmented-message caps (MAX_MESSAGE_BYTES / MAX_MESSAGE_FRAGMENTS)
+# --------------------------------------------------------------------------- #
+
+
+def test_recv_rejects_fragmented_message_exceeding_max_message_bytes(monkeypatch):
+    """Regression for F1: continuation (`fin=0`) frames each individually
+    under MAX_FRAME_PAYLOAD_BYTES must still be capped by a CUMULATIVE total
+    across one fragmented message -- otherwise a client can stream frames
+    forever and force unbounded growth of `recv()`'s `parts` list. Exceeding
+    the cap must close the connection (WS status 1009) and RAISE, not just
+    quietly return None like a normal disconnect.
+    """
+    import anvil_serving.voice.realtime.ws as ws_mod
+
+    monkeypatch.setattr(ws_mod, "MAX_MESSAGE_BYTES", 20)
+    server_sock, client_sock = socket.socketpair()
+    try:
+        server_conn = WebSocketConnection(server_sock, is_client=False)
+        # Masked initial fragment (fin=0): 10 bytes, well under both caps alone.
+        client_sock.sendall(build_frame(OP_BINARY, b"x" * 10, fin=False, mask=True))
+        # Continuation frames pushing the running total past the 20-byte cap.
+        client_sock.sendall(build_frame(OP_CONTINUATION, b"y" * 10, fin=False, mask=True))
+        client_sock.sendall(build_frame(OP_CONTINUATION, b"z" * 10, fin=False, mask=True))
+
+        with pytest.raises(WebSocketError):
+            server_conn.recv()
+        assert server_conn.closed is True
+    finally:
+        server_sock.close()
+        client_sock.close()
+
+
+def test_recv_rejects_fragmented_message_exceeding_max_fragment_count(monkeypatch):
+    """Regression for F1's fragment-count cap: many tiny fragments that never
+    trip the byte cap must still be bounded by a fragment-count cap."""
+    import anvil_serving.voice.realtime.ws as ws_mod
+
+    monkeypatch.setattr(ws_mod, "MAX_MESSAGE_FRAGMENTS", 2)
+    server_sock, client_sock = socket.socketpair()
+    try:
+        server_conn = WebSocketConnection(server_sock, is_client=False)
+        client_sock.sendall(build_frame(OP_BINARY, b"a", fin=False, mask=True))
+        client_sock.sendall(build_frame(OP_CONTINUATION, b"b", fin=False, mask=True))
+        client_sock.sendall(build_frame(OP_CONTINUATION, b"c", fin=False, mask=True))
+
+        with pytest.raises(WebSocketError):
+            server_conn.recv()
+        assert server_conn.closed is True
+    finally:
+        server_sock.close()
+        client_sock.close()
+
+
+def test_recv_accepts_a_fragmented_message_within_both_caps():
+    """Sanity check alongside the two rejection tests above: a fragmented
+    message that stays within both caps must still assemble normally."""
+    server_sock, client_sock = socket.socketpair()
+    try:
+        server_conn = WebSocketConnection(server_sock, is_client=False)
+        client_sock.sendall(build_frame(OP_TEXT, b"hel", fin=False, mask=True))
+        client_sock.sendall(build_frame(OP_CONTINUATION, b"lo", fin=True, mask=True))
+        opcode, payload = server_conn.recv()
+        assert opcode == OP_TEXT
+        assert payload == b"hello"
+    finally:
+        server_sock.close()
+        client_sock.close()
+
+
+# --------------------------------------------------------------------------- #
+# F2 -- non-loopback bind requires a bearer token
+# --------------------------------------------------------------------------- #
+
+
+def test_loopback_without_token_upgrades_without_auth():
+    """Loopback + no token stays allowed (trusted-local default)."""
+    server, thread, received = _start_echo_server()
+    host, port = server.server_address[:2]
+    try:
+        sock = socket.create_connection((host, port), timeout=5)
+        sock.settimeout(5)
+        conn = client_handshake(sock, host=host, port=port, path="/v1/realtime")
+        conn.send_text("no-auth-needed")
+        assert conn.recv_text() == "no-auth-needed-echo"
+        conn.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_make_ws_server_refuses_non_loopback_host_without_token():
+    """Construction itself must be refused -- no socket should even be bound."""
+    with pytest.raises(ValueError):
+        make_ws_server("0.0.0.0", 0, lambda conn, path: conn.close())
+
+
+def _raw_upgrade_request(port: int, *, extra_headers: str = "") -> bytes:
+    key = base64.b64encode(os.urandom(16)).decode("ascii")
+    return (
+        "GET /v1/realtime HTTP/1.1\r\n"
+        "Host: 127.0.0.1:%d\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "%s"
+        "Sec-WebSocket-Key: %s\r\n"
+        "Sec-WebSocket-Version: 13\r\n"
+        "\r\n" % (port, extra_headers, key)
+    ).encode("ascii")
+
+
+def test_non_loopback_bind_with_token_gates_the_upgrade_on_a_valid_bearer_token(monkeypatch):
+    """Non-loopback + token: construction succeeds; a missing or wrong bearer
+    token is rejected with 401 BEFORE the 101 upgrade; the correct token
+    upgrades normally. Connects via 127.0.0.1 -- binding 0.0.0.0 also accepts
+    loopback connections, so this stays hermetic (no real LAN needed).
+    """
+    monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", "s3cr3t-realtime-token")
+    server = make_ws_server(
+        "0.0.0.0", 0, lambda conn, path: conn.close(), token_env="ANVIL_TEST_WS_TOKEN",
+    )
+    server.timeout = 5
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = server.server_address[1]
+    try:
+        # Missing token -> 401.
+        sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+        sock.settimeout(5)
+        sock.sendall(_raw_upgrade_request(port))
+        assert sock.recv(4096).startswith(b"HTTP/1.1 401")
+        sock.close()
+
+        # Wrong token -> 401.
+        sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+        sock.settimeout(5)
+        sock.sendall(_raw_upgrade_request(port, extra_headers="Authorization: Bearer wrong-token\r\n"))
+        assert sock.recv(4096).startswith(b"HTTP/1.1 401")
+        sock.close()
+
+        # Correct token -> 101 Switching Protocols.
+        sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+        sock.settimeout(5)
+        sock.sendall(
+            _raw_upgrade_request(
+                port, extra_headers="Authorization: Bearer s3cr3t-realtime-token\r\n"
+            )
+        )
+        assert sock.recv(4096).startswith(b"HTTP/1.1 101")
+        sock.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_make_ws_server_raises_when_token_env_is_unset(monkeypatch):
+    monkeypatch.delenv("ANVIL_TEST_WS_TOKEN_UNSET", raising=False)
+    with pytest.raises(ValueError):
+        make_ws_server(
+            "127.0.0.1", 0, lambda conn, path: conn.close(), token_env="ANVIL_TEST_WS_TOKEN_UNSET",
+        )
+
+
+# --------------------------------------------------------------------------- #
+# F4 -- idle-socket read timeout so an abandoned connection frees its thread
+# --------------------------------------------------------------------------- #
+
+
+def test_recv_returns_none_cleanly_on_idle_socket_timeout():
+    """Low-level regression via a real socketpair: with a short socket-level
+    read timeout set (mirrors what `make_ws_server`'s `idle_timeout` applies
+    to an accepted connection), a peer that never sends anything must cause
+    `recv()` to return `None` (a clean close) instead of hanging forever or
+    raising an uncaught `socket.timeout`.
+    """
+    server_sock, client_sock = socket.socketpair()
+    server_sock.settimeout(0.2)
+    try:
+        server_conn = WebSocketConnection(server_sock, is_client=False)
+        assert server_conn.recv() is None
+        assert server_conn.closed is True
+    finally:
+        server_sock.close()
+        client_sock.close()
+
+
+def test_idle_connection_is_closed_by_make_ws_server_idle_timeout():
+    """Integration regression: a real accepted connection that completes the
+    handshake and then sends nothing must have its `on_connect` handler's
+    `recv()` return (thanks to the idle timeout), freeing the handler thread,
+    instead of blocking forever.
+    """
+    connect_done = threading.Event()
+
+    def on_connect(conn, path):
+        result = conn.recv()  # blocks until the idle timeout fires
+        assert result is None
+        connect_done.set()
+
+    server = make_ws_server("127.0.0.1", 0, on_connect, idle_timeout=0.3)
+    server.timeout = 5
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address[:2]
+    try:
+        sock = socket.create_connection((host, port), timeout=5)
+        sock.settimeout(5)
+        client_handshake(sock, host=host, port=port, path="/v1/realtime")
+        # Deliberately never send another byte.
+        assert connect_done.wait(timeout=3), "idle timeout never fired"
     finally:
         server.shutdown()
         server.server_close()

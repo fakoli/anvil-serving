@@ -197,12 +197,25 @@ def transcribe_stream(
                     break
         else:
             raw = resp.read()
+            # F6 fix: a decode failure or an unexpected response shape used to
+            # fall back to `obj = {}` -> `text = ""` -> `yield ("", True)`,
+            # i.e. a MALFORMED response was indistinguishable from a real,
+            # successful, legitimately-empty transcription -- the pipeline
+            # would silently treat a broken STT serve as "the user said
+            # nothing" instead of surfacing the failure. Raise instead; a
+            # valid response with an empty (but present, string) "text" field
+            # still succeeds as `("", True)` exactly as before.
             try:
                 obj = json.loads(raw)
-            except (ValueError, TypeError):
-                obj = {}
-            text = obj.get("text", "") if isinstance(obj, Mapping) else ""
-            yield (text, True)
+            except (ValueError, TypeError) as exc:
+                raise STTClientError(
+                    "STT stage: non-streaming response was not valid JSON: %s" % exc
+                ) from exc
+            if not isinstance(obj, Mapping) or not isinstance(obj.get("text"), str):
+                raise STTClientError(
+                    "STT stage: non-streaming response missing a string 'text' field: %r" % (obj,)
+                )
+            yield (obj["text"], True)
     finally:
         try:
             resp.close()

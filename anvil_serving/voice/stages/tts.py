@@ -137,6 +137,30 @@ def _default_transport(url: str, *, data: bytes, headers: Mapping[str, str], tim
         raise TTSClientError("TTS stage: request to %s failed: %s" % (url, exc)) from exc
 
 
+def _response_status(resp: Any) -> Optional[int]:
+    """Best-effort HTTP status extraction across response shapes.
+
+    Real ``urlopen()`` responses expose ``.status`` (3.9+); some also carry a
+    ``.getcode()`` alias. Returns ``None`` when the response object exposes
+    neither (e.g. a hermetic test fake with no status info at all) -- callers
+    treat ``None`` as "unknown, assume success" so old fakes that never set a
+    status keep behaving exactly as before this fix (F3).
+    """
+    status = getattr(resp, "status", None)
+    if status is not None:
+        return status
+    status = getattr(resp, "code", None)
+    if status is not None:
+        return status
+    getcode = getattr(resp, "getcode", None)
+    if getcode is not None:
+        try:
+            return getcode()
+        except Exception:  # noqa: BLE001 - fall through to "unknown"
+            return None
+    return None
+
+
 def stream_speech(
     text: str, config: TTSStageConfig, *, transport: Optional[Transport] = None,
 ) -> Iterator[bytes]:
@@ -145,6 +169,12 @@ def stream_speech(
 
     ``transport`` defaults to the real ``urllib``-backed client; pass a fake
     (returning an object with ``.read(n)``/``.close()``) for hermetic tests.
+
+    F3 fix: checks the response status BEFORE reading/yielding any body
+    bytes. A non-2xx status (e.g. a 429/500 with a JSON or HTML error body)
+    raises :class:`TTSClientError` instead of silently emitting that error
+    body as if it were PCM audio -- the happy (2xx, or status-unknown) path
+    streams exactly as before.
     """
     url = config.base_url.rstrip("/") + "/audio/speech"
     body = json.dumps(build_speech_request_body(text, config)).encode("utf-8")
@@ -156,6 +186,17 @@ def stream_speech(
 
     resp = (transport or _default_transport)(url, data=body, headers=headers, timeout=config.timeout)
     try:
+        status = _response_status(resp)
+        if status is not None and not (200 <= status < 300):
+            detail = b""
+            try:
+                detail = resp.read()
+            except Exception:  # noqa: BLE001 - best-effort; the status alone is enough to fail the turn
+                pass
+            raise TTSClientError(
+                "TTS stage: %s returned HTTP %s (expected 2xx), refusing to treat the "
+                "body as audio: %r" % (url, status, detail[:200])
+            )
         while True:
             chunk = resp.read(config.chunk_bytes)
             if not chunk:

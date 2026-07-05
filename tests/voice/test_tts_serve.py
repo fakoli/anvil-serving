@@ -20,6 +20,7 @@ from anvil_serving.voice.messages import AudioOut, EndOfResponse, TTSInput
 from anvil_serving.voice.serves._common import ServeNotConfigured
 from anvil_serving.voice.serves.tts import TTSServe, TTSServeConfig
 from anvil_serving.voice.stages.tts import (
+    TTSClientError,
     TTSStage,
     TTSStageConfig,
     build_speech_request_body,
@@ -68,10 +69,17 @@ def fake_open_fails(url, timeout=None):
 
 class FakeReadResponse:
     """Fake of an open urllib response supporting `.read(n)` in a loop --
-    what `stream_speech` needs for incremental reads (no socket)."""
+    what `stream_speech` needs for incremental reads (no socket).
 
-    def __init__(self, chunks):
+    `status` defaults to 200 so every pre-existing test using this fake
+    (constructed before F3's status check existed) keeps behaving exactly as
+    before -- only tests that explicitly pass a non-2xx `status` exercise the
+    new rejection path.
+    """
+
+    def __init__(self, chunks, status: int = 200):
         self._chunks = list(chunks)
+        self.status = status
         self.closed = False
 
     def read(self, n=-1):
@@ -280,6 +288,48 @@ def test_stream_speech_no_token_when_env_unset(monkeypatch):
     config = TTSStageConfig(api_key_env="ANVIL_TEST_TTS_TOKEN_UNSET")
     list(stream_speech("hi", config, transport=transport))
     assert "Authorization" not in transport.calls[0]["headers"]
+
+
+# --------------------------------------------------------------------------- #
+# F3 -- a non-2xx response must raise, never be streamed as if it were audio
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("status", [429, 500])
+def test_stream_speech_raises_on_non_2xx_status_without_yielding_bytes(status):
+    error_body = b'{"error": "rate limited"}'
+    transport = FakeTransport(FakeReadResponse([error_body], status=status))
+    with pytest.raises(TTSClientError):
+        list(stream_speech("hi there", TTSStageConfig(), transport=transport))
+
+
+def test_stream_speech_closes_response_even_on_non_2xx_status():
+    transport = FakeTransport(FakeReadResponse([b"error body"], status=500))
+    with pytest.raises(TTSClientError):
+        list(stream_speech("hi", TTSStageConfig(), transport=transport))
+    assert transport.response.closed
+
+
+def test_stream_speech_still_streams_normally_on_200():
+    audio = _int16_bytes([1, 2, 3, 4])
+    transport = FakeTransport(FakeReadResponse([audio[:4], audio[4:]], status=200))
+    chunks = list(stream_speech("hi there", TTSStageConfig(), transport=transport))
+    assert b"".join(chunks) == audio
+
+
+def test_tts_stage_process_fails_the_turn_on_non_2xx_without_emitting_audio():
+    """End-to-end through the stage: a 500 from the TTS serve must not
+    surface as an AudioOut item -- BaseStage's per-item exception isolation
+    catches the raised TTSClientError, so `process()` itself must propagate
+    it rather than swallow it into a (false) successful empty result."""
+    scope = CancelScope()
+
+    def fake_stream(text, config):
+        # Exercise stream_speech for real so the status check actually runs.
+        transport = FakeTransport(FakeReadResponse([b"server error"], status=500))
+        yield from stream_speech(text, config, transport=transport)
+
+    stage = TTSStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
+    with pytest.raises(TTSClientError):
+        stage.process(_tts_input())
 
 
 # --------------------------------------------------------------------------- #

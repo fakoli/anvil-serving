@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import json
 import os
 import socket
@@ -59,6 +60,39 @@ _CONTROL_OPCODES = (OP_CLOSE, OP_PING, OP_PONG)
 #: single malicious/broken peer's ability to force huge memory allocation via
 #: an oversized declared payload length before we've validated anything.
 MAX_FRAME_PAYLOAD_BYTES = int(os.environ.get("ANVIL_WS_MAX_FRAME_BYTES", str(16 * 1024 * 1024)))
+
+#: Cumulative cap (bytes) across every fragment of ONE logical message.
+#: ``MAX_FRAME_PAYLOAD_BYTES`` bounds a single frame, but RFC 6455
+#: fragmentation (``fin=0`` continuation frames) lets a client stream an
+#: unbounded number of frames each individually under that per-frame cap --
+#: without a running total, :meth:`WebSocketConnection.recv` would append
+#: every fragment's payload into its ``parts`` list forever, growing memory
+#: without limit (T-Rex repro: F1). Exceeding this fails the connection with
+#: WS close code 1009 ("message too big", RFC 6455 s7.4.1) and raises.
+MAX_MESSAGE_BYTES = int(os.environ.get("ANVIL_WS_MAX_MESSAGE_BYTES", str(16 * 1024 * 1024)))
+
+#: Cap on the NUMBER of fragments making up one message -- defense in depth
+#: against many tiny fragments (e.g. 1-byte continuation frames) running up
+#: per-frame/list overhead without ever tripping the byte cap above.
+MAX_MESSAGE_FRAGMENTS = int(os.environ.get("ANVIL_WS_MAX_MESSAGE_FRAGMENTS", "4096"))
+
+#: RFC 6455 s7.4.1: "endpoint is terminating the connection because it has
+#: received a message that is too big for it to process."
+WS_STATUS_MESSAGE_TOO_BIG = 1009
+
+#: Idle-socket read timeout (seconds) applied to an accepted WS connection
+#: once the handshake completes (see ``_handle_upgrade``). A client that
+#: completes the handshake and then never sends another byte would otherwise
+#: leave its handler thread blocked in ``recv()`` forever (F4). This is a
+#: PER-RECV idle timeout, not a session-lifetime cap: any activity resets it,
+#: so a normal slow-but-active session (e.g. long silence between utterances,
+#: as long as SOMETHING -- a ping, a frame -- arrives within the window) is
+#: never killed. ``None``/``0`` disables it (blocking reads, the old
+#: behavior). Set generously (default 120s) since a legitimate pause between
+#: turns can be tens of seconds.
+DEFAULT_IDLE_TIMEOUT_SECONDS: Optional[float] = float(
+    os.environ.get("ANVIL_WS_IDLE_TIMEOUT_SECONDS", "120")
+) or None
 
 
 class WebSocketError(Exception):
@@ -98,6 +132,23 @@ def is_websocket_upgrade(headers) -> bool:
     if (get("Sec-WebSocket-Version") or "").strip() != "13":
         return False
     return True
+
+
+def _extract_bearer_token(headers) -> Optional[str]:
+    """Pull the caller's token from an ``Authorization: Bearer <token>`` header.
+
+    Mirrors ``router/front_door.py``'s ``_extract_bearer_token`` (this is what
+    the official OpenAI Realtime SDK sends). Returns ``None`` when the header
+    is absent or not the ``Bearer`` scheme -- callers must treat ``None`` as
+    "no token supplied" (never compared as an empty string).
+    """
+    auth_header = headers.get("Authorization")
+    if not auth_header:
+        return None
+    scheme, _, value = auth_header.partition(" ")
+    if scheme.strip().lower() == "bearer" and value.strip():
+        return value.strip()
+    return None
 
 
 def handshake_response_bytes(headers) -> Optional[bytes]:
@@ -272,14 +323,27 @@ class WebSocketConnection:
         if n == 0:
             return b""
         if self._rfile is not None:
-            data = self._rfile.read(n)
+            try:
+                data = self._rfile.read(n)
+            except socket.timeout:
+                # F4: an idle-socket read timeout (see DEFAULT_IDLE_TIMEOUT_SECONDS)
+                # is not a framing violation -- it's the intended way an idle
+                # connection gets closed. Converting it to a WebSocketError here
+                # means recv()'s own per-iteration try/except treats it exactly
+                # like a peer disconnect: mark closed, return None cleanly,
+                # instead of an uncaught socket.timeout killing the handler
+                # thread with a traceback.
+                raise WebSocketError("read timed out (idle connection)") from None
             if data is None or len(data) != n:
                 raise WebSocketError("peer closed the connection mid-frame")
             return data
         chunks = []
         remaining = n
         while remaining > 0:
-            chunk = self.sock.recv(remaining)
+            try:
+                chunk = self.sock.recv(remaining)
+            except socket.timeout:
+                raise WebSocketError("read timed out (idle connection)") from None
             if not chunk:
                 raise WebSocketError("peer closed the connection mid-frame")
             chunks.append(chunk)
@@ -340,11 +404,22 @@ class WebSocketConnection:
         if it receives a masked frame from the server. A violation is treated
         the same as any other framing error -- ``self.closed`` is set and
         this returns ``None`` (see :func:`parse_frame`'s ``expect_masked``).
+
+        Also ENFORCES ``MAX_MESSAGE_BYTES``/``MAX_MESSAGE_FRAGMENTS`` across a
+        fragmented (continuation-frame) message (F1): unlike a masking
+        violation or a peer disconnect, exceeding either cap is not treated as
+        a quiet ``None`` return -- it sends a CLOSE frame (status 1009,
+        "message too big") and RAISES :class:`WebSocketError`, so a caller
+        driving this in a loop learns explicitly that the connection was
+        killed for sending an oversized message rather than mistaking it for
+        a normal disconnect.
         """
         if self.closed:
             return None
         parts: list = []
         message_opcode: Optional[int] = None
+        total_bytes = 0
+        fragment_count = 0
         while True:
             try:
                 frame = parse_frame(self._read_exact, expect_masked=not self.is_client)
@@ -373,16 +448,40 @@ class WebSocketConnection:
             if frame.opcode in (OP_TEXT, OP_BINARY):
                 message_opcode = frame.opcode
                 parts = [frame.payload]
+                total_bytes = len(frame.payload)
+                fragment_count = 1
             elif frame.opcode == OP_CONTINUATION:
                 if message_opcode is None:
                     raise WebSocketError("continuation frame with no preceding data frame")
                 parts.append(frame.payload)
+                total_bytes += len(frame.payload)
+                fragment_count += 1
             else:
                 raise WebSocketError("unknown opcode %#x" % frame.opcode)
+
+            if total_bytes > MAX_MESSAGE_BYTES or fragment_count > MAX_MESSAGE_FRAGMENTS:
+                self._fail(
+                    WS_STATUS_MESSAGE_TOO_BIG,
+                    "fragmented message exceeds cap (%d bytes over %d fragments; "
+                    "limits are %d bytes / %d fragments)"
+                    % (total_bytes, fragment_count, MAX_MESSAGE_BYTES, MAX_MESSAGE_FRAGMENTS),
+                )
 
             if frame.fin:
                 assert message_opcode is not None
                 return message_opcode, b"".join(parts)
+
+    def _fail(self, code: int, reason: str) -> None:
+        """Fail the connection: best-effort CLOSE(``code``, ``reason``), mark
+        closed, then raise :class:`WebSocketError` -- used for violations a
+        caller must learn about explicitly (not a quiet ``None`` return)."""
+        if not self.closed:
+            self.closed = True
+            try:
+                self._send_frame(OP_CLOSE, struct.pack("!H", code) + reason.encode("utf-8")[:123])
+            except OSError:
+                pass
+        raise WebSocketError(reason)
 
     def recv_text(self) -> Optional[str]:
         got = self.recv()
@@ -466,6 +565,9 @@ def _make_ws_handler(
     on_connect: OnConnect,
     ws_path: str,
     extra_routes: Optional[Dict[str, IntrospectionRoute]] = None,
+    *,
+    auth_token: Optional[str] = None,
+    idle_timeout: Optional[float] = None,
 ):
     routes = dict(extra_routes or {})
 
@@ -496,7 +598,25 @@ def _make_ws_handler(
             self.end_headers()
             self.wfile.write(payload)
 
+        def _authenticated(self) -> bool:
+            """True if this upgrade request carries a valid bearer token, or
+            no token is configured (F2). Constant-time compare
+            (``hmac.compare_digest``) so response timing can't be used to
+            guess the token byte-by-byte; the token itself is never logged.
+            """
+            if auth_token is None:
+                return True  # no token configured -> auth off (trusted-local default)
+            supplied = _extract_bearer_token(self.headers)
+            if supplied is None:
+                return False
+            return hmac.compare_digest(supplied.encode("utf-8"), auth_token.encode("utf-8"))
+
         def _handle_upgrade(self) -> None:
+            if not self._authenticated():
+                # Reject BEFORE the 101 upgrade (F2): once we switch protocols
+                # there is no clean way to answer with an HTTP status any more.
+                self.send_error(401, "missing or invalid bearer token")
+                return
             resp = handshake_response_bytes(self.headers)
             if resp is None:
                 self.send_error(400, "expected a WebSocket upgrade request")
@@ -507,6 +627,14 @@ def _make_ws_handler(
             # connection's lifetime; tell BaseHTTPRequestHandler's bookkeeping
             # not to try to read another HTTP request off it afterwards.
             self.close_connection = True
+            if idle_timeout:
+                # F4: bound how long an accepted connection's thread can sit
+                # blocked in recv() with nothing arriving. Applied only now
+                # (post-handshake) so a slow-but-valid handshake is unaffected;
+                # every read from here on (including through self.rfile, which
+                # wraps this same socket) is subject to it, and it resets on
+                # every successful read -- see DEFAULT_IDLE_TIMEOUT_SECONDS.
+                self.connection.settimeout(idle_timeout)
             # Read via self.rfile (NOT a raw sock.recv() loop): BaseHTTPRequestHandler
             # parsed the Upgrade request's headers off this SAME buffered
             # stream, which may have already pulled a client's pipelined
@@ -527,6 +655,15 @@ def _make_ws_handler(
     return WebSocketRequestHandler
 
 
+def _is_loopback_host(host: str) -> bool:
+    """True for exactly ``127.0.0.1`` -- the one address this house's own
+    convention treats as loopback (CLAUDE.md gotcha #1: never ``localhost``,
+    and ``voice/config.py`` rejects every other ``127.x``/``::1``/``0.0.0.0``
+    spelling too). Anything else is "non-loopback" for F2's bind-guard.
+    """
+    return host == "127.0.0.1"
+
+
 def make_ws_server(
     host: str = "127.0.0.1",
     port: int = 8765,
@@ -534,6 +671,8 @@ def make_ws_server(
     *,
     ws_path: str = "/v1/realtime",
     extra_routes: Optional[Dict[str, IntrospectionRoute]] = None,
+    token_env: Optional[str] = None,
+    idle_timeout: Optional[float] = DEFAULT_IDLE_TIMEOUT_SECONDS,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the Realtime WebSocket server.
 
@@ -548,12 +687,47 @@ def make_ws_server(
     Pass ``port=0`` to bind an ephemeral port (read back via
     ``server.server_address[1]``). Binds ``127.0.0.1`` by default -- never
     ``localhost`` (CLAUDE.md gotcha #1: the Windows IPv6 stall).
+
+    ``token_env`` (F2) names an ENVIRONMENT VARIABLE holding an OPTIONAL
+    bearer token (secret by env-var name, per house rule -- never a literal
+    here). When set, every WS upgrade request must carry a matching
+    ``Authorization: Bearer <token>`` header (what the official OpenAI
+    Realtime SDK sends) or the upgrade is answered ``401`` before the ``101``
+    Switching Protocols response is ever sent. When unset, loopback binds stay
+    open with no auth (trusted-local default) -- but a NON-loopback ``host``
+    is refused outright at construction time (before any socket is bound)
+    unless a token is configured: a ``0.0.0.0``/LAN-reachable bind with no
+    auth would let any network client open a voice session and consume the
+    session pool.
+
+    ``idle_timeout`` (F4, seconds) bounds how long an accepted connection's
+    handler thread can sit blocked in ``recv()`` with nothing arriving before
+    the connection is closed and the thread exits; ``None``/``0`` disables it.
+    Defaults to ``DEFAULT_IDLE_TIMEOUT_SECONDS``.
     """
     if on_connect is None:
         def on_connect(conn: WebSocketConnection, path: str) -> None:  # pragma: no cover - trivial default
             conn.close()
 
-    httpd = ThreadingHTTPServer((host, port), _make_ws_handler(on_connect, ws_path, extra_routes))
+    auth_token: Optional[str] = None
+    if token_env:
+        auth_token = os.environ.get(token_env)
+        if not auth_token:
+            raise ValueError(
+                "token_env names %r, which is not set (or empty) in the environment" % token_env
+            )
+
+    if not _is_loopback_host(host) and auth_token is None:
+        raise ValueError(
+            "refusing to bind non-loopback host %r for the Realtime WS server "
+            "without a bearer token configured -- pass token_env=<ENV_VAR_NAME> "
+            "naming the environment variable holding the token, or bind 127.0.0.1" % host
+        )
+
+    handler = _make_ws_handler(
+        on_connect, ws_path, extra_routes, auth_token=auth_token, idle_timeout=idle_timeout,
+    )
+    httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True
     return httpd
 
