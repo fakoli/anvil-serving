@@ -42,10 +42,12 @@
 //   long-context) default to local-preferred (route to anvil).
 //
 //   Operators can extend the set via ANVIL_CLOUD_CLASSES (comma-separated preset
-//   names; see getCloudClasses() below) without touching plugin code.
+//   names) or, when that env var is unset, via api.pluginConfig.cloudClasses.
+//   See getCloudClasses() below.
 //
-// OPTIONAL AUTHORITATIVE MODE (ANVIL_ROUTE_ENDPOINT):
-//   When ANVIL_ROUTE_ENDPOINT is set (e.g. "http://127.0.0.1:8000/v1/route"),
+// OPTIONAL AUTHORITATIVE MODE (ANVIL_ROUTE_ENDPOINT / routeEndpoint):
+//   When ANVIL_ROUTE_ENDPOINT is set, or when it is unset and
+//   api.pluginConfig.routeEndpoint is set (e.g. "http://127.0.0.1:8000/v1/route"),
 //   the plugin calls anvil's POST /v1/route (T007) as the AUTHORITATIVE decision:
 //     + Uses the router's full quality profile + config; catches edge cases the
 //       keyword heuristic misses.
@@ -77,32 +79,84 @@ import { request as httpsRequest } from "node:https";
  * bake-off (multi-step decomposition, long horizon).  All other presets
  * perform adequately on local hardware at the measured request distribution.
  *
- * Extend via ANVIL_CLOUD_CLASSES env var (see getCloudClasses).
+ * Extend via ANVIL_CLOUD_CLASSES env var or api.pluginConfig.cloudClasses
+ * (see getCloudClasses).
  */
 export const DEFAULT_CLOUD_CLASSES = new Set(["planning"]);
+
+function configValue(pluginConfig, key) {
+  try {
+    if (!pluginConfig || typeof pluginConfig !== "object") return undefined;
+    return pluginConfig[key];
+  } catch {
+    return undefined;
+  }
+}
+
+function parseClassList(value) {
+  let names = [];
+  if (Array.isArray(value)) {
+    names = value;
+  } else if (typeof value === "string") {
+    names = value.split(",");
+  } else {
+    return null;
+  }
+
+  const normalized = names
+    .map((s) => typeof s === "string" ? s.trim() : "")
+    .filter(Boolean);
+  return normalized.length > 0 ? new Set(normalized) : null;
+}
 
 /**
  * Return the effective set of cloud-preferred preset names.
  *
  * Priority:
  *   1. ANVIL_CLOUD_CLASSES env var (comma-separated, replaces the default).
- *   2. DEFAULT_CLOUD_CLASSES.
+ *   2. api.pluginConfig.cloudClasses (array of strings, replaces the default).
+ *   3. DEFAULT_CLOUD_CLASSES.
  *
- * Empty / whitespace-only ANVIL_CLOUD_CLASSES falls back to the default
- * (prevents accidentally clearing the set via an empty env var).
+ * Empty / whitespace-only ANVIL_CLOUD_CLASSES and empty config arrays fall
+ * through to the next source (prevents accidentally clearing the set).
  *
+ * @param {unknown} [pluginConfig]
  * @returns {Set<string>}
  */
-export function getCloudClasses() {
-  const envVal = process.env.ANVIL_CLOUD_CLASSES;
-  if (typeof envVal === "string" && envVal.trim() !== "") {
-    const names = envVal
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (names.length > 0) return new Set(names);
-  }
+export function getCloudClasses(pluginConfig) {
+  const envSet = parseClassList(process.env.ANVIL_CLOUD_CLASSES);
+  if (envSet) return envSet;
+
+  const configSet = parseClassList(configValue(pluginConfig, "cloudClasses"));
+  if (configSet) return configSet;
+
   return DEFAULT_CLOUD_CLASSES;
+}
+
+/**
+ * Return the effective authoritative route endpoint, if configured.
+ *
+ * Priority:
+ *   1. ANVIL_ROUTE_ENDPOINT env var.
+ *   2. api.pluginConfig.routeEndpoint.
+ *
+ * Empty / whitespace-only values are treated as unset.
+ *
+ * @param {unknown} [pluginConfig]
+ * @returns {string|undefined}
+ */
+export function getRouteEndpoint(pluginConfig) {
+  const envVal = process.env.ANVIL_ROUTE_ENDPOINT;
+  if (typeof envVal === "string" && envVal.trim() !== "") {
+    return envVal.trim();
+  }
+
+  const configVal = configValue(pluginConfig, "routeEndpoint");
+  if (typeof configVal === "string" && configVal.trim() !== "") {
+    return configVal.trim();
+  }
+
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------

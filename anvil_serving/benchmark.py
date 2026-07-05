@@ -16,6 +16,7 @@ Usage:
 """
 import argparse
 import json
+import os
 import time
 import random
 import statistics
@@ -109,6 +110,12 @@ def detect_max_model_len(base, model=None, key=None, timeout=15):
         v = chosen.get(k)
         if isinstance(v, int) and v > 0:
             return v
+    return None
+
+def resolve_api_key(api_key_env=None):
+    """Resolve auth for probes from an environment variable reference."""
+    if api_key_env:
+        return os.environ.get(api_key_env)
     return None
 
 def stream_chat(base, model, prompt, key, max_tokens, timeout=900, chat_template_kwargs=None):
@@ -249,7 +256,8 @@ def emit_recipe(a, summary, *, capture=None, hardware=None, append=None):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", required=True); ap.add_argument("--model", required=True)
-    ap.add_argument("--api-key", default=None)
+    ap.add_argument("--api-key-env", default=None,
+                    help="read the bearer token from this environment variable")
     ap.add_argument("--requests", type=int, default=60)
     ap.add_argument("--concurrency", type=int, default=20)
     ap.add_argument("--burst", type=int, default=0, help="if >0, fire N requests sharing ONE prefix concurrently")
@@ -287,9 +295,10 @@ def main(argv=None):
     ap.add_argument("--recipe-model", default=None, metavar="NAME",
                     help="model id recorded in the recipe (default: --model)")
     a = ap.parse_args(argv)
+    api_key = resolve_api_key(a.api_key_env)
 
     # Resolve the serve's context window: explicit flag wins; else best-effort probe /v1/models.
-    max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, a.api_key)
+    max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, api_key)
     cap = ctx_cap(max_model_len, a.max_tokens, a.margin)
     ctk = {"enable_thinking": False} if a.no_thinking else None
 
@@ -307,7 +316,7 @@ def main(argv=None):
           f"{'BURST(shared-prefix)' if a.burst else 'mixed'} max_tokens={a.max_tokens}{capnote}{thinknote}")
     t0 = time.time(); results = []
     with ThreadPoolExecutor(max_workers=conc) as ex:
-        futs = [ex.submit(stream_chat, a.base_url, a.model, p, a.api_key, a.max_tokens,
+        futs = [ex.submit(stream_chat, a.base_url, a.model, p, api_key, a.max_tokens,
                           chat_template_kwargs=ctk) for p in jobs]
         for f in as_completed(futs):
             try: results.append(f.result())

@@ -135,6 +135,11 @@ class Verifier(Protocol):
 # still run, so a truncation is still caught via ``finish_reason``.
 MAX_SCAN_BYTES = 256 * 1024
 
+# A JSON document can be small enough for our byte cap while still carrying
+# pathological nesting deep enough to exhaust downstream parsers or validators.
+# Keep this far above normal tool-argument shapes, but below adversarial stacks.
+MAX_JSON_NESTING = 2048
+
 # A backtick-fenced block, handling both forms and adversarial bodies:
 #   * multi-line: ```lang\n <body> \n``` — the closing fence must follow a
 #     newline (i.e. start its own line), so an inline ``` inside a string in the
@@ -224,12 +229,43 @@ def _reject_nonfinite_float(token: str) -> float:
     return value
 
 
+def _json_nesting_too_deep(s: str, limit: int = MAX_JSON_NESTING) -> bool:
+    """Return True when bracket/brace nesting exceeds ``limit``.
+
+    This is a cheap pre-parse guard for adversarial JSON strings. It respects
+    quoted strings and escapes so brackets inside string values do not count.
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for ch in s:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "[{":
+            depth += 1
+            if depth > limit:
+                return True
+        elif ch in "]}":
+            depth = max(0, depth - 1)
+    return False
+
+
 def _strict_json_loads(s: str) -> Any:
     """``json.loads`` that rejects non-finite values (spec-strict).
 
     Rejects both the literal NaN/Infinity tokens (``parse_constant``) and numeric
     literals that overflow to ``inf`` such as ``1e999`` (``parse_float``).
     """
+    if _json_nesting_too_deep(s):
+        raise ValueError(f"JSON nesting exceeds {MAX_JSON_NESTING}")
     return json.loads(
         s,
         parse_constant=_reject_nonspec_constant,

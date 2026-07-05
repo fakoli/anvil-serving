@@ -26,11 +26,13 @@
 //
 // CLOUD-CLASS SET:
 //   Default: {"planning"} (eval-proven cloud-preferred, T005 bake-off).
-//   Extend via ANVIL_CLOUD_CLASSES env var (comma-separated preset names).
+//   Extend via ANVIL_CLOUD_CLASSES env var (comma-separated preset names), or
+//   api.pluginConfig.cloudClasses when the env var is unset.
 //
 // OPTIONAL AUTHORITATIVE MODE:
 //   Set ANVIL_ROUTE_ENDPOINT (e.g. "http://127.0.0.1:8000/v1/route") to call
-//   anvil's POST /v1/route (T007) as the authoritative tier decision.
+//   anvil's POST /v1/route (T007) as the authoritative tier decision. If the env
+//   var is unset, api.pluginConfig.routeEndpoint is used.
 //   Falls back to client-side classify on any error.  Default: client-side only.
 //
 // WIRE FORM (LIVE-CONFIRMED OpenClaw 2026.6.6, 2026-06-30):
@@ -49,6 +51,7 @@ import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { classify, type AnvilPreset } from "./classify.mjs";
 import {
   getCloudClasses,
+  getRouteEndpoint,
   makeRoutingDecision,
   fetchAnvilTier,
 } from "./route.mjs";
@@ -62,12 +65,24 @@ export type { AnvilPreset };
 type Attachment = { kind: "image" | "video" | "audio" | "document" | "other"; mimeType?: string };
 type BeforeModelResolveEvent = { prompt: string; attachments?: Attachment[] };
 type BeforeModelResolveResult = { modelOverride?: string; providerOverride?: string };
+type OpenClawAnvilPluginConfig = { cloudClasses?: unknown; routeEndpoint?: unknown };
 
 // Decision log: one JSONL line per fire. Default is the gateway CWD; override
 // with ANVIL_DECISION_LOG. This is what AC1 asserts against (the synthetic,
 // regenerable fixture is decision_log.fixture.jsonl; a live run produces
 // decision_log.jsonl — see README.md).
 const DECISION_LOG = process.env.ANVIL_DECISION_LOG ?? "./decision_log.jsonl";
+
+function getPluginConfig(api: unknown): OpenClawAnvilPluginConfig | undefined {
+  try {
+    const config = (api as { pluginConfig?: unknown })?.pluginConfig;
+    return config && typeof config === "object"
+      ? config as OpenClawAnvilPluginConfig
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export default definePluginEntry({
   id: "openclaw-anvil-intent-router",
@@ -93,11 +108,12 @@ export default definePluginEntry({
           //      profile; adds one loopback round-trip.  Falls back to B on
           //      any error/timeout.
           //   B. CLIENT-SIDE (default): fast, zero-round-trip heuristic.
-          //      Uses DEFAULT_CLOUD_CLASSES (+ ANVIL_CLOUD_CLASSES override).
+          //      Uses DEFAULT_CLOUD_CLASSES (+ env/plugin config override).
           //
           let routeOverride: BeforeModelResolveResult;
 
-          const routeEndpoint = process.env.ANVIL_ROUTE_ENDPOINT;
+          const pluginConfig = getPluginConfig(api);
+          const routeEndpoint = getRouteEndpoint(pluginConfig);
           if (routeEndpoint) {
             // Path A: authoritative POST /v1/route.
             const tier = await fetchAnvilTier(
@@ -112,11 +128,11 @@ export default definePluginEntry({
             } else {
               // /v1/route unreachable / timed out / unexpected response →
               // fall back to client-side classify (no run breakage).
-              routeOverride = makeRoutingDecision(preset, getCloudClasses());
+              routeOverride = makeRoutingDecision(preset, getCloudClasses(pluginConfig));
             }
           } else {
             // Path B: fast client-side classify (default).
-            routeOverride = makeRoutingDecision(preset, getCloudClasses());
+            routeOverride = makeRoutingDecision(preset, getCloudClasses(pluginConfig));
           }
 
           // "anvil" if routed to anvil; "native" if left to native provider.
