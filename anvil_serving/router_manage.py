@@ -212,6 +212,21 @@ def _health(_open, port=8000, path="/"):
         return None
 
 
+def status_summary(container, _run=subprocess.run, _open=urllib.request.urlopen, port=8000):
+    """Machine-readable router container status for MCP/automation."""
+    st = docker_state(container, _run=_run)
+    running = st == "running"
+    code = _health(_open, port=port) if running else None
+    return {
+        "container": container,
+        "docker_state": st,
+        "running": running,
+        "health_status": code,
+        "health_url": "http://127.0.0.1:%s/" % port if running else None,
+        "ok": st != "error",
+    }
+
+
 def cmd_status(container, _run=subprocess.run, _open=urllib.request.urlopen):
     st = docker_state(container, _run=_run)
     print("router container: %s" % container)
