@@ -13,6 +13,10 @@
       "routeEndpoint": {
         "type": "string",
         "description": "If set, POST to this URL (anvil's /v1/route, T007) for an authoritative local/cloud tier decision instead of the fast client-side keyword heuristic. Falls back to client-side on any error/timeout. Used when ANVIL_ROUTE_ENDPOINT is unset; overridden by the env var when non-empty. Leave unset (the default) for the zero-round-trip client-side path."
+      },
+      "routeAuthEnv": {
+        "type": "string",
+        "description": "Optional env var name containing the token for an authenticated routeEndpoint, for example ANVIL_ROUTER_TOKEN. Used when ANVIL_ROUTE_AUTH_ENV is unset; overridden by the env var when non-empty. This is an env var name, never the raw token."
       }
     }
   }

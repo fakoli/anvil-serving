@@ -8,12 +8,16 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
 
 import {
   DEFAULT_CLOUD_CLASSES,
+  fetchAnvilTier,
   getCloudClasses,
+  getRouteAuthEnv,
   getRouteEndpoint,
   makeRoutingDecision,
+  resolveRouteAuthToken,
 } from "./route.mjs";
 
 import { classify } from "./classify.mjs";
@@ -203,6 +207,85 @@ describe("getRouteEndpoint — env var then api.pluginConfig.routeEndpoint", () 
       },
     });
     assert.equal(getRouteEndpoint(pluginConfig), undefined);
+  });
+});
+
+describe("route endpoint auth — env-name based token resolution", () => {
+  test("plugin config routeAuthEnv is used when env var is unset", () => {
+    delete process.env.ANVIL_ROUTE_AUTH_ENV;
+    assert.equal(
+      getRouteAuthEnv({ routeAuthEnv: " ANVIL_ROUTER_TOKEN " }),
+      "ANVIL_ROUTER_TOKEN",
+    );
+  });
+
+  test("ANVIL_ROUTE_AUTH_ENV wins over plugin config routeAuthEnv", () => {
+    process.env.ANVIL_ROUTE_AUTH_ENV = "ANVIL_OTHER_ROUTER_TOKEN";
+    try {
+      assert.equal(
+        getRouteAuthEnv({ routeAuthEnv: "ANVIL_ROUTER_TOKEN" }),
+        "ANVIL_OTHER_ROUTER_TOKEN",
+      );
+    } finally {
+      delete process.env.ANVIL_ROUTE_AUTH_ENV;
+    }
+  });
+
+  test("route auth values must be env var names, not raw tokens", () => {
+    delete process.env.ANVIL_ROUTE_AUTH_ENV;
+    assert.equal(getRouteAuthEnv({ routeAuthEnv: "not-an-env-name" }), undefined);
+  });
+
+  test("resolveRouteAuthToken reads only the named env var", () => {
+    delete process.env.ANVIL_ROUTE_AUTH_ENV;
+    process.env.ANVIL_ROUTER_TOKEN = "route-secret";
+    try {
+      assert.equal(
+        resolveRouteAuthToken({ routeAuthEnv: "ANVIL_ROUTER_TOKEN" }),
+        "route-secret",
+      );
+    } finally {
+      delete process.env.ANVIL_ROUTER_TOKEN;
+    }
+  });
+});
+
+describe("fetchAnvilTier — authenticated route endpoint", () => {
+  test("sends bearer and x-api-key headers when authToken is provided", async () => {
+    const seen = [];
+    const server = createServer((req, res) => {
+      seen.push({
+        authorization: req.headers.authorization,
+        apiKey: req.headers["x-api-key"],
+      });
+      if (
+        req.headers.authorization !== "Bearer route-secret"
+        || req.headers["x-api-key"] !== "route-secret"
+      ) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "unauthorized" }));
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ tier: "local" }));
+    });
+
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address();
+    const endpoint = `http://127.0.0.1:${port}/v1/route`;
+    try {
+      assert.equal(await fetchAnvilTier("hello", undefined, endpoint), null);
+      assert.equal(
+        await fetchAnvilTier("hello", undefined, endpoint, { authToken: "route-secret" }),
+        "local",
+      );
+      assert.deepEqual(seen[1], {
+        authorization: "Bearer route-secret",
+        apiKey: "route-secret",
+      });
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
 });
 

@@ -54,6 +54,7 @@ import {
   getRouteEndpoint,
   makeRoutingDecision,
   fetchAnvilTier,
+  resolveRouteAuthToken,
 } from "./route.mjs";
 
 // Re-export so the closed preset enum + heuristic are part of this plugin's
@@ -65,7 +66,11 @@ export type { AnvilPreset };
 type Attachment = { kind: "image" | "video" | "audio" | "document" | "other"; mimeType?: string };
 type BeforeModelResolveEvent = { prompt: string; attachments?: Attachment[] };
 type BeforeModelResolveResult = { modelOverride?: string; providerOverride?: string };
-type OpenClawAnvilPluginConfig = { cloudClasses?: unknown; routeEndpoint?: unknown };
+type OpenClawAnvilPluginConfig = {
+  cloudClasses?: unknown;
+  routeEndpoint?: unknown;
+  routeAuthEnv?: unknown;
+};
 
 // Decision log: one JSONL line per fire. Default is the gateway CWD; override
 // with ANVIL_DECISION_LOG. This is what AC1 asserts against (the synthetic,
@@ -111,6 +116,8 @@ export default definePluginEntry({
           //      Uses DEFAULT_CLOUD_CLASSES (+ env/plugin config override).
           //
           let routeOverride: BeforeModelResolveResult;
+          let authoritative = false;
+          let routingSource = "client-side";
 
           const pluginConfig = getPluginConfig(api);
           const routeEndpoint = getRouteEndpoint(pluginConfig);
@@ -120,15 +127,21 @@ export default definePluginEntry({
               promptText,
               event?.attachments as Array<{ kind: string }> | undefined,
               routeEndpoint,
+              { authToken: resolveRouteAuthToken(pluginConfig) },
             );
             if (tier === "cloud") {
               routeOverride = {}; // native provider, no anvil contact
+              authoritative = true;
+              routingSource = "anvil-route";
             } else if (tier === "local") {
               routeOverride = { providerOverride: "anvil", modelOverride: preset };
+              authoritative = true;
+              routingSource = "anvil-route";
             } else {
               // /v1/route unreachable / timed out / unexpected response →
               // fall back to client-side classify (no run breakage).
               routeOverride = makeRoutingDecision(preset, getCloudClasses(pluginConfig));
+              routingSource = "client-side-fallback";
             }
           } else {
             // Path B: fast client-side classify (default).
@@ -149,7 +162,9 @@ export default definePluginEntry({
             destination,
             providerOverride: routeOverride.providerOverride ?? null,
             modelOverride: routeOverride.modelOverride ?? null,
-            authoritative: Boolean(routeEndpoint),
+            authoritative,
+            routeEndpointConfigured: Boolean(routeEndpoint),
+            routingSource,
             prompt_chars: promptText.length,
           };
           try {

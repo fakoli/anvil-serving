@@ -396,6 +396,15 @@ def make_handler(
             if self.command != "HEAD":
                 self.wfile.write(payload)
 
+        def _send_no_content(self, *, request_id: str) -> None:
+            self.send_response(204)
+            self.send_header("Content-Length", "0")
+            self.send_header(_REQUEST_ID_HEADER, request_id)
+            self.send_header("Cache-Control", "no-store")
+            if self.close_connection:
+                self.send_header("Connection", "close")
+            self.end_headers()
+
         def _send_error_json(
             self,
             status: int,
@@ -492,6 +501,8 @@ def make_handler(
             return obj
 
         def _jsonrpc_response(self, body: dict[str, Any]) -> Optional[dict[str, Any]]:
+            if "id" not in body:
+                return None
             req_id = body.get("id")
             method = body.get("method")
             if method == "initialize":
@@ -644,7 +655,7 @@ def make_handler(
                     return
                 if route in ("/", "/mcp"):
                     body = self._read_json_body(request_id=request_id)
-                    if body.get("method") == "tools/call":
+                    if "id" in body and body.get("method") == "tools/call":
                         params = body.get("params") or {}
                         if isinstance(params, dict):
                             raw_arguments = params.get("arguments") or {}
@@ -660,11 +671,8 @@ def make_handler(
                     if response is not None:
                         self._send_json(status, response, request_id=request_id)
                     else:
-                        self._send_json(
-                            status,
-                            {"ok": True, "request_id": request_id},
-                            request_id=request_id,
-                        )
+                        status = 204
+                        self._send_no_content(request_id=request_id)
                     return
 
                 if route != "/tools/call":

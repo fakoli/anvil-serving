@@ -77,6 +77,8 @@ See [Model Settings Example](MODEL-SETTINGS-EXAMPLE.md) for a full annotated con
 | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Deterministic agent/skill workflows for model swaps, preflight, benchmark, OpenClaw sync, and promotion gates |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Plugin spec for the OpenClaw gateway |
 | [OpenClaw live validation](OPENCLAW-LIVE-VALIDATION.md) | Validation runbook for OpenClaw |
+| [OpenClaw layers and MCP control plane](adr/0013-openclaw-layers-and-mcp-control-plane.md) | ADR-0013: clean product layers for hook intent, router data plane, and explicit MCP operations |
+| [Tailnet controller transport](adr/0014-tailnet-controller-transport.md) | ADR-0014: split-host fakoli-mini to anvil-serving host transport over Tailscale |
 | [Cost model](PLAN-advise-and-defer.md) | advise-and-defer plan — local-only default, opt-in metered cloud |
 | [ADRs](adr/README.md) | Architecture decisions |
 | [Changelog](changelog.md) | Release history |

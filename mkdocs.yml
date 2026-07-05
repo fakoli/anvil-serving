@@ -44,6 +44,13 @@ nav:
       - 'ADR-0005: anvil-503 native failover unreliable': adr/0005-anvil-503-native-failover-unreliable.md
       - 'ADR-0006: Multiplexer swap draining': adr/0006-multiplexer-swap-draining.md
       - 'ADR-0007: Subscription-auth cloud tier': adr/0007-subscription-auth-cloud-tier.md
+      - 'ADR-0008: Heavy-tier speculative decoding': adr/0008-heavy-tier-speculative-decoding.md
+      - 'ADR-0009: Profile write-back loop': adr/0009-profile-write-back-loop.md
+      - 'ADR-0010: Specialized-engine tier': adr/0010-specialized-engine-tier.md
+      - 'ADR-0011: Two-mode operation': adr/0011-two-mode-operation.md
+      - 'ADR-0012: Serve and router management verbs': adr/0012-serve-and-router-management-verbs.md
+      - 'ADR-0013: OpenClaw layers and MCP control plane': adr/0013-openclaw-layers-and-mcp-control-plane.md
+      - 'ADR-0014: Tailnet controller transport': adr/0014-tailnet-controller-transport.md
       - Template: adr/template.md
   - Architecture reviews:
       - '2026-07-02: Architecture & models': REVIEW-2026-07-02-architecture-and-models.md
