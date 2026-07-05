@@ -28,7 +28,7 @@ from __future__ import annotations
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Callable, List, Mapping, Optional
+from typing import Any, Callable, List, Optional
 
 from ... import serves as generic_serves
 

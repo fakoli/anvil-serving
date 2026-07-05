@@ -4,7 +4,6 @@ Dependency-light: stdlib only, no network, no GPU, no torch. Exercises the
 shipped example manifest plus synthetic manifests built in-memory / via
 tmp_path so nothing here depends on real STT/TTS/router serves being up.
 """
-import os
 
 import pytest
 

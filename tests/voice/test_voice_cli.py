@@ -11,7 +11,6 @@ import pytest
 
 from anvil_serving import cli as anvil_cli
 from anvil_serving.voice import cli as voice_cli
-from anvil_serving.voice import config as voice_config
 
 
 VALID_MANIFEST = """
