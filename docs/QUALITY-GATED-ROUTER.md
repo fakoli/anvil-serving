@@ -305,11 +305,13 @@ For a gateway like OpenClaw that fronts the harness, the 503 triggers native tra
 the flat-rate subscription the operator already holds. anvil holds **no cloud key**; the metered
 surface is absent from the default path. **$0 metered API billing.**
 
-> **Live-validation caveat (T005 — pending):** that anvil's exhaustion-503 maps to OpenClaw
-> 2026.6.6's "overloaded" failover category is confirmed by reading `run.ts` but has not yet
-> been validated against a live OpenClaw install. If it does not trigger failover, set
-> `[router].exhaustion_status` to the status code that does. See Phase 1 in
-> [`docs/PLAN-advise-and-defer.md`](PLAN-advise-and-defer.md).
+> **Live-validation caveat (T005 — resolved with an OpenClaw-side defect):** anvil's
+> exhaustion-503 does trip OpenClaw's "overloaded" transport-failover category, but a turn whose
+> `before_model_resolve` hook emitted `providerOverride:"anvil"` does not reliably escape that
+> provider during OpenClaw's native fallback walk. Local-preferred classes therefore need one of the
+> documented mitigations: classify the class as cloud-preferred before it touches anvil, or configure
+> anvil's opt-in metered cloud tier so fallback happens inside the anvil provider. See
+> [ADR-0005](adr/0005-anvil-503-native-failover-unreliable.md).
 
 ### Mode 2 — Opt-in keyed (metered cloud tier)
 
@@ -416,6 +418,14 @@ gateway box reaching a GPU box's router). See [ADR-0004](adr/0004-router-as-a-se
 the top-level README's "Run the router in Docker" section, and
 [`examples/fakoli-dark/README.md`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/README.md) for the worked example.
 
+**Operations are a separate control plane.** The OpenClaw hook plugin is for per-run intent
+selection only; the router is the model data plane; `anvil-serving mcp` and
+`anvil-serving controller serve` are the operational control plane for status, preflight,
+benchmark, OpenClaw sync, and split-host management over a private tailnet. See
+[ADR-0013](adr/0013-openclaw-layers-and-mcp-control-plane.md),
+[ADR-0014](adr/0014-tailnet-controller-transport.md), and
+[Operator Playbooks](OPERATOR-PLAYBOOKS.md).
+
 Verified support grid (full detail + citations in the finding):
 
 | Harness | base_url? | arbitrary model string? | per-request hook / extra fields | intent slots/session | tier |
@@ -451,8 +461,8 @@ and the OpenClaw piece is a **thin, swappable adapter/plugin** — if OpenClaw s
 and another hook-capable harness takes the beachhead. (Same lesson as not coupling to Anvil:
 integrate at a standard seam, focus effort at one client.) This is anvil-serving's choice and does
 **not** affect Anvil-the-ledger's harness-agnostic mandate — different products, different mandates.
-Risk to manage: OpenClaw is young and the extension surface is churning (medium risk) — verify the
-plugin/provider API hands-on before over-investing. Buildable spec + the validate-first gaps:
+Risk to manage: OpenClaw is young and the extension surface is churning (medium risk) — keep the
+plugin narrow and re-validate on gateway upgrades. Buildable spec + live-validation caveats:
 [`OPENCLAW-INTEGRATION-SPEC.md`](OPENCLAW-INTEGRATION-SPEC.md).
 
 ## 9. Preset vocabulary, discovery, and transparent responses

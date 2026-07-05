@@ -6,6 +6,33 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **OpenClaw MCP control plane and split-host controller transport.** Added `anvil-serving mcp`
+  as the structured operational surface for router status, serve status, doctor summaries, route
+  probes, OpenClaw config sync/restart, preflight probes, and benchmark probes. Added
+  `anvil-serving controller serve` as a stdlib-only HTTP controller for the anvil-serving host, plus
+  gateway-side proxy mode (`anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`)
+  so `fakoli-mini` can operate a GPU/router host over a private tailnet without raw SSH/shell as the
+  product contract. The controller reuses the MCP tool registry, requires env-token auth for
+  non-loopback binds, rejects unsafe public/wildcard binds unless explicitly gated, exposes
+  `/health`, redacts controller-token values, and writes structured audit records.
+- **ADR-0013 / ADR-0014 and operator playbooks.** Documented the clean OpenClaw layers
+  (hook adapter for per-turn intent, router data plane for quality, MCP/controller for operations)
+  and the tailnet controller transport for split-host deployments. Added operator playbooks for
+  model inventory, preflight, benchmark, OpenClaw sync, promotion evidence, and controller failure
+  handling.
+
+### Fixed
+
+- **OpenClaw authoritative route probes are now auth-aware and truthfully logged.** The
+  OpenClaw intent plugin can resolve a `/v1/route` token by env-var name
+  (`ANVIL_ROUTE_AUTH_ENV` or `routeAuthEnv`) and sends both bearer and `x-api-key` headers. Decision
+  logs mark `authoritative:true` only when `/v1/route` returns a valid tier; route failures fall back
+  to the deterministic client classifier with `routingSource:"client-side-fallback"`.
+- **Controller JSON-RPC notifications are side-effect safe.** A no-id JSON-RPC notification no
+  longer executes `tools/call`; the controller returns `204 No Content` for such notifications.
+
 ## [0.10.0] - 2026-07-04
 
 ### Added

@@ -15,23 +15,34 @@ method: "5 source-level facet finders over the OpenClaw repo (docs/ + src/) + ad
 
 ## READ FIRST — verdict, caveats, and one correction
 
-**Verdict: GO, with caveats. Maturity risk: MEDIUM (API churn, not abandonment).** The hook signature
-and the custom-provider config are **source-confirmed** and fit anvil's design exactly. Build the
-router-side preset support now; validate two live gaps **before** writing/shipping the plugin.
+**Current implementation status (2026-07-05):** the OpenClaw reference plugin, router preset
+support, harness sync, MCP control plane, and split-host controller transport now exist in this
+repo. Treat this document as the source-verified integration spec and historical validation record;
+for the current operational contract, also read
+[ADR-0013](adr/0013-openclaw-layers-and-mcp-control-plane.md),
+[ADR-0014](adr/0014-tailnet-controller-transport.md), and
+[Operator Playbooks](OPERATOR-PLAYBOOKS.md).
 
-**Environment for validation.** The validate-first gaps below should be confirmed against a live
-OpenClaw install. The router serves (`:30000` heavy, `:30001` fast) must be reachable from the
-gateway. Confirming the gaps on a real install eliminates a fresh stand-up for each question.
+**Verdict: GO, with caveats. Maturity risk: MEDIUM (API churn, not abandonment).** The hook signature
+and the custom-provider config are **source-confirmed** and fit anvil's design. The router-side
+preset support and plugin were implemented with the caveats below preserved as validation and
+operational constraints.
+
+**Environment for validation.** The original validate-first gaps were confirmed against a live
+OpenClaw install and are retained below as provenance. For future re-validation, the router serves
+must be reachable from the gateway and the run should capture model wire values, hook cadence, and
+fallback behavior.
 
 **Correction to record (vs the prior finding).** The earlier research said `before_model_resolve`
 fires "per agent turn." The source-level dive refines this: it fires **once per run, above the attempt
 loop**, and does *not* re-fire on a `before_agent_finalize` "revise" retry. For a chat-bridge harness
 a "run" is plausibly *one user message* (which is exactly the cadence work-class routing needs — the
-user's message determines the work-class), but **this must be confirmed live**: that a run maps to a
-single user message and doesn't span turns, and that multi-step internal model calls within a run
-share one intent (fine for us). The "classify each turn" premise rests on this.
+user's message determines the work-class). The live-validation record and ADR-0005 capture the
+important operational consequence: the resolved provider can stick through OpenClaw's native
+fallback walk, so router-side fallback remains load-bearing.
 
-**Two CRITICAL validate-first gaps** (write no build code against them until settled):
+**Original validate-first gaps** (now retained as provenance; see `OPENCLAW-LIVE-VALIDATION.md`,
+ADR-0005, and the plugin README for settled behavior):
 1. **Wire `model` value** — does the outbound HTTP request carry the bare id (`planning`) or the full
    ref (`anvil/planning`)? Capture a real outbound request. (anvil should accept **both** to be safe.)
 2. **Firing cadence** — confirm `before_model_resolve` fires per user message (see correction above),
@@ -221,6 +232,10 @@ misdeclaration once the real prompt exceeds it.
 Net: this matches anvil's existing design (`QUALITY-GATED-ROUTER.md` §7) — verify+fallback is a **router** responsibility; the OpenClaw plugin is a thin Tier-0 classifier that pushes per-turn intent to the wire. No design change needed.
 
 ## 5. MVP build steps
+
+> **Status:** these steps describe the original build path. The current source includes the
+> reference plugin, harness sync verbs, stdio MCP server, and tailnet controller transport. Use
+> [Operator Playbooks](OPERATOR-PLAYBOOKS.md) for day-to-day operations.
 
 1. **Router accepts presets (no OpenClaw needed).** Make anvil-serving's OpenAI front door accept `{planning,quick-edit,review,chat,long-context}` (and `anvil/<preset>`) as `model`, map to tier, serve. Add `/v1/models` listing the presets. (anvil M0–M1.)
 2. **Use the available OpenClaw install on the gateway** (already installed; no fresh stand-up). Confirm/pin its version (`openclaw --version`), then add the §2 provider block pointing at the router. Smoke-test `openclaw models list` shows `anvil/*`; send a turn with `agents.defaults.model.primary="anvil/chat"`; **capture the outbound request to settle §3 wire-value gap.** (Reproducing elsewhere: `npm i -g openclaw@<pinned stable>` + `openclaw onboard --install-daemon`.)

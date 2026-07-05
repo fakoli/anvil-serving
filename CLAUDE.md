@@ -5,11 +5,15 @@ and routes coding-harness traffic across local and cloud model tiers — with pe
 verification and automatic fallback. Install, run `anvil-serving serve`, point your harness at
 `http://127.0.0.1:8000`, and you get *local where it's been proven, cloud where it hasn't*.
 
-The router is **shipped (v0.7.3)** — 18 tasks, milestones M0-M3, 993 tests green. v0.7.x added wire
-fidelity (tools/tool-history forwarding, real SSE streaming, sampling params) + production hardening
-(caller-capped truncation, breaker, bounded decision log) + heavy-tier speculative decoding (ADR-0008). v0.5.0 shipped the genericity pass (out-of-box router correctness + generated bring-up, ADR-0003); v0.6.0 made the router a containerized, token-authed service (ADR-0004). Earlier: v0.4.0 shipped advise-and-defer (local-only default, opt-in metered cloud); v0.4.1 hardened the serving substrate (Docker-Compose-defined serves). The serving
-substrate (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`) also ships
-and right-sizes the local tiers the router routes across.
+The router is **shipped**. v0.10.0 is the latest tagged release, and main also includes the
+OpenClaw MCP/control-plane work: `anvil-serving mcp` for same-host stdio MCP and
+`anvil-serving controller serve` for split-host operation over a private, token-authenticated
+tailnet transport. v0.7.x added wire fidelity (tools/tool-history forwarding, real SSE streaming,
+sampling params), production hardening, and heavy-tier speculative decoding (ADR-0008). v0.6.0 made
+the router a containerized, token-authed service (ADR-0004); v0.5.0 shipped generic onboarding
+(ADR-0003); v0.4.x shipped advise-and-defer and Docker-Compose-defined serves. The serving
+substrate (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`) ships and
+right-sizes the local tiers the router routes across.
 
 Source of truth for product framing: **`README.md`**.
 
@@ -45,7 +49,8 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 anvil_serving/
   cli.py               dispatch: profile | models | deploy | serves | serve | preflight |
                                  benchmark | eval | multiplexer | cache-prune | score |
-                                 init (alias onboard) | doctor
+                                 init (alias onboard) | doctor | router | harness |
+                                 host | external-bench | mcp | controller
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
   models.py            `sync`: scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py);
@@ -58,6 +63,9 @@ anvil_serving/
   score.py             role-suitability scorer over a transcribed benchmark table (model selection)
   serves.py            model-serve lifecycle verb
   cache_prune.py       HF cache cleanup helper
+  harness.py           render/apply OpenClaw harness config from router presets
+  mcp.py               stdio MCP server + remote-controller proxy for operational tools
+  controller.py        stdlib HTTP controller for tailnet-safe split-host MCP forwarding
 
   router/              THE MAIN PRODUCT — all shipped
     serve.py           `anvil-serving serve` entrypoint: config → backends → front door
@@ -241,16 +249,16 @@ skills/modules/agent configuration — **starting with OpenClaw**.
    entries removes the presets from the picker entirely (2026-07-04 regression). Each preset's
    `contextWindow` must still equal the LARGEST routed tier window (131072 = heavy), per the
    contextWindow-clamp gotcha in `docs/OPENCLAW-INTEGRATION-SPEC.md`.
-2. **This is a capability gap to close, not a manual chore.** Just as raw `docker` for serve
-   management is a gap, hand-editing the harness config out-of-band is a gap. anvil-serving should be
-   able to LOAD/PUSH the harness's config itself — e.g. an `anvil-serving harness sync openclaw` verb
-   that RENDERS the correct OpenClaw provider + agent config from the live router config and applies
-   it to the gateway. Start with OpenClaw; the front door is protocol-standard so the pattern
-   generalizes to any harness.
+2. **Use the product control surface, not hand-edits, for normal operations.** `anvil-serving harness
+   sync openclaw` renders the correct OpenClaw provider + agent config from the live router config,
+   and `anvil-serving harness restart openclaw` reloads the gateway. For agent/operator workflows,
+   prefer `anvil-serving mcp`; in split-host mode, run `anvil-serving controller serve` on the
+   anvil-serving host and bridge from `fakoli-mini` with
+   `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
 
-Note: the OpenClaw **gateway** runs on **Fakoli Mini** (this box, fakoli-dark, holds only the Tray
-client + the adapter plugin source). Until the sync verb exists, a router change here means producing
-the reconciled OpenClaw config and applying it on Mini.
+Note: the OpenClaw **gateway** runs on **Fakoli Mini**. The anvil-serving host owns router, serve,
+model, benchmark, preflight, and harness-rendering operations; Mini owns gateway-local apply/restart
+actions. Keep that boundary intact unless a tool explicitly supports crossing it.
 
 ---
 
@@ -259,6 +267,10 @@ the reconciled OpenClaw config and applying it on Mini.
 - `README.md` — product framing, quickstart, substrate commands, worked example
 - `docs/QUALITY-GATED-ROUTER.md` — full design (intent presets, tier ladder, verify-fallback, profile)
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — OpenClaw adapter plugin spec (verdict: go-with-caveats)
+- `docs/OPERATOR-PLAYBOOKS.md` — MCP/controller playbooks for status, preflight, benchmark,
+  OpenClaw sync, and promotion evidence
+- `docs/adr/0013-openclaw-layers-and-mcp-control-plane.md` / `0014-tailnet-controller-transport.md`
+  — clean OpenClaw layers and split-host controller transport
 - `docs/adr/` — **Architecture Decision Records** — the *why* behind significant design decisions
 - `docs/REVIEW-2026-07-02-architecture-and-models.md` — full architecture review record (the
   PR #96–#102 series: wire fidelity, measured profile, bug bash, swap draining, residency +
