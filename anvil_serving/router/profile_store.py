@@ -60,6 +60,11 @@ _SEED_VERDICTS: Mapping[str, Mapping[str, str]] = {
     "review":              {"fast-local": "allow-with-verify", "heavy-local": "allow", "cloud": "allow"},
     "bounded-edit":        {"fast-local": "allow", "heavy-local": "allow",            "cloud": "allow"},
     "chat":                {"fast-local": "allow", "heavy-local": "allow",            "cloud": "allow"},
+    # Low-latency voice-pipeline turns (flexibility:T018): same trust profile
+    # as "chat" -- fast-local is fully trusted, not merely allow-with-verify --
+    # since this class exists to route there FIRST for latency, not because
+    # it's an eval-weak class needing a safety net.
+    "chat-fast":           {"fast-local": "allow", "heavy-local": "allow",            "cloud": "allow"},
 }
 
 
