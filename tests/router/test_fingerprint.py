@@ -29,6 +29,7 @@ ALL_CLASSES = {
     "review",
     "bounded-edit",
     "chat",
+    "chat-fast",  # flexibility:T018 -- voice-pipeline low-latency work class
 }
 
 

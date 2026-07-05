@@ -33,8 +33,18 @@ from typing import Any, List, Mapping, Tuple
 from .internal import InternalRequest, estimate_tokens
 
 # The closed taxonomy of work classes the router reasons about.
+#
+# "chat-fast" (flexibility:T018) is the low-latency conversational class the
+# voice pipeline's LLM stage (anvil_serving/voice/stages/llm.py) targets: a
+# real-time voice turn cares more about a snappy reply than the deeper
+# quality a coding harness wants, so it is routed fast-tier-first (see
+# policy.py's LATENCY_SENSITIVE_WORK_CLASSES) and is reachable either by
+# naming the "chat-fast" preset directly in the wire `model` field
+# (intent.py's declared-preset path) or, as defense in depth, by the
+# structural `modality` marker this module's classify() recognizes below.
 WORK_CLASSES = (
     "chat",
+    "chat-fast",
     "bounded-edit",
     "multi-file-refactor",
     "planning",
@@ -167,19 +177,25 @@ def classify(request: InternalRequest) -> Classification:
     Priority (first to fire wins):
 
     1. **long-context** — estimated words over :data:`_LONG_CONTEXT_WORDS`.
-    2. **stated intent** — word-boundary keyword scan over the last user turn
+    2. **explicit low-latency modality marker** — a wire-level ``modality``
+       (or bare ``voice``) field naming the request as a real-time voice turn
+       -> ``chat-fast``. This is a caller-declared structural signal (like a
+       declared preset), not a content heuristic, so it is checked BEFORE the
+       keyword scan: a voice turn that happens to say "let's plan the trip"
+       still wants the low-latency tier, not a detour to ``planning``.
+    3. **stated intent** — word-boundary keyword scan over the last user turn
        plus a SHORT system prompt (<= :data:`_SYSTEM_KEYWORD_MAX_WORDS` words;
        a harness's standing multi-thousand-word system prompt is excluded so it
        cannot drown the per-request intent). Exactly one class matched -> that
        class, ``confident``. Two or more *conflicting* classes matched -> the
        highest-priority one, but ``confident=False`` (the intent layer routes
        ambiguity to the safer tier).
-    3. **thinking enabled** — an active (not ``{"type": "disabled"}``) thinking
+    4. **thinking enabled** — an active (not ``{"type": "disabled"}``) thinking
        budget -> ``planning``.
-    4. **tools present** -> ``bounded-edit`` (an agent loop doing edits). Placed
+    5. **tools present** -> ``bounded-edit`` (an agent loop doing edits). Placed
        AFTER keywords so a "plan ..." request that also carries tools stays
        ``planning``.
-    5. **default** -> ``chat`` (ambiguous, not confident).
+    6. **default** -> ``chat`` (ambiguous, not confident).
     """
     try:
         system = getattr(request, "system", None) or ""
@@ -199,6 +215,16 @@ def classify(request: InternalRequest) -> Classification:
         tools = raw.get("tools")
         has_tools = bool(tools)
 
+        # Explicit low-latency/voice marker (flexibility:T018). A harmless
+        # extension field the OpenAI/Anthropic dialects pass through verbatim
+        # into ``raw`` (both dialects build InternalRequest.raw from the full
+        # parsed body) -- see anvil_serving/voice/stages/llm.py, which sets
+        # ``modality: "voice"`` on every request it sends to the router.
+        modality = raw.get("modality")
+        is_voice = (isinstance(modality, str) and modality.lower() == "voice") or bool(
+            raw.get("voice")
+        )
+
         last_user = getattr(request, "last_user_text", "") or ""
         # Keyword scan: last user turn + (only) a SHORT system prompt. A long
         # (harness-standing) system prompt is a fingerprint, not per-request
@@ -217,28 +243,34 @@ def classify(request: InternalRequest) -> Classification:
             "thinking_enabled": thinking_enabled,
             "has_tools": has_tools,
             "matched_keywords": matched,
+            "is_voice": is_voice,
         }
 
         # 1. Window pressure dominates everything else.
         if token_estimate > _LONG_CONTEXT_WORDS:
             return Classification("long-context", True, MappingProxyType(signals))
 
-        # 2. Stated intent (keywords) outranks structural hints.
+        # 2. Explicit low-latency/voice marker beats stated-intent keywords:
+        # a real-time voice turn always wants the fast tier.
+        if is_voice:
+            return Classification("chat-fast", True, MappingProxyType(signals))
+
+        # 3. Stated intent (keywords) outranks structural hints.
         if len(matched) == 1:
             return Classification(matched[0], True, MappingProxyType(signals))
         if len(matched) > 1:
             # Conflicting intent: highest-priority class, but ambiguous.
             return Classification(matched[0], False, MappingProxyType(signals))
 
-        # 3. An active thinking budget is a planning signal.
+        # 4. An active thinking budget is a planning signal.
         if thinking_enabled:
             return Classification("planning", True, MappingProxyType(signals))
 
-        # 4. Tools attached -> an agent loop doing bounded edits.
+        # 5. Tools attached -> an agent loop doing bounded edits.
         if has_tools:
             return Classification("bounded-edit", True, MappingProxyType(signals))
 
-        # 5. No strong signal -> chat, and ambiguous (not confident).
+        # 6. No strong signal -> chat, and ambiguous (not confident).
         return Classification("chat", False, MappingProxyType(signals))
     except Exception as e:  # pragma: no cover - safety net; must never escape.
         return Classification("chat", False, MappingProxyType({"error": str(e)}))

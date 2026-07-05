@@ -76,6 +76,7 @@ cost_output_per_mtok = 15.0    # $15.00 / million output tokens
 # Cloud appears in pools where its quality advantage justifies the metered cost.
 [router.presets]
 chat         = ["fast-local", "cloud"]
+chat-fast    = ["fast-local", "cloud"]   # low-latency (voice pipeline): fast-tier-first
 quick-edit   = ["fast-local", "heavy-local", "cloud"]
 review       = ["heavy-local", "cloud"]
 planning     = ["cloud"]
