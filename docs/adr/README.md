@@ -33,4 +33,4 @@ people and the chat logs.
 | [0011](0011-two-mode-operation.md) | Two modes of operation: agentic vs maximum-flexibility (global mode switch) | Accepted |
 | [0012](0012-serve-and-router-management-verbs.md) | Serve & router management flows through anvil-serving verbs; deployed router config is a mutable volume promoted via validate→atomic-write→reload→rollback | Accepted |
 | [0013](0013-openclaw-layers-and-mcp-control-plane.md) | OpenClaw layers and MCP control plane: hook adapter for intent, router data plane for quality, MCP for operations | Accepted |
-| [0014](0014-tailnet-controller-transport.md) | Tailnet controller transport for split-host OpenClaw deployments | Proposed |
+| [0014](0014-tailnet-controller-transport.md) | Tailnet controller transport for split-host OpenClaw deployments | Accepted |

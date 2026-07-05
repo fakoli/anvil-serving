@@ -13,20 +13,31 @@ profile.
 
 ## Current surface
 
-ADR-0013 calls for an MCP control plane. In this checkout,
-`anvil-serving mcp --list-tools` exposes a bounded stdio tool surface for
-status, route probes, OpenClaw sync, preflight, and benchmark probes. The MCP
-surface is not yet a complete replacement for every CLI operation: model
-inventory, serve start/swap, direct multiplexer inspection, JSON benchmark
+ADR-0013 calls for an MCP control plane, and ADR-0014 adds the split-host
+transport. There are two operator entry points:
+
+- Same-host operation: `anvil-serving mcp --list-tools` exposes the bounded
+  stdio tool surface for status, route probes, OpenClaw sync, preflight, and
+  benchmark probes.
+- Split-host operation: the anvil-serving host runs
+  `anvil-serving controller serve`, and `fakoli-mini` runs the MCP bridge with
+  `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
+  The bridge presents the same tool names while sending calls to the controller
+  over the private tailnet.
+
+The MCP surface is not yet a complete replacement for every CLI operation:
+model inventory, serve start/swap, direct multiplexer inspection, JSON benchmark
 artifact capture, and router promotion still use the CLI or HTTP contracts
 below.
 
 Prefer MCP tools when a current tool exists because they return structured
 results and keep mutating/probe operations behind explicit `confirm` fields.
-When a tool is missing, use the CLI equivalent and keep the same gate semantics.
+When a tool is missing, use the CLI equivalent on the host that owns the
+resource and keep the same gate semantics.
 
-| Operator need | Preferred MCP shape | CLI equivalent today |
+| Operator need | Preferred MCP/controller shape | CLI/HTTP equivalent today |
 |---|---|---|
+| Controller readiness | Health endpoint on the controller's private address | `GET /health` on `http://anvil-gpu.tailnet.example:8765` |
 | Model inventory | Not exposed yet | `anvil-serving models sync --out ./model-library` |
 | Environment and tier health | `doctor_summary`, `serves_status`, `router_status` | `anvil-serving doctor --config ./router.toml`; `anvil-serving serves --manifest ./serves.toml status`; `anvil-serving router status` |
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
@@ -45,6 +56,15 @@ MCP invocation rules:
 
 - Start by listing tools (`anvil-serving mcp --list-tools`) or using the
   client-provided tool registry; do not assume future tools exist.
+- In split-host mode, start the same remote bridge the operator will use for the
+  run and let the MCP client issue `tools/list` through that bridge:
+
+  ```bash
+  anvil-serving mcp \
+    --controller-url http://anvil-gpu.tailnet.example:8765 \
+    --auth-env ANVIL_CONTROLLER_TOKEN
+  ```
+
 - For `preflight_probe`, `benchmark_probe`, and `openclaw_sync`, call once with
   `confirm:false` or `dry_run:true` to preview the command/result shape, then
   call with `confirm:true` only after the exact endpoint, model, config, and
@@ -52,10 +72,62 @@ MCP invocation rules:
 - For authenticated probes, pass `api_key_env` such as `ANVIL_ROUTER_TOKEN`;
   never pass a literal token value through MCP arguments, command previews, or
   saved evidence.
+- For controller transport, `--auth-env ANVIL_CONTROLLER_TOKEN` names the
+  environment variable containing the controller token. The token value must be
+  present on both the controller host and `fakoli-mini`, but it must not appear
+  in tool arguments, command previews, logs, or saved evidence.
 - Treat a successful command preview as planning evidence only, not as
   preflight, benchmark, or sync evidence.
 - Preserve returned structured data and the equivalent command line in the
-  operator report.
+  operator report. When a call crosses the controller, also preserve the
+  controller request id or audit-log reference if one is returned.
+
+## Controller transport
+
+Use this when the operator or OpenClaw gateway is on `fakoli-mini` and the
+anvil-serving CLI, router config, serves manifests, and GPU-local operations
+live on another private host.
+
+1. On the anvil-serving host, bind the controller to a private Tailscale DNS
+   name/address or to `127.0.0.1` for single-host local development. Do not bind
+   it to a public interface.
+
+   ```bash
+   export ANVIL_CONTROLLER_TOKEN="<generate-and-store-out-of-band>"
+   anvil-serving controller serve \
+     --host anvil-gpu.tailnet.example \
+     --port 8765 \
+     --auth-token-env ANVIL_CONTROLLER_TOKEN
+   ```
+
+   Local-only development uses the same command with `--host 127.0.0.1`.
+
+2. Before running remote operations, check the controller health endpoint on the
+   same private address the bridge will use:
+
+   ```bash
+   curl -fsS \
+     -H "Authorization: Bearer $ANVIL_CONTROLLER_TOKEN" \
+     http://anvil-gpu.tailnet.example:8765/health
+   ```
+
+   This proves the management plane is reachable. It does not prove router tier
+   health; run `doctor_summary`, `serves_status`, and `router_status` for that.
+
+3. On `fakoli-mini`, start the MCP bridge with the controller URL and token env
+   var name:
+
+   ```bash
+   export ANVIL_CONTROLLER_TOKEN="<same-secret-as-controller-host>"
+   anvil-serving mcp \
+     --controller-url http://anvil-gpu.tailnet.example:8765 \
+     --auth-env ANVIL_CONTROLLER_TOKEN
+   ```
+
+4. Treat the controller audit log as operational evidence. It should show the
+   operation name, target host, dry-run/confirm state, result status, and request
+   id, but never credential values. A mutating tool without a preceding preview
+   is a process violation even if it succeeds.
 
 ## Skill contract
 
@@ -81,8 +153,8 @@ It must stop and ask for a human decision before:
 - changing `[router].profile_path` or running `router promote`;
 - changing `decision`, `decision_for_score`, or profile threshold semantics;
 - enabling an opt-in metered cloud tier;
-- binding a router, serve, or multiplexer beyond loopback without token/auth
-  confirmation;
+- binding a controller, router, serve, or multiplexer beyond loopback without
+  private/tailnet bind and token/auth confirmation;
 - using raw `docker`, `ssh`, or file edits where an Anvil verb exists; or
 - treating external benchmark rows as routing-quality evidence.
 
@@ -106,6 +178,19 @@ Use this before any swap, benchmark, or harness-sync operation.
    anvil-serving serves --manifest ./serves.toml status
    anvil-serving router status
    ```
+
+   In split-host mode, first prove the controller itself is reachable from
+   `fakoli-mini`:
+
+   ```bash
+   curl -fsS \
+     -H "Authorization: Bearer $ANVIL_CONTROLLER_TOKEN" \
+     http://anvil-gpu.tailnet.example:8765/health
+   ```
+
+   Then use the MCP bridge to call `doctor_summary`, `serves_status`, and
+   `router_status` through the controller rather than running host-local CLI
+   commands on the gateway box.
 
    If `./router.toml` or `./serves.toml` is not the active deployment, the skill
    must first identify the intended config/manifest from the operator request or
@@ -251,7 +336,7 @@ a restart.
    ```bash
    anvil-serving harness sync openclaw \
      --config ./router.toml \
-     --base-url http://<router-private-host>:8000/v1 \
+     --base-url http://anvil-gpu.tailnet.example:8000/v1 \
      --gateway-host <gateway-host> \
      --restart
    ```
@@ -316,6 +401,9 @@ and is not automatic.
   unpromotable until the capacity issue is understood.
 - Router down: use `anvil-serving router status` and `anvil-serving router logs`
   before restart; restart only with an explicit operator target.
+- Controller unreachable: check the private bind address, tailnet ACL, controller
+  health endpoint, and `ANVIL_CONTROLLER_TOKEN` on both hosts. Use the controller
+  audit log to find the failed request before falling back to raw SSH.
 - OpenClaw config drift: run `harness sync openclaw` from the router config; do
   not hand-edit the provider block.
 - Need for raw Docker or SSH: report the missing Anvil verb/MCP wrapper unless

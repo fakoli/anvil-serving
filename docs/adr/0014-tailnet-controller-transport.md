@@ -1,6 +1,6 @@
 # ADR-0014 — Tailnet controller transport for split-host OpenClaw deployments
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-05
 - **Relates to:** ADR-0004, ADR-0012, ADR-0013,
   `anvil_serving/mcp.py`, `anvil_serving/harness.py`,
@@ -8,8 +8,8 @@
 
 ## Context
 
-ADR-0013 establishes an MCP control plane for anvil-serving operations, but its first
-implementation is a stdio server. That works when the caller can launch the
+ADR-0013 establishes an MCP control plane for anvil-serving operations. The local
+transport is a stdio MCP server, which works when the caller can launch the
 `anvil-serving` CLI on the same machine that owns the router, model serves, and
 management verbs.
 
@@ -65,13 +65,34 @@ same control-plane contract as `anvil-serving mcp`: structured tools, JSON schem
 dry-run previews, explicit `confirm` fields for disruptive operations, and no raw
 credential values in requests or responses.
 
-The intended shape is:
+The implemented split-host shape is:
 
-- `anvil-serving mcp` remains the local stdio MCP server.
-- A future `anvil-serving controller serve` starts a token-authenticated listener on
-  the anvil-serving host.
-- A gateway-side bridge, skill, or MCP client on `fakoli-mini` calls the controller
-  over Tailscale and presents the same tool names to the operator or agent.
+- The anvil-serving host runs the long-lived controller:
+
+  ```bash
+  export ANVIL_CONTROLLER_TOKEN="<generate-and-store-out-of-band>"
+  anvil-serving controller serve \
+    --host anvil-gpu.tailnet.example \
+    --port 8765 \
+    --auth-token-env ANVIL_CONTROLLER_TOKEN
+  ```
+
+  For single-host local development, bind to `127.0.0.1` instead of the tailnet
+  hostname.
+- `anvil-serving mcp` remains the local stdio MCP server when no remote controller
+  URL is supplied.
+- On `fakoli-mini`, the MCP bridge points at the controller and resolves the same
+  token from the environment:
+
+  ```bash
+  export ANVIL_CONTROLLER_TOKEN="<same-secret-as-controller-host>"
+  anvil-serving mcp \
+    --controller-url http://anvil-gpu.tailnet.example:8765 \
+    --auth-env ANVIL_CONTROLLER_TOKEN
+  ```
+
+  The bridge presents the same tool names and schemas to the operator or agent
+  whether the call is satisfied locally or by the tailnet controller.
 - Gateway-local operations, such as restarting the OpenClaw gateway, should prefer a
   pull/local-apply model: the gateway host asks the controller for rendered config or
   instructions, then applies the gateway-local action itself. Controller-initiated
@@ -84,22 +105,32 @@ front door. Per-turn OpenClaw routing remains the OpenClaw hook plugin's job.
 
 ### Transport and auth requirements
 
-The first controller implementation should:
+The controller implementation:
 
-- bind only to an explicit tailnet address, an explicitly configured private bind
-  address, or `127.0.0.1` for local development;
-- require an auth token resolved from an environment variable, following ADR-0004's
-  token-auth posture;
-- reject or redact raw secret values in tool arguments, command previews, logs, and
+- binds only to an explicit tailnet hostname/address, an explicitly configured
+  private bind address, or `127.0.0.1` for local development;
+- requires an auth token resolved from the environment variable named by
+  `--auth-token-env`; the `fakoli-mini` MCP bridge resolves the same token
+  through `--auth-env`;
+- rejects or redacts raw secret values in tool arguments, command previews, logs, and
   structured responses;
-- include request ids and operation names in an audit log;
-- enforce the same dry-run/confirm behavior as the stdio MCP tools;
-- return structured failure envelopes instead of human-only stderr text;
-- keep router core modules OpenClaw-free and controller-transport-free.
+- writes an audit log with request ids, operation names, target metadata,
+  dry-run/confirm state, and result status;
+- exposes `GET /health` for readiness checks;
+- enforces the same dry-run/confirm behavior as the stdio MCP tools;
+- returns structured failure envelopes instead of human-only stderr text;
+- keeps router core modules OpenClaw-free and controller-transport-free.
 
 Tailscale is the network substrate, not the sole security control. Tailnet ACLs should
 limit which machines can reach the controller, and the controller should still verify
-its own token on every request.
+its own token on every request. Health checks should use the controller's private
+address, for example:
+
+```bash
+curl -fsS \
+  -H "Authorization: Bearer $ANVIL_CONTROLLER_TOKEN" \
+  http://anvil-gpu.tailnet.example:8765/health
+```
 
 ### Product contract
 
@@ -119,8 +150,8 @@ The split-host product contract becomes:
 - `harness sync openclaw` should be refactored toward render/apply primitives that
   support both push and pull flows. In split-host mode, rendering can happen on the
   anvil-serving host while gateway-local apply/restart happens on `fakoli-mini`.
-- The next implementation should add a controller server with the same tool schemas
-  as `anvil-serving mcp`, not a second bespoke REST API with different semantics.
+- The controller server uses the same tool schemas as `anvil-serving mcp`, not a
+  second bespoke REST API with different semantics.
 - Tool schemas must stay transport-neutral. A skill should not care whether a tool
   call is satisfied by local stdio, a local controller, or a tailnet controller.
 - Controller logs become operational evidence. They should record operation metadata,
