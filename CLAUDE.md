@@ -2,18 +2,20 @@
 
 **What this is:** a network-facing, quality-gated router that fronts the Anthropic and OpenAI APIs
 and routes coding-harness traffic across local and cloud model tiers — with per-request structural
-verification and automatic fallback. Install, run `anvil-serving serve`, point your harness at
-`http://127.0.0.1:8000`, and you get *local where it's been proven, cloud where it hasn't*.
+verification, configured cloud fallback, or clean exhaustion for gateway handoff. Install, run
+`anvil-serving serve`, point your harness at `http://127.0.0.1:8000`, and you get *local where it is
+measured safe, explicit escalation where it is not*.
 
-The router is **shipped**. v0.10.0 is the latest tagged release, and main also includes the
-OpenClaw MCP/control-plane work: `anvil-serving mcp` for same-host stdio MCP and
+The router is **shipped** on `main`. The source tree is versioned v0.10.0, while published tags and
+package releases can lag `main`. Main includes the OpenClaw MCP/control-plane work:
+`anvil-serving mcp` for same-host stdio MCP and
 `anvil-serving controller serve` for split-host operation over a private, token-authenticated
 tailnet transport. v0.7.x added wire fidelity (tools/tool-history forwarding, real SSE streaming,
 sampling params), production hardening, and heavy-tier speculative decoding (ADR-0008). v0.6.0 made
 the router a containerized, token-authed service (ADR-0004); v0.5.0 shipped generic onboarding
-(ADR-0003); v0.4.x shipped advise-and-defer and Docker-Compose-defined serves. The serving
-substrate (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`) ships and
-right-sizes the local tiers the router routes across.
+(ADR-0003); v0.4.x shipped advise-and-defer and Docker-Compose-defined serves. The local serving
+tools (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`) ship and
+right-size the local tiers the router routes across.
 
 Source of truth for product framing: **`README.md`**.
 
@@ -49,8 +51,8 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 anvil_serving/
   cli.py               dispatch: profile | models | deploy | serves | serve | preflight |
                                  benchmark | eval | multiplexer | cache-prune | score |
-                                 init (alias onboard) | doctor | router | harness |
-                                 host | external-bench | mcp | controller
+                                 init (alias onboard) | doctor | voice | router | harness |
+                                 host | mcp | controller | external-bench | calibrate
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
   models.py            `sync`: scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py);
@@ -63,9 +65,13 @@ anvil_serving/
   score.py             role-suitability scorer over a transcribed benchmark table (model selection)
   serves.py            model-serve lifecycle verb
   cache_prune.py       HF cache cleanup helper
+  router_manage.py     deployed-router container/token/log/reload/profile-promotion lifecycle
   harness.py           render/apply OpenClaw harness config from router presets
+  host.py              WSL/Docker Desktop host inspection and remediation helpers
   mcp.py               stdio MCP server + remote-controller proxy for operational tools
   controller.py        stdlib HTTP controller for tailnet-safe split-host MCP forwarding
+  calibrate.py         CLI wrapper for router profile calibration helpers
+  voice/               local realtime voice pipeline prototype and serve helpers
 
   router/              THE MAIN PRODUCT — all shipped
     serve.py           `anvil-serving serve` entrypoint: config → backends → front door
@@ -109,11 +115,11 @@ templates/   configs/   docs/   examples/fakoli-dark/   plugins/
    assembled response; on failure it escalates to the next tier.
 4. For streaming on fail-prone classes, **`commit_window`** buffers the local response and
    verifies before forwarding the first byte.
-5. Every decision is written to **`decision_log`**. (The measured calibration write-back —
-   fallbacks/grades feeding **`profile_store`** — is the *intended* moat but is NOT yet wired:
-   the deployed router routes on hand-authored seed verdicts, `Calibrator.record_grade` is never
-   instantiated outside tests, and `profile_bootstrap.run_live()` raises `NotImplementedError`.
-   Closing this loop is the top open item — see `docs/REVIEW-2026-07-02-architecture-and-models.md`.)
+5. Every decision is written to **`decision_log`**. Measured calibration write-back is guarded and
+   operator-promoted: `anvil-serving calibrate` measures explicitly confirmed local tiers, grades
+   with the independent Agent-SDK judge, writes a candidate profile, and never auto-promotes it.
+   Continuous production sampling is still future work; the deployed router uses the built-in seed
+   profile unless `[router].profile_path` points at a reviewed artifact.
 
 ---
 
@@ -124,7 +130,7 @@ pip install -e .               # stdlib-only; no required runtime deps
 anvil-serving serve --config configs/example.toml   # start the router on 127.0.0.1:8000
 anvil-serving --help           # all verbs
 
-# Substrate (right-size + validate local tiers):
+# Local serving tools:
 anvil-serving profile --out-dir .
 anvil-serving models sync --out ./model-library
 anvil-serving deploy --model /path/to/model --gpu 1 --context 131072 --served-name local
@@ -148,7 +154,7 @@ Cloud credentials go in env vars only — never in config files. The front door 
    DNS stall before it falls through to the loopback address. Every URL in configs,
    tests, and examples uses `127.0.0.1` explicitly. This is baked into `front_door.py`'s
    default bind address.
-2. **Stdlib-only.** The router and substrate are stdlib-only by design. No FastAPI, no
+2. **Stdlib-only.** The router and local serving tools are stdlib-only by design. No FastAPI, no
    aiohttp, no openai SDK in the hot path — `http.server.ThreadingHTTPServer` + `urllib`.
    Don't add a runtime dependency without explicit sign-off.
 3. **WSL2 load OOM:** no `memory=` in `.wslconfig` → VM caps at ~50% host;
@@ -224,8 +230,8 @@ Cloud credentials go in env vars only — never in config files. The front door 
 - **The integration point is the harness, not anvil's state engine.** Anvil core is NOT an
   LLM gateway; it exposes one `custom_base_url` for optional planning augmentation. The
   router lives where agent traffic actually flows: in front of the harness.
-- **OpenClaw is the beachhead, not the dependency.** The `before_model_resolve` hook unlocks
-  per-request client-side intent; it ships as a thin adapter plugin in `plugins/`, not a
+- **OpenClaw is the reference integration, not the dependency.** The `before_model_resolve` hook
+  unlocks per-request client-side intent; it ships as a thin adapter plugin in `plugins/`, not a
   core dependency. The front door is protocol-standard and works with any harness.
 
 ---
@@ -264,7 +270,9 @@ actions. Keep that boundary intact unless a tool explicitly supports crossing it
 
 ## Docs map
 
-- `README.md` — product framing, quickstart, substrate commands, worked example
+- `README.md` — evaluator-facing product framing, smoke test, command surface, and docs map
+- `docs/GETTING-STARTED.md` — no-GPU front-door smoke test, real-tier setup, and harness pointers
+- `docs/TERMINOLOGY.md` — product naming, user-facing terms, and technical definitions
 - `docs/QUALITY-GATED-ROUTER.md` — full design (intent presets, tier ladder, verify-fallback, profile)
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — OpenClaw adapter plugin spec (verdict: go-with-caveats)
 - `docs/OPERATOR-PLAYBOOKS.md` — MCP/controller playbooks for status, preflight, benchmark,
