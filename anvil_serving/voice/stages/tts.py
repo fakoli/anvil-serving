@@ -217,6 +217,16 @@ class TTSStage(BaseStage):
     :class:`AudioOut` chunks, streamed incrementally; forwards
     :class:`EndOfResponse` unchanged.
 
+    ``process`` is a GENERATOR: each resampled :class:`AudioOut` chunk is
+    yielded the instant it is ready, while :func:`stream_speech` is still
+    blocked reading the REST of the utterance's audio off the wire.
+    :class:`~anvil_serving.voice.stages.base.BaseStage` pulls one yielded item
+    at a time and puts it on the downstream queue immediately -- so audio
+    starts flowing to playback as soon as the FIRST chunk is synthesized, not
+    after the whole utterance finishes. Do NOT collect chunks into a list and
+    return it at the end; that would silently defeat the incremental
+    contract this stage exists to provide.
+
     A stray odd trailing byte at a chunk boundary (PCM samples are 2 bytes
     each) is buffered and prepended to the next chunk rather than dropped, so
     16-bit sample alignment survives arbitrary read-chunk boundaries.
@@ -240,17 +250,17 @@ class TTSStage(BaseStage):
 
     def process(self, item: Any):
         if isinstance(item, EndOfResponse):
-            return item
+            yield item
+            return
         if not isinstance(item, TTSInput):
-            return None
+            return  # empty generator: emits nothing
         if self.cancel_scope.is_stale(item.generation):
-            return None  # superseded by a barge-in before synthesis even started
+            return  # superseded by a barge-in before synthesis even started
 
-        out = []
         leftover = b""
         for chunk in self._stream_fn(item.text, self.config):
             if self.cancel_scope.is_stale(item.generation):
-                return out or None  # barge-in mid-synthesis: abort, drop further audio
+                return  # barge-in mid-synthesis: abort, drop further audio
             data = leftover + chunk
             if len(data) % 2:
                 leftover = data[-1:]
@@ -260,13 +270,10 @@ class TTSStage(BaseStage):
             if not data:
                 continue
             resampled = resample_int16(data, self.config.source_sample_rate, self.config.target_sample_rate)
-            out.append(
-                AudioOut(
-                    turn_id=item.turn_id,
-                    turn_revision=item.turn_revision,
-                    generation=item.generation,
-                    pcm=resampled,
-                    sample_rate=self.config.target_sample_rate,
-                )
+            yield AudioOut(
+                turn_id=item.turn_id,
+                turn_revision=item.turn_revision,
+                generation=item.generation,
+                pcm=resampled,
+                sample_rate=self.config.target_sample_rate,
             )
-        return out or None

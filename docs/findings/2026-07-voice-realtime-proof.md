@@ -21,12 +21,17 @@ Realtime server, "verified with the official OpenAI Python SDK as client")
    specific installed `openai` package version. Check
    `python -c "import openai; print(openai.__version__)"`'s own examples
    before trusting the script to run unmodified.
-2. **`anvil-serving voice run` doesn't exist yet** (`anvil_serving/voice/cli.py`'s
-   `cmd_run` is a TODO stub) — this script assembles the ws/pool/service
-   pieces standalone (`build_server` in the script itself) rather than
-   shelling out to a CLI command. When `cmd_run` ships, re-point this script
-   at a real `anvil-serving voice run` process instead of self-hosting the
-   server, and note here whether behavior changed.
+2. **RESOLVED (PUNCH-LIST #2): `anvil-serving voice run` now exists.**
+   `anvil_serving/voice/cli.py`'s `cmd_run` builds the same ws/pool/service
+   cascade this script's own `build_server` assembles standalone (real STT/
+   TTS/LLM stages via `pipeline.real_pipeline_factory_from_manifest`, a
+   `SessionPool`, `realtime.ws.make_ws_server`), plus a reachability preflight
+   and the non-loopback-requires-token refusal. This script still self-hosts
+   its own server (rather than shelling out to `anvil-serving voice run`) so
+   it can drive the official SDK against a server it fully controls for
+   capture/barge-in timing; a follow-up could re-point it at a real
+   `anvil-serving voice run` process instead and note here whether behavior
+   changed.
 3. **Coverage caveats inherited from the reference design** (per the review
    doc s5): server-VAD only, partial protocol (no item delete/truncate, no
    granular content-part streaming), `transcription.delta`-style events send

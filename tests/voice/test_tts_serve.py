@@ -329,7 +329,10 @@ def test_tts_stage_process_fails_the_turn_on_non_2xx_without_emitting_audio():
 
     stage = TTSStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
     with pytest.raises(TTSClientError):
-        stage.process(_tts_input())
+        # process() is a generator now (PUNCH-LIST #1): calling it just
+        # builds the generator object -- iterating it (list(...)) is what
+        # actually runs the body and must raise.
+        list(stage.process(_tts_input()))
 
 
 # --------------------------------------------------------------------------- #
@@ -349,7 +352,9 @@ def test_tts_stage_emits_resampled_audio_chunks():
 
     config = TTSStageConfig(source_sample_rate=24000, target_sample_rate=16000)
     stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
-    out = stage.process(_tts_input())
+    # process() is a generator now (PUNCH-LIST #1) -- materialize ONCE so
+    # both checks below see every item.
+    out = list(stage.process(_tts_input()))
 
     assert all(isinstance(m, AudioOut) for m in out)
     assert all(m.sample_rate == 16000 for m in out)
@@ -369,7 +374,7 @@ def test_tts_stage_handles_odd_byte_chunk_boundaries():
 
     config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)  # no resampling noise
     stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
-    out = stage.process(_tts_input())
+    out = list(stage.process(_tts_input()))
     combined = b"".join(m.pcm for m in out)
     assert combined == full
 
@@ -384,7 +389,7 @@ def test_tts_stage_aborts_on_mid_stream_barge_in():
 
     config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
     stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
-    out = stage.process(_tts_input())
+    out = list(stage.process(_tts_input()))
     combined = b"".join(m.pcm for m in out)
     assert combined == _int16_bytes([1, 2])
 
@@ -397,15 +402,15 @@ def test_tts_stage_skips_already_stale_input():
         raise AssertionError("must not synthesize an already-stale TTSInput")
 
     stage = TTSStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    assert stage.process(_tts_input(generation=0)) is None
+    assert list(stage.process(_tts_input(generation=0))) == []
 
 
 def test_tts_stage_forwards_end_of_response_unchanged():
     stage = TTSStage(in_queue=None, stream_fn=lambda t, c: iter(()))
     eor = EndOfResponse(turn_id="t1", turn_revision=0, generation=0)
-    assert stage.process(eor) is eor
+    assert list(stage.process(eor)) == [eor]
 
 
 def test_tts_stage_ignores_non_tts_input_items():
     stage = TTSStage(in_queue=None, stream_fn=lambda t, c: iter(()))
-    assert stage.process("not tts input") is None
+    assert list(stage.process("not tts input")) == []

@@ -9,6 +9,7 @@ module is stdlib-only (``threading``, ``queue``, ``logging``).
 """
 from __future__ import annotations
 
+import inspect
 import logging
 import queue
 import threading
@@ -57,9 +58,23 @@ class BaseStage:
     def process(self, item: Any):
         """Process one input item. Override in every subclass.
 
-        Return ``None`` to emit nothing, a single item to emit it, or a
-        list/tuple of items to fan them all out (in order) to every
-        ``out_queues`` member.
+        Two calling conventions are supported:
+
+        * **Generator** (preferred for anything that streams from a network
+          call, e.g. :class:`~anvil_serving.voice.stages.llm.LLMStage`,
+          :class:`~anvil_serving.voice.stages.tts.TTSStage`): ``yield`` each
+          output item the moment it is ready. :meth:`_run` iterates the
+          generator and ``put()``s each yielded item onto every
+          ``out_queues`` member IMMEDIATELY, before asking the generator for
+          its next item -- this is what lets a stage emit its first output
+          (e.g. the first speakable sentence) while it is still busy
+          producing the rest (e.g. still streaming the rest of the reply
+          from the LLM), instead of blocking the whole turn until
+          :meth:`process` fully returns.
+        * **Plain return** (fine for a stage whose one input item always
+          becomes its output synchronously, e.g. a bridging/stub stage):
+          return ``None`` to emit nothing, a single item to emit it, or a
+          list/tuple of items to fan them all out (in order).
         """
         raise NotImplementedError
 
@@ -88,12 +103,21 @@ class BaseStage:
                 break
             try:
                 result = self.process(item)
+                if inspect.isgenerator(result):
+                    # Pull one item at a time and put() it right away -- do
+                    # NOT collect into a list first. If `process` is blocked
+                    # (e.g. waiting on the next network chunk) between two
+                    # yields, whatever it already yielded is on the queue
+                    # NOW, not after the whole turn finishes.
+                    for produced in result:
+                        self._emit_result(produced)
+                else:
+                    self._emit_result(result)
             except Exception:  # noqa: BLE001 - per-item isolation is the point
                 logger.exception(
                     "%s: process() raised on item %r; continuing", self.name, item
                 )
                 continue
-            self._emit_result(result)
 
     def start(self) -> None:
         """Start the stage's background thread (idempotent)."""
