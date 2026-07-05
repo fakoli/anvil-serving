@@ -210,6 +210,14 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Hugging Face `speech-to-speech` sidecar support.** Added a stdlib-only
+  `anvil-serving voice-sidecar` helper that validates the sidecar manifest, renders the
+  host `speech-to-speech` command, and emits a Docker Compose service skeleton for the
+  v1 voice topology: OpenClaw Gateway remains phone-facing, Hugging Face
+  `speech-to-speech` owns `/v1/realtime` / VAD / STT / TTS, and anvil-serving remains
+  the OpenAI-compatible Chat Completions LLM backend. Added docs, a checked-in
+  OpenClaw bridge sketch, 16 GB shared-memory validation guidance, and static tests that
+  keep the example free of `localhost` and literal secrets.
 - **External benchmark priors:** new `anvil-serving external-bench` CLI and
   `anvil_serving.external_benchmarks` package for ingesting raw external benchmark snapshots,
   normalizing Millstone AI rows, storing them in SQLite, exporting JSON, producing Markdown
