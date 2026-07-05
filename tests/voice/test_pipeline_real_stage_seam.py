@@ -80,9 +80,12 @@ def test_stage_factories_are_wired_to_the_pipelines_own_queues():
         tts_stage_factory=make_factory("tts"),
     )
 
-    # VAD reads the pipeline's own audio_in and feeds the SAME queue STT reads from.
+    # VAD reads the pipeline's own audio_in and feeds the SAME queue STT reads
+    # from, PLUS the pipeline's own `vad_events` sideband (PUNCH-LIST #3 --
+    # see VoicePipeline's class docstring): a fan-out duplicate a realtime
+    # layer drains for SpeechEvent, not a second consumer of the primary path.
     assert captured["vad"][0] is pipeline.audio_in
-    assert captured["vad"][1] == [captured["stt"][0]]
+    assert captured["vad"][1] == [captured["stt"][0], pipeline.vad_events]
 
     # STT's output queue feeds the stt_bridge, whose output is what LLM reads
     # from -- i.e. STT's out queue and LLM's in queue are connected through

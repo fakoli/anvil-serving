@@ -67,12 +67,23 @@ class SpeechEvent:
     are the DATA that flows stage-to-stage); this is a lifecycle signal a
     later realtime-server unit (or a test) can observe. Downstream data stages
     (STT, LLM, TTS) simply ignore it via their own ``isinstance`` filtering.
+
+    ``audio_ms`` is this event's position, in milliseconds, along this
+    ``VADStage`` instance's own running frame clock (``frame_index *
+    config.frame_ms`` -- see :attr:`VADStage._frame_index`) -- i.e. the
+    ``audio_start_ms``/``audio_end_ms`` the OpenAI Realtime wire protocol's
+    ``input_audio_buffer.speech_started``/``speech_stopped`` events carry
+    (PUNCH-LIST #3, ``realtime/events.py``'s ``_dispatch_speech_event``).
+    Deterministic and testable (frame-count * configured frame duration), but
+    NOT a real acoustic timestamp -- honest about what it is, same spirit as
+    this module's other honesty notes.
     """
 
     kind: str  # "started" | "stopped"
     turn_id: str
     turn_revision: int
     generation: int
+    audio_ms: int = 0
 
 
 @dataclass(frozen=True)
@@ -147,6 +158,10 @@ class VADStage(BaseStage):
         # True while a response for the CURRENT (or just-ended) turn is still
         # being generated/played; a new speech onset while True is a barge-in.
         self.responding = False
+        # Running count of every frame this instance has ever processed
+        # (speech or silence) -- this stage's own audio clock, used only to
+        # stamp `SpeechEvent.audio_ms` (see that dataclass's docstring).
+        self._frame_index = 0
 
     def _start_new_turn(self, *, barge_in: bool) -> int:
         if barge_in:
@@ -161,6 +176,11 @@ class VADStage(BaseStage):
         return gen
 
     def process(self, frame: bytes) -> Optional[List[Any]]:
+        # This frame's own start-of-frame position on this instance's running
+        # audio clock, BEFORE incrementing -- see `SpeechEvent.audio_ms`.
+        frame_start_ms = self._frame_index * self.config.frame_ms
+        self._frame_index += 1
+
         is_speech = self.model.is_speech(frame)
         events: List[Any] = []
 
@@ -170,7 +190,7 @@ class VADStage(BaseStage):
                 gen = self._start_new_turn(barge_in=barge_in)
                 self._in_speech = True
                 events.append(
-                    SpeechEvent("started", self._turn_id, self._turn_revision, gen)
+                    SpeechEvent("started", self._turn_id, self._turn_revision, gen, audio_ms=frame_start_ms)
                 )
             self._buffer.append(frame)
             self._silence_run = 0
@@ -186,7 +206,8 @@ class VADStage(BaseStage):
             gen = self.cancel_scope.current()
             turn_id = self._turn_id or "turn-0"
             turn_revision = self._turn_revision
-            events.append(SpeechEvent("stopped", turn_id, turn_revision, gen))
+            end_ms = self._frame_index * self.config.frame_ms
+            events.append(SpeechEvent("stopped", turn_id, turn_revision, gen, audio_ms=end_ms))
             events.append(
                 VADAudio(
                     turn_id=turn_id,

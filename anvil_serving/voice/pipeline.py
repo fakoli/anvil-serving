@@ -166,6 +166,22 @@ class VoicePipeline:
     :class:`EndOfResponse`) items land. Everything in between is internal
     plumbing a caller does not need to touch.
 
+    ``vad_events``/``transcript_events`` (PUNCH-LIST #3) are read-only SIDEBAND
+    queues a realtime-server layer (:mod:`~anvil_serving.voice.realtime.service`)
+    drains to surface the input-side lifecycle -- VAD's
+    :class:`~anvil_serving.voice.stages.vad.SpeechEvent`
+    (started/stopped) and the STT stage's :class:`Transcription` -- onto the
+    wire. These are FAN-OUT DUPLICATES, not the primary path: the VAD stage's
+    ``VADAudio``/``SpeechEvent`` output still goes to the STT stage exactly as
+    before (via the internal ``vad_to_stt`` queue), and the STT stage's
+    ``Transcription`` output still goes to the ``TranscriptionToGenerate``
+    bridge exactly as before. A caller draining ``vad_events``/
+    ``transcript_events`` observes copies of what already flows through the
+    pipeline; it never consumes the primary queue's items or perturbs
+    downstream processing (each is `queue.Queue.put` onto its OWN queue, per
+    `BaseStage._emit_one`'s already-existing multi-out_queues fan-out -- see
+    `stages/base.py`).
+
     Every stage can be supplied one of two ways (see the module docstring's
     FIXED SEAM note):
 
@@ -208,6 +224,9 @@ class VoicePipeline:
         llm_to_bridge: "queue.Queue[Any]" = queue.Queue()
         bridge_to_tts: "queue.Queue[Any]" = queue.Queue()
         self.audio_out: "queue.Queue[Any]" = queue.Queue()
+        # PUNCH-LIST #3 sideband queues -- see the class docstring's note.
+        self.vad_events: "queue.Queue[Any]" = queue.Queue()
+        self.transcript_events: "queue.Queue[Any]" = queue.Queue()
 
         def _default_vad_factory(in_q, out_qs):
             return VADStage(in_q, out_qs, cancel_scope=self.cancel_scope, config=vad_config, model=vad_model)
@@ -225,8 +244,8 @@ class VoicePipeline:
                 return EchoTTSStage(in_q, out_qs)
             return TTSStage(in_q, out_qs, cancel_scope=self.cancel_scope, config=tts_config, stream_fn=tts_stream_fn)
 
-        self.vad = (vad_stage_factory or _default_vad_factory)(self.audio_in, [vad_to_stt])
-        self.stt = (stt_stage_factory or _default_stt_factory)(vad_to_stt, [stt_to_bridge])
+        self.vad = (vad_stage_factory or _default_vad_factory)(self.audio_in, [vad_to_stt, self.vad_events])
+        self.stt = (stt_stage_factory or _default_stt_factory)(vad_to_stt, [stt_to_bridge, self.transcript_events])
         self.stt_bridge = TranscriptionToGenerate(stt_to_bridge, [bridge_to_llm])
         self.llm = (llm_stage_factory or _default_llm_factory)(bridge_to_llm, [llm_to_bridge])
         self.llm_bridge = LLMChunkToTTSInput(llm_to_bridge, [bridge_to_tts])

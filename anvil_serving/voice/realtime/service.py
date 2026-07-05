@@ -18,7 +18,8 @@ plus the two directions of translation:
   transcript into a GenerateRequest" the unit brief calls out, applied to a
   client-supplied (already-final) transcript instead of an STT one.
 * **pipeline output -> server event.** :meth:`drain_pipeline_events` pulls
-  whatever is currently on ``pipeline.audio_out`` and maps each item through
+  whatever is currently on ``pipeline.vad_events``/``pipeline.transcript_events``/
+  ``pipeline.audio_out`` and maps each item through
   :func:`events.dispatch_internal_event`.
 
 HONESTY NOTE / known simplifications (flagged, not hidden):
@@ -29,17 +30,22 @@ HONESTY NOTE / known simplifications (flagged, not hidden):
    the buffered audio to trigger it. A real acoustic VAD model may behave
    differently; this is only proven against the deterministic
    :class:`~anvil_serving.voice.stages.vad.FakeVADModel` in tests.
-2. ``input_audio_buffer.speech_started``/``speech_stopped`` are DEFINED in
-   ``events.py`` (part of the SDK-verified subset) but this service does not
-   yet emit them: :class:`~anvil_serving.voice.stages.vad.SpeechEvent` is
-   fanned out on the VAD stage's own internal out-queue
-   (``vad_to_stt`` in ``pipeline.py``), which ``VoicePipeline`` does not
-   expose publicly. Wiring this up is a follow-up (would need
-   ``VoicePipeline`` to expose that queue, or a VAD-stage constructor hook to
-   also fan out to a "sideband" queue this service reads).
+2. **RESOLVED (PUNCH-LIST #3).** ``input_audio_buffer.speech_started``/
+   ``speech_stopped``/``committed``, the user-turn ``conversation.item.created``/
+   ``conversation.item.input_audio_transcription.completed``, and a real
+   per-response ``response.id`` are now emitted -- see
+   :meth:`drain_pipeline_events` (which now also drains
+   ``pipeline.vad_events``/``pipeline.transcript_events``, the sideband queues
+   ``pipeline.py`` fans VAD's ``SpeechEvent`` and STT's ``Transcription`` out
+   to) and :meth:`_begin_response` (mints the response id, used by BOTH the
+   client-driven text path and the audio path's auto-response-on-completed-
+   transcription).
 3. Manual (client-driven) turn detection (``session.turn_detection = null``
    in the real Realtime API) is not distinguished from the default
-   server-VAD mode -- audio always goes through the pipeline's VAD stage.
+   server-VAD mode -- audio always goes through the pipeline's VAD stage, so
+   every completed turn is treated as an auto-committed, auto-responded
+   server-VAD turn (see :meth:`drain_pipeline_events`'s ``Transcription``
+   handling).
 """
 from __future__ import annotations
 
@@ -50,7 +56,7 @@ import queue
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from ..messages import GenerateRequest
+from ..messages import GenerateRequest, Transcription
 from .events import (
     ClientEvent,
     ConversationItemCreate,
@@ -106,12 +112,22 @@ class SessionState:
     pending_text: List[str] = field(default_factory=list)
     turn_counter: "itertools.count" = field(default_factory=lambda: itertools.count(1))
     #: ``turn_id`` of the response currently in flight (set by
-    #: ``response.create``, cleared once a terminal ``response.done`` has
-    #: been sent for it -- either normal completion via ``drain_pipeline_events``
-    #: or a ``response.cancel`` interruption). ``None`` when no response is
-    #: in progress, which also guards ``_on_response_cancel`` against
-    #: emitting a spurious terminal event with no matching ``response.created``.
+    #: ``response.create`` -- or, for an audio-driven turn, by
+    #: :meth:`RealtimeService._begin_response` once the completed
+    #: transcription auto-triggers a response, see ``drain_pipeline_events`` --
+    #: cleared once a terminal ``response.done`` has been sent for it, either
+    #: normal completion via ``drain_pipeline_events`` or a ``response.cancel``
+    #: interruption). ``None`` when no response is in progress, which also
+    #: guards ``_on_response_cancel`` against emitting a spurious terminal
+    #: event with no matching ``response.created``.
     current_turn_id: Optional[str] = None
+    #: The REAL, unique ``response.id`` (PUNCH-LIST #3) for the response
+    #: ``current_turn_id`` identifies -- minted once by
+    #: :meth:`RealtimeService._begin_response` at ``response.created`` and
+    #: threaded through every later delta/done event for the SAME response
+    #: (see ``drain_pipeline_events``). Cleared in lockstep with
+    #: ``current_turn_id``.
+    current_response_id: Optional[str] = None
 
 
 class RealtimeService:
@@ -120,6 +136,9 @@ class RealtimeService:
     ``pipeline`` must expose ``audio_in`` (a ``queue.Queue`` of raw PCM
     frames), ``audio_out`` (a ``queue.Queue`` of
     :class:`~anvil_serving.voice.messages.AudioOut`/``EndOfResponse``),
+    ``vad_events``/``transcript_events`` (the PUNCH-LIST #3 sideband queues
+    :meth:`drain_pipeline_events` also drains -- see ``pipeline.py``'s class
+    docstring; only needed if a caller actually calls that method),
     ``cancel_scope`` (a :class:`~anvil_serving.voice.cancel_scope.CancelScope`),
     and ``llm.in_queue`` (the queue :class:`~anvil_serving.voice.stages.llm.LLMStage`
     reads :class:`~anvil_serving.voice.messages.GenerateRequest` from) --
@@ -161,6 +180,13 @@ class RealtimeService:
         # docstring claim (previously each side had its OWN counter starting
         # at 1, so two events from the same connection could collide).
         self._evt_counter = itertools.count(1)
+        #: Mints ``response.id`` values (PUNCH-LIST #3) -- a SEPARATE
+        #: sequence from ``_evt_counter``/``state.turn_counter`` (distinct
+        #: id-space, so a response id is never confused with an
+        #: ``evt_N``/``turn-N``/``item_N`` id even though they're all small
+        #: monotonic integers under the hood). Per-connection, like every
+        #: other id source this class owns.
+        self._response_id_counter = itertools.count(1)
 
         self._handlers: Dict[type, Callable[[ClientEvent], None]] = {
             SessionUpdate: self._on_session_update,
@@ -208,6 +234,36 @@ class RealtimeService:
 
     def _send_error(self, etype: str, message: str) -> None:
         self.send_event(server_event_to_dict(make_error_event(etype, message, id_source=self._evt_id)))
+
+    def _begin_response(self, turn_id: str) -> Dict[str, Any]:
+        """Mint a fresh, unique ``response.id`` and build the ``response.created``
+        wire event for it (PUNCH-LIST #3).
+
+        The ONE place a response id is minted, used by BOTH triggers this
+        service has for starting a response:
+
+        * :meth:`_on_response_create` -- the client-driven text path
+          (explicit ``response.create``).
+        * :meth:`drain_pipeline_events` -- the audio path, where a completed
+          :class:`~anvil_serving.voice.messages.Transcription` auto-triggers a
+          response (the pipeline already pushed the ``GenerateRequest`` before
+          this service ever sees the transcript -- see that method's own
+          docstring) with no explicit client ``response.create`` at all,
+          mirroring the real Realtime API's server-VAD auto-response default.
+
+        Sets ``state.current_turn_id``/``current_response_id`` so later
+        events for this response (deltas, the terminal ``response.done``,
+        and a ``response.cancel`` barge-in) all thread the SAME id -- see
+        :meth:`_on_response_cancel` and :meth:`drain_pipeline_events`.
+        """
+        response_id = "resp_%d" % next(self._response_id_counter)
+        self.state.current_turn_id = turn_id
+        self.state.current_response_id = response_id
+        return {
+            "type": "response.created",
+            "event_id": self._evt_id(),
+            "response": {"id": response_id, "turn_id": turn_id, "status": "in_progress"},
+        }
 
     # -- individual client-event handlers --------------------------------------
     def _on_session_update(self, event: SessionUpdate) -> None:
@@ -278,7 +334,6 @@ class RealtimeService:
         text = "\n".join(self.state.pending_text)
         self.state.pending_text = []
         turn_id = "rt-turn-%d" % next(self.state.turn_counter)
-        self.state.current_turn_id = turn_id
         generation = self.pipeline.cancel_scope.begin_new_generation()
         request = GenerateRequest(turn_id=turn_id, turn_revision=0, generation=generation, text=text)
         # Bridges the client-supplied (already-final) transcript straight
@@ -286,9 +341,7 @@ class RealtimeService:
         # exactly mirroring what ``pipeline.py``'s TranscriptionToGenerate
         # bridge does for an audio-driven turn.
         self.pipeline.llm.in_queue.put(request)
-        self.send_event(
-            {"type": "response.created", "event_id": self._evt_id(), "response": {"turn_id": turn_id, "status": "in_progress"}}
-        )
+        self.send_event(self._begin_response(turn_id))
 
     def _on_response_cancel(self, event: ResponseCancel) -> None:
         # Barge-in: bump the shared generation counter so every stage still
@@ -313,34 +366,64 @@ class RealtimeService:
             # event and keeps "exactly one response.done per response.created"
             # true).
             return
+        response_id = self.state.current_response_id
         self.state.current_turn_id = None
+        self.state.current_response_id = None
         self.send_event(
             {
                 "type": "response.done",
                 "event_id": self._evt_id(),
-                "response": {"turn_id": turn_id, "status": "cancelled"},
+                "response": {"id": response_id or "", "turn_id": turn_id, "status": "cancelled"},
             }
         )
 
     # -- outbound: pipeline output -> server events ----------------------------
     def drain_pipeline_events(self, *, max_items: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Drain whatever is CURRENTLY buffered on ``pipeline.audio_out``,
-        mapping each item through :func:`events.dispatch_internal_event`.
+        """Drain whatever is CURRENTLY buffered on ``pipeline.vad_events``,
+        ``pipeline.transcript_events``, and ``pipeline.audio_out`` (in that
+        order -- see below), mapping each item through
+        :func:`events.dispatch_internal_event`.
 
-        Non-blocking: returns as soon as the queue reports empty (does not
+        Non-blocking: returns as soon as every queue reports empty (does not
         wait for more items to arrive), so it is safe to call in a tight poll
         loop from a connection's background thread. Returns the wire dicts in
         arrival order; does NOT call ``send_event`` itself -- callers decide
         whether to loop-and-send (as ``pool.py``'s session-drive loop does) or
         just collect (as tests do).
 
+        PUNCH-LIST #3 -- three sideband/bookkeeping queues, drained in THIS
+        order, on purpose: ``vad_events`` (VAD's own ``SpeechEvent`` --
+        started/stopped/committed) always causally PRECEDES anything the STT
+        stage could have produced from the ``VADAudio`` segment VAD just
+        flushed, which in turn always PRECEDES anything the LLM/TTS stages
+        downstream of a completed transcript could have produced. Draining in
+        this fixed order (fully draining each queue before moving to the
+        next, rather than interleaving) means that whatever a SINGLE call
+        drains is already in the right relative order across queues, even
+        though each queue is filled by its own independent stage thread --
+        because within one call, an event that reached a LATER queue can only
+        have been produced by something already visible in an EARLIER queue.
+        ``pipeline.py``'s class docstring covers why these are safe,
+        non-destructive fan-out duplicates of the primary in-pipeline queues.
+
+        For a ``Transcription`` (audio path), the pipeline itself already
+        auto-bridged it into a ``GenerateRequest`` for the LLM stage (see
+        ``pipeline.py``'s ``TranscriptionToGenerate``) -- there was never a
+        client ``response.create`` for this turn. So right after emitting
+        that transcript's own wire events (``conversation.item.created`` +
+        ``...input_audio_transcription.completed``), this method ALSO mints
+        the ``response.created`` for the response the pipeline is already
+        generating (see :meth:`_begin_response`) -- giving the audio path the
+        same real, unique ``response.id`` guarantee the text path gets from
+        an explicit ``response.create``.
+
         B1 fix -- staleness guard: a ``response.cancel`` bumps
         ``pipeline.cancel_scope``'s generation, but items produced by the
         now-superseded turn (e.g. an ``AudioOut`` synthesized before the
-        cancel landed) may still be sitting in ``audio_out`` when this drains
-        it. Every per-generation-tagged item (``AudioOut``, ``LLMChunk``,
-        ``EndOfResponse``, ``Transcription`` -- anything carrying
-        ``.generation``) is dropped here if it predates the CURRENT
+        cancel landed) may still be sitting in a queue when this drains it.
+        Every per-generation-tagged item (``AudioOut``, ``LLMChunk``,
+        ``EndOfResponse``, ``Transcription``, ``SpeechEvent`` -- anything
+        carrying ``.generation``) is dropped here if it predates the CURRENT
         generation, so no stale audio/text from a superseded reply ever
         reaches the client. (A stale ``EndOfResponse`` is intentionally
         dropped too -- ``_on_response_cancel`` emits its own terminal
@@ -348,23 +431,29 @@ class RealtimeService:
         """
         out: List[Dict[str, Any]] = []
         count = 0
-        while max_items is None or count < max_items:
-            try:
-                item = self.pipeline.audio_out.get_nowait()
-            except queue.Empty:
-                break
-            count += 1
-            gen = getattr(item, "generation", None)
-            if gen is not None and self.pipeline.cancel_scope.is_stale(gen):
-                continue
-            for server_event in dispatch_internal_event(item, id_source=self._evt_id):
-                out.append(server_event_to_dict(server_event))
-                if server_event.type == "response.done":
-                    # Normal completion path: mirror the bookkeeping
-                    # ``_on_response_cancel`` does, so a later cancel with
-                    # nothing left in flight is correctly a no-op instead of
-                    # emitting a second, spurious terminal event.
-                    self.state.current_turn_id = None
+        for q in (self.pipeline.vad_events, self.pipeline.transcript_events, self.pipeline.audio_out):
+            while max_items is None or count < max_items:
+                try:
+                    item = q.get_nowait()
+                except queue.Empty:
+                    break
+                count += 1
+                gen = getattr(item, "generation", None)
+                if gen is not None and self.pipeline.cancel_scope.is_stale(gen):
+                    continue
+                for server_event in dispatch_internal_event(
+                    item, id_source=self._evt_id, response_id=self.state.current_response_id
+                ):
+                    out.append(server_event_to_dict(server_event))
+                    if server_event.type == "response.done":
+                        # Normal completion path: mirror the bookkeeping
+                        # ``_on_response_cancel`` does, so a later cancel with
+                        # nothing left in flight is correctly a no-op instead
+                        # of emitting a second, spurious terminal event.
+                        self.state.current_turn_id = None
+                        self.state.current_response_id = None
+                if isinstance(item, Transcription) and item.is_final:
+                    out.append(self._begin_response(item.turn_id))
         return out
 
 

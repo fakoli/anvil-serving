@@ -56,9 +56,18 @@ agent that meets its goals on fakoli-dark."**
    token policy) and runs it in the foreground; it fails loudly (clear message, nonzero exit) on an
    unreachable required endpoint or an unsafe non-loopback bind with no token, rather than pretending
    success. Still NOT proven against real hardware/serves — see this file's own "what done means" note.
-3. **Realtime input-side lifecycle.** `speech_started/stopped` and user-turn `conversation.item.created`
-   are defined but never emitted (VAD `SpeechEvent` isn't surfaced off the internal queue); server
-   `response.created/done` omit a real `response.id`. Wire before a polished demo.
+3. **DONE (PUNCH-LIST #3).** Realtime input-side lifecycle: `VoicePipeline` gained `vad_events`/
+   `transcript_events` sideband queues (fan-out duplicates of the primary path, see its class
+   docstring) so `RealtimeService.drain_pipeline_events` now also emits `input_audio_buffer.
+   speech_started`/`speech_stopped`/`committed` (from VAD's `SpeechEvent`, with real
+   `audio_start_ms`/`audio_end_ms`/`item_id`) and `conversation.item.created`/`conversation.item.
+   input_audio_transcription.completed` (from a completed STT `Transcription`) for the user turn.
+   A real, unique `response.id` is now minted at `response.created` (`RealtimeService._begin_response`,
+   shared by both the client-driven text path and the audio path's auto-triggered response) and
+   threaded through every `response.output_audio.delta`/`response.output_audio_transcript.delta`/
+   `response.done` for that response, including a barge-in's cancelled `response.done`. The
+   `response.audio.*`/`response.audio_transcript.*` event names were also renamed to the current
+   OpenAI wire protocol's `response.output_audio.*`/`response.output_audio_transcript.*`.
 4. **WebSocket hardening (before any non-loopback bind).** Single-frame size is capped but
    fragmented-message total is not (unbounded-memory risk from an authenticated peer streaming
    `fin=0` continuations); no idle/read timeout; `sendall`-under-lock write-backpressure stall.
@@ -77,5 +86,5 @@ agent that meets its goals on fakoli-dark."**
 2. Deploy #5 (`chat-fast` preset) to the live router.
 3. Run **T007/T009** (STT/TTS A/B preflights) to pick the v1 engines on sm_120.
 4. Run **T010** (local-loop live proof) — the first real end-to-end voice turn + barge-in + measured TTFA.
-5. Wire punch-list #3, then run **T014** (Realtime SDK live proof).
+5. Punch-list #3 (input-side lifecycle) is done (see above) -- run **T014** (Realtime SDK live proof).
 6. **T016** (16GB Mini), then **T017** (independent gate over the captured live evidence).
