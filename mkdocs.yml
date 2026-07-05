@@ -29,6 +29,7 @@ nav:
       - Model settings: MODEL-SETTINGS-EXAMPLE.md
       - Serves & eval: SERVES-AND-EVAL.md
       - External benchmarks: EXTERNAL-BENCHMARKS.md
+      - Operator playbooks: OPERATOR-PLAYBOOKS.md
   - Cost model:
       - advise-and-defer plan: PLAN-advise-and-defer.md
   - OpenClaw integration:

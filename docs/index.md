@@ -74,6 +74,7 @@ See [Model Settings Example](MODEL-SETTINGS-EXAMPLE.md) for a full annotated con
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Annotated config file with all options |
 | [Serves & eval](SERVES-AND-EVAL.md) | Managing model serves + running evals |
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Millstone import/fetch, reports, exports, and local benchmark comparisons |
+| [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Deterministic agent/skill workflows for model swaps, preflight, benchmark, OpenClaw sync, and promotion gates |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Plugin spec for the OpenClaw gateway |
 | [OpenClaw live validation](OPENCLAW-LIVE-VALIDATION.md) | Validation runbook for OpenClaw |
 | [Cost model](PLAN-advise-and-defer.md) | advise-and-defer plan — local-only default, opt-in metered cloud |

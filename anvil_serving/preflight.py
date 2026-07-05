@@ -8,11 +8,12 @@ Tests: (1) long-context needle retrieval, (2) shared-prefix tool-calling batch
 
 Usage:
   python3 preflight.py --base-url http://127.0.0.1:30000/v1 --model coder-specialist \
-     --needle-ctx 128000 [--api-key KEY] [--tool-batch 20] [--no-thinking]
+     --needle-ctx 128000 [--api-key-env ENV] [--tool-batch 20] [--no-thinking]
 Exit code 0 = all pass, 1 = any fail.
 """
 import argparse
 import json
+import os
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -108,11 +109,18 @@ def t_smoke(base, model, key, ctk=None):
     except Exception as e:
         return False, f"error: {e}"
 
+def resolve_api_key(api_key_env=None):
+    """Resolve auth for probes from an environment variable reference."""
+    if api_key_env:
+        return os.environ.get(api_key_env)
+    return None
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", required=True)
     ap.add_argument("--model", required=True)
-    ap.add_argument("--api-key", default=None)
+    ap.add_argument("--api-key-env", default=None,
+                    help="read the bearer token from this environment variable")
     ap.add_argument("--needle-ctx", type=int, default=128000)
     ap.add_argument("--tool-batch", type=int, default=20)
     ap.add_argument("--no-thinking", action="store_true",
@@ -123,12 +131,13 @@ def main():
                          "reasoning via 'reasoning effort', not the chat template) -> they just "
                          "need adequate max_tokens; the correctness tests already use >=256.")
     a = ap.parse_args()
+    api_key = resolve_api_key(a.api_key_env)
     ctk = {"enable_thinking": False} if a.no_thinking else None
     tests = [
-        ("smoke (short coding)", lambda: t_smoke(a.base_url, a.model, a.api_key, ctk)),
-        ("structured JSON",      lambda: t_json(a.base_url, a.model, a.api_key, ctk)),
-        (f"needle @ ~{a.needle_ctx} ctx", lambda: t_needle(a.base_url, a.model, a.api_key, a.needle_ctx, ctk)),
-        (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(a.base_url, a.model, a.api_key, a.tool_batch, ctk)),
+        ("smoke (short coding)", lambda: t_smoke(a.base_url, a.model, api_key, ctk)),
+        ("structured JSON",      lambda: t_json(a.base_url, a.model, api_key, ctk)),
+        (f"needle @ ~{a.needle_ctx} ctx", lambda: t_needle(a.base_url, a.model, api_key, a.needle_ctx, ctk)),
+        (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(a.base_url, a.model, api_key, a.tool_batch, ctk)),
     ]
     allok = True
     thinking = "off (enable_thinking=False)" if a.no_thinking else "default"
