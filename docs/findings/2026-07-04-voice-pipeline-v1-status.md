@@ -42,14 +42,20 @@ claim-during-drain, double-release-idempotent).
 Ordered by impact on the live bring-up. **These are the gap between "code-complete" and "a voice
 agent that meets its goals on fakoli-dark."**
 
-1. **Streaming latency (highest impact).** `BaseStage` emits only *after* `process()` returns, and
-   `LLMStage.process()` accumulates the whole reply first — so first-audio latency ≈ full-reply
-   latency, defeating the "chat-fast" premise. Needs generator-style incremental emission from the
-   stages (yield chunks as they stream, not a batched return). **Fix before any latency claim.**
-2. **`voice run` end-to-end wiring.** `VoicePipeline`'s `stt_stage=`/`tts_stage=` constructor seam is
-   unusable (queues built after the stubs), so the real wiring lives in `scripts/voice/_real_pipeline.py`
-   (`RealVoicePipeline`), and `voice/cli.py::cmd_run` is still a TODO stub. Promote the real wiring into
-   `cmd_run` and fix the seam so `anvil-serving voice run` actually drives the cascade.
+1. **DONE (PUNCH-LIST #1).** Streaming latency: `BaseStage._run` now iterates a generator `process()`
+   and `put()`s each yielded item immediately (see `stages/base.py`); `LLMStage`/`TTSStage` are
+   generators that yield as they stream. First-audio latency now tracks first-sentence/first-chunk
+   latency, not full-reply/full-utterance latency.
+2. **DONE (PUNCH-LIST #2).** `voice run` end-to-end wiring: `VoicePipeline` gained `stt_config=`/
+   `tts_config=`/`vad_model=`/`*_stage_factory=` constructor seams with queues built BEFORE any stage
+   (the old `stt_stage=`/`tts_stage=` params — unusable, queues built after the stubs — are gone);
+   `scripts/voice/_real_pipeline.py::RealVoicePipeline` is now a thin subclass of `VoicePipeline`
+   instead of a second copy of its wiring. `voice/cli.py::cmd_run` builds the real cascade (real STT/
+   TTS/LLM stages via `pipeline.real_pipeline_factory_from_manifest`, a `SessionPool`, and the
+   Realtime WS server honoring the `token_env` bearer gate + loopback-default/non-loopback-requires-
+   token policy) and runs it in the foreground; it fails loudly (clear message, nonzero exit) on an
+   unreachable required endpoint or an unsafe non-loopback bind with no token, rather than pretending
+   success. Still NOT proven against real hardware/serves — see this file's own "what done means" note.
 3. **Realtime input-side lifecycle.** `speech_started/stopped` and user-turn `conversation.item.created`
    are defined but never emitted (VAD `SpeechEvent` isn't surfaced off the internal queue); server
    `response.created/done` omit a real `response.id`. Wire before a polished demo.
@@ -66,8 +72,8 @@ agent that meets its goals on fakoli-dark."**
 
 ## Recommended live bring-up order (on fakoli-dark)
 
-1. Fix punch-list #1 (streaming) and #2 (`cmd_run` wiring) — otherwise the local-loop proof can't
-   show real latency.
+1. Punch-list #1 (streaming) and #2 (`cmd_run` wiring) are done (see above) — the local-loop proof
+   can now show real latency once run on hardware.
 2. Deploy #5 (`chat-fast` preset) to the live router.
 3. Run **T007/T009** (STT/TTS A/B preflights) to pick the v1 engines on sm_120.
 4. Run **T010** (local-loop live proof) — the first real end-to-end voice turn + barge-in + measured TTFA.

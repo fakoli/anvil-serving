@@ -210,6 +210,16 @@ class LLMStage(BaseStage):
     sentence-batched :class:`LLMChunk` items followed by an
     :class:`EndOfResponse`.
 
+    ``process`` is a GENERATOR: each :class:`LLMChunk` is yielded the instant
+    its sentence-batch is complete, while :func:`stream_chat_completion` is
+    still blocked reading the REST of the reply off the wire.
+    :class:`~anvil_serving.voice.stages.base.BaseStage` pulls one yielded item
+    at a time and puts it on the downstream queue immediately (see
+    ``base.py``'s ``_run``) -- so first-audio latency downstream tracks
+    first-SENTENCE latency, not full-reply latency. Do NOT collect chunks
+    into a list and return it at the end; that would silently defeat the
+    incremental contract this stage exists to provide.
+
     Checks ``cancel_scope.is_stale`` on the incoming request AND on every
     streamed delta: a barge-in landing mid-stream stops emitting further
     chunks for that now-superseded generation (the in-flight HTTP request
@@ -246,54 +256,48 @@ class LLMStage(BaseStage):
         # Injectable for tests: defaults to the real streaming HTTP client.
         self._stream_fn: StreamFn = stream_fn or stream_chat_completion
 
-    def process(self, item: Any) -> Optional[List[Any]]:
+    def process(self, item: Any):
         if not isinstance(item, GenerateRequest):
-            return None
+            return  # empty generator: emits nothing
         if self.cancel_scope.is_stale(item.generation):
-            return None  # superseded by a barge-in before we even started
+            return  # superseded by a barge-in before we even started
 
         batcher = SentenceBatcher()
-        out: List[Any] = []
         for delta in self._stream_fn(item.text, self.config):
             if self.cancel_scope.is_stale(item.generation):
                 # A barge-in landed mid-stream: stop emitting further chunks
-                # for this now-stale generation; whatever was already
-                # collected is still forwarded -- there's no reason to
-                # withhold it here. Dropping it instead of forwarding it is a
-                # LATER-unit obligation: the real downstream stage(s) (real
-                # TTS / the realtime unit) must check cancel_scope.is_stale
-                # themselves and drop it there (see the class docstring's
-                # HONESTY NOTE -- today's default stub wiring does not).
-                return out or None
+                # for this now-stale generation. Whatever was already YIELDED
+                # (and, per BaseStage._run, therefore already put() on the
+                # downstream queue) stays forwarded -- there's no reason to
+                # try to withhold it here. Dropping it instead of forwarding
+                # it is a LATER-unit obligation: the real downstream stage(s)
+                # (real TTS / the realtime unit) must check
+                # cancel_scope.is_stale themselves and drop it there (see the
+                # class docstring's HONESTY NOTE -- today's default stub
+                # wiring does not).
+                return
             for sentence in batcher.feed(delta):
-                out.append(
-                    LLMChunk(
-                        turn_id=item.turn_id,
-                        turn_revision=item.turn_revision,
-                        generation=item.generation,
-                        text=sentence,
-                    )
-                )
-
-        if self.cancel_scope.is_stale(item.generation):
-            return out or None
-
-        trailing = batcher.flush()
-        if trailing:
-            out.append(
-                LLMChunk(
+                yield LLMChunk(
                     turn_id=item.turn_id,
                     turn_revision=item.turn_revision,
                     generation=item.generation,
-                    text=trailing,
-                    is_final=True,
+                    text=sentence,
                 )
-            )
-        out.append(
-            EndOfResponse(
+
+        if self.cancel_scope.is_stale(item.generation):
+            return
+
+        trailing = batcher.flush()
+        if trailing:
+            yield LLMChunk(
                 turn_id=item.turn_id,
                 turn_revision=item.turn_revision,
                 generation=item.generation,
+                text=trailing,
+                is_final=True,
             )
+        yield EndOfResponse(
+            turn_id=item.turn_id,
+            turn_revision=item.turn_revision,
+            generation=item.generation,
         )
-        return out

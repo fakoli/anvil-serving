@@ -201,7 +201,9 @@ def test_llm_stage_emits_sentence_batched_chunks_then_end_of_response():
         yield "you today?"
 
     stage = LLMStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)  # queues unused directly
-    out = stage.process(_gen_request())
+    # process() is a generator now (PUNCH-LIST #1: incremental emission) --
+    # materialize it ONCE so both list comprehensions below see every item.
+    out = list(stage.process(_gen_request()))
 
     chunks = [m for m in out if isinstance(m, LLMChunk)]
     ends = [m for m in out if isinstance(m, EndOfResponse)]
@@ -219,8 +221,8 @@ def test_llm_stage_skips_already_stale_request():
         raise AssertionError("must not stream for an already-stale request")
 
     stage = LLMStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    out = stage.process(_gen_request(generation=0))
-    assert out is None
+    out = list(stage.process(_gen_request(generation=0)))
+    assert out == []
 
 
 def test_llm_stage_stops_emitting_after_mid_stream_barge_in():
@@ -233,14 +235,14 @@ def test_llm_stage_stops_emitting_after_mid_stream_barge_in():
         yield "Third."
 
     stage = LLMStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    out = stage.process(_gen_request(generation=0))
+    out = list(stage.process(_gen_request(generation=0)))
 
-    texts = [m.text for m in (out or []) if isinstance(m, LLMChunk)]
+    texts = [m.text for m in out if isinstance(m, LLMChunk)]
     assert texts == ["First sentence."]
     # No EndOfResponse either -- the turn was superseded, not completed.
-    assert not any(isinstance(m, EndOfResponse) for m in (out or []))
+    assert not any(isinstance(m, EndOfResponse) for m in out)
 
 
 def test_llm_stage_ignores_non_generate_request_items():
     stage = LLMStage(in_queue=None, stream_fn=lambda t, c: iter(()))
-    assert stage.process("not a GenerateRequest") is None
+    assert list(stage.process("not a GenerateRequest")) == []

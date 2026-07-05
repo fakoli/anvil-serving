@@ -126,6 +126,32 @@ def test_rejects_malformed_env_var_name():
         voice_config.validate_manifest(data)
 
 
+def test_rejects_non_loopback_realtime_host_without_token_env():
+    """U2-a: defense in depth. `realtime.ws.make_ws_server`'s own F2 guard
+    already refuses to BIND a non-loopback host with no token, but that only
+    protects a caller that actually reaches `make_ws_server` -- the manifest
+    itself must reject this combination too, so it can never validate as
+    "OK" in the first place."""
+    data = _valid_manifest()
+    data["voice"]["realtime_host"] = "100.87.34.66"
+    with pytest.raises(voice_config.ConfigError, match="realtime_token_env"):
+        voice_config.validate_manifest(data)
+
+
+def test_accepts_non_loopback_realtime_host_with_token_env():
+    data = _valid_manifest()
+    data["voice"]["realtime_host"] = "100.87.34.66"
+    data["voice"]["realtime_token_env"] = "ANVIL_VOICE_REALTIME_TOKEN"
+    voice_config.validate_manifest(data)  # should not raise
+
+
+def test_accepts_loopback_realtime_host_without_token_env():
+    data = _valid_manifest()
+    data["voice"]["realtime_host"] = "127.0.0.1"
+    assert "realtime_token_env" not in data["voice"]
+    voice_config.validate_manifest(data)  # trusted-local default: should not raise
+
+
 def test_missing_section_raises():
     data = _valid_manifest()
     del data["voice"]["stt"]

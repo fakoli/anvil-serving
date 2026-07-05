@@ -6,6 +6,8 @@ prints what it *would* do; no process is spawned, no network touched, no
 GPU/torch import happens anywhere in this module or its import chain.
 """
 import sys
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
@@ -40,6 +42,17 @@ def manifest_path(tmp_path):
     return str(p)
 
 
+@pytest.fixture
+def runnable_manifest_path(tmp_path):
+    """Same as `manifest_path`, but `realtime_port = 0` (ephemeral) -- for the
+    `run` tests below that actually bind a real (loopback-only) WebSocket
+    server socket, so they never fight another test/process for a fixed
+    port."""
+    p = tmp_path / "voice_runnable.toml"
+    p.write_text(VALID_MANIFEST.replace("realtime_port = 8765", "realtime_port = 0"), encoding="utf-8")
+    return str(p)
+
+
 def test_help_lists_all_four_subcommands(capsys):
     with pytest.raises(SystemExit) as exc:
         voice_cli.main(["--help"])
@@ -55,7 +68,7 @@ def test_no_subcommand_errors(capsys):
     assert exc.value.code != 0
 
 
-@pytest.mark.parametrize("action", ["up", "down", "run", "benchmark"])
+@pytest.mark.parametrize("action", ["up", "down", "benchmark"])
 def test_each_subcommand_validates_and_reports_ok(action, manifest_path, capsys):
     rc = voice_cli.main([action, "--config", manifest_path])
     assert rc == 0
@@ -83,11 +96,109 @@ def test_each_subcommand_rejects_localhost_manifest(action, tmp_path, capsys):
     assert "localhost" in err
 
 
-def test_run_mentions_realtime_websocket_target(manifest_path, capsys):
+def test_run_reports_unreachable_endpoint_and_exits_nonzero(manifest_path, monkeypatch, capsys):
+    """PUNCH-LIST #2, FIX #2: `run` must FAIL LOUDLY (a clear message, nonzero
+    exit) when a required serve/router endpoint is unreachable -- never
+    pretend the session pool is usable. Deterministic regardless of what
+    else happens to be listening on the test machine: `_probe_endpoint` is
+    mocked to always report the LLM router as unreachable."""
+    monkeypatch.setattr(
+        voice_cli, "_probe_endpoint",
+        lambda name, base_url, **kw: "%s at %s is unreachable (mocked)" % (name, base_url),
+    )
+    rc = voice_cli.main(["run", "--config", manifest_path])
+    assert rc != 0
+    err = capsys.readouterr().err
+    assert "unreachable" in err
+    assert "voice.llm" in err
+
+
+def test_run_builds_expected_components_with_fakes(manifest_path, monkeypatch, capsys):
+    """`run` builds the real cascade (session pool + realtime server) and
+    reports the realtime WS target, without touching any real serve/socket:
+    `_check_required_endpoints_reachable` and `_build_realtime_server` are
+    both faked, and `_wait_forever_default` returns immediately instead of
+    blocking forever."""
+    calls = []
+
+    class _FakeServer:
+        server_address = ("127.0.0.1", 8765)
+
+        def shutdown(self):
+            calls.append("shutdown")
+
+        def server_close(self):
+            calls.append("server_close")
+
+    class _FakeThread:
+        def join(self, timeout=None):
+            calls.append("join")
+
+    class _FakePool:
+        size = 3
+
+    def _fake_build(data, voice):
+        calls.append("build")
+        return _FakeServer(), _FakePool()
+
+    monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
+    monkeypatch.setattr(voice_cli, "_build_realtime_server", _fake_build)
+    monkeypatch.setattr(voice_cli, "serve_forever_in_background", lambda server: _FakeThread())
+    monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
+
     rc = voice_cli.main(["run", "--config", manifest_path])
     assert rc == 0
+    assert calls == ["build", "shutdown", "server_close", "join"]
     out = capsys.readouterr().out
     assert "ws://127.0.0.1:8765/v1/realtime" in out
+    assert "pool size 3" in out
+
+
+def test_run_builds_real_session_pool_and_ws_server(runnable_manifest_path, monkeypatch, capsys):
+    """A lower-level, non-mocked proof that `_build_realtime_server` really
+    does construct a working `SessionPool` (real `VoicePipeline` instances,
+    real STT/TTS/LLM stage configs from the manifest) behind a real (but
+    ephemeral-port, loopback-only) `make_ws_server` socket -- no serve/router
+    network call happens here (constructing a stage's config, and binding an
+    idle pool of pipeline THREADS that never process anything, touches no
+    network); only the endpoint-reachability preflight is mocked, since the
+    STT/LLM/TTS serves this manifest points at are not actually running."""
+    monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
+    monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
+
+    rc = voice_cli.main(["run", "--config", runnable_manifest_path])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "ws://127.0.0.1:" in out
+    assert "/v1/realtime" in out
+    assert "pool size" in out
+
+
+def test_run_refuses_non_loopback_bind_without_token(tmp_path, monkeypatch, capsys):
+    """FIX #2's honesty requirement: a non-loopback `realtime_host` with no
+    `realtime_token_env` configured must be REFUSED (a clear error, nonzero
+    exit), never silently bound wide-open.
+
+    U2-a hardened `voice_config.validate_manifest` itself to reject this
+    combination, so this now fails at manifest-load time (`_load` inside
+    `cmd_run`) rather than reaching `_build_realtime_server`/
+    `realtime.ws.make_ws_server` at all -- belt (manifest validation, tested
+    directly in tests/voice/test_voice_config.py) over suspenders
+    (`make_ws_server`'s own F2 bind guard, still exercised directly by
+    tests/voice/test_ws_transport.py::test_make_ws_server_refuses_non_loopback_host_without_token
+    for any caller that constructs it without going through this manifest).
+    Nothing real starts either way."""
+    manifest = tmp_path / "voice_non_loopback.toml"
+    manifest.write_text(
+        VALID_MANIFEST.replace('realtime_host = "127.0.0.1"', 'realtime_host = "100.87.34.66"'),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
+
+    rc = voice_cli.main(["run", "--config", str(manifest)])
+    assert rc != 0
+    err = capsys.readouterr().err
+    assert "token" in err.lower()
 
 
 def test_cmd_up_returns_nonzero_when_a_serve_bring_up_fails(manifest_path, monkeypatch, capsys):
@@ -126,6 +237,74 @@ def test_cmd_down_returns_nonzero_when_a_serve_tear_down_fails(manifest_path, mo
     assert rc != 0
     out = capsys.readouterr().out
     assert "tear-down rc=1" in out
+
+
+# --------------------------------------------------------------------------- #
+# U2-b -- `_probe_endpoint` must distinguish "reachable but unhealthy" (a real
+# HTTP error status) from "unreachable" (a genuine connection failure).
+# `urllib.error.HTTPError` IS a `URLError` subclass, and real `urlopen()`
+# RAISES it for a 4xx/5xx response rather than returning a response object
+# with a non-2xx `.status` -- so a 500-returning-but-running serve used to be
+# misreported through the generic "is unreachable" branch. Both tests below
+# drive the REAL `urllib.request.urlopen` against a real 127.0.0.1 socket (no
+# fake `_open`), matching this repo's "prove it against the real transport"
+# convention (see tests/voice/test_llm_stage_incremental_emission.py).
+# --------------------------------------------------------------------------- #
+def _make_status_handler(status: int):
+    class _StatusHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802 - stdlib-mandated method name
+            self.send_response(status)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, format: str, *args) -> None:  # noqa: A002
+            pass  # silence the test server's stderr access log
+
+    return _StatusHandler
+
+
+@pytest.fixture
+def status_server():
+    def _start(status: int):
+        server = HTTPServer(("127.0.0.1", 0), _make_status_handler(status))  # 127.0.0.1, never localhost
+        thread = threading.Thread(target=server.handle_request, daemon=True)
+        thread.start()
+        return server, thread
+
+    servers = []
+
+    def _factory(status: int) -> str:
+        server, thread = _start(status)
+        servers.append((server, thread))
+        return "http://127.0.0.1:%d" % server.server_port
+
+    yield _factory
+    for server, thread in servers:
+        server.server_close()
+        thread.join(timeout=2.0)
+
+
+def test_probe_endpoint_reports_5xx_as_unhealthy_not_unreachable(status_server):
+    base_url = status_server(500)
+    problem = voice_cli._probe_endpoint("TTS serve", base_url)
+    assert problem is not None
+    assert "unhealthy" in problem
+    assert "unreachable" not in problem
+    assert "500" in problem
+
+
+def test_probe_endpoint_reports_refused_connection_as_unreachable():
+    # Bind an ephemeral port, then close it immediately -- nothing is
+    # listening there anymore, so the connection is genuinely refused (a
+    # real failure mode distinct from a running-but-unhealthy serve above).
+    probe = HTTPServer(("127.0.0.1", 0), _make_status_handler(200))
+    port = probe.server_port
+    probe.server_close()
+
+    problem = voice_cli._probe_endpoint("TTS serve", "http://127.0.0.1:%d" % port, timeout=1.0)
+    assert problem is not None
+    assert "unreachable" in problem
+    assert "unhealthy" not in problem
 
 
 def test_default_config_falls_back_to_shipped_example(capsys):

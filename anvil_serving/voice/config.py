@@ -133,20 +133,32 @@ def _reject_secret_literals(node, path: str = "") -> None:
             _reject_secret_literals(item, "%s[%d]" % (path, i))
 
 
+def _validate_host(host: str, *, key: str) -> None:
+    """Reject the bad loopback spellings CLAUDE.md gotcha #1 warns about.
+
+    Shared by :func:`_parsed_url` (a URL's hostname) and
+    ``validate_manifest``'s own ``voice.realtime_host`` check (a bare host,
+    no URL) -- a legitimate non-loopback host (LAN/tailnet, e.g. STT/TTS
+    living on another box) is NOT rejected here; only ``localhost`` and the
+    non-canonical loopback spellings are.
+    """
+    h = host.lower()
+    if h == "localhost":
+        raise ConfigError(
+            "%s must use 127.0.0.1, not localhost (Windows IPv6 stall — see CLAUDE.md gotcha #1)"
+            % key
+        )
+    if h in ("0.0.0.0", "::1") or (h.startswith("127.") and h != "127.0.0.1"):
+        raise ConfigError("%s must use exactly 127.0.0.1 for a same-host address, not %s" % (key, h))
+
+
 def _parsed_url(value: str, *, key: str, schemes: tuple[str, ...]) -> urllib.parse.ParseResult:
     parsed = urllib.parse.urlparse(value)
     if parsed.scheme not in schemes or not parsed.netloc:
         raise ConfigError("%s must be a %s URL" % (key, "/".join(schemes)))
     if parsed.username or parsed.password:
         raise ConfigError("%s must not embed credentials in the URL" % key)
-    host = (parsed.hostname or "").lower()
-    if host == "localhost":
-        raise ConfigError(
-            "%s must use 127.0.0.1, not localhost (Windows IPv6 stall — see CLAUDE.md gotcha #1)"
-            % key
-        )
-    if host in ("0.0.0.0", "::1") or (host.startswith("127.") and host != "127.0.0.1"):
-        raise ConfigError("%s must use exactly 127.0.0.1 for a same-host address, not %s" % (key, host))
+    _validate_host(parsed.hostname or "", key=key)
     return parsed
 
 
@@ -197,11 +209,33 @@ def validate_manifest(data: dict) -> None:
     voice = _section(data, "voice")
     _string(voice, "name", "anvil-voice")
     realtime_host = _string(voice, "realtime_host", "127.0.0.1")
-    if realtime_host.lower() == "localhost":
-        raise ConfigError("voice.realtime_host must be 127.0.0.1, not localhost")
-    if realtime_host != "127.0.0.1":
-        raise ConfigError("voice.realtime_host must be exactly 127.0.0.1 (bind loopback by default)")
+    _validate_host(realtime_host, key="voice.realtime_host")
     _int(voice, "realtime_port", 8765)
+    # Optional: names the env var holding a bearer token the realtime WS
+    # server requires (anvil_serving.voice.realtime.ws's F2 gate). Loopback
+    # binds work with no token configured (trusted-local default); a
+    # non-loopback realtime_host is refused at server-construction time
+    # (make_ws_server) unless this is set -- validated here only for shape
+    # (a plausible ENV_VAR_NAME), never resolved against os.environ at
+    # manifest-validation time.
+    realtime_token_env = _check_env_name(voice, "realtime_token")
+    # U2-a: defense in depth. `make_ws_server`'s own F2 guard already refuses
+    # to BIND a non-loopback host with no token at server-construction time,
+    # but that only protects a process that actually gets as far as calling
+    # `make_ws_server` (e.g. `anvil-serving voice run`) -- a manifest with a
+    # non-loopback `realtime_host` and no `realtime_token_env` would still
+    # pass `load_manifest`/`validate_manifest` cleanly, describe as "OK", and
+    # only fail much later (or in a caller that never reaches make_ws_server
+    # at all). Reject the unsafe combination here, at the manifest boundary,
+    # so it can never be validated as OK in the first place.
+    if realtime_host != "127.0.0.1" and not realtime_token_env:
+        raise ConfigError(
+            "voice.realtime_host is non-loopback (%s); voice.realtime_token_env must "
+            "name the env var holding a bearer token (the realtime WS server refuses an "
+            "unauthenticated non-loopback bind -- see realtime/ws.py's F2 guard), or use "
+            "127.0.0.1" % realtime_host
+        )
+    _int(voice, "pool_size", 4)
 
     llm = _section(data, "voice", "llm")
     _parsed_url(_string(llm, "base_url"), key="voice.llm.base_url", schemes=("http", "https"))
