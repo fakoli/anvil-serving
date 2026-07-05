@@ -97,6 +97,17 @@ PRESETS: tuple[Preset, ...] = (
         work_class="chat",
     ),
     Preset(
+        id="chat-fast",
+        name="Chat (fast)",
+        description=(
+            "Low-latency conversation for real-time surfaces (e.g. the voice "
+            "pipeline's LLM stage): same shape as Chat, but routed "
+            "fast-tier-first because a snappy reply matters more than the "
+            "deeper quality a coding harness wants."
+        ),
+        work_class="chat-fast",
+    ),
+    Preset(
         id="long-context",
         name="Long Context",
         description=(
@@ -114,6 +125,7 @@ PRESET_TO_WORK_CLASS = {p.id: p.work_class for p in PRESETS}
 
 WORK_CLASS_TO_PRESET = {
     "chat": "chat",
+    "chat-fast": "chat-fast",
     "bounded-edit": "quick-edit",
     "multi-file-refactor": "review",
     "planning": "planning",

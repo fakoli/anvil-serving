@@ -79,6 +79,20 @@ def local_tier_ids(config: RouterConfig) -> frozenset[str]:
     return frozenset(t.id for t in config.tiers if t.privacy == "local")
 
 
+# Work classes for which the anti-thrash residency deferral (step 4 below) is
+# SKIPPED (flexibility:T018): the voice pipeline's "chat-fast" turns care more
+# about a snappy reply than about avoiding one multiplexer swap, so the
+# configured cost order (fast tier first) is always honored, even when a
+# DIFFERENT local tier currently holds the multiplexer's one resident slot.
+# This trades an occasional extra swap for consistently low latency on these
+# classes -- the opposite tradeoff residency deferral makes for everything
+# else. A future hysteresis policy could instead batch-defer even these
+# (swap only after N consecutive low-latency turns), but that is not needed
+# yet: a real-time voice session's first turn is expected to eat one swap
+# either way, and every turn after that keeps fast-local resident.
+LATENCY_SENSITIVE_WORK_CLASSES = frozenset({"chat-fast"})
+
+
 def _work_class_pool(config: RouterConfig, work_class: str) -> tuple[str, ...]:
     """The work-class's normal gated candidate pool (preset-derived).
 
@@ -279,15 +293,20 @@ def route(
 
         # 4. Residency reorder (AC3). When a local tier is resident, defer every
         #    OTHER local behind the resident local + all cloud tiers, so choosing
-        #    a swap-forcing non-resident local is a last resort.
+        #    a swap-forcing non-resident local is a last resort. SKIPPED for a
+        #    latency-sensitive work class (see LATENCY_SENSITIVE_WORK_CLASSES):
+        #    those always keep the configured cost order (fast tier first),
+        #    accepting an extra swap rather than trading away latency.
         locals_ = local_tier_ids(config)
         residency_deferred: list[str] = []
-        if residency is not None and residency in locals_:
+        latency_bypass = work_class in LATENCY_SENSITIVE_WORK_CLASSES
+        if residency is not None and residency in locals_ and not latency_bypass:
             deferred = [tid for tid in ordered if tid in locals_ and tid != residency]
             residency_deferred = list(deferred)
             result = [tid for tid in ordered if not (tid in locals_ and tid != residency)] + deferred
         else:
-            # residency is None or a cloud id: the first pick loads one local
+            # residency is None or a cloud id, or this work class opted out of
+            # the deferral (latency_bypass): the first pick loads one local
             # model, an unavoidable single swap. Leave the cost order untouched.
             result = list(ordered)
 
@@ -303,6 +322,7 @@ def route(
             "dropped_by_metered_gate": tuple(dropped_by_metered_gate),
             "dropped_by_deny": tuple(dropped_by_deny),
             "residency_deferred": tuple(residency_deferred),
+            "latency_sensitive_bypass": latency_bypass,
             "empty": not result,
         })
         return RoutingDecision(tuple(result), work_class, notes=notes)
