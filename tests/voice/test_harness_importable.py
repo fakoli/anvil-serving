@@ -61,7 +61,116 @@ def test_preflight_stt_gpu_info_never_raises_without_torch():
 
     info = gpu_info()
     assert isinstance(info, dict)
-    assert info["available"] is False
+    assert isinstance(info["available"], bool)
+    if info["available"]:
+        assert info["source"] in ("torch", "nvidia-smi")
+
+
+def test_preflight_stt_report_flag_has_packet_path_default():
+    from scripts.voice.preflight_stt import DEFAULT_REPORT_PATH, build_parser
+
+    args = build_parser().parse_args(["--report"])
+    assert args.report == DEFAULT_REPORT_PATH
+
+
+def test_preflight_stt_candidate_parses_stream_mode():
+    from scripts.voice.preflight_stt import parse_candidate_arg
+
+    candidate = parse_candidate_arg(
+        "name=parakeet,base_url=http://127.0.0.1:30010/v1,model=tdt_ctc-110m,container=parakeet-stt,stream=false"
+    )
+
+    assert candidate.stream is False
+    assert candidate.container_name == "parakeet-stt"
+
+
+def test_preflight_stt_run_one_uses_candidate_stream_mode(monkeypatch):
+    from scripts.voice import preflight_stt
+
+    seen = []
+
+    def fake_transcribe_stream(pcm, sample_rate, config):
+        seen.append(config.stream)
+        yield ("hello world", True)
+
+    monkeypatch.setattr(preflight_stt, "transcribe_stream", fake_transcribe_stream)
+
+    result = preflight_stt.run_one(
+        preflight_stt.Candidate(
+            name="parakeet",
+            base_url="http://127.0.0.1:8090/v1",
+            model="tdt_ctc-110m",
+            stream=False,
+        ),
+        b"\x00\x00",
+        16000,
+        "hello world",
+        1.0,
+    )
+
+    assert seen == [False]
+    assert result["stream"] is False
+    assert result["error"] is None
+
+
+def test_preflight_stt_run_one_records_unexpected_candidate_failure(monkeypatch):
+    from scripts.voice import preflight_stt
+
+    def fake_transcribe_stream(pcm, sample_rate, config):
+        raise TimeoutError("timed out")
+        yield ("unreachable", True)
+
+    monkeypatch.setattr(preflight_stt, "transcribe_stream", fake_transcribe_stream)
+
+    result = preflight_stt.run_one(
+        preflight_stt.Candidate(
+            name="slow",
+            base_url="http://127.0.0.1:8090/v1",
+            model="slow",
+        ),
+        b"\x00\x00",
+        16000,
+        "hello world",
+        1.0,
+    )
+
+    assert result["error"] == "timed out"
+    assert result["wer"] is None
+
+
+def test_preflight_stt_main_returns_nonzero_when_candidate_errors(monkeypatch, tmp_path):
+    from scripts.voice import preflight_stt
+
+    monkeypatch.setattr(
+        preflight_stt,
+        "bring_up_and_wait",
+        lambda candidate, *, ready_timeout, do_bring_up: {"ready": True},
+    )
+    monkeypatch.setattr(
+        preflight_stt,
+        "run_one",
+        lambda candidate, pcm, sample_rate, reference_text, timeout: {
+            "name": candidate.name,
+            "base_url": candidate.base_url,
+            "model": candidate.model,
+            "stream": candidate.stream,
+            "latency_ms": 0.0,
+            "hypothesis": "",
+            "wer": None,
+            "error": "boom",
+        },
+    )
+    report = tmp_path / "stt.json"
+
+    rc = preflight_stt.main([
+        "--candidate",
+        "name=bad,base_url=http://127.0.0.1:8090/v1,model=bad",
+        "--report",
+        str(report),
+    ])
+
+    assert rc == 1
+    assert report.exists()
 
 
 def test_preflight_tts_gpu_info_never_raises_without_torch():
