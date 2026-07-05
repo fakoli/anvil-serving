@@ -7,12 +7,17 @@ from __future__ import annotations
 import pytest
 
 from anvil_serving.voice.messages import AudioOut, EndOfResponse, LLMChunk, Transcription
+from anvil_serving.voice.stages.vad import SpeechEvent
 from anvil_serving.voice.realtime.events import (
     ConversationItemCreate,
+    ConversationItemInputAudioTranscriptionCompleted,
     EventParseError,
     InputAudioBufferAppend,
     InputAudioBufferClear,
     InputAudioBufferCommit,
+    InputAudioBufferCommitted,
+    InputAudioBufferSpeechStarted,
+    InputAudioBufferSpeechStopped,
     ResponseCancel,
     ResponseCreate,
     ResponseAudioDelta,
@@ -89,26 +94,58 @@ def test_parse_client_event_rejects_non_dict():
 def test_dispatch_transcription_to_conversation_item_created():
     msg = Transcription(turn_id="t1", turn_revision=0, generation=1, text="hello", is_final=True)
     events = dispatch_internal_event(msg)
-    assert len(events) == 1
+    assert len(events) == 2
     assert isinstance(events[0], ConversationItemCreated)
     assert events[0].item["content"][0]["text"] == "hello"
     assert events[0].item["id"] == "t1"
+    # PUNCH-LIST #3: also the transcription-completed event, same item id.
+    assert isinstance(events[1], ConversationItemInputAudioTranscriptionCompleted)
+    assert events[1].item_id == "t1"
+    assert events[1].transcript == "hello"
+
+
+def test_dispatch_non_final_transcription_is_dropped():
+    """Only a FINAL transcript surfaces on the wire -- see
+    ``_dispatch_transcription``'s docstring."""
+    msg = Transcription(turn_id="t1", turn_revision=0, generation=1, text="par", is_final=False)
+    assert dispatch_internal_event(msg) == []
+
+
+def test_dispatch_speech_started_carries_item_id_and_audio_start_ms():
+    msg = SpeechEvent(kind="started", turn_id="turn-1", turn_revision=0, generation=1, audio_ms=40)
+    (event,) = dispatch_internal_event(msg)
+    assert isinstance(event, InputAudioBufferSpeechStarted)
+    assert event.item_id == "turn-1"
+    assert event.audio_start_ms == 40
+
+
+def test_dispatch_speech_stopped_yields_stopped_then_committed():
+    msg = SpeechEvent(kind="stopped", turn_id="turn-1", turn_revision=0, generation=1, audio_ms=240)
+    events = dispatch_internal_event(msg)
+    assert len(events) == 2
+    assert isinstance(events[0], InputAudioBufferSpeechStopped)
+    assert events[0].item_id == "turn-1"
+    assert events[0].audio_end_ms == 240
+    assert isinstance(events[1], InputAudioBufferCommitted)
+    assert events[1].item_id == "turn-1"
 
 
 def test_dispatch_llm_chunk_to_audio_transcript_delta():
     msg = LLMChunk(turn_id="t1", turn_revision=0, generation=1, text="Hi there.")
-    events = dispatch_internal_event(msg)
+    events = dispatch_internal_event(msg, response_id="resp_1")
     assert len(events) == 1
     assert isinstance(events[0], ResponseAudioTranscriptDelta)
     assert events[0].delta == "Hi there."
     assert events[0].turn_id == "t1"
+    assert events[0].response_id == "resp_1"
 
 
 def test_dispatch_audio_out_to_response_audio_delta_base64():
     msg = AudioOut(turn_id="t1", turn_revision=0, generation=1, pcm=b"\x01\x02\x03")
-    events = dispatch_internal_event(msg)
+    events = dispatch_internal_event(msg, response_id="resp_1")
     assert len(events) == 1
     assert isinstance(events[0], ResponseAudioDelta)
+    assert events[0].response_id == "resp_1"
     import base64
 
     assert base64.b64decode(events[0].delta) == b"\x01\x02\x03"
@@ -116,11 +153,12 @@ def test_dispatch_audio_out_to_response_audio_delta_base64():
 
 def test_dispatch_end_of_response_to_response_done():
     msg = EndOfResponse(turn_id="t1", turn_revision=0, generation=1)
-    events = dispatch_internal_event(msg)
+    events = dispatch_internal_event(msg, response_id="resp_1")
     assert len(events) == 1
     assert isinstance(events[0], ResponseDone)
     assert events[0].response["turn_id"] == "t1"
     assert events[0].response["status"] == "completed"
+    assert events[0].response["id"] == "resp_1"
 
 
 def test_dispatch_unmapped_message_type_returns_empty_list():

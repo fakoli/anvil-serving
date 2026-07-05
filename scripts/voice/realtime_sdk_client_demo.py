@@ -163,7 +163,7 @@ def _save_capture(prefix: str, events: List[Dict[str, Any]], sample_rate: int = 
 
     audio_bytes = bytearray()
     for event in events:
-        if event.get("type") == "response.audio.delta" and event.get("delta"):
+        if event.get("type") == "response.output_audio.delta" and event.get("delta"):
             audio_bytes += base64.b64decode(event["delta"])
     wav_path = None
     if audio_bytes:
