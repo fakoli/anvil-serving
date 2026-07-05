@@ -1,7 +1,7 @@
 site_name: anvil-serving
 site_description: >-
-  The quality-gated local-model router for coding harnesses.
-  Local where it's been proven, cloud where it hasn't — verified, with automatic fallback.
+  The quality-gated local-model router for coding agents.
+  Run local where it is measured safe. Verify risky local output. Keep cloud explicit.
 site_url: https://fakoli.github.io/anvil-serving/
 repo_url: https://github.com/fakoli/anvil-serving
 repo_name: fakoli/anvil-serving
@@ -19,24 +19,26 @@ plugins:
   - search
   - mermaid2:
       # Use a stable mermaid 11.x release; the plugin injects this CDN JS
-      # automatically — no extra_javascript block needed.
+      # automatically - no extra_javascript block needed.
       version: '11.4.1'
 
 nav:
   - Home: index.md
-  - How it works: QUALITY-GATED-ROUTER.md
-  - Quickstart:
+  - Get started: GETTING-STARTED.md
+  - Product guide:
+      - Product architecture: QUALITY-GATED-ROUTER.md
+      - Cost and cloud model: PLAN-advise-and-defer.md
+      - Terminology: TERMINOLOGY.md
+  - Operations:
       - Model settings: MODEL-SETTINGS-EXAMPLE.md
       - Serves & eval: SERVES-AND-EVAL.md
       - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Operator playbooks: OPERATOR-PLAYBOOKS.md
-  - Cost model:
-      - advise-and-defer plan: PLAN-advise-and-defer.md
-  - OpenClaw integration:
+  - Integrations:
       - Integration spec: OPENCLAW-INTEGRATION-SPEC.md
       - Live validation: OPENCLAW-LIVE-VALIDATION.md
-  - ADRs:
-      - Overview: adr/README.md
+  - Decisions & research:
+      - ADR overview: adr/README.md
       - 'ADR-0001: Cloud cost & subscription auth': adr/0001-cloud-cost-and-subscription-auth.md
       - 'ADR-0002: Serves are Compose-defined': adr/0002-serves-are-compose-defined.md
       - 'ADR-0003: Portable defaults & generic onboarding': adr/0003-portable-defaults-and-generic-onboarding.md
@@ -51,9 +53,10 @@ nav:
       - 'ADR-0012: Serve and router management verbs': adr/0012-serve-and-router-management-verbs.md
       - 'ADR-0013: OpenClaw layers and MCP control plane': adr/0013-openclaw-layers-and-mcp-control-plane.md
       - 'ADR-0014: Tailnet controller transport': adr/0014-tailnet-controller-transport.md
-      - Template: adr/template.md
-  - Architecture reviews:
       - '2026-07-02: Architecture & models': REVIEW-2026-07-02-architecture-and-models.md
+      - 'Blackwell sm_120 lab notebook': findings/blackwell-sm120-lab-notebook.md
+      - 'OpenClaw keyless failover': findings/2026-07-04-openclaw-keyless-failover.md
+      - ADR template: adr/template.md
   - Changelog: changelog.md
 
 markdown_extensions:
@@ -68,9 +71,9 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           # fence_mermaid (NOT fence_mermaid_custom) emits <div class="mermaid">
-          # without a <code> wrapper and without escaping < / > — so <br/> in node
+          # without a <code> wrapper and without escaping < / > - so <br/> in node
           # labels stays as literal text that mermaid.js can parse.
-          # fence_mermaid_custom sets custom=True → <pre class="mermaid"><code>
+          # fence_mermaid_custom sets custom=True -> <pre class="mermaid"><code>
           # which wraps the source in <code>, breaking the mermaid parser.
           format: !!python/name:mermaid2.fence_mermaid
   - pymdownx.snippets:
