@@ -1,4 +1,5 @@
-"""anvil-serving voice — up / down / run / benchmark (anvil task T001).
+"""anvil-serving voice — up / down / run / benchmark (anvil task T001;
+`run` wired to the real cascade for PUNCH-LIST #2).
 
 The voice-pipeline verb for the anvil-style stdlib orchestrator described in
 ``docs/findings/2026-07-04-hf-speech-to-speech-review.md``: a realtime
@@ -12,26 +13,59 @@ T001/T002 shipped manifest loading + validation + this CLI skeleton.
 `anvil_serving.serves`'s declarative docker-manifest lifecycle, so there is
 still no raw `docker run` in this file. `benchmark` (T015) now replays one
 turn end-to-end via `anvil_serving.voice.benchmark` and prints the
-TTFA/latency/WER/RTF metrics as JSON. `run`'s realtime `http.server`/`asyncio`
-server is still a TODO for a later unit.
+TTFA/latency/WER/RTF metrics as JSON. `run` now builds the REAL cascade
+(STT/TTS out-of-process serves + the LLM stage routed at the anvil router,
+wired via `anvil_serving.voice.pipeline.real_pipeline_factory_from_manifest`
+into a bounded `anvil_serving.voice.realtime.pool.SessionPool`) and starts the
+Realtime WebSocket server (`anvil_serving.voice.realtime.ws.make_ws_server`)
+in the foreground -- promoting the wiring that used to live only in
+`scripts/voice/realtime_sdk_client_demo.py`'s `build_server` into the package
+so the CLI verb itself does this, not just a demo script.
 
 Nothing here is proven against real audio hardware, a GPU, or a live STT/TTS
 serve -- see the module docstring honesty notes in `voice/serves/`,
 `voice/stages/stt.py`/`tts.py`, and `voice/benchmark.py`. `up`/`down`/
 `benchmark` degrade gracefully (a clear message, not a crash) when the
-serves manifest isn't configured yet or the serves aren't reachable.
+serves manifest isn't configured yet or the serves aren't reachable. `run`
+is different on purpose: once the manifest validates, it is a REQUEST to
+actually stand up a live session pool, so an unreachable required serve/
+router endpoint (or an unsafe non-loopback bind with no token configured)
+must FAIL LOUDLY with a clear, non-crashing message -- never pretend the
+pool is usable when it is not.
 """
 import argparse
 import json
+import os
 import sys
+import threading
+import time
+import urllib.error
+import urllib.request
+from typing import Any, Callable, Dict, Optional
 
 from . import benchmark as voice_benchmark
 from . import config as voice_config
+from .pipeline import real_pipeline_factory_from_manifest
+from .realtime.pool import SessionPool
+from .realtime.service import RealtimeService
+from .realtime.ws import make_ws_server, serve_forever_in_background
 from .serves import stt as stt_serve
 from .serves import tts as tts_serve
 from .serves._common import ServeNotConfigured
 
 DEFAULT_MANIFEST = voice_config.DEFAULT_CONFIG
+DEFAULT_POOL_SIZE = 4
+
+#: How often `run`'s per-connection sender thread polls
+#: `RealtimeService.drain_pipeline_events()` and forwards anything buffered to
+#: the client -- mirrors `scripts/voice/realtime_sdk_client_demo.py`'s own
+#: `SENDER_POLL_INTERVAL_S` (a plain sleep-poll, matching
+#: `drain_pipeline_events`'s own non-blocking contract).
+SENDER_POLL_INTERVAL_S = 0.05
+
+#: Preflight reachability-probe timeout for `run`'s "fail loudly, don't
+#: pretend" endpoint check (see `_probe_endpoint`).
+ENDPOINT_PROBE_TIMEOUT_S = 3.0
 
 # (kind, ServeConfig class, Serve class) -- drives the bring-up/tear-down loop
 # in cmd_up/cmd_down; keeps them from repeating themselves per-serve-kind.
@@ -96,6 +130,187 @@ def cmd_down(args):
     return exit_code
 
 
+def _probe_endpoint(
+    name: str, base_url: str, *, timeout: float = ENDPOINT_PROBE_TIMEOUT_S,
+    token: Optional[str] = None, _open: Callable[..., Any] = urllib.request.urlopen,
+) -> Optional[str]:
+    """Cheap reachability probe: ``GET {base_url}/models`` (every
+    OpenAI-compatible server -- the anvil router included, see
+    ``anvil_serving/router/discovery.py`` -- exposes this).
+
+    Returns ``None`` if the endpoint is REACHABLE; otherwise a short,
+    human-readable problem string (never raises). This backs `run`'s "fail
+    loudly, don't pretend a live capability is proven" preflight -- see the
+    module docstring and CLAUDE.md's own rule of the same name. Injectable
+    (``_open``) so tests can simulate reachable/unreachable without a real
+    socket. If ``token`` is given, it is sent as ``Authorization: Bearer
+    <token>`` -- see :func:`_resolve_probe_token`, which resolves it the same
+    way the LLM/STT/TTS stages resolve their own bearer token.
+
+    B1 fix -- REACHABILITY vs HEALTH are different questions. A serve that
+    RESPONDS at all -- including a 401/403 (auth required/rejected), 404/405
+    (path not routed the way we guessed), or any other status < 500 -- is
+    reachable and actively routing traffic: something is definitely up and
+    answering HTTP on that socket, so `run` must NOT refuse to start over it.
+    Before this fix, a token-authed router that correctly requires auth on
+    ``GET /v1/models`` was probed with NO token, got a 401, and was
+    misreported "unhealthy" -- blocking a perfectly healthy `voice run`.
+    Only a genuine connection failure (``URLError`` that is NOT an
+    ``HTTPError``, or ``OSError`` -- see the U2-b note below) is
+    "unreachable", and only an actual 5xx (a running-but-broken serve, e.g. a
+    500 from a half-initialized model server) is "unhealthy". Both of those
+    still block startup (the caller keeps returning rc=1 for them); anything
+    else (2xx, or a 4xx meaning "up and routing, just didn't like this exact
+    unauthenticated/guessed-path probe request") is treated as OK.
+
+    U2-b note (still applies): ``urllib.error.HTTPError`` IS a ``URLError``
+    subclass, and real ``urlopen()`` RAISES it for a 4xx/5xx response instead
+    of returning a response object with a non-2xx ``.status`` -- so
+    ``HTTPError`` is caught FIRST and classified by ``exc.code`` (5xx vs
+    everything else); the generic ``URLError``/``OSError`` branch below it is
+    both the real connection-failure path and a defensive fallback for any
+    injected ``_open`` fake that returns (rather than raises) a status.
+    """
+    url = base_url.rstrip("/") + "/models"
+    headers = {"Authorization": "Bearer %s" % token} if token else {}
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with _open(req, timeout=timeout) as resp:
+            status = getattr(resp, "status", None) or resp.getcode()
+    except urllib.error.HTTPError as exc:
+        if exc.code >= 500:
+            return "%s at %s returned HTTP %s (unhealthy)" % (name, url, exc.code)
+        return None  # up and routing (e.g. 401/403/404/405) -- reachable, not blocking
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        return "%s at %s is unreachable (%s)" % (name, url, exc)
+    if status >= 500:
+        return "%s at %s returned HTTP %s (unhealthy)" % (name, url, status)
+    return None
+
+
+def _resolve_probe_token(table: Dict[str, Any]) -> Optional[str]:
+    """Resolve `table`'s configured bearer token the SAME way the LLM/STT/TTS
+    stages resolve their own (see ``stages/llm.py``'s ``_post_stream``,
+    ``stages/stt.py``'s ``transcribe_stream``, ``stages/tts.py``'s
+    ``stream_speech`` -- all three do ``if config.api_key_env:
+    os.environ.get(config.api_key_env)``), so the preflight probe
+    authenticates exactly like the real request traffic will.
+
+    Returns ``None`` when this endpoint has no `api_key_env` configured, or
+    when it names an environment variable that is not currently set --
+    mirroring the stages' own silent-no-header fallback (never raises;
+    ``voice_config.resolve_secret``'s ``required=True`` semantics are
+    deliberately NOT used here, since a missing token should make the probe
+    request unauthenticated -- exactly what the real stage traffic would also
+    send -- not crash the preflight check)."""
+    api_key_env = table.get("api_key_env")
+    if not api_key_env:
+        return None
+    return os.environ.get(api_key_env)
+
+
+def _check_required_endpoints_reachable(voice: Dict[str, Any]) -> Optional[str]:
+    """Probe the LLM router + STT/TTS serves declared in the manifest; return
+    the first problem found, or ``None`` if all three answer. Calls the
+    MODULE-LEVEL ``_probe_endpoint`` (not a private closure) so tests can
+    monkeypatch it directly. Each endpoint's own configured `api_key_env` is
+    resolved (:func:`_resolve_probe_token`) and sent along -- a token-authed
+    endpoint is probed WITH its token, not bare (see the B1 fix note on
+    :func:`_probe_endpoint`)."""
+    for name, table_key in (("anvil router (voice.llm)", "llm"), ("STT serve (voice.stt)", "stt"), ("TTS serve (voice.tts)", "tts")):
+        table = voice.get(table_key, {})
+        base_url = table.get("base_url", "")
+        token = _resolve_probe_token(table)
+        problem = _probe_endpoint(name, base_url, token=token)
+        if problem:
+            return problem
+    return None
+
+
+def _build_realtime_server(data: dict, voice: Dict[str, Any]):
+    """Wire the REAL cascade together: a `SessionPool` of real `VoicePipeline`
+    instances (STT/TTS out-of-process serves + the LLM stage routed at the
+    anvil router -- see `pipeline.real_pipeline_factory_from_manifest`)
+    behind a Realtime WebSocket server (`realtime.ws.make_ws_server`),
+    mirroring `scripts/voice/realtime_sdk_client_demo.py`'s own
+    `build_server` so `anvil-serving voice run` does not need that script.
+
+    Returns ``(server, pool)`` -- ``server`` is constructed (its socket is
+    bound) but `serve_forever_in_background` has not been called on it yet.
+
+    Raises :class:`ValueError` if `voice.realtime_host` is a non-loopback
+    address with no `realtime_token_env` configured (`make_ws_server`'s own
+    F2 guard, honored here rather than duplicated) -- the caller (`cmd_run`)
+    turns that into a clean, non-crashing CLI error instead of a traceback.
+    Nothing is bound/started before that guard runs.
+    """
+    pool_size = int(voice.get("pool_size", DEFAULT_POOL_SIZE))
+    pipeline_factory = real_pipeline_factory_from_manifest(data)
+    pool = SessionPool(size=pool_size, pipeline_factory=pipeline_factory)
+    session_counter = [0]
+
+    def on_connect(conn, path) -> None:
+        session_counter[0] += 1
+        session_id = "voice-run-%d" % session_counter[0]
+        try:
+            unit = pool.claim(session_id)
+        except Exception:  # noqa: BLE001 - SessionPoolExhausted: reject cleanly, matching the Realtime API's own behavior
+            conn.send_json({"type": "error", "event_id": "evt_reject", "error": {
+                "type": "session_limit_reached", "message": "no free session slot",
+            }})
+            conn.close(code=1008, reason="session_limit_reached")
+            return
+
+        service = RealtimeService(pipeline=unit.pipeline, send_event=conn.send_json, session_id=session_id)
+        unit.service = service
+        conn.send_json({"type": "session.created", "event_id": "evt_session", "session": {"id": session_id}})
+
+        stop_sender = threading.Event()
+
+        def sender_loop() -> None:
+            while not stop_sender.is_set():
+                for event in service.drain_pipeline_events():
+                    try:
+                        conn.send_text(json.dumps(event))
+                    except OSError:
+                        return
+                time.sleep(SENDER_POLL_INTERVAL_S)
+
+        sender_thread = threading.Thread(target=sender_loop, daemon=True, name="voice-run-sender-%s" % session_id)
+        sender_thread.start()
+        try:
+            while True:
+                text = conn.recv_text()
+                if text is None:
+                    break
+                service.handle_client_message(text)
+        finally:
+            stop_sender.set()
+            sender_thread.join(timeout=2.0)
+            pool.release(unit)
+
+    server = make_ws_server(
+        voice.get("realtime_host", "127.0.0.1"),
+        int(voice.get("realtime_port", 8765)),
+        on_connect,
+        extra_routes={"/pool": pool.pool_status, "/usage": pool.usage_stats},
+        token_env=voice.get("realtime_token_env"),
+    )
+    return server, pool
+
+
+def _wait_forever_default() -> None:
+    """Blocks the calling thread until interrupted (Ctrl+C). A plain sleep
+    loop so `cmd_run` has something interruptible to wait on without needing
+    the main thread to own the WS server's own `serve_forever()` (that runs
+    on its own background thread -- see `serve_forever_in_background`).
+    A module-level function (not a closure) so tests can monkeypatch it to
+    return immediately instead of actually blocking.
+    """
+    while True:
+        time.sleep(1.0)
+
+
 def cmd_run(args):
     data, err = _load(args.config)
     if err:
@@ -103,12 +318,38 @@ def cmd_run(args):
         return 2
     voice = data.get("voice", {})
     print("voice run: manifest OK -- %s" % voice_config.describe(data))
-    print(
-        "voice run: TODO -- the realtime server (ws://%s:%s/v1/realtime) is not yet "
-        "implemented; this is the T001/T002 foundation unit only." % (
-            voice.get("realtime_host", "127.0.0.1"), voice.get("realtime_port", 8765),
+
+    problem = _check_required_endpoints_reachable(voice)
+    if problem:
+        print(
+            "voice run: %s -- refusing to start a session pool against an "
+            "unreachable endpoint. Bring up the configured serves/router "
+            "first (`anvil-serving voice up`, `anvil-serving serve`) and "
+            "retry." % problem,
+            file=sys.stderr,
         )
+        return 1
+
+    try:
+        server, pool = _build_realtime_server(data, voice)
+    except ValueError as exc:
+        print("voice run: %s" % exc, file=sys.stderr)
+        return 2
+
+    thread = serve_forever_in_background(server)
+    host, port = server.server_address[:2]
+    print(
+        "voice run: realtime server up at ws://%s:%d/v1/realtime (pool size %d)"
+        % (host, port, pool.size)
     )
+    try:
+        _wait_forever_default()
+    except KeyboardInterrupt:
+        print("\nvoice run: interrupted -- shutting down")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5.0)
     return 0
 
 

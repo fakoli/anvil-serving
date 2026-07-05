@@ -23,10 +23,10 @@ Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s3
    misread as a barge-in. `local_loop_demo.py` clears pending mic input right
    after a turn ends as a partial mitigation, not a fix — a real deployment
    needs AEC upstream of the VAD stage.
-3. **`RealVoicePipeline`** (`scripts/voice/_real_pipeline.py`) duplicates
-   `anvil_serving.voice.pipeline.VoicePipeline`'s wiring rather than reusing
-   it directly — see that module's docstring for the flagged
-   `stt_stage=`/`tts_stage=` seam gap in `pipeline.py` this works around.
+3. ~~**`RealVoicePipeline`** duplicates `VoicePipeline`'s wiring.~~ **RESOLVED
+   (PUNCH-LIST #2).** `VoicePipeline` gained `stt_config=`/`tts_config=`/
+   `vad_model=` seams (queues built before any stage); `RealVoicePipeline`
+   is now a thin subclass of `VoicePipeline`, not a second copy of its wiring.
 
 ## How to run
 

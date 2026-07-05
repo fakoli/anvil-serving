@@ -19,6 +19,8 @@
 name = "anvil-voice"
 realtime_host = "127.0.0.1"   # the Realtime WebSocket server binds here (never localhost)
 realtime_port = 8765
+# pool_size = 4                        # concurrent Realtime sessions (anvil_serving.voice.realtime.pool)
+# realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"  # required if realtime_host is non-loopback (LAN/tailnet)
 
 # The brain: OpenAI Chat Completions ONLY (never the Responses API), pointed
 # at the anvil router by default so every voice turn inherits anvil's
