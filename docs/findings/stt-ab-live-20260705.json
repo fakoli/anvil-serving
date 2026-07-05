@@ -1,0 +1,81 @@
+{
+  "gpu": {
+    "available": true,
+    "source": "nvidia-smi",
+    "devices": [
+      {
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 5090",
+        "capability": "sm_120",
+        "memory_total": "32607 MiB",
+        "memory_used": "30725 MiB"
+      },
+      {
+        "index": 1,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "capability": "sm_120",
+        "memory_total": "97887 MiB",
+        "memory_used": "90660 MiB"
+      }
+    ],
+    "detail": "torch not importable; GPU context collected with nvidia-smi"
+  },
+  "reference_text": "The quick brown fox jumps over the lazy dog. Anvil serving routes local models where proven and cloud where not.",
+  "sample": "C:\\Users\\sdoum\\AppData\\Local\\Temp\\claude\\C--Users-sdoum-ai-code-anvil-serving\\21eba8ab-885c-4f97-acef-864745e5c375\\scratchpad\\test_stt.wav",
+  "candidates": [
+    {
+      "name": "parakeet.cpp",
+      "base_url": "http://127.0.0.1:30010/v1",
+      "model": "tdt_ctc-110m",
+      "stream": false,
+      "latency_ms": 148.36,
+      "hypothesis": "The quick brown fox jumps over the lazy dog. Anvil serving routes local models where proven and cloud wear not.",
+      "wer": 0.05,
+      "error": null,
+      "readiness": {
+        "docker_state": "raw-endpoint",
+        "ready": true,
+        "detail": "raw endpoint health/container probe; no managed serve_name given",
+        "health": {
+          "ready": true,
+          "url": "http://127.0.0.1:30010/health",
+          "status": 200
+        },
+        "container": {
+          "name": "parakeet-stt",
+          "available": true,
+          "status": "running",
+          "image": "ghcr.io/mudler/parakeet.cpp-server:latest-cuda",
+          "docker_name": "parakeet-stt"
+        }
+      }
+    },
+    {
+      "name": "vllm-whisper-tiny",
+      "base_url": "http://127.0.0.1:30015/v1",
+      "model": "whisper-tiny",
+      "stream": false,
+      "latency_ms": 162.46,
+      "hypothesis": " The quick brown fox jumps over the lazy dog. Andville serving roots local models where proven and cloud were not.",
+      "wer": 0.15,
+      "error": null,
+      "readiness": {
+        "docker_state": "raw-endpoint",
+        "ready": true,
+        "detail": "raw endpoint health/container probe; no managed serve_name given",
+        "health": {
+          "ready": true,
+          "url": "http://127.0.0.1:30015/health",
+          "status": 200
+        },
+        "container": {
+          "name": "anvil-stt-vllm-whisper-tiny-eager-test",
+          "available": true,
+          "status": "running",
+          "image": "vllm/vllm-openai:nightly",
+          "docker_name": "anvil-stt-vllm-whisper-tiny-eager-test"
+        }
+      }
+    }
+  ]
+}
