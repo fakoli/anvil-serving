@@ -1,0 +1,30 @@
+# Example values for wiring OpenClaw Gateway to a Hugging Face speech-to-speech
+# sidecar managed alongside anvil-serving.
+#
+# This file is a topology sketch, not an authoritative OpenClaw schema. Map these
+# values to the live Gateway keys used by the installed OpenClaw version.
+
+[voice_sidecar]
+provider = "huggingface-speech-to-speech"
+command = "speech-to-speech"
+container_image = "speech-to-speech:local"
+same_host_realtime_url = "ws://127.0.0.1:8765/v1/realtime"
+gateway_realtime_url = "ws://voice-sidecar.tailnet.example:8765/v1/realtime"
+
+[voice_sidecar.llm_backend]
+backend = "chat-completions"
+base_url = "http://127.0.0.1:8000/v1"
+container_base_url = "http://host.docker.internal:8000/v1"
+model = "chat"
+api_key_env = "ANVIL_ROUTER_TOKEN"
+stream = true
+
+[voice_sidecar.models]
+stt = "parakeet-tdt"
+tts = "qwen3"
+local_llm = "disabled-by-default"
+
+[openclaw_gateway]
+phone_facing_owner = "openclaw-gateway"
+ios_protocol_change_required = false
+bridge_target = "voice_sidecar.gateway_realtime_url"

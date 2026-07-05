@@ -128,6 +128,7 @@ Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
 | `anvil-serving benchmark` | Replay representative traffic and measure capacity. |
 | `anvil-serving external-bench` | Import and compare external inference benchmark priors. |
 | `anvil-serving harness sync openclaw` | Render OpenClaw model config from live router presets. |
+| `anvil-serving voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings. |
 | `anvil-serving mcp` | Expose status, route probes, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
 | `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |
@@ -181,6 +182,7 @@ OpenClaw config sync.
 | [Serves & eval](docs/SERVES-AND-EVAL.md) | Local serve lifecycle and eval entry points. |
 | [External benchmarks](docs/EXTERNAL-BENCHMARKS.md) | Import, report, export, and compare advisory benchmark data. |
 | [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md) | Reference integration contract and current caveats. |
+| [Hugging Face speech-to-speech](examples/huggingface-speech-to-speech/) | Voice sidecar recipe for Realtime audio with anvil-routed LLM turns. |
 | [ADRs](docs/adr/README.md) | Architecture decisions and rationale. |
 | [Changelog](CHANGELOG.md) | Release history. |
 
