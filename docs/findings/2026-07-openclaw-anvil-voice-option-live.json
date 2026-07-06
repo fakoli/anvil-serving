@@ -1,0 +1,200 @@
+{
+  "task": "openclaw-anvil-voice-option:T008",
+  "measured_at": "2026-07-06T21:47:03.904Z",
+  "result": "pass",
+  "host": {
+    "name": "Fakoli Mini",
+    "platform": "darwin",
+    "hardware_model": "Mac16,10",
+    "memory_class_gb": 16
+  },
+  "openclaw": {
+    "version": "2026.6.11",
+    "gateway_url": "ws://127.0.0.1:18789",
+    "temporary_validation_gateway_url": "ws://127.0.0.1:18790",
+    "gateway_status": "running",
+    "plugin_id": "anvil-voice",
+    "plugin_status": "loaded from /Users/sdoumbouya/anvil/openclaw-anvil-voice-t008-2135 for T008 smoke",
+    "realtime_voice_provider_ids": [
+      "anvil",
+      "google",
+      "openai"
+    ],
+    "talk_active_realtime_provider": "anvil",
+    "talk_realtime_transport": "gateway-relay",
+    "anvil_catalog_brains_on_installed_core": [
+      "none"
+    ],
+    "catalog_core_note": "Installed OpenClaw 2026.6.11 still advertises brains=[none] for supportsToolCalls=false providers; source change in this PR advertises agent-consult and is covered by src/gateway/server-methods/talk.test.ts. Live talk.session.create with brain=agent-consult passed.",
+    "anvil_input_audio_formats": [
+      {
+        "encoding": "g711_ulaw",
+        "sampleRateHz": 8000,
+        "channels": 1
+      },
+      {
+        "encoding": "pcm16",
+        "sampleRateHz": 24000,
+        "channels": 1
+      }
+    ],
+    "anvil_output_audio_formats": [
+      {
+        "encoding": "g711_ulaw",
+        "sampleRateHz": 8000,
+        "channels": 1
+      },
+      {
+        "encoding": "pcm16",
+        "sampleRateHz": 24000,
+        "channels": 1
+      }
+    ]
+  },
+  "anvil_voice": {
+    "realtime_url": "ws://127.0.0.1:8765/v1/realtime",
+    "process_proof": {
+      "measured_at": "2026-07-06T21:35:43Z",
+      "ports": [
+        {
+          "host": "127.0.0.1",
+          "port": 8765,
+          "status": "open"
+        },
+        {
+          "host": "127.0.0.1",
+          "port": 30010,
+          "status": "open"
+        },
+        {
+          "host": "127.0.0.1",
+          "port": 30011,
+          "status": "open"
+        },
+        {
+          "host": "127.0.0.1",
+          "port": 18789,
+          "status": "open"
+        }
+      ],
+      "processes": [
+        {
+          "pid": 59869,
+          "ps": "59869     1 42:38  63376 .venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini"
+        },
+        {
+          "pid": 59872,
+          "ps": "59872     1 42:36  80432 .venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30011 --log-dir /tmp/anvil-voice-mini"
+        },
+        {
+          "pid": 59898,
+          "ps": "59898     1 42:21  12896 /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python /Users/sdoumbouya/anvil-serving-t007/.venv/bin/anvil-serving voice run --config examples/voice/fakoli-mini.toml"
+        }
+      ]
+    },
+    "stt": {
+      "base_url": "http://127.0.0.1:30010/v1",
+      "model": "mlx-community/parakeet-tdt-0.6b-v3",
+      "lifecycle": "external",
+      "ready": true
+    },
+    "tts": {
+      "base_url": "http://127.0.0.1:30011/v1",
+      "model": "mlx-community/Kokoro-82M-bf16",
+      "lifecycle": "external",
+      "ready": true
+    }
+  },
+  "route_proof": {
+    "url": "http://100.87.34.66:8000/v1/route",
+    "request_model": "fast-local",
+    "tier": "local",
+    "model": "qwen36-27b",
+    "provider": "fast-local",
+    "work_class": "chat-fast",
+    "confidence": 0.9,
+    "missing_token_status": 401
+  },
+  "mini_validation": {
+    "command": "python scripts/voice/mini_validation.py --config /tmp/anvil-voice-mini/fakoli-mini-external.toml --report /tmp/anvil-voice-mini/mini-validation-external.json",
+    "verdict": "supported",
+    "failure_modes": [],
+    "reasons": [
+      "all required Mini validation checks passed"
+    ]
+  },
+  "voice_benchmark": {
+    "command": "python scripts/voice/mini_validation.py --config /tmp/anvil-voice-mini/fakoli-mini-external.toml --report /tmp/anvil-voice-mini/mini-validation-external.json",
+    "ttfa_ms": 1224.28,
+    "turn_latency_ms": 1224.68,
+    "stt_wer": 0.4,
+    "tts_rtf": 0.1004,
+    "tts_first_audio_observed": true,
+    "tts_output_bytes": 76800,
+    "tts_audio_seconds": 1.6,
+    "stt_hypothesis": "Testing the local voice proof.",
+    "llm_reply": "I understand."
+  },
+  "openclaw_gateway_smoke": {
+    "command": "node /tmp/anvil-voice-mini/t008-gateway-smoke.js against temporary ws://127.0.0.1:18790 gateway",
+    "verdict": "pass",
+    "provider": "anvil",
+    "transport": "gateway-relay",
+    "mode": "realtime",
+    "brain": "agent-consult",
+    "model": "fast-local",
+    "final_transcript": "Testing the local voice proof.",
+    "transcript_count": 1,
+    "output_audio_bytes": 76764,
+    "output_audio_chunks": 19,
+    "audio_done": 1,
+    "errors": []
+  },
+  "review_dispositions": [
+    {
+      "reviewer": "Huygens",
+      "scope": "live validation and evidence",
+      "disposition": "fixed",
+      "notes": "Reran Mini validator with external lifecycle, added realtime process/listener/log proof, recorded exact commands, and refreshed gateway smoke."
+    },
+    {
+      "reviewer": "Einstein",
+      "scope": "anvil-serving harness/MCP/docs",
+      "disposition": "fixed",
+      "notes": "Removed legacy generated plugin defaults while preserving operator overrides; required env SecretRef for private/tailnet realtime URLs; added MCP voice passthrough."
+    },
+    {
+      "reviewer": "Plato",
+      "scope": "OpenClaw provider and voice-call path",
+      "disposition": "fixed",
+      "notes": "Added G.711 default/Voice Call explicit format, quiet-silence commit threshold, transcript dedupe, URL credential/query rejection, connect timeout, and source catalog brain fix."
+    }
+  ],
+  "validation_commands": [
+    "python -m pytest tests/test_harness.py tests/test_openclaw_sync_anvil_voice.py tests/test_mcp.py -q",
+    "corepack pnpm test:extension anvil-voice",
+    "node scripts/run-vitest.mjs run --config test/vitest/vitest.extension-voice-call.config.ts extensions/voice-call/src/webhook/realtime-handler.test.ts",
+    "node scripts/run-vitest.mjs run --config test/vitest/vitest.gateway.config.ts src/gateway/server-methods/talk.test.ts src/gateway/talk-realtime-relay.test.ts",
+    "node scripts/run-oxlint.mjs --tsconfig config/tsconfig/oxlint.extensions.json extensions/anvil-voice extensions/voice-call/src/webhook/realtime-handler.ts extensions/voice-call/src/webhook/realtime-handler.test.ts",
+    "corepack pnpm plugins:inventory:check",
+    "corepack pnpm docs:check-mdx docs/providers/anvil-voice.md docs/plugins/voice-call.md docs/nodes/talk.md docs/web/control-ui.md docs/plugins/reference/anvil-voice.md",
+    "node scripts/check-extension-package-tsc-boundary.mjs --mode=compile",
+    "node scripts/check-extension-plugin-sdk-boundary.mjs --mode=plugin-sdk-internal extensions/anvil-voice",
+    "node scripts/check-extension-plugin-sdk-boundary.mjs --mode=relative-outside-package extensions/anvil-voice",
+    "git diff --check in both repositories",
+    "ssh fakoli-mini: mini_validation.py external lifecycle supported verdict",
+    "ssh fakoli-mini: node /tmp/anvil-voice-mini/t008-gateway-smoke.js against temporary ws://127.0.0.1:18790 gateway"
+  ],
+  "raw_artifacts": [
+    "docs/findings/2026-07-openclaw-anvil-voice-mini-validation.json",
+    "docs/findings/2026-07-openclaw-anvil-voice-realtime-process.json",
+    "docs/findings/2026-07-openclaw-anvil-voice-gateway-smoke.json",
+    "docs/findings/2026-07-openclaw-anvil-voice-talk-catalog.json",
+    "docs/findings/2026-07-openclaw-anvil-voice-talk-config.json",
+    "docs/findings/2026-07-openclaw-anvil-voice-plugin-inspect.json",
+    "docs/findings/2026-07-openclaw-anvil-voice-gateway-status.json"
+  ],
+  "known_limitations": [
+    "The live Mini runs installed OpenClaw 2026.6.11, so its catalog still reports brains=[none] for Anvil until the OpenClaw source PR is merged/released; the live session path with brain=agent-consult passed, and the source catalog fix is covered by tests."
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "cli": {
+    "version": "2026.6.11",
+    "entrypoint": "/opt/homebrew/bin/openclaw"
+  },
+  "logFile": "/tmp/openclaw/openclaw-2026-07-06.log",
+  "service": {
+    "label": "LaunchAgent",
+    "loaded": true,
+    "loadedText": "loaded",
+    "notLoadedText": "not loaded",
+    "command": {
+      "programArguments": [
+        "/opt/homebrew/opt/node/bin/node",
+        "/opt/homebrew/lib/node_modules/openclaw/dist/index.js",
+        "gateway",
+        "--port",
+        "18789"
+      ],
+      "workingDirectory": "/Users/sdoumbouya/.openclaw",
+      "environment": {
+        "OPENCLAW_GATEWAY_PORT": "18789"
+      },
+      "environmentValueSources": {
+        "ANVIL_CLOUD_CLASSES": "file",
+        "HOME": "file",
+        "NODE_EXTRA_CA_CERTS": "file",
+        "NODE_USE_SYSTEM_CA": "file",
+        "OPENCLAW_GATEWAY_PORT": "file",
+        "OPENCLAW_LAUNCHD_LABEL": "file",
+        "OPENCLAW_SERVICE_KIND": "file",
+        "OPENCLAW_SERVICE_MARKER": "file",
+        "OPENCLAW_SERVICE_VERSION": "file",
+        "OPENCLAW_SYSTEMD_UNIT": "file",
+        "OPENCLAW_WINDOWS_TASK_HIDDEN_LAUNCHER": "file",
+        "OPENCLAW_WINDOWS_TASK_NAME": "file",
+        "PATH": "file",
+        "TMPDIR": "file"
+      },
+      "sourcePath": "/Users/sdoumbouya/Library/LaunchAgents/ai.openclaw.gateway.plist"
+    },
+    "runtime": {
+      "status": "running",
+      "state": "active",
+      "pid": 58488,
+      "cachedLabel": false
+    },
+    "configAudit": {
+      "ok": true,
+      "issues": []
+    }
+  },
+  "config": {
+    "cli": {
+      "path": "/Users/sdoumbouya/.openclaw/openclaw.json",
+      "exists": true,
+      "valid": true,
+      "controlUi": {
+        "allowInsecureAuth": true,
+        "allowedOrigins": [
+          "http://fakoli-mini:18789",
+          "https://fakoli-mini.tail4378d.ts.net",
+          "http://100.65.157.83:18789"
+        ]
+      }
+    },
+    "daemon": {
+      "path": "/Users/sdoumbouya/.openclaw/openclaw.json",
+      "exists": true,
+      "valid": true,
+      "controlUi": {
+        "allowInsecureAuth": true,
+        "allowedOrigins": [
+          "http://fakoli-mini:18789",
+          "https://fakoli-mini.tail4378d.ts.net",
+          "http://100.65.157.83:18789"
+        ]
+      }
+    }
+  },
+  "gateway": {
+    "bindMode": "loopback",
+    "bindHost": "127.0.0.1",
+    "port": 18789,
+    "portSource": "service args",
+    "probeUrl": "ws://127.0.0.1:18789",
+    "probeNote": "Loopback-only gateway; only local clients can connect.",
+    "version": "2026.6.11"
+  },
+  "port": {
+    "port": 18789,
+    "status": "busy",
+    "listeners": [
+      {
+        "pid": 58488,
+        "command": "node",
+        "address": "127.0.0.1:18789",
+        "commandLine": "/opt/homebrew/opt/node/bin/node /opt/homebrew/lib/node_modules/openclaw/dist/index.js gateway --port 18789",
+        "user": "sdoumbouya",
+        "ppid": 1
+      },
+      {
+        "pid": 58488,
+        "command": "node",
+        "address": "[::1]:18789",
+        "commandLine": "/opt/homebrew/opt/node/bin/node /opt/homebrew/lib/node_modules/openclaw/dist/index.js gateway --port 18789",
+        "user": "sdoumbouya",
+        "ppid": 1
+      }
+    ],
+    "hints": []
+  },
+  "rpc": {
+    "ok": true,
+    "kind": "connect",
+    "capability": "admin_capable",
+    "auth": {
+      "role": "operator",
+      "scopes": [
+        "operator.admin",
+        "operator.pairing",
+        "operator.read",
+        "operator.write"
+      ],
+      "capability": "admin_capable"
+    },
+    "server": {
+      "version": "2026.6.11",
+      "connId": "bf03f63b-a16b-4934-b2d9-08b6e3e011ef"
+    },
+    "version": "2026.6.11",
+    "url": "ws://127.0.0.1:18789"
+  },
+  "extraServices": [],
+  "pluginVersionDrift": {
+    "gatewayVersion": "2026.6.11",
+    "drifts": []
+  }
+}

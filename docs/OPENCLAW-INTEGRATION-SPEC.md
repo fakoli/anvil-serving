@@ -187,8 +187,7 @@ Install: `openclaw plugins install --link ./local` (dev) or `clawhub:<org>/openc
     }
   } },
   plugins: { entries: { "openclaw-anvil-intent-router": {
-    hooks: { allowConversationAccess: true },
-    config: { nativeProvider: "anthropic", nativeModel: "claude-sonnet-4-5", routeTimeoutMs: 30 }
+    hooks: { allowConversationAccess: true }
   } } } // key = packaged plugin id (CONFIRMED required gate)
 }
 ```
@@ -231,6 +230,53 @@ computes its own completion-token budget from a declared context window has the 
 failure shape — a 1-token (or otherwise pathologically small) "availability probe" is
 not exotic; it is a natural consequence of *any* provider-side context-window
 misdeclaration once the real prompt exceeds it.
+
+## 2a. OpenClaw realtime voice config (point Talk at Anvil Voice)
+
+The text-router provider above is separate from OpenClaw's realtime voice
+provider registry. For speech-to-speech, run `anvil-serving voice run` on the
+voice host and configure OpenClaw Talk to use provider id `anvil` over the
+Gateway relay:
+
+```jsonc
+// ~/.openclaw/openclaw.json (JSON5)
+{
+  talk: {
+    realtime: {
+      mode: "realtime",
+      transport: "gateway-relay",
+      brain: "agent-consult",
+      provider: "anvil",
+      providers: {
+        anvil: {
+          realtimeUrl: "ws://127.0.0.1:8765/v1/realtime",
+          model: "fast-local",
+          silenceDurationMs: 200
+        }
+      }
+    }
+  }
+}
+```
+
+The matching anvil-serving side is `examples/voice/openclaw-anvil-voice.toml`.
+Its Realtime server, STT, and TTS endpoints are Mini-local, while `[voice.llm]`
+routes to the Fakoli Dark router. `harness sync openclaw --voice` renders this
+Talk block together with the normal anvil model provider config:
+
+```bash
+anvil-serving harness sync openclaw \
+  --config configs/example.toml \
+  --base-url http://100.87.34.66:8000/v1 \
+  --voice \
+  --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
+  --out ./openclaw.anvil.json
+```
+
+Loopback Anvil Voice can omit a realtime bearer token. A private/tailnet
+Realtime bind must set `voice.realtime_token_env` in the voice manifest and
+pass `--voice-api-key-env ANVIL_VOICE_REALTIME_TOKEN` during sync, so OpenClaw
+stores only an env-backed SecretRef.
 
 ## 3. Preset / model-id contract
 

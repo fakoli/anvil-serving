@@ -186,6 +186,8 @@ def test_tools_list_has_json_schemas():
     assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
     assert tools["router_promote"]["inputSchema"]["properties"]["human_approved"]["type"] == "boolean"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["skills"]["type"] == "boolean"
+    assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice"]["type"] == "boolean"
+    assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice_api_key_env"]["type"] == "string"
     assert tools["voice_manage"]["inputSchema"]["required"] == ["action"]
     assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
     assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
@@ -544,6 +546,25 @@ def test_openclaw_sync_preview_can_include_skills(tmp_path):
     assert preview["agent_models"]["anvil-adversarial-reviewer"] == "anvil/review"
 
 
+def test_openclaw_sync_preview_can_include_voice(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "base_url": "http://127.0.0.1:8000/v1",
+        "api_key_env": "ANVIL_ROUTER_TOKEN",
+        "voice": True,
+        "voice_realtime_url": "ws://127.0.0.1:8765/v1/realtime",
+    })
+    assert env["ok"] is True
+    target = env["data"]["target"]
+    preview = env["data"]["preview"]
+    assert target["voice"] is True
+    assert preview["voice"] is True
+    assert preview["voice_provider"] == "anvil"
+    assert preview["voice_realtime_url"] == "ws://127.0.0.1:8765/v1/realtime"
+    assert preview["voice_model"] == "fast-local"
+
+
 def test_openclaw_sync_confirmed_apply_forwards_skills(tmp_path, monkeypatch):
     cfg = _router_cfg(tmp_path)
     out = tmp_path / "openclaw.json"
@@ -570,6 +591,38 @@ def test_openclaw_sync_confirmed_apply_forwards_skills(tmp_path, monkeypatch):
     assert seen["config_path"] == cfg
     assert seen["kwargs"]["skills"] is True
     assert seen["kwargs"]["skill_dir"] == "/opt/anvil-serving/examples/openclaw/skills"
+
+
+def test_openclaw_sync_confirmed_apply_forwards_voice(tmp_path, monkeypatch):
+    cfg = _router_cfg(tmp_path)
+    out = tmp_path / "openclaw.json"
+    seen = {}
+
+    from anvil_serving import harness
+
+    def fake_sync(config_path, **kwargs):
+        seen["config_path"] = config_path
+        seen["kwargs"] = kwargs
+        return 0
+
+    monkeypatch.setattr(harness, "cmd_sync_openclaw", fake_sync)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "out": str(out),
+        "voice": True,
+        "voice_realtime_url": "ws://127.0.0.1:8765/v1/realtime",
+        "voice_model": "fast-local",
+        "voice_api_key_env": "ANVIL_VOICE_REALTIME_TOKEN",
+        "confirm": True,
+        "dry_run": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is True
+    assert seen["config_path"] == cfg
+    assert seen["kwargs"]["voice"] is True
+    assert seen["kwargs"]["voice_realtime_url"] == "ws://127.0.0.1:8765/v1/realtime"
+    assert seen["kwargs"]["voice_model"] == "fast-local"
+    assert seen["kwargs"]["voice_api_key_env"] == "ANVIL_VOICE_REALTIME_TOKEN"
 
 
 def test_models_inventory_reads_structured_catalog(tmp_path):
@@ -1195,6 +1248,17 @@ def test_openclaw_sync_skill_dir_requires_skills(tmp_path):
     })
     assert env["ok"] is False
     assert env["error"]["code"] == "bad_argument"
+
+
+def test_openclaw_sync_rejects_bad_voice_api_key_env(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "voice": True,
+        "voice_api_key_env": "not a valid env name",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_voice_api_key_env"
 
 
 def test_openclaw_sync_rejects_unsafe_gateway_target_in_preview(tmp_path):
