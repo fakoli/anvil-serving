@@ -56,7 +56,7 @@ The initial checked-in entry points are:
 | Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
 | OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Use workspace-installed skills, or pass `--skill-dir <gateway-visible-path>` for checkout-loaded skills. | Split additional specialized skills once their backing tools exist. |
 | MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, and promotion preview. | Router token handling and advisory external benchmark report wrappers. |
-| Result contract | `operator-workflow/v1` packet documented for skills and reviewers. | Stdlib validator and tests that enforce packet enums and required fields. |
+| Result contract | `operator-workflow/v1` packet documented for skills and reviewers; `workflow_packet_validate` validates packet shape, promotion gates, and artifact paths. | Broader packet fixtures from real multi-agent runs. |
 
 ## OpenClaw Smoke Result
 
@@ -97,6 +97,7 @@ from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
 | Correctness gate probe | `preflight_probe` | Implemented |
 | Bounded throughput probe | `benchmark_probe` | Implemented |
 | Benchmark evidence artifact | `benchmark_artifact` | Implemented; writes `--json-out` only to the workspace or server-configured `ANVIL_BENCHMARK_EVIDENCE_DIR` / `ANVIL_EVIDENCE_DIR` roots |
+| Workflow packet validation | `workflow_packet_validate` | Implemented; validates `operator-workflow/v1`, promotion proof, and bounded artifact paths |
 
 That is enough for status, route checks, basic validation, bounded benchmark
 probes, OpenClaw provider/model sync, and OpenClaw workbench skill rendering. It
@@ -347,6 +348,11 @@ Required enums:
 Packets that claim `promoted=true` must include a human-approved promotion tool
 result. External benchmark priors must live in `advisory_priors`, not in the
 promotion-quality evidence path.
+
+Before a packet is used as promotion evidence, run `workflow_packet_validate`.
+The validator normalizes `artifacts` entries that are either string paths or
+objects with a `path` field, and rejects artifact paths outside the workspace or
+server-configured evidence roots.
 
 ## Implementation Priorities
 
