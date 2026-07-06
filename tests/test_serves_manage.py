@@ -161,6 +161,21 @@ def test_cmd_up_compose_runs_compose_up_argv():
                       "up", "-d", "svc-a", "svc-b"]]
 
 
+def test_cmd_up_compose_threads_env_file_before_compose_file():
+    calls = []
+
+    def run(argv, **k):
+        calls.append(argv)
+        return proc(0)
+
+    assert serves.cmd_up_compose("/x/experiment.yml", ["svc"], env_file="hf.env",
+                                 _run=run) == 0
+    up = calls[0]
+    assert up[:2] == ["docker", "compose"]
+    assert "--env-file" in up
+    assert up.index("--env-file") < up.index("-f")
+
+
 def test_cmd_up_compose_no_services_brings_up_whole_file():
     calls = []
 
@@ -200,17 +215,33 @@ def test_main_up_compose_needs_no_manifest(tmp_path, monkeypatch):
     # `up --compose` is independent of serves.toml: it dispatches BEFORE the manifest is
     # loaded, so a missing serves.toml does not error out (rc 2 for missing manifest).
     monkeypatch.chdir(tmp_path)  # no serves.toml here
+    monkeypatch.setattr(serves, "_default_env_file", lambda: None)
     seen = {}
 
-    def fake(compose_file, services, dry_run=False):
-        seen["compose"], seen["services"], seen["dry_run"] = compose_file, services, dry_run
+    def fake(compose_file, services, dry_run=False, env_file=None):
+        seen["compose"], seen["services"] = compose_file, services
+        seen["dry_run"], seen["env_file"] = dry_run, env_file
         return 0
 
     monkeypatch.setattr(serves, "cmd_up_compose", fake)
     rc = serves.main(["up", "--compose", "/x/experiment.yml", "svc-a", "svc-b"])
     assert rc == 0
     assert seen == {"compose": "/x/experiment.yml", "services": ["svc-a", "svc-b"],
-                    "dry_run": False}
+                    "dry_run": False, "env_file": None}
+
+
+def test_main_up_compose_threads_env_file(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    seen = {}
+
+    def fake(compose_file, services, dry_run=False, env_file=None):
+        seen["env_file"] = env_file
+        return 0
+
+    monkeypatch.setattr(serves, "cmd_up_compose", fake)
+    rc = serves.main(["up", "--compose", "/x/experiment.yml", "--env-file", "hf.env"])
+    assert rc == 0
+    assert seen["env_file"] == "hf.env"
 
 
 def test_main_compose_rejected_for_non_up_action(capsys):
@@ -253,16 +284,32 @@ def test_main_adopt_dispatches(tmp_path, monkeypatch):
         container = "sglang"
         port = 30000
     """)
+    monkeypatch.setattr(serves, "_default_env_file", lambda: None)
     seen = {}
 
-    def fake(serves_list, names, dry_run=False):
-        seen["names"], seen["dry_run"] = names, dry_run
+    def fake(serves_list, names, dry_run=False, env_file=None):
+        seen["names"], seen["dry_run"], seen["env_file"] = names, dry_run, env_file
         return 0
 
     monkeypatch.setattr(serves, "cmd_adopt", fake)
     rc = serves.main(["adopt", "heavy", "--manifest", path])
     assert rc == 0
-    assert seen == {"names": ["heavy"], "dry_run": False}
+    assert seen == {"names": ["heavy"], "dry_run": False, "env_file": None}
+
+
+def test_main_adopt_threads_env_file(tmp_path, monkeypatch):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "heavy"
+        container = "sglang"
+        port = 30000
+    """)
+    seen = {}
+    monkeypatch.setattr(serves, "cmd_adopt",
+                        lambda serves_list, names, **k: seen.update(k) or 0)
+    rc = serves.main(["adopt", "heavy", "--manifest", path, "--env-file", "hf.env"])
+    assert rc == 0
+    assert seen["env_file"] == "hf.env"
 
 
 # ---- logs -------------------------------------------------------------------

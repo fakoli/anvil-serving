@@ -14,12 +14,12 @@ Import-light like the rest of ``anvil_serving.voice``: stdlib only
 ``threading``, ``queue``, ``dataclasses``). No ``websockets`` library, no
 FastAPI, no ``openai`` SDK.
 
-HONESTY NOTE: this unit is proven by dependency-light unit tests only (frame
-encode/decode, handshake bytes, event parse/dispatch tables, pool isolation)
--- never against a live audio device, a real STT/TTS serve, or the official
-OpenAI Realtime SDK as a client. See each module's docstring for the specific
-simplifications made relative to the reference design in
-``docs/findings/2026-07-04-hf-speech-to-speech-review.md``.
+HONESTY NOTE: CI covers the dependency-light pieces (frame encode/decode,
+handshake bytes, event parse/dispatch tables, pool isolation). Live hardware
+and official OpenAI SDK compatibility are proven by capture harnesses, not by
+CI; see ``docs/findings/2026-07-voice-realtime-proof.md`` and
+``docs/VOICE-REALTIME.md`` for the current replacement contract and known
+subset.
 """
 from __future__ import annotations
 

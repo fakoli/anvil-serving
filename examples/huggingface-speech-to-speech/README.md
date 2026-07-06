@@ -1,11 +1,12 @@
 # Hugging Face speech-to-speech through anvil-serving
 
-This recipe wires Hugging Face's `speech-to-speech` project to use anvil-serving as its LLM
-backend. `speech-to-speech` keeps ownership of the voice-agent loop: VAD, STT, turn-taking,
-Realtime WebSocket, and TTS. anvil-serving sits behind it as the OpenAI-compatible text model
-router.
+This is the alternate sidecar topology. Hugging Face's `speech-to-speech` project owns the
+voice-agent loop: VAD, STT, turn-taking, Realtime WebSocket, and TTS. anvil-serving sits behind it
+as the OpenAI-compatible text model router.
 
-Do not point an OpenAI Realtime client at anvil. Point that client at `speech-to-speech`. Point
+For the native Anvil replacement path, where a server-to-server OpenAI Realtime client connects to
+Anvil's own `/v1/realtime` endpoint, use [`anvil-serving voice run`](../../docs/VOICE-REALTIME.md).
+For this sidecar recipe, point the Realtime client at `speech-to-speech` and point
 `speech-to-speech`'s LLM backend at anvil.
 
 ## 1. Start anvil
@@ -106,14 +107,16 @@ the host command.
 
 ## 3. Connect a Realtime client
 
-Connect your Realtime client to `speech-to-speech`, not anvil:
+In this sidecar topology, connect your Realtime client to `speech-to-speech`:
 
 ```text
 ws://127.0.0.1:8765/v1/realtime
 ```
 
-Anvil does not implement `/v1/realtime` or proxy audio frames. Its role here is to quality-gate
-and route the LLM requests that `speech-to-speech` makes after STT produces text.
+Anvil's native voice server also implements a Realtime-compatible `/v1/realtime` endpoint, but that
+is a different topology documented in `docs/VOICE-REALTIME.md`. This recipe keeps the Realtime audio
+frames in `speech-to-speech`; anvil only quality-gates and routes the LLM requests that
+`speech-to-speech` makes after STT produces text.
 
 ## 4. Bridge through OpenClaw Gateway
 
@@ -178,6 +181,8 @@ Record this checklist for each run:
 - Use `127.0.0.1` for local URLs on Windows.
 - Use `--model_name chat` for the first run. `planning` is intentionally denied on local-only
   configs unless a measured profile says otherwise.
+- Use `anvil-serving voice run` when the goal is to replace the hosted OpenAI Realtime endpoint
+  with Anvil's own `/v1/realtime` server.
 - If you need the voice agent to call tools, keep `--llm_backend chat-completions`; anvil's
   OpenAI relay preserves tool definitions and tool-call history on that path.
 - If you want `speech-to-speech` to use its default Responses API backend, anvil would need a

@@ -1,8 +1,10 @@
 # anvil-serving voice manifest (reference example)
 #
 # Describes the anvil-style stdlib VAD -> STT -> LLM -> TTS orchestrator + its
-# OpenAI Realtime-compatible server. See
-# docs/findings/2026-07-04-hf-speech-to-speech-review.md for the design.
+# OpenAI Realtime-compatible server. The intended deployment goal is that a
+# server-to-server Realtime voice client can point at Anvil's `/v1/realtime`
+# endpoint instead of the hosted OpenAI Realtime endpoint. See docs/VOICE-REALTIME.md
+# for the replacement contract and known subset.
 #
 # Hygiene (enforced by anvil_serving.voice.config.validate_manifest):
 #   - 127.0.0.1, never localhost (Windows IPv6 stall -- CLAUDE.md gotcha #1).

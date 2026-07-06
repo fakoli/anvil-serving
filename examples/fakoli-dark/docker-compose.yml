@@ -115,13 +115,13 @@ services:
       --host 0.0.0.0 --port 30003
 
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
-  # host.docker.internal:<port>. Pinned to the DEPLOYED RELEASE image anvil-serving:0.8.0
+  # host.docker.internal:<port>. Pinned to the DEPLOYED RELEASE image anvil-serving:0.10.0
   # (rebuilt from main — flexibility-mode + the v2 profile loader, which is backward-compatible
   # with the live v1 profile) and a config VOLUME (anvil-router-cfg). Pin the released TAG (not
   # `build:`) so `up` reproduces the deployment and `router promote --image` validates against it.
   # Bump this tag + router_manage.DEFAULT_IMAGE together on each router release.
   router:
-    image: anvil-serving:0.9.0
+    image: anvil-serving:0.10.0
     container_name: anvil-router
     restart: unless-stopped
     depends_on:
