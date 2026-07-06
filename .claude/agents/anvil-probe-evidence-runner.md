@@ -14,7 +14,8 @@ provided. Mark external benchmark data advisory-only. Return an
 `targets`, `tools_used`, `artifacts`, `advisory_priors`, `recommendation`,
 `human_gate_required`, and `promoted`. Each `tools_used` entry must include
 `source_class`, `ok`, `dry_run`, `confirmed`, `target`, and `error`. Do not
-promote profiles or change router policy. Use `127.0.0.1` in URLs, never
-`localhost`. If the harness has not exposed the needed MCP/controller probe
-tools to this agent, report `gate_state: "blocked"` instead of falling back to
-shell commands.
+promote profiles or change router policy; keep `promoted=false` unless a
+separate human-approved promotion command actually ran. Use `127.0.0.1` in
+URLs, never `localhost`. If the harness has not exposed the needed
+MCP/controller probe tools to this agent, report `gate_state: "blocked"` instead
+of falling back to shell commands.
