@@ -52,6 +52,14 @@ The command exits 0 only after a playback-interrupting barge-in turn completes
 with TTFA, end-to-end latency, non-empty assistant output audio, and a validated
 `/v1/route` proof for the configured local tier.
 
+To diagnose input routing before rerunning the proof:
+
+```bash
+python scripts/voice/local_loop_demo.py --list-devices
+python scripts/voice/local_loop_demo.py --meter-inputs --meter-seconds 0.35
+python scripts/voice/local_loop_demo.py --meter-inputs --input-device 6 --meter-seconds 0.35
+```
+
 ## Session log
 
 | timestamp (UTC) | turns completed | barge-in observed? | avg TTFA (ms) | avg turn latency (ms) | route probe provider | mic recording | assistant recording | session JSON |
@@ -87,6 +95,13 @@ Interpretation: router/STT/TTS services were reachable and route proof was good,
 but the workstation input path selected by `sounddevice` did not deliver audible
 speech to the harness. This blocks the live proof until the microphone route is
 fixed or an explicit working `--input-device` is provided.
+
+Follow-up input-meter diagnostics confirmed the problem across the 16 kHz
+PortAudio paths: every openable input device reported RMS about 0.48 with peak
+1-2, or zero frames. A targeted check of device 6 (`Microphone (Arctis Nova Pro
+Wir`) reported RMS 0.49 and peak 2 against the proof threshold 500. The issue is
+therefore outside the router/STT/TTS path and inside Windows/audio-device
+routing or mute state.
 
 Open validation question once input works: does `SimpleEnergyVADModel`'s fixed
 `--vad-threshold` hold up across a real room's noise floor, or does it need

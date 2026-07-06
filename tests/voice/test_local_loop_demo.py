@@ -23,6 +23,106 @@ def test_capture_flag_without_value_uses_default_prefix():
     assert "local-loop-" in prefix
 
 
+def test_audio_diagnostics_flags_are_early_modes():
+    args = local_loop_demo.build_parser().parse_args(["--list-devices"])
+    assert args.list_devices is True
+
+    args = local_loop_demo.build_parser().parse_args(["--meter-inputs", "--meter-seconds", "0.25"])
+    assert args.meter_inputs is True
+    assert args.meter_seconds == 0.25
+
+
+def test_list_devices_main_exits_before_manifest_or_pipeline_setup(monkeypatch):
+    monkeypatch.setattr(local_loop_demo, "list_audio_devices", lambda: 0)
+    monkeypatch.setattr(
+        local_loop_demo,
+        "load_manifest_or_die",
+        lambda _path: (_ for _ in ()).throw(AssertionError("manifest should not load")),
+    )
+    monkeypatch.setattr(
+        local_loop_demo,
+        "RealVoicePipeline",
+        lambda _config: (_ for _ in ()).throw(AssertionError("pipeline should not construct")),
+    )
+
+    assert local_loop_demo.main(["--list-devices"]) == 0
+
+
+def test_meter_inputs_main_exits_before_manifest_or_pipeline_setup(monkeypatch):
+    def fake_meter_inputs(**kwargs):
+        assert kwargs["input_device"] == 6
+        return 0
+
+    monkeypatch.setattr(local_loop_demo, "meter_inputs", fake_meter_inputs)
+    monkeypatch.setattr(
+        local_loop_demo,
+        "load_manifest_or_die",
+        lambda _path: (_ for _ in ()).throw(AssertionError("manifest should not load")),
+    )
+    monkeypatch.setattr(
+        local_loop_demo,
+        "RealVoicePipeline",
+        lambda _config: (_ for _ in ()).throw(AssertionError("pipeline should not construct")),
+    )
+
+    assert local_loop_demo.main(["--meter-inputs", "--input-device", "6"]) == 0
+
+
+def test_numeric_device_args_are_resolved_to_indices():
+    assert local_loop_demo.resolve_device_arg(None) is None
+    assert local_loop_demo.resolve_device_arg("6") == 6
+    assert local_loop_demo.resolve_device_arg(" 26 ") == 26
+    assert local_loop_demo.resolve_device_arg("SteelSeries Sonar - Microphone") == "SteelSeries Sonar - Microphone"
+
+
+def test_pcm_int16_stats_reports_rms_peak_and_nonzero_samples():
+    pcm = b"\x00\x00" + b"\x00\x04" + b"\x00\xfc"  # 0, 1024, -1024
+
+    stats = local_loop_demo.pcm_int16_stats(pcm)
+
+    assert stats["samples"] == 3
+    assert stats["rms"] == 836.09
+    assert stats["peak"] == 1024
+    assert stats["nonzero_samples"] == 2
+
+
+def test_meter_input_device_uses_guarded_sounddevice_import(monkeypatch):
+    class FakeStream:
+        def __init__(self, *, callback, **_kwargs):
+            self.callback = callback
+
+        def __enter__(self):
+            self.callback(b"\x00\x00" + b"\x00\x04", 2, None, None)
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    class FakeSoundDevice:
+        RawInputStream = FakeStream
+
+    monkeypatch.setattr(
+        local_loop_demo.LocalAudioDuplex,
+        "_import_sounddevice",
+        staticmethod(lambda: FakeSoundDevice),
+    )
+    monkeypatch.setattr(local_loop_demo.time, "sleep", lambda _seconds: None)
+
+    result = local_loop_demo.meter_input_device(
+        3,
+        seconds=0.25,
+        sample_rate=16000,
+        frame_ms=20,
+        threshold=500.0,
+    )
+
+    assert result["ok"] is True
+    assert result["device"] == 3
+    assert result["frames"] == 1
+    assert result["peak"] == 1024
+    assert result["above_threshold"] is True
+
+
 def test_fakoli_dark_manifest_is_valid_and_pins_fast_tier():
     data = voice_config.load_manifest("examples/voice/fakoli-dark.toml")
 

@@ -48,8 +48,10 @@ Usage::
 from __future__ import annotations
 
 import json
+import math
 import os
 import queue
+import struct
 import sys
 import tempfile
 import threading
@@ -124,6 +126,9 @@ def build_parser():
     p.add_argument("--vad-threshold", type=float, default=500.0, help="SimpleEnergyVADModel RMS speech threshold")
     p.add_argument("--input-device", default=None, help="sounddevice input device index/name")
     p.add_argument("--output-device", default=None, help="sounddevice output device index/name")
+    p.add_argument("--list-devices", action="store_true", help="list PortAudio devices and exit")
+    p.add_argument("--meter-inputs", action="store_true", help="measure input-device RMS/peak briefly and exit")
+    p.add_argument("--meter-seconds", type=float, default=2.0, help="seconds per input device for --meter-inputs")
     p.add_argument(
         "--capture",
         nargs="?",
@@ -200,6 +205,18 @@ def resolve_capture_prefix(value: Optional[str]) -> Optional[str]:
     return value
 
 
+def resolve_device_arg(value: Optional[str]) -> Optional[Any]:
+    if value is None:
+        return None
+    stripped = value.strip()
+    if not stripped:
+        return None
+    try:
+        return int(stripped)
+    except ValueError:
+        return value
+
+
 def _write_wav(path: str, pcm_frames: List[bytes], sample_rate: int) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with wave.open(path, "wb") as w:
@@ -207,6 +224,123 @@ def _write_wav(path: str, pcm_frames: List[bytes], sample_rate: int) -> None:
         w.setsampwidth(2)
         w.setframerate(sample_rate)
         w.writeframes(b"".join(pcm_frames))
+
+
+def pcm_int16_stats(pcm: bytes) -> Dict[str, Any]:
+    sample_count = len(pcm) // 2
+    if sample_count <= 0:
+        return {"samples": 0, "rms": 0, "peak": 0, "nonzero_samples": 0}
+    samples = struct.unpack("<%dh" % sample_count, pcm[:sample_count * 2])
+    squares = sum(sample * sample for sample in samples)
+    return {
+        "samples": sample_count,
+        "rms": round(math.sqrt(squares / sample_count), 2),
+        "peak": max((abs(sample) for sample in samples), default=0),
+        "nonzero_samples": sum(1 for sample in samples if sample),
+    }
+
+
+def _input_device_indices(sd: Any) -> List[int]:
+    return [
+        idx for idx, device in enumerate(sd.query_devices())
+        if int(device.get("max_input_channels", 0)) > 0
+    ]
+
+
+def list_audio_devices() -> int:
+    sd = LocalAudioDuplex._import_sounddevice()
+    print("default devices: %s" % (sd.default.device,))
+    for idx, device in enumerate(sd.query_devices()):
+        input_channels = int(device.get("max_input_channels", 0))
+        output_channels = int(device.get("max_output_channels", 0))
+        if input_channels or output_channels:
+            print(
+                "%3d | in=%d out=%d | default_sr=%s | %s"
+                % (
+                    idx,
+                    input_channels,
+                    output_channels,
+                    device.get("default_samplerate"),
+                    device.get("name"),
+                )
+            )
+    return 0
+
+
+def meter_input_device(
+    device: Any,
+    *,
+    seconds: float,
+    sample_rate: int,
+    frame_ms: int,
+    threshold: float,
+) -> Dict[str, Any]:
+    sd = LocalAudioDuplex._import_sounddevice()
+    cfg = LocalAudioConfig(sample_rate=sample_rate, frame_ms=frame_ms, input_device=device)
+    frames: List[bytes] = []
+
+    def on_input(indata, _frames, _time_info, _status) -> None:
+        frames.append(bytes(indata))
+
+    try:
+        stream = sd.RawInputStream(
+            samplerate=cfg.sample_rate,
+            channels=cfg.channels,
+            dtype=cfg.dtype,
+            blocksize=cfg.frame_samples,
+            device=device,
+            callback=on_input,
+        )
+        with stream:
+            time.sleep(max(0.0, seconds))
+    except Exception as exc:  # noqa: BLE001 - diagnostics should report every failing device
+        return {
+            "device": device,
+            "ok": False,
+            "sample_rate": sample_rate,
+            "frame_ms": frame_ms,
+            "seconds": seconds,
+            "error": "%s: %s" % (type(exc).__name__, exc),
+        }
+
+    stats = pcm_int16_stats(b"".join(frames))
+    stats.update(
+        {
+            "device": device,
+            "ok": True,
+            "sample_rate": sample_rate,
+            "frame_ms": frame_ms,
+            "seconds": seconds,
+            "frames": len(frames),
+            "above_threshold": stats["rms"] >= threshold or stats["peak"] >= threshold,
+            "threshold": threshold,
+        }
+    )
+    return stats
+
+
+def meter_inputs(
+    *,
+    seconds: float,
+    sample_rate: int,
+    frame_ms: int,
+    threshold: float,
+    input_device: Optional[Any] = None,
+) -> int:
+    sd = LocalAudioDuplex._import_sounddevice()
+    devices = [input_device] if input_device is not None else _input_device_indices(sd)
+    for device in devices:
+        info = sd.query_devices(device)
+        result = meter_input_device(
+            device,
+            seconds=seconds,
+            sample_rate=sample_rate,
+            frame_ms=frame_ms,
+            threshold=threshold,
+        )
+        result["name"] = info.get("name")
+        print(json.dumps(result, sort_keys=True))
+    return 0
 
 
 def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loop route proof") -> Dict[str, Any]:
@@ -446,6 +580,24 @@ def playback_generations_at(playback_intervals: List[Dict[str, Any]], monotonic_
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.list_devices:
+        try:
+            return list_audio_devices()
+        except LocalAudioUnavailable as exc:
+            print("local_loop_demo: %s" % exc, file=sys.stderr)
+            return 2
+    if args.meter_inputs:
+        try:
+            return meter_inputs(
+                seconds=args.meter_seconds,
+                sample_rate=16000,
+                frame_ms=args.frame_ms,
+                threshold=args.vad_threshold,
+                input_device=resolve_device_arg(args.input_device),
+            )
+        except LocalAudioUnavailable as exc:
+            print("local_loop_demo: %s" % exc, file=sys.stderr)
+            return 2
     capture_prefix = resolve_capture_prefix(args.capture)
 
     data, err = load_manifest_or_die(args.config)
@@ -463,7 +615,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         audio = LocalAudioDuplex(
             LocalAudioConfig(
                 sample_rate=16000, frame_ms=args.frame_ms,
-                input_device=args.input_device, output_device=args.output_device,
+                input_device=resolve_device_arg(args.input_device),
+                output_device=resolve_device_arg(args.output_device),
             )
         )
     except LocalAudioUnavailable as exc:
