@@ -1,0 +1,241 @@
+{
+  "modes": [
+    "realtime",
+    "stt-tts",
+    "transcription"
+  ],
+  "transports": [
+    "webrtc",
+    "provider-websocket",
+    "gateway-relay",
+    "managed-room"
+  ],
+  "brains": [
+    "agent-consult",
+    "direct-tools",
+    "none"
+  ],
+  "speech": {
+    "providers": [
+      {
+        "id": "elevenlabs",
+        "label": "ElevenLabs",
+        "configured": true,
+        "modes": [
+          "stt-tts"
+        ],
+        "brains": [
+          "agent-consult"
+        ],
+        "models": [
+          "eleven_v3",
+          "eleven_multilingual_v2",
+          "eleven_flash_v2_5",
+          "eleven_flash_v2",
+          "eleven_turbo_v2_5",
+          "eleven_monolingual_v1"
+        ]
+      },
+      {
+        "id": "microsoft",
+        "label": "Microsoft",
+        "configured": true,
+        "modes": [
+          "stt-tts"
+        ],
+        "brains": [
+          "agent-consult"
+        ]
+      },
+      {
+        "id": "google",
+        "label": "Google",
+        "configured": true,
+        "modes": [
+          "stt-tts"
+        ],
+        "brains": [
+          "agent-consult"
+        ],
+        "models": [
+          "gemini-3.1-flash-tts-preview",
+          "gemini-2.5-flash-preview-tts",
+          "gemini-2.5-pro-preview-tts"
+        ],
+        "voices": [
+          "Zephyr",
+          "Puck",
+          "Charon",
+          "Kore",
+          "Fenrir",
+          "Leda",
+          "Orus",
+          "Aoede",
+          "Callirrhoe",
+          "Autonoe",
+          "Enceladus",
+          "Iapetus",
+          "Umbriel",
+          "Algieba",
+          "Despina",
+          "Erinome",
+          "Algenib",
+          "Rasalgethi",
+          "Laomedeia",
+          "Achernar",
+          "Alnilam",
+          "Schedar",
+          "Gacrux",
+          "Pulcherrima",
+          "Achird",
+          "Zubenelgenubi",
+          "Vindemiatrix",
+          "Sadachbia",
+          "Sadaltager",
+          "Sulafat"
+        ]
+      },
+      {
+        "id": "openrouter",
+        "label": "OpenRouter",
+        "configured": true,
+        "modes": [
+          "stt-tts"
+        ],
+        "brains": [
+          "agent-consult"
+        ],
+        "models": [
+          "hexgrad/kokoro-82m",
+          "google/gemini-3.1-flash-tts-preview",
+          "mistralai/voxtral-mini-tts-2603",
+          "elevenlabs/eleven-turbo-v2"
+        ],
+        "voices": [
+          "af_alloy"
+        ]
+      }
+    ]
+  },
+  "transcription": {
+    "providers": [
+      {
+        "id": "elevenlabs",
+        "label": "ElevenLabs Realtime Transcription",
+        "configured": false,
+        "modes": [
+          "transcription"
+        ],
+        "transports": [
+          "gateway-relay"
+        ],
+        "brains": [
+          "none"
+        ],
+        "defaultModel": "scribe_v2_realtime"
+      }
+    ]
+  },
+  "realtime": {
+    "activeProvider": "anvil",
+    "providers": [
+      {
+        "id": "anvil",
+        "label": "Anvil Voice",
+        "configured": true,
+        "modes": [
+          "realtime"
+        ],
+        "brains": [
+          "none"
+        ],
+        "supportsBrowserSession": false,
+        "defaultModel": "fast-local",
+        "transports": [
+          "gateway-relay"
+        ],
+        "inputAudioFormats": [
+          {
+            "encoding": "g711_ulaw",
+            "sampleRateHz": 8000,
+            "channels": 1
+          },
+          {
+            "encoding": "pcm16",
+            "sampleRateHz": 24000,
+            "channels": 1
+          }
+        ],
+        "outputAudioFormats": [
+          {
+            "encoding": "g711_ulaw",
+            "sampleRateHz": 8000,
+            "channels": 1
+          },
+          {
+            "encoding": "pcm16",
+            "sampleRateHz": 24000,
+            "channels": 1
+          }
+        ],
+        "supportsBargeIn": true,
+        "supportsToolCalls": false
+      },
+      {
+        "id": "google",
+        "label": "Google Live Voice",
+        "configured": true,
+        "modes": [
+          "realtime"
+        ],
+        "brains": [
+          "agent-consult"
+        ],
+        "supportsBrowserSession": true
+      },
+      {
+        "id": "openai",
+        "label": "OpenAI Realtime Voice",
+        "configured": true,
+        "modes": [
+          "realtime"
+        ],
+        "brains": [
+          "agent-consult"
+        ],
+        "supportsBrowserSession": true,
+        "defaultModel": "gpt-realtime-2",
+        "transports": [
+          "webrtc",
+          "gateway-relay"
+        ],
+        "inputAudioFormats": [
+          {
+            "encoding": "g711_ulaw",
+            "sampleRateHz": 8000,
+            "channels": 1
+          },
+          {
+            "encoding": "pcm16",
+            "sampleRateHz": 24000,
+            "channels": 1
+          }
+        ],
+        "outputAudioFormats": [
+          {
+            "encoding": "g711_ulaw",
+            "sampleRateHz": 8000,
+            "channels": 1
+          },
+          {
+            "encoding": "pcm16",
+            "sampleRateHz": 24000,
+            "channels": 1
+          }
+        ],
+        "supportsBargeIn": true,
+        "supportsToolCalls": true
+      }
+    ]
+  }
+}
