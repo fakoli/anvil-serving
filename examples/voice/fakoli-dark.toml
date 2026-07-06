@@ -16,6 +16,7 @@ base_url = "http://100.87.34.66:8000/v1"
 model = "fast-local"
 stream = true
 api_key_env = "ANVIL_ROUTER_TOKEN"
+expected_endpoint_host = "100.87.34.66"
 expected_route_provider = "fast-local"
 expected_route_model = "qwen36-27b"
 expected_route_tier = "local"

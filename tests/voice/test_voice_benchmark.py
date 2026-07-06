@@ -103,6 +103,8 @@ def test_run_benchmark_computes_all_four_metrics():
     assert result["turn_latency_ms"] == 1500.0
     assert result["stt_wer"] == 0.0  # hypothesis matches reference exactly
     assert result["tts_rtf"] == pytest.approx(1000.0)
+    assert result["tts_first_audio_observed"] is True
+    assert result["tts_output_bytes"] == 16
     assert result["stt_hypothesis"] == "hello world"
     assert result["llm_reply"] == "reply"
 
@@ -146,6 +148,8 @@ def test_run_benchmark_tts_rtf_is_none_when_no_audio_produced():
         clock=lambda: 0.0,
     )
     assert result["tts_rtf"] is None
+    assert result["tts_first_audio_observed"] is False
+    assert result["tts_output_bytes"] == 0
 
 
 def test_run_benchmark_defaults_reference_text_when_not_supplied():
@@ -294,6 +298,8 @@ def test_run_benchmark_composes_real_stt_llm_tts_wire_calls_via_fake_transports(
     assert result["llm_reply"] == "hi"
     assert result["stt_wer"] == 0.0
     assert result["tts_rtf"] is not None
+    assert result["tts_first_audio_observed"] is True
+    assert result["tts_output_bytes"] == 4
     assert result["ttfa_ms"] >= 0
     assert result["turn_latency_ms"] >= result["ttfa_ms"]
     assert stt_transport.response.closed
