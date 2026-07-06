@@ -153,6 +153,33 @@ def load_manifest_or_die(path: str):
         return None, str(exc)
 
 
+def configured_auth_env_errors(data: Dict[str, Any]) -> List[str]:
+    """Return missing/invalid auth-env problems for endpoints that require auth.
+
+    The live LLM/STT/TTS stages resolve `api_key_env` lazily right before each
+    HTTP call. For a hands-on mic proof, waiting until the first spoken turn to
+    discover a missing router token wastes the attempt, so the harness checks
+    the configured env vars up front without exposing their values.
+    """
+    voice = data.get("voice", {}) if isinstance(data, dict) else {}
+    errors: List[str] = []
+    for name in ("llm", "stt", "tts"):
+        table = voice.get(name, {}) if isinstance(voice, dict) else {}
+        if not isinstance(table, dict) or not table.get("api_key_env"):
+            continue
+        try:
+            token = voice_config.resolve_secret(table, "api_key")
+        except voice_config.ConfigError as exc:
+            errors.append("voice.%s.%s" % (name, exc))
+            continue
+        if token is not None and not token.strip():
+            errors.append(
+                "voice.%s.api_key_env names %s, which is empty in the environment"
+                % (name, table["api_key_env"])
+            )
+    return errors
+
+
 def append_finding_row(row: str) -> bool:
     """Insert one markdown table row into the local-loop-proof findings doc.
 
@@ -455,6 +482,15 @@ def route_validation_errors(llm: Dict[str, Any], parsed: Any) -> List[str]:
     return errors
 
 
+def route_failure_summary(route_proof: Dict[str, Any]) -> str:
+    if not route_proof:
+        return "unknown error"
+    route_issue = route_proof.get("error")
+    if not route_issue:
+        route_issue = "; ".join(route_proof.get("validation_errors", []))
+    return route_issue or "unknown error"
+
+
 def write_capture(
     prefix: str,
     input_frames: List[bytes],
@@ -613,6 +649,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     if err:
         print("local_loop_demo: %s" % err, file=sys.stderr)
         return 2
+    auth_errors = configured_auth_env_errors(data)
+    if auth_errors:
+        print(
+            "local_loop_demo: cannot start live loop; %s" % "; ".join(auth_errors),
+            file=sys.stderr,
+        )
+        return 2
+    if capture_prefix:
+        startup_route_proof = route_decision_probe(data)
+        if not startup_route_proof.get("ok"):
+            print(
+                "local_loop_demo: route preflight failed before audio: %s"
+                % route_failure_summary(startup_route_proof),
+                file=sys.stderr,
+            )
+            return 2
 
     vad_config = VADConfig(frame_ms=args.frame_ms, silence_ms=args.silence_ms)
     pipeline_config = real_pipeline_config_from_manifest(
@@ -919,11 +971,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         return 1
     if capture_prefix and (not route_proof or not route_proof.get("ok")):
-        route_issue = route_proof.get("error") if route_proof else None
-        if not route_issue and route_proof:
-            route_issue = "; ".join(route_proof.get("validation_errors", []))
         print(
-            "local_loop_demo: route proof failed: %s" % (route_issue or "unknown error"),
+            "local_loop_demo: route proof failed: %s" % route_failure_summary(route_proof),
             file=sys.stderr,
         )
         return 1

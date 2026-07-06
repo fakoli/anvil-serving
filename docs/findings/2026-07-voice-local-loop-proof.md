@@ -1,11 +1,10 @@
 # Voice local loop proof: mic -> VAD -> STT -> anvil LLM -> TTS -> speakers
 
-> **STATUS: LIVE PROOF BLOCKED ON INPUT ROUTING.** The T010 acceptance command
-> has been executed on fakoli-dark, but it exited 1 because the selected input
-> device recorded near-digital silence and produced no VAD turns. No successful
-> session row has been recorded below. Run the script on a machine with a real
-> microphone/speaker pair (fakoli-dark or a Mini) with the STT/TTS serves and
-> the anvil router all up, and let it append a real row via `--capture`.
+> **STATUS: LIVE PROOF BLOCKED ON ROUTER AUTH ENV.** The T010 acceptance
+> command has been executed on fakoli-dark. The latest run reached STT and
+> produced a transcript, then the LLM stage hit HTTP 401 from the token-authed
+> router because `ANVIL_ROUTER_TOKEN` was not present in that shell. No
+> successful session row has been recorded below.
 
 Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s3
 (barge-in/staleness design) · `anvil_serving/voice/connections/local_audio.py`
@@ -29,6 +28,32 @@ Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s3
    is now a thin subclass of `VoicePipeline`, not a second copy of its wiring.
 
 ## How to run
+
+PowerShell, loading the router token from `~/.env` without printing it:
+
+```powershell
+$line = Get-Content -LiteralPath "$HOME\.env" | Where-Object {
+  $_ -match '^\s*ANVIL_ROUTER_TOKEN\s*='
+} | Select-Object -First 1
+if (-not $line) { throw "ANVIL_ROUTER_TOKEN not found in ~/.env" }
+$value = ($line -replace '^\s*ANVIL_ROUTER_TOKEN\s*=', '').Trim()
+if ($value.StartsWith('"')) {
+  $end = $value.IndexOf('"', 1)
+  if ($end -lt 1) { throw "unterminated ANVIL_ROUTER_TOKEN quote in ~/.env" }
+  $value = $value.Substring(1, $end - 1)
+} elseif ($value.StartsWith("'")) {
+  $end = $value.IndexOf("'", 1)
+  if ($end -lt 1) { throw "unterminated ANVIL_ROUTER_TOKEN quote in ~/.env" }
+  $value = $value.Substring(1, $end - 1)
+} else {
+  $value = ($value -replace '\s+#.*$', '').Trim()
+}
+if (-not $value) { throw "ANVIL_ROUTER_TOKEN is empty in ~/.env" }
+$env:ANVIL_ROUTER_TOKEN = $value
+python scripts\voice\local_loop_demo.py --capture
+```
+
+Equivalent explicit config form:
 
 ```bash
 python scripts/voice/local_loop_demo.py \
@@ -71,6 +96,30 @@ python scripts/voice/local_loop_demo.py --meter-inputs --input-device 6 --meter-
 see `append_finding_row` in that script.)
 
 ## Findings
+
+### 2026-07-06 router-auth-blocked live attempt
+
+Command:
+
+```bash
+python scripts/voice/local_loop_demo.py --capture
+```
+
+Result: the microphone/STT path advanced past the prior silent-input blocker:
+the pipeline generated a user turn with transcript `Testing, testing, testing,
+testing.` The LLM stage then failed on
+`http://100.87.34.66:8000/v1/chat/completions` with HTTP 401 Unauthorized.
+
+Interpretation: the router endpoint was reachable and enforcing auth, but the
+live shell did not have `ANVIL_ROUTER_TOKEN` loaded. The harness now validates
+configured `api_key_env` variables immediately after manifest load, before
+opening audio or starting the live pipeline.
+
+Post-fix route validation with `ANVIL_ROUTER_TOKEN` loaded from `~/.env`
+returned status 200 and matched the manifest's expected local route:
+`provider=fast-local`, `model=qwen36-27b`, `tier=local`. Capture mode now
+runs that authenticated route check before opening audio so a malformed or
+unauthorized token fails before the microphone loop.
 
 ### 2026-07-06 failed live attempt
 
@@ -117,11 +166,10 @@ outside a quiet room?
 
 ## Next steps
 
-1. Fix the Windows/sounddevice input route so the selected device records
-   audible speech above the VAD threshold, then rerun the exact acceptance
-   command.
-2. If the default device remains silent, rerun with a known-good explicit
-   `--input-device` value from `sounddevice.query_devices()`.
+1. Load `ANVIL_ROUTER_TOKEN` into the process environment, then rerun the exact
+   acceptance command.
+2. If the default input route regresses to silence, rerun with a known-good
+   explicit `--input-device` value from `sounddevice.query_devices()`.
 3. After a successful proof, likely candidates remain: swap in a real
    Silero/onnxruntime VAD model behind `VADModel`; add barge-in energy
    hysteresis so the assistant's own played-back audio doesn't self-trigger;

@@ -76,6 +76,146 @@ def test_meter_inputs_main_exits_before_manifest_or_pipeline_setup(monkeypatch):
     assert local_loop_demo.main(["--meter-inputs", "--input-device", "6", "--input-sample-rate", "48000"]) == 0
 
 
+def test_configured_auth_env_errors_reports_missing_configured_env(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {"api_key_env": "ANVIL_ROUTER_TOKEN"},
+            "stt": {},
+            "tts": {},
+        }
+    }
+    monkeypatch.delenv("ANVIL_ROUTER_TOKEN", raising=False)
+
+    errors = local_loop_demo.configured_auth_env_errors(data)
+
+    assert errors == [
+        "voice.llm.api_key_env names ANVIL_ROUTER_TOKEN, which is not set in the environment"
+    ]
+
+
+def test_configured_auth_env_errors_passes_when_configured_env_is_set(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {"api_key_env": "ANVIL_ROUTER_TOKEN"},
+            "stt": {},
+            "tts": {},
+        }
+    }
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "test-token")
+
+    assert local_loop_demo.configured_auth_env_errors(data) == []
+
+
+def test_configured_auth_env_errors_rejects_empty_configured_env(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {"api_key_env": "ANVIL_ROUTER_TOKEN"},
+            "stt": {},
+            "tts": {},
+        }
+    }
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "  ")
+
+    assert local_loop_demo.configured_auth_env_errors(data) == [
+        "voice.llm.api_key_env names ANVIL_ROUTER_TOKEN, which is empty in the environment"
+    ]
+
+
+def test_main_exits_before_pipeline_when_configured_auth_env_missing(monkeypatch, capsys):
+    data = {
+        "voice": {
+            "llm": {"api_key_env": "ANVIL_ROUTER_TOKEN"},
+            "stt": {},
+            "tts": {},
+        }
+    }
+    monkeypatch.delenv("ANVIL_ROUTER_TOKEN", raising=False)
+    monkeypatch.setattr(local_loop_demo, "load_manifest_or_die", lambda _path: (data, None))
+    monkeypatch.setattr(
+        local_loop_demo,
+        "RealVoicePipeline",
+        lambda _config: (_ for _ in ()).throw(AssertionError("pipeline should not construct")),
+    )
+    monkeypatch.setattr(
+        local_loop_demo,
+        "LocalAudioDuplex",
+        lambda _config: (_ for _ in ()).throw(AssertionError("audio should not construct")),
+    )
+
+    assert local_loop_demo.main([]) == 2
+
+    err = capsys.readouterr().err
+    assert "cannot start live loop" in err
+    assert "ANVIL_ROUTER_TOKEN" in err
+    assert "test-token" not in err
+
+
+def test_capture_main_exits_before_pipeline_when_route_preflight_fails(monkeypatch, capsys):
+    data = {
+        "voice": {
+            "llm": {"api_key_env": "ANVIL_ROUTER_TOKEN"},
+            "stt": {},
+            "tts": {},
+        }
+    }
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "bad-token")
+    monkeypatch.setattr(local_loop_demo, "load_manifest_or_die", lambda _path: (data, None))
+    monkeypatch.setattr(
+        local_loop_demo,
+        "route_decision_probe",
+        lambda _data: {"ok": False, "status": 401, "error": "HTTP Error 401: Unauthorized"},
+    )
+    monkeypatch.setattr(
+        local_loop_demo,
+        "RealVoicePipeline",
+        lambda _config: (_ for _ in ()).throw(AssertionError("pipeline should not construct")),
+    )
+    monkeypatch.setattr(
+        local_loop_demo,
+        "LocalAudioDuplex",
+        lambda _config: (_ for _ in ()).throw(AssertionError("audio should not construct")),
+    )
+
+    assert local_loop_demo.main(["--capture"]) == 2
+
+    err = capsys.readouterr().err
+    assert "route preflight failed before audio" in err
+    assert "HTTP Error 401" in err
+    assert "bad-token" not in err
+
+
+def test_non_capture_main_does_not_require_route_preflight(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {},
+            "stt": {},
+            "tts": {},
+        }
+    }
+
+    class PipelineBoom(Exception):
+        pass
+
+    monkeypatch.setattr(local_loop_demo, "load_manifest_or_die", lambda _path: (data, None))
+    monkeypatch.setattr(
+        local_loop_demo,
+        "route_decision_probe",
+        lambda _data: (_ for _ in ()).throw(AssertionError("route probe should not run")),
+    )
+    monkeypatch.setattr(
+        local_loop_demo,
+        "real_pipeline_config_from_manifest",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(PipelineBoom("past route preflight")),
+    )
+
+    try:
+        local_loop_demo.main([])
+    except PipelineBoom as exc:
+        assert str(exc) == "past route preflight"
+    else:
+        assert False, "main should reach pipeline config setup when capture is disabled"
+
+
 def test_local_audio_config_separates_input_and_output_rates():
     cfg = local_loop_demo.LocalAudioConfig(
         sample_rate=16000,
