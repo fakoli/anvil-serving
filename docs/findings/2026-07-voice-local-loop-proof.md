@@ -1,12 +1,11 @@
 # Voice local loop proof: mic -> VAD -> STT -> anvil LLM -> TTS -> speakers
 
-> **STATUS: LIVE PROOF BLOCKED ON COMPLETED BARGE-IN REPLY.** The T010
-> acceptance command now authenticates against the router, completes ordinary
-> mic -> STT -> anvil-routed LLM -> TTS -> speaker turns on fakoli-dark, and
-> has observed playback-overlapping barge-in. No successful session row has
-> been recorded yet because the latest capture kept feeding follow-on mic
-> input after barge-in, making each interrupted reply stale before it could
-> complete with TTFA/latency/output metrics.
+> **STATUS: LIVE PROOF CAPTURED.** The T010 acceptance command authenticates
+> against the router, completes ordinary mic -> STT -> anvil-routed LLM -> TTS
+> -> speaker turns on fakoli-dark, observes playback-overlapping barge-in, and
+> records completed interrupted-reply metrics with route proof and assistant
+> output audio. The remaining gaps are product-quality caveats: energy VAD and
+> no acoustic echo cancellation.
 
 Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s3
 (barge-in/staleness design) · `anvil_serving/voice/connections/local_audio.py`
@@ -102,13 +101,16 @@ python scripts/voice/local_loop_demo.py --meter-inputs --input-device 6 --meter-
 | timestamp (UTC) | turns completed | barge-in observed? | avg TTFA (ms) | avg turn latency (ms) | route probe provider | mic recording | assistant recording | session JSON |
 |---|---:|---|---:|---:|---|---|---|---|
 | 2026-07-06T05:21:47Z | 1 | yes | 384.4 | 3365.5 | fast-local | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.input.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.output.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.session.json |
+| 2026-07-06T05:32:28Z | 1 | yes | 1517.5 | 27379.2 | fast-local | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.input.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.output.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T053128Z.session.json |
 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
 Note: the 2026-07-06T05:21:47Z capture passed the automated acceptance gate
 and produced 100,364 bytes of post-barge assistant output for turn-3
-(`transcript="But wait."`). The operator did not perceive a reply after
-barge-in, so a follow-up run should confirm the new
-`interrupted reply audio started` cue against audible playback before merge.
+(`transcript="But wait."`). The operator did not perceive that reply after
+barge-in, so the harness added an explicit post-barge playback cue. The
+2026-07-06T05:32:28Z follow-up printed `interrupted reply audio started` and
+completed turn-4 with 832,528 bytes of post-barge assistant output
+(`transcript="Wait, what do you mean? I said how many countries are in Africa?"`).
 
 (`local_loop_demo.py --capture [PREFIX]` appends a row here automatically —
 see `append_finding_row` in that script.)
