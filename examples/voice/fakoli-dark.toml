@@ -1,0 +1,30 @@
+# Live fakoli-dark voice manifest for the local-loop proof harness.
+#
+# This is intentionally operator-specific: it points at the deployed router on
+# the tailnet plus the already-running local STT/TTS sidecars. Secrets are env
+# var names only; never paste token values here.
+
+[voice]
+name = "anvil-voice-fakoli-dark"
+realtime_host = "127.0.0.1"
+realtime_port = 8765
+
+[voice.llm]
+base_url = "http://100.87.34.66:8000/v1"
+# The deployed router currently predates the source `chat-fast` preset. Pin the
+# fast local tier for T010 so live turns route through the Qwen 27B fast serve.
+model = "fast-local"
+stream = true
+api_key_env = "ANVIL_ROUTER_TOKEN"
+expected_route_provider = "fast-local"
+expected_route_model = "qwen36-27b"
+expected_route_tier = "local"
+
+[voice.stt]
+base_url = "http://127.0.0.1:30010/v1"
+model = "tdt_ctc-110m"
+stream = false
+
+[voice.tts]
+base_url = "http://127.0.0.1:30011/v1"
+model = "kokoro"

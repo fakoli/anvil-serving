@@ -61,8 +61,10 @@ def test_speech_onset_emits_started_event_no_audio_yet():
     stage, _scope = _stage()
     events = stage.process(SPEECH)
     assert events is not None
-    kinds = [e.kind for e in events if isinstance(e, SpeechEvent)]
-    assert kinds == ["started"]
+    started = [e for e in events if isinstance(e, SpeechEvent)]
+    assert [e.kind for e in started] == ["started"]
+    assert started[0].barge_in is False
+    assert started[0].detected_monotonic_s > 0
     assert not any(isinstance(e, VADAudio) for e in events)
 
 
@@ -119,8 +121,9 @@ def test_barge_in_bumps_cancel_scope_generation():
 
     # New speech arrives while the (fake) response is still in flight.
     events = stage.process(SPEECH)
-    kinds = [e.kind for e in events if isinstance(e, SpeechEvent)]
-    assert kinds == ["started"]
+    started = [e for e in events if isinstance(e, SpeechEvent)]
+    assert [e.kind for e in started] == ["started"]
+    assert started[0].barge_in is True
 
     new_generation = scope.current()
     assert new_generation > old_generation

@@ -61,14 +61,26 @@ class LocalAudioConfig:
     channels: int = 1
     frame_ms: int = 20
     dtype: str = "int16"
+    input_sample_rate: Optional[int] = None
+    output_sample_rate: Optional[int] = None
     input_device: Optional[Any] = None   # sounddevice device index or name; None = system default
     output_device: Optional[Any] = None  # sounddevice device index or name; None = system default
     input_queue_maxsize: int = 0         # 0 = unbounded (matches queue.Queue's own default)
 
     @property
+    def effective_input_sample_rate(self) -> int:
+        """Input stream sample rate, defaulting to ``sample_rate`` for compatibility."""
+        return self.input_sample_rate or self.sample_rate
+
+    @property
+    def effective_output_sample_rate(self) -> int:
+        """Output stream sample rate, defaulting to ``sample_rate`` for compatibility."""
+        return self.output_sample_rate or self.sample_rate
+
+    @property
     def frame_samples(self) -> int:
         """Samples per channel in one ``frame_ms``-duration block."""
-        return max(1, round(self.sample_rate * self.frame_ms / 1000))
+        return max(1, round(self.effective_input_sample_rate * self.frame_ms / 1000))
 
     @property
     def frame_bytes(self) -> int:
@@ -129,7 +141,7 @@ class LocalAudioDuplex:
         """Open and start both the input and output PortAudio streams."""
         cfg = self.config
         self._in_stream = self._sd.RawInputStream(
-            samplerate=cfg.sample_rate,
+            samplerate=cfg.effective_input_sample_rate,
             channels=cfg.channels,
             dtype=cfg.dtype,
             blocksize=cfg.frame_samples,
@@ -137,7 +149,7 @@ class LocalAudioDuplex:
             callback=self._on_input,
         )
         self._out_stream = self._sd.RawOutputStream(
-            samplerate=cfg.sample_rate,
+            samplerate=cfg.effective_output_sample_rate,
             channels=cfg.channels,
             dtype=cfg.dtype,
             device=cfg.output_device,
