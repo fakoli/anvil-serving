@@ -915,13 +915,19 @@ def main(argv: Optional[List[str]] = None) -> int:
                         generation=item.generation,
                         ttfa_ms=state.get("ttfa_ms"),
                     )
-                    if capture_prefix and not (
-                        any(t.barge_in for t in turn_metrics) or any(e.get("barge_in") for e in events)
-                    ):
-                        print(
-                            "local_loop_demo: assistant audio started; speak over it now for barge-in proof",
-                            flush=True,
-                        )
+                    if capture_prefix:
+                        if state.get("barge_in"):
+                            print(
+                                "local_loop_demo: interrupted reply audio started",
+                                flush=True,
+                            )
+                        elif not (
+                            any(t.barge_in for t in turn_metrics) or any(e.get("barge_in") for e in events)
+                        ):
+                            print(
+                                "local_loop_demo: assistant audio started; speak over it now for barge-in proof",
+                                flush=True,
+                            )
                 state["output_bytes"] = int(state.get("output_bytes", 0)) + len(item.pcm)
                 interval = _start_playback_interval(item.generation)
                 try:

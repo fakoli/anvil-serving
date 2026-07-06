@@ -83,9 +83,10 @@ In capture mode the harness prints a live timing cue:
 `assistant audio started; speak over it now for barge-in proof`. Speak while
 the assistant voice is audible, stop after the harness prints
 `barge-in utterance ended; mic input paused`, then let the interrupted reply
-complete before pressing Ctrl+C. Capture mode keeps recording raw input frames
-that have already been read, but it stops forwarding later mic frames into the
-pipeline after that pause cue.
+complete before pressing Ctrl+C. A successful post-barge response prints
+`interrupted reply audio started` before the completed-turn line. Capture mode
+keeps recording raw input frames that have already been read, but it stops
+forwarding later mic frames into the pipeline after that pause cue.
 
 To diagnose input routing before rerunning the proof:
 
@@ -100,7 +101,14 @@ python scripts/voice/local_loop_demo.py --meter-inputs --input-device 6 --meter-
 
 | timestamp (UTC) | turns completed | barge-in observed? | avg TTFA (ms) | avg turn latency (ms) | route probe provider | mic recording | assistant recording | session JSON |
 |---|---:|---|---:|---:|---|---|---|---|
+| 2026-07-06T05:21:47Z | 1 | yes | 384.4 | 3365.5 | fast-local | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.input.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.output.wav | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\local-loop-20260706T052047Z.session.json |
 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+
+Note: the 2026-07-06T05:21:47Z capture passed the automated acceptance gate
+and produced 100,364 bytes of post-barge assistant output for turn-3
+(`transcript="But wait."`). The operator did not perceive a reply after
+barge-in, so a follow-up run should confirm the new
+`interrupted reply audio started` cue against audible playback before merge.
 
 (`local_loop_demo.py --capture [PREFIX]` appends a row here automatically —
 see `append_finding_row` in that script.)
