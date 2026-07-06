@@ -370,6 +370,16 @@ def test_transcribe_stream_sends_bearer_token_from_env_var(monkeypatch):
     assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-stt-token"
 
 
+def test_transcribe_stream_strips_bearer_token_whitespace(monkeypatch):
+    monkeypatch.setenv("ANVIL_TEST_STT_TOKEN", " secret-stt-token\r\n")
+    transport = FakeTransport(FakeLineResponse(
+        _sse_transcript(done_event={"type": "transcript.text.done", "text": "hi"})
+    ))
+    config = STTStageConfig(api_key_env="ANVIL_TEST_STT_TOKEN")
+    list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
+    assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-stt-token"
+
+
 # --------------------------------------------------------------------------- #
 # STTStage: partial + final Transcription, cancel_scope integration
 # --------------------------------------------------------------------------- #

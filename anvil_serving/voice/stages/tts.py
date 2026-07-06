@@ -180,7 +180,7 @@ def stream_speech(
     body = json.dumps(build_speech_request_body(text, config)).encode("utf-8")
     headers = {"Content-Type": "application/json", "Accept": "application/octet-stream"}
     if config.api_key_env:
-        token = os.environ.get(config.api_key_env)
+        token = (os.environ.get(config.api_key_env) or "").strip()
         if token:
             headers["Authorization"] = "Bearer %s" % token
 
