@@ -203,12 +203,14 @@ def compare_local_to_external(
     *,
     gpu: str | None = None,
     top: int = 5,
+    record: bool = True,
+    initialize: bool = True,
 ) -> dict[str, Any]:
     local = load_local_benchmark(local_path)
     if gpu and not local.get("gpu_model"):
         local = dict(local)
         local["gpu_model"] = normalize_gpu_name(gpu)
-    rows = store.query_rows(db_path, gpu=gpu or local.get("gpu_model"))
+    rows = store.query_rows(db_path, gpu=gpu or local.get("gpu_model"), initialize=initialize)
     scored = []
     for row in rows:
         score, mismatches = _score(local, row)
@@ -240,19 +242,20 @@ def compare_local_to_external(
                 "cache. Throughput and TTFT deltas may include cache effects."
             )
         fp = serve_fingerprint(local)
-        fp_id = store.upsert_serve_fingerprint(db_path, fp)
-        local_tp = _as_float(local.get("throughput_tok_s"))
-        external_tp = _as_float(chosen[2].get("throughput_tok_s"))
-        store.insert_comparison(
-            db_path,
-            serve_fingerprint_id=fp_id,
-            external_row_id=chosen[2]["id"],
-            local_run_id=local.get("run_id"),
-            metric="throughput_tok_s",
-            local_value=local_tp,
-            external_value=external_tp,
-            notes="; ".join(warnings) if warnings else None,
-        )
+        if record:
+            fp_id = store.upsert_serve_fingerprint(db_path, fp)
+            local_tp = _as_float(local.get("throughput_tok_s"))
+            external_tp = _as_float(chosen[2].get("throughput_tok_s"))
+            store.insert_comparison(
+                db_path,
+                serve_fingerprint_id=fp_id,
+                external_row_id=chosen[2]["id"],
+                local_run_id=local.get("run_id"),
+                metric="throughput_tok_s",
+                local_value=local_tp,
+                external_value=external_tp,
+                notes="; ".join(warnings) if warnings else None,
+            )
     else:
         fp = serve_fingerprint(local)
     return {
