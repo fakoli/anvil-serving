@@ -377,6 +377,22 @@ class RealtimeService:
             }
         )
 
+    def mark_response_done_sent(self, response_id: Optional[str] = None) -> None:
+        """Clear in-flight response bookkeeping once its terminal event is sent.
+
+        ``drain_pipeline_events`` builds outbound events but does not own the
+        transport. Clearing ``current_turn_id`` while a completed
+        ``response.done`` is only queued (not yet written to the socket) lets a
+        concurrent ``response.cancel`` vanish: the client saw
+        ``response.created``, but cancellation finds no active response and the
+        queued completed terminal may then be pruned. The transport owner calls
+        this after it actually writes a terminal ``response.done``.
+        """
+        if response_id and self.state.current_response_id and response_id != self.state.current_response_id:
+            return
+        self.state.current_turn_id = None
+        self.state.current_response_id = None
+
     # -- outbound: pipeline output -> server events ----------------------------
     def drain_pipeline_events(self, *, max_items: Optional[int] = None) -> List[Dict[str, Any]]:
         """Drain whatever is CURRENTLY buffered on ``pipeline.vad_events``,
@@ -445,13 +461,6 @@ class RealtimeService:
                     item, id_source=self._evt_id, response_id=self.state.current_response_id
                 ):
                     out.append(server_event_to_dict(server_event))
-                    if server_event.type == "response.done":
-                        # Normal completion path: mirror the bookkeeping
-                        # ``_on_response_cancel`` does, so a later cancel with
-                        # nothing left in flight is correctly a no-op instead
-                        # of emitting a second, spurious terminal event.
-                        self.state.current_turn_id = None
-                        self.state.current_response_id = None
                 if isinstance(item, Transcription) and item.is_final:
                     out.append(self._begin_response(item.turn_id))
         return out

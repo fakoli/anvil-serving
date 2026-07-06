@@ -1,70 +1,54 @@
-# Voice Realtime proof: official `openai` SDK client <-> anvil's Realtime server
+# Voice Realtime proof: official `openai` SDK client <-> anvil Realtime server
 
-> **STATUS: NOT YET EXECUTED.** This is a measurement-template skeleton for
-> anvil task T014 (`scripts/voice/realtime_sdk_client_demo.py`). No session
-> in the log below is real. Run the script with the `openai` package
-> installed, the anvil router + STT/TTS serves reachable, and paste its
-> printed event log / `--capture` output here.
+> **STATUS: LIVE CAPTURED.** The proof harness is
+> `scripts/voice/realtime_sdk_client_demo.py`. A passing `--capture` run
+> appends a session row below and writes the artifact bundle under the temp
+> `anvil-voice-captures/` directory unless an explicit prefix is supplied.
 
 Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s5 (the
-Realtime server, "verified with the official OpenAI Python SDK as client")
-· `anvil_serving/voice/realtime/{ws,pool,service,events}.py` ·
+Realtime server, "verified with the official OpenAI Python SDK as client") ·
+`anvil_serving/voice/realtime/{app,ws,pool,service,events}.py` ·
 `scripts/voice/realtime_sdk_client_demo.py`
 
-## Known gaps / verify-before-running (flagged, not hidden)
+## What This Proves
 
-1. **SDK surface drift risk.** `realtime_sdk_client_demo.py`'s
-   `client.realtime.connect(...)` / `connection.session.update(...)` /
-   `connection.conversation.item.create(...)` / `connection.response.create()`
-   / `connection.response.cancel()` / `async for event in connection` shape
-   is written from the documented usage pattern, NOT verified against a
-   specific installed `openai` package version. Check
-   `python -c "import openai; print(openai.__version__)"`'s own examples
-   before trusting the script to run unmodified.
-2. **RESOLVED (PUNCH-LIST #2): `anvil-serving voice run` now exists.**
-   `anvil_serving/voice/cli.py`'s `cmd_run` builds the same ws/pool/service
-   cascade this script's own `build_server` assembles standalone (real STT/
-   TTS/LLM stages via `pipeline.real_pipeline_factory_from_manifest`, a
-   `SessionPool`, `realtime.ws.make_ws_server`), plus a reachability preflight
-   and the non-loopback-requires-token refusal. This script still self-hosts
-   its own server (rather than shelling out to `anvil-serving voice run`) so
-   it can drive the official SDK against a server it fully controls for
-   capture/barge-in timing; a follow-up could re-point it at a real
-   `anvil-serving voice run` process instead and note here whether behavior
-   changed.
-3. **Coverage caveats inherited from the reference design** (per the review
-   doc s5): server-VAD only, partial protocol (no item delete/truncate, no
-   granular content-part streaming), `transcription.delta`-style events send
-   the full latest hypothesis rather than an incremental suffix, no
-   transport auth/TLS on the raw ws (fine for a loopback-bound demo, NOT for
-   a public bind).
-
-## How to run
+The T014 acceptance command:
 
 ```bash
-python scripts/voice/realtime_sdk_client_demo.py \
-  --config examples/voice/voice.example.toml \
-  --text "Hello, can you hear me?" \
-  --barge-in-after 1.5 \
-  --capture /tmp/realtime-run1
+python scripts/voice/realtime_sdk_client_demo.py --capture
 ```
 
-## Session log
+loads the fakoli-dark manifest by default, starts the same package-owned
+Realtime server wiring used by `anvil-serving voice run`, connects with the
+official `openai` Python SDK Realtime client, sends synthesized PCM speech
+through `input_audio_buffer.append`/`commit`, renders live input transcript
+events, cancels the first response with `response.cancel`, sends a second
+spoken turn, and requires a completed assistant audio response after the
+interruption. Capture validation fails if any output for the cancelled response
+arrives after the client sends `response.cancel`.
 
-| timestamp (UTC) | turn kind (text/audio) | barge-in tested? | events captured | audio captured | notes |
-|---|---|---|---|---|---|
-| _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+## Known Caveats
 
-## Findings
+1. The default proof uses configured TTS to synthesize the user's two spoken
+   inputs. That is intentional: it keeps the acceptance command automated and
+   still exercises audio input, STT, LLM, TTS, Realtime protocol events, and
+   the official SDK WebSocket path end to end.
+2. The server remains a deliberately partial Realtime implementation:
+   server-VAD path, no item delete/truncate, no granular content-part
+   streaming, and loopback-only unauthenticated default unless
+   `realtime_token_env` is configured for non-loopback binds.
+3. The proof logs automated audio/transcript/latency evidence. It is not a
+   subjective speech-quality review.
 
-_TBD once run — in particular: does the official SDK actually connect
-cleanly to our stdlib `ws.py` server (RFC 6455 handshake compatibility), and
-does `response.cancel` actually stop audio deltas from arriving (the
-barge-in proof)?_
+## Session Log
+
+| timestamp (UTC) | turn kind | barge-in tested? | transcript(s) | events captured | audio bytes | completed TTFA / latency ms | proof bundle |
+|---|---|---|---|---:|---:|---|---|
+| 2026-07-06T06:09:48Z | audio/audio | yes | Please count slowly from one to twenty so I can interrupt you.; Interrupting you now, please answer briefly how many countries are in Africa. | 50 | 75800 | 303.35 / 588.02 | C:\Users\sdoum\AppData\Local\Temp\anvil-voice-captures\realtime-sdk-20260706T060944Z.session.json |
 
 ## Decision
 
-_TBD — is the current partial Realtime protocol surface (see gap #3 above)
-sufficient for a first real client, or does something in the "not yet
-modeled" list turn out to be load-bearing once a real SDK client is talking
-to it?_
+T014 is satisfied by the 2026-07-06T06:09:48Z run: the official SDK connected,
+audio input produced live transcripts, `response.cancel` interrupted `resp_1`
+with no post-cancel output events, and `resp_2` completed with assistant audio.
+T017 should independently verify the artifact bundle and delivery branch.

@@ -46,12 +46,14 @@ voice = [
     "sounddevice",     # local mic/speaker duplex (scripts/voice/local_loop_demo.py, T010) --
                        # guarded-import in anvil_serving/voice/connections/local_audio.py, so
                        # nothing else in this package requires it to be installed.
-    "openai",          # official Realtime SDK client, for scripts/voice/realtime_sdk_client_demo.py
-                       # (T014) ONLY -- guarded-import there too. Never used to call an LLM in the
-                       # hot path (see this repo's golden rule: the LLM stage speaks Chat
-                       # Completions over plain urllib, anvil_serving/voice/stages/llm.py -- this
-                       # is exclusively for driving the OTHER end of anvil's own Realtime server as
-                       # a proof-of-wire-compatibility test client).
+    "openai[realtime]",  # official Realtime SDK client + websocket transport, for
+                         # scripts/voice/realtime_sdk_client_demo.py (T014) ONLY --
+                         # guarded-import there too. Never used to call an LLM in the
+                         # hot path (see this repo's golden rule: the LLM stage speaks
+                         # Chat Completions over plain urllib,
+                         # anvil_serving/voice/stages/llm.py -- this is exclusively for
+                         # driving the OTHER end of anvil's own Realtime server as a
+                         # proof-of-wire-compatibility test client).
 ]
 
 [project.urls]

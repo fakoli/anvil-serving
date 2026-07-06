@@ -239,6 +239,21 @@ def test_cmd_down_returns_nonzero_when_a_serve_tear_down_fails(manifest_path, mo
     assert "tear-down rc=1" in out
 
 
+def test_cmd_benchmark_prints_success_json(manifest_path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        voice_cli.voice_benchmark,
+        "run_benchmark_from_manifest",
+        lambda data: {"ok": True, "ttfa_ms": 12.3},
+    )
+
+    rc = voice_cli.main(["benchmark", "--config", manifest_path])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert '"ok": true' in out
+    assert '"ttfa_ms": 12.3' in out
+
+
 # --------------------------------------------------------------------------- #
 # U2-b -- `_probe_endpoint` must distinguish "reachable but unhealthy" (a real
 # HTTP error status) from "unreachable" (a genuine connection failure).
