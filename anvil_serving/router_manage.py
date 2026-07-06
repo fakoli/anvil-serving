@@ -33,6 +33,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 
 try:
@@ -55,7 +56,7 @@ DEFAULT_CFG_VOLUME = "anvil-router-cfg"
 # with the LIVE image's own loader is what makes promote version-safe — a newer local
 # checkout must not re-verdict a profile the deployed router would reject. Keep this in
 # lockstep with the `router` service image in examples/fakoli-dark/docker-compose.yml.
-DEFAULT_IMAGE = "anvil-serving:0.9.0"
+DEFAULT_IMAGE = "anvil-serving:0.10.0"
 # The router READS its config volume mounted at ROUTER_CFG_MOUNT (/etc/anvil); the
 # side-container mounts the SAME volume at _SIDE_MOUNT (/cfg). `_volume_path` translates a
 # router-visible dest to its /cfg path, PRESERVING subdirectories (so /etc/anvil/x/p.json
@@ -131,7 +132,7 @@ def _default_env_file():
     return None
 
 
-def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run):
+def cmd_up(compose, service, env_file=None, dry_run=False, recreate=False, _run=subprocess.run):
     # `--env-file` FIRST (before -f) so compose interpolates ${ANVIL_ROUTER_TOKEN}/${ROUTER_PUBLISH}
     # from the persisted deploy env; without it a bare `up` recreates the router with an empty token
     # (fail-closed crash) and loopback binding.
@@ -144,7 +145,12 @@ def cmd_up(compose, service, env_file=None, dry_run=False, _run=subprocess.run):
     # --no-deps: manage ONLY the router. Without it, `compose up router` re-runs its `depends_on`
     # and RECREATES the model serves when their resolved config drifts (e.g. a changed --env-file) —
     # a gpt-oss-120b reload is minutes of 503s. The serves are `serves`' job, not the router verb's.
-    argv += ["-f", compose, "up", "-d", "--no-deps", service]
+    argv += ["-f", compose, "up", "-d", "--no-deps"]
+    if recreate:
+        # Compose labels are immutable once a container exists. A stale project
+        # config path can only be corrected by recreating the router container.
+        argv.append("--force-recreate")
+    argv.append(service)
     return _run_argv(argv, _run, desc="up %s: %s" % (service, " ".join(argv)),
                      dry_run=dry_run)
 
@@ -203,31 +209,34 @@ def cmd_logs(container, tail="200", since=None, follow=False, _run=subprocess.ru
     return r.returncode
 
 
-def _health(_open, port=8000, path="/"):
-    url = "http://127.0.0.1:%s%s" % (port, path)
+def _health(_open, port=8000, path="/", url=None):
+    url = url or "http://127.0.0.1:%s%s" % (port, path)
     try:
         with _open(url, timeout=3) as resp:
             return getattr(resp, "status", None) or resp.getcode()
+    except urllib.error.HTTPError as exc:
+        return exc.code
     except Exception:
         return None
 
 
-def status_summary(container, _run=subprocess.run, _open=urllib.request.urlopen, port=8000):
+def status_summary(container, _run=subprocess.run, _open=urllib.request.urlopen,
+                   port=8000, health_url=None):
     """Machine-readable router container status for MCP/automation."""
     st = docker_state(container, _run=_run)
     running = st == "running"
-    code = _health(_open, port=port) if running else None
+    code = _health(_open, port=port, url=health_url) if running else None
     return {
         "container": container,
         "docker_state": st,
         "running": running,
         "health_status": code,
-        "health_url": "http://127.0.0.1:%s/" % port if running else None,
+        "health_url": health_url or ("http://127.0.0.1:%s/" % port if running else None),
         "ok": st != "error",
     }
 
 
-def cmd_status(container, _run=subprocess.run, _open=urllib.request.urlopen):
+def cmd_status(container, _run=subprocess.run, _open=urllib.request.urlopen, health_url=None):
     st = docker_state(container, _run=_run)
     print("router container: %s" % container)
     print("docker state:     %s" % st)
@@ -238,8 +247,9 @@ def cmd_status(container, _run=subprocess.run, _open=urllib.request.urlopen):
     print("running:          %s" % ("yes" if running else "no"))
     if running:
         # Any HTTP response at all means the front door is up (even 401 from auth).
-        code = _health(_open)
-        print("health (:8000/):  %s" % (code if code else "no response"))
+        code = _health(_open, url=health_url)
+        label = health_url if health_url else ":8000/"
+        print("health (%s):  %s" % (label, code if code else "no response"))
     return 0
 
 
@@ -511,6 +521,13 @@ def main(argv=None):
                         "present (pass '' to disable).")
     p.add_argument("--dry-run", action="store_true",
                    help="print what would run without executing any docker command.")
+    p.add_argument("--recreate", action="store_true",
+                   help="up: force-recreate only the router service. Use this to re-home "
+                        "immutable Docker Compose labels after moving compose files; "
+                        "--no-deps still prevents model serve recreation.")
+    p.add_argument("--health-url",
+                   help="status: override the default loopback health URL, e.g. the router's "
+                        "tailnet-published URL when it is not bound on 127.0.0.1.")
     # logs-only options
     p.add_argument("--tail", default="200",
                    help="logs: number of trailing lines to show (default: %(default)s; 'all').")
@@ -537,7 +554,8 @@ def main(argv=None):
     if a.action == "up":
         # explicit --env-file wins; unset -> auto-detect ~/.anvil_env/~/.env; '' -> disable.
         env_file = _default_env_file() if a.env_file is None else (a.env_file or None)
-        return cmd_up(a.compose, a.service, env_file=env_file, dry_run=a.dry_run)
+        return cmd_up(a.compose, a.service, env_file=env_file, dry_run=a.dry_run,
+                      recreate=a.recreate)
     if a.action == "down":
         return cmd_down(a.compose, a.service, dry_run=a.dry_run)
     if a.action == "restart":
@@ -545,7 +563,7 @@ def main(argv=None):
     if a.action == "reload":
         return cmd_reload(a.container, dry_run=a.dry_run)
     if a.action == "status":
-        return cmd_status(a.container)
+        return cmd_status(a.container, health_url=a.health_url)
     if a.action == "logs":
         return cmd_logs(a.container, tail=a.tail, since=a.since, follow=a.follow)
     if a.action == "token":

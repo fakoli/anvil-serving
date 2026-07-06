@@ -65,8 +65,14 @@ class _Config:
 
 def _cfg():
     return _Config(
-        presets={"planning": ("heavy",), "chat": ("heavy", "fast"),
-                 "quick-edit": ("heavy", "fast"), "review": ("heavy",)},
+        presets={
+            "planning": ("heavy",),
+            "chat": ("heavy", "fast"),
+            "chat-fast": ("fast", "heavy"),
+            "quick-edit": ("heavy", "fast"),
+            "review": ("heavy",),
+            "long-context": ("heavy",),
+        },
         tiers={"heavy": _Tier(131072), "fast": _Tier(32768)},
     )
 
@@ -76,10 +82,14 @@ def _cfg():
 def test_render_one_model_per_preset_with_max_routed_context():
     prov = harness.render_openclaw_provider(_cfg(), base_url="http://x:8000/v1")
     models = {m["id"]: m for m in prov["models"]["providers"]["anvil"]["models"]}
-    assert set(models) == {"planning", "chat", "quick-edit", "review"}
+    assert set(models) == {
+        "planning", "chat", "chat-fast", "quick-edit", "review", "long-context",
+    }
     # contextWindow = the LARGEST tier the preset can route to (clamp gotcha)
     assert models["planning"]["contextWindow"] == 131072       # heavy only
     assert models["chat"]["contextWindow"] == 131072           # max(heavy, fast) -> heavy
+    assert models["chat-fast"]["contextWindow"] == 131072      # max(fast, heavy) -> heavy
+    assert models["long-context"]["contextWindow"] == 131072
     assert models["quick-edit"]["contextWindow"] == 131072
     # display name title-cases the preset id
     assert models["quick-edit"]["name"] == "Anvil · Quick Edit"
@@ -99,7 +109,10 @@ def test_allowlist_lists_every_preset_with_empty_params():
     # So every preset must appear, with EMPTY params (no stale thinking override — router owns that).
     prov = harness.render_openclaw_provider(_cfg(), base_url="http://x/v1")
     dm = prov["agents"]["defaults"]["models"]
-    assert set(dm) == {"anvil/planning", "anvil/chat", "anvil/quick-edit", "anvil/review"}
+    assert set(dm) == {
+        "anvil/planning", "anvil/chat", "anvil/chat-fast",
+        "anvil/quick-edit", "anvil/review", "anvil/long-context",
+    }
     assert all(v == {} for v in dm.values())               # allowlisted, no per-preset override
 
 
@@ -125,7 +138,7 @@ def test_sync_emits_valid_json_to_stdout(capsys):
                                    api_key_env="ANVIL_ROUTER_TOKEN", _load=lambda p: _cfg())
     assert rc == 0
     d = json.loads(capsys.readouterr().out)          # valid JSON
-    assert len(d["models"]["providers"]["anvil"]["models"]) == 4
+    assert len(d["models"]["providers"]["anvil"]["models"]) == 6
 
 
 def test_sync_writes_out_file(tmp_path, capsys):
@@ -133,7 +146,7 @@ def test_sync_writes_out_file(tmp_path, capsys):
     rc = harness.cmd_sync_openclaw("r.toml", out=str(p), base_url="http://h/v1",
                                    api_key_env="ANVIL_ROUTER_TOKEN", _load=lambda _p: _cfg())
     assert rc == 0
-    assert len(json.loads(p.read_text(encoding="utf-8"))["models"]["providers"]["anvil"]["models"]) == 4
+    assert len(json.loads(p.read_text(encoding="utf-8"))["models"]["providers"]["anvil"]["models"]) == 6
     assert "OpenClaw provider config" in capsys.readouterr().out
 
 

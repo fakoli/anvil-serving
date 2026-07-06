@@ -68,6 +68,20 @@ EXAMPLE_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
 _STOPPED = ("exited", "created", "dead")
 
 
+def _default_env_file():
+    """First existing conventional deploy env-file.
+
+    Mirrors ``router_manage`` so Docker Compose model serves can pick up
+    persisted HF_TOKEN/GPU UUID overrides during repeatable recreates without a
+    one-off shell export.
+    """
+    for name in (".anvil_env", ".env"):
+        p = os.path.join(os.path.expanduser("~"), name)
+        if os.path.isfile(p):
+            return p
+    return None
+
+
 def load_manifest(path):
     """Parse the serves manifest into a list of serve dicts.
 
@@ -271,6 +285,26 @@ def _is_compose_up(up):
     return up[:2] == ["docker", "compose"] or up[0] == "docker-compose"
 
 
+def _with_compose_env_file(up, env_file):
+    """Insert ``--env-file`` into a Docker Compose argv when requested.
+
+    The option must appear before ``-f`` so Compose uses it for variable
+    interpolation. Non-compose commands are returned unchanged.
+    """
+    if not env_file or not _is_compose_up(up):
+        return up
+    env_arg = ["--env-file", os.path.abspath(os.path.expanduser(env_file))]
+    if up[:2] == ["docker", "compose"]:
+        if "--env-file" in up:
+            return up
+        return [*up[:2], *env_arg, *up[2:]]
+    if up and up[0] == "docker-compose":
+        if "--env-file" in up:
+            return up
+        return [up[0], *env_arg, *up[1:]]
+    return up
+
+
 def _warn_drift(s, _run=subprocess.run):
     """Loudly warn if an EXISTING (script-serve) container was created serving a
     different model than the manifest declares — a `docker start` would resurrect the
@@ -288,7 +322,7 @@ def _warn_drift(s, _run=subprocess.run):
               % (s["container"], served, declared))
 
 
-def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
+def cmd_up(serves, names, dry_run=False, recreate=False, env_file=None, _run=subprocess.run):
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
@@ -310,7 +344,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
             rc = 1
             continue
 
-        up = s.get("up")
+        up = _with_compose_env_file(s.get("up"), env_file)
         compose = _is_compose_up(up)
 
         if recreate:
@@ -427,7 +461,7 @@ def cmd_rm(serves, names, dry_run=False, _run=subprocess.run):
     return rc
 
 
-def cmd_adopt(serves, names, dry_run=False, _run=subprocess.run):
+def cmd_adopt(serves, names, dry_run=False, env_file=None, _run=subprocess.run):
     """Bring externally-started (non-compose-managed) manifest serve(s) under compose
     management by recreating them via their manifest `up` — i.e. the `cmd_up` recreate
     path (`docker rm -f` + `up`). Use when a serve was started by hand / outside compose
@@ -441,15 +475,19 @@ def cmd_adopt(serves, names, dry_run=False, _run=subprocess.run):
         print("  adopting %s under compose management "
               "(recreate via manifest `up`)" % s["name"])
     # reuse the recreate path: `docker rm -f` the hand-started container + fresh `up`.
-    return cmd_up(serves, names, dry_run=dry_run, recreate=True, _run=_run)
+    return cmd_up(serves, names, dry_run=dry_run, recreate=True,
+                  env_file=env_file, _run=_run)
 
 
-def cmd_up_compose(compose_file, services, dry_run=False, _run=subprocess.run):
+def cmd_up_compose(compose_file, services, dry_run=False, env_file=None, _run=subprocess.run):
     """Bring up an ad-hoc/experiment serve from a compose file that is NOT in the manifest:
     `docker compose -f <file> up -d [service...]`. Fully independent of serves.toml — the
     file's services need not be declared there. argv list (no shell) for path/quoting safety.
     """
-    argv = ["docker", "compose", "-f", compose_file, "up", "-d", *services]
+    argv = ["docker", "compose"]
+    if env_file:
+        argv += ["--env-file", os.path.abspath(os.path.expanduser(env_file))]
+    argv += ["-f", compose_file, "up", "-d", *services]
     print("  compose up: %s" % " ".join(argv))
     if dry_run:
         return 0
@@ -530,6 +568,10 @@ def main(argv=None):
     p.add_argument("--recreate", action="store_true",
                    help="for `up`: force `docker rm -f` + a fresh `up` for an existing "
                         "container instead of `docker start`.")
+    p.add_argument("--env-file", default=None,
+                   help="for compose-backed `up`/`adopt`: env file for Docker Compose "
+                        "variable interpolation. Default: ~/.anvil_env or ~/.env if "
+                        "present (pass '' to disable).")
     p.add_argument("--compose", metavar="FILE",
                    help="for `up`: bring up an ad-hoc/experiment serve from this compose "
                         "file (NOT in the manifest); `names` are compose service names.")
@@ -544,6 +586,7 @@ def main(argv=None):
     # "unrecognized arguments" — py3.12 fixed plain parse_args, but intermixed is the
     # documented cross-version fix. No REMAINDER/subparsers here, so it's safe.
     a = p.parse_intermixed_args(argv)
+    env_file = _default_env_file() if a.env_file is None else (a.env_file or None)
 
     # `up --compose <file>`: ad-hoc/experiment serve from a compose file that is NOT in the
     # manifest — independent of serves.toml, so we neither require nor load a manifest here.
@@ -552,7 +595,7 @@ def main(argv=None):
             print("--recreate has no meaning with --compose (`docker compose up -d` already "
                   "recreates a service when its config changed)", file=sys.stderr)
             return 2
-        return cmd_up_compose(a.compose, a.names, dry_run=a.dry_run)
+        return cmd_up_compose(a.compose, a.names, dry_run=a.dry_run, env_file=env_file)
     if a.compose:
         print("--compose is only valid with `up`", file=sys.stderr)
         return 2
@@ -577,11 +620,12 @@ def main(argv=None):
     if a.action == "down":
         return cmd_down(serves, a.names, dry_run=a.dry_run)
     if a.action == "up":
-        return cmd_up(serves, a.names, dry_run=a.dry_run, recreate=a.recreate)
+        return cmd_up(serves, a.names, dry_run=a.dry_run, recreate=a.recreate,
+                      env_file=env_file)
     if a.action == "rm":
         return cmd_rm(serves, a.names, dry_run=a.dry_run)
     if a.action == "adopt":
-        return cmd_adopt(serves, a.names, dry_run=a.dry_run)
+        return cmd_adopt(serves, a.names, dry_run=a.dry_run, env_file=env_file)
     return 2
 
 

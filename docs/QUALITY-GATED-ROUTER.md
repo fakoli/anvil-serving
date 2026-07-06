@@ -608,8 +608,29 @@ aider --model openai/planning --editor-model openai/quick-edit --weak-model open
 **Cline / Continue.dev** — select "OpenAI Compatible"; Base URL `http://127.0.0.1:8000/v1`, Model (ID)
 = a preset token. Continue can attach Tier-2 hints via `requestOptions.headers`.
 
+**Native Anvil Voice Realtime** — use Anvil as the Realtime-compatible voice-agent endpoint. The
+router still serves OpenAI Chat Completions; `anvil-serving voice run` is the WebSocket process that
+terminates `/v1/realtime`, runs the VAD/STT/LLM/TTS cascade, and calls the router for the text LLM
+turn:
+
+```bash
+anvil-serving voice run --config examples/voice/fakoli-dark.toml
+```
+
+Point server-to-server Realtime clients at:
+
+```text
+ws://127.0.0.1:8765/v1/realtime
+```
+
+This is the path for replacing a hosted OpenAI Realtime voice-agent WebSocket with Anvil. It is not a
+transparent proxy to `gpt-realtime-2`; it is a local cascade that implements the compatible endpoint
+subset and routes the brain through the anvil router. See
+[`docs/VOICE-REALTIME.md`](VOICE-REALTIME.md) for the contract, compatibility subset, and gaps.
+
 **Hugging Face `speech-to-speech`** — use anvil as the voice agent's LLM backend, not as the
-Realtime audio server. Start anvil normally, then run:
+Realtime audio server. This is the alternate sidecar topology, useful when `speech-to-speech` owns
+VAD/STT/TTS and the WebSocket endpoint. Start anvil normally, then run:
 
 ```bash
 speech-to-speech \
@@ -627,8 +648,9 @@ speech-to-speech \
 If `[server].auth_env` is configured on the anvil router, set
 `--responses_api_api_key "$ANVIL_ROUTER_TOKEN"` or render the helper command with `--with-auth`.
 That token expands into process argv at runtime; use it only on private hosts where process listings
-and Docker metadata are protected. `speech-to-speech` still owns its `/v1/realtime` WebSocket and
-VAD/STT/TTS stages; anvil only handles the `/v1/chat/completions` LLM call. Use `chat` first for
+and Docker metadata are protected. In this topology, `speech-to-speech` still owns its
+`/v1/realtime` WebSocket and VAD/STT/TTS stages; anvil only handles the `/v1/chat/completions` LLM
+call. Use `chat` first for
 voice latency; see the
 [Hugging Face speech-to-speech recipe](https://github.com/fakoli/anvil-serving/tree/main/examples/huggingface-speech-to-speech/)
 for the full recipe. For true token-by-token voice latency, use a voice-specific router config with

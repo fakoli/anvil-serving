@@ -280,6 +280,20 @@ def test_is_compose_up_detects_compose_vs_script():
     assert not serves._is_compose_up(None)
 
 
+def test_with_compose_env_file_inserts_before_compose_file():
+    argv = serves._with_compose_env_file(
+        ["docker", "compose", "-f", "x.yml", "up", "-d"],
+        "my.env",
+    )
+    assert argv[:4] == ["docker", "compose", "--env-file", os.path.abspath("my.env")]
+    assert argv.index("--env-file") < argv.index("-f")
+
+
+def test_with_compose_env_file_leaves_scripts_unchanged():
+    argv = ["bash", "serve.sh"]
+    assert serves._with_compose_env_file(argv, "my.env") is argv
+
+
 def test_cmd_up_compose_serve_runs_compose_up_not_docker_start():
     # THE fix: an existing (stopped) compose serve is brought up with `docker compose
     # up -d` — which natively recreates on config drift — NOT a blind `docker start`
@@ -362,6 +376,16 @@ def test_cmd_up_recreate_flag_force_removes_then_reups_compose():
     assert not any(c[:2] == ["docker", "start"] for c in run.calls)
 
 
+def test_cmd_up_recreate_threads_env_file_to_compose_up():
+    serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health",
+             "model": "qwen35-awq-local", "up": ["docker", "compose", "-f", "/x.yml", "up", "-d"]}]
+    run = _inspect_returning("exited")
+    assert serves.cmd_up(serv, [], recreate=True, env_file="hf.env", _run=run) == 0
+    up = next(c for c in run.calls if c[:2] == ["docker", "compose"])
+    assert "--env-file" in up
+    assert up.index("--env-file") < up.index("-f")
+
+
 def test_cmd_up_recreate_flag_works_for_script_serve():
     serv = [{"name": "fast", "container": "vllm-gptoss", "port": 1, "health": "/health",
              "model": "gpt-oss-20b", "up": ["bash", "serve-fast.sh"]}]
@@ -399,3 +423,12 @@ def test_cmd_up_recreate_rescues_dead_container():
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
     assert ["docker", "rm", "-f", "vllm-gptoss"] in run.calls
     assert ["bash", "serve-fast.sh"] in run.calls
+
+
+def test_default_env_file_prefers_anvil_env(tmp_path, monkeypatch):
+    monkeypatch.setattr(serves.os.path, "expanduser", lambda p: str(tmp_path) if p == "~" else p)
+    assert serves._default_env_file() is None
+    (tmp_path / ".env").write_text("HF_TOKEN=x", encoding="utf-8")
+    assert serves._default_env_file().endswith(".env")
+    (tmp_path / ".anvil_env").write_text("HF_TOKEN=x", encoding="utf-8")
+    assert serves._default_env_file().endswith(".anvil_env")

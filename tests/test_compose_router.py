@@ -10,10 +10,12 @@ import io
 import pathlib
 import re
 import sys
+import tomllib
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 COMPOSE_PATH = REPO_ROOT / "examples" / "fakoli-dark" / "docker-compose.yml"
 DOCKER_CONFIG_PATH = REPO_ROOT / "configs" / "example-docker.toml"
+PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
 
 
 def _compose_text() -> str:
@@ -96,6 +98,16 @@ def test_router_service_pins_the_deployed_image():
     )
 
 
+def test_router_image_pin_matches_package_version():
+    services = _service_blocks(_compose_text())
+    router = services["router"]
+    version = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))["project"]["version"]
+    expected = f"anvil-serving:{version}"
+    assert re.search(rf"^\s*image:\s*{re.escape(expected)}\s*$", router, re.MULTILINE), (
+        f"router service image must track the source package version {expected!r}"
+    )
+
+
 def test_router_service_passes_token_from_environment():
     services = _service_blocks(_compose_text())
     router = services["router"]
@@ -144,15 +156,17 @@ def test_router_port_defaults_to_loopback_but_is_overridable():
         assert host_ip != "0.0.0.0", "router port must not hardcode a 0.0.0.0 publish"
 
 
-def test_serves_reached_by_router_via_service_name_not_loopback():
+def test_serves_reached_by_router_via_host_gateway_not_loopback():
     # configs/example-docker.toml is what the router container actually loads;
-    # its tiers must address the serves by compose SERVICE NAME (the router now runs
-    # in its own container, so 127.0.0.1 would mean "inside the router container").
+    # its tiers must address the host-published loopback serves through
+    # host.docker.internal. 127.0.0.1 would mean "inside the router container".
     text = DOCKER_CONFIG_PATH.read_text(encoding="utf-8")
-    assert "http://sglang:30000/v1" in text
-    assert "http://fast:30001/v1" in text
-    assert "127.0.0.1:30000" not in text
-    assert "127.0.0.1:30001" not in text
+    assert "http://host.docker.internal:30002/v1" in text
+    assert "http://host.docker.internal:30003/v1" in text
+    assert "http://sglang:30000/v1" not in text
+    assert "http://fast:30001/v1" not in text
+    assert "127.0.0.1:30002" not in text
+    assert "127.0.0.1:30003" not in text
 
 
 def test_example_docker_toml_sets_server_auth_env():

@@ -29,11 +29,13 @@ def test_example_uses_chat_completions_backend_and_anvil_router():
     assert "anvil-serving voice-sidecar compose" in text
 
 
-def test_example_keeps_realtime_sidecar_outside_router():
+def test_example_distinguishes_sidecar_from_native_anvil_realtime():
     text = _example_text()
     assert "ws://127.0.0.1:8765/v1/realtime" in text
-    assert "Anvil does not implement `/v1/realtime`" in text
-    assert "Connect your Realtime client to `speech-to-speech`, not anvil" in text
+    assert "native Anvil replacement path" in text
+    assert "`anvil-serving voice run`" in text
+    assert "In this sidecar topology" in text
+    assert "This recipe keeps the Realtime audio\nframes in `speech-to-speech`" in text
 
 
 def test_example_documents_openclaw_gateway_boundary():

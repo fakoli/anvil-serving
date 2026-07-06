@@ -5,8 +5,13 @@ no docker, no network, and no real waiting.
 """
 import json
 import types
+import urllib.error
+import tomllib
+from pathlib import Path
 
 from anvil_serving import router_manage as rm
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def proc(rc=0, out="", err=""):
@@ -74,6 +79,16 @@ def test_up_delegates_to_compose_up_d_no_deps():
     assert run.calls == [["docker", "compose", "-f", "/c.yml", "up", "-d", "--no-deps", "router"]]
 
 
+def test_up_recreate_force_recreates_router_only():
+    run = FakeRun()
+    rc = rm.cmd_up("/c.yml", "router", recreate=True, _run=run)
+    assert rc == 0
+    assert run.calls == [[
+        "docker", "compose", "-f", "/c.yml", "up", "-d", "--no-deps",
+        "--force-recreate", "router",
+    ]]
+
+
 def test_down_delegates_to_compose_stop():
     run = FakeRun()
     rc = rm.cmd_down("/c.yml", "router", _run=run)
@@ -135,6 +150,34 @@ def test_status_running_probes_health(capsys):
     assert "running:          yes" in out
     assert "200" in out
     assert opened["url"] == "http://127.0.0.1:8000/"
+
+
+def test_status_accepts_health_url_override(capsys):
+    run = FakeRun(state="running")
+    opened = {}
+
+    def fake_open(url, timeout=None):
+        opened["url"] = url
+        return _Resp()
+
+    rc = rm.cmd_status("anvil-router", _run=run, _open=fake_open,
+                       health_url="http://100.64.0.10:8000/")
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "health (http://100.64.0.10:8000/):  200" in out
+    assert opened["url"] == "http://100.64.0.10:8000/"
+
+
+def test_status_treats_http_error_as_front_door_response(capsys):
+    run = FakeRun(state="running")
+
+    def fake_open(url, timeout=None):
+        raise urllib.error.HTTPError(url, 401, "Unauthorized", {}, None)
+
+    rc = rm.cmd_status("anvil-router", _run=run, _open=fake_open,
+                       health_url="http://100.64.0.10:8000/v1/models")
+    assert rc == 0
+    assert "401" in capsys.readouterr().out
 
 
 def test_status_absent_reports_not_running(capsys):
@@ -406,6 +449,10 @@ def test_defaults_match_deployed_compose():
     assert rm.DEFAULT_CFG_VOLUME == "anvil-router-cfg"
     assert rm.DEFAULT_COMPOSE.endswith("docker-compose.yml")
     assert "fakoli-dark" in rm.DEFAULT_COMPOSE
+    version = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))[
+        "project"
+    ]["version"]
+    assert rm.DEFAULT_IMAGE == f"anvil-serving:{version}"
 
 
 # ---- logs -------------------------------------------------------------------
@@ -506,3 +553,17 @@ def test_up_main_empty_env_file_disables_autodetect(monkeypatch):
     monkeypatch.setattr(rm, "cmd_up", lambda c, s, **k: seen.update(k) or 0)
     rm.main(["up", "--env-file", ""])                            # explicit '' -> no env file
     assert seen["env_file"] is None
+
+
+def test_up_main_threads_recreate(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(rm, "cmd_up", lambda c, s, **k: seen.update(k) or 0)
+    rm.main(["up", "--recreate"])
+    assert seen["recreate"] is True
+
+
+def test_status_main_threads_health_url(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(rm, "cmd_status", lambda c, **k: seen.update(k) or 0)
+    rm.main(["status", "--health-url", "http://100.64.0.10:8000/"])
+    assert seen["health_url"] == "http://100.64.0.10:8000/"

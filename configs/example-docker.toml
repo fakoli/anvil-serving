@@ -1,56 +1,52 @@
-# anvil-serving config for the containerized router (ADR-0004: router as a service).
+# anvil-serving config for the containerized fakoli-dark router (ADR-0004).
 #
-# Use this instead of configs/example.toml when running the router via
-# examples/fakoli-dark/docker-compose.yml's `router` service: the serves are reached
-# by their compose SERVICE NAME on the shared Docker network (not 127.0.0.1), because
-# the router now runs in its own container alongside them, and the raw serves are no
-# longer published beyond loopback (ADR-0004 restores the SECURITY.md loopback-only
-# invariant for the unauthenticated SGLang/vLLM endpoints).
+# Use this with examples/fakoli-dark/docker-compose.yml's `router` service. The
+# router itself runs in a container and reaches the loopback-published vLLM
+# serves through host.docker.internal:<port>; the raw vLLM endpoints stay bound
+# to 127.0.0.1 on the Docker host.
 #
-# [server].auth_env names an ENV VAR holding the router's own bearer/x-api-key token
-# (never stored in this file); ABSENT means auth is off. See ADR-0004.
+# [server].auth_env names an ENV VAR holding the router bearer/x-api-key token.
+# The token value is never stored in this file.
 [server]
 auth_env = "ANVIL_ROUTER_TOKEN"
 
-# ── Router tier topology (harness-router; see docs/QUALITY-GATED-ROUTER.md §4/§6) ──
-# auth_env names an ENV VAR; the secret itself is NEVER stored here.
-#
-# DEFAULT: local-only. No cloud API key is required or stored in this file.
 [router]
-mapping_version = "2026-07-01.0"
+mapping_version = "2026-07-06.fakoli-dark"
+verify_local_min = true
+# The deployed router image reads this path inside the anvil-router-cfg volume.
+profile_path = "/etc/anvil/profile.json"
 
 [[router.tiers]]
 id            = "fast-local"
-base_url      = "http://fast:30001/v1"        # compose service name (fakoli-dark "fast" tier), not 127.0.0.1
-model         = "gpt-oss-20b"                  # REQUIRED: the serve's --served-model-name (else the preset token is forwarded and 404s)
+base_url      = "http://host.docker.internal:30003/v1"
+model         = "qwen36-27b"
 dialect       = "openai"
 context_limit = 32768
 privacy       = "local"
 tool_support  = true
 auth_env      = "ANVIL_FAST_LOCAL_KEY"
-# extra_body merges verbatim into the upstream request body (genericity:T003).
-# Uncomment for a thinking-by-default local model (Qwen3.5, gpt-oss, ...) that
-# otherwise burns its max_tokens budget reasoning and returns empty content
-# (CLAUDE.md gotcha #6/#9):
-# extra_body = { chat_template_kwargs = { enable_thinking = false } }
+# Qwen thinking off for the latency tier: avoids empty-content starvation on
+# short/voice turns and keeps TTFT low.
+extra_body    = { chat_template_kwargs = { enable_thinking = false } }
 
 [[router.tiers]]
 id            = "heavy-local"
-base_url      = "http://sglang:30000/v1"       # compose service name (fakoli-dark "sglang" tier), not 127.0.0.1
-model         = "qwen35-awq-local"             # REQUIRED: the serve's --served-model-name (else the preset token is forwarded and 404s)
-                                                # (fakoli-dark heavy tier; keep in sync with examples/fakoli-dark/{docker-compose.yml,docker-compose.heavy.yml,serves.toml})
+base_url      = "http://host.docker.internal:30002/v1"
+model         = "gpt-oss-120b"
 dialect       = "openai"
 context_limit = 131072
 privacy       = "local"
 tool_support  = true
 auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
-# extra_body = { chat_template_kwargs = { enable_thinking = false } }
+# gpt-oss honors reasoning_effort, not enable_thinking. Keep this a soft
+# default so a caller can dial it down.
+extra_body_defaults = { reasoning_effort = "high" }
 
-# preset -> ordered candidate tier pool (filter then rank)
-# Local-only: all presets route to free local GPU tiers.
+# preset -> ordered candidate tier pool.
 [router.presets]
-chat         = ["fast-local", "heavy-local"]
-quick-edit   = ["fast-local", "heavy-local"]
+chat         = ["heavy-local", "fast-local"]
+chat-fast    = ["fast-local", "heavy-local"]
+quick-edit   = ["heavy-local", "fast-local"]
 review       = ["heavy-local"]
 planning     = ["heavy-local"]
 long-context = ["heavy-local"]
