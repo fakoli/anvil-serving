@@ -1089,6 +1089,10 @@ def tool_openclaw_sync(args: dict) -> dict:
     gateway_user = _str_arg(args, "gateway_user", "")
     gateway_path = _str_arg(args, "gateway_path", "~/.openclaw/openclaw.json")
     out = _str_arg(args, "out", "")
+    skills = _arg_bool(args.get("skills"), False, name="skills")
+    skill_dir = _str_arg(args, "skill_dir", "")
+    if skill_dir and not skills:
+        raise ToolError("bad_argument", "skill_dir requires skills=true")
     overwrite = _arg_bool(args.get("overwrite"), False, name="overwrite")
     restart = _arg_bool(args.get("restart"), False, name="restart")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
@@ -1101,27 +1105,36 @@ def tool_openclaw_sync(args: dict) -> dict:
             raise ToolError("bad_gateway_target", str(exc), {"gateway_host": gateway_host, "gateway_user": gateway_user})
 
     try:
-        preview = harness.openclaw_sync_preview(config, base_url=base_url, api_key_env=api_key_env)
+        preview = harness.openclaw_sync_preview(
+            config,
+            base_url=base_url,
+            api_key_env=api_key_env,
+            skills=skills,
+            skill_dir=skill_dir or None,
+        )
     except FileNotFoundError:
         raise ToolError("config_not_found", "router config not found", {"config": config})
     except Exception as exc:
         raise ToolError("bad_config", "could not render OpenClaw config", {"config": config, "error": str(exc)})
 
+    stdout_only = out == "-"
     target = {
         "gateway_host": gateway_host or None,
         "gateway_user": gateway_user or None,
         "gateway_path": gateway_path,
         "out": out or None,
+        "skills": skills,
+        "skill_dir": skill_dir or None,
         "overwrite": overwrite,
         "restart": restart,
         "timeout_seconds": timeout_seconds,
     }
     if dry_run or not confirm:
         return _ok({"applied": False, "target": target, "preview": preview})
-    if not gateway_host and not out:
+    if not gateway_host and (not out or stdout_only):
         raise ToolError(
             "missing_target",
-            "openclaw sync apply requires gateway_host or out",
+            "openclaw sync apply requires gateway_host or a real out path; '-' is render-only",
             {"target": target},
         )
     rc, stdout, stderr = _capture(lambda: harness.cmd_sync_openclaw(
@@ -1129,6 +1142,8 @@ def tool_openclaw_sync(args: dict) -> dict:
         out=out or None,
         base_url=base_url,
         api_key_env=api_key_env,
+        skills=skills,
+        skill_dir=skill_dir or None,
         gateway_host=gateway_host or None,
         gateway_user=gateway_user or None,
         gateway_path=gateway_path,
@@ -1148,6 +1163,11 @@ def tool_openclaw_sync(args: dict) -> dict:
             "plugin_id": preview["plugin_id"],
             "base_url": preview["base_url"],
             "api_key": preview["api_key"],
+            "skills": preview["skills"],
+            "skill_name": preview["skill_name"],
+            "skill_load_dirs": preview["skill_load_dirs"],
+            "agent_names": preview["agent_names"],
+            "agent_models": preview["agent_models"],
         },
     }
     if rc != 0:
@@ -1378,6 +1398,8 @@ TOOLS: Dict[str, dict] = {
             "gateway_user": {"type": "string"},
             "gateway_path": {"type": "string"},
             "out": {"type": "string"},
+            "skills": {"type": "boolean"},
+            "skill_dir": {"type": "string"},
             "overwrite": {"type": "boolean"},
             "restart": {"type": "boolean"},
             "dry_run": {"type": "boolean"},
