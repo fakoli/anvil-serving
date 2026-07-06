@@ -6,6 +6,7 @@ HTTP seams are faked at the module boundary.
 import io
 import json
 import re
+import sqlite3
 import sys
 import threading
 import textwrap
@@ -93,6 +94,20 @@ def _catalog(tmp_path):
     return root
 
 
+def _external_bench_db(tmp_path):
+    from anvil_serving.external_benchmarks import cli as external_cli
+
+    db = tmp_path / "benchmarks.sqlite"
+    fixture = Path("tests/fixtures/external_benchmarks/millstone_sample.json")
+    assert external_cli.main(["import", "--source", "millstone", "--file", str(fixture), "--db", str(db)]) == 0
+    return db
+
+
+def _sqlite_count(db, table):
+    with sqlite3.connect(db) as conn:
+        return conn.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
+
+
 class Resp:
     status = 200
 
@@ -147,6 +162,10 @@ def test_tools_list_has_json_schemas():
         "benchmark_probe",
         "benchmark_artifact",
         "workflow_packet_validate",
+        "external_bench_sources",
+        "external_bench_list",
+        "external_bench_report",
+        "external_bench_compare",
     ]:
         assert name in tools
         schema = tools[name]["inputSchema"]
@@ -164,6 +183,8 @@ def test_tools_list_has_json_schemas():
     assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
     assert tools["router_promote"]["inputSchema"]["properties"]["human_approved"]["type"] == "boolean"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["skills"]["type"] == "boolean"
+    assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
+    assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
 
 
 def test_stdio_tools_list_and_call(tmp_path):
@@ -1160,6 +1181,116 @@ def test_benchmark_artifact_confirmed_run_rejects_stale_json(tmp_path, monkeypat
     assert not artifact_path.exists()
 
 
+def test_external_bench_sources_and_report_are_advisory_only(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+
+    sources = mcp.call_tool("external_bench_sources", {"db": str(db)})
+    assert sources["ok"] is True
+    assert sources["data"]["db_exists"] is True
+    assert sources["data"]["advisory_only"] is True
+    assert sources["data"]["promotion_quality_evidence"] is False
+    assert "millstone" in {row["name"] for row in sources["data"]["sources"]}
+
+    report = mcp.call_tool("external_bench_report", {
+        "db": str(db),
+        "gpu": "RTX PRO 6000",
+        "source": "millstone",
+        "top": 2,
+    })
+    assert report["ok"] is True
+    data = report["data"]
+    assert data["advisory_only"] is True
+    assert data["promotion_quality_evidence"] is False
+    assert data["filters"]["gpu"] == "RTX PRO 6000"
+    assert data["count"] == 2
+    assert data["rows"][0]["source_name"] == "millstone"
+    assert "throughput_tok_s" in data["columns"]
+
+
+def test_external_bench_mcp_read_paths_do_not_initialize_missing_db(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    missing = tmp_path / "missing" / "benchmarks.sqlite"
+
+    sources = mcp.call_tool("external_bench_sources", {"db": str(missing)})
+    assert sources["ok"] is True
+    assert sources["data"]["db_exists"] is False
+    assert "millstone" in {row["name"] for row in sources["data"]["sources"]}
+
+    for tool_name, args in [
+        ("external_bench_list", {}),
+        ("external_bench_report", {}),
+        ("external_bench_compare", {"local": "tests/fixtures/external_benchmarks/local_benchmark_sample.json"}),
+    ]:
+        env = mcp.call_tool(tool_name, {"db": str(missing), **args})
+        assert env["ok"] is False
+        assert env["error"]["code"] == "external_bench_db_not_found"
+
+    assert not missing.exists()
+    assert not missing.parent.exists()
+
+
+def test_external_bench_compare_returns_structured_advisory_deltas(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+    local = Path("tests/fixtures/external_benchmarks/local_benchmark_sample.json")
+
+    env = mcp.call_tool("external_bench_compare", {
+        "db": str(db),
+        "local": str(local),
+        "gpu": "RTX PRO 6000",
+        "top": 3,
+    })
+
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["advisory_only"] is True
+    assert data["promotion_quality_evidence"] is False
+    assert data["comparison"]["has_external_prior"] is True
+    assert data["comparison"]["match_type"] == "exact"
+    assert data["chosen"]["row"]["source_name"] == "millstone"
+    throughput = data["chosen"]["deltas"]["throughput_tok_s"]
+    assert throughput["local"] == 520.0
+    assert throughput["external"] == 410.0
+    assert round(throughput["delta_pct"], 1) == 26.8
+
+
+def test_external_bench_compare_mcp_does_not_record_comparison_history(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+    local = Path("tests/fixtures/external_benchmarks/local_benchmark_sample.json")
+    before = (
+        _sqlite_count(db, "serve_fingerprints"),
+        _sqlite_count(db, "benchmark_comparisons"),
+    )
+
+    env = mcp.call_tool("external_bench_compare", {
+        "db": str(db),
+        "local": str(local),
+    })
+
+    assert env["ok"] is True
+    assert (
+        _sqlite_count(db, "serve_fingerprints"),
+        _sqlite_count(db, "benchmark_comparisons"),
+    ) == before
+
+
+def test_external_bench_compare_rejects_local_artifact_outside_allowed_roots(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+    outside = tmp_path.parent / "outside-local-benchmark.json"
+    outside.write_text(json.dumps({"model": "Qwen3.6-35B-A3B-MTP"}), encoding="utf-8")
+
+    env = mcp.call_tool("external_bench_compare", {
+        "db": str(db),
+        "local": str(outside),
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "unsafe_artifact_path"
+
+
 def _workflow_packet(**overrides):
     packet = {
         "schema_version": "operator-workflow/v1",
@@ -1336,6 +1467,52 @@ def test_workflow_packet_malformed_tool_entries_stay_structured_errors():
     assert env["ok"] is True
     assert env["data"]["valid"] is False
     assert env["data"]["errors"][0]["field"] == "tools_used[0]"
+
+
+def test_external_bench_priors_do_not_satisfy_workflow_promotion(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+    local = Path("tests/fixtures/external_benchmarks/local_benchmark_sample.json")
+    prior = mcp.call_tool("external_bench_compare", {"db": str(db), "local": str(local)})["data"]
+
+    packet = _workflow_packet(advisory_priors=[prior])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+
+    promote_from_prior = _workflow_packet(
+        advisory_priors=[prior],
+        recommendation="promote",
+        gate_state="not_required",
+        human_gate_required=False,
+    )
+    env = mcp.call_tool("workflow_packet_validate", {"packet": promote_from_prior})
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert {"gate_state", "human_gate_required"}.issubset(fields)
+
+    quality_claim = _workflow_packet(advisory_priors=[dict(prior, promotion_quality_evidence=True)])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": quality_claim})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "advisory_priors[0].promotion_quality_evidence" for error in env["data"]["errors"])
+
+    non_advisory = _workflow_packet(advisory_priors=[dict(prior, advisory_only=False)])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": non_advisory})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "advisory_priors[0].advisory_only" for error in env["data"]["errors"])
+
+    missing_flags = _workflow_packet(advisory_priors=[{"source": "external"}])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": missing_flags})
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "advisory_priors[0].advisory_only" in fields
+    assert "advisory_priors[0].promotion_quality_evidence" in fields
+
+    non_object = _workflow_packet(advisory_priors=["external"])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": non_object})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "advisory_priors[0]" for error in env["data"]["errors"])
 
 
 def test_probe_tools_use_api_key_env_and_reject_raw_keys(monkeypatch):

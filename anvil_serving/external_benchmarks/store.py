@@ -214,8 +214,9 @@ def insert_rows(
     return count
 
 
-def list_sources(db_path: str | os.PathLike[str] = DEFAULT_DB) -> list[dict[str, Any]]:
-    init_db(db_path)
+def list_sources(db_path: str | os.PathLike[str] = DEFAULT_DB, *, initialize: bool = True) -> list[dict[str, Any]]:
+    if initialize:
+        init_db(db_path)
     with connect(db_path) as conn:
         rows = conn.execute(
             """
@@ -242,10 +243,12 @@ def query_rows(
     model: str | None = None,
     source: str | None = None,
     top: int | None = None,
+    initialize: bool = True,
 ) -> list[dict[str, Any]]:
     from .normalize import normalize_gpu_name, normalize_model_identity
 
-    init_db(db_path)
+    if initialize:
+        init_db(db_path)
     clauses = []
     params: list[Any] = []
     if gpu:

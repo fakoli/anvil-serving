@@ -55,7 +55,7 @@ The initial checked-in entry points are:
 | Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, host-repair, and voice skills once their backing tools exist. |
 | Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
 | OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Use workspace-installed skills, or pass `--skill-dir <gateway-visible-path>` for checkout-loaded skills. | Split additional specialized skills once their backing tools exist. |
-| MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, and promotion preview. | Router token handling and advisory external benchmark report wrappers. |
+| MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, external benchmark advisory reports/compares, and promotion preview. | Router token handling. |
 | Result contract | `operator-workflow/v1` packet documented for skills and reviewers; `workflow_packet_validate` validates packet shape, promotion gates, and artifact paths. | Broader packet fixtures from real multi-agent runs. |
 
 ## OpenClaw Smoke Result
@@ -98,6 +98,10 @@ from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
 | Bounded throughput probe | `benchmark_probe` | Implemented |
 | Benchmark evidence artifact | `benchmark_artifact` | Implemented; writes `--json-out` only to the workspace or server-configured `ANVIL_BENCHMARK_EVIDENCE_DIR` / `ANVIL_EVIDENCE_DIR` roots |
 | Workflow packet validation | `workflow_packet_validate` | Implemented; validates `operator-workflow/v1`, promotion proof, and bounded artifact paths |
+| External benchmark source list | `external_bench_sources` | Implemented; advisory-only prior metadata |
+| External benchmark row list | `external_bench_list` | Implemented; advisory-only normalized rows |
+| External benchmark report | `external_bench_report` | Implemented; advisory-only structured report |
+| External benchmark compare | `external_bench_compare` | Implemented; advisory-only deltas against a local benchmark artifact |
 
 That is enough for status, route checks, basic validation, bounded benchmark
 probes, OpenClaw provider/model sync, and OpenClaw workbench skill rendering. It
@@ -108,7 +112,6 @@ is not yet enough to operate every verb as a structured agent workflow.
 | Gap | Proposed tool or workflow | Safety boundary |
 |---|---|---|
 | Router token handling | `router_token_status` | Report auth configured/unset without returning token values. |
-| External priors | `external_bench_report` / `external_bench_compare` | Always `advisory_only=true`; cannot decide promotion. |
 | Host/cache work | `host_summary`, `cache_prune_plan` | Plans only until a separate human-gated mutation path exists. |
 | OpenClaw skills | `harness sync openclaw --skills` | Render/apply Anvil-owned keys only; preserve operator-owned config. |
 
