@@ -1,0 +1,403 @@
+{
+  "gpu": {
+    "available": true,
+    "source": "nvidia-smi",
+    "devices": [
+      {
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 5090",
+        "capability": "sm_120",
+        "memory_total": "32607 MiB",
+        "memory_used": "10563 MiB"
+      },
+      {
+        "index": 1,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "capability": "sm_120",
+        "memory_total": "97887 MiB",
+        "memory_used": "90660 MiB"
+      }
+    ],
+    "detail": "torch not importable; GPU context collected with nvidia-smi"
+  },
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "candidates": [
+    {
+      "name": "kokoro-82m",
+      "base_url": "http://127.0.0.1:30011/v1",
+      "model": "kokoro",
+      "ttfa_ms": 444.2,
+      "synth_seconds": 0.4463,
+      "audio_seconds": 2.8887,
+      "rtf": 0.1545,
+      "audio_bytes": 138656,
+      "audio_sanity": {
+        "samples": 69328,
+        "rms": 1637.55,
+        "peak": 11175,
+        "nonzero_samples": 62716
+      },
+      "audio_sanity_note": "automated PCM sanity only; no human listening pass by this script",
+      "source_sample_rate": 24000,
+      "capture_path": "C:\\Users\\sdoum\\AppData\\Local\\Temp\\anvil-tts-ab-full-20260706\\kokoro-82m.wav",
+      "quality": "not measured; human listening pass required",
+      "error": null,
+      "readiness": {
+        "ready": true,
+        "health": {
+          "ready": true,
+          "url": "http://127.0.0.1:30011/health",
+          "status": 200
+        },
+        "models": {
+          "ready": true,
+          "url": "http://127.0.0.1:30011/v1/models",
+          "status": 200,
+          "payload": {
+            "object": "list",
+            "data": [
+              {
+                "id": "tts-1",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "tts-1-hd",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "kokoro",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "gpt-4o-mini-tts",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              }
+            ]
+          }
+        },
+        "model_ready": true,
+        "advertised_models": [
+          "tts-1",
+          "tts-1-hd",
+          "kokoro",
+          "gpt-4o-mini-tts"
+        ],
+        "detail": "raw endpoint health/models/container probe plus expected model-id match",
+        "container": {
+          "name": "kokoro-tts",
+          "available": true,
+          "status": "running",
+          "image": "ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128",
+          "docker_name": "kokoro-tts",
+          "cuda_visible_devices": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+          "device_requests": [
+            {
+              "Driver": "",
+              "Count": -1,
+              "DeviceIDs": null,
+              "Capabilities": [
+                [
+                  "gpu"
+                ]
+              ],
+              "Options": {}
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "orpheus-3b",
+      "base_url": "http://127.0.0.1:30013/v1",
+      "model": "orpheus-3b",
+      "ttfa_ms": 2958.77,
+      "synth_seconds": 2.9613,
+      "audio_seconds": 2.9876,
+      "rtf": 0.9912,
+      "audio_bytes": 143404,
+      "audio_sanity": {
+        "samples": 71702,
+        "rms": 1532.58,
+        "peak": 28006,
+        "nonzero_samples": 71262
+      },
+      "audio_sanity_note": "automated PCM sanity only; no human listening pass by this script",
+      "source_sample_rate": 24000,
+      "capture_path": "C:\\Users\\sdoum\\AppData\\Local\\Temp\\anvil-tts-ab-full-20260706\\orpheus-3b.wav",
+      "quality": "not measured; human listening pass required",
+      "error": null,
+      "readiness": {
+        "ready": true,
+        "health": {
+          "ready": true,
+          "url": "http://127.0.0.1:30013/health",
+          "status": 200
+        },
+        "models": {
+          "ready": true,
+          "url": "http://127.0.0.1:30013/v1/models",
+          "status": 200,
+          "payload": {
+            "object": "list",
+            "data": [
+              {
+                "id": "orpheus-3b",
+                "object": "model",
+                "owned_by": "orpheus"
+              }
+            ]
+          }
+        },
+        "model_ready": true,
+        "advertised_models": [
+          "orpheus-3b"
+        ],
+        "detail": "raw endpoint health/models/container probe plus expected model-id match",
+        "container": {
+          "name": "orpheus-tts",
+          "available": true,
+          "status": "running",
+          "image": "anvil-t009-sidecars-orpheus-tts",
+          "docker_name": "orpheus-tts",
+          "cuda_visible_devices": "",
+          "device_requests": null
+        }
+      }
+    },
+    {
+      "name": "qwen3-tts-1.7b",
+      "base_url": "http://127.0.0.1:30014/v1",
+      "model": "qwen3-tts",
+      "ttfa_ms": 4697.07,
+      "synth_seconds": 4.6996,
+      "audio_seconds": 2.6169,
+      "rtf": 1.7959,
+      "audio_bytes": 125610,
+      "audio_sanity": {
+        "samples": 62805,
+        "rms": 1411.14,
+        "peak": 9983,
+        "nonzero_samples": 60384
+      },
+      "audio_sanity_note": "automated PCM sanity only; no human listening pass by this script",
+      "source_sample_rate": 24000,
+      "capture_path": "C:\\Users\\sdoum\\AppData\\Local\\Temp\\anvil-tts-ab-full-20260706\\qwen3-tts-1.7b.wav",
+      "quality": "not measured; human listening pass required",
+      "error": null,
+      "readiness": {
+        "ready": true,
+        "health": {
+          "ready": true,
+          "url": "http://127.0.0.1:30014/health",
+          "status": 200
+        },
+        "models": {
+          "ready": true,
+          "url": "http://127.0.0.1:30014/v1/models",
+          "status": 200,
+          "payload": {
+            "object": "list",
+            "data": [
+              {
+                "id": "qwen3-tts",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-en",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-en",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-zh",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-zh",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-ja",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-ja",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-ko",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-ko",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-de",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-de",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-fr",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-fr",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-es",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-es",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-ru",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-ru",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-pt",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-pt",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-it",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              },
+              {
+                "id": "tts-1-hd-it",
+                "object": "model",
+                "created": 1737734400,
+                "owned_by": "qwen"
+              }
+            ]
+          }
+        },
+        "model_ready": true,
+        "advertised_models": [
+          "qwen3-tts",
+          "tts-1",
+          "tts-1-hd",
+          "tts-1-en",
+          "tts-1-hd-en",
+          "tts-1-zh",
+          "tts-1-hd-zh",
+          "tts-1-ja",
+          "tts-1-hd-ja",
+          "tts-1-ko",
+          "tts-1-hd-ko",
+          "tts-1-de",
+          "tts-1-hd-de",
+          "tts-1-fr",
+          "tts-1-hd-fr",
+          "tts-1-es",
+          "tts-1-hd-es",
+          "tts-1-ru",
+          "tts-1-hd-ru",
+          "tts-1-pt",
+          "tts-1-hd-pt",
+          "tts-1-it",
+          "tts-1-hd-it"
+        ],
+        "detail": "raw endpoint health/models/container probe plus expected model-id match",
+        "container": {
+          "name": "qwen3-tts",
+          "available": true,
+          "status": "running",
+          "image": "vllm/vllm-openai:nightly",
+          "docker_name": "qwen3-tts",
+          "cuda_visible_devices": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+          "device_requests": [
+            {
+              "Driver": "nvidia",
+              "Count": 0,
+              "DeviceIDs": [
+                "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+              ],
+              "Capabilities": [
+                [
+                  "gpu"
+                ]
+              ],
+              "Options": null
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
