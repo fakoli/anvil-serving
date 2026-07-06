@@ -15,11 +15,16 @@ narration.
 1. Read `README.md`, `CLAUDE.md`, and `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md`
    before changing behavior or running operational commands.
 2. List or inspect available MCP tools first. Prefer `router_status`,
-   `serves_status`, `doctor_summary`, `route_decision`, `openclaw_sync`,
+   `router_logs`, `router_manage`, `decision_summary`, `router_promote`,
+   `serves_status`, `serves_manage`, `serves_logs`, `doctor_summary`,
+   `models_inventory`, `route_decision`, `openclaw_sync`,
    `openclaw_gateway_restart`, `preflight_probe`, and `benchmark_probe` when
    they cover the request.
 3. Use documented `anvil-serving` CLI verbs only when an MCP wrapper is missing.
-   Return the command preview and mark the missing wrapper as a product gap.
+   Safe fallbacks are read-only or preview-first verbs such as `profile`,
+   `models sync`, `models recipe`, `external-bench list/report/compare`,
+   `score`, `harness sync openclaw --out -`, and `host doctor`. Return the
+   command preview and mark the missing wrapper as a product gap.
 4. Use `127.0.0.1` in local URLs. Do not introduce `localhost`.
 5. Pass credentials by environment variable name only. Never place literal keys
    in configs, fixtures, packets, logs, or prompts.
@@ -31,6 +36,10 @@ cloud enablement, destructive cache pruning, host repair, Docker/WSL restart,
 public or non-loopback bind, or any operation that would persist a new routing
 trust decision.
 
+`router_promote` may validate and preview candidate profile/config changes, but
+live apply requires `confirm=true` and `human_approved=true`. Skill packets must
+keep `promoted=false` unless that human-approved promotion result is present.
+
 Never self-verify. The model that generated a candidate output cannot be the
 critic or judge that validates it.
 
@@ -39,15 +48,22 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 
 ## Playbook Selection
 
-- Readiness: inspect router, serves, doctor, and configured endpoint status.
+- Readiness: inspect `router_status`, `serves_status`, `doctor_summary`,
+  `models_inventory`, and configured endpoint status.
 - Model catalog: read or sync model inventory and mark external benchmarks as
   advisory priors only.
-- Serve swap: preview the serve operation, require exact target and confirm,
-  then run preflight before benchmark.
-- Harness sync: preview OpenClaw config/skill changes before apply and preserve
-  operator-owned keys.
-- Promotion evidence: assemble status, preflight, benchmark, calibration,
-  profile/config diffs, and reviewer recommendation with `promoted=false`.
+- Serve swap: preview with `serves_manage`, inspect `serves_logs`, require exact
+  target plus `confirm=true` and `dry_run=false`, then run preflight before
+  benchmark.
+- Harness sync: preview OpenClaw provider, skill, and agent config with
+  `openclaw_sync`; apply only to an explicit `out`/`gateway_host` target and
+  preserve operator-owned keys.
+- Router operations: use `router_status`, bounded `router_logs`,
+  `router_manage`, and `decision_summary`; lifecycle mutation is preview-first
+  and live only with `confirm=true` plus `dry_run=false`.
+- Promotion evidence: assemble status, decision summary, route probes,
+  preflight, benchmark, calibration, profile/config diffs, and reviewer
+  recommendation with `promoted=false`.
 - Host repair: diagnose and preview only unless the human approves disruptive
   repair through the documented CLI.
 

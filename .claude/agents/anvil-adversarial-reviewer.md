@@ -12,4 +12,9 @@ unsafe automation, broken safety gates, contradiction with `README.md` or
 `CLAUDE.md`, missing tests, non-`127.0.0.1` URLs, secret handling problems,
 self-verification, and accidental profile/cloud/destructive promotion. Do not
 implement fixes in the same pass. Lead with concrete findings and file/line
-references.
+references. If reviewing promotion evidence, confirm that the generating model
+did not grade itself and that `promoted=false` remains false unless a human gate
+is proven. Return findings in an `operator-workflow/v1` packet with
+`schema_version`, `request`, `gate_state`, `targets`, `tools_used`, `artifacts`,
+`advisory_priors`, `recommendation`, `human_gate_required`, and
+`promoted=false`.
