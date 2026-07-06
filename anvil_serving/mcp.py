@@ -1341,6 +1341,14 @@ def tool_doctor_summary(args: dict) -> dict:
     return _ok(doctor.checks_summary(config_path=config, config_explicit=bool(args.get("config"))))
 
 
+def tool_host_summary(args: dict) -> dict:
+    from . import host
+
+    if args:
+        raise ToolError("bad_argument", "host_summary does not accept arguments")
+    return _ok(host.host_summary())
+
+
 def tool_models_inventory(args: dict) -> dict:
     from . import models
 
@@ -1391,6 +1399,56 @@ def tool_models_inventory(args: dict) -> dict:
     except models.CatalogError as exc:
         raise ToolError("bad_catalog", str(exc), exc.details)
     return _ok({"synced": False, "dry_run": False, "catalog": inventory})
+
+
+def _cache_prune_plan_argv(mixture: list[str], *, include_servable: bool) -> list[str]:
+    argv = [sys.executable, "-m", "anvil_serving.cli", "cache-prune", "--json"]
+    if mixture:
+        argv += ["--mixture", ",".join(mixture)]
+    if include_servable:
+        argv.append("--include-servable")
+    return argv
+
+
+def tool_cache_prune_plan(args: dict) -> dict:
+    from . import cache_prune
+
+    allowed = {"mixture", "include_servable", "execute", "confirm", "yes", "dry_run"}
+    extras = sorted(str(key) for key in args if key not in allowed)
+    if extras:
+        raise ToolError("bad_argument", "unsupported cache_prune_plan argument(s)", {"arguments": extras})
+    for name in ("execute", "confirm", "yes"):
+        if _arg_bool(args.get(name), False, name=name):
+            raise ToolError(
+                "cache_prune_delete_not_available",
+                "cache_prune_plan is read-only; destructive pruning requires the human-gated CLI",
+                {"requested": name},
+            )
+    if args.get("dry_run") is not None and not _arg_bool(args.get("dry_run"), True, name="dry_run"):
+        raise ToolError(
+            "cache_prune_delete_not_available",
+            "cache_prune_plan cannot disable dry_run through MCP",
+            {"requested": "dry_run=false"},
+        )
+
+    mixture = sorted(set(_str_list_arg(args, "mixture")))
+    include_servable = _arg_bool(args.get("include_servable"), False, name="include_servable")
+    argv = _cache_prune_plan_argv(mixture, include_servable=include_servable)
+    try:
+        plan = cache_prune.build_plan(set(mixture))
+        report = cache_prune.execute_plan(plan, dry_run=True, include_servable=include_servable)
+    except Exception as exc:
+        raise ToolError("cache_prune_plan_failed", str(exc), {"command": argv})
+    return _ok({
+        "dry_run": True,
+        "deletion_available": False,
+        "human_gate_required": True,
+        "command": argv,
+        "mixture": mixture,
+        "include_servable": include_servable,
+        "plan": plan,
+        "report": report,
+    })
 
 
 def _route_url(base_url: str) -> str:
@@ -1965,6 +2023,11 @@ TOOLS: Dict[str, dict] = {
         }),
         "handler": tool_doctor_summary,
     },
+    "host_summary": {
+        "description": "Return read-only WSL/Docker/GPU host checks; performs no repair or restart.",
+        "inputSchema": _schema({}),
+        "handler": tool_host_summary,
+    },
     "models_inventory": {
         "description": "Read the generated model catalog, or preview/run `models sync` to create it.",
         "inputSchema": _schema({
@@ -1976,6 +2039,14 @@ TOOLS: Dict[str, dict] = {
             "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
         }),
         "handler": tool_models_inventory,
+    },
+    "cache_prune_plan": {
+        "description": "Return a JSON cache-prune plan and dry-run report; deletion is not available through MCP.",
+        "inputSchema": _schema({
+            "mixture": {"type": "array", "items": {"type": "string"}},
+            "include_servable": {"type": "boolean"},
+        }),
+        "handler": tool_cache_prune_plan,
     },
     "route_decision": {
         "description": "POST a prompt to the router /v1/route decision endpoint.",

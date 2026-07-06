@@ -154,7 +154,9 @@ def test_tools_list_has_json_schemas():
         "serves_manage",
         "serves_logs",
         "doctor_summary",
+        "host_summary",
         "models_inventory",
+        "cache_prune_plan",
         "route_decision",
         "openclaw_sync",
         "openclaw_gateway_restart",
@@ -185,6 +187,8 @@ def test_tools_list_has_json_schemas():
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["skills"]["type"] == "boolean"
     assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
     assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
+    assert tools["host_summary"]["inputSchema"]["properties"] == {}
+    assert "execute" not in tools["cache_prune_plan"]["inputSchema"]["properties"]
 
 
 def test_stdio_tools_list_and_call(tmp_path):
@@ -628,6 +632,118 @@ def test_models_inventory_confirmed_sync_returns_catalog_counts(tmp_path, monkey
     assert env["data"]["synced"] is True
     assert env["data"]["catalog"]["count"] == 1
     assert env["data"]["stdout"] == "wrote INDEX.md + 1 summaries\n"
+
+
+def test_host_summary_tool_is_structured_and_read_only(monkeypatch):
+    from anvil_serving import host
+
+    monkeypatch.setattr(host, "_host_total_gb", lambda _run=None: 93.7)
+    monkeypatch.setattr(host, "_wsl_vm_memory_gb", lambda _run=None: 62.8)
+    monkeypatch.setattr(host, "_gpus", lambda _run=None: [
+        ("0", "RTX 5090", 27.7, 31.8),
+        ("1", "RTX PRO 6000", 85.0, 95.6),
+    ])
+    env = mcp.call_tool("host_summary", {})
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["mutates"] is False
+    assert data["host_ram_gb"] == 93.7
+    assert data["docker"]["memory_cap_gb"] == 62.8
+    assert data["recommended_wsl_memory_gb"] == 80
+    assert data["gpus"][1]["name"] == "RTX PRO 6000"
+    assert {check["name"] for check in data["checks"]} == {
+        "host_ram", "docker_wsl_memory", "gpu_inventory",
+    }
+
+
+def test_host_summary_rejects_arguments():
+    env = mcp.call_tool("host_summary", {"confirm": True})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_cache_prune_plan_returns_json_plan_and_dry_run_report(monkeypatch):
+    from anvil_serving import cache_prune
+
+    seen = {}
+    plan = {
+        "candidates": [{
+            "id": "fp8/moe",
+            "reason": "incompatible-sm120",
+            "format": "safetensors",
+            "size_gb": 80.0,
+            "reclaimable_bytes": 80_000_000_000,
+            "dead_everywhere": True,
+            "local_path": "C:/hf/models--fp8--moe",
+        }],
+        "protected": ["keep/me"],
+        "by_reason": {"incompatible-sm120": {"count": 1, "bytes": 80_000_000_000}},
+        "total_reclaimable_gb": 80.0,
+        "total_reclaimable_bytes": 80_000_000_000,
+    }
+
+    def fake_build_plan(mixture):
+        seen["mixture"] = set(mixture)
+        return plan
+
+    def fake_execute_plan(plan_arg, *, dry_run=True, include_servable=False):
+        seen["plan"] = plan_arg
+        seen["dry_run"] = dry_run
+        seen["include_servable"] = include_servable
+        return {
+            "dry_run": dry_run,
+            "include_servable": include_servable,
+            "would_delete": ["fp8/moe"],
+            "deleted": [],
+            "kept": [],
+            "skipped": [],
+            "reclaimed_bytes": 0,
+            "planned_bytes": 80_000_000_000,
+            "reclaimed_gb": 0.0,
+        }
+
+    monkeypatch.setattr(cache_prune, "build_plan", fake_build_plan)
+    monkeypatch.setattr(cache_prune, "execute_plan", fake_execute_plan)
+
+    env = mcp.call_tool("cache_prune_plan", {
+        "mixture": ["keep/me", "keep/me"],
+        "include_servable": True,
+    })
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["dry_run"] is True
+    assert data["deletion_available"] is False
+    assert data["human_gate_required"] is True
+    assert data["mixture"] == ["keep/me"]
+    assert data["plan"] == plan
+    assert data["report"]["would_delete"] == ["fp8/moe"]
+    assert data["command"][:4] == [sys.executable, "-m", "anvil_serving.cli", "cache-prune"]
+    assert "--json" in data["command"]
+    assert data["command"][data["command"].index("--mixture") + 1] == "keep/me"
+    assert "--include-servable" in data["command"]
+    assert seen == {
+        "mixture": {"keep/me"},
+        "plan": plan,
+        "dry_run": True,
+        "include_servable": True,
+    }
+
+
+def test_cache_prune_plan_refuses_deletion_requests(monkeypatch):
+    from anvil_serving import cache_prune
+
+    monkeypatch.setattr(cache_prune, "build_plan", lambda mixture: (_ for _ in ()).throw(
+        AssertionError("delete requests must be rejected before planning")
+    ))
+    for args in (
+        {"execute": True},
+        {"confirm": True},
+        {"yes": True},
+        {"dry_run": False},
+    ):
+        env = mcp.call_tool("cache_prune_plan", args)
+        assert env["ok"] is False
+        assert env["error"]["code"] == "cache_prune_delete_not_available"
 
 
 def test_serves_manage_preview_is_dry_run_argv(tmp_path):
