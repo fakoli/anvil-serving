@@ -5,6 +5,7 @@ HTTP seams are faked at the module boundary.
 """
 import io
 import json
+import sys
 import threading
 import textwrap
 import types
@@ -52,6 +53,21 @@ def _router_cfg(tmp_path):
     return str(p)
 
 
+def _catalog(tmp_path):
+    root = tmp_path / "model-library"
+    cards = root / "cards"
+    cards.mkdir(parents=True)
+    (root / "INDEX.md").write_text("| human table only |\n", encoding="utf-8")
+    (cards / "owner__repo.json").write_text(json.dumps({
+        "id": "owner/repo",
+        "owner": "owner",
+        "repo": "repo",
+        "format": "safetensors",
+        "sglang_loadable": True,
+    }), encoding="utf-8")
+    return root
+
+
 class Resp:
     status = 200
 
@@ -92,6 +108,7 @@ def test_tools_list_has_json_schemas():
         "router_status",
         "serves_status",
         "doctor_summary",
+        "models_inventory",
         "route_decision",
         "openclaw_sync",
         "openclaw_gateway_restart",
@@ -261,6 +278,72 @@ def test_openclaw_sync_preview_uses_harness_logic_and_env_ref(tmp_path):
     assert preview["model_ids"] == ["chat"]
     # Secret hygiene: config references the env var by name; no literal secret is resolved.
     assert preview["api_key"] == "${ANVIL_ROUTER_TOKEN}"
+
+
+def test_models_inventory_reads_structured_catalog(tmp_path):
+    catalog = _catalog(tmp_path)
+    env = mcp.call_tool("models_inventory", {"catalog_dir": str(catalog)})
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["synced"] is False
+    assert data["catalog"]["count"] == 1
+    assert data["catalog"]["entries"][0]["id"] == "owner/repo"
+    assert data["catalog"]["entries"][0]["summary_path"].endswith("owner__repo.json")
+
+
+def test_models_inventory_missing_catalog_points_to_sync(tmp_path):
+    catalog = tmp_path / "missing library"
+    env = mcp.call_tool("models_inventory", {"catalog_dir": str(catalog)})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "catalog_not_found"
+    assert "error.details.command" in env["error"]["message"]
+    assert env["error"]["details"]["command"][-3:] == ["sync", "--out", str(catalog)]
+
+
+def test_models_inventory_sync_preview_is_argv(tmp_path):
+    catalog = tmp_path / "model-library"
+    env = mcp.call_tool("models_inventory", {
+        "catalog_dir": str(catalog),
+        "hf_roots": "C:/hf-cache",
+        "model_dirs": "D:/models",
+        "sync": True,
+    })
+    assert env["ok"] is True
+    assert env["data"]["synced"] is False
+    assert env["data"]["dry_run"] is True
+    cmd = env["data"]["command"]
+    assert cmd[:3] == [sys.executable, "-m", "anvil_serving.cli"]
+    assert cmd[3:7] == ["models", "sync", "--out", str(catalog)]
+    assert "--hf-roots" in cmd and "C:/hf-cache" in cmd
+    assert "--model-dirs" in cmd and "D:/models" in cmd
+
+
+def test_models_inventory_confirmed_sync_returns_catalog_counts(tmp_path, monkeypatch):
+    catalog = tmp_path / "model-library"
+
+    def fake_run(argv, **kwargs):
+        assert argv[3:7] == ["models", "sync", "--out", str(catalog)]
+        cards = catalog / "cards"
+        cards.mkdir(parents=True)
+        (catalog / "INDEX.md").write_text("# generated\n", encoding="utf-8")
+        (cards / "owner__repo.json").write_text(json.dumps({
+            "id": "owner/repo",
+            "format": "safetensors",
+            "model_type": "qwen3",
+        }), encoding="utf-8")
+        return proc(0, "wrote INDEX.md + 1 summaries\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("models_inventory", {
+        "catalog_dir": str(catalog),
+        "sync": True,
+        "confirm": True,
+        "timeout_seconds": 1,
+    })
+    assert env["ok"] is True
+    assert env["data"]["synced"] is True
+    assert env["data"]["catalog"]["count"] == 1
+    assert env["data"]["stdout"] == "wrote INDEX.md + 1 summaries\n"
 
 
 def test_openclaw_sync_rejects_non_anvil_api_key_env(tmp_path):

@@ -55,7 +55,7 @@ The initial checked-in entry points are:
 | Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, host-repair, and voice skills once their backing tools exist. |
 | Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
 | OpenClaw install | Checked-in manual example path: `openclaw skills install <skill-dir> --as anvil-serving-workbench`, or checkout-based `skills.load.extraDirs`. | `anvil-serving harness sync openclaw --skills` render/apply path that preserves operator-owned config. |
-| MCP/controller tools | Status, route probes, OpenClaw config sync, gateway restart, preflight probes, and benchmark probes. | Inventory, bounded logs, decision summaries, lifecycle wrappers, artifact benchmarks, and advisory external benchmark report wrappers. |
+| MCP/controller tools | Model inventory, status, route probes, OpenClaw config sync, gateway restart, preflight probes, and benchmark probes. | Bounded logs, decision summaries, lifecycle wrappers, artifact benchmarks, and advisory external benchmark report wrappers. |
 | Result contract | `operator-workflow/v1` packet documented for skills and reviewers. | Stdlib validator and tests that enforce packet enums and required fields. |
 
 ## OpenClaw Smoke Result
@@ -84,6 +84,7 @@ from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
 | Deployed router health | `router_status` | Implemented |
 | Compose-defined serve health | `serves_status` | Implemented |
 | Environment and configured tier checks | `doctor_summary` | Implemented |
+| Model inventory | `models_inventory` | Implemented |
 | Router decision probe | `route_decision` | Implemented |
 | OpenClaw config preview/apply | `openclaw_sync` | Implemented |
 | OpenClaw gateway restart | `openclaw_gateway_restart` | Implemented |
@@ -99,7 +100,6 @@ OpenClaw skill rendering is still a follow-up.
 
 | Gap | Proposed tool or workflow | Safety boundary |
 |---|---|---|
-| Model inventory | `models_inventory` | Read-only by default; explicit sync preview before writes. |
 | Bounded logs | `router_logs`, `serves_logs` | Tail-limited, redacted, no prompt dumps. |
 | Recent routing decisions | `decision_summary` | Summaries only; no full prompt or secret material. |
 | Serve lifecycle | `serves_manage` | Exact target plus dry-run before `confirm=true`. |
@@ -116,7 +116,7 @@ OpenClaw skill rendering is still a follow-up.
 | Front door | `serve` | Skill-only runbook | Long-running process; agents inspect it through `router_status`, `/healthz`, and `/v1/models`. |
 | Router lifecycle | `router status/logs/up/down/restart/reload/promote/token` | MCP for status/logs/reload/promote preview; human-gated CLI for live promotion | Promotion and lifecycle need dry-run, audit, and explicit approval. |
 | Serve lifecycle | `serves status/up/down/rm/adopt/logs` | MCP for status/logs/up/down/adopt with dry-run and confirm | Serve start/stop is normal operation and should not require raw Docker. |
-| Model inventory | `models sync`, `models pull`, `models recipe` | MCP for inventory and recipe read; skill/CLI for pull | Inventory is read-heavy. Pull is long-running, network/disk-heavy, and explicitly gated. |
+| Model inventory | `models sync`, `models pull`, `models recipe` | MCP for catalog inventory with sync preview/confirm; skill/CLI for pull and recipe read | Inventory is read-heavy. Pull is long-running, network/disk-heavy, and explicitly gated. |
 | Bring-up generation | `init`, `doctor`, `deploy` | MCP preview/render plus CLI apply | Generated artifacts should be inspectable before write. |
 | Environment repair | `host doctor`, `host wsl-config`, `host restart-docker`, `host reset-wsl` | MCP summaries and dry-run repair preview; human-confirmed CLI for disruptive repair | Restarting Docker/WSL and editing host config are high-disruption. |
 | Correctness and capacity | `preflight`, `benchmark`, `eval preflight`, `eval benchmark` | MCP probes plus skill sequencing | Preflight must precede benchmark. Benchmark artifacts need explicit output paths. |
