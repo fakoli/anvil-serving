@@ -129,6 +129,12 @@ def build_parser():
     p.add_argument("--input-device", default=None, help="sounddevice input device index/name")
     p.add_argument("--output-device", default=None, help="sounddevice output device index/name")
     p.add_argument("--input-sample-rate", type=int, default=16000, help="PortAudio input sample rate")
+    p.add_argument(
+        "--shutdown-drain-seconds",
+        type=float,
+        default=15.0,
+        help="seconds to keep audio open while draining in-flight responses during shutdown",
+    )
     p.add_argument("--list-devices", action="store_true", help="list PortAudio devices and exit")
     p.add_argument("--meter-inputs", action="store_true", help="measure input-device RMS/peak briefly and exit")
     p.add_argument("--meter-seconds", type=float, default=2.0, help="seconds per input device for --meter-inputs")
@@ -612,6 +618,10 @@ def capture_acceptance_passed(
     return bool(output_frames and any(output_frames))
 
 
+def should_append_successful_finding(acceptance_capture: bool, playback_errors: List[str]) -> bool:
+    return bool(acceptance_capture and not playback_errors)
+
+
 def capture_barge_in_hint(turns: List[TurnMetric], events: List[Dict[str, Any]]) -> str:
     """Explain the most likely operator timing issue for a missing barge-in."""
     if any(t.barge_in for t in turns) or any(e.get("barge_in") for e in events):
@@ -716,6 +726,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     input_frames: Optional[List[bytes]] = [] if capture_prefix else None
     output_frames: Optional[List[bytes]] = [] if capture_prefix else None
     events: List[Dict[str, Any]] = []
+    playback_errors: List[str] = []
     turn_state: Dict[str, Dict[str, Any]] = {}
     turn_metrics: List[TurnMetric] = []
     stop_event = threading.Event()
@@ -869,7 +880,25 @@ def main(argv: Optional[List[str]] = None) -> int:
                 state["output_bytes"] = int(state.get("output_bytes", 0)) + len(item.pcm)
                 interval = _start_playback_interval(item.generation)
                 try:
-                    audio.play(item.pcm)
+                    try:
+                        audio.play(item.pcm)
+                    except Exception as exc:  # noqa: BLE001 - live audio failures must be captured, not thread-fatal
+                        error = "%s: %s" % (type(exc).__name__, exc)
+                        playback_errors.append(error)
+                        _event(
+                            "playback_error",
+                            turn_id=item.turn_id,
+                            generation=item.generation,
+                            bytes=len(item.pcm),
+                            error=error,
+                        )
+                        print(
+                            "local_loop_demo: playback failed: %s" % error,
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        stop_event.set()
+                        break
                 finally:
                     _finish_playback_interval(interval)
                 if output_frames is not None:
@@ -935,6 +964,32 @@ def main(argv: Optional[List[str]] = None) -> int:
                     )
 
     playback_thread = threading.Thread(target=playback_loop, daemon=True, name="local-loop-playback")
+    shutdown_done = False
+
+    def shutdown_pipeline_and_playback() -> None:
+        nonlocal shutdown_done
+        if shutdown_done:
+            return
+        drain_timeout = max(0.0, args.shutdown_drain_seconds)
+        try:
+            pipeline.shutdown_gracefully(join_timeout=drain_timeout)
+        except KeyboardInterrupt:
+            print("\nlocal_loop_demo: interrupted during shutdown -- finishing cleanup")
+        finally:
+            drain_sidebands()
+            try:
+                if playback_thread.is_alive():
+                    playback_thread.join(timeout=drain_timeout)
+            except KeyboardInterrupt:
+                print("\nlocal_loop_demo: interrupted during playback drain -- stopping playback")
+            finally:
+                stop_event.set()
+                try:
+                    if playback_thread.is_alive():
+                        playback_thread.join(timeout=0.5)
+                except KeyboardInterrupt:
+                    pass
+                shutdown_done = True
 
     pipeline.start()
     print(
@@ -951,37 +1006,44 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         with audio:
             playback_thread.start()
-            while time.time() < t_end:
-                frame = audio.read_frame(timeout=0.5)
-                if frame is None:
+            try:
+                while time.time() < t_end and not stop_event.is_set():
+                    frame = audio.read_frame(timeout=0.5)
+                    if frame is None:
+                        drain_sidebands()
+                        continue
+                    frame = normalize_input_frame(frame, args.input_sample_rate)
+                    if input_frames is not None:
+                        input_frames.append(frame)
+                    pipeline.audio_in.put(frame)
                     drain_sidebands()
-                    continue
-                frame = normalize_input_frame(frame, args.input_sample_rate)
-                if input_frames is not None:
-                    input_frames.append(frame)
-                pipeline.audio_in.put(frame)
-                drain_sidebands()
+            except KeyboardInterrupt:
+                print("\nlocal_loop_demo: interrupted -- shutting down")
+            finally:
+                # Keep PortAudio open while the pipeline and playback thread
+                # drain. Closing the audio context first can stop the output
+                # stream while a final TTS chunk is still being written.
+                shutdown_pipeline_and_playback()
     except KeyboardInterrupt:
         print("\nlocal_loop_demo: interrupted -- shutting down")
     finally:
-        pipeline.shutdown_gracefully()
-        drain_sidebands()
-        playback_thread.join(timeout=2.0)
-        stop_event.set()
-        playback_thread.join(timeout=0.5)
+        shutdown_pipeline_and_playback()
 
     print("local_loop_demo: %d turn(s) completed" % len(turn_metrics))
     if capture_prefix:
         route_prompt = next((t.transcript for t in turn_metrics if t.transcript), None)
         route_proof = route_decision_probe(data, prompt=route_prompt or "voice local-loop route proof")
     barge_in_observed = any(t.barge_in for t in turn_metrics) or any(e.get("barge_in") for e in events)
-    acceptance_capture = capture_acceptance_passed(
-        capture_prefix,
-        turn_metrics,
-        events,
-        route_proof,
-        args.min_turns,
-        output_frames,
+    acceptance_capture = should_append_successful_finding(
+        capture_acceptance_passed(
+            capture_prefix,
+            turn_metrics,
+            events,
+            route_proof,
+            args.min_turns,
+            output_frames,
+        ),
+        playback_errors,
     )
     if capture_prefix and input_frames is not None and output_frames is not None:
         finding_status = {"row_written": False}
@@ -1004,6 +1066,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 file=sys.stderr,
             )
             return 1
+    if playback_errors:
+        print(
+            "local_loop_demo: playback failed during capture: %s" % "; ".join(playback_errors),
+            file=sys.stderr,
+        )
+        return 1
     if capture_prefix and not barge_in_observed:
         hint = capture_barge_in_hint(turn_metrics, events)
         print(
@@ -1020,6 +1088,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         return 1
     if capture_prefix and not has_acceptance_turn(turn_metrics, require_barge_in=True):
+        if barge_in_observed:
+            print(
+                "local_loop_demo: capture observed playback barge-in, but no interrupted "
+                "reply completed with TTFA, turn latency, and assistant output audio; "
+                "after barge-in, stop speaking and let the new reply finish",
+                file=sys.stderr,
+            )
+            return 1
         print(
             "local_loop_demo: capture requires at least one playback-interrupting "
             "barge-in turn with TTFA, turn latency, and assistant output audio",

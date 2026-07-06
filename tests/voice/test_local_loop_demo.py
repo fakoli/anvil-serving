@@ -216,6 +216,140 @@ def test_non_capture_main_does_not_require_route_preflight(monkeypatch):
         assert False, "main should reach pipeline config setup when capture is disabled"
 
 
+def test_main_keeps_audio_open_while_shutdown_drains(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {},
+            "stt": {},
+            "tts": {},
+        }
+    }
+
+    class FakeCancelScope:
+        @staticmethod
+        def is_stale(_generation):
+            return False
+
+        @staticmethod
+        def mark_settled():
+            return None
+
+    class FakeVAD:
+        responding = False
+
+    class FakePipeline:
+        def __init__(self):
+            self.audio_in = local_loop_demo.queue.Queue()
+            self.audio_out = local_loop_demo.queue.Queue()
+            self.vad_events = local_loop_demo.queue.Queue()
+            self.transcript_events = local_loop_demo.queue.Queue()
+            self.cancel_scope = FakeCancelScope()
+            self.vad = FakeVAD()
+            self.shutdown_join_timeout = None
+
+        def start(self):
+            return None
+
+        def shutdown_gracefully(self, *, join_timeout=None):
+            assert fake_audio.active is True
+            self.shutdown_join_timeout = join_timeout
+            self.audio_out.put(local_loop_demo.PIPELINE_END)
+
+    class FakeAudio:
+        def __init__(self):
+            self.active = False
+            self.exited_after_shutdown = False
+
+        def __enter__(self):
+            self.active = True
+            return self
+
+        def __exit__(self, *_args):
+            assert fake_pipeline.shutdown_join_timeout == 3.0
+            self.exited_after_shutdown = True
+            self.active = False
+
+        @staticmethod
+        def read_frame(timeout=None):
+            return None
+
+        @staticmethod
+        def play(_pcm):
+            return None
+
+        @staticmethod
+        def clear_pending_input():
+            return 0
+
+    fake_pipeline = FakePipeline()
+    fake_audio = FakeAudio()
+    monkeypatch.setattr(local_loop_demo, "load_manifest_or_die", lambda _path: (data, None))
+    monkeypatch.setattr(
+        local_loop_demo,
+        "real_pipeline_config_from_manifest",
+        lambda *_args, **_kwargs: type("Config", (), {"tts": type("TTS", (), {"target_sample_rate": 16000})()})(),
+    )
+    monkeypatch.setattr(local_loop_demo, "RealVoicePipeline", lambda _config: fake_pipeline)
+    monkeypatch.setattr(local_loop_demo, "LocalAudioDuplex", lambda _config: fake_audio)
+
+    assert local_loop_demo.main(["--duration", "0", "--shutdown-drain-seconds", "3"]) == 1
+
+    assert fake_audio.exited_after_shutdown is True
+
+
+def test_main_shuts_pipeline_down_if_audio_enter_fails(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {},
+            "stt": {},
+            "tts": {},
+        }
+    }
+
+    class AudioOpenError(Exception):
+        pass
+
+    class FakePipeline:
+        def __init__(self):
+            self.audio_in = local_loop_demo.queue.Queue()
+            self.audio_out = local_loop_demo.queue.Queue()
+            self.vad_events = local_loop_demo.queue.Queue()
+            self.transcript_events = local_loop_demo.queue.Queue()
+            self.shutdown_called = False
+
+        def start(self):
+            return None
+
+        def shutdown_gracefully(self, *, join_timeout=None):
+            self.shutdown_called = True
+
+    class FakeAudio:
+        def __enter__(self):
+            raise AudioOpenError("audio failed to open")
+
+        def __exit__(self, *_args):
+            return False
+
+    fake_pipeline = FakePipeline()
+    monkeypatch.setattr(local_loop_demo, "load_manifest_or_die", lambda _path: (data, None))
+    monkeypatch.setattr(
+        local_loop_demo,
+        "real_pipeline_config_from_manifest",
+        lambda *_args, **_kwargs: type("Config", (), {"tts": type("TTS", (), {"target_sample_rate": 16000})()})(),
+    )
+    monkeypatch.setattr(local_loop_demo, "RealVoicePipeline", lambda _config: fake_pipeline)
+    monkeypatch.setattr(local_loop_demo, "LocalAudioDuplex", lambda _config: FakeAudio())
+
+    try:
+        local_loop_demo.main(["--duration", "0"])
+    except AudioOpenError:
+        pass
+    else:
+        assert False, "audio open failure should propagate"
+
+    assert fake_pipeline.shutdown_called is True
+
+
 def test_local_audio_config_separates_input_and_output_rates():
     cfg = local_loop_demo.LocalAudioConfig(
         sample_rate=16000,
@@ -511,6 +645,12 @@ def test_capture_acceptance_requires_route_barge_in_latency_and_audio():
     assert not local_loop_demo.capture_acceptance_passed(
         "proof", [metric()], [], {}, 1, [b"\x00\x00"]
     )
+
+
+def test_successful_finding_row_is_not_appended_after_playback_error():
+    assert local_loop_demo.should_append_successful_finding(True, []) is True
+    assert local_loop_demo.should_append_successful_finding(True, ["PortAudioError"]) is False
+    assert local_loop_demo.should_append_successful_finding(False, []) is False
 
 
 def test_capture_barge_in_hint_distinguishes_too_early_speech_from_no_overlap():

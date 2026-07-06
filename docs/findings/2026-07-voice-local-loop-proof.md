@@ -1,11 +1,11 @@
 # Voice local loop proof: mic -> VAD -> STT -> anvil LLM -> TTS -> speakers
 
-> **STATUS: LIVE PROOF BLOCKED ON PLAYBACK BARGE-IN TIMING.** The T010
-> acceptance command now authenticates against the router and has completed a
-> full mic -> STT -> anvil-routed LLM -> TTS -> speaker turn on fakoli-dark.
-> No successful session row has been recorded yet because the latest captures
-> did not include a speech onset while assistant playback was actively
-> audible.
+> **STATUS: LIVE PROOF BLOCKED ON COMPLETED BARGE-IN REPLY.** The T010
+> acceptance command now authenticates against the router, completes ordinary
+> mic -> STT -> anvil-routed LLM -> TTS -> speaker turns on fakoli-dark, and
+> has observed playback-overlapping barge-in. No successful session row has
+> been recorded yet because the latest capture hit the duration-cap shutdown
+> before an interrupted reply completed with TTFA/latency/output metrics.
 
 Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s3
 (barge-in/staleness design) · `anvil_serving/voice/connections/local_audio.py`
@@ -103,6 +103,26 @@ see `append_finding_row` in that script.)
 
 ## Findings
 
+### 2026-07-06 playback-barge observed, completion interrupted by shutdown
+
+Command:
+
+```bash
+python scripts/voice/local_loop_demo.py --capture
+```
+
+Result: the harness observed playback-overlapping barge-in and dropped stale
+audio from the interrupted generations, proving the cancellation path fired.
+The capture (`local-loop-20260706T043338Z`) still exited 1 because the 60s
+duration cap closed the PortAudio output stream while a later barge-in reply
+was still playing, so no playback-interrupting turn reached a clean completed
+metric row.
+
+Follow-up fix: shutdown now keeps the audio context open while
+`shutdown_gracefully()` and the playback thread drain, records playback write
+failures as capture events instead of thread-fatal tracebacks, and refuses to
+append a successful findings row if playback failed.
+
 ### 2026-07-06 auth-fixed, no-barge live attempts
 
 Command:
@@ -198,7 +218,8 @@ outside a quiet room?
 
 1. Rerun the exact acceptance command, speak one prompt, wait for the
    `assistant audio started` cue or audible TTS, then speak over the assistant
-   voice and let the interrupted reply finish.
+   voice once and let the interrupted reply finish. Avoid repeated follow-up
+   interruptions after the first `playback barge-in observed` cue.
 2. If the default input route regresses to silence, rerun with a known-good
    explicit `--input-device` value from `sounddevice.query_devices()`.
 3. After a successful proof, likely candidates remain: swap in a real
