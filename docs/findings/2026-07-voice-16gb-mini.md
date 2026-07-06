@@ -100,6 +100,7 @@ python scripts/voice/mini_validation.py --report /tmp/mini-negative.json --allow
 
 | timestamp (UTC) | host | host memory | verdict | STT | TTS | TTFA / latency ms | host used / available GB | failure modes | report path |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-07-06T08:08:08Z | Mac | 16.0 GB; 16gb_class=True | supported | ready; rss=64.5MB pid=10877 | ready; rss=92.11MB pid=11459 | 1083.18 / 1083.75 | 12.42 / 3.58 | all required Mini validation checks passed | docs/findings/2026-07-voice-16gb-mini.json |
 
 (`mini_validation.py` appends a row here automatically — see
 `append_finding_row` in that script.)
