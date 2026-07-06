@@ -1,0 +1,56 @@
+# OpenClaw Anvil Voice manifest for a same-host Gateway on Fakoli Mini.
+#
+# Pair this with:
+#   anvil-serving harness sync openclaw --config <router.toml> --voice
+#
+# The OpenClaw Gateway talks to Anvil Voice on 127.0.0.1:8765. Anvil Voice owns
+# STT, routes the LLM turn through the Fakoli Dark router, then returns TTS
+# audio through its OpenAI Realtime-compatible WebSocket server.
+# Credentials are env var names only; never paste token values here.
+
+[voice]
+name = "anvil-voice-openclaw"
+realtime_host = "127.0.0.1"
+realtime_port = 8765
+
+[voice.llm]
+base_url = "http://100.87.34.66:8000/v1"
+model = "fast-local"
+stream = true
+system_prompt = "You are Anvil Voice inside OpenClaw. Keep spoken answers concise, direct, and useful."
+temperature = 0.2
+max_tokens = 256
+api_key_env = "ANVIL_ROUTER_TOKEN"
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "fast-local"
+expected_route_model = "qwen36-27b"
+expected_route_tier = "local"
+
+[voice.stt]
+base_url = "http://127.0.0.1:30010/v1"
+model = "mlx-community/parakeet-tdt-0.6b-v3"
+stream = false
+response_format = "json"
+timeout = 120.0
+lifecycle = "native"
+workdir = "~/code/mlx-audio"
+start_command = ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini"
+stop_command = "pkill -f 'mlx_audio.server.*--port 30010'"
+pid_file = "/tmp/anvil-voice-mini/stt.pid"
+log_file = "/tmp/anvil-voice-mini/stt.log"
+ready_timeout = 120.0
+
+[voice.tts]
+base_url = "http://127.0.0.1:30011/v1"
+model = "mlx-community/Kokoro-82M-bf16"
+timeout = 120.0
+lifecycle = "native"
+workdir = "~/code/mlx-audio"
+start_command = ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30011 --log-dir /tmp/anvil-voice-mini"
+stop_command = "pkill -f 'mlx_audio.server.*--port 30011'"
+pid_file = "/tmp/anvil-voice-mini/tts.pid"
+log_file = "/tmp/anvil-voice-mini/tts.log"
+ready_timeout = 120.0
+response_format = "pcm"
+source_sample_rate = 24000
+target_sample_rate = 16000

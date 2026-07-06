@@ -389,7 +389,25 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
    WebSocket server. It should fail loudly on unreachable endpoints rather than
    starting a session pool that cannot serve a turn.
 
-5. Collect evidence.
+5. If OpenClaw Talk or Voice Call will use Anvil Voice, sync the OpenClaw
+   realtime provider block after the Realtime URL is exact.
+
+   ```bash
+   anvil-serving harness sync openclaw \
+     --config ./router.toml \
+     --base-url http://100.87.34.66:8000/v1 \
+     --voice \
+     --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
+     --out ./openclaw.anvil.json
+   ```
+
+   The generated `talk.realtime` config must select provider `anvil`,
+   transport `gateway-relay`, brain `agent-consult`, and the same Anvil Voice
+   WebSocket URL that `voice run` binds. For a private/tailnet Realtime bind,
+   keep the bearer token in an env var and pass only its name with
+   `--voice-api-key-env`.
+
+6. Collect evidence.
 
    For a quick smoke measurement:
 
@@ -406,7 +424,7 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
    The Mini validation report adds host identity, memory, endpoint model ids,
    router auth proof, and post-benchmark STT/TTS process memory.
 
-6. Stop audio endpoints when done.
+7. Stop audio endpoints when done.
 
    ```bash
    anvil-serving voice down --config examples/voice/fakoli-mini.toml
@@ -485,6 +503,8 @@ a restart.
 
    Use the router base URL reachable from the OpenClaw gateway. If the gateway
    is remote, that may be a private host address rather than `127.0.0.1`.
+   Add `--voice --voice-realtime-url ws://127.0.0.1:8765/v1/realtime` when
+   OpenClaw Talk should use the Anvil Voice realtime provider.
 
 2. Prefer gateway-local apply when possible. If the gateway cannot yet pull/apply the
    rendered config itself, push to a remote gateway only with an explicit confirmed target.

@@ -186,6 +186,73 @@ anvil-serving voice down --config examples/voice/fakoli-mini.toml
 
 `voice run` stays foreground. Stop it with Ctrl+C.
 
+## OpenClaw Anvil Voice Provider
+
+OpenClaw can use Anvil Voice as a speech-to-speech realtime provider. In that
+topology the OpenClaw Gateway owns the browser or call audio relay, while
+Anvil Voice owns STT, the fast-tier LLM turn, and TTS:
+
+```text
+OpenClaw Talk or Voice Call
+  -> OpenClaw Gateway realtime provider "anvil"
+  -> ws://127.0.0.1:8765/v1/realtime
+  -> anvil-serving voice run
+  -> STT -> [voice.llm] anvil router -> TTS
+```
+
+Use `examples/voice/openclaw-anvil-voice.toml` for the Mini reference layout.
+It keeps the Realtime server and MLX Audio endpoints on the Mini loopback and
+routes the LLM turn to the Fakoli Dark router over the private address.
+
+Start the voice side first:
+
+```bash
+anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --dry-run
+anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml
+anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml
+```
+
+Then render or apply the matching OpenClaw config. The `--voice` flag adds the
+Talk realtime block next to the normal anvil model provider config:
+
+```bash
+anvil-serving harness sync openclaw \
+  --config configs/example.toml \
+  --base-url http://100.87.34.66:8000/v1 \
+  --voice \
+  --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
+  --out ./openclaw.anvil.json
+```
+
+The generated Talk config selects the OpenClaw provider id `anvil` and points
+it at the Anvil Voice Realtime server:
+
+```json5
+{
+  talk: {
+    realtime: {
+      mode: "realtime",
+      transport: "gateway-relay",
+      brain: "agent-consult",
+      provider: "anvil",
+      providers: {
+        anvil: {
+          realtimeUrl: "ws://127.0.0.1:8765/v1/realtime",
+          model: "fast-local",
+          silenceDurationMs: 200
+        }
+      }
+    }
+  }
+}
+```
+
+Same-host Anvil Voice can omit a realtime token. If the Realtime server binds
+to a private/tailnet address, set `voice.realtime_token_env` in the voice
+manifest and pass `--voice-api-key-env ANVIL_VOICE_REALTIME_TOKEN` to the
+harness sync command. The emitted OpenClaw config references the env var by
+name; it does not contain the token value.
+
 ## Realtime Server
 
 `voice run` validates the manifest, probes the configured LLM/STT/TTS
