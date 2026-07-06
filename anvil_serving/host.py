@@ -106,6 +106,47 @@ def _fmt(gb):
     return "?" if gb is None else ("%.1f GB" % gb)
 
 
+def host_summary(_run=subprocess.run):
+    """Return read-only WSL/Docker/GPU host checks as structured data."""
+    host = _host_total_gb(_run=_run)
+    wsl = _wsl_vm_memory_gb(_run=_run)
+    gpus = _gpus(_run=_run)
+    rec = recommend_wsl_memory_gb(host)
+    reserve = {
+        "minimum_gb": MIN_WINDOWS_RESERVE_GB,
+        "recommended_gb": RECOMMENDED_WINDOWS_RESERVE_GB,
+        "recommended_would_leave_gb": None if rec is None or host is None else round(host - rec, 1),
+        "ceiling_gb": None if host is None else int(host - MIN_WINDOWS_RESERVE_GB),
+    }
+    gpu_rows = [
+        {
+            "index": index,
+            "name": name,
+            "memory_used_gb": used,
+            "memory_total_gb": total,
+        }
+        for index, name, used, total in gpus
+    ]
+    checks = [
+        {"name": "host_ram", "ok": host is not None, "value_gb": host},
+        {"name": "docker_wsl_memory", "ok": wsl is not None, "value_gb": wsl},
+        {"name": "gpu_inventory", "ok": bool(gpus), "count": len(gpus)},
+    ]
+    return {
+        "mutates": False,
+        "host_ram_gb": host,
+        "wsl_vm_memory_gb": wsl,
+        "docker": {
+            "available": wsl is not None,
+            "memory_cap_gb": wsl,
+        },
+        "gpus": gpu_rows,
+        "recommended_wsl_memory_gb": rec,
+        "windows_reserve": reserve,
+        "checks": checks,
+    }
+
+
 # --------------------------------------------------------------------------- #
 # process control (PowerShell — consistent with _host_total_gb, and locale-independent:
 # outcomes come from PowerShell's ErrorCategory enum, not taskkill's localized text)
@@ -219,18 +260,19 @@ def _next_backup(path):
 # --------------------------------------------------------------------------- #
 
 def cmd_doctor(_run=subprocess.run):
-    host = _host_total_gb(_run=_run)
-    wsl = _wsl_vm_memory_gb(_run=_run)
-    gpus = _gpus(_run=_run)
+    summary = host_summary(_run=_run)
+    host = summary["host_ram_gb"]
+    wsl = summary["wsl_vm_memory_gb"]
     print("host RAM (physical):   %s" % _fmt(host))
     print("WSL VM memory cap:     %s" % (
         "unavailable (docker/WSL not running)" if wsl is None
         else "%s  (what .wslconfig `memory` booted with)" % _fmt(wsl)))
-    for i, name, used, total in gpus:
-        print("GPU %s (%s): %.1f / %.1f GB" % (i, name, used, total))
-    rec = recommend_wsl_memory_gb(host)
+    for gpu in summary["gpus"]:
+        print("GPU %s (%s): %.1f / %.1f GB" % (
+            gpu["index"], gpu["name"], gpu["memory_used_gb"], gpu["memory_total_gb"]))
+    rec = summary["recommended_wsl_memory_gb"]
     if rec is not None:
-        floor = int(host - MIN_WINDOWS_RESERVE_GB)
+        floor = summary["windows_reserve"]["ceiling_gb"]
         print("\nRECOMMENDED WSL memory: %d GB  (leaves ~%d GB for Windows)" %
               (rec, int(host - rec)))
         print("  ceiling before refusal: %d GB (must leave >= %d GB for Windows; --force to override)"

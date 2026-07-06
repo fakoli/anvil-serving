@@ -314,14 +314,16 @@ def main(argv=None):
     thinknote = " thinking=off" if a.no_thinking else ""
     print(f"BENCH {a.base_url} model={a.model}  n={n} concurrency={conc} "
           f"{'BURST(shared-prefix)' if a.burst else 'mixed'} max_tokens={a.max_tokens}{capnote}{thinknote}")
-    t0 = time.time(); results = []
+    started_wall = time.time()
+    started_perf = time.perf_counter()
+    results = []
     with ThreadPoolExecutor(max_workers=conc) as ex:
         futs = [ex.submit(stream_chat, a.base_url, a.model, p, api_key, a.max_tokens,
                           chat_template_kwargs=ctk) for p in jobs]
         for f in as_completed(futs):
             try: results.append(f.result())
             except Exception as e: print("  req error:", e)
-    wall = time.time() - t0
+    wall = max(time.perf_counter() - started_perf, 1e-9)
     ttfts = [r["ttft"] for r in results]; e2es = [r["e2e"] for r in results]
     out_tot = sum(r["out_toks"] for r in results)
     cfs = [cached_fraction(r["usage"]) for r in results]
@@ -333,7 +335,7 @@ def main(argv=None):
     print(f"throughput:       {(out_tot / wall if wall else 0.0):.0f} output tok/s (aggregate)")
     summary = {
         "schema": "anvil-serving.benchmark/v1",
-        "run_id": time.strftime("benchmark-%Y%m%dT%H%M%SZ", time.gmtime(t0)),
+        "run_id": time.strftime("benchmark-%Y%m%dT%H%M%SZ", time.gmtime(started_wall)),
         "base_url": a.base_url,
         "model": a.model,
         "requests": n,
