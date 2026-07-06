@@ -32,6 +32,16 @@ _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _PROXY_METHODS = {"tools/list", "tools/call"}
 _PROBE_API_KEY_ENVS = {"ANVIL_ROUTER_TOKEN"}
 _MAX_ERROR_BODY_BYTES = 4096
+_LOG_SECRET_PATTERNS = (
+    re.compile(r"(?i)\b((?:authorization|x-api-key)\s*[:=]\s*(?:bearer\s+)?)([^\s]+)"),
+    re.compile(r'(?i)("(?:authorization|x-api-key)"\s*:\s*"(?:bearer\s+)?)([^"]+)'),
+    re.compile(r"(?i)('(?:authorization|x-api-key)'\s*:\s*'(?:bearer\s+)?)([^']+)"),
+    re.compile(r"(?i)\b(bearer\s+)([A-Za-z0-9._~+/\-]{8,})"),
+    re.compile(r"(?i)\b([A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|KEY)[A-Z0-9_]*\s*[=:]\s*)([^\s]+)"),
+    re.compile(r'(?i)("[A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|KEY)[A-Z0-9_]*"\s*:\s*")([^"]+)'),
+    re.compile(r"(?i)('[A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|KEY)[A-Z0-9_]*'\s*:\s*')([^']+)"),
+    re.compile(r"\b(sk-(?:proj-)?[A-Za-z0-9_-]{8,})\b"),
+)
 
 
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -340,11 +350,300 @@ def _run_argv(argv: list[str], *, confirm: bool, timeout: Optional[int] = None) 
     return result
 
 
+def _redact_log_text(value: str) -> str:
+    out = value
+    for pattern in _LOG_SECRET_PATTERNS:
+        if pattern.groups >= 2:
+            out = pattern.sub(lambda m: m.group(1) + "<redacted>", out)
+        else:
+            out = pattern.sub("<redacted>", out)
+    return out
+
+
+def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
+                     service: str = "", env_file: str = "", dry_run: bool = False,
+                     profile: str = "", config: str = "", cfg_volume: str = "",
+                     image: str = "", profile_dest: str = "", config_dest: str = "",
+                     no_reload: bool = False) -> list[str]:
+    argv = [sys.executable, "-m", "anvil_serving.cli", "router", action]
+    if container:
+        argv += ["--container", container]
+    if compose:
+        argv += ["--compose", compose]
+    if service:
+        argv += ["--service", service]
+    if env_file:
+        argv += ["--env-file", env_file]
+    if dry_run:
+        argv.append("--dry-run")
+    if profile:
+        argv += ["--profile", profile]
+    if config:
+        argv += ["--config", config]
+    if cfg_volume:
+        argv += ["--cfg-volume", cfg_volume]
+    if image:
+        argv += ["--image", image]
+    if profile_dest:
+        argv += ["--profile-dest", profile_dest]
+    if config_dest:
+        argv += ["--config-dest", config_dest]
+    if no_reload:
+        argv.append("--no-reload")
+    return argv
+
+
 def tool_router_status(args: dict) -> dict:
     from . import router_manage
 
     container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
     return _ok(router_manage.status_summary(container))
+
+
+def tool_router_logs(args: dict) -> dict:
+    from . import router_manage
+
+    container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
+    follow = _arg_bool(args.get("follow"), False, name="follow")
+    if follow:
+        raise ToolError("follow_not_allowed", "router_logs rejects unbounded follow mode; use a bounded tail")
+    tail = _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000)
+    max_output_bytes = _bounded_int_arg(args, "max_output_bytes", 65536, min_value=1024, max_value=1048576)
+    since = _str_arg(args, "since", "")
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 60, min_value=1, max_value=600)
+    argv = [sys.executable, "-m", "anvil_serving.cli", "router", "logs",
+            "--container", container, "--tail", str(tail)]
+    if since:
+        argv += ["--since", since]
+    result = _run_argv_spooled(
+        argv,
+        timeout=timeout_seconds,
+        max_output_bytes=max_output_bytes,
+        redactor=_redact_log_text,
+    )
+    return _ok({
+        "bounded": True,
+        "tail": tail,
+        "since": since or None,
+        "max_output_bytes": max_output_bytes,
+        **result,
+    })
+
+
+def tool_router_manage(args: dict) -> dict:
+    from . import router_manage
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"up", "down", "restart", "reload"}:
+        raise ToolError("bad_action", "action must be one of: up, down, restart, reload", {"action": action})
+    container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
+    compose = _str_arg(args, "compose", router_manage.DEFAULT_COMPOSE)
+    service = _str_arg(args, "service", router_manage.DEFAULT_SERVICE)
+    env_file = _str_arg(args, "env_file", "")
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
+    preview = dry_run or not confirm
+    argv = _router_cli_argv(
+        action,
+        container=container,
+        compose=compose if action in {"up", "down"} else "",
+        service=service if action in {"up", "down"} else "",
+        env_file=env_file if action == "up" else "",
+        dry_run=preview,
+    )
+    target = {
+        "action": action,
+        "container": container,
+        "compose": compose if action in {"up", "down"} else None,
+        "service": service if action in {"up", "down"} else None,
+        "env_file": env_file or None,
+        "timeout_seconds": timeout_seconds,
+    }
+    if preview:
+        return _ok({"applied": False, "dry_run": True, "target": target, "command": argv})
+    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    return _ok({"applied": True, "dry_run": False, "target": target, **result})
+
+
+def _decision_records_from_path(path: str, *, max_input_bytes: int) -> list[dict]:
+    if not os.path.isfile(path):
+        raise ToolError("decision_log_not_found", "decision summary source not found", {"path": path})
+    if os.path.getsize(path) > max_input_bytes:
+        raise ToolError(
+            "decision_log_too_large",
+            "decision summary source exceeds max_input_bytes",
+            {"path": path, "max_input_bytes": max_input_bytes},
+        )
+    with open(path, "r", encoding="utf-8") as f:
+        raw = f.read()
+    if not raw.strip():
+        return []
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        records = []
+        for lineno, line in enumerate(raw.splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                item = json.loads(line)
+            except ValueError as exc:
+                raise ToolError("bad_decision_log", "bad JSONL decision record", {"path": path, "line": lineno, "error": str(exc)})
+            if isinstance(item, dict):
+                records.append(item)
+        return records
+    if isinstance(parsed, list):
+        return [item for item in parsed if isinstance(item, dict)]
+    if isinstance(parsed, dict):
+        if isinstance(parsed.get("records"), list):
+            return [item for item in parsed["records"] if isinstance(item, dict)]
+        return [parsed]
+    raise ToolError("bad_decision_log", "decision summary source must be JSON array, JSONL, or object with records[]")
+
+
+def tool_decision_summary(args: dict) -> dict:
+    from .router.decision_log import summarize_decisions
+
+    limit = _bounded_int_arg(args, "limit", 20, min_value=1, max_value=500)
+    max_input_bytes = _bounded_int_arg(args, "max_input_bytes", 1048576, min_value=1024, max_value=10485760)
+    timeout = _bounded_int_arg(args, "timeout_seconds", 5, min_value=1, max_value=60)
+    base_url = _str_arg(args, "base_url", "http://127.0.0.1:8000/v1")
+    api_key_env = _probe_api_key_env(args)
+    path = _str_arg(args, "path", "")
+    records_arg = args.get("records", [])
+    if records_arg is None:
+        records_arg = []
+    if not isinstance(records_arg, list) or not all(isinstance(item, dict) for item in records_arg):
+        raise ToolError("bad_argument", "'records' must be an array of objects")
+    records = list(records_arg)
+    source = "inline"
+    if path:
+        records = _decision_records_from_path(path, max_input_bytes=max_input_bytes)
+        source = "path"
+    if not path and not records:
+        base_url = _safe_probe_url(base_url)
+        token = ""
+        headers = {"Accept": "application/json"}
+        if api_key_env:
+            token = os.environ.get(api_key_env)
+            if token:
+                headers.update(controller_auth_headers(token))
+        req = urllib.request.Request(_decisions_url(base_url, limit), headers=headers, method="GET")
+        try:
+            with _urlopen_no_proxy_no_redirect(req, timeout=timeout) as resp:
+                raw = resp.read().decode("utf-8")
+                parsed = json.loads(raw or "{}")
+        except urllib.error.HTTPError as exc:
+            details, _ = _http_error_details(exc, token)
+            raise ToolError("decision_summary_http_error", "decision summary returned HTTP %s" % exc.code, details)
+        except Exception as exc:
+            raise ToolError("decision_summary_failed", _redact_secret(str(exc), token), {"base_url": base_url})
+        if not isinstance(parsed, dict):
+            raise ToolError("bad_decision_summary", "decision summary response must be a JSON object")
+        parsed = _redact_secret(parsed, token)
+        parsed["source"] = "router"
+        parsed["base_url"] = base_url
+        return _ok(parsed)
+    summary = summarize_decisions(records, limit=limit)
+    summary["source"] = source
+    summary["path"] = path or None
+    return _ok(summary)
+
+
+def tool_router_promote(args: dict) -> dict:
+    from . import router_manage
+
+    profile = _str_arg(args, "profile", required=True)
+    config = _str_arg(args, "config", "")
+    current_profile = _str_arg(args, "current_profile", "")
+    current_config = _str_arg(args, "current_config", "")
+    container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
+    cfg_volume = _str_arg(args, "cfg_volume", router_manage.DEFAULT_CFG_VOLUME)
+    image = _str_arg(args, "image", router_manage.DEFAULT_IMAGE)
+    profile_dest = _str_arg(args, "profile_dest", router_manage.DEFAULT_PROFILE_DEST)
+    config_dest = _str_arg(args, "config_dest", router_manage.DEFAULT_CONFIG_DEST)
+    no_reload = _arg_bool(args.get("no_reload"), False, name="no_reload")
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    human_approved = _arg_bool(args.get("human_approved"), False, name="human_approved")
+    diff_limit = _bounded_int_arg(args, "diff_limit", 50, min_value=1, max_value=500)
+
+    try:
+        preview = router_manage.promotion_preview(
+            profile,
+            config_path=config or None,
+            current_profile_path=current_profile or None,
+            current_config_path=current_config or None,
+            profile_dest=profile_dest,
+            config_dest=config_dest,
+            diff_limit=diff_limit,
+        )
+    except FileNotFoundError as exc:
+        raise ToolError("promotion_file_not_found", str(exc))
+    except Exception as exc:
+        raise ToolError("bad_promotion_candidate", str(exc))
+
+    apply_requested = confirm and not dry_run
+    argv = _router_cli_argv(
+        "promote",
+        container=container,
+        profile=profile,
+        config=config,
+        cfg_volume=cfg_volume,
+        image=image,
+        profile_dest=profile_dest,
+        config_dest=config_dest,
+        no_reload=no_reload,
+        dry_run=not apply_requested,
+    )
+    target = {
+        "container": container,
+        "cfg_volume": cfg_volume,
+        "image": image,
+        "profile_dest": profile_dest,
+        "config_dest": config_dest,
+        "no_reload": no_reload,
+    }
+    if apply_requested and not human_approved:
+        raise ToolError(
+            "human_approval_required",
+            "router promotion apply requires human_approved=true in addition to confirm=true",
+            {"target": target, "preview": preview},
+        )
+    if not apply_requested:
+        return _ok({
+            "applied": False,
+            "dry_run": True,
+            "human_gate_required": True,
+            "target": target,
+            "command": argv,
+            "preview": preview,
+        })
+    rc, stdout, stderr = _capture(lambda: router_manage.cmd_promote(
+        profile,
+        config_path=config or None,
+        container=container,
+        cfg_volume=cfg_volume,
+        image=image,
+        profile_dest=profile_dest,
+        config_dest=config_dest,
+        no_reload=no_reload,
+    ))
+    result = {
+        "applied": rc == 0,
+        "dry_run": False,
+        "human_approved": human_approved,
+        "target": target,
+        "command": argv,
+        "preview": preview,
+        "returncode": rc,
+        "stdout": stdout,
+        "stderr": stderr,
+    }
+    if rc != 0:
+        raise ToolError("command_failed", "router promote exited with status %s" % rc, result)
+    return _ok(result)
 
 
 def tool_serves_status(args: dict) -> dict:
@@ -546,14 +845,20 @@ def _serves_manage_plan(action: str, manifest_serves: list[dict], names: list[st
     return targets, plan
 
 
-def _read_spooled_text(handle, max_bytes: int) -> tuple[str, bool]:
+def _read_spooled_text(handle, max_bytes: int, redactor: Optional[Callable[[str], str]] = None) -> tuple[str, bool]:
     handle.seek(0)
-    raw = handle.read(max_bytes + 1)
-    truncated = len(raw) > max_bytes
-    return raw[:max_bytes].decode("utf-8", "replace"), truncated
+    read_limit = max_bytes + (4096 if redactor else 1)
+    raw = handle.read(read_limit + 1)
+    text = raw[:read_limit].decode("utf-8", "replace")
+    if redactor is not None:
+        text = redactor(text)
+    encoded = text.encode("utf-8")
+    truncated = len(raw) > read_limit or len(encoded) > max_bytes
+    return encoded[:max_bytes].decode("utf-8", "replace"), truncated
 
 
-def _run_argv_spooled(argv: list[str], *, timeout: Optional[int], max_output_bytes: int) -> dict:
+def _run_argv_spooled(argv: list[str], *, timeout: Optional[int], max_output_bytes: int,
+                      redactor: Optional[Callable[[str], str]] = None) -> dict:
     with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
         try:
             proc = subprocess.run(argv, stdout=stdout_file, stderr=stderr_file, timeout=timeout)
@@ -562,8 +867,8 @@ def _run_argv_spooled(argv: list[str], *, timeout: Optional[int], max_output_byt
         except subprocess.TimeoutExpired as exc:
             raise ToolError("timeout", "command timed out", {"command": argv, "timeout": exc.timeout})
 
-        stdout, stdout_truncated = _read_spooled_text(stdout_file, max_output_bytes)
-        stderr, stderr_truncated = _read_spooled_text(stderr_file, max_output_bytes)
+        stdout, stdout_truncated = _read_spooled_text(stdout_file, max_output_bytes, redactor)
+        stderr, stderr_truncated = _read_spooled_text(stderr_file, max_output_bytes, redactor)
         result = {
             "command": argv,
             "returncode": proc.returncode,
@@ -720,6 +1025,17 @@ def tool_models_inventory(args: dict) -> dict:
 def _route_url(base_url: str) -> str:
     base = base_url.rstrip("/")
     return base if base.endswith("/route") else base + "/route"
+
+
+def _decisions_url(base_url: str, limit: int) -> str:
+    base = base_url.rstrip("/")
+    if base.endswith("/decisions"):
+        url = base
+    elif base.endswith("/v1"):
+        url = base + "/decisions"
+    else:
+        url = base + "/v1/decisions"
+    return url + "?" + urllib.parse.urlencode({"limit": str(limit)})
 
 
 def tool_route_decision(args: dict) -> dict:
@@ -925,6 +1241,65 @@ TOOLS: Dict[str, dict] = {
         "description": "Inspect the deployed anvil router container and loopback health.",
         "inputSchema": _schema({"container": {"type": "string"}}),
         "handler": tool_router_status,
+    },
+    "router_logs": {
+        "description": "Read bounded, redacted docker logs for the deployed router; follow mode is not allowed.",
+        "inputSchema": _schema({
+            "container": {"type": "string"},
+            "tail": _bounded_integer_schema(1, 5000, 200),
+            "max_output_bytes": _bounded_integer_schema(1024, 1048576, 65536),
+            "since": {"type": "string"},
+            "follow": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 600, 60),
+        }),
+        "handler": tool_router_logs,
+    },
+    "router_manage": {
+        "description": "Preview or run guarded deployed-router lifecycle actions: up, down, restart, or reload.",
+        "inputSchema": _schema({
+            "action": {"type": "string"},
+            "container": {"type": "string"},
+            "compose": {"type": "string"},
+            "service": {"type": "string"},
+            "env_file": {"type": "string"},
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
+        }, required=["action"]),
+        "handler": tool_router_manage,
+    },
+    "decision_summary": {
+        "description": "Summarize recent router decisions without prompts or secrets; defaults to GET /v1/decisions.",
+        "inputSchema": _schema({
+            "base_url": {"type": "string"},
+            "api_key_env": {"type": "string"},
+            "records": {"type": "array", "items": {"type": "object"}},
+            "path": {"type": "string"},
+            "limit": _bounded_integer_schema(1, 500, 20),
+            "max_input_bytes": _bounded_integer_schema(1024, 10485760, 1048576),
+            "timeout_seconds": _bounded_integer_schema(1, 60, 5),
+        }),
+        "handler": tool_decision_summary,
+    },
+    "router_promote": {
+        "description": "Validate and preview router profile promotion; apply requires confirm=true and human_approved=true.",
+        "inputSchema": _schema({
+            "profile": {"type": "string"},
+            "config": {"type": "string"},
+            "current_profile": {"type": "string"},
+            "current_config": {"type": "string"},
+            "container": {"type": "string"},
+            "cfg_volume": {"type": "string"},
+            "image": {"type": "string"},
+            "profile_dest": {"type": "string"},
+            "config_dest": {"type": "string"},
+            "no_reload": {"type": "boolean"},
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "human_approved": {"type": "boolean"},
+            "diff_limit": _bounded_integer_schema(1, 500, 50),
+        }, required=["profile"]),
+        "handler": tool_router_promote,
     },
     "serves_status": {
         "description": "Inspect model serves from a serves.toml manifest.",

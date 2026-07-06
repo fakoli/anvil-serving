@@ -56,6 +56,24 @@ def _router_cfg(tmp_path):
     return str(p)
 
 
+def _profile_doc(tmp_path, name="profile.json", decision="allow"):
+    p = tmp_path / name
+    p.write_text(json.dumps({
+        "schema": "anvil-serving.router.profile_bootstrap/v2",
+        "mode": "live",
+        "eval_max": 25.0,
+        "entries": [{
+            "tier_id": "fast-local",
+            "work_class": "chat",
+            "decision": decision,
+            "quality_score": 0.9 if decision == "allow" else 0.2,
+            "sample_n": 3,
+            "last_measured": "2026-07-06T00:00:00Z",
+        }],
+    }), encoding="utf-8")
+    return str(p)
+
+
 def _catalog(tmp_path):
     root = tmp_path / "model-library"
     cards = root / "cards"
@@ -109,6 +127,10 @@ def test_tools_list_has_json_schemas():
     tools = {t["name"]: t for t in mcp.list_tools()}
     for name in [
         "router_status",
+        "router_logs",
+        "router_manage",
+        "decision_summary",
+        "router_promote",
         "serves_status",
         "serves_manage",
         "serves_logs",
@@ -131,6 +153,7 @@ def test_tools_list_has_json_schemas():
         assert props["api_key_env"]["type"] == "string"
     assert tools["benchmark_probe"]["inputSchema"]["properties"]["requests"]["maximum"] == 200
     assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
+    assert tools["router_promote"]["inputSchema"]["properties"]["human_approved"]["type"] == "boolean"
 
 
 def test_stdio_tools_list_and_call(tmp_path):
@@ -203,6 +226,185 @@ def test_router_status_is_structured(monkeypatch):
         "health_url": "http://127.0.0.1:8000/",
         "ok": True,
     }
+
+
+def test_router_logs_are_bounded_spooled_and_redacted(monkeypatch):
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["capture_output"] = kwargs.get("capture_output")
+        kwargs["stdout"].write(b"Authorization: Bearer router-secret-token\n")
+        kwargs["stdout"].write(b'{"x-api-key":"json-secret-token"}\n')
+        kwargs["stderr"].write(b"ANVIL_ROUTER_TOKEN=another-secret\n")
+        return proc(0)
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("router_logs", {
+        "container": "anvil-router",
+        "tail": 5,
+        "max_output_bytes": 1024,
+    })
+    assert env["ok"] is True
+    assert env["data"]["bounded"] is True
+    assert seen["argv"][:5] == [sys.executable, "-m", "anvil_serving.cli", "router", "logs"]
+    assert "--follow" not in seen["argv"]
+    assert seen["capture_output"] is None
+    rendered = json.dumps(env)
+    assert "router-secret-token" not in rendered
+    assert "json-secret-token" not in rendered
+    assert "another-secret" not in rendered
+    assert "<redacted>" in rendered
+
+
+def test_router_logs_rejects_follow_and_bad_tail():
+    follow = mcp.call_tool("router_logs", {"follow": True})
+    assert follow["ok"] is False
+    assert follow["error"]["code"] == "follow_not_allowed"
+
+    tail = mcp.call_tool("router_logs", {"tail": 5001})
+    assert tail["ok"] is False
+    assert tail["error"]["code"] == "bad_argument"
+
+
+def test_router_manage_preview_and_confirmed_reload(monkeypatch):
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["timeout"] = kwargs.get("timeout")
+        return proc(0, "restarted\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    preview = mcp.call_tool("router_manage", {
+        "action": "reload",
+        "container": "anvil-router",
+        "dry_run": False,
+    })
+    assert preview["ok"] is True
+    assert preview["data"]["applied"] is False
+    assert "--dry-run" in preview["data"]["command"]
+    assert seen == {}
+
+    confirmed = mcp.call_tool("router_manage", {
+        "action": "reload",
+        "container": "anvil-router",
+        "confirm": True,
+        "dry_run": False,
+        "timeout_seconds": 9,
+    })
+    assert confirmed["ok"] is True
+    assert confirmed["data"]["applied"] is True
+    assert "--dry-run" not in seen["argv"]
+    assert seen["argv"][3:5] == ["router", "reload"]
+    assert seen["timeout"] == 9
+
+
+def test_decision_summary_omits_prompt_and_secret_fields(tmp_path):
+    record = {
+        "intent": "chat",
+        "work_class": "bounded-edit",
+        "requested_tiers": ["fast-local", "cloud"],
+        "served_tier": "cloud",
+        "fell_back": True,
+        "total_prompt_tokens": 8,
+        "total_completion_tokens": 4,
+        "prompt": "secret prompt text",
+        "api_key": "sk-proj-secret",
+        "attempts": [{
+            "tier_id": "fast-local",
+            "outcome": "fallback",
+            "verifier_passed": False,
+            "verify_reason": "x-api-key: local-secret-token",
+            "prompt_tokens": 8,
+            "completion_tokens": 4,
+        }],
+    }
+    path = tmp_path / "decisions.jsonl"
+    path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    env = mcp.call_tool("decision_summary", {"path": str(path), "limit": 5})
+    assert env["ok"] is True
+    assert env["data"]["count"] == 1
+    rendered = json.dumps(env)
+    assert "secret prompt text" not in rendered
+    assert "sk-proj-secret" not in rendered
+    assert "local-secret-token" not in rendered
+    assert "<redacted>" in rendered
+
+
+def test_decision_summary_tool_calls_router_decisions_endpoint(monkeypatch):
+    token = "router-secret-token"
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", token)
+    seen = {}
+
+    def open_decisions(req, timeout=5):
+        seen["url"] = req.full_url
+        seen["auth"] = req.get_header("Authorization")
+        return Resp(json.dumps({
+            "count": 1,
+            "records": [{"served_tier": "fast-local"}],
+            "echo": token,
+        }).encode("utf-8"))
+
+    monkeypatch.setattr(mcp, "_urlopen_no_proxy_no_redirect", open_decisions)
+    env = mcp.call_tool("decision_summary", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "api_key_env": "ANVIL_ROUTER_TOKEN",
+        "limit": 7,
+    })
+    assert env["ok"] is True
+    assert seen["url"] == "http://127.0.0.1:8000/v1/decisions?limit=7"
+    assert seen["auth"] == "Bearer " + token
+    rendered = json.dumps(env)
+    assert token not in rendered
+    assert "<redacted>" in rendered
+
+
+def test_router_promotion_preview_and_human_gate(tmp_path, monkeypatch):
+    current = _profile_doc(tmp_path, "current.json", decision="deny")
+    candidate = _profile_doc(tmp_path, "candidate.json", decision="allow")
+    cfg = tmp_path / "candidate.toml"
+    cfg.write_text('[router]\nprofile_path = "/etc/anvil/profile.json"\n', encoding="utf-8")
+
+    preview = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "config": str(cfg),
+        "current_profile": current,
+    })
+    assert preview["ok"] is True
+    assert preview["data"]["applied"] is False
+    assert "--dry-run" in preview["data"]["command"]
+    assert preview["data"]["preview"]["diff"]["changed_count"] == 1
+
+    refused = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "confirm": True,
+        "dry_run": False,
+    })
+    assert refused["ok"] is False
+    assert refused["error"]["code"] == "human_approval_required"
+
+    from anvil_serving import router_manage
+
+    seen = {}
+
+    def fake_promote(profile_path, **kwargs):
+        seen["profile_path"] = profile_path
+        seen["kwargs"] = kwargs
+        return 0
+
+    monkeypatch.setattr(router_manage, "cmd_promote", fake_promote)
+    applied = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "config": str(cfg),
+        "confirm": True,
+        "dry_run": False,
+        "human_approved": True,
+    })
+    assert applied["ok"] is True
+    assert applied["data"]["applied"] is True
+    assert seen["profile_path"] == candidate
+    assert seen["kwargs"]["config_path"] == str(cfg)
 
 
 def test_route_decision_posts_to_v1_route(monkeypatch):
