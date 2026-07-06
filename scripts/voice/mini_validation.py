@@ -858,7 +858,9 @@ def run_validation(
     stt_result = asdict(stt_validation)
     tts_result = asdict(tts_validation)
     host_after_serves_ready = host_memory_snapshot()
-    route_proof = route_decision_probe(data, prompt="voice Mini validation route proof")
+    route_proof = route_decision_probe(
+        data, prompt="voice Mini validation route proof", prompt_source="validation probe"
+    )
     route_auth_negative = route_auth_negative_probe(data)
 
     benchmark_result: Optional[Dict[str, Any]] = None

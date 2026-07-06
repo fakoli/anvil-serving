@@ -1,6 +1,6 @@
 # Voice on a 16GB Mini: local STT+TTS, LLM routed to fakoli-dark
 
-> **STATUS: READY FOR LIVE T016 RUN.** The harness is
+> **STATUS: T016 LIVE PROOF SUPPORTED.** The harness is
 > `scripts/voice/mini_validation.py`. The acceptance command writes a JSON
 > report, appends one session row below, and returns nonzero unless the verdict
 > is `supported` so a negative-control or partial proof cannot satisfy the task.
@@ -107,15 +107,19 @@ python scripts/voice/mini_validation.py --report /tmp/mini-negative.json --allow
 
 ## Findings
 
-_TBD once run on target hardware — in particular: does total serve memory
-(STT + TTS + whatever else is resident on a 16GB box) leave enough headroom, or
-does this reproduce a variant of the WSL2/`.wslconfig` OOM gotcha
-(CLAUDE.md gotcha #3) on a different box?_
+The 2026-07-06 target-hardware run on Fakoli Mini (`Mac16,10`, 16.0 GB RAM)
+passed the required split topology: STT and TTS were local external native
+loopback endpoints, while the LLM call routed over the tailnet to fakoli-dark.
+The report recorded 3.58 GB available after load, post-benchmark listener RSS
+for both local audio serves, a nonblank STT hypothesis, a nonblank LLM reply,
+first synthesized audio, TTFA 1083.18 ms, turn latency 1083.75 ms, and TTS RTF
+0.1139. The positive route proof returned `fast-local` / `qwen36-27b` /
+`local`, and the no-Authorization route probe was rejected with HTTP 401.
 
 ## Decision
 
-_TBD from the first target-hardware run — `supported` if the expected 16GB
-Fakoli Mini runs local STT+TTS with the LLM routed to fakoli-dark, records
-usable memory headroom/latency, and satisfies the hardware/auth/model/audio
-proof gates. Incomplete, non-target, low-headroom, or missing
-route/audio/memory proof is `unsupported`._
+`supported` for T016 on the measured 16GB Fakoli Mini. The accepting evidence
+is `docs/findings/2026-07-voice-16gb-mini.json`; any non-target run,
+all-local Mini LLM run, missing fakoli-dark route/auth proof, missing
+post-benchmark audio-serve memory, or missing first-audio benchmark remains
+`unsupported`.

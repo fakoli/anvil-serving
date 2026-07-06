@@ -36,6 +36,7 @@ pool is usable when it is not.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -54,6 +55,10 @@ DEFAULT_MANIFEST = voice_config.DEFAULT_CONFIG
 #: Preflight reachability-probe timeout for `run`'s "fail loudly, don't
 #: pretend" endpoint check (see `_probe_endpoint`).
 ENDPOINT_PROBE_TIMEOUT_S = 3.0
+
+
+def _redact_bearer_token(text: str) -> str:
+    return re.sub(r"Bearer\s+[^'\"\s\\]+", "Bearer <redacted>", text)
 
 # (kind, ServeConfig class, Serve class) -- drives the bring-up/tear-down loop
 # in cmd_up/cmd_down; keeps them from repeating themselves per-serve-kind.
@@ -167,7 +172,8 @@ def _probe_endpoint(
     injected ``_open`` fake that returns (rather than raises) a status.
     """
     url = base_url.rstrip("/") + "/models"
-    headers = {"Authorization": "Bearer %s" % token} if token else {}
+    stripped_token = token.strip() if token else None
+    headers = {"Authorization": "Bearer %s" % stripped_token} if stripped_token else {}
     req = urllib.request.Request(url, headers=headers)
     try:
         with _open(req, timeout=timeout) as resp:
@@ -177,7 +183,7 @@ def _probe_endpoint(
             return "%s at %s returned HTTP %s (unhealthy)" % (name, url, exc.code)
         return None  # up and routing (e.g. 401/403/404/405) -- reachable, not blocking
     except (urllib.error.URLError, OSError, ValueError) as exc:
-        return "%s at %s is unreachable (%s)" % (name, url, exc)
+        return "%s at %s is unreachable (%s)" % (name, url, _redact_bearer_token(str(exc)))
     if status >= 500:
         return "%s at %s returned HTTP %s (unhealthy)" % (name, url, status)
     return None
@@ -201,7 +207,8 @@ def _resolve_probe_token(table: Dict[str, Any]) -> Optional[str]:
     api_key_env = table.get("api_key_env")
     if not api_key_env:
         return None
-    return os.environ.get(api_key_env)
+    token = os.environ.get(api_key_env)
+    return token.strip() if token else None
 
 
 def _check_required_endpoints_reachable(voice: Dict[str, Any]) -> Optional[str]:

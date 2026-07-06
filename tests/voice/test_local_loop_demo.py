@@ -995,3 +995,41 @@ def test_route_decision_probe_rejects_unexpected_route_shape(monkeypatch):
     assert result["ok"] is False
     assert result["prompt_source"] == "captured transcript"
     assert "expected provider fast-local" in result["validation_errors"][0]
+
+
+def test_route_decision_probe_accepts_explicit_prompt_source(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {
+                "base_url": "http://127.0.0.1:8000/v1",
+                "model": "fast-local",
+                "expected_route_provider": "fast-local",
+                "expected_route_model": "qwen36-27b",
+                "expected_route_tier": "local",
+            }
+        }
+    }
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"provider":"fast-local","model":"qwen36-27b","tier":"local"}'
+
+        def getcode(self):
+            return 200
+
+    monkeypatch.setattr(local_loop_demo.urllib.request, "urlopen", lambda _req, timeout: Response())
+
+    result = local_loop_demo.route_decision_probe(
+        data, prompt="voice Mini validation route proof", prompt_source="validation probe"
+    )
+
+    assert result["ok"] is True
+    assert result["prompt_source"] == "validation probe"
