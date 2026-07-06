@@ -17,5 +17,14 @@ model-library/_seen.json
 # stale pre-pivot internal resume note — not shipped publicly (removed from the repo)
 HANDOFF.md
 
+# Live voice proof captures can contain bulky/raw local audio. The default
+# capture directory is temp, but ignore explicit in-repo capture prefixes too.
+docs/findings/captures/
+*.input.wav
+*.output.wav
+*.events.jsonl
+*.latency.json
+*.session.json
+
 # MkDocs build output
 site/
