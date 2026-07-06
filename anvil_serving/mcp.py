@@ -39,6 +39,7 @@ _WORKFLOW_GATE_STATES = {"not_required", "confirm_required", "human_required", "
 _WORKFLOW_SOURCE_CLASSES = {"mcp", "controller", "cli", "manual", "fixture"}
 _WORKFLOW_RECOMMENDATIONS = {"promote", "do_not_promote", "needs_more_data", "blocked"}
 _WORKFLOW_VOICE_ARTIFACT_KINDS = {"voice-benchmark", "voice-sidecar-render"}
+_WORKFLOW_VOICE_CONTEXT_RE = re.compile(r"(^|[^a-z0-9])(voice|stt|tts|realtime)([^a-z0-9]|$)", re.I)
 _MAX_ERROR_BODY_BYTES = 4096
 _LOG_SECRET_PATTERNS = (
     re.compile(r"(?i)\b((?:authorization|x-api-key)\s*[:=]\s*(?:bearer\s+)?)([^\s]+)"),
@@ -554,16 +555,41 @@ def _workflow_error(errors: list[dict[str, Any]], field: str, message: str, deta
     errors.append({"field": field, "message": message, "details": details or {}})
 
 
+def _workflow_mentions_voice(value: Any) -> bool:
+    if isinstance(value, str):
+        return bool(_WORKFLOW_VOICE_CONTEXT_RE.search(value))
+    if isinstance(value, list):
+        return any(_workflow_mentions_voice(item) for item in value)
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if _workflow_mentions_voice(key) or _workflow_mentions_voice(item):
+                return True
+    return False
+
+
 def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str, Any]]) -> list[Any]:
     artifacts = packet.get("artifacts")
     if not isinstance(artifacts, list):
         _workflow_error(errors, "artifacts", "artifacts must be an array")
         return []
+    voice_context = _workflow_mentions_voice({
+        "request": packet.get("request"),
+        "targets": packet.get("targets"),
+        "tools_used": packet.get("tools_used"),
+        "artifacts": artifacts,
+    })
     normalized = []
     for index, artifact in enumerate(artifacts):
         field = "artifacts[%d]" % index
         if isinstance(artifact, str):
             raw_path = artifact
+            if voice_context:
+                _workflow_error(
+                    errors,
+                    field,
+                    "voice workflow artifacts must be objects with kind, evidence_scope, and promotion_quality_evidence",
+                )
+                continue
             item: Any = artifact
         elif isinstance(artifact, dict):
             raw_path = artifact.get("path")
@@ -580,7 +606,15 @@ def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str,
             _workflow_error(errors, field + ".path", exc.message, {"code": exc.code, **exc.details})
             continue
         if isinstance(item, dict):
-            if item.get("kind") in _WORKFLOW_VOICE_ARTIFACT_KINDS:
+            is_voice_artifact = item.get("kind") in _WORKFLOW_VOICE_ARTIFACT_KINDS
+            if voice_context and not is_voice_artifact:
+                _workflow_error(
+                    errors,
+                    field + ".kind",
+                    "voice workflow artifacts must declare a voice artifact kind",
+                    {"allowed": sorted(_WORKFLOW_VOICE_ARTIFACT_KINDS)},
+                )
+            if voice_context or is_voice_artifact:
                 if item.get("evidence_scope") != "voice-pipeline":
                     _workflow_error(
                         errors,
@@ -993,7 +1027,7 @@ def tool_router_promote(args: dict) -> dict:
     if apply_requested and not human_approved:
         raise ToolError(
             "human_approval_required",
-            "router promotion apply requires human_approved=true in addition to confirm=true",
+            "router promotion apply requires confirm=true, dry_run=false, and human_approved=true",
             {"target": target, "preview": preview},
         )
     if not apply_requested:
@@ -1974,7 +2008,7 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_decision_summary,
     },
     "router_promote": {
-        "description": "Validate and preview router profile promotion; apply requires confirm=true and human_approved=true.",
+        "description": "Validate and preview router profile promotion; apply requires confirm=true, dry_run=false, and human_approved=true.",
         "inputSchema": _schema({
             "profile": {"type": "string"},
             "config": {"type": "string"},

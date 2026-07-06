@@ -86,7 +86,7 @@ from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
 | Deployed router lifecycle | `router_manage` | Implemented |
 | Bounded router logs | `router_logs` | Implemented |
 | Recent decision summaries | `decision_summary` | Implemented |
-| Promotion validation and preview | `router_promote` | Implemented; apply requires `confirm:true` and `human_approved:true` |
+| Promotion validation and preview | `router_promote` | Implemented; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` |
 | Compose-defined serve health | `serves_status` | Implemented |
 | Guarded serve lifecycle | `serves_manage` | Implemented |
 | Bounded serve logs | `serves_logs` | Implemented |
@@ -123,7 +123,7 @@ agent workflow.
 | Area | Verbs | Best enablement | Rationale |
 |---|---|---|---|
 | Front door | `serve` | Skill-only runbook | Long-running process; agents inspect it through `router_status`, `/healthz`, and `/v1/models`. |
-| Router lifecycle | `router status/logs/up/down/restart/reload/promote/token` | MCP for status, bounded logs, guarded lifecycle, decision summary, and promotion preview/apply gate; token remains CLI-only | Promotion apply requires `confirm:true` plus `human_approved:true`; token values are not exposed through MCP. |
+| Router lifecycle | `router status/logs/up/down/restart/reload/promote/token` | MCP for status, bounded logs, guarded lifecycle, decision summary, and promotion preview/apply gate; token remains CLI-only | Promotion apply requires `confirm:true`, `dry_run:false`, and `human_approved:true`; token values are not exposed through MCP. |
 | Serve lifecycle | `serves status/up/down/rm/adopt/logs` | MCP for status, bounded logs, and guarded up/down/rm/adopt; live mutation requires `confirm:true` and `dry_run:false` after preview | Serve start/stop is normal operation and should not require raw Docker. |
 | Model inventory | `models sync`, `models pull`, `models recipe` | MCP for catalog inventory with sync preview/confirm; skill/CLI for pull and recipe read | Inventory is read-heavy. Pull is long-running, network/disk-heavy, and explicitly gated. |
 | Bring-up generation | `init`, `doctor`, `deploy` | MCP preview/render plus CLI apply | Generated artifacts should be inspectable before write. |
@@ -433,7 +433,10 @@ promotion-quality evidence path.
 Before a packet is used as promotion evidence, run `workflow_packet_validate`.
 The validator normalizes `artifacts` entries that are either string paths or
 objects with a `path` field, and rejects artifact paths outside the workspace or
-server-configured evidence roots.
+server-configured evidence roots. Voice workflow artifacts are the exception:
+they must be object entries with an explicit voice artifact `kind`,
+`evidence_scope`, and `promotion_quality_evidence` so they cannot be mistaken
+for router work-class promotion evidence.
 
 `tests/fixtures/operator_workflows/model_swap_promotion_evidence.json` is the
 canonical fixture for small-model workflow checks. It records readiness,

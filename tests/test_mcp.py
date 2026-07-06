@@ -1681,6 +1681,34 @@ def test_workflow_packet_voice_artifacts_are_scoped_to_voice_pipeline(tmp_path, 
     assert env["data"]["valid"] is False
     assert any(error["field"] == "artifacts[0].promotion_quality_evidence" for error in env["data"]["errors"])
 
+    bare_path = _workflow_packet(
+        request="run voice benchmark",
+        artifacts=[str(voice_artifact)],
+        tools_used=[{
+            "name": "voice_benchmark",
+            "source_class": "cli",
+            "ok": True,
+            "dry_run": False,
+            "confirmed": True,
+            "target": "voice",
+            "error": None,
+        }],
+    )
+    env = mcp.call_tool("workflow_packet_validate", {"packet": bare_path})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0]" for error in env["data"]["errors"])
+
+    missing_kind = _workflow_packet(
+        request="run voice benchmark",
+        artifacts=[{"path": str(voice_artifact)}],
+    )
+    env = mcp.call_tool("workflow_packet_validate", {"packet": missing_kind})
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "artifacts[0].kind" in fields
+    assert "artifacts[0].evidence_scope" in fields
+    assert "artifacts[0].promotion_quality_evidence" in fields
+
 
 def _operator_workflow_packet_from_fixture(fixture, evidence_root):
     artifact_path = None
