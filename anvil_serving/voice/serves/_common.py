@@ -130,11 +130,13 @@ class ServeLifecycle:
             **self._run_kwargs(),
         )
 
-    def tear_down(self) -> int:
+    def tear_down(self, *, dry_run: bool = False) -> int:
         """Stop the serve (frees the GPU/container); no-op if already stopped."""
         serves = self._serves()
         self._find_entry(serves)
-        return generic_serves.cmd_down(serves, [self.serve_name], **self._run_kwargs())
+        return generic_serves.cmd_down(
+            serves, [self.serve_name], dry_run=dry_run, **self._run_kwargs()
+        )
 
     def docker_state(self) -> str:
         """The serve's current docker state, or ``"absent"``/raises if unconfigured."""

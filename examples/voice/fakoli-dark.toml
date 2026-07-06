@@ -25,7 +25,9 @@ expected_route_tier = "local"
 base_url = "http://127.0.0.1:30010/v1"
 model = "tdt_ctc-110m"
 stream = false
+lifecycle = "external"
 
 [voice.tts]
 base_url = "http://127.0.0.1:30011/v1"
 model = "kokoro"
+lifecycle = "external"
