@@ -119,6 +119,38 @@ def test_detect_max_model_len_returns_none_on_error(monkeypatch):
     assert bm.detect_max_model_len("http://x/v1", "coder") is None
 
 
+def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp_path):
+    monkeypatch.setattr(bm, "stream_chat",
+                        lambda *a, **k: dict(
+                            ttft=0.1,
+                            e2e=0.2,
+                            out_toks=8,
+                            usage={"prompt_tokens": 100, "prompt_tokens_details": {"cached_tokens": 40}},
+                        ))
+
+    out = tmp_path / "benchmark.json"
+    rc = bm.main([
+        "--base-url", "http://127.0.0.1:30002/v1",
+        "--model", "local-heavy",
+        "--requests", "2",
+        "--concurrency", "2",
+        "--max-model-len", "131072",
+        "--json-out", str(out),
+    ])
+
+    assert rc in (0, None)
+    summary = json.loads(out.read_text(encoding="utf-8"))
+    assert summary["schema"] == "anvil-serving.benchmark/v1"
+    assert summary["model"] == "local-heavy"
+    assert summary["requests"] == 2
+    assert summary["completed"] == 2
+    assert summary["metrics"]["ttft_p50_ms"] == 100.0
+    assert summary["metrics"]["e2e_p50_ms"] == 200.0
+    assert summary["metrics"]["throughput_tok_s"] > 0
+    assert summary["metrics"]["output_tokens"] == 16
+    assert summary["metrics"]["prefix_cache_hit_avg"] == 0.4
+
+
 # ---- GENERATE: benchmarking a serve ALSO records its recipe (--recipe-out) ---------
 # Hermetic: capture_from_container / capture_hardware are injected as fakes, so no
 # real docker / GPU / network is touched. The emitted block is proven parseable.
