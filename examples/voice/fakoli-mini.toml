@@ -1,0 +1,36 @@
+# Live 16GB Fakoli Mini voice manifest for T016.
+#
+# STT and TTS are external native MLX Audio servers bound to loopback on the
+# Mini. The LLM remains routed to fakoli-dark over the tailnet. Secrets are env
+# var names only; never paste token values here.
+
+[voice]
+name = "anvil-voice-fakoli-mini"
+realtime_host = "127.0.0.1"
+realtime_port = 8765
+
+[voice.llm]
+base_url = "http://100.87.34.66:8000/v1"
+model = "fast-local"
+stream = true
+api_key_env = "ANVIL_ROUTER_TOKEN"
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "fast-local"
+expected_route_model = "qwen36-27b"
+expected_route_tier = "local"
+
+[voice.stt]
+base_url = "http://127.0.0.1:30010/v1"
+model = "mlx-community/whisper-tiny-asr-fp16"
+stream = false
+timeout = 120.0
+lifecycle = "external"
+
+[voice.tts]
+base_url = "http://127.0.0.1:30011/v1"
+model = "mlx-community/Kokoro-82M-bf16"
+timeout = 120.0
+lifecycle = "external"
+response_format = "pcm"
+source_sample_rate = 24000
+target_sample_rate = 16000

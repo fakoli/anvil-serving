@@ -46,6 +46,8 @@ _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 # through unrejected even though `token` is already in this set.
 _SECRET_KEY_NAMES = {"api_key", "token", "secret", "password", "realtime_token"}
 _SECRET_VALUE_PREFIXES = ("sk-", "hf_", "hf-", "ghp_", "ghp-")
+_LIFECYCLES = {"managed", "external"}
+_TTS_RESPONSE_FORMATS = {"pcm"}
 
 
 class ConfigError(ValueError):
@@ -105,6 +107,27 @@ def _int(table: dict, key: str, default: int | None = None) -> int:
     value = table.get(key, default)
     if isinstance(value, bool) or not isinstance(value, int):
         raise ConfigError("%s must be an integer" % key)
+    return value
+
+
+def _float(table: dict, key: str, default: float | None = None) -> float:
+    value = table.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ConfigError("%s must be a number" % key)
+    return float(value)
+
+
+def _positive_int(table: dict, key: str) -> int:
+    value = _int(table, key)
+    if value <= 0:
+        raise ConfigError("%s must be positive" % key)
+    return value
+
+
+def _positive_float(table: dict, key: str) -> float:
+    value = _float(table, key)
+    if value <= 0:
+        raise ConfigError("%s must be positive" % key)
     return value
 
 
@@ -202,6 +225,25 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
     if model_required:
         _string(table, "model")
     _check_env_name(table, "api_key")
+    lifecycle = table.get("lifecycle", "managed")
+    if lifecycle not in _LIFECYCLES:
+        raise ConfigError(
+            "voice.%s.lifecycle must be one of %s" % (name, ", ".join(sorted(_LIFECYCLES)))
+        )
+    if "timeout" in table:
+        _positive_float(table, "timeout")
+    if name == "stt" and "stream" in table:
+        _bool(table, "stream", True)
+    if name == "tts":
+        if "response_format" in table:
+            response_format = _string(table, "response_format")
+            if response_format not in _TTS_RESPONSE_FORMATS:
+                raise ConfigError(
+                    "voice.tts.response_format must be pcm because the voice pipeline consumes raw PCM"
+                )
+        for key in ("source_sample_rate", "target_sample_rate", "chunk_bytes"):
+            if key in table:
+                _positive_int(table, key)
 
 
 def validate_manifest(data: dict) -> None:
@@ -246,6 +288,8 @@ def validate_manifest(data: dict) -> None:
     _string(llm, "model")
     _bool(llm, "stream", True)
     _check_env_name(llm, "api_key")
+    if "timeout" in llm:
+        _positive_float(llm, "timeout")
 
     _validate_endpoint(data, "stt")
     _validate_endpoint(data, "tts")

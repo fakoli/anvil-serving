@@ -66,8 +66,9 @@ _AUDIO_SERVES = (
 def _audio_serves(voice: dict):
     for kind, config_cls, serve_cls in _AUDIO_SERVES:
         table = voice.get(kind, {})
+        lifecycle = table.get("lifecycle", "managed")
         config = config_cls(base_url=table.get("base_url", ""), model=table.get("model", ""))
-        yield kind, serve_cls(config)
+        yield kind, lifecycle, serve_cls(config)
 
 
 def _load(config_path):
@@ -86,7 +87,10 @@ def cmd_up(args):
     print("voice up: manifest OK -- %s" % voice_config.describe(data))
     voice = data.get("voice", {})
     exit_code = 0
-    for kind, serve in _audio_serves(voice):
+    for kind, lifecycle, serve in _audio_serves(voice):
+        if lifecycle == "external":
+            print("voice up: %s serve lifecycle is external; skipping managed bring-up" % kind)
+            continue
         try:
             rc = serve.bring_up()
             print("voice up: %s serve bring-up rc=%s" % (kind, rc))
@@ -106,7 +110,10 @@ def cmd_down(args):
     print("voice down: manifest OK -- %s" % voice_config.describe(data))
     voice = data.get("voice", {})
     exit_code = 0
-    for kind, serve in _audio_serves(voice):
+    for kind, lifecycle, serve in _audio_serves(voice):
+        if lifecycle == "external":
+            print("voice down: %s serve lifecycle is external; skipping managed tear-down" % kind)
+            continue
         try:
             rc = serve.tear_down()
             print("voice down: %s serve tear-down rc=%s" % (kind, rc))

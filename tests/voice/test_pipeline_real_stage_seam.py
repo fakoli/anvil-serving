@@ -29,7 +29,7 @@ Dependency-light: fake ``stream_fn``s only, no real HTTP/socket, no GPU/torch.
 from __future__ import annotations
 
 from anvil_serving.voice.messages import AudioOut, EndOfResponse
-from anvil_serving.voice.pipeline import EchoSTTStage, EchoTTSStage, VoicePipeline
+from anvil_serving.voice.pipeline import EchoSTTStage, EchoTTSStage, VoicePipeline, real_pipeline_kwargs_from_manifest
 from anvil_serving.voice.stages.base import BaseStage
 from anvil_serving.voice.stages.llm import LLMStageConfig
 from anvil_serving.voice.stages.stt import STTStage, STTStageConfig
@@ -132,6 +132,45 @@ def test_tts_config_switches_in_the_real_stage_with_config_applied():
         assert pipeline.tts.out_queues == [pipeline.audio_out]
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_manifest_pipeline_kwargs_preserve_stage_runtime_knobs():
+    kwargs = real_pipeline_kwargs_from_manifest({
+        "voice": {
+            "stt": {
+                "base_url": "http://127.0.0.1:30010/v1",
+                "model": "mlx-community/whisper-tiny-asr-fp16",
+                "stream": False,
+                "timeout": 12.5,
+                "lifecycle": "external",
+            },
+            "llm": {
+                "base_url": "http://127.0.0.1:8000/v1",
+                "model": "fast-local",
+                "stream": True,
+                "timeout": 33.0,
+            },
+            "tts": {
+                "base_url": "http://127.0.0.1:30011/v1",
+                "model": "mlx-community/Kokoro-82M-bf16",
+                "response_format": "pcm",
+                "source_sample_rate": 24000,
+                "target_sample_rate": 16000,
+                "chunk_bytes": 2048,
+                "timeout": 44.0,
+                "lifecycle": "external",
+            },
+        }
+    })
+
+    assert kwargs["stt_config"].stream is False
+    assert kwargs["stt_config"].timeout == 12.5
+    assert kwargs["llm_config"].timeout == 33.0
+    assert kwargs["tts_config"].response_format == "pcm"
+    assert kwargs["tts_config"].source_sample_rate == 24000
+    assert kwargs["tts_config"].target_sample_rate == 16000
+    assert kwargs["tts_config"].chunk_bytes == 2048
+    assert kwargs["tts_config"].timeout == 44.0
 
 
 def test_default_pipeline_still_uses_echo_stubs():
