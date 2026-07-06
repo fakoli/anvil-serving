@@ -9,7 +9,7 @@
 > *Run local where it is measured safe. Verify risky local output. Keep cloud explicit.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.10.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.11.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 [![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
@@ -151,7 +151,7 @@ See [SECURITY.md](SECURITY.md) for the threat model and vulnerability reporting 
 
 ## Status
 
-**The source tree is versioned 0.10.0, while published tags and package releases can lag `main`.**
+**The source tree is versioned 0.11.0, while published tags and package releases can lag `main`.**
 The router, local serving tools, host management, router/serve lifecycle verbs, harness sync, and
 OpenClaw MCP/controller control plane all ship on `main`. Install from a clone when evaluating those
 main-only surfaces. The control plane keeps the request data plane clean: OpenClaw's hook plugin
