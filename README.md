@@ -177,6 +177,7 @@ OpenClaw config sync.
 | [Product architecture](docs/QUALITY-GATED-ROUTER.md) | Intent presets, quality profile, verification, fallback, and integrations. |
 | [Terminology](docs/TERMINOLOGY.md) | Product naming, user-facing terms, and technical definitions. |
 | [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md) | MCP/controller workflows for status, preflight, benchmark, OpenClaw sync, and promotion evidence. |
+| [Operator skills and sub-agents](docs/OPERATOR-SKILLS-AND-SUBAGENTS.md) | Verb coverage, skill design, and small-model sub-agent workflow slices. |
 | [OpenClaw operations ADRs](docs/adr/0013-openclaw-layers-and-mcp-control-plane.md) | Hook/router/MCP layers and split-host controller transport. |
 | [Model settings](docs/MODEL-SETTINGS-EXAMPLE.md) | Thinking/sampling settings and model-specific serve flags. |
 | [Serves & eval](docs/SERVES-AND-EVAL.md) | Local serve lifecycle and eval entry points. |

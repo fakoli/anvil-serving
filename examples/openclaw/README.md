@@ -24,6 +24,19 @@ instead of an assumed one.
 | `hook-fire-log.jsonl` | **A REPRESENTATIVE FIXTURE — not a live capture.** Every record carries `"synthetic": true`. Models a clean 3-message session (one fire per message) so `validate.py` has something to assert against in CI. |
 | `logging-hook/index.ts` | A minimal, **logging-only** `before_model_resolve` plugin. On each fire it appends a JSONL record and returns `{}` (records cadence; **does not route**). This is the instrument you install on the live Fakoli-Mini gateway to produce a REAL `hook-fire-log.jsonl`. |
 | `logging-hook/package.json`, `logging-hook/openclaw.plugin.json` | Minimal packaging so the hook can be installed as a local OpenClaw plugin. |
+| `skills/anvil-serving-workbench/SKILL.md` | Example OpenClaw-visible workbench skill for operator workflows. |
+| `anvil-serving-workbench.example.json5` | Example `skills.load.extraDirs` and agent visibility fragment for the workbench roles. |
+
+## Workbench skill example
+
+The operator workbench skill is the OpenClaw counterpart to the repo-scoped
+Codex and Claude Code skills. Until `anvil-serving harness sync openclaw
+--skills` exists, load `examples/openclaw/skills` through OpenClaw's
+`skills.load.extraDirs` and enable `anvil-serving-workbench` in agent defaults
+or specific agents. The example fragment in
+`anvil-serving-workbench.example.json5` keeps this narrowly scoped to skill
+visibility and role names; provider/model sync remains owned by
+`anvil-serving harness sync openclaw`.
 
 ## Run the validator (against the committed fixture)
 
