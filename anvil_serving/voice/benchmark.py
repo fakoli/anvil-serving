@@ -158,6 +158,8 @@ def run_benchmark(
         "turn_latency_ms": round(turn_latency_ms, 2),
         "stt_wer": round(stt_wer, 4) if stt_wer is not None else None,
         "tts_rtf": round(tts_rtf, 4) if tts_rtf is not None else None,
+        "tts_first_audio_observed": first_audio_time is not None,
+        "tts_output_bytes": total_audio_bytes,
         "stt_hypothesis": hypothesis,
         "llm_reply": reply_text,
         "reference_text": reference,
