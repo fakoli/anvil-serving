@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import urllib.parse
 
 try:
@@ -46,9 +47,12 @@ _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 # through unrejected even though `token` is already in this set.
 _SECRET_KEY_NAMES = {"api_key", "token", "secret", "password", "realtime_token"}
 _SECRET_VALUE_PREFIXES = ("sk-", "hf_", "hf-", "ghp_", "ghp-")
-_LIFECYCLES = {"managed", "external"}
+_SECRET_VALUE_RE = re.compile(r"\b(sk-(?:proj-)?[A-Za-z0-9_-]{8,}|hf[_-][A-Za-z0-9_-]{8,}|ghp[_-][A-Za-z0-9_-]{8,})\b")
+_LIFECYCLES = {"managed", "external", "native"}
 _STT_RESPONSE_FORMATS = {"json"}
 _TTS_RESPONSE_FORMATS = {"pcm"}
+_NATIVE_COMMAND_KEYS = ("start_command", "stop_command")
+_NATIVE_PATH_KEYS = ("workdir", "pid_file", "log_file")
 
 
 class ConfigError(ValueError):
@@ -156,7 +160,7 @@ def _reject_secret_literals(node, path: str = "") -> None:
                         "%s must be referenced by env var name (use %s_env), not stored inline"
                         % (key_path, key)
                     )
-                if value.startswith(_SECRET_VALUE_PREFIXES):
+                if value.startswith(_SECRET_VALUE_PREFIXES) or _SECRET_VALUE_RE.search(value):
                     raise ConfigError(
                         "%s looks like a secret literal; reference it by an *_env key instead"
                         % key_path
@@ -193,8 +197,20 @@ def _parsed_url(value: str, *, key: str, schemes: tuple[str, ...]) -> urllib.par
         raise ConfigError("%s must be a %s URL" % (key, "/".join(schemes)))
     if parsed.username or parsed.password:
         raise ConfigError("%s must not embed credentials in the URL" % key)
+    if parsed.query or parsed.fragment:
+        raise ConfigError("%s must not contain query strings or fragments; use *_env for credentials" % key)
     _validate_host(parsed.hostname or "", key=key)
     return parsed
+
+
+def _split_command(value: str) -> list[str]:
+    argv = shlex.split(value, posix=(os.name != "nt"))
+    if os.name == "nt":
+        argv = [
+            part[1:-1] if len(part) >= 2 and part[0] == part[-1] and part[0] in ("'", '"') else part
+            for part in argv
+        ]
+    return argv
 
 
 def _check_env_name(table: dict, key: str) -> str | None:
@@ -229,7 +245,7 @@ def resolve_secret(table: dict, key: str, *, required: bool = False) -> str | No
 
 def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) -> None:
     table = _section(data, "voice", name)
-    _parsed_url(_string(table, "base_url"), key="voice.%s.base_url" % name, schemes=("http", "https"))
+    parsed = _parsed_url(_string(table, "base_url"), key="voice.%s.base_url" % name, schemes=("http", "https"))
     if model_required:
         _string(table, "model")
     _check_env_name(table, "api_key")
@@ -238,8 +254,13 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
         raise ConfigError(
             "voice.%s.lifecycle must be one of %s" % (name, ", ".join(sorted(_LIFECYCLES)))
         )
+    _validate_native_lifecycle(table, name, lifecycle, parsed)
     if "timeout" in table:
         _positive_float(table, "timeout")
+    if "ready_timeout" in table:
+        _positive_float(table, "ready_timeout")
+    if "stop_timeout" in table:
+        _positive_float(table, "stop_timeout")
     if name == "stt":
         if "stream" in table:
             _bool(table, "stream", True)
@@ -259,6 +280,40 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
         for key in ("source_sample_rate", "target_sample_rate", "chunk_bytes"):
             if key in table:
                 _positive_int(table, key)
+
+
+def _validate_native_lifecycle(table: dict, name: str, lifecycle: str, parsed_base_url: urllib.parse.ParseResult) -> None:
+    has_native_keys = any(key in table for key in (*_NATIVE_COMMAND_KEYS, *_NATIVE_PATH_KEYS))
+    if lifecycle != "native":
+        if has_native_keys:
+            raise ConfigError(
+                "voice.%s native process keys require lifecycle = \"native\"" % name
+            )
+        return
+
+    start = _string(table, "start_command")
+    if parsed_base_url.hostname != "127.0.0.1":
+        raise ConfigError(
+            "voice.%s.lifecycle = \"native\" requires a same-host base_url on 127.0.0.1; use lifecycle = \"external\" for remote endpoints"
+            % name
+        )
+    try:
+        _split_command(start)
+    except ValueError as exc:
+        raise ConfigError("voice.%s.start_command is not a valid argv string: %s" % (name, exc))
+    if not _split_command(start):
+        raise ConfigError("voice.%s.start_command must not be empty" % name)
+    if "stop_command" in table:
+        stop = _string(table, "stop_command")
+        try:
+            _split_command(stop)
+        except ValueError as exc:
+            raise ConfigError("voice.%s.stop_command is not a valid argv string: %s" % (name, exc))
+        if not _split_command(stop):
+            raise ConfigError("voice.%s.stop_command must not be empty" % name)
+    for key in _NATIVE_PATH_KEYS:
+        if key in table:
+            _string(table, key)
 
 
 def validate_manifest(data: dict) -> None:

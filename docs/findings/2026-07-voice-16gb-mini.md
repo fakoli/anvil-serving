@@ -23,23 +23,24 @@ not loopback) · `scripts/voice/mini_validation.py`
    `resource.getrusage`-based memory reading reflects its driver process, not
    the STT/TTS serves. The report also records host memory before/after load
    and requires post-benchmark per-serve memory. Managed container serves use
-   `docker stats`; explicitly external native Mini serves use macOS `lsof`
-   plus `ps` to attribute RSS to the process listening on the configured
-   loopback port, so lazy model load is included.
+   `docker stats`; native Mini serves use macOS `lsof` plus `ps` to attribute
+   RSS to the process listening on the configured loopback port, so lazy model
+   load is included.
 2. **A non-Mini run is a negative control, not a pass.** The harness records
    `host_is_16gb_class`, `host_matches_expected_mini`, and
    `host_hw_model_matches_expected`; runs on a workstation, generic 16GB VM,
    or GPU host must be read as `unsupported` unless the report proves a
    16GB-class macOS host, a Fakoli Mini host identity, and the expected Mini
    hardware model (`Mac16,10` by default).
-3. **The Mini manifest uses external native STT/TTS by default.**
-   `examples/voice/fakoli-mini.toml` declares `lifecycle = "external"` for
-   both audio endpoints. `anvil-serving voice up/down` therefore skips managed
-   Docker lifecycle for those endpoints, but the harness still requires them
-   to be ready on `127.0.0.1:30010/30011`, complete the live benchmark, and
-   produce endpoint-attributed process RSS plus a matching `/v1/models` model
-   id after the benchmark. Managed container serves may still be validated
-   with a custom `serves.toml`.
+3. **The Mini manifest uses native STT/TTS lifecycle by default.**
+   `examples/voice/fakoli-mini.toml` declares `lifecycle = "native"` for both
+   audio endpoints. `anvil-serving voice up/down` now starts and stops the MLX
+   Audio processes with manifest-declared commands, PID files, and logs under
+   `/tmp/anvil-voice-mini`; the harness still requires them to be ready on
+   `127.0.0.1:30010/30011`, complete the live benchmark, and produce
+   endpoint-attributed process RSS plus a matching `/v1/models` model id after
+   the benchmark. Managed container serves may still be validated with a custom
+   `serves.toml`.
 4. **Router auth is checked both ways.** Manifests that name
    `ANVIL_ROUTER_TOKEN` must prove the token is present for the positive route
    probe and that a no-Authorization `/v1/route` probe is rejected with
@@ -52,7 +53,7 @@ python scripts/voice/mini_validation.py --report
 ```
 
 The default manifest is `examples/voice/fakoli-mini.toml` when present: STT and
-TTS are external native loopback endpoints on the Mini, while the LLM base URL
+TTS are native-managed loopback endpoints on the Mini, while the LLM base URL
 points at fakoli-dark over the tailnet and declares the expected
 route/provider/model and expected endpoint host. The shell running the command
 must have `ANVIL_ROUTER_TOKEN` set when the manifest names that auth env var.
@@ -109,7 +110,7 @@ python scripts/voice/mini_validation.py --report /tmp/mini-negative.json --allow
 ## Findings
 
 The 2026-07-06 target-hardware run on Fakoli Mini (`Mac16,10`, 16.0 GB RAM)
-passed the required split topology: STT and TTS were local external native
+passed the required split topology: STT and TTS were local native-managed
 loopback endpoints, while the LLM call routed over the tailnet to fakoli-dark.
 The report recorded 3.17 GB available after load, post-benchmark listener RSS
 for both local audio serves, a nonblank STT hypothesis, a nonblank LLM reply,

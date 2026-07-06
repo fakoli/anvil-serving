@@ -1,4 +1,4 @@
-"""anvil-serving voice — up / down / run / benchmark (anvil task T001;
+"""anvil-serving voice — up / down / start / stop / run / benchmark (anvil task T001;
 `run` wired to the real cascade for PUNCH-LIST #2).
 
 The voice-pipeline verb for the anvil-style stdlib orchestrator described in
@@ -8,19 +8,20 @@ TTS serve, and the anvil router (Chat Completions) for the brain — instead of
 running any of that in-process.
 
 T001/T002 shipped manifest loading + validation + this CLI skeleton.
-`up`/`down` (T006/T008) now bring up/tear down the STT and TTS serves via
-`anvil_serving.voice.serves` -- which itself delegates to
-`anvil_serving.serves`'s declarative docker-manifest lifecycle, so there is
-still no raw `docker run` in this file. `benchmark` (T015) now replays one
-turn end-to-end via `anvil_serving.voice.benchmark` and prints the
-TTFA/latency/WER/RTF metrics as JSON. `run` now builds the REAL cascade
-(STT/TTS out-of-process serves + the LLM stage routed at the anvil router,
-wired via `anvil_serving.voice.pipeline.real_pipeline_factory_from_manifest`
-into a bounded `anvil_serving.voice.realtime.pool.SessionPool`) and starts the
-Realtime WebSocket server (`anvil_serving.voice.realtime.ws.make_ws_server`)
-in the foreground -- promoting the wiring that used to live only in
-`scripts/voice/realtime_sdk_client_demo.py`'s `build_server` into the package
-so the CLI verb itself does this, not just a demo script.
+`up`/`down` (T006/T008) bring up/tear down the STT and TTS serves via
+`anvil_serving.voice.serves`: Docker-managed endpoints delegate to
+`anvil_serving.serves`'s declarative lifecycle, while `lifecycle = "native"`
+endpoints (Fakoli Mini's MLX Audio setup) launch/stop trusted manifest
+commands with PID/log files. `benchmark` (T015) now replays one turn end-to-end
+via `anvil_serving.voice.benchmark` and prints the TTFA/latency/WER/RTF metrics
+as JSON. `run` now builds the REAL cascade (STT/TTS out-of-process serves + the
+LLM stage routed at the anvil router, wired via
+`anvil_serving.voice.pipeline.real_pipeline_factory_from_manifest` into a
+bounded `anvil_serving.voice.realtime.pool.SessionPool`) and starts the
+Realtime WebSocket server (`anvil_serving.voice.realtime.ws.make_ws_server`) in
+the foreground -- promoting the wiring that used to live only in
+`scripts/voice/realtime_sdk_client_demo.py`'s `build_server` into the package so
+the CLI verb itself does this, not just a demo script.
 
 Nothing here is proven against real audio hardware, a GPU, or a live STT/TTS
 serve -- see the module docstring honesty notes in `voice/serves/`,
@@ -47,6 +48,7 @@ from . import benchmark as voice_benchmark
 from . import config as voice_config
 from .realtime.app import build_realtime_server_from_manifest
 from .realtime.ws import serve_forever_in_background
+from .serves import native as native_serve
 from .serves import stt as stt_serve
 from .serves import tts as tts_serve
 from .serves._common import ServeNotConfigured
@@ -73,7 +75,26 @@ def _audio_serves(voice: dict):
         table = voice.get(kind, {})
         lifecycle = table.get("lifecycle", "managed")
         config = config_cls(base_url=table.get("base_url", ""), model=table.get("model", ""))
-        yield kind, lifecycle, serve_cls(config)
+        yield kind, lifecycle, table, serve_cls(config)
+
+
+def _print_native_result(prefix: str, kind: str, result: dict) -> None:
+    pid = result.get("pid")
+    details = []
+    if pid:
+        details.append("pid=%s" % pid)
+    if result.get("ready") is not None:
+        details.append("ready=%s" % result.get("ready"))
+    if result.get("reason"):
+        details.append("reason=%s" % result.get("reason"))
+    if result.get("dry_run"):
+        details.append("dry-run")
+    suffix = " (%s)" % ", ".join(details) if details else ""
+    print("%s: %s native lifecycle rc=%s%s" % (prefix, kind, result.get("returncode"), suffix))
+    if result.get("log_file"):
+        print("%s: %s log %s" % (prefix, kind, result["log_file"]))
+    if result.get("error"):
+        print("%s: %s %s" % (prefix, kind, result["error"]), file=sys.stderr)
 
 
 def _load(config_path):
@@ -92,12 +113,26 @@ def cmd_up(args):
     print("voice up: manifest OK -- %s" % voice_config.describe(data))
     voice = data.get("voice", {})
     exit_code = 0
-    for kind, lifecycle, serve in _audio_serves(voice):
+    for kind, lifecycle, table, serve in _audio_serves(voice):
         if lifecycle == "external":
             print("voice up: %s serve lifecycle is external; skipping managed bring-up" % kind)
             continue
+        if lifecycle == "native":
+            try:
+                native = native_serve.NativeServe(
+                    native_serve.NativeServeConfig.from_table(kind, table)
+                )
+                result = native.bring_up(dry_run=getattr(args, "dry_run", False))
+                _print_native_result("voice up", kind, result)
+                if result.get("returncode") != 0:
+                    exit_code = 1
+            except Exception as exc:  # noqa: BLE001 - configured native process may fail locally
+                print("voice up: %s native lifecycle failed -- %s" % (kind, exc), file=sys.stderr)
+                exit_code = 1
+            continue
         try:
-            rc = serve.bring_up()
+            dry_run = getattr(args, "dry_run", False)
+            rc = serve.bring_up(dry_run=True) if dry_run else serve.bring_up()
             print("voice up: %s serve bring-up rc=%s" % (kind, rc))
             if rc != 0:
                 exit_code = 1
@@ -115,12 +150,26 @@ def cmd_down(args):
     print("voice down: manifest OK -- %s" % voice_config.describe(data))
     voice = data.get("voice", {})
     exit_code = 0
-    for kind, lifecycle, serve in _audio_serves(voice):
+    for kind, lifecycle, table, serve in _audio_serves(voice):
         if lifecycle == "external":
             print("voice down: %s serve lifecycle is external; skipping managed tear-down" % kind)
             continue
+        if lifecycle == "native":
+            try:
+                native = native_serve.NativeServe(
+                    native_serve.NativeServeConfig.from_table(kind, table)
+                )
+                result = native.tear_down(dry_run=getattr(args, "dry_run", False))
+                _print_native_result("voice down", kind, result)
+                if result.get("returncode") != 0:
+                    exit_code = 1
+            except Exception as exc:  # noqa: BLE001 - configured native process may fail locally
+                print("voice down: %s native lifecycle failed -- %s" % (kind, exc), file=sys.stderr)
+                exit_code = 1
+            continue
         try:
-            rc = serve.tear_down()
+            dry_run = getattr(args, "dry_run", False)
+            rc = serve.tear_down(dry_run=True) if dry_run else serve.tear_down()
             print("voice down: %s serve tear-down rc=%s" % (kind, rc))
             if rc != 0:
                 exit_code = 1
@@ -337,11 +386,24 @@ def build_parser():
             % DEFAULT_MANIFEST,
         )
 
-    sp = sub.add_parser("up", help="bring up the STT/TTS serves + realtime server (validates manifest)")
-    add_config(sp)
+    def add_dry_run(sp):
+        sp.add_argument("--dry-run", action="store_true", help="print the lifecycle action without starting/stopping processes")
 
-    sp = sub.add_parser("down", help="tear down the STT/TTS serves + realtime server")
+    sp = sub.add_parser("up", help="bring up the STT/TTS serves (validates manifest)")
     add_config(sp)
+    add_dry_run(sp)
+
+    sp = sub.add_parser("start", help="alias for up")
+    add_config(sp)
+    add_dry_run(sp)
+
+    sp = sub.add_parser("down", help="tear down the STT/TTS serves")
+    add_config(sp)
+    add_dry_run(sp)
+
+    sp = sub.add_parser("stop", help="alias for down")
+    add_config(sp)
+    add_dry_run(sp)
 
     sp = sub.add_parser("run", help="run the realtime server in the foreground")
     add_config(sp)
@@ -357,7 +419,9 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     handlers = {
         "up": cmd_up,
+        "start": cmd_up,
         "down": cmd_down,
+        "stop": cmd_down,
         "run": cmd_run,
         "benchmark": cmd_benchmark,
     }

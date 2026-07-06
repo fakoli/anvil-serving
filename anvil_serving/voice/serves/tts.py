@@ -70,9 +70,9 @@ class TTSServe:
         if no matching `serves.toml` entry exists yet."""
         return self._lifecycle.bring_up(dry_run=dry_run, recreate=recreate)
 
-    def tear_down(self) -> int:
+    def tear_down(self, *, dry_run: bool = False) -> int:
         """Stop the TTS serve's container (frees the GPU)."""
-        return self._lifecycle.tear_down()
+        return self._lifecycle.tear_down(dry_run=dry_run)
 
     def wait_ready(self, *, timeout: float = DEFAULT_READY_TIMEOUT) -> ServeReadiness:
         """Poll docker state + an OpenAI-compatible readiness probe."""

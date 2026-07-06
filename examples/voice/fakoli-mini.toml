@@ -1,8 +1,14 @@
 # Live 16GB Fakoli Mini voice manifest for T016.
 #
-# STT and TTS are external native MLX Audio servers bound to loopback on the
-# Mini. The LLM remains routed to fakoli-dark over the tailnet. Secrets are env
-# var names only; never paste token values here.
+# STT and TTS are native MLX Audio servers bound to loopback on the Mini.
+# `anvil-serving voice up/down --config examples/voice/fakoli-mini.toml`
+# starts/stops those processes with PID/log files under /tmp/anvil-voice-mini.
+# The LLM remains routed to fakoli-dark over the tailnet. Secrets are env var
+# names only; never paste token values here.
+#
+# This is a live reference manifest, not a portable template. For another
+# laptop or router host, copy it and replace the LLM base_url/expected host,
+# route/model expectations, MLX Audio workdir, ports, and lifecycle fields.
 
 [voice]
 name = "anvil-voice-fakoli-mini"
@@ -28,13 +34,25 @@ model = "mlx-community/parakeet-tdt-0.6b-v3"
 stream = false
 response_format = "json"
 timeout = 120.0
-lifecycle = "external"
+lifecycle = "native"
+workdir = "~/code/mlx-audio"
+start_command = ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini"
+stop_command = "pkill -f 'mlx_audio.server.*--port 30010'"
+pid_file = "/tmp/anvil-voice-mini/stt.pid"
+log_file = "/tmp/anvil-voice-mini/stt.log"
+ready_timeout = 120.0
 
 [voice.tts]
 base_url = "http://127.0.0.1:30011/v1"
 model = "mlx-community/Kokoro-82M-bf16"
 timeout = 120.0
-lifecycle = "external"
+lifecycle = "native"
+workdir = "~/code/mlx-audio"
+start_command = ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30011 --log-dir /tmp/anvil-voice-mini"
+stop_command = "pkill -f 'mlx_audio.server.*--port 30011'"
+pid_file = "/tmp/anvil-voice-mini/tts.pid"
+log_file = "/tmp/anvil-voice-mini/tts.log"
+ready_timeout = 120.0
 response_format = "pcm"
 source_sample_rate = 24000
 target_sample_rate = 16000

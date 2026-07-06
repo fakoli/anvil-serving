@@ -26,8 +26,8 @@ question a proxy cannot answer: **is this local model trusted for this kind of w
 
 For OpenClaw and agent-assisted operations, anvil-serving also exposes a structured control plane:
 `anvil-serving mcp` for same-host stdio MCP, and `anvil-serving controller serve` for a
-token-authenticated tailnet controller that lets a gateway on `fakoli-mini` operate a separate
-GPU/router host without making raw SSH the product contract.
+token-authenticated private/tailnet controller that lets a gateway host operate a separate
+router, serve, or voice host without making raw SSH the product contract.
 
 ## Why It Exists
 
@@ -45,7 +45,7 @@ anvil-serving routes with evidence:
 | Avoid known local failures | `deny` rows skip local or exhaust cleanly. |
 | Preserve one agent endpoint | Anthropic Messages and OpenAI Chat Completions terminate at the router. |
 | Keep billing explicit | The default config has no cloud API key; metered cloud is opt-in. |
-| Operate safely | MCP/controller tools expose status, route probes, preflight, benchmark, and OpenClaw sync. |
+| Operate safely | MCP/controller tools expose status, route probes, voice lifecycle, preflight, benchmark, and OpenClaw sync. |
 
 ## How It Works
 
@@ -128,9 +128,10 @@ Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
 | `anvil-serving benchmark` | Replay representative traffic and measure capacity. |
 | `anvil-serving external-bench` | Import and compare external inference benchmark priors. |
 | `anvil-serving harness sync openclaw` | Render OpenClaw model config from live router presets. |
+| `anvil-serving voice` | Manage STT/TTS lifecycle, run the local Realtime voice server, and benchmark voice turns. |
 | `anvil-serving voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings. |
-| `anvil-serving mcp` | Expose status, route probes, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
+| `anvil-serving mcp` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
 | `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |
 
 ## Cost And Security Defaults
@@ -152,12 +153,12 @@ See [SECURITY.md](SECURITY.md) for the threat model and vulnerability reporting 
 ## Status
 
 **The source tree is versioned 0.11.0, while published tags and package releases can lag `main`.**
-The router, local serving tools, host management, router/serve lifecycle verbs, harness sync, and
-OpenClaw MCP/controller control plane all ship on `main`. Install from a clone when evaluating those
-main-only surfaces. The control plane keeps the request data plane clean: OpenClaw's hook plugin
-handles per-turn intent, the router handles quality and configured fallback/exhaustion, and
-MCP/controller tools handle explicit operations such as status, preflight, benchmarking, and
-OpenClaw config sync.
+The router, local serving tools, host management, router/serve/voice lifecycle verbs, harness sync,
+and OpenClaw MCP/controller control plane all ship on `main`. Install from a clone when evaluating
+those main-only surfaces. The control plane keeps the request data plane clean: OpenClaw's hook
+plugin handles per-turn intent, the router handles quality and configured fallback/exhaustion, and
+MCP/controller tools handle explicit operations such as status, voice lifecycle, preflight,
+benchmarking, and OpenClaw config sync.
 
 ## Known Limitations
 
@@ -180,8 +181,10 @@ OpenClaw config sync.
 | [Operator skills and sub-agents](docs/OPERATOR-SKILLS-AND-SUBAGENTS.md) | Verb coverage, skill design, and small-model sub-agent workflow slices. |
 | [Operator skills ADR](docs/adr/0015-operator-skills-and-subagent-workflows.md) | Decision record for the workbench skill, harness packaging, and sub-agent model split. |
 | [OpenClaw operations ADRs](docs/adr/0013-openclaw-layers-and-mcp-control-plane.md) | Hook/router/MCP layers and split-host controller transport. |
+| [Device topologies](docs/DEVICE-TOPOLOGIES.md) | Expand from Fakoli Mini/Dark to additional laptops or hosts over Tailscale/private connectivity. |
 | [Model settings](docs/MODEL-SETTINGS-EXAMPLE.md) | Thinking/sampling settings and model-specific serve flags. |
 | [Serves & eval](docs/SERVES-AND-EVAL.md) | Local serve lifecycle and eval entry points. |
+| [Voice pipeline](docs/VOICE.md) | Native voice runtime commands, multi-device audio/LLM topology, Realtime server, and benchmarks. |
 | [External benchmarks](docs/EXTERNAL-BENCHMARKS.md) | Import, report, export, and compare advisory benchmark data. |
 | [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md) | Reference integration contract and current caveats. |
 | [Hugging Face speech-to-speech](examples/huggingface-speech-to-speech/) | Voice sidecar recipe for Realtime audio with anvil-routed LLM turns. |
