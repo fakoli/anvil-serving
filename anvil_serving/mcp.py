@@ -365,6 +365,58 @@ def tool_doctor_summary(args: dict) -> dict:
     return _ok(doctor.checks_summary(config_path=config, config_explicit=bool(args.get("config"))))
 
 
+def tool_models_inventory(args: dict) -> dict:
+    from . import models
+
+    catalog_dir = _str_arg(args, "catalog_dir", "model-library")
+    hf_roots = _str_arg(args, "hf_roots", "")
+    model_dirs = _str_arg(args, "model_dirs", "")
+    sync = _arg_bool(args.get("sync"), False, name="sync")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 1800, min_value=1, max_value=7200)
+    argv = models.build_sync_argv(catalog_dir, hf_roots=hf_roots, model_dirs=model_dirs)
+    if sync:
+        if not confirm:
+            return _ok({
+                "synced": False,
+                "dry_run": True,
+                "catalog_dir": os.path.abspath(catalog_dir),
+                "command": argv,
+            })
+        run_result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+        try:
+            inventory = models.load_model_catalog(catalog_dir)
+        except models.CatalogNotFound as exc:
+            raise ToolError(
+                "catalog_not_found",
+                "models sync completed but no catalog was found; check sync output and --out",
+                {"catalog_dir": exc.catalog_dir, "command": argv, "stdout": run_result.get("stdout", ""), "stderr": run_result.get("stderr", "")},
+            )
+        except models.CatalogError as exc:
+            raise ToolError("bad_catalog", str(exc), exc.details)
+        return _ok({
+            "synced": True,
+            "dry_run": False,
+            "command": argv,
+            "returncode": run_result["returncode"],
+            "stdout": run_result["stdout"],
+            "stderr": run_result["stderr"],
+            "catalog": inventory,
+        })
+
+    try:
+        inventory = models.load_model_catalog(catalog_dir)
+    except models.CatalogNotFound as exc:
+        raise ToolError(
+            "catalog_not_found",
+            "model catalog not found; run the command from error.details.command first",
+            {"catalog_dir": exc.catalog_dir, "command": argv},
+        )
+    except models.CatalogError as exc:
+        raise ToolError("bad_catalog", str(exc), exc.details)
+    return _ok({"synced": False, "dry_run": False, "catalog": inventory})
+
+
 def _route_url(base_url: str) -> str:
     base = base_url.rstrip("/")
     return base if base.endswith("/route") else base + "/route"
@@ -589,6 +641,18 @@ TOOLS: Dict[str, dict] = {
             "no_config": {"type": "boolean"},
         }),
         "handler": tool_doctor_summary,
+    },
+    "models_inventory": {
+        "description": "Read the generated model catalog, or preview/run `models sync` to create it.",
+        "inputSchema": _schema({
+            "catalog_dir": {"type": "string"},
+            "hf_roots": {"type": "string"},
+            "model_dirs": {"type": "string"},
+            "sync": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
+        }),
+        "handler": tool_models_inventory,
     },
     "route_decision": {
         "description": "POST a prompt to the router /v1/route decision endpoint.",
