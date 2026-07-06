@@ -38,6 +38,7 @@ _WORKFLOW_SCHEMA_VERSION = "operator-workflow/v1"
 _WORKFLOW_GATE_STATES = {"not_required", "confirm_required", "human_required", "blocked"}
 _WORKFLOW_SOURCE_CLASSES = {"mcp", "controller", "cli", "manual", "fixture"}
 _WORKFLOW_RECOMMENDATIONS = {"promote", "do_not_promote", "needs_more_data", "blocked"}
+_WORKFLOW_VOICE_ARTIFACT_KINDS = {"voice-benchmark", "voice-sidecar-render"}
 _MAX_ERROR_BODY_BYTES = 4096
 _LOG_SECRET_PATTERNS = (
     re.compile(r"(?i)\b((?:authorization|x-api-key)\s*[:=]\s*(?:bearer\s+)?)([^\s]+)"),
@@ -579,6 +580,19 @@ def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str,
             _workflow_error(errors, field + ".path", exc.message, {"code": exc.code, **exc.details})
             continue
         if isinstance(item, dict):
+            if item.get("kind") in _WORKFLOW_VOICE_ARTIFACT_KINDS:
+                if item.get("evidence_scope") != "voice-pipeline":
+                    _workflow_error(
+                        errors,
+                        field + ".evidence_scope",
+                        "voice artifacts must declare evidence_scope='voice-pipeline'",
+                    )
+                if item.get("promotion_quality_evidence") is not False:
+                    _workflow_error(
+                        errors,
+                        field + ".promotion_quality_evidence",
+                        "voice artifacts are not router work-class promotion evidence",
+                    )
             item["path"] = normalized_path
             normalized.append(item)
         else:

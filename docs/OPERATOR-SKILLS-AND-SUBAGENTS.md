@@ -47,12 +47,13 @@ The initial checked-in entry points are:
 | Claude Code | `.claude/agents/anvil-*.md` | Project sub-agents for inventory, probes, and review. |
 | OpenClaw | `examples/openclaw/skills/anvil-serving-workbench/SKILL.md` | Installable skill directory or `skills.load.extraDirs` source. |
 | OpenClaw | `examples/openclaw/anvil-serving-workbench.example.json5` | Example skill/agent visibility fragment. |
+| Shared source | `skills/anvil-serving-voice-ops/SKILL.md` | Specialized voice operations skill source for harness-specific installation. |
 
 ## Available Today Vs Planned Follow-Ups
 
 | Surface | Available today | Planned follow-up |
 |---|---|---|
-| Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, host-repair, and voice skills once their backing tools exist. |
+| Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs; `skills/anvil-serving-voice-ops` for voice workflow installation. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, and host-repair skills once their backing tools exist. |
 | Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
 | OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Use workspace-installed skills, or pass `--skill-dir <gateway-visible-path>` for checkout-loaded skills. | Split additional specialized skills once their backing tools exist. |
 | MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, external benchmark advisory reports/compares, and promotion preview. | Router token handling. |
@@ -133,7 +134,7 @@ agent workflow.
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
 | Controller transport | `controller serve`, `mcp --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
 | Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
-| Voice | `voice up/down/run/benchmark`, `voice-sidecar validate/command/compose` | MCP render/validate/status later; skill-only now | Useful follow-up, but outside the core coding-router workflow. |
+| Voice | `voice up/down/run/benchmark`, `voice-sidecar validate/command/compose` | Skill-only now through `skills/anvil-serving-voice-ops/SKILL.md`; MCP render/validate/status later | Use existing voice verbs first. Voice benchmark output is voice-pipeline evidence, not router work-class promotion evidence. |
 | Local analytics | `profile`, `score`, `cache-prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `score` are offline analysis. `cache-prune` deletion stays CLI-only and human-gated. |
 
 ## Recommended Skills
@@ -150,7 +151,23 @@ tool-backed, not a new policy engine.
 | `anvil-serving-harness-sync` | small | Planned specialization | Preview/apply OpenClaw provider/model and workbench skill config after router preset or tier changes. |
 | `anvil-serving-promotion-evidence` | small collector, stronger synthesizer | Planned specialization | Assemble preflight, benchmark, calibration, and config evidence without promoting. |
 | `anvil-serving-host-repair` | strong or human-assisted | Planned specialization | Diagnose WSL/Docker/GPU issues and preview safe repairs. |
-| `anvil-serving-voice-ops` | small for validation, strong for failures | Planned specialization | Validate voice sidecar manifests and run bounded voice benchmarks. |
+| `anvil-serving-voice-ops` | small for validation, strong for failures | Seeded skill-only | Validate sidecar manifests, render sidecar commands, and run bounded voice benchmarks as voice-pipeline evidence. |
+
+## Voice Ops Skill
+
+`skills/anvil-serving-voice-ops/SKILL.md` is the specialized voice operations
+skill source. Install or copy it into the active harness skill store when the
+operator wants a dedicated voice playbook. It intentionally uses the existing
+`anvil-serving voice-sidecar validate`, `voice-sidecar command`,
+`voice-sidecar compose`, `voice up`, `voice down`, `voice run`, and
+`voice benchmark` verbs before proposing new MCP tools.
+
+Voice benchmark JSON should be attached as `voice-pipeline` evidence, for
+example with artifact kind `voice-benchmark`, `evidence_scope: "voice-pipeline"`,
+and `promotion_quality_evidence: false`. The workflow packet validator enforces
+those fields for voice artifact kinds. Voice artifacts must not be counted as
+router work-class promotion evidence, and packets should keep `promoted=false`
+unless a separate human-approved router promotion result exists.
 
 ## OpenClaw `--skills` Render Contract
 
