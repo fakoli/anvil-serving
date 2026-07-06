@@ -11,6 +11,7 @@ import textwrap
 import types
 import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 from anvil_serving import cli, mcp
 
@@ -143,6 +144,7 @@ def test_tools_list_has_json_schemas():
         "openclaw_gateway_restart",
         "preflight_probe",
         "benchmark_probe",
+        "benchmark_artifact",
     ]:
         assert name in tools
         schema = tools[name]["inputSchema"]
@@ -154,6 +156,8 @@ def test_tools_list_has_json_schemas():
         assert "api_key" not in props
         assert props["api_key_env"]["type"] == "string"
     assert tools["benchmark_probe"]["inputSchema"]["properties"]["requests"]["maximum"] == 200
+    assert tools["benchmark_artifact"]["inputSchema"]["required"] == ["base_url", "model", "artifact_path"]
+    assert "evidence_dir" not in tools["benchmark_artifact"]["inputSchema"]["properties"]
     assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
     assert tools["router_promote"]["inputSchema"]["properties"]["human_approved"]["type"] == "boolean"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["skills"]["type"] == "boolean"
@@ -952,6 +956,205 @@ def test_preflight_and_benchmark_probe_are_argv_not_shell():
         assert isinstance(cmd, list)
         assert cmd[0]  # sys.executable path
         assert any(str(part).startswith("http://127.0.0.1") for part in cmd)
+
+
+def test_benchmark_artifact_tool_is_separate_from_fast_probe():
+    probe = mcp.call_tool("benchmark_probe", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "requests": 1,
+        "concurrency": 1,
+    })
+    artifact = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": ".anvil/benchmarks/local-benchmark.json",
+        "requests": 1,
+        "concurrency": 1,
+    })
+
+    assert probe["ok"] is True
+    assert artifact["ok"] is True
+    assert "--json-out" not in probe["data"]["command"]
+    assert "--json-out" in artifact["data"]["command"]
+    assert artifact["data"]["applied"] is False
+    assert artifact["data"]["dry_run"] is True
+
+
+def test_benchmark_artifact_rejects_path_outside_workspace(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_BENCHMARK_EVIDENCE_DIR", raising=False)
+    monkeypatch.delenv("ANVIL_EVIDENCE_DIR", raising=False)
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(tmp_path / "outside.json"),
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "unsafe_artifact_path"
+
+
+def test_benchmark_artifact_does_not_treat_unmarked_cwd_as_workspace(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_WORKSPACE_ROOT", raising=False)
+    monkeypatch.delenv("ANVIL_BENCHMARK_EVIDENCE_DIR", raising=False)
+    monkeypatch.delenv("ANVIL_EVIDENCE_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(tmp_path / "bench.json"),
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "missing_artifact_root"
+
+
+def test_benchmark_artifact_does_not_treat_unrelated_git_repo_as_workspace(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_WORKSPACE_ROOT", raising=False)
+    monkeypatch.delenv("ANVIL_BENCHMARK_EVIDENCE_DIR", raising=False)
+    monkeypatch.delenv("ANVIL_EVIDENCE_DIR", raising=False)
+    (tmp_path / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(tmp_path / "bench.json"),
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "missing_artifact_root"
+
+
+def test_benchmark_artifact_accepts_server_configured_evidence_dir(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    artifact_path = tmp_path / "benchmarks" / "preview.json"
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(artifact_path),
+    })
+
+    assert env["ok"] is True
+    assert env["data"]["artifact_path"] == str(artifact_path.resolve())
+    assert str(tmp_path.resolve()) in env["data"]["allowed_roots"]
+
+
+def test_benchmark_artifact_accepts_server_configured_anvil_evidence_dir(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_BENCHMARK_EVIDENCE_DIR", raising=False)
+    monkeypatch.setenv("ANVIL_EVIDENCE_DIR", str(tmp_path))
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(tmp_path / "benchmarks" / "preview.json"),
+    })
+
+    assert env["ok"] is True
+    assert str(tmp_path.resolve()) in env["data"]["allowed_roots"]
+
+
+def test_benchmark_artifact_rejects_base_url_secret_surfaces():
+    for base_url in [
+        "http://token:secret@127.0.0.1:30000/v1",
+        "http://127.0.0.1:30000/v1?token=secret",
+        "http://127.0.0.1:30000/v1#secret",
+    ]:
+        env = mcp.call_tool("benchmark_artifact", {
+            "base_url": base_url,
+            "model": "local",
+            "artifact_path": ".anvil/benchmarks/local.json",
+        })
+
+        assert env["ok"] is False
+        assert env["error"]["code"] == "bad_base_url"
+
+
+def test_benchmark_artifact_confirmed_run_writes_json_and_returns_metrics(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    artifact_path = tmp_path / "benchmarks" / "local.json"
+    seen = {}
+
+    def fake_run(argv, capture_output=True, text=True, timeout=None):
+        seen["argv"] = argv
+        seen["capture_output"] = capture_output
+        seen["text"] = text
+        seen["timeout"] = timeout
+        out_path = Path(argv[argv.index("--json-out") + 1])
+        out_path.write_text(json.dumps({
+            "schema": "anvil-serving.benchmark/v1",
+            "run_id": "benchmark-20260706T000000Z",
+            "base_url": "http://127.0.0.1:30000/v1",
+            "model": "local",
+            "requests": 2,
+            "completed": 2,
+            "concurrency": 1,
+            "context_tokens": 4096,
+            "max_context_tokens": 131072,
+            "max_tokens": 64,
+            "metrics": {
+                "ttft_p50_ms": 120.0,
+                "ttft_p95_ms": 180.0,
+                "e2e_p50_ms": 240.0,
+                "e2e_p95_ms": 320.0,
+                "throughput_tok_s": 91.5,
+                "output_tokens": 128,
+                "prefix_cache_hit_avg": 0.42,
+            },
+        }), encoding="utf-8")
+        return proc(0, "wrote JSON summary\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(artifact_path),
+        "requests": 2,
+        "concurrency": 1,
+        "ctx_tokens": 4096,
+        "confirm": True,
+        "timeout_seconds": 30,
+    })
+
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["applied"] is True
+    assert data["dry_run"] is False
+    assert Path(data["artifact_path"]) == artifact_path.resolve()
+    assert data["summary"]["run_id"] == "benchmark-20260706T000000Z"
+    assert data["key_metrics"]["completed"] == 2
+    assert data["key_metrics"]["throughput_tok_s"] == 91.5
+    assert data["key_metrics"]["prefix_cache_hit_avg"] == 0.42
+    assert "--json-out" in seen["argv"]
+    assert seen["capture_output"] is True
+    assert seen["text"] is True
+    assert seen["timeout"] == 30
+
+
+def test_benchmark_artifact_confirmed_run_rejects_stale_json(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    artifact_path = tmp_path / "benchmarks" / "stale.json"
+    artifact_path.parent.mkdir(parents=True)
+    artifact_path.write_text(json.dumps({
+        "schema": "anvil-serving.benchmark/v1",
+        "run_id": "old-run",
+        "metrics": {"throughput_tok_s": 1.0},
+    }), encoding="utf-8")
+
+    monkeypatch.setattr(mcp.subprocess, "run", lambda *a, **k: proc(0, "no write\n", ""))
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(artifact_path),
+        "confirm": True,
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "artifact_not_written"
+    assert not artifact_path.exists()
 
 
 def test_probe_tools_use_api_key_env_and_reject_raw_keys(monkeypatch):
