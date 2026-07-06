@@ -37,13 +37,15 @@ import array
 import json
 import math
 import time
+from dataclasses import fields
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
-from .stages.llm import LLMStageConfig, stream_chat_completion
+from .stages.llm import LLMStageConfig, SentenceBatcher, stream_chat_completion
 from .stages.stt import STTStageConfig, transcribe_stream
 from .stages.tts import TTSStageConfig, stream_speech
 
 DEFAULT_REFERENCE_TEXT = "the quick brown fox jumps over the lazy dog"
+MAX_TTS_TEXT_CHARS = 48
 
 StreamFn = Callable[..., Iterator[Any]]
 
@@ -89,6 +91,55 @@ def synth_sample_pcm(*, duration_s: float = 1.0, sample_rate: int = 16000, freq_
     return samples.tobytes()
 
 
+def _split_for_tts(text: str, *, max_chars: int = MAX_TTS_TEXT_CHARS) -> Iterator[str]:
+    """Split one speakable LLM chunk into bounded TTS requests.
+
+    The live pipeline sentence-batches LLM output before TTS. The benchmark is
+    intentionally simpler and still waits for the full LLM reply before
+    synthesizing, but it should not send an arbitrarily large reply as one TTS
+    request. Keeping chunks modest avoids backend-specific long-text failure
+    modes while preserving that the audio is synthesized from the LLM reply.
+    """
+    text = " ".join(text.split())
+    if not text:
+        return
+    if len(text) <= max_chars:
+        yield text
+        return
+
+    current = ""
+    for word in text.split():
+        if len(word) > max_chars:
+            if current:
+                yield current
+                current = ""
+            for i in range(0, len(word), max_chars):
+                yield word[i:i + max_chars]
+            continue
+        candidate = ("%s %s" % (current, word)).strip()
+        if current and len(candidate) > max_chars:
+            yield current
+            current = word
+        else:
+            current = candidate
+    if current:
+        yield current
+
+
+def _llm_reply_and_tts_chunks(llm_deltas: Iterator[str]) -> tuple[str, list[str]]:
+    reply_text = ""
+    tts_texts: list[str] = []
+    batcher = SentenceBatcher()
+    for delta in llm_deltas:
+        reply_text += delta
+        for sentence in batcher.feed(delta):
+            tts_texts.extend(_split_for_tts(sentence))
+    trailing = batcher.flush()
+    if trailing:
+        tts_texts.extend(_split_for_tts(trailing))
+    return reply_text, tts_texts
+
+
 def run_benchmark(
     *,
     stt_config: STTStageConfig,
@@ -130,17 +181,18 @@ def run_benchmark(
         if is_final:
             break
 
-    reply_text = ""
-    for delta in llm_fn(hypothesis, llm_config):
-        reply_text += delta
+    reply_text, tts_texts = _llm_reply_and_tts_chunks(llm_fn(hypothesis, llm_config))
 
     t_tts_start = clock()
     first_audio_time: Optional[float] = None
     total_audio_bytes = 0
-    for chunk in tts_fn(reply_text, tts_config):
-        if first_audio_time is None:
-            first_audio_time = clock()
-        total_audio_bytes += len(chunk)
+    for tts_text in tts_texts:
+        for chunk in tts_fn(tts_text, tts_config):
+            if not chunk:
+                continue
+            if first_audio_time is None:
+                first_audio_time = clock()
+            total_audio_bytes += len(chunk)
     t_end = clock()
 
     ttfa_ms = ((first_audio_time if first_audio_time is not None else t_end) - t0) * 1000.0
@@ -158,6 +210,11 @@ def run_benchmark(
         "turn_latency_ms": round(turn_latency_ms, 2),
         "stt_wer": round(stt_wer, 4) if stt_wer is not None else None,
         "tts_rtf": round(tts_rtf, 4) if tts_rtf is not None else None,
+        "tts_first_audio_observed": first_audio_time is not None,
+        "tts_output_bytes": total_audio_bytes,
+        "tts_audio_seconds": round(audio_seconds, 4),
+        "tts_source_sample_rate": tts_config.source_sample_rate,
+        "tts_request_count": len(tts_texts),
         "stt_hypothesis": hypothesis,
         "llm_reply": reply_text,
         "reference_text": reference,
@@ -165,12 +222,12 @@ def run_benchmark(
 
 
 def _stage_config_from_table(table: Mapping[str, Any], cls) -> Any:
+    allowed = {field.name for field in fields(cls)}
     kwargs: Dict[str, Any] = {
-        "base_url": table.get("base_url", ""),
-        "model": table.get("model", ""),
+        key: value for key, value in table.items() if key in allowed
     }
-    if table.get("api_key_env"):
-        kwargs["api_key_env"] = table["api_key_env"]
+    kwargs.setdefault("base_url", "")
+    kwargs.setdefault("model", "")
     return cls(**kwargs)
 
 

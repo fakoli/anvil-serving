@@ -282,6 +282,14 @@ def test_stream_speech_sends_bearer_token_from_env_var(monkeypatch):
     assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-tts-token"
 
 
+def test_stream_speech_strips_bearer_token_whitespace(monkeypatch):
+    monkeypatch.setenv("ANVIL_TEST_TTS_TOKEN", " secret-tts-token\r\n")
+    transport = FakeTransport(FakeReadResponse([b"\x00\x00"]))
+    config = TTSStageConfig(api_key_env="ANVIL_TEST_TTS_TOKEN")
+    list(stream_speech("hi", config, transport=transport))
+    assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-tts-token"
+
+
 def test_stream_speech_no_token_when_env_unset(monkeypatch):
     monkeypatch.delenv("ANVIL_TEST_TTS_TOKEN_UNSET", raising=False)
     transport = FakeTransport(FakeReadResponse([b"\x00\x00"]))

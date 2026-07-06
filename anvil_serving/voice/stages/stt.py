@@ -60,6 +60,9 @@ class STTStageConfig:
     # OpenAI-style streaming partials (transcript.text.delta/.done). Disable
     # for a server that only supports the non-streaming JSON response shape.
     stream: bool = True
+    # For non-streaming OpenAI-compatible servers that default to another
+    # format, request the JSON shape this client consumes.
+    response_format: Optional[str] = None
 
 
 class STTClientError(Exception):
@@ -122,6 +125,8 @@ def build_transcription_fields(config: STTStageConfig) -> Dict[str, str]:
     fields: Dict[str, str] = {"model": config.model}
     if config.stream:
         fields["stream"] = "true"
+    if config.response_format:
+        fields["response_format"] = config.response_format
     return fields
 
 
@@ -181,7 +186,7 @@ def transcribe_stream(
     if config.stream:
         headers["Accept"] = "text/event-stream"
     if config.api_key_env:
-        token = os.environ.get(config.api_key_env)
+        token = (os.environ.get(config.api_key_env) or "").strip()
         if token:
             headers["Authorization"] = "Bearer %s" % token
 

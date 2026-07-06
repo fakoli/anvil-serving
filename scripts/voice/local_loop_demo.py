@@ -54,6 +54,7 @@ import json
 import math
 import os
 import queue
+import re
 import struct
 import sys
 import tempfile
@@ -388,7 +389,15 @@ def meter_inputs(
     return 0
 
 
-def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loop route proof") -> Dict[str, Any]:
+def redact_route_error(text: str) -> str:
+    """Redact bearer tokens from route-probe errors before writing evidence."""
+    return re.sub(r"Bearer\s+[^'\"\s\\]+", "Bearer <redacted>", text)
+
+
+def route_decision_probe(
+    data: Dict[str, Any], *, prompt: str = "voice local-loop route proof",
+    prompt_source: Optional[str] = None,
+) -> Dict[str, Any]:
     """Capture a content-light `/v1/route` decision for the manifest's LLM endpoint.
 
     This is a decision-only corroboration. The actual live turn still flows through
@@ -407,7 +416,7 @@ def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loo
     token = None
     env_name = llm.get("api_key_env")
     if env_name:
-        token = os.environ.get(env_name)
+        token = (os.environ.get(env_name) or "").strip()
         if token:
             headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request(
@@ -415,6 +424,9 @@ def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loo
         data=json.dumps(body).encode("utf-8"),
         headers=headers,
         method="POST",
+    )
+    source = prompt_source or (
+        "captured transcript" if prompt != "voice local-loop route proof" else "default probe"
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 - manifest-validated private/local URL
@@ -430,7 +442,7 @@ def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loo
                 "status": getattr(resp, "status", resp.getcode()),
                 "request_model": llm["model"],
                 "auth_env": env_name,
-                "prompt_source": "captured transcript" if prompt != "voice local-loop route proof" else "default probe",
+                "prompt_source": source,
                 "response": parsed,
                 "validation_errors": validation_errors,
             }
@@ -446,8 +458,8 @@ def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loo
             "status": exc.code,
             "request_model": llm["model"],
             "auth_env": env_name,
-            "prompt_source": "captured transcript" if prompt != "voice local-loop route proof" else "default probe",
-            "error": body_text or str(exc),
+            "prompt_source": source,
+            "error": redact_route_error(body_text or str(exc)),
         }
     except Exception as exc:  # noqa: BLE001 - evidence capture should report, not crash import paths
         return {
@@ -455,8 +467,8 @@ def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loo
             "url": url,
             "request_model": llm["model"],
             "auth_env": env_name,
-            "prompt_source": "captured transcript" if prompt != "voice local-loop route proof" else "default probe",
-            "error": "%s: %s" % (type(exc).__name__, exc),
+            "prompt_source": source,
+            "error": redact_route_error("%s: %s" % (type(exc).__name__, exc)),
         }
 
 
