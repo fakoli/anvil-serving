@@ -1,0 +1,24 @@
+{
+  "config": {
+    "talk": {
+      "realtime": {
+        "provider": "anvil",
+        "providers": {
+          "openai": {
+            "apiKey": "__OPENCLAW_REDACTED__",
+            "model": "gpt-realtime-2",
+            "voice": "marin"
+          },
+          "anvil": {
+            "realtimeUrl": "ws://127.0.0.1:8765/v1/realtime",
+            "model": "fast-local",
+            "silenceDurationMs": 200
+          }
+        },
+        "mode": "realtime",
+        "transport": "gateway-relay",
+        "brain": "agent-consult"
+      }
+    }
+  }
+}

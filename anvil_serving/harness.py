@@ -10,6 +10,7 @@ config — one selectable model per router preset, each `contextWindow` set to t
 preset can route to (the contextWindow-clamp gotcha, docs/OPENCLAW-INTEGRATION-SPEC.md §2). It
 does NOT emit per-preset thinking overrides: the router owns reasoning/thinking per tier now
 (heavy `reasoning_effort`, fast `enable_thinking`), so re-declaring them on the harness is stale.
+Pass `--voice` to also render OpenClaw Talk realtime config for the Anvil Voice provider.
 
 `--skills` also renders the OpenClaw-visible workbench skill and Anvil sub-agent roles. It only
 touches Anvil-owned skill/agent keys and keeps operator-owned providers, agents, plugins, and
@@ -29,12 +30,15 @@ over ssh (a single command invocation, not a shell script, so it stays portable 
 stdlib-only (ssh via `subprocess`, injected for tests).
 """
 import argparse
+import ipaddress
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 
 # Per-preset OpenClaw hints (advisory display/caps; contextWindow is computed from the router).
 # maxTokens is the harness's output cap; input declares modalities (review accepts images).
@@ -52,11 +56,17 @@ _DEFAULT_MAX_TOKENS = 8192
 _PLUGIN_ID = "openclaw-anvil-intent-router"
 _GATEWAY_HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _GATEWAY_USER_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+_ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 DEFAULT_TRANSPORT_TIMEOUT_SECONDS = 120
-_DEFAULT_NATIVE_PROVIDER = "anthropic"
-_DEFAULT_NATIVE_MODEL = "claude-sonnet-4-5"
 _REMOTE_RESTART_COMMAND = 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"'
 _DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
+DEFAULT_ANVIL_VOICE_REALTIME_URL = "ws://127.0.0.1:8765/v1/realtime"
+_DEFAULT_ANVIL_VOICE_MODEL = "fast-local"
+_LEGACY_GENERATED_PLUGIN_CONFIG_DEFAULTS = {
+    "nativeProvider": "anthropic",
+    "nativeModel": "claude-sonnet-4-5",
+    "routeTimeoutMs": 30,
+}
 _WORKBENCH_SKILL_NAME = "anvil-serving-workbench"
 _OPENCLAW_AGENT_ROLES = (
     ("anvil-orchestrator", ("planning", "review", "chat"), "planning", False),
@@ -122,13 +132,116 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
                                 "models": {"anvil/" + m["id"]: {} for m in models}}},
         "plugins": {"entries": {_PLUGIN_ID: {
             "hooks": {"allowConversationAccess": True},
-            "config": {
-                "cloudClasses": ["planning"],
-                "routeTimeoutMs": 30,
-                "nativeProvider": _DEFAULT_NATIVE_PROVIDER,
-                "nativeModel": _DEFAULT_NATIVE_MODEL,
-            },
         }}},
+    }
+
+
+def _validate_env_var_name(value, *, arg_name):
+    if not value:
+        return None
+    if not isinstance(value, str) or not _ENV_NAME_RE.fullmatch(value):
+        raise ValueError("%s must be an ENV_VAR_NAME" % arg_name)
+    return value
+
+
+def _is_tailscale_v4(addr):
+    try:
+        ip = ipaddress.ip_address(addr)
+    except ValueError:
+        return False
+    return ip.version == 4 and ip in ipaddress.ip_network("100.64.0.0/10")
+
+
+def _is_safe_voice_ip(addr):
+    ip = ipaddress.ip_address(addr)
+    if ip.is_unspecified or ip.is_link_local or ip.is_multicast or ip.is_reserved:
+        return False
+    if ip.version == 4:
+        rfc1918 = (
+            ipaddress.ip_network("10.0.0.0/8"),
+            ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+        )
+        return bool(ip.is_loopback or _is_tailscale_v4(addr) or any(ip in network for network in rfc1918))
+    return bool(ip.is_loopback or ip in ipaddress.ip_network("fc00::/7"))
+
+
+def _is_loopback_voice_host(host):
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _validate_voice_realtime_host(host):
+    normalized = host.lower().rstrip(".")
+    if normalized == "local" + "host":
+        raise ValueError("voice realtime URL must use 127.0.0.1 or a private/tailnet host")
+    try:
+        if not _is_safe_voice_ip(host):
+            raise ValueError(
+                "voice realtime URL host must be loopback, private, or tailnet-safe"
+            )
+        return _is_loopback_voice_host(host)
+    except ValueError as exc:
+        if "voice realtime URL" in str(exc):
+            raise
+    if normalized.endswith(".local") or normalized.endswith(".ts.net"):
+        return False
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise ValueError("voice realtime URL host could not be resolved safely: %s" % exc)
+    addrs = []
+    for info in infos:
+        try:
+            addrs.append(info[4][0])
+        except (IndexError, TypeError):
+            pass
+    if not addrs or any(not _is_safe_voice_ip(addr) for addr in addrs):
+        raise ValueError("voice realtime URL host must resolve only to loopback, private, or tailnet addresses")
+    return all(_is_loopback_voice_host(addr) for addr in addrs)
+
+
+def _validate_realtime_url(value, *, api_key_env=None):
+    if not isinstance(value, str) or not value:
+        raise ValueError("voice realtime URL must be a non-empty ws:// or wss:// URL")
+    parsed = urllib.parse.urlparse(value)
+    if parsed.scheme not in ("ws", "wss") or not parsed.netloc:
+        raise ValueError("voice realtime URL must be a ws:// or wss:// URL")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("voice realtime URL must not embed credentials, query strings, or fragments")
+    loopback = _validate_voice_realtime_host(parsed.hostname or "")
+    if not loopback and not api_key_env:
+        raise ValueError(
+            "non-loopback Anvil Voice realtime URLs require --voice-api-key-env"
+        )
+    return value
+
+
+def render_openclaw_voice_config(
+        *, realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
+        model=_DEFAULT_ANVIL_VOICE_MODEL,
+        api_key_env=None):
+    """Render OpenClaw Talk realtime config for the Anvil Voice gateway-relay provider."""
+    env_name = _validate_env_var_name(api_key_env, arg_name="voice_api_key_env")
+    provider_config = {
+        "realtimeUrl": _validate_realtime_url(realtime_url, api_key_env=env_name),
+        "model": model or _DEFAULT_ANVIL_VOICE_MODEL,
+        "silenceDurationMs": 200,
+    }
+    if env_name:
+        provider_config["apiKey"] = {"source": "env", "provider": "default", "id": env_name}
+    return {
+        "talk": {
+            "realtime": {
+                "mode": "realtime",
+                "transport": "gateway-relay",
+                "brain": "agent-consult",
+                "provider": "anvil",
+                "providers": {"anvil": provider_config},
+            }
+        }
     }
 
 
@@ -250,6 +363,43 @@ def _with_openclaw_skills(provider, skills_payload):
     return _merge_openclaw_skill_config(out, skills_payload)
 
 
+def _merge_openclaw_voice_config(out, rendered):
+    rendered_talk = rendered.get("talk") if isinstance(rendered.get("talk"), dict) else {}
+    rendered_rt = rendered_talk.get("realtime") if isinstance(rendered_talk.get("realtime"), dict) else {}
+    rendered_providers = (
+        rendered_rt.get("providers") if isinstance(rendered_rt.get("providers"), dict) else {}
+    )
+    rendered_anvil = rendered_providers.get("anvil")
+    if not isinstance(rendered_anvil, dict):
+        return out
+
+    talk = out.setdefault("talk", {})
+    if not isinstance(talk, dict):
+        talk = {}
+        out["talk"] = talk
+    realtime = talk.setdefault("realtime", {})
+    if not isinstance(realtime, dict):
+        realtime = {}
+        talk["realtime"] = realtime
+    for key, value in rendered_rt.items():
+        if key != "providers":
+            realtime[key] = value
+    providers = realtime.setdefault("providers", {})
+    if not isinstance(providers, dict):
+        providers = {}
+        realtime["providers"] = providers
+    existing_anvil = providers.get("anvil") if isinstance(providers.get("anvil"), dict) else {}
+    merged_anvil = json.loads(json.dumps(existing_anvil))
+    merged_anvil.update(rendered_anvil)
+    providers["anvil"] = merged_anvil
+    return out
+
+
+def _with_openclaw_voice_config(provider, voice_payload):
+    out = json.loads(json.dumps(provider))
+    return _merge_openclaw_voice_config(out, voice_payload)
+
+
 # --------------------------------------------------------------------------- #
 # remote (ssh) sync — the OpenClaw gateway is typically REMOTE from the router
 # --------------------------------------------------------------------------- #
@@ -333,14 +483,18 @@ def _merge_anvil_provider(existing, rendered):
             hooks = {}
         hooks.update(rendered_entry["hooks"])
         merged_entry["hooks"] = hooks
-        config = merged_entry.setdefault("config", {})
+        config = merged_entry.get("config")
         if isinstance(config, dict):
-            for key, value in rendered_entry.get("config", {}).items():
-                config.setdefault(key, value)
+            for key, default in _LEGACY_GENERATED_PLUGIN_CONFIG_DEFAULTS.items():
+                if config.get(key) == default:
+                    del config[key]
+            if not config:
+                merged_entry.pop("config", None)
         entries[_PLUGIN_ID] = merged_entry
     else:
         entries[_PLUGIN_ID] = rendered_entry
-    return _merge_openclaw_skill_config(out, rendered)
+    out = _merge_openclaw_skill_config(out, rendered)
+    return _merge_openclaw_voice_config(out, rendered)
 
 
 def _payload_for_existing_config(existing_text, rendered, *, overwrite, path):
@@ -488,7 +642,10 @@ def cmd_restart_openclaw(gateway_host=None, gateway_user=None,
 
 
 def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
-                          skills=False, skill_dir=None, _load=None):
+                          skills=False, skill_dir=None, voice=False,
+                          voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
+                          voice_model=_DEFAULT_ANVIL_VOICE_MODEL,
+                          voice_api_key_env=None, _load=None):
     """Return the rendered OpenClaw sync payload without writing it anywhere."""
     if _load is None:
         from .router.config import load as _load
@@ -496,9 +653,18 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
     provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
     if skills:
         provider = _with_openclaw_skills(provider, render_openclaw_skills(config, skill_dir=skill_dir))
+    if voice:
+        voice_payload = render_openclaw_voice_config(
+            realtime_url=voice_realtime_url,
+            model=voice_model,
+            api_key_env=voice_api_key_env,
+        )
+        provider = _with_openclaw_voice_config(provider, voice_payload)
     models = provider["models"]["providers"]["anvil"]["models"]
     roles = provider.get("agents", {}).get("list", [])
     load_dirs = provider.get("skills", {}).get("load", {}).get("extraDirs", [])
+    realtime = provider.get("talk", {}).get("realtime", {})
+    voice_anvil = realtime.get("providers", {}).get("anvil", {}) if isinstance(realtime, dict) else {}
     return {
         "provider": provider,
         "model_count": len(models),
@@ -515,11 +681,18 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
             for r in roles
             if isinstance(r, dict) and r.get("name")
         },
+        "voice": bool(voice),
+        "voice_provider": realtime.get("provider") if isinstance(realtime, dict) else None,
+        "voice_realtime_url": voice_anvil.get("realtimeUrl") if isinstance(voice_anvil, dict) else None,
+        "voice_model": voice_anvil.get("model") if isinstance(voice_anvil, dict) else None,
     }
 
 
 def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,
-                      skill_dir=None,
+                      skill_dir=None, voice=False,
+                      voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
+                      voice_model=_DEFAULT_ANVIL_VOICE_MODEL,
+                      voice_api_key_env=None,
                       gateway_host=None, gateway_user=None,
                       gateway_path=_DEFAULT_OPENCLAW_CONFIG_PATH, overwrite=False, restart=False,
                       timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _load=None, _run=subprocess.run):
@@ -540,9 +713,20 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
         print("router config %s declares no [router.presets] — nothing to sync." % config_path,
               file=sys.stderr)
         return 1
-    provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
-    if skills:
-        provider = _with_openclaw_skills(provider, render_openclaw_skills(config, skill_dir=skill_dir))
+    try:
+        provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
+        if skills:
+            provider = _with_openclaw_skills(provider, render_openclaw_skills(config, skill_dir=skill_dir))
+        if voice:
+            voice_payload = render_openclaw_voice_config(
+                realtime_url=voice_realtime_url,
+                model=voice_model,
+                api_key_env=voice_api_key_env,
+            )
+            provider = _with_openclaw_voice_config(provider, voice_payload)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
 
     if gateway_host:  # push to the REMOTE gateway over ssh (Mini -> the router)
         rc = _sync_over_ssh(gateway_host, gateway_user, gateway_path, provider,
@@ -592,6 +776,8 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
         suffix = ""
         if skills:
             suffix = ", %d workbench agents" % len(provider.get("agents", {}).get("list", []))
+        if voice:
+            suffix += ", Anvil Voice realtime"
         print("wrote OpenClaw provider config (%d preset models%s, %s) -> %s"
               % (n, suffix, mode, out))
         print("  apply on the OpenClaw gateway at ~/.openclaw/openclaw.json, or push directly with "
@@ -642,6 +828,14 @@ def main(argv=None):
     p.add_argument("--skill-dir",
                    help="with --skills: add this OpenClaw-gateway-visible directory to "
                         "skills.load.extraDirs. Omit when the workbench skill is workspace-installed.")
+    p.add_argument("--voice", action="store_true",
+                   help="also render/apply OpenClaw Talk realtime config for the Anvil Voice provider.")
+    p.add_argument("--voice-realtime-url", default=DEFAULT_ANVIL_VOICE_REALTIME_URL,
+                   help="with --voice: Anvil Voice WebSocket URL (default: %(default)s).")
+    p.add_argument("--voice-model", default=_DEFAULT_ANVIL_VOICE_MODEL,
+                   help="with --voice: model sent to the Anvil Voice realtime session (default: %(default)s).")
+    p.add_argument("--voice-api-key-env",
+                   help="with --voice: env var name for the Anvil Voice bearer token; omitted for loopback.")
     a = p.parse_args(argv)
 
     if a.action == "restart" and a.harness == "openclaw":
@@ -649,7 +843,12 @@ def main(argv=None):
         # reads as "it did something" — reject them so the misuse is visible.
         stray = [f for f, v in (("--config", a.config), ("--out", a.out),
                                 ("--overwrite", a.overwrite), ("--skills", a.skills),
-                                ("--skill-dir", a.skill_dir)) if v]
+                                ("--skill-dir", a.skill_dir), ("--voice", a.voice),
+                                ("--voice-api-key-env", a.voice_api_key_env)) if v]
+        if a.voice_realtime_url != DEFAULT_ANVIL_VOICE_REALTIME_URL:
+            stray.append("--voice-realtime-url")
+        if a.voice_model != _DEFAULT_ANVIL_VOICE_MODEL:
+            stray.append("--voice-model")
         if stray:
             print("restart openclaw takes only --gateway-host/--gateway-user; drop %s (it does not "
                   "sync)." % ", ".join(stray), file=sys.stderr)
@@ -679,7 +878,10 @@ def main(argv=None):
             return 2
         return cmd_sync_openclaw(a.config, out=a.out, base_url=a.base_url,
                                  api_key_env=a.api_key_env, skills=a.skills,
-                                 skill_dir=a.skill_dir,
+                                 skill_dir=a.skill_dir, voice=a.voice,
+                                 voice_realtime_url=a.voice_realtime_url,
+                                 voice_model=a.voice_model,
+                                 voice_api_key_env=a.voice_api_key_env,
                                  gateway_host=a.gateway_host, gateway_user=a.gateway_user,
                                  gateway_path=a.gateway_path, overwrite=a.overwrite,
                                  restart=a.restart, timeout_seconds=a.timeout_seconds)
