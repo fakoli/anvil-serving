@@ -7,7 +7,7 @@
 > *Run local where it is measured safe. Verify risky local output. Keep cloud explicit.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/fakoli/anvil-serving/blob/main/LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.10.0-blue.svg)](https://github.com/fakoli/anvil-serving/blob/main/CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.11.0-blue.svg)](https://github.com/fakoli/anvil-serving/blob/main/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 anvil-serving sits between coding agents and local/cloud model tiers. It speaks Anthropic Messages
@@ -103,6 +103,8 @@ See [Terminology](TERMINOLOGY.md) for the naming guide.
 | [Getting started](GETTING-STARTED.md) | Evaluate the front door, then route real local tiers. |
 | [Product architecture](QUALITY-GATED-ROUTER.md) | Understand intents, routing, verification, and fallback. |
 | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Run MCP/controller workflows. |
+| [Operator skills and sub-agents](OPERATOR-SKILLS-AND-SUBAGENTS.md) | Map verbs to MCP/skills and run small-model workflow slices safely. |
+| [Operator skills ADR](adr/0015-operator-skills-and-subagent-workflows.md) | Understand the workbench skill, harness packaging, and sub-agent model split. |
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Tune thinking/sampling behavior for a served model. |
 | [Serves & eval](SERVES-AND-EVAL.md) | Manage model serves and run evals. |
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |

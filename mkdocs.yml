@@ -34,6 +34,7 @@ nav:
       - Serves & eval: SERVES-AND-EVAL.md
       - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Operator playbooks: OPERATOR-PLAYBOOKS.md
+      - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
   - Integrations:
       - Integration spec: OPENCLAW-INTEGRATION-SPEC.md
       - Live validation: OPENCLAW-LIVE-VALIDATION.md
@@ -53,6 +54,7 @@ nav:
       - 'ADR-0012: Serve and router management verbs': adr/0012-serve-and-router-management-verbs.md
       - 'ADR-0013: OpenClaw layers and MCP control plane': adr/0013-openclaw-layers-and-mcp-control-plane.md
       - 'ADR-0014: Tailnet controller transport': adr/0014-tailnet-controller-transport.md
+      - 'ADR-0015: Operator skills and sub-agent workflows': adr/0015-operator-skills-and-subagent-workflows.md
       - '2026-07-02: Architecture & models': REVIEW-2026-07-02-architecture-and-models.md
       - 'Blackwell sm_120 lab notebook': findings/blackwell-sm120-lab-notebook.md
       - 'OpenClaw keyless failover': findings/2026-07-04-openclaw-keyless-failover.md

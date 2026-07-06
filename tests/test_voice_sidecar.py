@@ -10,6 +10,8 @@ from anvil_serving import voice_sidecar
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE = ROOT / "examples" / "huggingface-speech-to-speech" / "openclaw-gateway.example.toml"
+VOICE_OPS_SKILL = ROOT / "skills" / "anvil-serving-voice-ops" / "SKILL.md"
+OPERATOR_DOC = ROOT / "docs" / "OPERATOR-SKILLS-AND-SUBAGENTS.md"
 
 
 def _manifest():
@@ -205,3 +207,29 @@ def test_manifest_validation_is_pure():
     before = copy.deepcopy(data)
     voice_sidecar.validate_manifest(data)
     assert data == before
+
+
+def test_voice_ops_skill_uses_existing_verbs_and_scopes_evidence():
+    text = VOICE_OPS_SKILL.read_text(encoding="utf-8")
+    for command in [
+        "anvil-serving voice-sidecar validate",
+        "anvil-serving voice-sidecar command",
+        "anvil-serving voice-sidecar compose",
+        "anvil-serving voice up",
+        "anvil-serving voice down",
+        "anvil-serving voice run",
+        "anvil-serving voice benchmark",
+    ]:
+        assert command in text
+    assert "voice-pipeline evidence" in text
+    assert "not router work-class promotion evidence" in text
+    assert "promotion_quality_evidence: false" in text
+    assert "promoted=false" in text
+    assert "127.0.0.1" in text
+    assert "router_promote" in text
+
+    docs = OPERATOR_DOC.read_text(encoding="utf-8")
+    assert "`skills/anvil-serving-voice-ops/SKILL.md`" in docs
+    assert "Voice benchmark output is voice-pipeline evidence" in docs
+    assert "not router work-class promotion evidence" in docs
+    assert "promotion_quality_evidence: false" in docs

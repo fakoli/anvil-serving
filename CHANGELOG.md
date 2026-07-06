@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-07-06
+
 ### Added
 
 - **OpenClaw MCP control plane and split-host controller transport.** Added `anvil-serving mcp`
@@ -22,6 +24,24 @@ All notable changes to this project are documented here. The format is based on
   and the tailnet controller transport for split-host deployments. Added operator playbooks for
   model inventory, preflight, benchmark, OpenClaw sync, promotion evidence, and controller failure
   handling.
+- **Operator workbench skills and sub-agent workflows.** Added the cross-harness
+  `anvil-serving-workbench` skill for Codex, Claude Code, and OpenClaw, plus
+  Codex/Claude sub-agent role profiles for orchestration, inventory, route analysis,
+  serve operation, preflight, benchmark, evidence reporting, quality criticism, and
+  adversarial review. `harness sync openclaw --skills` now renders the workbench
+  skill and Anvil-owned role config while preserving operator-owned OpenClaw settings.
+- **Structured operator MCP tools.** Added MCP/controller coverage for model
+  inventory, guarded serve and router lifecycle operations, bounded logs, decision
+  summaries, route probes, benchmark artifact capture, advisory external benchmark
+  reports/comparisons, read-only host summaries, and cache-prune planning.
+- **Workflow result packet validation.** Added `operator-workflow/v1` packet
+  validation, fixture-backed model-swap evidence workflow tests, promotion proof
+  checks, artifact path bounding, advisory-prior rules, and voice-pipeline artifact
+  scoping so voice benchmark results cannot count as router work-class promotion
+  evidence.
+- **Voice operations skill.** Added `skills/anvil-serving-voice-ops` to validate
+  sidecar manifests, render sidecar commands/compose snippets, operate existing
+  `voice` verbs, and collect bounded voice benchmarks as voice-pipeline evidence.
 
 ### Fixed
 

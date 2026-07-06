@@ -66,7 +66,8 @@ class _Config:
 def _cfg():
     return _Config(
         presets={"planning": ("heavy",), "chat": ("heavy", "fast"),
-                 "quick-edit": ("heavy", "fast"), "review": ("heavy",)},
+                 "quick-edit": ("heavy", "fast"), "review": ("heavy",),
+                 "chat-fast": ("fast", "heavy")},
         tiers={"heavy": _Tier(131072), "fast": _Tier(32768)},
     )
 
@@ -76,7 +77,7 @@ def _cfg():
 def test_render_one_model_per_preset_with_max_routed_context():
     prov = harness.render_openclaw_provider(_cfg(), base_url="http://x:8000/v1")
     models = {m["id"]: m for m in prov["models"]["providers"]["anvil"]["models"]}
-    assert set(models) == {"planning", "chat", "quick-edit", "review"}
+    assert set(models) == {"planning", "chat", "quick-edit", "review", "chat-fast"}
     # contextWindow = the LARGEST tier the preset can route to (clamp gotcha)
     assert models["planning"]["contextWindow"] == 131072       # heavy only
     assert models["chat"]["contextWindow"] == 131072           # max(heavy, fast) -> heavy
@@ -99,7 +100,9 @@ def test_allowlist_lists_every_preset_with_empty_params():
     # So every preset must appear, with EMPTY params (no stale thinking override — router owns that).
     prov = harness.render_openclaw_provider(_cfg(), base_url="http://x/v1")
     dm = prov["agents"]["defaults"]["models"]
-    assert set(dm) == {"anvil/planning", "anvil/chat", "anvil/quick-edit", "anvil/review"}
+    assert set(dm) == {
+        "anvil/planning", "anvil/chat", "anvil/quick-edit", "anvil/review", "anvil/chat-fast",
+    }
     assert all(v == {} for v in dm.values())               # allowlisted, no per-preset override
 
 
@@ -125,7 +128,7 @@ def test_sync_emits_valid_json_to_stdout(capsys):
                                    api_key_env="ANVIL_ROUTER_TOKEN", _load=lambda p: _cfg())
     assert rc == 0
     d = json.loads(capsys.readouterr().out)          # valid JSON
-    assert len(d["models"]["providers"]["anvil"]["models"]) == 4
+    assert len(d["models"]["providers"]["anvil"]["models"]) == 5
 
 
 def test_sync_writes_out_file(tmp_path, capsys):
@@ -133,15 +136,72 @@ def test_sync_writes_out_file(tmp_path, capsys):
     rc = harness.cmd_sync_openclaw("r.toml", out=str(p), base_url="http://h/v1",
                                    api_key_env="ANVIL_ROUTER_TOKEN", _load=lambda _p: _cfg())
     assert rc == 0
-    assert len(json.loads(p.read_text(encoding="utf-8"))["models"]["providers"]["anvil"]["models"]) == 4
+    assert len(json.loads(p.read_text(encoding="utf-8"))["models"]["providers"]["anvil"]["models"]) == 5
     assert "OpenClaw provider config" in capsys.readouterr().out
 
 
-def test_sync_skills_not_implemented_yet(capsys):
+def test_openclaw_sync_out_dash_emits_valid_json_to_stdout(capsys):
+    rc = harness.cmd_sync_openclaw("r.toml", out="-", base_url="http://h/v1",
+                                   api_key_env="ANVIL_ROUTER_TOKEN", _load=lambda p: _cfg())
+    assert rc == 0
+    d = json.loads(capsys.readouterr().out)
+    assert d["models"]["providers"]["anvil"]["apiKey"] == "${ANVIL_ROUTER_TOKEN}"
+
+
+def test_openclaw_skills_sync_render_adds_workbench_roles():
+    rendered = harness.render_openclaw_skills(_cfg())
+    defaults = rendered["agents"]["defaults"]
+    roles = {r["name"]: r for r in rendered["agents"]["list"]}
+    assert defaults["skills"] == ["anvil-serving-workbench"]
+    assert roles["anvil-orchestrator"]["model"] == "anvil/planning"
+    assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-route-analyst"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-serve-operator"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-preflight-runner"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-benchmark-runner"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-evidence-reporter"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
+    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
+    assert all(r["skills"] == ["anvil-serving-workbench"] for r in roles.values())
+    assert "skills" not in rendered
+
+
+def test_openclaw_strong_roles_do_not_fallback_to_small_only_preset():
+    cfg = _Config(
+        presets={"chat-fast": ("fast",)},
+        tiers={"fast": _Tier(32768)},
+    )
+    rendered = harness.render_openclaw_skills(cfg)
+    roles = {r["name"]: r for r in rendered["agents"]["list"]}
+    assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-orchestrator"]["model"] == "anvil/planning"
+    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
+    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
+
+
+def test_openclaw_skills_sync_render_can_add_checkout_skill_dir():
+    rendered = harness.render_openclaw_skills(_cfg(), skill_dir="/opt/anvil/openclaw/skills")
+    assert rendered["skills"]["load"]["extraDirs"] == ["/opt/anvil/openclaw/skills"]
+
+
+def test_openclaw_sync_skills_emits_provider_and_agent_config(capsys):
     rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
                                    skills=True, _load=lambda p: _cfg())
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    roles = {r["name"]: r for r in payload["agents"]["list"]}
+    assert payload["agents"]["defaults"]["skills"] == ["anvil-serving-workbench"]
+    assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
+    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
+    assert payload["models"]["providers"]["anvil"]["apiKey"] == "${T}"
+
+
+def test_openclaw_sync_skill_dir_requires_skills(capsys):
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   skill_dir="/opt/skills", _load=lambda p: _cfg())
     assert rc == 2
-    assert "not implemented" in capsys.readouterr().err
+    assert "--skill-dir requires --skills" in capsys.readouterr().err
 
 
 def test_sync_missing_config_errors():
@@ -222,6 +282,80 @@ def test_scp_merge_preserves_existing_plugin_config():
     assert entry["hooks"]["allowPromptInjection"] is False
     assert entry["config"]["routeAuthEnv"] == "ANVIL_ROUTER_TOKEN"
     assert entry["config"]["nativeProvider"] == "anthropic"
+
+
+def test_openclaw_skills_sync_scp_merge_preserves_operator_owned_config():
+    remote = json.dumps({
+        "skills": {"load": {"extraDirs": ["/operator/skills"]}, "other": True},
+        "agents": {
+            "defaults": {"skills": ["operator-skill"], "model": {"primary": "openai/gpt"}},
+            "list": [
+                {"name": "operator-agent", "model": "openai/gpt", "skills": ["operator-skill"]},
+                {"name": "anvil-probe-evidence-runner", "model": "anvil/chat", "skills": ["old"]},
+                {"name": "anvil-inventory-scout", "model": "anvil/chat", "skills": ["old"]},
+            ],
+        },
+        "plugins": {"entries": {"operator-plugin": {"enabled": True}}},
+    })
+    scp = _FakeSCP(remote=remote)
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", skills=True,
+                                   skill_dir="/checkout/examples/openclaw/skills",
+                                   _load=lambda p: _cfg(), _run=scp)
+    assert rc == 0
+    merged = json.loads(scp.written)
+    assert merged["skills"]["load"]["extraDirs"] == [
+        "/operator/skills", "/checkout/examples/openclaw/skills",
+    ]
+    assert merged["skills"]["other"] is True
+    assert merged["agents"]["defaults"]["skills"] == [
+        "operator-skill", "anvil-serving-workbench",
+    ]
+    roles = {r["name"]: r for r in merged["agents"]["list"]}
+    assert roles["operator-agent"]["skills"] == ["operator-skill"]
+    assert "anvil-probe-evidence-runner" not in roles
+    assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
+    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
+    assert "operator-plugin" in merged["plugins"]["entries"]
+
+
+def test_openclaw_skills_sync_local_out_merges_and_backs_up(tmp_path):
+    out = tmp_path / "openclaw.json"
+    out.write_text(json.dumps({
+        "models": {"providers": {"openai": {"baseUrl": "https://api.openai.com/v1"}}},
+        "skills": {"load": {"extraDirs": ["/operator/skills"]}},
+        "agents": {
+            "defaults": {"skills": ["operator-skill"]},
+            "list": [{"name": "operator-agent", "model": "openai/gpt"}],
+        },
+    }), encoding="utf-8")
+    rc = harness.cmd_sync_openclaw("r.toml", out=str(out), base_url="http://h/v1",
+                                   api_key_env="T", skills=True,
+                                   _load=lambda p: _cfg())
+    assert rc == 0
+    merged = json.loads(out.read_text(encoding="utf-8"))
+    assert "openai" in merged["models"]["providers"]
+    assert "anvil" in merged["models"]["providers"]
+    assert merged["skills"]["load"]["extraDirs"] == ["/operator/skills"]
+    assert merged["agents"]["defaults"]["skills"] == [
+        "operator-skill", "anvil-serving-workbench",
+    ]
+    roles = {r["name"]: r for r in merged["agents"]["list"]}
+    assert "operator-agent" in roles
+    assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
+    assert (tmp_path / "openclaw.json.bak").exists()
+
+
+def test_openclaw_sync_local_out_refuses_json5_without_overwrite(tmp_path, capsys):
+    out = tmp_path / "openclaw.json"
+    out.write_text("// comment\n{ models: {} }\n", encoding="utf-8")
+    rc = harness.cmd_sync_openclaw("r.toml", out=str(out), base_url="http://h/v1",
+                                   api_key_env="T", skills=True,
+                                   _load=lambda p: _cfg())
+    assert rc == 1
+    assert "not plain JSON" in capsys.readouterr().err
+    assert out.read_text(encoding="utf-8").startswith("// comment")
 
 
 def test_scp_overwrite_clobbers_other_providers():
@@ -387,6 +521,23 @@ def test_main_sync_forwards_restart_flag(monkeypatch):
     monkeypatch.setattr(harness, "cmd_sync_openclaw", lambda cfg, **k: seen.update(k) or 0)
     harness.main(["sync", "openclaw", "--config", "r.toml", "--gateway-host", "mini", "--restart"])
     assert seen["restart"] is True and seen["gateway_host"] == "mini"
+
+
+def test_openclaw_sync_main_forwards_skills_and_skill_dir(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(harness, "cmd_sync_openclaw", lambda cfg, **k: seen.update(k) or 0)
+    rc = harness.main(["sync", "openclaw", "--config", "r.toml", "--skills",
+                       "--skill-dir", "/opt/anvil/openclaw/skills"])
+    assert rc == 0
+    assert seen["skills"] is True
+    assert seen["skill_dir"] == "/opt/anvil/openclaw/skills"
+
+
+def test_openclaw_sync_main_skill_dir_requires_skills(capsys):
+    rc = harness.main(["sync", "openclaw", "--config", "r.toml",
+                       "--skill-dir", "/opt/anvil/openclaw/skills"])
+    assert rc == 2
+    assert "--skill-dir requires --skills" in capsys.readouterr().err
 
 
 def test_main_dispatches_restart_action(monkeypatch):

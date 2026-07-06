@@ -4,6 +4,7 @@ Hermetic: live HTTP tests bind only to 127.0.0.1:0 with fake MCP functions.
 """
 import contextlib
 import http.client
+import io
 import json
 import socket
 import threading
@@ -11,7 +12,7 @@ import time
 
 import pytest
 
-from anvil_serving import cli, controller
+from anvil_serving import cli, controller, mcp
 
 
 TOKEN = "controller-secret-token"
@@ -229,6 +230,85 @@ def test_controller_lists_and_calls_tools_over_jsonrpc_and_rest():
     assert any(a["operation"] == "root" and a["tool"] == "fake" for a in audits)
     assert any(a["operation"] == "tools/call" and a["confirm"] is True for a in audits)
     assert TOKEN not in json.dumps(audits)
+
+
+def test_controller_tools_list_matches_mcp_for_host_cache_tools():
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        assert mcp.main(["--list-tools"]) == 0
+    same_host_tools = json.loads(stdout.getvalue())["tools"]
+
+    with running_controller() as (host, port):
+        status, _, body, raw = _request(host, port, "GET", "/tools/list")
+
+    assert status == 200
+    assert body["tools"] == same_host_tools
+    controller_tools = {
+        tool["name"]: tool
+        for tool in body["tools"]
+        if tool["name"] in {"host_summary", "cache_prune_plan"}
+    }
+    assert controller_tools["host_summary"]["inputSchema"]["properties"] == {}
+    assert "execute" not in controller_tools["cache_prune_plan"]["inputSchema"]["properties"]
+    assert TOKEN not in raw.decode("utf-8")
+
+
+def test_controller_new_tools_reject_token_values_and_string_booleans():
+    with running_controller() as (host, port):
+        status, _, body, raw = _request(
+            host,
+            port,
+            "POST",
+            "/tools/call",
+            body={"name": "cache_prune_plan", "arguments": {"confirm": "false"}},
+        )
+        assert status == 200
+        assert body["ok"] is False
+        assert body["error"]["code"] == "bad_argument"
+        assert TOKEN not in raw.decode("utf-8")
+
+        status, _, body, raw = _request(
+            host,
+            port,
+            "POST",
+            "/tools/call",
+            body={"name": "cache_prune_plan", "arguments": {"api_key": TOKEN}},
+        )
+        assert status == 200
+        assert body["ok"] is False
+        assert body["error"]["code"] == "bad_argument"
+        assert TOKEN not in raw.decode("utf-8")
+
+        status, _, body, raw = _request(
+            host,
+            port,
+            "POST",
+            "/tools/call",
+            body={"name": "host_summary", "arguments": {"token": TOKEN}},
+        )
+        assert status == 200
+        assert body["ok"] is False
+        assert body["error"]["code"] == "bad_argument"
+        assert TOKEN not in raw.decode("utf-8")
+
+        token_like = "TOKEN_123"
+        status, _, body, raw = _request(
+            host,
+            port,
+            "POST",
+            "/tools/call",
+            body={
+                "name": "route_decision",
+                "arguments": {
+                    "prompt": "hello",
+                    "api_key_env": token_like,
+                },
+            },
+        )
+        assert status == 200
+        assert body["ok"] is False
+        assert body["error"]["code"] == "unsafe_api_key_env"
+        assert token_like not in raw.decode("utf-8")
 
 
 def test_controller_bad_tool_call_is_structured_and_audited():

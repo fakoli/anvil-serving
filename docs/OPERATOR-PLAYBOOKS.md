@@ -17,8 +17,8 @@ ADR-0013 calls for an MCP control plane, and ADR-0014 adds the split-host
 transport. There are two operator entry points:
 
 - Same-host operation: `anvil-serving mcp --list-tools` exposes the bounded
-  stdio tool surface for status, route probes, OpenClaw sync, preflight, and
-  benchmark probes.
+  stdio tool surface for model inventory, status, route probes, OpenClaw sync,
+  preflight, and benchmark probes.
 - Split-host operation: the anvil-serving host runs
   `anvil-serving controller serve`, and `fakoli-mini` runs the MCP bridge with
   `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
@@ -26,9 +26,8 @@ transport. There are two operator entry points:
   over the private tailnet.
 
 The MCP surface is not yet a complete replacement for every CLI operation:
-model inventory, serve start/swap, direct multiplexer inspection, JSON benchmark
-artifact capture, and router promotion still use the CLI or HTTP contracts
-below.
+direct multiplexer inspection and some router promotion context still use the
+CLI or HTTP contracts below.
 
 Prefer MCP tools when a current tool exists because they return structured
 results and keep mutating/probe operations behind explicit `confirm` fields.
@@ -38,16 +37,19 @@ resource and keep the same gate semantics.
 | Operator need | Preferred MCP/controller shape | CLI/HTTP equivalent today |
 |---|---|---|
 | Controller readiness | Health endpoint on the controller's private address | `GET /health` on `http://anvil-gpu.tailnet.example:8765` |
-| Model inventory | Not exposed yet | `anvil-serving models sync --out ./model-library` |
+| Model inventory | `models_inventory` | `anvil-serving models sync --out ./model-library` |
 | Environment and tier health | `doctor_summary`, `serves_status`, `router_status` | `anvil-serving doctor --config ./router.toml`; `anvil-serving serves --manifest ./serves.toml status`; `anvil-serving router status` |
+| Router lifecycle and logs | `router_manage`, `router_logs` | `anvil-serving router reload`; `anvil-serving router logs --tail 200` |
+| Recent routing decisions | `decision_summary` | `GET /v1/decisions` on the router front door |
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
-| Start or restore compose-defined serves | Not exposed yet | `anvil-serving serves --manifest ./serves.toml up <name>` |
-| Start an experiment serve | Not exposed yet | `anvil-serving serves up --compose <compose.yml> <service>` |
+| Start or restore compose-defined serves | `serves_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves --manifest ./serves.toml up <name>` |
+| Start an experiment serve | `serves_manage` with `compose` preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves up --compose <compose.yml> <service>` |
 | Probe a multiplexer endpoint | Not exposed yet | `GET /healthz`; `GET /v1/models` on the multiplexer base URL |
+| Serve logs | `serves_logs` with bounded `tail`; no follow mode | `anvil-serving serves --manifest ./serves.toml logs <name> --tail 200` |
 | Correctness gate | `preflight_probe` | `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
-| Throughput run | `benchmark_probe` for a bounded probe; CLI when `--json-out` is required | `anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
+| Throughput run | `benchmark_probe` for a bounded probe; `benchmark_artifact` when `--json-out` evidence is required | `anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
 | OpenClaw config sync | `openclaw_sync`, `openclaw_gateway_restart` | `anvil-serving harness sync openclaw --config <router.toml> ...`; `anvil-serving harness restart openclaw ...` |
-| Human-gated promotion | Not exposed yet | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
+| Human-gated promotion | `router_promote` preview; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
 
 Treat missing MCP tools as a product gap, not a reason to scrape Docker output
 or hand-edit remote configs. Use `127.0.0.1` in local URLs.
@@ -65,10 +67,19 @@ MCP invocation rules:
     --auth-env ANVIL_CONTROLLER_TOKEN
   ```
 
-- For `preflight_probe`, `benchmark_probe`, and `openclaw_sync`, call once with
-  `confirm:false` or `dry_run:true` to preview the command/result shape, then
-  call with `confirm:true` only after the exact endpoint, model, config, and
-  target host are known.
+- For `serves_manage`, call once with `confirm:false` or omitted to preview the
+  resolved plan and a dry-run command. A live serve mutation requires both
+  `confirm:true` and `dry_run:false` after the exact manifest or compose file
+  and serve names are known.
+- For `router_manage`, use the same preview-first pattern. A live router
+  lifecycle change requires both `confirm:true` and `dry_run:false`.
+- For `router_promote`, preview validates the candidate profile/config and
+  returns a compact diff summary. Live apply additionally requires
+  `confirm:true`, `dry_run:false`, and `human_approved:true`.
+- For `preflight_probe`, `benchmark_probe`, `benchmark_artifact`, and
+  `openclaw_sync`, call once with `confirm:false` or `dry_run:true` to preview
+  the command/result shape, then call with `confirm:true` only after the exact
+  endpoint, model, config, artifact path, and target host are known.
 - For authenticated probes, pass `api_key_env` such as `ANVIL_ROUTER_TOKEN`;
   never pass a literal token value through MCP arguments, command previews, or
   saved evidence.
@@ -168,8 +179,31 @@ Use this before any swap, benchmark, or harness-sync operation.
    anvil-serving models sync --out ./model-library
    ```
 
-   Read the generated `INDEX.md` or structured MCP result for model id, weight
-   format, loadability, context window, quantization, and thinking defaults.
+   Prefer `models_inventory` when MCP/controller is available. A read-only call
+   reads `cards/*.json` summaries from the generated catalog without scraping
+   `INDEX.md`. If the catalog is missing, preview the sync command first:
+
+   ```json
+   {
+     "catalog_dir": "./model-library",
+     "sync": true,
+     "confirm": false
+   }
+   ```
+
+   Then run the confirmed sync only when the output directory and roots are
+   known:
+
+   ```json
+   {
+     "catalog_dir": "./model-library",
+     "sync": true,
+     "confirm": true
+   }
+   ```
+
+   Preserve the returned model id, weight format, loadability, context window,
+   quantization, and thinking defaults.
 
 2. Capture environment and live topology.
 
@@ -231,12 +265,21 @@ Use the least disruptive mechanism that matches the deployment.
    anvil-serving serves --manifest ./serves.toml up <serve-name>
    ```
 
+   Prefer `serves_manage` when MCP/controller is available. The preview returns
+   both the wrapper argv and a resolved plan of Docker or manifest commands.
+   Live mutation requires `confirm:true` and `dry_run:false`; use it only after
+   the manifest and serve names are exact.
+
 3. Re-check status and logs only if needed.
 
    ```bash
    anvil-serving serves --manifest ./serves.toml status
    anvil-serving serves --manifest ./serves.toml logs <serve-name> --tail 200
    ```
+
+   Prefer `serves_logs` for logs through MCP/controller. It requires exactly one
+   manifest serve name, caps `tail`, spools subprocess output, caps returned
+   output bytes, and rejects follow mode so the call remains bounded.
 
 ### Experiment serve
 
@@ -246,6 +289,11 @@ or an operator-supplied compose file. Do not invent a raw `docker run` command.
 ```bash
 anvil-serving serves up --compose examples/fakoli-dark/docker-compose.experiment.yml <service>
 ```
+
+Through MCP/controller, call `serves_manage` with `action:"up"`, `compose`, and
+the compose service names. The first call should omit `confirm` to capture the
+dry-run preview; the confirmed call may run only with `confirm:true` and
+`dry_run:false` after the compose file and service names are explicit.
 
 The skill must record the model id, served name, GPU target, port, engine, and
 any extra serve flags from the compose environment. If those inputs are
@@ -301,9 +349,11 @@ candidate.
      --json-out .anvil/benchmarks/<served-name>-benchmark.json
    ```
 
-   The current `benchmark_probe` MCP tool is useful for a bounded structured
-   probe, but it does not expose `--json-out`. Use the CLI path when the
-   promotion packet needs a benchmark artifact.
+   Through MCP/controller, use `benchmark_probe` for the quick bounded probe and
+   `benchmark_artifact` for promotion evidence. `benchmark_artifact` validates
+   the artifact path before it runs and only writes under the workspace or
+   server-configured `ANVIL_BENCHMARK_EVIDENCE_DIR` / `ANVIL_EVIDENCE_DIR`
+   roots.
 
    Include `--max-model-len` when the endpoint cannot advertise the context
    limit reliably. Include `--no-thinking` only under the same rule as
@@ -384,7 +434,22 @@ and is not automatic.
    Human gate required before `anvil-serving router promote ...`.
    ```
 
-4. Only after explicit human authorization should an operator run:
+4. Preview the promotion through MCP/controller when available:
+
+   ```json
+   {
+     "profile": "<candidate-profile.json>",
+     "config": "<candidate-router.toml>",
+     "current_profile": "<current-profile.json>"
+   }
+   ```
+
+   The preview validates the profile/config and returns a diff summary without
+   writing. Apply is allowed only with `confirm:true`, `dry_run:false`, and
+   `human_approved:true`.
+
+5. Only after explicit human authorization should an operator run the CLI
+   fallback:
 
    ```bash
    anvil-serving router promote \

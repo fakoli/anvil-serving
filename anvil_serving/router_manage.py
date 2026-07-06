@@ -84,6 +84,164 @@ def _volume_path(dest):
                          % (dest, ROUTER_CFG_MOUNT))
     return _SIDE_MOUNT.rstrip("/") + "/" + dest[len(root):]
 
+
+def _read_json(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _read_router_config(path):
+    if tomllib is None:  # pragma: no cover - requires-python >=3.11
+        raise RuntimeError("tomllib unavailable (need Python >= 3.11)")
+    with open(path, "rb") as f:
+        raw = f.read()
+    return tomllib.loads(raw.decode("utf-8"))
+
+
+def _profile_rows(profile):
+    rows = profile.get("entries")
+    if rows is None:
+        rows = profile.get("rows", [])
+    return rows if isinstance(rows, list) else []
+
+
+def _profile_row_map(profile):
+    mapped = {}
+    for row in _profile_rows(profile):
+        if not isinstance(row, dict):
+            continue
+        key = (str(row.get("tier_id", "")), str(row.get("work_class", "")))
+        if key[0] and key[1]:
+            mapped[key] = {
+                "tier_id": key[0],
+                "work_class": key[1],
+                "decision": row.get("decision"),
+                "quality_score": row.get("quality_score"),
+                "sample_n": row.get("sample_n"),
+                "fingerprint": row.get("fingerprint"),
+            }
+    return mapped
+
+
+def _profile_summary(profile):
+    rows = _profile_row_map(profile)
+    decisions = {}
+    for row in rows.values():
+        decision = str(row.get("decision") or "-")
+        decisions[decision] = decisions.get(decision, 0) + 1
+    return {
+        "schema": profile.get("schema"),
+        "mode": profile.get("mode"),
+        "row_count": len(rows),
+        "tiers": sorted({key[0] for key in rows}),
+        "work_classes": sorted({key[1] for key in rows}),
+        "decisions": dict(sorted(decisions.items())),
+    }
+
+
+def _profile_diff(current, candidate, limit=50):
+    before = _profile_row_map(current)
+    after = _profile_row_map(candidate)
+    before_keys = set(before)
+    after_keys = set(after)
+    added = sorted(after_keys - before_keys)
+    removed = sorted(before_keys - after_keys)
+    changed = []
+    for key in sorted(before_keys & after_keys):
+        old = before[key]
+        new = after[key]
+        fields = [
+            name for name in ("decision", "quality_score", "sample_n", "fingerprint")
+            if old.get(name) != new.get(name)
+        ]
+        if fields:
+            changed.append({
+                "tier_id": key[0],
+                "work_class": key[1],
+                "fields": fields,
+                "before": {name: old.get(name) for name in fields},
+                "after": {name: new.get(name) for name in fields},
+            })
+    return {
+        "current_profile_provided": True,
+        "added": [{"tier_id": k[0], "work_class": k[1]} for k in added[:limit]],
+        "removed": [{"tier_id": k[0], "work_class": k[1]} for k in removed[:limit]],
+        "changed": changed[:limit],
+        "added_count": len(added),
+        "removed_count": len(removed),
+        "changed_count": len(changed),
+        "truncated": len(added) > limit or len(removed) > limit or len(changed) > limit,
+    }
+
+
+def promotion_preview(profile_path, *, config_path=None, current_profile_path=None,
+                      current_config_path=None, profile_dest=DEFAULT_PROFILE_DEST,
+                      config_dest=DEFAULT_CONFIG_DEST, diff_limit=50):
+    """Validate a candidate promotion and return a compact, non-mutating diff."""
+    from .router.profile_bootstrap import store_from_profile
+
+    profile = _read_json(profile_path)
+    store_from_profile(profile)
+    config = None
+    config_summary = None
+    if config_path is not None:
+        config = _read_router_config(config_path)
+        router_section = config.get("router") if isinstance(config, dict) else None
+        if not (isinstance(router_section, dict) and router_section.get("profile_path")):
+            raise ValueError(
+                "config %s does not set [router].profile_path" % config_path
+            )
+        if router_section.get("profile_path") != profile_dest:
+            raise ValueError(
+                "config %s sets [router].profile_path=%r, but profile_dest is %r"
+                % (config_path, router_section.get("profile_path"), profile_dest)
+            )
+        config_summary = {
+            "profile_path": router_section.get("profile_path"),
+            "mapping_version": router_section.get("mapping_version"),
+        }
+
+    prof_volume_path = _volume_path(profile_dest)
+    cfg_volume_path = _volume_path(config_dest)
+    diff = {"current_profile_provided": False}
+    if current_profile_path:
+        current_profile = _read_json(current_profile_path)
+        store_from_profile(current_profile)
+        diff = _profile_diff(current_profile, profile, limit=diff_limit)
+
+    config_diff = {"current_config_provided": False}
+    if current_config_path and config is not None:
+        current_config = _read_router_config(current_config_path)
+        current_router = current_config.get("router") if isinstance(current_config, dict) else {}
+        next_router = config.get("router") if isinstance(config, dict) else {}
+        config_diff = {
+            "current_config_provided": True,
+            "profile_path": {
+                "before": current_router.get("profile_path") if isinstance(current_router, dict) else None,
+                "after": next_router.get("profile_path") if isinstance(next_router, dict) else None,
+            },
+            "mapping_version": {
+                "before": current_router.get("mapping_version") if isinstance(current_router, dict) else None,
+                "after": next_router.get("mapping_version") if isinstance(next_router, dict) else None,
+            },
+        }
+
+    return {
+        "valid": True,
+        "profile_path": os.path.abspath(profile_path),
+        "config_path": os.path.abspath(config_path) if config_path else None,
+        "profile": _profile_summary(profile),
+        "config": config_summary,
+        "destinations": {
+            "profile_dest": profile_dest,
+            "profile_volume_path": prof_volume_path,
+            "config_dest": config_dest if config_path else None,
+            "config_volume_path": cfg_volume_path if config_path else None,
+        },
+        "diff": diff,
+        "config_diff": config_diff,
+    }
+
 # Validate a profile document against the DEPLOYED image's OWN loader: import
 # store_from_profile and run it on the profile fed via stdin. A non-zero exit /
 # raised exception (schema mismatch, bad shape) => ABORT before touching the volume,
