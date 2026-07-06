@@ -70,6 +70,8 @@ class LLMStageConfig:
     api_key_env: Optional[str] = None
     timeout: float = 20.0
     max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+    system_prompt: Optional[str] = None
     # Sent verbatim so a thinking-by-default local model (Qwen3.5, gpt-oss,
     # ...) doesn't burn its max_tokens budget reasoning and return empty
     # content (CLAUDE.md gotcha #6/#9). Both knobs are harmless no-ops on a
@@ -97,11 +99,16 @@ def build_request_body(text: str, config: LLMStageConfig) -> Dict[str, Any]:
     """Build the ``/v1/chat/completions`` request body for one user turn."""
     body: Dict[str, Any] = {
         "model": config.model,
-        "messages": [{"role": "user", "content": text}],
+        "messages": [],
         "stream": True,
     }
+    if config.system_prompt:
+        body["messages"].append({"role": "system", "content": config.system_prompt})
+    body["messages"].append({"role": "user", "content": text})
     if config.max_tokens is not None:
         body["max_tokens"] = config.max_tokens
+    if config.temperature is not None:
+        body["temperature"] = config.temperature
     if config.modality:
         body["modality"] = config.modality
     for key, value in config.disable_thinking_body.items():
@@ -139,7 +146,7 @@ def _post_stream(
     """
     headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
     if api_key_env:
-        token = os.environ.get(api_key_env)
+        token = (os.environ.get(api_key_env) or "").strip()
         if token:
             headers["Authorization"] = "Bearer %s" % token
     data = json.dumps(body).encode("utf-8")

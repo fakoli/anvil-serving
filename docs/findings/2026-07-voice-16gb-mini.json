@@ -1,0 +1,200 @@
+{
+  "platform": "darwin",
+  "hostname": "Mac",
+  "host_identity": {
+    "platform_node": "Mac",
+    "hostname": "Mac",
+    "computer_name": "Fakoli Mini",
+    "local_host_name": "Fakoli-Mini-2",
+    "hardware_model": "Mac16,10"
+  },
+  "target_host_pattern": "(?i)^fakoli[-_. ]?mini(?:[-_. ]?2)?$",
+  "target_hw_model_pattern": "^Mac16,10$",
+  "host_matches_expected_mini": true,
+  "host_hw_model_matches_expected": true,
+  "host_memory_before": {
+    "hostname": "Mac",
+    "platform": "darwin",
+    "total_gb": 16.0,
+    "available_gb": 4.22,
+    "used_gb": 11.78,
+    "source": "sysctl/vm_stat",
+    "error": null
+  },
+  "host_memory_after_serves_ready": {
+    "hostname": "Mac",
+    "platform": "darwin",
+    "total_gb": 16.0,
+    "available_gb": 4.23,
+    "used_gb": 11.77,
+    "source": "sysctl/vm_stat",
+    "error": null
+  },
+  "host_memory_after_load": {
+    "hostname": "Mac",
+    "platform": "darwin",
+    "total_gb": 16.0,
+    "available_gb": 3.17,
+    "used_gb": 12.83,
+    "source": "sysctl/vm_stat",
+    "error": null
+  },
+  "host_is_16gb_class": true,
+  "driver_process_rss_before_mb": 35.58,
+  "driver_process_peak_rss_mb": 38.14,
+  "driver_process_rss_note": "this is the DRIVER SCRIPT's own footprint, not the STT/TTS serves' -- see memory_proof per serve",
+  "stt": {
+    "kind": "stt",
+    "serve_name": "stt",
+    "lifecycle": "external",
+    "bring_up_ok": true,
+    "bring_up_returncode": null,
+    "startup_s": 0.01,
+    "ready": true,
+    "docker_state": "unconfigured",
+    "readiness_detail": "healthy",
+    "container_mem": null,
+    "container_mem_after_benchmark": null,
+    "memory_proof": {
+      "source": "macos_process_rss",
+      "pid": 10877,
+      "rss_mb": 50.92,
+      "endpoint_host": "127.0.0.1",
+      "port": 30010,
+      "listener": "127.0.0.1:30010",
+      "command": "/Users/sdoumbouya/code/mlx-audio/.venv/bin/python3 -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini",
+      "observed_after_benchmark": false,
+      "model_probe": null
+    },
+    "memory_proof_after_benchmark": {
+      "source": "macos_process_rss",
+      "pid": 10877,
+      "rss_mb": 64.66,
+      "endpoint_host": "127.0.0.1",
+      "port": 30010,
+      "listener": "127.0.0.1:30010",
+      "command": "/Users/sdoumbouya/code/mlx-audio/.venv/bin/python3 -m mlx_audio.server --host 127.0.0.1 --port 30010 --log-dir /tmp/anvil-voice-mini",
+      "observed_after_benchmark": true,
+      "model_probe": {
+        "ok": true,
+        "url": "http://127.0.0.1:30010/v1/models",
+        "expected_model": "mlx-community/parakeet-tdt-0.6b-v3",
+        "model_ids": [
+          "mlx-community/parakeet-tdt-0.6b-v3"
+        ],
+        "model_present": true,
+        "status": 200
+      }
+    },
+    "error": null
+  },
+  "tts": {
+    "kind": "tts",
+    "serve_name": "tts",
+    "lifecycle": "external",
+    "bring_up_ok": true,
+    "bring_up_returncode": null,
+    "startup_s": 0.0,
+    "ready": true,
+    "docker_state": "unconfigured",
+    "readiness_detail": "healthy",
+    "container_mem": null,
+    "container_mem_after_benchmark": null,
+    "memory_proof": {
+      "source": "macos_process_rss",
+      "pid": 11459,
+      "rss_mb": 65.19,
+      "endpoint_host": "127.0.0.1",
+      "port": 30011,
+      "listener": "127.0.0.1:30011",
+      "command": ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30011 --log-dir /tmp/anvil-voice-mini",
+      "observed_after_benchmark": false,
+      "model_probe": null
+    },
+    "memory_proof_after_benchmark": {
+      "source": "macos_process_rss",
+      "pid": 11459,
+      "rss_mb": 82.22,
+      "endpoint_host": "127.0.0.1",
+      "port": 30011,
+      "listener": "127.0.0.1:30011",
+      "command": ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30011 --log-dir /tmp/anvil-voice-mini",
+      "observed_after_benchmark": true,
+      "model_probe": {
+        "ok": true,
+        "url": "http://127.0.0.1:30011/v1/models",
+        "expected_model": "mlx-community/Kokoro-82M-bf16",
+        "model_ids": [
+          "mlx-community/Kokoro-82M-bf16"
+        ],
+        "model_present": true,
+        "status": 200
+      }
+    },
+    "error": null
+  },
+  "llm_endpoint": "http://100.87.34.66:8000/v1",
+  "llm_endpoint_host": "100.87.34.66",
+  "llm_endpoint_is_fakoli_dark": true,
+  "llm_routed_remote": true,
+  "llm_auth_env": "ANVIL_ROUTER_TOKEN",
+  "llm_auth_env_present": true,
+  "route_proof": {
+    "ok": true,
+    "url": "http://100.87.34.66:8000/v1/route",
+    "status": 200,
+    "request_model": "fast-local",
+    "auth_env": "ANVIL_ROUTER_TOKEN",
+    "prompt_source": "validation probe",
+    "response": {
+      "tier": "local",
+      "model": "qwen36-27b",
+      "provider": "fast-local",
+      "work_class": "chat",
+      "reason": "pinned; quality gate: on",
+      "confidence": 0.9,
+      "session_id": "rte_90007bff29ba4184aa3ca492"
+    },
+    "validation_errors": []
+  },
+  "route_auth_negative": {
+    "required": true,
+    "auth_env": "ANVIL_ROUTER_TOKEN",
+    "url": "http://100.87.34.66:8000/v1/route",
+    "auth_enforced": true,
+    "ok": true,
+    "status": 401
+  },
+  "stt_local_endpoint": true,
+  "tts_local_endpoint": true,
+  "benchmark_sample": {
+    "source": "tts_endpoint",
+    "text": "testing the local voice proof",
+    "audio_bytes": 103200,
+    "sample_rate": 24000
+  },
+  "benchmark_sample_error": null,
+  "benchmark": {
+    "ttfa_ms": 1015.0,
+    "turn_latency_ms": 1015.44,
+    "stt_wer": 0.4,
+    "tts_rtf": 0.1127,
+    "tts_first_audio_observed": true,
+    "tts_output_bytes": 76800,
+    "tts_audio_seconds": 1.6,
+    "tts_source_sample_rate": 24000,
+    "tts_request_count": 1,
+    "stt_hypothesis": "Testing the local voice proof.",
+    "llm_reply": "I understand.",
+    "reference_text": "testing the local voice proof"
+  },
+  "benchmark_error": null,
+  "measured_at": "2026-07-06T08:17:40Z",
+  "verdict": {
+    "status": "supported",
+    "failure_modes": [],
+    "reasons": [
+      "all required Mini validation checks passed"
+    ]
+  }
+}

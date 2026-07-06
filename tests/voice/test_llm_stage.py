@@ -104,6 +104,19 @@ def test_build_request_body_is_streaming():
     assert body["messages"] == [{"role": "user", "content": "hi"}]
 
 
+def test_build_request_body_supports_system_prompt_and_temperature():
+    body = build_request_body(
+        "hi",
+        LLMStageConfig(system_prompt="answer briefly", temperature=0.0, max_tokens=8),
+    )
+    assert body["messages"] == [
+        {"role": "system", "content": "answer briefly"},
+        {"role": "user", "content": "hi"},
+    ]
+    assert body["temperature"] == 0.0
+    assert body["max_tokens"] == 8
+
+
 def test_build_request_body_modality_can_be_disabled():
     body = build_request_body("hi", LLMStageConfig(modality=None))
     assert "modality" not in body
@@ -137,6 +150,14 @@ def test_stream_chat_completion_closes_response():
 
 def test_stream_chat_completion_sends_bearer_token_from_env_var(monkeypatch):
     monkeypatch.setenv("ANVIL_TEST_VOICE_TOKEN", "secret-token")
+    transport = FakeTransport(_sse(_chunk("hi", "stop")))
+    config = LLMStageConfig(api_key_env="ANVIL_TEST_VOICE_TOKEN")
+    list(stream_chat_completion("hi", config, transport=transport))
+    assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-token"
+
+
+def test_stream_chat_completion_strips_bearer_token_whitespace(monkeypatch):
+    monkeypatch.setenv("ANVIL_TEST_VOICE_TOKEN", " secret-token\r\n")
     transport = FakeTransport(_sse(_chunk("hi", "stop")))
     config = LLMStageConfig(api_key_env="ANVIL_TEST_VOICE_TOKEN")
     list(stream_chat_completion("hi", config, transport=transport))

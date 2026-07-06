@@ -255,6 +255,11 @@ def test_build_transcription_fields_omits_stream_when_disabled():
     assert "stream" not in fields
 
 
+def test_build_transcription_fields_includes_response_format_when_configured():
+    fields = build_transcription_fields(STTStageConfig(stream=False, response_format="json"))
+    assert fields["response_format"] == "json"
+
+
 # --------------------------------------------------------------------------- #
 # STTStreamAssembler
 # --------------------------------------------------------------------------- #
@@ -357,6 +362,16 @@ def test_stt_stage_propagates_non_streaming_malformed_response_error():
 
 def test_transcribe_stream_sends_bearer_token_from_env_var(monkeypatch):
     monkeypatch.setenv("ANVIL_TEST_STT_TOKEN", "secret-stt-token")
+    transport = FakeTransport(FakeLineResponse(
+        _sse_transcript(done_event={"type": "transcript.text.done", "text": "hi"})
+    ))
+    config = STTStageConfig(api_key_env="ANVIL_TEST_STT_TOKEN")
+    list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
+    assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-stt-token"
+
+
+def test_transcribe_stream_strips_bearer_token_whitespace(monkeypatch):
+    monkeypatch.setenv("ANVIL_TEST_STT_TOKEN", " secret-stt-token\r\n")
     transport = FakeTransport(FakeLineResponse(
         _sse_transcript(done_event={"type": "transcript.text.done", "text": "hi"})
     ))

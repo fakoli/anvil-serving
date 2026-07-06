@@ -40,6 +40,28 @@ def test_shipped_example_manifest_is_valid():
     assert data["voice"]["llm"]["base_url"] == "http://127.0.0.1:8000/v1"
 
 
+def test_fakoli_mini_manifest_is_valid_and_preserves_route_contract():
+    data = voice_config.load_manifest("examples/voice/fakoli-mini.toml")
+
+    assert data["voice"]["name"] == "anvil-voice-fakoli-mini"
+    assert data["voice"]["llm"]["base_url"] == "http://100.87.34.66:8000/v1"
+    assert data["voice"]["llm"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
+    assert data["voice"]["llm"]["expected_endpoint_host"] == "100.87.34.66"
+    assert data["voice"]["llm"]["expected_route_provider"] == "fast-local"
+    assert data["voice"]["llm"]["expected_route_model"] == "qwen36-27b"
+    assert data["voice"]["llm"]["expected_route_tier"] == "local"
+    assert data["voice"]["llm"]["system_prompt"].endswith("I understand.")
+    assert data["voice"]["llm"]["temperature"] == 0.0
+    assert data["voice"]["llm"]["max_tokens"] == 8
+    assert data["voice"]["stt"]["lifecycle"] == "external"
+    assert data["voice"]["stt"]["stream"] is False
+    assert data["voice"]["stt"]["response_format"] == "json"
+    assert data["voice"]["stt"]["timeout"] == 120.0
+    assert data["voice"]["tts"]["lifecycle"] == "external"
+    assert data["voice"]["tts"]["response_format"] == "pcm"
+    assert data["voice"]["tts"]["timeout"] == 120.0
+
+
 def test_shipped_example_default_path_used_when_none_given():
     # load_manifest(None) should fall back to DEFAULT_CONFIG and succeed.
     data = voice_config.load_manifest(None)
@@ -133,6 +155,62 @@ def test_rejects_malformed_env_var_name():
     data = _valid_manifest()
     data["voice"]["llm"]["api_key_env"] = "not a valid env name!"
     with pytest.raises(voice_config.ConfigError, match="ENV_VAR_NAME"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_invalid_audio_lifecycle():
+    data = _valid_manifest()
+    data["voice"]["stt"]["lifecycle"] = "native"
+    with pytest.raises(voice_config.ConfigError, match="lifecycle"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_nonpositive_llm_timeout():
+    data = _valid_manifest()
+    data["voice"]["llm"]["timeout"] = 0
+    with pytest.raises(voice_config.ConfigError, match="positive"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_nonpositive_llm_max_tokens():
+    data = _valid_manifest()
+    data["voice"]["llm"]["max_tokens"] = 0
+    with pytest.raises(voice_config.ConfigError, match="positive"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_negative_llm_temperature():
+    data = _valid_manifest()
+    data["voice"]["llm"]["temperature"] = -0.1
+    with pytest.raises(voice_config.ConfigError, match="nonnegative"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_empty_llm_system_prompt():
+    data = _valid_manifest()
+    data["voice"]["llm"]["system_prompt"] = ""
+    with pytest.raises(voice_config.ConfigError, match="system_prompt"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_stt_response_format_not_consumed_by_client():
+    data = _valid_manifest()
+    data["voice"]["stt"]["response_format"] = "text"
+    with pytest.raises(voice_config.ConfigError, match="response_format"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_tts_container_response_format():
+    data = _valid_manifest()
+    data["voice"]["tts"]["response_format"] = "wav"
+    with pytest.raises(voice_config.ConfigError, match="response_format"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_nonpositive_tts_sample_rate():
+    data = _valid_manifest()
+    data["voice"]["tts"]["source_sample_rate"] = 0
+    with pytest.raises(voice_config.ConfigError, match="positive"):
         voice_config.validate_manifest(data)
 
 

@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import queue
 import time
+from dataclasses import fields
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from .cancel_scope import CancelScope
@@ -322,11 +323,10 @@ def stage_config_from_table(table: Mapping[str, Any], cls: type) -> Any:
     """Build an ``STTStageConfig``/``LLMStageConfig``/``TTSStageConfig`` from a
     validated voice-manifest ``[voice.<stt|llm|tts>]`` table (see
     ``anvil_serving/voice/config.py``)."""
-    kwargs: Dict[str, Any] = {"base_url": table["base_url"], "model": table["model"]}
-    if table.get("api_key_env"):
-        kwargs["api_key_env"] = table["api_key_env"]
-    if "stream" in table and hasattr(cls, "stream"):
-        kwargs["stream"] = table["stream"]
+    allowed = {field.name for field in fields(cls)}
+    kwargs: Dict[str, Any] = {
+        key: value for key, value in table.items() if key in allowed
+    }
     return cls(**kwargs)
 
 

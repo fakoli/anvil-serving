@@ -227,6 +227,35 @@ def test_cmd_up_returns_zero_when_every_serve_bring_up_succeeds(manifest_path, m
     assert rc == 0
 
 
+def test_cmd_up_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys):
+    manifest = tmp_path / "voice_external.toml"
+    manifest.write_text(
+        VALID_MANIFEST
+        + '\n\n# external native Mini sidecars\n'
+        + 'lifecycle = "external"\n',
+        encoding="utf-8",
+    )
+    # Appending lifecycle at EOF attaches it to [voice.tts]; set STT explicitly.
+    text = manifest.read_text(encoding="utf-8").replace(
+        '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"',
+        '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"\nlifecycle = "external"',
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    from anvil_serving.voice.serves import stt as stt_serve
+    from anvil_serving.voice.serves import tts as tts_serve
+
+    monkeypatch.setattr(stt_serve.STTServe, "bring_up", lambda self, **kw: (_ for _ in ()).throw(AssertionError("skip stt")))
+    monkeypatch.setattr(tts_serve.TTSServe, "bring_up", lambda self, **kw: (_ for _ in ()).throw(AssertionError("skip tts")))
+
+    rc = voice_cli.main(["up", "--config", str(manifest)])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "stt serve lifecycle is external" in out
+    assert "tts serve lifecycle is external" in out
+
+
 def test_cmd_down_returns_nonzero_when_a_serve_tear_down_fails(manifest_path, monkeypatch, capsys):
     from anvil_serving.voice.serves import stt as stt_serve
     from anvil_serving.voice.serves import tts as tts_serve
@@ -237,6 +266,33 @@ def test_cmd_down_returns_nonzero_when_a_serve_tear_down_fails(manifest_path, mo
     assert rc != 0
     out = capsys.readouterr().out
     assert "tear-down rc=1" in out
+
+
+def test_cmd_down_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys):
+    manifest = tmp_path / "voice_external.toml"
+    manifest.write_text(
+        VALID_MANIFEST.replace(
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"',
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"\nlifecycle = "external"',
+        ).replace(
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"',
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"\nlifecycle = "external"',
+        ),
+        encoding="utf-8",
+    )
+
+    from anvil_serving.voice.serves import stt as stt_serve
+    from anvil_serving.voice.serves import tts as tts_serve
+
+    monkeypatch.setattr(stt_serve.STTServe, "tear_down", lambda self: (_ for _ in ()).throw(AssertionError("skip stt")))
+    monkeypatch.setattr(tts_serve.TTSServe, "tear_down", lambda self: (_ for _ in ()).throw(AssertionError("skip tts")))
+
+    rc = voice_cli.main(["down", "--config", str(manifest)])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "stt serve lifecycle is external" in out
+    assert "tts serve lifecycle is external" in out
 
 
 def test_cmd_benchmark_prints_success_json(manifest_path, monkeypatch, capsys):
@@ -393,6 +449,24 @@ def test_probe_endpoint_sends_configured_bearer_token(auth_server):
     assert received == ["Bearer expected-secret"]
 
 
+def test_probe_endpoint_strips_and_redacts_configured_bearer_token():
+    def fake_open(req, timeout):
+        headers = dict(req.header_items())
+        assert headers["Authorization"] == "Bearer secret-token"
+        raise ValueError("Invalid header value b'Bearer secret-token\\r'")
+
+    problem = voice_cli._probe_endpoint(
+        "anvil router (voice.llm)",
+        "http://127.0.0.1:8000/v1",
+        token=" secret-token\r\n",
+        _open=fake_open,
+    )
+
+    assert problem is not None
+    assert "secret-token" not in problem
+    assert "Bearer <redacted>" in problem
+
+
 def test_check_required_endpoints_reachable_resolves_and_sends_each_configured_token(auth_server, monkeypatch):
     """`_check_required_endpoints_reachable` resolves EACH table's own
     `api_key_env` (mirroring how the LLM/STT/TTS stages read theirs) and
@@ -401,7 +475,7 @@ def test_check_required_endpoints_reachable_resolves_and_sends_each_configured_t
     llm_url, llm_received = auth_server("llm-secret")
     stt_url, stt_received = auth_server("stt-secret")
     tts_url, tts_received = auth_server("tts-secret")
-    monkeypatch.setenv("TEST_VOICE_LLM_TOKEN", "llm-secret")
+    monkeypatch.setenv("TEST_VOICE_LLM_TOKEN", " llm-secret\r\n")
     monkeypatch.setenv("TEST_VOICE_STT_TOKEN", "stt-secret")
     monkeypatch.setenv("TEST_VOICE_TTS_TOKEN", "tts-secret")
 

@@ -101,7 +101,7 @@ def test_configured_auth_env_errors_passes_when_configured_env_is_set(monkeypatc
             "tts": {},
         }
     }
-    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "test-token")
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", " test-token\r\n")
 
     assert local_loop_demo.configured_auth_env_errors(data) == []
 
@@ -864,7 +864,7 @@ def test_route_decision_probe_uses_authorization_header_only(monkeypatch):
             }
         }
     }
-    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "test-token")
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", " test-token\r\n")
 
     class Response:
         status = 200
@@ -895,6 +895,33 @@ def test_route_decision_probe_uses_authorization_header_only(monkeypatch):
     assert result["ok"] is True
     assert result["response"]["provider"] == "fast-local"
     assert result["validation_errors"] == []
+
+
+def test_route_decision_probe_redacts_bearer_token_from_errors(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {
+                "base_url": "http://127.0.0.1:8000/v1",
+                "model": "fast-local",
+                "api_key_env": "ANVIL_ROUTER_TOKEN",
+                "expected_route_provider": "fast-local",
+                "expected_route_model": "qwen36-27b",
+                "expected_route_tier": "local",
+            }
+        }
+    }
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "test-token")
+
+    def fake_urlopen(_req, timeout):
+        raise ValueError("Invalid header value b'Bearer test-token\\r'")
+
+    monkeypatch.setattr(local_loop_demo.urllib.request, "urlopen", fake_urlopen)
+
+    result = local_loop_demo.route_decision_probe(data)
+
+    assert result["ok"] is False
+    assert "test-token" not in result["error"]
+    assert "Bearer <redacted>" in result["error"]
 
 
 def test_route_decision_probe_requires_explicit_expected_route(monkeypatch):
@@ -968,3 +995,41 @@ def test_route_decision_probe_rejects_unexpected_route_shape(monkeypatch):
     assert result["ok"] is False
     assert result["prompt_source"] == "captured transcript"
     assert "expected provider fast-local" in result["validation_errors"][0]
+
+
+def test_route_decision_probe_accepts_explicit_prompt_source(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {
+                "base_url": "http://127.0.0.1:8000/v1",
+                "model": "fast-local",
+                "expected_route_provider": "fast-local",
+                "expected_route_model": "qwen36-27b",
+                "expected_route_tier": "local",
+            }
+        }
+    }
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"provider":"fast-local","model":"qwen36-27b","tier":"local"}'
+
+        def getcode(self):
+            return 200
+
+    monkeypatch.setattr(local_loop_demo.urllib.request, "urlopen", lambda _req, timeout: Response())
+
+    result = local_loop_demo.route_decision_probe(
+        data, prompt="voice Mini validation route proof", prompt_source="validation probe"
+    )
+
+    assert result["ok"] is True
+    assert result["prompt_source"] == "validation probe"
