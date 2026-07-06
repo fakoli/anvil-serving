@@ -17,7 +17,8 @@ narration.
 2. List or inspect available MCP tools first. Prefer `router_status`,
    `router_logs`, `router_manage`, `decision_summary`, `router_promote`,
    `serves_status`, `serves_manage`, `serves_logs`, `doctor_summary`,
-   `models_inventory`, `route_decision`, `openclaw_sync`,
+   `host_summary`, `models_inventory`, `cache_prune_plan`, `route_decision`,
+   `openclaw_sync`,
    `openclaw_gateway_restart`, `preflight_probe`, `benchmark_probe`, and
    `benchmark_artifact`, `external_bench_sources`, `external_bench_list`,
    `external_bench_report`, and `external_bench_compare` when they cover the
@@ -26,8 +27,8 @@ narration.
 3. Use documented `anvil-serving` CLI verbs only when an MCP wrapper is missing.
    Safe fallbacks are read-only or preview-first verbs such as `profile`,
    `models sync`, `models recipe`, `score`, `harness sync openclaw --out -`,
-   and `host doctor`. Return the command preview and mark the missing wrapper as
-   a product gap.
+   and other render/inspect commands. Return the command preview and mark the
+   missing wrapper as a product gap.
 4. Use `127.0.0.1` in local URLs. Do not introduce `localhost`.
 5. Pass credentials by environment variable name only. Never place literal keys
    in configs, fixtures, packets, logs, or prompts.
@@ -68,8 +69,10 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 - Promotion evidence: assemble status, decision summary, route probes,
   preflight, benchmark artifacts, calibration, profile/config diffs, and
   reviewer recommendation with `promoted=false`.
-- Host repair: diagnose and preview only unless the human approves disruptive
-  repair through the documented CLI.
+- Host/cache work: use `host_summary` and `cache_prune_plan` for read-only
+  checks and plans. Report host repair, Docker/WSL restart, WSL config edits,
+  and cache deletion as `blocked` or `human_required` unless the human approves
+  the existing CLI gate; MCP cache pruning is plan-only.
 
 ## Sub-Agents
 
