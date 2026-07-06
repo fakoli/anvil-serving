@@ -1650,6 +1650,133 @@ def test_external_bench_priors_do_not_satisfy_workflow_promotion(tmp_path, monke
     assert any(error["field"] == "advisory_priors[0]" for error in env["data"]["errors"])
 
 
+def _operator_workflow_packet_from_fixture(fixture, evidence_root):
+    artifact_path = None
+    tools_used = []
+    for step in fixture["steps"]:
+        tool = json.loads(json.dumps(step["tool"]))
+        if tool["name"] == "preflight_probe":
+            env = mcp.call_tool("preflight_probe", step["arguments"])
+            assert env["ok"] is True
+            data = env["data"]
+        elif tool["name"] == "benchmark_artifact":
+            raw_artifact_path = evidence_root / Path(fixture["benchmark_artifact"]["path"])
+            args = dict(step["arguments"], artifact_path=str(raw_artifact_path))
+            env = mcp.call_tool("benchmark_artifact", args)
+            assert env["ok"] is True
+            data = env["data"]
+            artifact_path = Path(data["artifact_path"])
+            tool["target"] = data["artifact_path"]
+        else:
+            data = json.loads(json.dumps(step.get("data", {})))
+        tool["data"] = data
+        tools_used.append(tool)
+
+    critic = fixture["critic"]
+    assert artifact_path is not None
+    packet = {
+        "schema_version": "operator-workflow/v1",
+        "request": fixture["request"],
+        "gate_state": critic["gate_state"],
+        "targets": fixture["targets"],
+        "tools_used": tools_used,
+        "artifacts": [{
+            "kind": "benchmark",
+            "path": str(artifact_path),
+            "source_tool": "benchmark_artifact",
+        }],
+        "advisory_priors": fixture["advisory_priors"],
+        "recommendation": critic["recommendation"],
+        "human_gate_required": critic["human_gate_required"],
+        "promoted": critic["promoted"],
+    }
+    return packet, artifact_path
+
+
+def test_operator_workflow_fixture_produces_valid_result_packet(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    fixture = json.loads(Path(
+        "tests/fixtures/operator_workflows/model_swap_promotion_evidence.json",
+    ).read_text(encoding="utf-8"))
+
+    def assert_arg(argv, flag, expected):
+        assert argv[argv.index(flag) + 1] == str(expected)
+
+    def fake_run(argv, capture_output=True, text=True, timeout=None):
+        assert capture_output is True
+        assert text is True
+        assert timeout == 30
+        module = argv[argv.index("-m") + 1]
+        if module == "anvil_serving.preflight":
+            args = next(step["arguments"] for step in fixture["steps"] if step["tool"]["name"] == "preflight_probe")
+            assert_arg(argv, "--base-url", args["base_url"])
+            assert_arg(argv, "--model", args["model"])
+            assert_arg(argv, "--needle-ctx", args["needle_ctx"])
+            assert_arg(argv, "--tool-batch", args["tool_batch"])
+            assert "--no-thinking" in argv
+            return proc(0, json.dumps(fixture["preflight_result"]) + "\n", "")
+        if module == "anvil_serving.benchmark":
+            args = next(step["arguments"] for step in fixture["steps"] if step["tool"]["name"] == "benchmark_artifact")
+            assert_arg(argv, "--base-url", args["base_url"])
+            assert_arg(argv, "--model", args["model"])
+            assert_arg(argv, "--requests", args["requests"])
+            assert_arg(argv, "--concurrency", args["concurrency"])
+            assert_arg(argv, "--ctx-tokens", args["ctx_tokens"])
+            assert_arg(argv, "--max-tokens", args["max_tokens"])
+            out_path = Path(argv[argv.index("--json-out") + 1])
+            assert out_path.is_relative_to(tmp_path)
+            out_path.write_text(
+                json.dumps(fixture["benchmark_artifact"]["summary"], indent=2) + "\n",
+                encoding="utf-8",
+            )
+            return proc(0, "wrote JSON summary\n", "")
+        raise AssertionError("unexpected fixture workflow command: %r" % (argv,))
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    packet, artifact_path = _operator_workflow_packet_from_fixture(fixture, tmp_path)
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    normalized = env["data"]["normalized_packet"]
+    assert normalized["promoted"] is False
+    assert normalized["human_gate_required"] is True
+    assert normalized["gate_state"] == "human_required"
+
+    tool_names = {tool["name"] for tool in normalized["tools_used"]}
+    assert {
+        "doctor_summary",
+        "models_inventory",
+        "serves_status",
+        "preflight_probe",
+        "benchmark_artifact",
+        "quality_critic",
+    }.issubset(tool_names)
+
+    preflight = next(tool for tool in normalized["tools_used"] if tool["name"] == "preflight_probe")
+    assert preflight["ok"] is True
+    assert preflight["confirmed"] is True
+    assert preflight["data"]["returncode"] == 0
+    preflight_output = json.loads(preflight["data"]["stdout"])
+    assert preflight_output["checks"]["chat_completion"] == "pass"
+
+    benchmark = next(tool for tool in normalized["tools_used"] if tool["name"] == "benchmark_artifact")
+    assert benchmark["ok"] is True
+    assert benchmark["confirmed"] is True
+    assert benchmark["dry_run"] is False
+    assert Path(benchmark["data"]["artifact_path"]) == artifact_path.resolve()
+    assert Path(normalized["artifacts"][0]["path"]) == artifact_path.resolve()
+
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    assert artifact["schema"] == "anvil-serving.benchmark/v1"
+    assert artifact["completed"] == artifact["requests"]
+    assert artifact["metrics"]["throughput_tok_s"] == 91.5
+
+    assert packet["recommendation"] == "needs_more_data"
+    assert all(prior["advisory_only"] is True for prior in packet["advisory_priors"])
+    assert all(prior["promotion_quality_evidence"] is False for prior in packet["advisory_priors"])
+
+
 def test_probe_tools_use_api_key_env_and_reject_raw_keys(monkeypatch):
     monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "super-secret-token")
     pre = mcp.call_tool("preflight_probe", {
