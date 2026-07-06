@@ -55,7 +55,7 @@ The initial checked-in entry points are:
 | Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, host-repair, and voice skills once their backing tools exist. |
 | Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
 | OpenClaw install | Checked-in manual example path: `openclaw skills install <skill-dir> --as anvil-serving-workbench`, or checkout-based `skills.load.extraDirs`. | `anvil-serving harness sync openclaw --skills` render/apply path that preserves operator-owned config. |
-| MCP/controller tools | Model inventory, status, guarded serve lifecycle, bounded serve logs, route probes, OpenClaw config sync, gateway restart, preflight probes, and benchmark probes. | Router logs, decision summaries, router lifecycle wrappers, artifact benchmarks, and advisory external benchmark report wrappers. |
+| MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, benchmark probes, and promotion preview. | Artifact benchmarks, router token handling, and advisory external benchmark report wrappers. |
 | Result contract | `operator-workflow/v1` packet documented for skills and reviewers. | Stdlib validator and tests that enforce packet enums and required fields. |
 
 ## OpenClaw Smoke Result
@@ -82,6 +82,10 @@ from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
 | Need | Current tool | Status |
 |---|---|---|
 | Deployed router health | `router_status` | Implemented |
+| Deployed router lifecycle | `router_manage` | Implemented |
+| Bounded router logs | `router_logs` | Implemented |
+| Recent decision summaries | `decision_summary` | Implemented |
+| Promotion validation and preview | `router_promote` | Implemented; apply requires `confirm:true` and `human_approved:true` |
 | Compose-defined serve health | `serves_status` | Implemented |
 | Guarded serve lifecycle | `serves_manage` | Implemented |
 | Bounded serve logs | `serves_logs` | Implemented |
@@ -102,9 +106,7 @@ OpenClaw skill rendering is still a follow-up.
 
 | Gap | Proposed tool or workflow | Safety boundary |
 |---|---|---|
-| Router logs | `router_logs` | Tail-limited, redacted, no prompt dumps. |
-| Recent routing decisions | `decision_summary` | Summaries only; no full prompt or secret material. |
-| Router lifecycle | `router_manage` | Status/logs/reload preview first; promotion remains human-gated. |
+| Router token handling | `router_token_status` | Report auth configured/unset without returning token values. |
 | Benchmark artifacts | `benchmark_run` | Separate artifact-producing tool; keep `benchmark_probe` quick and bounded. |
 | External priors | `external_bench_report` / `external_bench_compare` | Always `advisory_only=true`; cannot decide promotion. |
 | Host/cache work | `host_summary`, `cache_prune_plan` | Plans only until a separate human-gated mutation path exists. |
@@ -115,7 +117,7 @@ OpenClaw skill rendering is still a follow-up.
 | Area | Verbs | Best enablement | Rationale |
 |---|---|---|---|
 | Front door | `serve` | Skill-only runbook | Long-running process; agents inspect it through `router_status`, `/healthz`, and `/v1/models`. |
-| Router lifecycle | `router status/logs/up/down/restart/reload/promote/token` | MCP for status/logs/reload/promote preview; human-gated CLI for live promotion | Promotion and lifecycle need dry-run, audit, and explicit approval. |
+| Router lifecycle | `router status/logs/up/down/restart/reload/promote/token` | MCP for status, bounded logs, guarded lifecycle, decision summary, and promotion preview/apply gate; token remains CLI-only | Promotion apply requires `confirm:true` plus `human_approved:true`; token values are not exposed through MCP. |
 | Serve lifecycle | `serves status/up/down/rm/adopt/logs` | MCP for status, bounded logs, and guarded up/down/rm/adopt; live mutation requires `confirm:true` and `dry_run:false` after preview | Serve start/stop is normal operation and should not require raw Docker. |
 | Model inventory | `models sync`, `models pull`, `models recipe` | MCP for catalog inventory with sync preview/confirm; skill/CLI for pull and recipe read | Inventory is read-heavy. Pull is long-running, network/disk-heavy, and explicitly gated. |
 | Bring-up generation | `init`, `doctor`, `deploy` | MCP preview/render plus CLI apply | Generated artifacts should be inspectable before write. |

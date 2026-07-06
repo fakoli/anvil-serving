@@ -34,10 +34,12 @@ import os
 import re
 import sys
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Iterable, Optional
 
 from .backends import EchoBackend
+from .decision_log import summarize_decisions
 from .dialects import Dialect
 from .dialects.anthropic import AnthropicDialect
 from .dialects.openai import OpenAIDialect
@@ -56,6 +58,7 @@ _ROUTES = {
     "/v1/chat/completions": OpenAIDialect(),
     "/v1/messages": AnthropicDialect(),
 }
+DECISION_SUMMARY_ENDPOINT = "/v1/decisions"
 
 # --------------------------------------------------------------------------- #
 # Resource caps (DoS protection)
@@ -491,13 +494,35 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         "dialects": sorted(d.name for d in _ROUTES.values()),
                         # Advertise the decision endpoint alongside dialect routes
                         # (ROUTE_ENDPOINT from discovery.py, T007).
-                        "routes": sorted(list(_ROUTES) + [ROUTE_ENDPOINT]),
+                        "routes": sorted(list(_ROUTES) + [ROUTE_ENDPOINT, DECISION_SUMMARY_ENDPOINT]),
                     })
                 elif route == "/v1/models":
                     # Preset discovery: list the configured presets (intent tokens)
                     # as OpenAI-shaped "models" so a harness model picker can find
                     # them. Derived from the canonical presets passed in.
                     self._json(200, models_payload(presets))
+                elif route == DECISION_SUMMARY_ENDPOINT:
+                    query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                    raw_limit = (query.get("limit") or ["20"])[0]
+                    try:
+                        limit = int(raw_limit)
+                    except (TypeError, ValueError):
+                        self._error(400, "invalid_request", "limit must be an integer")
+                        return
+                    if limit < 1 or limit > 500:
+                        self._error(400, "invalid_request", "limit must be between 1 and 500")
+                        return
+                    decision_log = getattr(backend, "_decision_log", None)
+                    if decision_log is None:
+                        routing = getattr(self.server, "anvil_routing", None)
+                        decision_log = getattr(routing, "_decision_log", None)
+                    if decision_log is None:
+                        summary = summarize_decisions([], limit=limit)
+                    elif hasattr(decision_log, "summary"):
+                        summary = decision_log.summary(limit=limit)
+                    else:
+                        summary = summarize_decisions(getattr(decision_log, "records", ()), limit=limit)
+                    self._json(200, summary)
                 elif route in _ROUTES or route == ROUTE_ENDPOINT:
                     # Known POST-only route requested with GET → 405 Method Not
                     # Allowed with Allow: POST (RFC 7231 §6.5.5).  Use the

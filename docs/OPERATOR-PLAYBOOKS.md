@@ -39,6 +39,8 @@ resource and keep the same gate semantics.
 | Controller readiness | Health endpoint on the controller's private address | `GET /health` on `http://anvil-gpu.tailnet.example:8765` |
 | Model inventory | `models_inventory` | `anvil-serving models sync --out ./model-library` |
 | Environment and tier health | `doctor_summary`, `serves_status`, `router_status` | `anvil-serving doctor --config ./router.toml`; `anvil-serving serves --manifest ./serves.toml status`; `anvil-serving router status` |
+| Router lifecycle and logs | `router_manage`, `router_logs` | `anvil-serving router reload`; `anvil-serving router logs --tail 200` |
+| Recent routing decisions | `decision_summary` | `GET /v1/decisions` on the router front door |
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
 | Start or restore compose-defined serves | `serves_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves --manifest ./serves.toml up <name>` |
 | Start an experiment serve | `serves_manage` with `compose` preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves up --compose <compose.yml> <service>` |
@@ -47,7 +49,7 @@ resource and keep the same gate semantics.
 | Correctness gate | `preflight_probe` | `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
 | Throughput run | `benchmark_probe` for a bounded probe; CLI when `--json-out` is required | `anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
 | OpenClaw config sync | `openclaw_sync`, `openclaw_gateway_restart` | `anvil-serving harness sync openclaw --config <router.toml> ...`; `anvil-serving harness restart openclaw ...` |
-| Human-gated promotion | Not exposed yet | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
+| Human-gated promotion | `router_promote` preview; apply requires `confirm:true` and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
 
 Treat missing MCP tools as a product gap, not a reason to scrape Docker output
 or hand-edit remote configs. Use `127.0.0.1` in local URLs.
@@ -69,6 +71,11 @@ MCP invocation rules:
   resolved plan and a dry-run command. A live serve mutation requires both
   `confirm:true` and `dry_run:false` after the exact manifest or compose file
   and serve names are known.
+- For `router_manage`, use the same preview-first pattern. A live router
+  lifecycle change requires both `confirm:true` and `dry_run:false`.
+- For `router_promote`, preview validates the candidate profile/config and
+  returns a compact diff summary. Live apply additionally requires
+  `human_approved:true`; without it, the tool refuses even when `confirm:true`.
 - For `preflight_probe`, `benchmark_probe`, and `openclaw_sync`, call once with
   `confirm:false` or `dry_run:true` to preview the command/result shape, then
   call with `confirm:true` only after the exact endpoint, model, config, and
@@ -425,7 +432,22 @@ and is not automatic.
    Human gate required before `anvil-serving router promote ...`.
    ```
 
-4. Only after explicit human authorization should an operator run:
+4. Preview the promotion through MCP/controller when available:
+
+   ```json
+   {
+     "profile": "<candidate-profile.json>",
+     "config": "<candidate-router.toml>",
+     "current_profile": "<current-profile.json>"
+   }
+   ```
+
+   The preview validates the profile/config and returns a diff summary without
+   writing. Apply is allowed only with `confirm:true`, `dry_run:false`, and
+   `human_approved:true`.
+
+5. Only after explicit human authorization should an operator run the CLI
+   fallback:
 
    ```bash
    anvil-serving router promote \
