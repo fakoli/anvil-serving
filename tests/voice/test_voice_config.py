@@ -52,6 +52,7 @@ def test_fakoli_mini_manifest_is_valid_and_preserves_route_contract():
     assert data["voice"]["llm"]["expected_route_tier"] == "local"
     assert data["voice"]["stt"]["lifecycle"] == "external"
     assert data["voice"]["stt"]["stream"] is False
+    assert data["voice"]["stt"]["response_format"] == "json"
     assert data["voice"]["stt"]["timeout"] == 120.0
     assert data["voice"]["tts"]["lifecycle"] == "external"
     assert data["voice"]["tts"]["response_format"] == "pcm"
@@ -165,6 +166,13 @@ def test_rejects_nonpositive_llm_timeout():
     data = _valid_manifest()
     data["voice"]["llm"]["timeout"] = 0
     with pytest.raises(voice_config.ConfigError, match="positive"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_stt_response_format_not_consumed_by_client():
+    data = _valid_manifest()
+    data["voice"]["stt"]["response_format"] = "text"
+    with pytest.raises(voice_config.ConfigError, match="response_format"):
         voice_config.validate_manifest(data)
 
 

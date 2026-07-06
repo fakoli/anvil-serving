@@ -47,6 +47,7 @@ _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _SECRET_KEY_NAMES = {"api_key", "token", "secret", "password", "realtime_token"}
 _SECRET_VALUE_PREFIXES = ("sk-", "hf_", "hf-", "ghp_", "ghp-")
 _LIFECYCLES = {"managed", "external"}
+_STT_RESPONSE_FORMATS = {"json"}
 _TTS_RESPONSE_FORMATS = {"pcm"}
 
 
@@ -232,8 +233,15 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
         )
     if "timeout" in table:
         _positive_float(table, "timeout")
-    if name == "stt" and "stream" in table:
-        _bool(table, "stream", True)
+    if name == "stt":
+        if "stream" in table:
+            _bool(table, "stream", True)
+        if "response_format" in table:
+            response_format = _string(table, "response_format")
+            if response_format not in _STT_RESPONSE_FORMATS:
+                raise ConfigError(
+                    "voice.stt.response_format must be json because the non-streaming STT client consumes JSON"
+                )
     if name == "tts":
         if "response_format" in table:
             response_format = _string(table, "response_format")

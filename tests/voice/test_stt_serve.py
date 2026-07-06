@@ -255,6 +255,11 @@ def test_build_transcription_fields_omits_stream_when_disabled():
     assert "stream" not in fields
 
 
+def test_build_transcription_fields_includes_response_format_when_configured():
+    fields = build_transcription_fields(STTStageConfig(stream=False, response_format="json"))
+    assert fields["response_format"] == "json"
+
+
 # --------------------------------------------------------------------------- #
 # STTStreamAssembler
 # --------------------------------------------------------------------------- #
