@@ -219,3 +219,13 @@ def test_v1_models_requires_auth():
                                    headers={"x-api-key": TOKEN})
     assert status_unauthed == 401
     assert status_authed == 200
+
+
+def test_v1_decisions_requires_auth():
+    with running_server(StaticBackend(["ok"]), auth_token=TOKEN) as (host, port):
+        status_unauthed, _, _ = _get(host, port, "/v1/decisions")
+        status_authed, _, raw = _get(host, port, "/v1/decisions",
+                                     headers={"x-api-key": TOKEN})
+    assert status_unauthed == 401
+    assert status_authed == 200
+    assert json.loads(raw)["count"] == 0

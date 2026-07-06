@@ -19,6 +19,7 @@ from typing import Dict, List, Tuple
 import pytest
 
 from anvil_serving.router.backends import StaticBackend
+from anvil_serving.router.decision_log import AttemptRecord, DecisionLog, DecisionRecord
 from anvil_serving.router.front_door import make_server
 
 
@@ -49,6 +50,18 @@ def _post(host: str, port: int, path: str, body: dict) -> Tuple[int, Dict[str, s
         headers = {k.lower(): v for k, v in resp.getheaders()}
         data = resp.read()
         return resp.status, headers, data
+    finally:
+        conn.close()
+
+
+def _get(host: str, port: int, path: str, headers: Dict[str, str] | None = None) -> Tuple[int, Dict[str, str], bytes]:
+    conn = http.client.HTTPConnection(host, port, timeout=10)
+    try:
+        conn.request("GET", path, headers=headers or {})
+        resp = conn.getresponse()
+        resp_headers = {k.lower(): v for k, v in resp.getheaders()}
+        data = resp.read()
+        return resp.status, resp_headers, data
     finally:
         conn.close()
 
@@ -88,6 +101,72 @@ def parse_anthropic_sse(raw: bytes) -> List[Tuple[str, dict]]:
         assert data is not None, f"Anthropic frame missing data: {block!r}"
         events.append((etype, data))
     return events
+
+
+# --------------------------------------------------------------------------- #
+# Decision summary endpoint
+# --------------------------------------------------------------------------- #
+def _decision_record() -> DecisionRecord:
+    return DecisionRecord(
+        work_class="bounded-edit",
+        requested_tiers=("fast-local", "cloud"),
+        attempts=(
+            AttemptRecord(
+                tier_id="fast-local",
+                verifier_passed=False,
+                verify_reason="DiffWellFormed",
+                prompt_tokens=10,
+                completion_tokens=4,
+                outcome="fallback",
+            ),
+            AttemptRecord(
+                tier_id="cloud",
+                verifier_passed=True,
+                verify_reason="ok",
+                prompt_tokens=10,
+                completion_tokens=4,
+                outcome="served",
+            ),
+        ),
+        served_tier="cloud",
+        total_prompt_tokens=20,
+        total_completion_tokens=8,
+        fell_back=True,
+        intent="chat",
+    )
+
+
+def test_decision_summary_route_returns_recent_metadata_only():
+    backend = StaticBackend(["ok"])
+    backend._decision_log = DecisionLog()
+    backend._decision_log.record(_decision_record())
+
+    with running_server(backend) as (host, port):
+        status, headers, raw = _get(host, port, "/v1/decisions?limit=1")
+
+    assert status == 200
+    assert headers.get("content-type") == "application/json"
+    body = json.loads(raw)
+    assert body["count"] == 1
+    assert body["records"][0]["served_tier"] == "cloud"
+    assert body["records"][0]["fell_back"] is True
+    rendered_records = json.dumps(body["records"])
+    assert "messages" not in rendered_records
+    assert "content" not in rendered_records
+
+
+def test_healthz_routes_include_decision_summary_endpoint():
+    with running_server(StaticBackend(["ok"])) as (host, port):
+        status, _headers, raw = _get(host, port, "/healthz")
+    assert status == 200
+    assert "/v1/decisions" in json.loads(raw)["routes"]
+
+
+def test_decision_summary_route_validates_limit():
+    with running_server(StaticBackend(["ok"])) as (host, port):
+        status, _headers, raw = _get(host, port, "/v1/decisions?limit=9999")
+    assert status == 400
+    assert json.loads(raw)["error"]["type"] == "invalid_request"
 
 
 # --------------------------------------------------------------------------- #
