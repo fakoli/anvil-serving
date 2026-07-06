@@ -59,10 +59,19 @@ _REMOTE_RESTART_COMMAND = 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"'
 _DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
 _WORKBENCH_SKILL_NAME = "anvil-serving-workbench"
 _OPENCLAW_AGENT_ROLES = (
-    ("anvil-inventory-scout", ("chat-fast", "chat")),
-    ("anvil-probe-evidence-runner", ("chat-fast", "chat")),
-    ("anvil-adversarial-reviewer", ("review", "chat", "planning")),
+    ("anvil-orchestrator", ("planning", "review", "chat"), "planning", False),
+    ("anvil-inventory-scout", ("chat-fast", "chat"), "chat", True),
+    ("anvil-route-analyst", ("chat-fast", "chat"), "chat", True),
+    ("anvil-serve-operator", ("chat-fast", "chat"), "chat", True),
+    ("anvil-preflight-runner", ("chat-fast", "chat"), "chat", True),
+    ("anvil-benchmark-runner", ("chat-fast", "chat"), "chat", True),
+    ("anvil-evidence-reporter", ("chat-fast", "chat"), "chat", True),
+    ("anvil-quality-critic", ("review", "planning", "chat"), "review", False),
+    ("anvil-adversarial-reviewer", ("review", "planning", "chat"), "review", False),
 )
+_OPENCLAW_LEGACY_AGENT_NAMES = frozenset({
+    "anvil-probe-evidence-runner",
+})
 
 
 def _title(preset_id):
@@ -123,16 +132,17 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
     }
 
 
-def _anvil_preset_ref(config, preferred):
+def _anvil_preset_ref(config, preferred, *, fallback="chat", allow_first_fallback=True):
     presets = getattr(config, "presets", {}) or {}
     for preset_id in preferred:
         if preset_id in presets:
             return "anvil/" + preset_id
     if "chat" in presets:
         return "anvil/chat"
-    for preset_id in presets:
-        return "anvil/" + str(preset_id)
-    return "anvil/chat"
+    if allow_first_fallback:
+        for preset_id in presets:
+            return "anvil/" + str(preset_id)
+    return "anvil/" + fallback
 
 
 def render_openclaw_skills(config, *, skill_dir=None):
@@ -143,10 +153,15 @@ def render_openclaw_skills(config, *, skill_dir=None):
     with ``openclaw skills install ... --as anvil-serving-workbench``.
     """
     roles = []
-    for role_name, preferred_presets in _OPENCLAW_AGENT_ROLES:
+    for role_name, preferred_presets, fallback, allow_first_fallback in _OPENCLAW_AGENT_ROLES:
         roles.append({
             "name": role_name,
-            "model": _anvil_preset_ref(config, preferred_presets),
+            "model": _anvil_preset_ref(
+                config,
+                preferred_presets,
+                fallback=fallback,
+                allow_first_fallback=allow_first_fallback,
+            ),
             "skills": [_WORKBENCH_SKILL_NAME],
         })
     out = {
@@ -218,7 +233,13 @@ def _merge_openclaw_skill_config(out, rendered):
             }
             preserved = [
                 role for role in existing_roles
-                if not (isinstance(role, dict) and role.get("name") in rendered_by_name)
+                if not (
+                    isinstance(role, dict)
+                    and (
+                        role.get("name") in rendered_by_name
+                        or role.get("name") in _OPENCLAW_LEGACY_AGENT_NAMES
+                    )
+                )
             ]
             agents["list"] = preserved + list(rendered_by_name.values())
     return out
