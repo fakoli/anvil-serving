@@ -209,6 +209,7 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
                 "base_url": "http://127.0.0.1:8090/v1",
                 "model": "parakeet",
                 "stream": False,
+                "response_format": "json",
                 "timeout": 12.5,
             },
             "llm": {
@@ -250,6 +251,7 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
     assert seen["stt_config"].base_url == "http://127.0.0.1:8090/v1"
     assert seen["stt_config"].model == "parakeet"
     assert seen["stt_config"].stream is False
+    assert seen["stt_config"].response_format == "json"
     assert seen["stt_config"].timeout == 12.5
     assert seen["llm_config"].base_url == "http://127.0.0.1:8000/v1"
     assert seen["llm_config"].timeout == 33.0

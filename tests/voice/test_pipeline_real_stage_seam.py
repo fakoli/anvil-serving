@@ -141,6 +141,7 @@ def test_manifest_pipeline_kwargs_preserve_stage_runtime_knobs():
                 "base_url": "http://127.0.0.1:30010/v1",
                 "model": "mlx-community/whisper-tiny-asr-fp16",
                 "stream": False,
+                "response_format": "json",
                 "timeout": 12.5,
                 "lifecycle": "external",
             },
@@ -164,6 +165,7 @@ def test_manifest_pipeline_kwargs_preserve_stage_runtime_knobs():
     })
 
     assert kwargs["stt_config"].stream is False
+    assert kwargs["stt_config"].response_format == "json"
     assert kwargs["stt_config"].timeout == 12.5
     assert kwargs["llm_config"].timeout == 33.0
     assert kwargs["tts_config"].response_format == "pcm"
