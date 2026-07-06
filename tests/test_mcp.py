@@ -532,7 +532,9 @@ def test_openclaw_sync_preview_can_include_skills(tmp_path):
     assert preview["skills"] is True
     assert preview["skill_name"] == "anvil-serving-workbench"
     assert preview["skill_load_dirs"] == ["/opt/anvil-serving/examples/openclaw/skills"]
+    assert preview["agent_models"]["anvil-orchestrator"] == "anvil/review"
     assert preview["agent_models"]["anvil-inventory-scout"] == "anvil/chat-fast"
+    assert preview["agent_models"]["anvil-quality-critic"] == "anvil/review"
     assert preview["agent_models"]["anvil-adversarial-reviewer"] == "anvil/review"
 
 
