@@ -14,7 +14,8 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   `router_manage`, `decision_summary`, `router_promote`, `serves_status`,
   `serves_manage`, `serves_logs`, `doctor_summary`, `models_inventory`,
   `route_decision`, `openclaw_sync`, `openclaw_gateway_restart`,
-  `preflight_probe`, `benchmark_probe`, and `benchmark_artifact`.
+  `preflight_probe`, `benchmark_probe`, and `benchmark_artifact`. Use
+  `workflow_packet_validate` before treating a packet as promotion evidence.
 - Use documented `anvil-serving` CLI verbs only when a structured tool is
   missing. Safe fallbacks are read-only or preview-first verbs such as
   `profile`, `models sync`, `models recipe`, `external-bench list/report/compare`,
@@ -59,4 +60,5 @@ Return `schema_version: "operator-workflow/v1"`, `request`, `gate_state`,
 `source_class`, `ok`, `dry_run`, `confirmed`, `target`, and `error`. Allowed
 `gate_state` values are `not_required`, `confirm_required`, `human_required`,
 and `blocked`. Allowed recommendations are `promote`, `do_not_promote`,
-`needs_more_data`, and `blocked`.
+`needs_more_data`, and `blocked`. Validate final packets with
+`workflow_packet_validate` when the MCP/control-plane tool is available.
