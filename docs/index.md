@@ -94,7 +94,7 @@ Follow the full path in [Getting started](GETTING-STARTED.md).
 | Verify-and-fallback | The response path that checks local output and escalates when it fails. |
 | Local serving tools | The CLI surface for profiling usage, cataloging models, managing serves, and validating endpoints. |
 | Device topology | The assignment of gateway, voice, router, serve, controller, and operator roles to reachable devices. |
-| Voice pipeline | The local Realtime voice runtime: STT -> routed LLM -> TTS, with managed audio serve lifecycle. |
+| Voice pipeline | The local Realtime voice runtime: STT -> routed LLM -> TTS, with manifest-owned managed/native audio lifecycle. |
 | Control plane | MCP/controller tools for status, route probes, preflight, benchmark, OpenClaw sync, voice lifecycle, and promotion evidence. |
 
 See [Terminology](TERMINOLOGY.md) for the naming guide.

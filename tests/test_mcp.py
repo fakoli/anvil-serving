@@ -1030,6 +1030,7 @@ def test_voice_manage_preview_is_dry_run_argv(tmp_path):
         model = "mlx-stt"
         lifecycle = "native"
         start_command = "python -m mlx_audio.server --port 30010"
+        stop_timeout = 3.0
         pid_file = "/tmp/stt.pid"
         log_file = "/tmp/stt.log"
 
@@ -1054,6 +1055,7 @@ def test_voice_manage_preview_is_dry_run_argv(tmp_path):
     assert "--dry-run" in data["command"]
     assert data["plan"]["audio_serves"][0]["lifecycle"] == "native"
     assert data["plan"]["audio_serves"][0]["start_command"][:3] == ["python", "-m", "mlx_audio.server"]
+    assert data["plan"]["audio_serves"][0]["stop_timeout"] == 3.0
 
 
 def test_voice_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, monkeypatch):
@@ -1104,10 +1106,57 @@ def test_voice_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, m
         "timeout_seconds": 7,
     })
     assert applied["ok"] is True
-    assert applied["data"]["applied"] is True
+    assert applied["data"]["applied"] is False
     assert seen["argv"][:5] == [sys.executable, "-m", "anvil_serving.cli", "voice", "down"]
     assert "--dry-run" not in seen["argv"]
     assert seen["timeout"] == 7
+
+
+def test_voice_manage_confirmed_native_action_bridges_to_cli(tmp_path, monkeypatch):
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        name = "mini"
+        realtime_host = "127.0.0.1"
+        realtime_port = 8765
+
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+
+        [voice.stt]
+        base_url = "http://127.0.0.1:30010/v1"
+        model = "mlx-stt"
+        lifecycle = "native"
+        start_command = "python -m mlx_audio.server --port 30010"
+
+        [voice.tts]
+        base_url = "http://127.0.0.1:30011/v1"
+        model = "mlx-tts"
+        lifecycle = "external"
+    """), encoding="utf-8")
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["timeout"] = kwargs.get("timeout")
+        return proc(0, "ok\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+
+    applied = mcp.call_tool("voice_manage", {
+        "action": "start",
+        "config": str(config),
+        "confirm": True,
+        "dry_run": False,
+        "timeout_seconds": 11,
+    })
+
+    assert applied["ok"] is True
+    assert applied["data"]["applied"] is True
+    assert seen["argv"][:5] == [sys.executable, "-m", "anvil_serving.cli", "voice", "up"]
+    assert "--dry-run" not in seen["argv"]
+    assert seen["timeout"] == 11
 
 
 def test_voice_manage_bad_action_and_bad_config(tmp_path):
@@ -1121,6 +1170,11 @@ def test_voice_manage_bad_action_and_bad_config(tmp_path):
     })
     assert missing["ok"] is False
     assert missing["error"]["code"] == "bad_config"
+
+
+def test_voice_manage_schema_exposes_action_enum():
+    tool = next(item for item in mcp.list_tools() if item["name"] == "voice_manage")
+    assert tool["inputSchema"]["properties"]["action"]["enum"] == ["up", "down", "start", "stop"]
 
 
 def test_openclaw_sync_rejects_non_anvil_api_key_env(tmp_path):

@@ -18,7 +18,8 @@ narration.
    `router_logs`, `router_manage`, `decision_summary`, `router_promote`,
    `serves_status`, `serves_manage`, `serves_logs`, `voice_manage`,
    `doctor_summary`, `host_summary`, `models_inventory`, `cache_prune_plan`,
-   `route_decision`, `openclaw_sync`, `openclaw_gateway_restart`, `preflight_probe`, `benchmark_probe`, and
+   `route_decision`, `openclaw_sync`, `openclaw_gateway_restart`,
+   `preflight_probe`, `benchmark_probe`, and
    `benchmark_artifact`, `external_bench_sources`, `external_bench_list`,
    `external_bench_report`, and `external_bench_compare` when they cover the
    request. Use
