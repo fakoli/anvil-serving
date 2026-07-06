@@ -748,6 +748,23 @@ def test_cache_prune_plan_refuses_deletion_requests(monkeypatch):
         assert env["error"]["code"] == "cache_prune_delete_not_available"
 
 
+def test_cache_prune_plan_rejects_string_confirm_and_does_not_echo_tokens(monkeypatch):
+    from anvil_serving import cache_prune
+
+    monkeypatch.setattr(cache_prune, "build_plan", lambda mixture: (_ for _ in ()).throw(
+        AssertionError("invalid arguments must be rejected before planning")
+    ))
+    string_bool = mcp.call_tool("cache_prune_plan", {"confirm": "false"})
+    assert string_bool["ok"] is False
+    assert string_bool["error"]["code"] == "bad_argument"
+
+    token = "controller-secret-token"
+    raw_token = mcp.call_tool("cache_prune_plan", {"api_key": token})
+    assert raw_token["ok"] is False
+    assert raw_token["error"]["code"] == "bad_argument"
+    assert token not in json.dumps(raw_token)
+
+
 def test_serves_manage_preview_is_dry_run_argv(tmp_path):
     manifest = _manifest(tmp_path)
     env = mcp.call_tool("serves_manage", {
@@ -1675,6 +1692,16 @@ def test_probe_tools_use_api_key_env_and_reject_raw_keys(monkeypatch):
     })
     assert controller_token["ok"] is False
     assert controller_token["error"]["code"] == "unsafe_api_key_env"
+
+    token_like_env = "TOKEN_123"
+    token_like = mcp.call_tool("route_decision", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "prompt": "hello",
+        "api_key_env": token_like_env,
+    })
+    assert token_like["ok"] is False
+    assert token_like["error"]["code"] == "unsafe_api_key_env"
+    assert token_like_env not in json.dumps(token_like)
 
     unsafe_url = mcp.call_tool("route_decision", {
         "base_url": "http://8.8.8.8/v1",
