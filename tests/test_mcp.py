@@ -19,16 +19,19 @@ def proc(rc=0, out="", err=""):
     return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
 
-def _manifest(tmp_path):
+def _manifest(tmp_path, *, up=False):
     p = tmp_path / "serves.toml"
-    p.write_text(textwrap.dedent("""
+    body = """
         [[serve]]
         name = "fast"
         container = "vllm-fast"
         port = 30001
         health = "/health"
         model = "fast-model"
-    """), encoding="utf-8")
+    """
+    if up:
+        body += '        up = "docker compose -f {dir}/docker-compose.yml up -d"\n'
+    p.write_text(textwrap.dedent(body), encoding="utf-8")
     return str(p)
 
 
@@ -107,6 +110,8 @@ def test_tools_list_has_json_schemas():
     for name in [
         "router_status",
         "serves_status",
+        "serves_manage",
+        "serves_logs",
         "doctor_summary",
         "models_inventory",
         "route_decision",
@@ -344,6 +349,252 @@ def test_models_inventory_confirmed_sync_returns_catalog_counts(tmp_path, monkey
     assert env["data"]["synced"] is True
     assert env["data"]["catalog"]["count"] == 1
     assert env["data"]["stdout"] == "wrote INDEX.md + 1 summaries\n"
+
+
+def test_serves_manage_preview_is_dry_run_argv(tmp_path):
+    manifest = _manifest(tmp_path)
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["fast"],
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    cmd = env["data"]["command"]
+    assert cmd[:4] == [sys.executable, "-m", "anvil_serving.cli", "serves"]
+    assert "down" in cmd
+    assert "--dry-run" in cmd
+    assert cmd[cmd.index("--manifest") + 1] == manifest
+
+
+def test_serves_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["timeout"] = kwargs.get("timeout")
+        return proc(0, "stopped\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["fast"],
+        "confirm": True,
+        "timeout_seconds": 7,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    assert "--dry-run" in env["data"]["command"]
+    assert seen == {}
+
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["fast"],
+        "confirm": True,
+        "dry_run": False,
+        "timeout_seconds": 7,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is True
+    assert "--dry-run" not in seen["argv"]
+    assert seen["argv"][3:5] == ["serves", "down"]
+    assert seen["timeout"] == 7
+    assert env["data"]["stdout"] == "stopped\n"
+
+
+def test_serves_manage_preview_forces_dry_run_without_confirm(tmp_path):
+    manifest = _manifest(tmp_path)
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["fast"],
+        "dry_run": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    assert env["data"]["dry_run"] is True
+    assert "--dry-run" in env["data"]["command"]
+
+
+def test_serves_manage_manifest_actions_require_explicit_names(tmp_path):
+    manifest = _manifest(tmp_path)
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "missing_argument"
+
+
+def test_serves_manage_up_preview_includes_manifest_commands(tmp_path):
+    manifest = _manifest(tmp_path, up=True)
+    env = mcp.call_tool("serves_manage", {
+        "action": "up",
+        "manifest": manifest,
+        "names": ["fast"],
+    })
+    assert env["ok"] is True
+    commands = env["data"]["plan"]["commands"]
+    assert commands[0]["kind"] == "manifest_up_when_absent_or_compose_reconcile"
+    assert commands[0]["argv"][:3] == ["docker", "compose", "-f"]
+    assert commands[0]["argv"][-2:] == ["up", "-d"]
+    assert commands[1]["kind"] == "docker_start_when_existing_script_serve_stopped"
+
+
+def test_serves_manage_rm_literal_requires_allow_literal(tmp_path):
+    manifest = _manifest(tmp_path)
+    blocked = mcp.call_tool("serves_manage", {
+        "action": "rm",
+        "manifest": manifest,
+        "names": ["port-squatter"],
+    })
+    assert blocked["ok"] is False
+    assert blocked["error"]["code"] == "literal_container_requires_allow"
+
+    allowed = mcp.call_tool("serves_manage", {
+        "action": "rm",
+        "manifest": manifest,
+        "names": ["port-squatter"],
+        "allow_literal": True,
+    })
+    assert allowed["ok"] is True
+    assert allowed["data"]["applied"] is False
+    assert "--dry-run" in allowed["data"]["command"]
+    assert allowed["data"]["plan"]["targets"] == []
+    assert allowed["data"]["plan"]["commands"] == [{
+        "kind": "docker_rm",
+        "target": "port-squatter",
+        "argv": ["docker", "rm", "-f", "port-squatter"],
+    }]
+
+
+def test_serves_manage_bad_action_and_missing_manifest(tmp_path):
+    bad = mcp.call_tool("serves_manage", {"action": "restart"})
+    assert bad["ok"] is False
+    assert bad["error"]["code"] == "bad_action"
+
+    missing = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": str(tmp_path / "missing.toml"),
+    })
+    assert missing["ok"] is False
+    assert missing["error"]["code"] == "manifest_not_found"
+
+
+def test_serves_logs_runs_bounded_tail_for_one_serve(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["timeout"] = kwargs.get("timeout")
+        seen["capture_output"] = kwargs.get("capture_output")
+        seen["text"] = kwargs.get("text")
+        kwargs["stdout"].write(b"LOG\n")
+        return proc(0)
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "tail": 5,
+        "since": "10m",
+        "timeout_seconds": 3,
+    })
+    assert env["ok"] is True
+    assert env["data"]["bounded"] is True
+    assert seen["argv"][3:5] == ["serves", "logs"]
+    assert seen["argv"][seen["argv"].index("--tail") + 1] == "5"
+    assert seen["argv"][seen["argv"].index("--since") + 1] == "10m"
+    assert "--follow" not in seen["argv"]
+    assert seen["timeout"] == 3
+    assert seen["capture_output"] is None
+    assert seen["text"] is None
+    assert env["data"]["stdout"] == "LOG\n"
+
+
+def test_serves_logs_rejects_unknown_manifest_serve_before_running(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+
+    def fake_run(argv, **kwargs):
+        raise AssertionError("serves_logs should reject unknown manifest targets before subprocess")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["missing"],
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "no_matching_serve"
+
+
+def test_serves_logs_truncates_output_to_byte_cap(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+
+    def fake_run(argv, **kwargs):
+        kwargs["stdout"].write(b"A" * 2048)
+        kwargs["stderr"].write(b"B" * 2048)
+        return proc(0)
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "max_output_bytes": 1024,
+    })
+    assert env["ok"] is True
+    assert len(env["data"]["stdout"]) == 1024
+    assert len(env["data"]["stderr"]) == 1024
+    assert env["data"]["stdout_truncated"] is True
+    assert env["data"]["stderr_truncated"] is True
+
+
+def test_serves_logs_rejects_unbounded_follow_and_bad_tail(tmp_path):
+    manifest = _manifest(tmp_path)
+    follow = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "follow": True,
+    })
+    assert follow["ok"] is False
+    assert follow["error"]["code"] == "follow_not_allowed"
+
+    tail = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "tail": 5001,
+    })
+    assert tail["ok"] is False
+    assert tail["error"]["code"] == "bad_argument"
+
+
+def test_serves_logs_requires_exactly_one_name(tmp_path):
+    manifest = _manifest(tmp_path)
+    env = mcp.call_tool("serves_logs", {"manifest": manifest, "names": []})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_serves_manage_and_logs_bool_arguments_must_be_real_booleans(tmp_path):
+    manifest = _manifest(tmp_path)
+    manage = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "confirm": "false",
+    })
+    assert manage["ok"] is False
+    assert manage["error"]["code"] == "bad_argument"
+
+    logs = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "follow": "false",
+    })
+    assert logs["ok"] is False
+    assert logs["error"]["code"] == "bad_argument"
 
 
 def test_openclaw_sync_rejects_non_anvil_api_key_env(tmp_path):
