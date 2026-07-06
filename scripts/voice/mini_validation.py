@@ -60,7 +60,7 @@ import time
 import urllib.parse
 import urllib.error
 import urllib.request
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -71,6 +71,7 @@ if str(_REPO_ROOT) not in sys.path:
 from anvil_serving import serves as generic_serves  # noqa: E402
 from anvil_serving.voice import benchmark as voice_benchmark  # noqa: E402
 from anvil_serving.voice import config as voice_config  # noqa: E402
+from anvil_serving.voice.stages.tts import TTSStageConfig, stream_speech  # noqa: E402
 from anvil_serving.voice.serves._common import ServeNotConfigured  # noqa: E402
 from anvil_serving.voice.serves.stt import STTServe, STTServeConfig  # noqa: E402
 from anvil_serving.voice.serves.tts import TTSServe, TTSServeConfig  # noqa: E402
@@ -90,6 +91,7 @@ DEFAULT_TARGET_HOST_PATTERN = r"(?i)^fakoli[-_. ]?mini(?:[-_. ]?2)?$"
 DEFAULT_TARGET_HW_MODEL_PATTERN = r"^Mac16,10$"
 DEFAULT_FAKOLI_DARK_HOSTS = ("100.87.34.66", "fakoli-dark")
 MIN_TTS_OUTPUT_SECONDS = 0.25
+BENCHMARK_SAMPLE_TEXT = "testing the local voice proof"
 
 # POSIX-only (macOS/Linux -- the Mini's actual platform); guarded so this
 # module stays importable on Windows dev sandboxes (no `resource` module
@@ -442,6 +444,33 @@ def route_auth_negative_probe(data: Dict[str, Any]) -> Dict[str, Any]:
         return result
 
 
+def _stage_config_from_table(table: Dict[str, Any], cls) -> Any:
+    allowed = {field.name for field in fields(cls)}
+    kwargs = {key: value for key, value in table.items() if key in allowed}
+    kwargs.setdefault("base_url", "")
+    kwargs.setdefault("model", "")
+    return cls(**kwargs)
+
+
+def build_benchmark_sample(data: Dict[str, Any]) -> tuple[Dict[str, Any], bytes, int]:
+    """Create a speech sample through local TTS for the STT benchmark input."""
+    cfg = _stage_config_from_table(data["voice"].get("tts", {}), TTSStageConfig)
+    chunks: List[bytes] = []
+    for chunk in stream_speech(BENCHMARK_SAMPLE_TEXT, cfg):
+        if chunk:
+            chunks.append(chunk)
+    pcm = b"".join(chunks)
+    sample = {
+        "source": "tts_endpoint",
+        "text": BENCHMARK_SAMPLE_TEXT,
+        "audio_bytes": len(pcm),
+        "sample_rate": cfg.source_sample_rate,
+    }
+    if not pcm:
+        raise RuntimeError("TTS benchmark sample generation produced no audio")
+    return sample, pcm, cfg.source_sample_rate
+
+
 def container_mem_usage(container: str, *, _run: Callable[..., Any] = subprocess.run) -> Optional[str]:
     """``docker stats --no-stream`` MemUsage string for one container (e.g.
     ``"512MiB / 16GiB"``), or ``None`` if docker/the container isn't
@@ -725,6 +754,11 @@ def build_verdict(result: Dict[str, Any]) -> Dict[str, Any]:
     route_auth_negative = result.get("route_auth_negative") or {}
     if result.get("llm_auth_env") and route_auth_negative.get("auth_enforced") is not True:
         failure_modes.append("llm_auth_not_enforced")
+    if result.get("benchmark_sample_error"):
+        failure_modes.append("benchmark_sample_error")
+    sample = result.get("benchmark_sample") or {}
+    if not isinstance(sample.get("audio_bytes"), int) or sample.get("audio_bytes", 0) <= 0:
+        failure_modes.append("benchmark_sample_missing")
     if result.get("benchmark_error"):
         failure_modes.append("benchmark_error")
     elif not result.get("benchmark"):
@@ -829,13 +863,28 @@ def run_validation(
 
     benchmark_result: Optional[Dict[str, Any]] = None
     benchmark_error: Optional[str] = None
+    benchmark_sample: Optional[Dict[str, Any]] = None
+    benchmark_sample_error: Optional[str] = None
+    benchmark_pcm: Optional[bytes] = None
+    benchmark_sample_rate = 16000
+    try:
+        benchmark_sample, benchmark_pcm, benchmark_sample_rate = build_benchmark_sample(data)
+    except Exception as exc:  # noqa: BLE001 - report sample generation failures as validation evidence
+        benchmark_sample_error = str(exc)
     try:
         # LLM stage is routed to fakoli-dark's router (whatever [voice.llm]
         # in the manifest declares -- e.g. the tailnet address, per the saved
         # Mini<->router tailnet-binding note); STT/TTS calls stay local. This
         # makes LIVE network calls -- see run_benchmark_from_manifest's own
         # honesty note in anvil_serving/voice/benchmark.py.
-        benchmark_result = voice_benchmark.run_benchmark_from_manifest(data)
+        if benchmark_sample_error:
+            raise RuntimeError("benchmark sample generation failed: %s" % benchmark_sample_error)
+        benchmark_result = voice_benchmark.run_benchmark_from_manifest(
+            data,
+            pcm=benchmark_pcm,
+            sample_rate=benchmark_sample_rate,
+            reference_text=BENCHMARK_SAMPLE_TEXT,
+        )
     except Exception as exc:  # noqa: BLE001 - a benchmark failure is itself a reportable failure mode, not a crash
         benchmark_error = str(exc)
 
@@ -906,6 +955,8 @@ def run_validation(
         "route_auth_negative": route_auth_negative,
         "stt_local_endpoint": is_loopback_url(voice["stt"]["base_url"]),
         "tts_local_endpoint": is_loopback_url(voice["tts"]["base_url"]),
+        "benchmark_sample": benchmark_sample,
+        "benchmark_sample_error": benchmark_sample_error,
         "benchmark": benchmark_result,
         "benchmark_error": benchmark_error,
         "measured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

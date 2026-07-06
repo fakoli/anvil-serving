@@ -48,6 +48,15 @@ def _benchmark_ok() -> dict:
     }
 
 
+def _benchmark_sample_ok() -> dict:
+    return {
+        "source": "tts_endpoint",
+        "text": "testing the local voice proof",
+        "audio_bytes": 16000,
+        "sample_rate": 16000,
+    }
+
+
 def _supported_result() -> dict:
     return {
         "platform": "darwin",
@@ -74,6 +83,8 @@ def _supported_result() -> dict:
         "llm_auth_env_present": True,
         "route_proof": {"ok": True},
         "route_auth_negative": {"auth_enforced": True},
+        "benchmark_sample": _benchmark_sample_ok(),
+        "benchmark_sample_error": None,
         "benchmark": _benchmark_ok(),
         "benchmark_error": None,
     }
@@ -275,6 +286,8 @@ def test_build_verdict_rejects_missing_memory_audio_and_auth():
         "llm_endpoint_is_fakoli_dark": False,
         "llm_auth_env_present": False,
         "route_auth_negative": {"auth_enforced": False},
+        "benchmark_sample": None,
+        "benchmark_sample_error": "no audio",
         "benchmark": {
             "ttfa_ms": 100.0,
             "turn_latency_ms": 500.0,
@@ -298,6 +311,8 @@ def test_build_verdict_rejects_missing_memory_audio_and_auth():
     assert "llm_not_routed_to_remote_fakoli_dark" in verdict["failure_modes"]
     assert "llm_auth_token_unset" in verdict["failure_modes"]
     assert "llm_auth_not_enforced" in verdict["failure_modes"]
+    assert "benchmark_sample_error" in verdict["failure_modes"]
+    assert "benchmark_sample_missing" in verdict["failure_modes"]
 
 
 def test_build_verdict_rejects_wrong_mini_host_even_when_otherwise_perfect():
@@ -466,6 +481,40 @@ def test_external_memory_proof_ignores_stale_docker_stats(monkeypatch):
 
     assert proof and proof["source"] == "macos_process_rss"
     assert "container_mem" not in proof
+
+
+def test_build_benchmark_sample_uses_tts_endpoint_config(monkeypatch):
+    from scripts.voice import mini_validation
+
+    seen = {}
+
+    def fake_stream_speech(text, config):
+        seen["text"] = text
+        seen["model"] = config.model
+        seen["source_sample_rate"] = config.source_sample_rate
+        yield b"\x01\x00\x02\x00"
+
+    monkeypatch.setattr(mini_validation, "stream_speech", fake_stream_speech)
+    sample, pcm, sample_rate = mini_validation.build_benchmark_sample({
+        "voice": {
+            "tts": {
+                "base_url": "http://127.0.0.1:30011/v1",
+                "model": "mlx-community/Kokoro-82M-bf16",
+                "response_format": "pcm",
+                "source_sample_rate": 24000,
+            }
+        }
+    })
+
+    assert seen == {
+        "text": mini_validation.BENCHMARK_SAMPLE_TEXT,
+        "model": "mlx-community/Kokoro-82M-bf16",
+        "source_sample_rate": 24000,
+    }
+    assert sample["source"] == "tts_endpoint"
+    assert sample["audio_bytes"] == 4
+    assert pcm == b"\x01\x00\x02\x00"
+    assert sample_rate == 24000
 
 
 def test_valid_memory_proof_rejects_unobserved_or_zero_native_rss():
