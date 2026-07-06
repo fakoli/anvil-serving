@@ -103,6 +103,7 @@ See [Terminology](TERMINOLOGY.md) for the naming guide.
 | [Getting started](GETTING-STARTED.md) | Evaluate the front door, then route real local tiers. |
 | [Product architecture](QUALITY-GATED-ROUTER.md) | Understand intents, routing, verification, and fallback. |
 | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Run MCP/controller workflows. |
+| [Operator skills and sub-agents](OPERATOR-SKILLS-AND-SUBAGENTS.md) | Map verbs to MCP/skills and run small-model workflow slices safely. |
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Tune thinking/sampling behavior for a served model. |
 | [Serves & eval](SERVES-AND-EVAL.md) | Manage model serves and run evals. |
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |
