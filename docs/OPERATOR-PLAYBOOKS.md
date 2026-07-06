@@ -49,7 +49,7 @@ resource and keep the same gate semantics.
 | Correctness gate | `preflight_probe` | `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
 | Throughput run | `benchmark_probe` for a bounded probe; `benchmark_artifact` when `--json-out` evidence is required | `anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
 | OpenClaw config sync | `openclaw_sync`, `openclaw_gateway_restart` | `anvil-serving harness sync openclaw --config <router.toml> ...`; `anvil-serving harness restart openclaw ...` |
-| Human-gated promotion | `router_promote` preview; apply requires `confirm:true` and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
+| Human-gated promotion | `router_promote` preview; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
 
 Treat missing MCP tools as a product gap, not a reason to scrape Docker output
 or hand-edit remote configs. Use `127.0.0.1` in local URLs.
@@ -75,7 +75,7 @@ MCP invocation rules:
   lifecycle change requires both `confirm:true` and `dry_run:false`.
 - For `router_promote`, preview validates the candidate profile/config and
   returns a compact diff summary. Live apply additionally requires
-  `human_approved:true`; without it, the tool refuses even when `confirm:true`.
+  `confirm:true`, `dry_run:false`, and `human_approved:true`.
 - For `preflight_probe`, `benchmark_probe`, `benchmark_artifact`, and
   `openclaw_sync`, call once with `confirm:false` or `dry_run:true` to preview
   the command/result shape, then call with `confirm:true` only after the exact
