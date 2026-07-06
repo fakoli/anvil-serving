@@ -297,6 +297,133 @@ def test_main_keeps_audio_open_while_shutdown_drains(monkeypatch):
     assert fake_audio.exited_after_shutdown is True
 
 
+def test_capture_main_ignores_pipeline_input_after_playback_barge_freeze(monkeypatch, tmp_path):
+    data = {
+        "voice": {
+            "llm": {},
+            "stt": {},
+            "tts": {},
+        }
+    }
+    play_started = local_loop_demo.threading.Event()
+    release_play = local_loop_demo.threading.Event()
+    frame = b"\0" * 640
+
+    class FakeCancelScope:
+        @staticmethod
+        def is_stale(_generation):
+            return False
+
+        @staticmethod
+        def mark_settled():
+            return None
+
+    class FakeVAD:
+        responding = True
+
+    class FakePipeline:
+        def __init__(self):
+            self.audio_in = local_loop_demo.queue.Queue()
+            self.audio_out = local_loop_demo.queue.Queue()
+            self.vad_events = local_loop_demo.queue.Queue()
+            self.transcript_events = local_loop_demo.queue.Queue()
+            self.cancel_scope = FakeCancelScope()
+            self.vad = FakeVAD()
+
+        def start(self):
+            self.audio_out.put(
+                local_loop_demo.AudioOut(
+                    turn_id="assistant-turn",
+                    turn_revision=0,
+                    generation=1,
+                    pcm=frame,
+                    sample_rate=16000,
+                )
+            )
+
+        def shutdown_gracefully(self, *, join_timeout=None):
+            self.audio_out.put(local_loop_demo.PIPELINE_END)
+
+    class FakeAudio:
+        def __init__(self):
+            self.reads = 0
+            self.clear_calls = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read_frame(self, timeout=None):
+            self.reads += 1
+            if self.reads == 1:
+                assert play_started.wait(timeout=1.0)
+                detected_at = local_loop_demo.time.perf_counter()
+                fake_pipeline.vad_events.put(
+                    local_loop_demo.SpeechEvent(
+                        kind="started",
+                        turn_id="barge-turn",
+                        turn_revision=0,
+                        generation=2,
+                        audio_ms=20,
+                        barge_in=True,
+                        detected_monotonic_s=detected_at,
+                    )
+                )
+                fake_pipeline.vad_events.put(
+                    local_loop_demo.SpeechEvent(
+                        kind="stopped",
+                        turn_id="barge-turn",
+                        turn_revision=0,
+                        generation=2,
+                        audio_ms=80,
+                        barge_in=True,
+                        detected_monotonic_s=detected_at,
+                    )
+                )
+                return frame
+            if self.reads <= 3:
+                return frame
+            release_play.set()
+            raise KeyboardInterrupt
+
+        @staticmethod
+        def play(_pcm):
+            play_started.set()
+            assert release_play.wait(timeout=1.0)
+
+        def clear_pending_input(self):
+            self.clear_calls += 1
+            return 0
+
+    fake_pipeline = FakePipeline()
+    fake_audio = FakeAudio()
+    monkeypatch.setattr(local_loop_demo, "load_manifest_or_die", lambda _path: (data, None))
+    monkeypatch.setattr(
+        local_loop_demo,
+        "real_pipeline_config_from_manifest",
+        lambda *_args, **_kwargs: type("Config", (), {"tts": type("TTS", (), {"target_sample_rate": 16000})()})(),
+    )
+    monkeypatch.setattr(local_loop_demo, "route_decision_probe", lambda *_args, **_kwargs: {"ok": True})
+    monkeypatch.setattr(local_loop_demo, "RealVoicePipeline", lambda _config: fake_pipeline)
+    monkeypatch.setattr(local_loop_demo, "LocalAudioDuplex", lambda _config: fake_audio)
+
+    prefix = str(tmp_path / "proof")
+
+    assert local_loop_demo.main(["--capture", prefix, "--duration", "5"]) == 1
+
+    assert fake_pipeline.audio_in.qsize() == 0
+    assert fake_audio.clear_calls == 1
+    events = [
+        json.loads(line)
+        for line in Path(prefix + ".events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert any(event["kind"] == "input_frozen_after_barge" for event in events)
+    ignored = [event for event in events if event["kind"] == "input_ignored_after_barge"]
+    assert ignored and ignored[-1]["frames"] == 3
+
+
 def test_main_shuts_pipeline_down_if_audio_enter_fails(monkeypatch):
     data = {
         "voice": {
@@ -687,6 +814,29 @@ def test_capture_barge_in_hint_distinguishes_too_early_speech_from_no_overlap():
         )],
         [],
     ) == ""
+
+
+def test_capture_freezes_input_only_after_playback_barge_in_segment():
+    assert local_loop_demo.should_freeze_input_after_barge_in(
+        capture_prefix="proof",
+        turn_state={"barge_in": True},
+        already_frozen=False,
+    )
+    assert not local_loop_demo.should_freeze_input_after_barge_in(
+        capture_prefix=None,
+        turn_state={"barge_in": True},
+        already_frozen=False,
+    )
+    assert not local_loop_demo.should_freeze_input_after_barge_in(
+        capture_prefix="proof",
+        turn_state={"barge_in": False},
+        already_frozen=False,
+    )
+    assert not local_loop_demo.should_freeze_input_after_barge_in(
+        capture_prefix="proof",
+        turn_state={"barge_in": True},
+        already_frozen=True,
+    )
 
 
 def test_playback_generations_at_uses_detection_time_not_drain_time():

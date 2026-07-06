@@ -23,6 +23,9 @@ is True``), a fresh speech onset detected by
 script's only barge-in responsibility is clearing already-buffered mic input
 right after a turn ends so stale frames don't bleed into the next one (see
 :meth:`~anvil_serving.voice.connections.local_audio.LocalAudioDuplex.clear_pending_input`).
+In capture mode, after a playback-overlapping barge-in utterance ends, the
+script also pauses further mic frames from entering the pipeline so the
+interrupted reply can finish and be measured.
 
 ``--capture [PREFIX]`` saves the session's mic input to ``PREFIX.input.wav``,
 played assistant audio to ``PREFIX.output.wav``, event evidence to
@@ -648,6 +651,25 @@ def capture_barge_in_hint(turns: List[TurnMetric], events: List[Dict[str, Any]])
     return "no speech onset reached VAD; check the microphone route or input device"
 
 
+def should_freeze_input_after_barge_in(
+    *,
+    capture_prefix: Optional[str],
+    turn_state: Dict[str, Any],
+    already_frozen: bool,
+) -> bool:
+    return bool(capture_prefix and turn_state.get("barge_in") and not already_frozen)
+
+
+def drain_queue(q: "queue.Queue[Any]") -> int:
+    dropped = 0
+    while True:
+        try:
+            q.get_nowait()
+            dropped += 1
+        except queue.Empty:
+            return dropped
+
+
 def playback_generations_at(playback_intervals: List[Dict[str, Any]], monotonic_s: float) -> List[int]:
     return sorted(
         {
@@ -731,6 +753,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     turn_metrics: List[TurnMetric] = []
     stop_event = threading.Event()
     route_proof = {}
+    input_frozen_after_barge = False
+    ignored_input_frames_after_barge = 0
     active_playback_lock = threading.Lock()
     active_playback_generations: Set[int] = set()
     playback_intervals: List[Dict[str, Any]] = []
@@ -765,6 +789,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return turn_state.setdefault(turn_id, {})
 
     def drain_sidebands() -> None:
+        nonlocal input_frozen_after_barge
         while True:
             try:
                 item = pipeline.vad_events.get_nowait()
@@ -804,6 +829,26 @@ def main(argv: Optional[List[str]] = None) -> int:
                     )
             elif item.kind == "stopped":
                 state["speech_stopped_at"] = now
+                if should_freeze_input_after_barge_in(
+                    capture_prefix=capture_prefix,
+                    turn_state=state,
+                    already_frozen=input_frozen_after_barge,
+                ):
+                    input_frozen_after_barge = True
+                    dropped = audio.clear_pending_input()
+                    dropped_pipeline_frames = drain_queue(pipeline.audio_in)
+                    _event(
+                        "input_frozen_after_barge",
+                        turn_id=item.turn_id,
+                        generation=item.generation,
+                        dropped_pending_frames=dropped,
+                        dropped_pipeline_frames=dropped_pipeline_frames,
+                    )
+                    print(
+                        "local_loop_demo: barge-in utterance ended; mic input paused "
+                        "so the interrupted reply can finish",
+                        flush=True,
+                    )
             _event(
                 "vad_%s" % item.kind,
                 turn_id=item.turn_id,
@@ -1012,10 +1057,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                     if frame is None:
                         drain_sidebands()
                         continue
+                    drain_sidebands()
                     frame = normalize_input_frame(frame, args.input_sample_rate)
                     if input_frames is not None:
                         input_frames.append(frame)
-                    pipeline.audio_in.put(frame)
+                    if input_frozen_after_barge:
+                        ignored_input_frames_after_barge += 1
+                    else:
+                        pipeline.audio_in.put(frame)
                     drain_sidebands()
             except KeyboardInterrupt:
                 print("\nlocal_loop_demo: interrupted -- shutting down")
@@ -1046,6 +1095,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         playback_errors,
     )
     if capture_prefix and input_frames is not None and output_frames is not None:
+        if ignored_input_frames_after_barge:
+            _event("input_ignored_after_barge", frames=ignored_input_frames_after_barge)
         finding_status = {"row_written": False}
         write_capture(
             capture_prefix,

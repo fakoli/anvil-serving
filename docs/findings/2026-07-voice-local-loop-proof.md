@@ -4,8 +4,9 @@
 > acceptance command now authenticates against the router, completes ordinary
 > mic -> STT -> anvil-routed LLM -> TTS -> speaker turns on fakoli-dark, and
 > has observed playback-overlapping barge-in. No successful session row has
-> been recorded yet because the latest capture hit the duration-cap shutdown
-> before an interrupted reply completed with TTFA/latency/output metrics.
+> been recorded yet because the latest capture kept feeding follow-on mic
+> input after barge-in, making each interrupted reply stale before it could
+> complete with TTFA/latency/output metrics.
 
 Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s3
 (barge-in/staleness design) · `anvil_serving/voice/connections/local_audio.py`
@@ -80,8 +81,11 @@ with TTFA, end-to-end latency, non-empty assistant output audio, and a validated
 
 In capture mode the harness prints a live timing cue:
 `assistant audio started; speak over it now for barge-in proof`. Speak while
-the assistant voice is audible, then let the interrupted reply complete before
-pressing Ctrl+C.
+the assistant voice is audible, stop after the harness prints
+`barge-in utterance ended; mic input paused`, then let the interrupted reply
+complete before pressing Ctrl+C. Capture mode keeps recording raw input frames
+that have already been read, but it stops forwarding later mic frames into the
+pipeline after that pause cue.
 
 To diagnose input routing before rerunning the proof:
 
@@ -122,6 +126,14 @@ Follow-up fix: shutdown now keeps the audio context open while
 `shutdown_gracefully()` and the playback thread drain, records playback write
 failures as capture events instead of thread-fatal tracebacks, and refuses to
 append a successful findings row if playback failed.
+
+Follow-up live attempt (`local-loop-20260706T045814Z`) proved the remaining
+operator problem: playback-overlapping barge-in fired twice, but additional
+mic speech kept creating later generations, so every reply was made stale
+before a completed metric row could be recorded. Capture mode now pauses
+pipeline input after the first playback-barge utterance ends, clears pending
+pipeline input, and continues recording raw input frames that the harness reads
+after the pause cue so the interrupted reply can finish.
 
 ### 2026-07-06 auth-fixed, no-barge live attempts
 
@@ -218,8 +230,8 @@ outside a quiet room?
 
 1. Rerun the exact acceptance command, speak one prompt, wait for the
    `assistant audio started` cue or audible TTS, then speak over the assistant
-   voice once and let the interrupted reply finish. Avoid repeated follow-up
-   interruptions after the first `playback barge-in observed` cue.
+   voice once. When the harness prints `barge-in utterance ended; mic input
+   paused`, let the interrupted reply finish.
 2. If the default input route regresses to silence, rerun with a known-good
    explicit `--input-device` value from `sounddevice.query_devices()`.
 3. After a successful proof, likely candidates remain: swap in a real
