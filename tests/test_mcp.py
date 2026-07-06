@@ -5,11 +5,15 @@ HTTP seams are faked at the module boundary.
 """
 import io
 import json
+import re
+import sqlite3
+import sys
 import threading
 import textwrap
 import types
 import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 from anvil_serving import cli, mcp
 
@@ -18,16 +22,19 @@ def proc(rc=0, out="", err=""):
     return types.SimpleNamespace(returncode=rc, stdout=out, stderr=err)
 
 
-def _manifest(tmp_path):
+def _manifest(tmp_path, *, up=False):
     p = tmp_path / "serves.toml"
-    p.write_text(textwrap.dedent("""
+    body = """
         [[serve]]
         name = "fast"
         container = "vllm-fast"
         port = 30001
         health = "/health"
         model = "fast-model"
-    """), encoding="utf-8")
+    """
+    if up:
+        body += '        up = "docker compose -f {dir}/docker-compose.yml up -d"\n'
+    p.write_text(textwrap.dedent(body), encoding="utf-8")
     return str(p)
 
 
@@ -48,8 +55,57 @@ def _router_cfg(tmp_path):
 
         [router.presets]
         chat = ["fast-local"]
+        chat-fast = ["fast-local"]
+        review = ["fast-local"]
     """), encoding="utf-8")
     return str(p)
+
+
+def _profile_doc(tmp_path, name="profile.json", decision="allow"):
+    p = tmp_path / name
+    p.write_text(json.dumps({
+        "schema": "anvil-serving.router.profile_bootstrap/v2",
+        "mode": "live",
+        "eval_max": 25.0,
+        "entries": [{
+            "tier_id": "fast-local",
+            "work_class": "chat",
+            "decision": decision,
+            "quality_score": 0.9 if decision == "allow" else 0.2,
+            "sample_n": 3,
+            "last_measured": "2026-07-06T00:00:00Z",
+        }],
+    }), encoding="utf-8")
+    return str(p)
+
+
+def _catalog(tmp_path):
+    root = tmp_path / "model-library"
+    cards = root / "cards"
+    cards.mkdir(parents=True)
+    (root / "INDEX.md").write_text("| human table only |\n", encoding="utf-8")
+    (cards / "owner__repo.json").write_text(json.dumps({
+        "id": "owner/repo",
+        "owner": "owner",
+        "repo": "repo",
+        "format": "safetensors",
+        "sglang_loadable": True,
+    }), encoding="utf-8")
+    return root
+
+
+def _external_bench_db(tmp_path):
+    from anvil_serving.external_benchmarks import cli as external_cli
+
+    db = tmp_path / "benchmarks.sqlite"
+    fixture = Path("tests/fixtures/external_benchmarks/millstone_sample.json")
+    assert external_cli.main(["import", "--source", "millstone", "--file", str(fixture), "--db", str(db)]) == 0
+    return db
+
+
+def _sqlite_count(db, table):
+    with sqlite3.connect(db) as conn:
+        return conn.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
 
 
 class Resp:
@@ -90,13 +146,28 @@ def test_tools_list_has_json_schemas():
     tools = {t["name"]: t for t in mcp.list_tools()}
     for name in [
         "router_status",
+        "router_logs",
+        "router_manage",
+        "decision_summary",
+        "router_promote",
         "serves_status",
+        "serves_manage",
+        "serves_logs",
         "doctor_summary",
+        "host_summary",
+        "models_inventory",
+        "cache_prune_plan",
         "route_decision",
         "openclaw_sync",
         "openclaw_gateway_restart",
         "preflight_probe",
         "benchmark_probe",
+        "benchmark_artifact",
+        "workflow_packet_validate",
+        "external_bench_sources",
+        "external_bench_list",
+        "external_bench_report",
+        "external_bench_compare",
     ]:
         assert name in tools
         schema = tools[name]["inputSchema"]
@@ -108,7 +179,16 @@ def test_tools_list_has_json_schemas():
         assert "api_key" not in props
         assert props["api_key_env"]["type"] == "string"
     assert tools["benchmark_probe"]["inputSchema"]["properties"]["requests"]["maximum"] == 200
+    assert tools["benchmark_artifact"]["inputSchema"]["required"] == ["base_url", "model", "artifact_path"]
+    assert "evidence_dir" not in tools["benchmark_artifact"]["inputSchema"]["properties"]
+    assert tools["workflow_packet_validate"]["inputSchema"]["required"] == ["packet"]
     assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
+    assert tools["router_promote"]["inputSchema"]["properties"]["human_approved"]["type"] == "boolean"
+    assert tools["openclaw_sync"]["inputSchema"]["properties"]["skills"]["type"] == "boolean"
+    assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
+    assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
+    assert tools["host_summary"]["inputSchema"]["properties"] == {}
+    assert "execute" not in tools["cache_prune_plan"]["inputSchema"]["properties"]
 
 
 def test_stdio_tools_list_and_call(tmp_path):
@@ -181,6 +261,185 @@ def test_router_status_is_structured(monkeypatch):
         "health_url": "http://127.0.0.1:8000/",
         "ok": True,
     }
+
+
+def test_router_logs_are_bounded_spooled_and_redacted(monkeypatch):
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["capture_output"] = kwargs.get("capture_output")
+        kwargs["stdout"].write(b"Authorization: Bearer router-secret-token\n")
+        kwargs["stdout"].write(b'{"x-api-key":"json-secret-token"}\n')
+        kwargs["stderr"].write(b"ANVIL_ROUTER_TOKEN=another-secret\n")
+        return proc(0)
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("router_logs", {
+        "container": "anvil-router",
+        "tail": 5,
+        "max_output_bytes": 1024,
+    })
+    assert env["ok"] is True
+    assert env["data"]["bounded"] is True
+    assert seen["argv"][:5] == [sys.executable, "-m", "anvil_serving.cli", "router", "logs"]
+    assert "--follow" not in seen["argv"]
+    assert seen["capture_output"] is None
+    rendered = json.dumps(env)
+    assert "router-secret-token" not in rendered
+    assert "json-secret-token" not in rendered
+    assert "another-secret" not in rendered
+    assert "<redacted>" in rendered
+
+
+def test_router_logs_rejects_follow_and_bad_tail():
+    follow = mcp.call_tool("router_logs", {"follow": True})
+    assert follow["ok"] is False
+    assert follow["error"]["code"] == "follow_not_allowed"
+
+    tail = mcp.call_tool("router_logs", {"tail": 5001})
+    assert tail["ok"] is False
+    assert tail["error"]["code"] == "bad_argument"
+
+
+def test_router_manage_preview_and_confirmed_reload(monkeypatch):
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["timeout"] = kwargs.get("timeout")
+        return proc(0, "restarted\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    preview = mcp.call_tool("router_manage", {
+        "action": "reload",
+        "container": "anvil-router",
+        "dry_run": False,
+    })
+    assert preview["ok"] is True
+    assert preview["data"]["applied"] is False
+    assert "--dry-run" in preview["data"]["command"]
+    assert seen == {}
+
+    confirmed = mcp.call_tool("router_manage", {
+        "action": "reload",
+        "container": "anvil-router",
+        "confirm": True,
+        "dry_run": False,
+        "timeout_seconds": 9,
+    })
+    assert confirmed["ok"] is True
+    assert confirmed["data"]["applied"] is True
+    assert "--dry-run" not in seen["argv"]
+    assert seen["argv"][3:5] == ["router", "reload"]
+    assert seen["timeout"] == 9
+
+
+def test_decision_summary_omits_prompt_and_secret_fields(tmp_path):
+    record = {
+        "intent": "chat",
+        "work_class": "bounded-edit",
+        "requested_tiers": ["fast-local", "cloud"],
+        "served_tier": "cloud",
+        "fell_back": True,
+        "total_prompt_tokens": 8,
+        "total_completion_tokens": 4,
+        "prompt": "secret prompt text",
+        "api_key": "sk-proj-secret",
+        "attempts": [{
+            "tier_id": "fast-local",
+            "outcome": "fallback",
+            "verifier_passed": False,
+            "verify_reason": "x-api-key: local-secret-token",
+            "prompt_tokens": 8,
+            "completion_tokens": 4,
+        }],
+    }
+    path = tmp_path / "decisions.jsonl"
+    path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    env = mcp.call_tool("decision_summary", {"path": str(path), "limit": 5})
+    assert env["ok"] is True
+    assert env["data"]["count"] == 1
+    rendered = json.dumps(env)
+    assert "secret prompt text" not in rendered
+    assert "sk-proj-secret" not in rendered
+    assert "local-secret-token" not in rendered
+    assert "<redacted>" in rendered
+
+
+def test_decision_summary_tool_calls_router_decisions_endpoint(monkeypatch):
+    token = "router-secret-token"
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", token)
+    seen = {}
+
+    def open_decisions(req, timeout=5):
+        seen["url"] = req.full_url
+        seen["auth"] = req.get_header("Authorization")
+        return Resp(json.dumps({
+            "count": 1,
+            "records": [{"served_tier": "fast-local"}],
+            "echo": token,
+        }).encode("utf-8"))
+
+    monkeypatch.setattr(mcp, "_urlopen_no_proxy_no_redirect", open_decisions)
+    env = mcp.call_tool("decision_summary", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "api_key_env": "ANVIL_ROUTER_TOKEN",
+        "limit": 7,
+    })
+    assert env["ok"] is True
+    assert seen["url"] == "http://127.0.0.1:8000/v1/decisions?limit=7"
+    assert seen["auth"] == "Bearer " + token
+    rendered = json.dumps(env)
+    assert token not in rendered
+    assert "<redacted>" in rendered
+
+
+def test_router_promotion_preview_and_human_gate(tmp_path, monkeypatch):
+    current = _profile_doc(tmp_path, "current.json", decision="deny")
+    candidate = _profile_doc(tmp_path, "candidate.json", decision="allow")
+    cfg = tmp_path / "candidate.toml"
+    cfg.write_text('[router]\nprofile_path = "/etc/anvil/profile.json"\n', encoding="utf-8")
+
+    preview = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "config": str(cfg),
+        "current_profile": current,
+    })
+    assert preview["ok"] is True
+    assert preview["data"]["applied"] is False
+    assert "--dry-run" in preview["data"]["command"]
+    assert preview["data"]["preview"]["diff"]["changed_count"] == 1
+
+    refused = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "confirm": True,
+        "dry_run": False,
+    })
+    assert refused["ok"] is False
+    assert refused["error"]["code"] == "human_approval_required"
+
+    from anvil_serving import router_manage
+
+    seen = {}
+
+    def fake_promote(profile_path, **kwargs):
+        seen["profile_path"] = profile_path
+        seen["kwargs"] = kwargs
+        return 0
+
+    monkeypatch.setattr(router_manage, "cmd_promote", fake_promote)
+    applied = mcp.call_tool("router_promote", {
+        "profile": candidate,
+        "config": str(cfg),
+        "confirm": True,
+        "dry_run": False,
+        "human_approved": True,
+    })
+    assert applied["ok"] is True
+    assert applied["data"]["applied"] is True
+    assert seen["profile_path"] == candidate
+    assert seen["kwargs"]["config_path"] == str(cfg)
 
 
 def test_route_decision_posts_to_v1_route(monkeypatch):
@@ -258,9 +517,498 @@ def test_openclaw_sync_preview_uses_harness_logic_and_env_ref(tmp_path):
     assert env["ok"] is True
     assert env["data"]["applied"] is False
     preview = env["data"]["preview"]
-    assert preview["model_ids"] == ["chat"]
+    assert preview["model_ids"] == ["chat", "chat-fast", "review"]
     # Secret hygiene: config references the env var by name; no literal secret is resolved.
     assert preview["api_key"] == "${ANVIL_ROUTER_TOKEN}"
+
+
+def test_openclaw_sync_preview_can_include_skills(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "base_url": "http://127.0.0.1:8000/v1",
+        "api_key_env": "ANVIL_ROUTER_TOKEN",
+        "skills": True,
+        "skill_dir": "/opt/anvil-serving/examples/openclaw/skills",
+    })
+    assert env["ok"] is True
+    preview = env["data"]["preview"]
+    assert preview["skills"] is True
+    assert preview["skill_name"] == "anvil-serving-workbench"
+    assert preview["skill_load_dirs"] == ["/opt/anvil-serving/examples/openclaw/skills"]
+    assert preview["agent_models"]["anvil-orchestrator"] == "anvil/review"
+    assert preview["agent_models"]["anvil-inventory-scout"] == "anvil/chat-fast"
+    assert preview["agent_models"]["anvil-quality-critic"] == "anvil/review"
+    assert preview["agent_models"]["anvil-adversarial-reviewer"] == "anvil/review"
+
+
+def test_openclaw_sync_confirmed_apply_forwards_skills(tmp_path, monkeypatch):
+    cfg = _router_cfg(tmp_path)
+    out = tmp_path / "openclaw.json"
+    seen = {}
+
+    from anvil_serving import harness
+
+    def fake_sync(config_path, **kwargs):
+        seen["config_path"] = config_path
+        seen["kwargs"] = kwargs
+        return 0
+
+    monkeypatch.setattr(harness, "cmd_sync_openclaw", fake_sync)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "out": str(out),
+        "skills": True,
+        "skill_dir": "/opt/anvil-serving/examples/openclaw/skills",
+        "confirm": True,
+        "dry_run": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is True
+    assert seen["config_path"] == cfg
+    assert seen["kwargs"]["skills"] is True
+    assert seen["kwargs"]["skill_dir"] == "/opt/anvil-serving/examples/openclaw/skills"
+
+
+def test_models_inventory_reads_structured_catalog(tmp_path):
+    catalog = _catalog(tmp_path)
+    env = mcp.call_tool("models_inventory", {"catalog_dir": str(catalog)})
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["synced"] is False
+    assert data["catalog"]["count"] == 1
+    assert data["catalog"]["entries"][0]["id"] == "owner/repo"
+    assert data["catalog"]["entries"][0]["summary_path"].endswith("owner__repo.json")
+
+
+def test_models_inventory_missing_catalog_points_to_sync(tmp_path):
+    catalog = tmp_path / "missing library"
+    env = mcp.call_tool("models_inventory", {"catalog_dir": str(catalog)})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "catalog_not_found"
+    assert "error.details.command" in env["error"]["message"]
+    assert env["error"]["details"]["command"][-3:] == ["sync", "--out", str(catalog)]
+
+
+def test_models_inventory_sync_preview_is_argv(tmp_path):
+    catalog = tmp_path / "model-library"
+    env = mcp.call_tool("models_inventory", {
+        "catalog_dir": str(catalog),
+        "hf_roots": "C:/hf-cache",
+        "model_dirs": "D:/models",
+        "sync": True,
+    })
+    assert env["ok"] is True
+    assert env["data"]["synced"] is False
+    assert env["data"]["dry_run"] is True
+    cmd = env["data"]["command"]
+    assert cmd[:3] == [sys.executable, "-m", "anvil_serving.cli"]
+    assert cmd[3:7] == ["models", "sync", "--out", str(catalog)]
+    assert "--hf-roots" in cmd and "C:/hf-cache" in cmd
+    assert "--model-dirs" in cmd and "D:/models" in cmd
+
+
+def test_models_inventory_confirmed_sync_returns_catalog_counts(tmp_path, monkeypatch):
+    catalog = tmp_path / "model-library"
+
+    def fake_run(argv, **kwargs):
+        assert argv[3:7] == ["models", "sync", "--out", str(catalog)]
+        cards = catalog / "cards"
+        cards.mkdir(parents=True)
+        (catalog / "INDEX.md").write_text("# generated\n", encoding="utf-8")
+        (cards / "owner__repo.json").write_text(json.dumps({
+            "id": "owner/repo",
+            "format": "safetensors",
+            "model_type": "qwen3",
+        }), encoding="utf-8")
+        return proc(0, "wrote INDEX.md + 1 summaries\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("models_inventory", {
+        "catalog_dir": str(catalog),
+        "sync": True,
+        "confirm": True,
+        "timeout_seconds": 1,
+    })
+    assert env["ok"] is True
+    assert env["data"]["synced"] is True
+    assert env["data"]["catalog"]["count"] == 1
+    assert env["data"]["stdout"] == "wrote INDEX.md + 1 summaries\n"
+
+
+def test_host_summary_tool_is_structured_and_read_only(monkeypatch):
+    from anvil_serving import host
+
+    monkeypatch.setattr(host, "_host_total_gb", lambda _run=None: 93.7)
+    monkeypatch.setattr(host, "_wsl_vm_memory_gb", lambda _run=None: 62.8)
+    monkeypatch.setattr(host, "_gpus", lambda _run=None: [
+        ("0", "RTX 5090", 27.7, 31.8),
+        ("1", "RTX PRO 6000", 85.0, 95.6),
+    ])
+    env = mcp.call_tool("host_summary", {})
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["mutates"] is False
+    assert data["host_ram_gb"] == 93.7
+    assert data["docker"]["memory_cap_gb"] == 62.8
+    assert data["recommended_wsl_memory_gb"] == 80
+    assert data["gpus"][1]["name"] == "RTX PRO 6000"
+    assert {check["name"] for check in data["checks"]} == {
+        "host_ram", "docker_wsl_memory", "gpu_inventory",
+    }
+
+
+def test_host_summary_rejects_arguments():
+    env = mcp.call_tool("host_summary", {"confirm": True})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_cache_prune_plan_returns_json_plan_and_dry_run_report(monkeypatch):
+    from anvil_serving import cache_prune
+
+    seen = {}
+    plan = {
+        "candidates": [{
+            "id": "fp8/moe",
+            "reason": "incompatible-sm120",
+            "format": "safetensors",
+            "size_gb": 80.0,
+            "reclaimable_bytes": 80_000_000_000,
+            "dead_everywhere": True,
+            "local_path": "C:/hf/models--fp8--moe",
+        }],
+        "protected": ["keep/me"],
+        "by_reason": {"incompatible-sm120": {"count": 1, "bytes": 80_000_000_000}},
+        "total_reclaimable_gb": 80.0,
+        "total_reclaimable_bytes": 80_000_000_000,
+    }
+
+    def fake_build_plan(mixture):
+        seen["mixture"] = set(mixture)
+        return plan
+
+    def fake_execute_plan(plan_arg, *, dry_run=True, include_servable=False):
+        seen["plan"] = plan_arg
+        seen["dry_run"] = dry_run
+        seen["include_servable"] = include_servable
+        return {
+            "dry_run": dry_run,
+            "include_servable": include_servable,
+            "would_delete": ["fp8/moe"],
+            "deleted": [],
+            "kept": [],
+            "skipped": [],
+            "reclaimed_bytes": 0,
+            "planned_bytes": 80_000_000_000,
+            "reclaimed_gb": 0.0,
+        }
+
+    monkeypatch.setattr(cache_prune, "build_plan", fake_build_plan)
+    monkeypatch.setattr(cache_prune, "execute_plan", fake_execute_plan)
+
+    env = mcp.call_tool("cache_prune_plan", {
+        "mixture": ["keep/me", "keep/me"],
+        "include_servable": True,
+    })
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["dry_run"] is True
+    assert data["deletion_available"] is False
+    assert data["human_gate_required"] is True
+    assert data["mixture"] == ["keep/me"]
+    assert data["plan"] == plan
+    assert data["report"]["would_delete"] == ["fp8/moe"]
+    assert data["command"][:4] == [sys.executable, "-m", "anvil_serving.cli", "cache-prune"]
+    assert "--json" in data["command"]
+    assert data["command"][data["command"].index("--mixture") + 1] == "keep/me"
+    assert "--include-servable" in data["command"]
+    assert seen == {
+        "mixture": {"keep/me"},
+        "plan": plan,
+        "dry_run": True,
+        "include_servable": True,
+    }
+
+
+def test_cache_prune_plan_refuses_deletion_requests(monkeypatch):
+    from anvil_serving import cache_prune
+
+    monkeypatch.setattr(cache_prune, "build_plan", lambda mixture: (_ for _ in ()).throw(
+        AssertionError("delete requests must be rejected before planning")
+    ))
+    for args in (
+        {"execute": True},
+        {"confirm": True},
+        {"yes": True},
+        {"dry_run": False},
+    ):
+        env = mcp.call_tool("cache_prune_plan", args)
+        assert env["ok"] is False
+        assert env["error"]["code"] == "cache_prune_delete_not_available"
+
+
+def test_cache_prune_plan_rejects_string_confirm_and_does_not_echo_tokens(monkeypatch):
+    from anvil_serving import cache_prune
+
+    monkeypatch.setattr(cache_prune, "build_plan", lambda mixture: (_ for _ in ()).throw(
+        AssertionError("invalid arguments must be rejected before planning")
+    ))
+    string_bool = mcp.call_tool("cache_prune_plan", {"confirm": "false"})
+    assert string_bool["ok"] is False
+    assert string_bool["error"]["code"] == "bad_argument"
+
+    token = "controller-secret-token"
+    raw_token = mcp.call_tool("cache_prune_plan", {"api_key": token})
+    assert raw_token["ok"] is False
+    assert raw_token["error"]["code"] == "bad_argument"
+    assert token not in json.dumps(raw_token)
+
+
+def test_serves_manage_preview_is_dry_run_argv(tmp_path):
+    manifest = _manifest(tmp_path)
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["fast"],
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    cmd = env["data"]["command"]
+    assert cmd[:4] == [sys.executable, "-m", "anvil_serving.cli", "serves"]
+    assert "down" in cmd
+    assert "--dry-run" in cmd
+    assert cmd[cmd.index("--manifest") + 1] == manifest
+
+
+def test_serves_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["timeout"] = kwargs.get("timeout")
+        return proc(0, "stopped\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["fast"],
+        "confirm": True,
+        "timeout_seconds": 7,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    assert "--dry-run" in env["data"]["command"]
+    assert seen == {}
+
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["fast"],
+        "confirm": True,
+        "dry_run": False,
+        "timeout_seconds": 7,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is True
+    assert "--dry-run" not in seen["argv"]
+    assert seen["argv"][3:5] == ["serves", "down"]
+    assert seen["timeout"] == 7
+    assert env["data"]["stdout"] == "stopped\n"
+
+
+def test_serves_manage_preview_forces_dry_run_without_confirm(tmp_path):
+    manifest = _manifest(tmp_path)
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "names": ["fast"],
+        "dry_run": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    assert env["data"]["dry_run"] is True
+    assert "--dry-run" in env["data"]["command"]
+
+
+def test_serves_manage_manifest_actions_require_explicit_names(tmp_path):
+    manifest = _manifest(tmp_path)
+    env = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "missing_argument"
+
+
+def test_serves_manage_up_preview_includes_manifest_commands(tmp_path):
+    manifest = _manifest(tmp_path, up=True)
+    env = mcp.call_tool("serves_manage", {
+        "action": "up",
+        "manifest": manifest,
+        "names": ["fast"],
+    })
+    assert env["ok"] is True
+    commands = env["data"]["plan"]["commands"]
+    assert commands[0]["kind"] == "manifest_up_when_absent_or_compose_reconcile"
+    assert commands[0]["argv"][:3] == ["docker", "compose", "-f"]
+    assert commands[0]["argv"][-2:] == ["up", "-d"]
+    assert commands[1]["kind"] == "docker_start_when_existing_script_serve_stopped"
+
+
+def test_serves_manage_rm_literal_requires_allow_literal(tmp_path):
+    manifest = _manifest(tmp_path)
+    blocked = mcp.call_tool("serves_manage", {
+        "action": "rm",
+        "manifest": manifest,
+        "names": ["port-squatter"],
+    })
+    assert blocked["ok"] is False
+    assert blocked["error"]["code"] == "literal_container_requires_allow"
+
+    allowed = mcp.call_tool("serves_manage", {
+        "action": "rm",
+        "manifest": manifest,
+        "names": ["port-squatter"],
+        "allow_literal": True,
+    })
+    assert allowed["ok"] is True
+    assert allowed["data"]["applied"] is False
+    assert "--dry-run" in allowed["data"]["command"]
+    assert allowed["data"]["plan"]["targets"] == []
+    assert allowed["data"]["plan"]["commands"] == [{
+        "kind": "docker_rm",
+        "target": "port-squatter",
+        "argv": ["docker", "rm", "-f", "port-squatter"],
+    }]
+
+
+def test_serves_manage_bad_action_and_missing_manifest(tmp_path):
+    bad = mcp.call_tool("serves_manage", {"action": "restart"})
+    assert bad["ok"] is False
+    assert bad["error"]["code"] == "bad_action"
+
+    missing = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": str(tmp_path / "missing.toml"),
+    })
+    assert missing["ok"] is False
+    assert missing["error"]["code"] == "manifest_not_found"
+
+
+def test_serves_logs_runs_bounded_tail_for_one_serve(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["timeout"] = kwargs.get("timeout")
+        seen["capture_output"] = kwargs.get("capture_output")
+        seen["text"] = kwargs.get("text")
+        kwargs["stdout"].write(b"LOG\n")
+        return proc(0)
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "tail": 5,
+        "since": "10m",
+        "timeout_seconds": 3,
+    })
+    assert env["ok"] is True
+    assert env["data"]["bounded"] is True
+    assert seen["argv"][3:5] == ["serves", "logs"]
+    assert seen["argv"][seen["argv"].index("--tail") + 1] == "5"
+    assert seen["argv"][seen["argv"].index("--since") + 1] == "10m"
+    assert "--follow" not in seen["argv"]
+    assert seen["timeout"] == 3
+    assert seen["capture_output"] is None
+    assert seen["text"] is None
+    assert env["data"]["stdout"] == "LOG\n"
+
+
+def test_serves_logs_rejects_unknown_manifest_serve_before_running(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+
+    def fake_run(argv, **kwargs):
+        raise AssertionError("serves_logs should reject unknown manifest targets before subprocess")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["missing"],
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "no_matching_serve"
+
+
+def test_serves_logs_truncates_output_to_byte_cap(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+
+    def fake_run(argv, **kwargs):
+        kwargs["stdout"].write(b"A" * 2048)
+        kwargs["stderr"].write(b"B" * 2048)
+        return proc(0)
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "max_output_bytes": 1024,
+    })
+    assert env["ok"] is True
+    assert len(env["data"]["stdout"]) == 1024
+    assert len(env["data"]["stderr"]) == 1024
+    assert env["data"]["stdout_truncated"] is True
+    assert env["data"]["stderr_truncated"] is True
+
+
+def test_serves_logs_rejects_unbounded_follow_and_bad_tail(tmp_path):
+    manifest = _manifest(tmp_path)
+    follow = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "follow": True,
+    })
+    assert follow["ok"] is False
+    assert follow["error"]["code"] == "follow_not_allowed"
+
+    tail = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "tail": 5001,
+    })
+    assert tail["ok"] is False
+    assert tail["error"]["code"] == "bad_argument"
+
+
+def test_serves_logs_requires_exactly_one_name(tmp_path):
+    manifest = _manifest(tmp_path)
+    env = mcp.call_tool("serves_logs", {"manifest": manifest, "names": []})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_serves_manage_and_logs_bool_arguments_must_be_real_booleans(tmp_path):
+    manifest = _manifest(tmp_path)
+    manage = mcp.call_tool("serves_manage", {
+        "action": "down",
+        "manifest": manifest,
+        "confirm": "false",
+    })
+    assert manage["ok"] is False
+    assert manage["error"]["code"] == "bad_argument"
+
+    logs = mcp.call_tool("serves_logs", {
+        "manifest": manifest,
+        "names": ["fast"],
+        "follow": "false",
+    })
+    assert logs["ok"] is False
+    assert logs["error"]["code"] == "bad_argument"
 
 
 def test_openclaw_sync_rejects_non_anvil_api_key_env(tmp_path):
@@ -271,6 +1019,16 @@ def test_openclaw_sync_rejects_non_anvil_api_key_env(tmp_path):
     })
     assert env["ok"] is False
     assert env["error"]["code"] == "unsafe_api_key_env"
+
+
+def test_openclaw_sync_skill_dir_requires_skills(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "skill_dir": "/opt/anvil-serving/examples/openclaw/skills",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
 
 
 def test_openclaw_sync_rejects_unsafe_gateway_target_in_preview(tmp_path):
@@ -292,6 +1050,19 @@ def test_openclaw_sync_apply_requires_confirmed_target(tmp_path):
     })
     assert env["ok"] is False
     assert env["error"]["code"] == "missing_target"
+
+
+def test_openclaw_sync_apply_rejects_stdout_out(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "out": "-",
+        "dry_run": False,
+        "confirm": True,
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "missing_target"
+    assert "render-only" in env["error"]["message"]
 
 
 def test_gateway_restart_is_gated_and_uses_argv_preview():
@@ -346,6 +1117,726 @@ def test_preflight_and_benchmark_probe_are_argv_not_shell():
         assert any(str(part).startswith("http://127.0.0.1") for part in cmd)
 
 
+def test_benchmark_artifact_tool_is_separate_from_fast_probe():
+    probe = mcp.call_tool("benchmark_probe", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "requests": 1,
+        "concurrency": 1,
+    })
+    artifact = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": ".anvil/benchmarks/local-benchmark.json",
+        "requests": 1,
+        "concurrency": 1,
+    })
+
+    assert probe["ok"] is True
+    assert artifact["ok"] is True
+    assert "--json-out" not in probe["data"]["command"]
+    assert "--json-out" in artifact["data"]["command"]
+    assert artifact["data"]["applied"] is False
+    assert artifact["data"]["dry_run"] is True
+
+
+def test_benchmark_artifact_rejects_path_outside_workspace(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_BENCHMARK_EVIDENCE_DIR", raising=False)
+    monkeypatch.delenv("ANVIL_EVIDENCE_DIR", raising=False)
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(tmp_path / "outside.json"),
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "unsafe_artifact_path"
+
+
+def test_benchmark_artifact_does_not_treat_unmarked_cwd_as_workspace(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_WORKSPACE_ROOT", raising=False)
+    monkeypatch.delenv("ANVIL_BENCHMARK_EVIDENCE_DIR", raising=False)
+    monkeypatch.delenv("ANVIL_EVIDENCE_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(tmp_path / "bench.json"),
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "missing_artifact_root"
+
+
+def test_benchmark_artifact_does_not_treat_unrelated_git_repo_as_workspace(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_WORKSPACE_ROOT", raising=False)
+    monkeypatch.delenv("ANVIL_BENCHMARK_EVIDENCE_DIR", raising=False)
+    monkeypatch.delenv("ANVIL_EVIDENCE_DIR", raising=False)
+    (tmp_path / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(tmp_path / "bench.json"),
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "missing_artifact_root"
+
+
+def test_benchmark_artifact_accepts_server_configured_evidence_dir(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    artifact_path = tmp_path / "benchmarks" / "preview.json"
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(artifact_path),
+    })
+
+    assert env["ok"] is True
+    assert env["data"]["artifact_path"] == str(artifact_path.resolve())
+    assert str(tmp_path.resolve()) in env["data"]["allowed_roots"]
+
+
+def test_benchmark_artifact_accepts_server_configured_anvil_evidence_dir(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_BENCHMARK_EVIDENCE_DIR", raising=False)
+    monkeypatch.setenv("ANVIL_EVIDENCE_DIR", str(tmp_path))
+
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(tmp_path / "benchmarks" / "preview.json"),
+    })
+
+    assert env["ok"] is True
+    assert str(tmp_path.resolve()) in env["data"]["allowed_roots"]
+
+
+def test_benchmark_artifact_rejects_base_url_secret_surfaces():
+    for base_url in [
+        "http://token:secret@127.0.0.1:30000/v1",
+        "http://127.0.0.1:30000/v1?token=secret",
+        "http://127.0.0.1:30000/v1#secret",
+    ]:
+        env = mcp.call_tool("benchmark_artifact", {
+            "base_url": base_url,
+            "model": "local",
+            "artifact_path": ".anvil/benchmarks/local.json",
+        })
+
+        assert env["ok"] is False
+        assert env["error"]["code"] == "bad_base_url"
+
+
+def test_benchmark_artifact_confirmed_run_writes_json_and_returns_metrics(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    artifact_path = tmp_path / "benchmarks" / "local.json"
+    seen = {}
+
+    def fake_run(argv, capture_output=True, text=True, timeout=None):
+        seen["argv"] = argv
+        seen["capture_output"] = capture_output
+        seen["text"] = text
+        seen["timeout"] = timeout
+        out_path = Path(argv[argv.index("--json-out") + 1])
+        out_path.write_text(json.dumps({
+            "schema": "anvil-serving.benchmark/v1",
+            "run_id": "benchmark-20260706T000000Z",
+            "base_url": "http://127.0.0.1:30000/v1",
+            "model": "local",
+            "requests": 2,
+            "completed": 2,
+            "concurrency": 1,
+            "context_tokens": 4096,
+            "max_context_tokens": 131072,
+            "max_tokens": 64,
+            "metrics": {
+                "ttft_p50_ms": 120.0,
+                "ttft_p95_ms": 180.0,
+                "e2e_p50_ms": 240.0,
+                "e2e_p95_ms": 320.0,
+                "throughput_tok_s": 91.5,
+                "output_tokens": 128,
+                "prefix_cache_hit_avg": 0.42,
+            },
+        }), encoding="utf-8")
+        return proc(0, "wrote JSON summary\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(artifact_path),
+        "requests": 2,
+        "concurrency": 1,
+        "ctx_tokens": 4096,
+        "confirm": True,
+        "timeout_seconds": 30,
+    })
+
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["applied"] is True
+    assert data["dry_run"] is False
+    assert Path(data["artifact_path"]) == artifact_path.resolve()
+    assert data["summary"]["run_id"] == "benchmark-20260706T000000Z"
+    assert data["key_metrics"]["completed"] == 2
+    assert data["key_metrics"]["throughput_tok_s"] == 91.5
+    assert data["key_metrics"]["prefix_cache_hit_avg"] == 0.42
+    assert "--json-out" in seen["argv"]
+    assert seen["capture_output"] is True
+    assert seen["text"] is True
+    assert seen["timeout"] == 30
+
+
+def test_benchmark_artifact_confirmed_run_rejects_stale_json(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    artifact_path = tmp_path / "benchmarks" / "stale.json"
+    artifact_path.parent.mkdir(parents=True)
+    artifact_path.write_text(json.dumps({
+        "schema": "anvil-serving.benchmark/v1",
+        "run_id": "old-run",
+        "metrics": {"throughput_tok_s": 1.0},
+    }), encoding="utf-8")
+
+    monkeypatch.setattr(mcp.subprocess, "run", lambda *a, **k: proc(0, "no write\n", ""))
+    env = mcp.call_tool("benchmark_artifact", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "artifact_path": str(artifact_path),
+        "confirm": True,
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "artifact_not_written"
+    assert not artifact_path.exists()
+
+
+def test_external_bench_sources_and_report_are_advisory_only(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+
+    sources = mcp.call_tool("external_bench_sources", {"db": str(db)})
+    assert sources["ok"] is True
+    assert sources["data"]["db_exists"] is True
+    assert sources["data"]["advisory_only"] is True
+    assert sources["data"]["promotion_quality_evidence"] is False
+    assert "millstone" in {row["name"] for row in sources["data"]["sources"]}
+
+    report = mcp.call_tool("external_bench_report", {
+        "db": str(db),
+        "gpu": "RTX PRO 6000",
+        "source": "millstone",
+        "top": 2,
+    })
+    assert report["ok"] is True
+    data = report["data"]
+    assert data["advisory_only"] is True
+    assert data["promotion_quality_evidence"] is False
+    assert data["filters"]["gpu"] == "RTX PRO 6000"
+    assert data["count"] == 2
+    assert data["rows"][0]["source_name"] == "millstone"
+    assert "throughput_tok_s" in data["columns"]
+
+
+def test_external_bench_mcp_read_paths_do_not_initialize_missing_db(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    missing = tmp_path / "missing" / "benchmarks.sqlite"
+
+    sources = mcp.call_tool("external_bench_sources", {"db": str(missing)})
+    assert sources["ok"] is True
+    assert sources["data"]["db_exists"] is False
+    assert "millstone" in {row["name"] for row in sources["data"]["sources"]}
+
+    for tool_name, args in [
+        ("external_bench_list", {}),
+        ("external_bench_report", {}),
+        ("external_bench_compare", {"local": "tests/fixtures/external_benchmarks/local_benchmark_sample.json"}),
+    ]:
+        env = mcp.call_tool(tool_name, {"db": str(missing), **args})
+        assert env["ok"] is False
+        assert env["error"]["code"] == "external_bench_db_not_found"
+
+    assert not missing.exists()
+    assert not missing.parent.exists()
+
+
+def test_external_bench_compare_returns_structured_advisory_deltas(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+    local = Path("tests/fixtures/external_benchmarks/local_benchmark_sample.json")
+
+    env = mcp.call_tool("external_bench_compare", {
+        "db": str(db),
+        "local": str(local),
+        "gpu": "RTX PRO 6000",
+        "top": 3,
+    })
+
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["advisory_only"] is True
+    assert data["promotion_quality_evidence"] is False
+    assert data["comparison"]["has_external_prior"] is True
+    assert data["comparison"]["match_type"] == "exact"
+    assert data["chosen"]["row"]["source_name"] == "millstone"
+    throughput = data["chosen"]["deltas"]["throughput_tok_s"]
+    assert throughput["local"] == 520.0
+    assert throughput["external"] == 410.0
+    assert round(throughput["delta_pct"], 1) == 26.8
+
+
+def test_external_bench_compare_mcp_does_not_record_comparison_history(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+    local = Path("tests/fixtures/external_benchmarks/local_benchmark_sample.json")
+    before = (
+        _sqlite_count(db, "serve_fingerprints"),
+        _sqlite_count(db, "benchmark_comparisons"),
+    )
+
+    env = mcp.call_tool("external_bench_compare", {
+        "db": str(db),
+        "local": str(local),
+    })
+
+    assert env["ok"] is True
+    assert (
+        _sqlite_count(db, "serve_fingerprints"),
+        _sqlite_count(db, "benchmark_comparisons"),
+    ) == before
+
+
+def test_external_bench_compare_rejects_local_artifact_outside_allowed_roots(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+    outside = tmp_path.parent / "outside-local-benchmark.json"
+    outside.write_text(json.dumps({"model": "Qwen3.6-35B-A3B-MTP"}), encoding="utf-8")
+
+    env = mcp.call_tool("external_bench_compare", {
+        "db": str(db),
+        "local": str(outside),
+    })
+
+    assert env["ok"] is False
+    assert env["error"]["code"] == "unsafe_artifact_path"
+
+
+def _workflow_packet(**overrides):
+    packet = {
+        "schema_version": "operator-workflow/v1",
+        "request": "preflight and benchmark fast tier",
+        "gate_state": "human_required",
+        "targets": {
+            "endpoint": "http://127.0.0.1:30001/v1",
+            "model": "fast-local",
+        },
+        "tools_used": [{
+            "name": "preflight_probe",
+            "source_class": "mcp",
+            "ok": True,
+            "dry_run": False,
+            "confirmed": True,
+            "target": "http://127.0.0.1:30001/v1",
+            "error": None,
+        }],
+        "artifacts": [],
+        "advisory_priors": [],
+        "recommendation": "needs_more_data",
+        "human_gate_required": True,
+        "promoted": False,
+    }
+    packet.update(overrides)
+    return packet
+
+
+def test_workflow_packet_docs_example_passes_validator():
+    text = Path("docs/OPERATOR-SKILLS-AND-SUBAGENTS.md").read_text(encoding="utf-8")
+    result_section = text.split("## Result Contract", 1)[1]
+    match = re.search(r"```json\r?\n(\{.*?\})\r?\n```", result_section, re.S)
+    assert match is not None
+    packet = json.loads(match.group(1))
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    assert env["data"]["errors"] == []
+
+
+def test_workflow_packet_promoted_requires_human_approved_router_promote():
+    promote_tool = {
+        "name": "router_promote",
+        "source_class": "mcp",
+        "ok": True,
+        "dry_run": False,
+        "confirmed": True,
+        "target": "router-profile",
+        "error": None,
+    }
+    packet = _workflow_packet(
+        tools_used=[promote_tool],
+        recommendation="promote",
+        promoted=True,
+    )
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "promoted" for error in env["data"]["errors"])
+
+    failed_apply = dict(promote_tool, data={"human_approved": True, "applied": False, "returncode": 1})
+    env = mcp.call_tool("workflow_packet_validate", {"packet": dict(packet, tools_used=[failed_apply])})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "promoted" for error in env["data"]["errors"])
+
+    missing_returncode = dict(promote_tool, data={"human_approved": True, "applied": True})
+    env = mcp.call_tool("workflow_packet_validate", {"packet": dict(packet, tools_used=[missing_returncode])})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "promoted" for error in env["data"]["errors"])
+
+    approved = dict(promote_tool, data={"human_approved": True, "applied": True, "returncode": 0})
+    env = mcp.call_tool("workflow_packet_validate", {"packet": dict(packet, tools_used=[approved])})
+    assert env["data"]["valid"] is True
+
+
+def test_workflow_packet_promote_recommendation_keeps_human_gate_until_applied():
+    packet = _workflow_packet(
+        recommendation="promote",
+        gate_state="not_required",
+        human_gate_required=False,
+    )
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "gate_state" in fields
+    assert "human_gate_required" in fields
+
+    approved_tool = {
+        "name": "router_promote",
+        "source_class": "mcp",
+        "ok": True,
+        "dry_run": False,
+        "confirmed": True,
+        "target": "router-profile",
+        "error": None,
+        "data": {"human_approved": True, "applied": True, "returncode": 0},
+    }
+    env = mcp.call_tool("workflow_packet_validate", {"packet": dict(
+        packet,
+        tools_used=[approved_tool],
+        promoted=True,
+    )})
+    assert env["data"]["valid"] is True
+
+
+def test_workflow_packet_artifact_paths_are_normalized_and_bounded(tmp_path):
+    packet = _workflow_packet(artifacts=[
+        ".anvil/benchmarks/local.json",
+        {"path": ".anvil/benchmarks/object.json", "kind": "benchmark"},
+    ])
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    artifacts = env["data"]["normalized_packet"]["artifacts"]
+    assert Path(artifacts[0]).is_absolute()
+    assert Path(artifacts[1]["path"]).is_absolute()
+    assert artifacts[1]["kind"] == "benchmark"
+
+    bad = _workflow_packet(artifacts=[{"path": str(tmp_path / "outside.json")}])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": bad})
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0].path" for error in env["data"]["errors"])
+
+
+def test_workflow_packet_enums_and_required_tool_fields_are_validated():
+    packet = _workflow_packet(
+        gate_state="done",
+        recommendation="ship_it",
+        tools_used=[{"name": "probe", "source_class": "raw-shell", "ok": "yes"}],
+    )
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "gate_state" in fields
+    assert "recommendation" in fields
+    assert "tools_used[0].source_class" in fields
+    assert "tools_used[0].ok" in fields
+    assert "tools_used[0].target" in fields
+
+
+def test_workflow_packet_rejects_non_object_and_missing_required_fields():
+    non_object = mcp.call_tool("workflow_packet_validate", {"packet": []})
+    assert non_object["ok"] is True
+    assert non_object["data"]["valid"] is False
+    assert non_object["data"]["errors"][0]["field"] == "packet"
+
+    missing = mcp.call_tool("workflow_packet_validate", {"packet": {"schema_version": "operator-workflow/v1"}})
+    assert missing["ok"] is True
+    assert missing["data"]["valid"] is False
+    fields = {error["field"] for error in missing["data"]["errors"]}
+    assert "request" in fields
+    assert "tools_used" in fields
+    assert "promoted" in fields
+
+
+def test_workflow_packet_malformed_tool_entries_stay_structured_errors():
+    packet = _workflow_packet(tools_used=["oops"])
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    assert env["data"]["errors"][0]["field"] == "tools_used[0]"
+
+
+def test_external_bench_priors_do_not_satisfy_workflow_promotion(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    db = _external_bench_db(tmp_path)
+    local = Path("tests/fixtures/external_benchmarks/local_benchmark_sample.json")
+    prior = mcp.call_tool("external_bench_compare", {"db": str(db), "local": str(local)})["data"]
+
+    packet = _workflow_packet(advisory_priors=[prior])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+
+    promote_from_prior = _workflow_packet(
+        advisory_priors=[prior],
+        recommendation="promote",
+        gate_state="not_required",
+        human_gate_required=False,
+    )
+    env = mcp.call_tool("workflow_packet_validate", {"packet": promote_from_prior})
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert {"gate_state", "human_gate_required"}.issubset(fields)
+
+    quality_claim = _workflow_packet(advisory_priors=[dict(prior, promotion_quality_evidence=True)])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": quality_claim})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "advisory_priors[0].promotion_quality_evidence" for error in env["data"]["errors"])
+
+    non_advisory = _workflow_packet(advisory_priors=[dict(prior, advisory_only=False)])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": non_advisory})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "advisory_priors[0].advisory_only" for error in env["data"]["errors"])
+
+    missing_flags = _workflow_packet(advisory_priors=[{"source": "external"}])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": missing_flags})
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "advisory_priors[0].advisory_only" in fields
+    assert "advisory_priors[0].promotion_quality_evidence" in fields
+
+    non_object = _workflow_packet(advisory_priors=["external"])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": non_object})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "advisory_priors[0]" for error in env["data"]["errors"])
+
+
+def test_workflow_packet_voice_artifacts_are_scoped_to_voice_pipeline(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    voice_artifact = tmp_path / "voice-benchmark.json"
+    voice_artifact.write_text('{"ok": true}\n', encoding="utf-8")
+    artifact = {
+        "kind": "voice-benchmark",
+        "path": str(voice_artifact),
+        "evidence_scope": "voice-pipeline",
+        "promotion_quality_evidence": False,
+    }
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": _workflow_packet(artifacts=[artifact])})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    normalized = env["data"]["normalized_packet"]["artifacts"][0]
+    assert normalized["kind"] == "voice-benchmark"
+    assert normalized["evidence_scope"] == "voice-pipeline"
+    assert normalized["promotion_quality_evidence"] is False
+
+    missing_scope = dict(artifact)
+    del missing_scope["evidence_scope"]
+    env = mcp.call_tool("workflow_packet_validate", {"packet": _workflow_packet(artifacts=[missing_scope])})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0].evidence_scope" for error in env["data"]["errors"])
+
+    quality_claim = dict(artifact, promotion_quality_evidence=True)
+    env = mcp.call_tool("workflow_packet_validate", {"packet": _workflow_packet(artifacts=[quality_claim])})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0].promotion_quality_evidence" for error in env["data"]["errors"])
+
+    bare_path = _workflow_packet(
+        request="run voice benchmark",
+        artifacts=[str(voice_artifact)],
+        tools_used=[{
+            "name": "voice_benchmark",
+            "source_class": "cli",
+            "ok": True,
+            "dry_run": False,
+            "confirmed": True,
+            "target": "voice",
+            "error": None,
+        }],
+    )
+    env = mcp.call_tool("workflow_packet_validate", {"packet": bare_path})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0]" for error in env["data"]["errors"])
+
+    missing_kind = _workflow_packet(
+        request="run voice benchmark",
+        artifacts=[{"path": str(voice_artifact)}],
+    )
+    env = mcp.call_tool("workflow_packet_validate", {"packet": missing_kind})
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "artifacts[0].kind" in fields
+    assert "artifacts[0].evidence_scope" in fields
+    assert "artifacts[0].promotion_quality_evidence" in fields
+
+
+def _operator_workflow_packet_from_fixture(fixture, evidence_root):
+    artifact_path = None
+    tools_used = []
+    for step in fixture["steps"]:
+        tool = json.loads(json.dumps(step["tool"]))
+        if tool["name"] == "preflight_probe":
+            env = mcp.call_tool("preflight_probe", step["arguments"])
+            assert env["ok"] is True
+            data = env["data"]
+        elif tool["name"] == "benchmark_artifact":
+            raw_artifact_path = evidence_root / Path(fixture["benchmark_artifact"]["path"])
+            args = dict(step["arguments"], artifact_path=str(raw_artifact_path))
+            env = mcp.call_tool("benchmark_artifact", args)
+            assert env["ok"] is True
+            data = env["data"]
+            artifact_path = Path(data["artifact_path"])
+            tool["target"] = data["artifact_path"]
+        else:
+            data = json.loads(json.dumps(step.get("data", {})))
+        tool["data"] = data
+        tools_used.append(tool)
+
+    critic = fixture["critic"]
+    assert artifact_path is not None
+    packet = {
+        "schema_version": "operator-workflow/v1",
+        "request": fixture["request"],
+        "gate_state": critic["gate_state"],
+        "targets": fixture["targets"],
+        "tools_used": tools_used,
+        "artifacts": [{
+            "kind": "benchmark",
+            "path": str(artifact_path),
+            "source_tool": "benchmark_artifact",
+        }],
+        "advisory_priors": fixture["advisory_priors"],
+        "recommendation": critic["recommendation"],
+        "human_gate_required": critic["human_gate_required"],
+        "promoted": critic["promoted"],
+    }
+    return packet, artifact_path
+
+
+def test_operator_workflow_fixture_produces_valid_result_packet(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    fixture = json.loads(Path(
+        "tests/fixtures/operator_workflows/model_swap_promotion_evidence.json",
+    ).read_text(encoding="utf-8"))
+
+    def assert_arg(argv, flag, expected):
+        assert argv[argv.index(flag) + 1] == str(expected)
+
+    def fake_run(argv, capture_output=True, text=True, timeout=None):
+        assert capture_output is True
+        assert text is True
+        assert timeout == 30
+        module = argv[argv.index("-m") + 1]
+        if module == "anvil_serving.preflight":
+            args = next(step["arguments"] for step in fixture["steps"] if step["tool"]["name"] == "preflight_probe")
+            assert_arg(argv, "--base-url", args["base_url"])
+            assert_arg(argv, "--model", args["model"])
+            assert_arg(argv, "--needle-ctx", args["needle_ctx"])
+            assert_arg(argv, "--tool-batch", args["tool_batch"])
+            assert "--no-thinking" in argv
+            return proc(0, json.dumps(fixture["preflight_result"]) + "\n", "")
+        if module == "anvil_serving.benchmark":
+            args = next(step["arguments"] for step in fixture["steps"] if step["tool"]["name"] == "benchmark_artifact")
+            assert_arg(argv, "--base-url", args["base_url"])
+            assert_arg(argv, "--model", args["model"])
+            assert_arg(argv, "--requests", args["requests"])
+            assert_arg(argv, "--concurrency", args["concurrency"])
+            assert_arg(argv, "--ctx-tokens", args["ctx_tokens"])
+            assert_arg(argv, "--max-tokens", args["max_tokens"])
+            out_path = Path(argv[argv.index("--json-out") + 1])
+            assert out_path.is_relative_to(tmp_path)
+            out_path.write_text(
+                json.dumps(fixture["benchmark_artifact"]["summary"], indent=2) + "\n",
+                encoding="utf-8",
+            )
+            return proc(0, "wrote JSON summary\n", "")
+        raise AssertionError("unexpected fixture workflow command: %r" % (argv,))
+
+    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    packet, artifact_path = _operator_workflow_packet_from_fixture(fixture, tmp_path)
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    normalized = env["data"]["normalized_packet"]
+    assert normalized["promoted"] is False
+    assert normalized["human_gate_required"] is True
+    assert normalized["gate_state"] == "human_required"
+
+    tool_names = {tool["name"] for tool in normalized["tools_used"]}
+    assert {
+        "doctor_summary",
+        "models_inventory",
+        "serves_status",
+        "preflight_probe",
+        "benchmark_artifact",
+        "quality_critic",
+    }.issubset(tool_names)
+
+    preflight = next(tool for tool in normalized["tools_used"] if tool["name"] == "preflight_probe")
+    assert preflight["ok"] is True
+    assert preflight["confirmed"] is True
+    assert preflight["data"]["returncode"] == 0
+    preflight_output = json.loads(preflight["data"]["stdout"])
+    assert preflight_output["checks"]["chat_completion"] == "pass"
+
+    benchmark = next(tool for tool in normalized["tools_used"] if tool["name"] == "benchmark_artifact")
+    assert benchmark["ok"] is True
+    assert benchmark["confirmed"] is True
+    assert benchmark["dry_run"] is False
+    assert Path(benchmark["data"]["artifact_path"]) == artifact_path.resolve()
+    assert Path(normalized["artifacts"][0]["path"]) == artifact_path.resolve()
+
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    assert artifact["schema"] == "anvil-serving.benchmark/v1"
+    assert artifact["completed"] == artifact["requests"]
+    assert artifact["metrics"]["throughput_tok_s"] == 91.5
+
+    assert packet["recommendation"] == "needs_more_data"
+    assert all(prior["advisory_only"] is True for prior in packet["advisory_priors"])
+    assert all(prior["promotion_quality_evidence"] is False for prior in packet["advisory_priors"])
+
+
 def test_probe_tools_use_api_key_env_and_reject_raw_keys(monkeypatch):
     monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "super-secret-token")
     pre = mcp.call_tool("preflight_probe", {
@@ -388,6 +1879,16 @@ def test_probe_tools_use_api_key_env_and_reject_raw_keys(monkeypatch):
     })
     assert controller_token["ok"] is False
     assert controller_token["error"]["code"] == "unsafe_api_key_env"
+
+    token_like_env = "TOKEN_123"
+    token_like = mcp.call_tool("route_decision", {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "prompt": "hello",
+        "api_key_env": token_like_env,
+    })
+    assert token_like["ok"] is False
+    assert token_like["error"]["code"] == "unsafe_api_key_env"
+    assert token_like_env not in json.dumps(token_like)
 
     unsafe_url = mcp.call_tool("route_decision", {
         "base_url": "http://8.8.8.8/v1",

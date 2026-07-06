@@ -1,0 +1,14 @@
+interface:
+  display_name: "Anvil Serving Workbench"
+  short_description: "Operate anvil-serving through MCP-backed playbooks."
+  default_prompt: "Use $anvil-serving-workbench to inspect status, choose a safe playbook, and produce an evidence packet."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "anvil-serving"
+      description: "anvil-serving MCP or controller tools for router/serve status, bounded logs, model inventory, route decisions, OpenClaw sync, preflight, benchmarks, and promotion previews; use documented CLI verbs only as preview-returning fallback when a wrapper is missing"
+      transport: "stdio"
+
+policy:
+  allow_implicit_invocation: true

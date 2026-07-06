@@ -12,6 +12,7 @@ from anvil_serving.router.decision_log import (
     AttemptRecord,
     DecisionLog,
     DecisionRecord,
+    summarize_decisions,
 )
 
 
@@ -247,3 +248,55 @@ def test_mode_threads_through_route_with_fallback_into_the_log():
         request, _Decision(), config, lambda tier: passing
     )
     assert result_none.record.mode is None
+
+
+def test_summarize_decisions_is_metadata_only_and_redacts_secret_shaped_values():
+    records = [{
+        "intent": "chat",
+        "work_class": "bounded-edit",
+        "requested_tiers": ["fast-local", "cloud"],
+        "served_tier": "cloud",
+        "fell_back": True,
+        "total_prompt_tokens": 40,
+        "total_completion_tokens": 12,
+        "cost_usd": 0.001,
+        "prompt": "please leak this prompt",
+        "api_key": "sk-proj-secret",
+        "attempts": [
+            {
+                "tier_id": "fast-local",
+                "outcome": "fallback",
+                "verifier_passed": False,
+                "verify_reason": "bearer super-secret-token",
+                "prompt_tokens": 20,
+                "completion_tokens": 6,
+                "detail": "raw output should not surface",
+            },
+            {
+                "tier_id": "cloud",
+                "outcome": "served",
+                "verifier_passed": True,
+                "verify_reason": "ok",
+                "prompt_tokens": 20,
+                "completion_tokens": 6,
+            },
+        ],
+    }]
+    summary = summarize_decisions(records)
+    rendered = str(summary)
+    assert summary["count"] == 1
+    assert summary["totals"]["fallback_count"] == 1
+    assert summary["records"][0]["attempts"][0]["verify_reason"] == "<redacted>"
+    assert "please leak" not in rendered
+    assert "sk-proj-secret" not in rendered
+    assert "raw output" not in rendered
+
+
+def test_decision_log_summary_uses_recent_limit():
+    log = DecisionLog()
+    log.record(_record(work_class="a", served_tier="fast"))
+    log.record(_record(work_class="b", served_tier="heavy"))
+    summary = log.summary(limit=1)
+    assert summary["available"] == 2
+    assert summary["count"] == 1
+    assert summary["records"][0]["work_class"] == "b"

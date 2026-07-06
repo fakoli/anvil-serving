@@ -21,15 +21,20 @@ from __future__ import annotations
 
 import re
 import threading
-from collections import deque
+from collections import Counter, deque
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Deque, Mapping, Optional, Tuple
+from typing import Any, Deque, Iterable, Mapping, Optional, Tuple
 
 #: Default ring-buffer capacity for :class:`DecisionLog`. One record per routed
 #: request; 10k bounds a long-running server's audit memory to the recent
 #: window while staying far above what an operator inspects interactively.
 DEFAULT_MAX_RECORDS = 10_000
+_SUMMARY_SECRET_RE = re.compile(
+    r"(?i)(bearer_[A-Za-z0-9._~+/\-]{6,}|bearer\s+[A-Za-z0-9._~+/\-]{6,}|"
+    r"sk-(?:proj-)?[A-Za-z0-9_-]{6,}|"
+    r"[A-Z0-9_-]*(?:TOKEN|SECRET|API_KEY|API-KEY|KEY)[A-Z0-9_-]*\s*[:=]\s*[^\s]+)"
+)
 
 
 @dataclass(frozen=True)
@@ -177,6 +182,14 @@ def _safe(token: Optional[str]) -> str:
     return re.sub(r"[\s>]+", "_", str(token))
 
 
+def _summary_safe(token: Optional[str]) -> str:
+    if not token:
+        return "-"
+    placeholder = "__ANVIL_REDACTED__"
+    safe = _safe(_SUMMARY_SECRET_RE.sub(placeholder, str(token)))
+    return safe.replace(placeholder, "<redacted>")
+
+
 def decision_line(record: DecisionRecord) -> str:
     """A single content-FREE audit line carrying every AC2 field.
 
@@ -204,6 +217,101 @@ fell_back=<true|false> tiers=<t1>t2>t3|-> prompt=<n> completion=<n>
         f"prompt={record.total_prompt_tokens} "
         f"completion={record.total_completion_tokens}"
     )
+
+
+def _field(record: Any, name: str, default: Any = None) -> Any:
+    if isinstance(record, Mapping):
+        return record.get(name, default)
+    return getattr(record, name, default)
+
+
+def _int_field(record: Any, name: str) -> int:
+    value = _field(record, name, 0)
+    if isinstance(value, bool):
+        return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _attempt_summary(attempt: Any) -> dict:
+    return {
+        "tier_id": _summary_safe(_field(attempt, "tier_id")),
+        "outcome": _summary_safe(_field(attempt, "outcome")),
+        "verifier_passed": bool(_field(attempt, "verifier_passed", False)),
+        "verify_reason": _summary_safe(_field(attempt, "verify_reason")),
+        "prompt_tokens": _int_field(attempt, "prompt_tokens"),
+        "completion_tokens": _int_field(attempt, "completion_tokens"),
+    }
+
+
+def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
+    """Summarize recent routing decisions without prompt, response, or secret text.
+
+    Accepts real :class:`DecisionRecord` objects or JSON-like mappings from a
+    captured metadata artifact. Unknown fields are ignored deliberately; the
+    output is the safe audit projection only.
+    """
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    all_records = list(records)
+    selected = all_records[-limit:]
+    items = []
+    served_counts: Counter[str] = Counter()
+    outcome_counts: Counter[str] = Counter()
+    fallback_count = 0
+    total_prompt = 0
+    total_completion = 0
+    total_cost = 0.0
+    for record in selected:
+        attempts = tuple(_field(record, "attempts", ()) or ())
+        attempt_items = [_attempt_summary(attempt) for attempt in attempts]
+        served = _summary_safe(_field(record, "served_tier"))
+        fell_back = bool(_field(record, "fell_back", False))
+        prompt_tokens = _int_field(record, "total_prompt_tokens")
+        completion_tokens = _int_field(record, "total_completion_tokens")
+        try:
+            cost_usd = float(_field(record, "cost_usd", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            cost_usd = 0.0
+        if served != "-":
+            served_counts[served] += 1
+        if fell_back:
+            fallback_count += 1
+        for attempt in attempt_items:
+            outcome_counts[attempt["outcome"]] += 1
+        total_prompt += prompt_tokens
+        total_completion += completion_tokens
+        total_cost += cost_usd
+        requested_tiers = tuple(str(t) for t in (_field(record, "requested_tiers", ()) or ()))
+        items.append({
+            "intent": _summary_safe(_field(record, "intent")),
+            "work_class": _summary_safe(_field(record, "work_class")),
+            "requested_tiers": tuple(_summary_safe(t) for t in requested_tiers),
+            "served_tier": served,
+            "fell_back": fell_back,
+            "attempts": attempt_items,
+            "total_prompt_tokens": prompt_tokens,
+            "total_completion_tokens": completion_tokens,
+            "cost_usd": round(cost_usd, 8),
+            "mode": _summary_safe(_field(record, "mode")),
+        })
+    return {
+        "count": len(items),
+        "available": len(all_records),
+        "limit": limit,
+        "records": items,
+        "totals": {
+            "fallback_count": fallback_count,
+            "prompt_tokens": total_prompt,
+            "completion_tokens": total_completion,
+            "cost_usd": round(total_cost, 8),
+            "served_tiers": dict(sorted(served_counts.items())),
+            "attempt_outcomes": dict(sorted(outcome_counts.items())),
+        },
+        "omitted_fields": ["prompt", "messages", "content", "response", "api_key", "authorization", "token"],
+    }
 
 
 class DecisionLog:
@@ -259,3 +367,7 @@ class DecisionLog:
     def __len__(self) -> int:
         with self._lock:
             return len(self._records)
+
+    def summary(self, *, limit: int = 20) -> dict:
+        """Safe recent-decision summary over the current immutable snapshot."""
+        return summarize_decisions(self.records, limit=limit)

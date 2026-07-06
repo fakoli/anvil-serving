@@ -1,0 +1,94 @@
+{
+  // Example fragment for a workspace-installed OpenClaw skill. First run:
+  //   openclaw skills install ./examples/openclaw/skills/anvil-serving-workbench \
+  //     --as anvil-serving-workbench
+  //
+  // That installs the skill under OpenClaw's workspace skill directory, so this
+  // fragment only enables the skill and example agents. Do not add
+  // `skills.load.extraDirs` for the workspace-installed mode.
+  //
+  // Checkout-loaded alternative:
+  //   skills: {
+  //     load: {
+  //       extraDirs: [
+  //         "/absolute/path/to/anvil-serving/examples/openclaw/skills",
+  //       ],
+  //     },
+  //   },
+  //
+  // This is the shape rendered by `anvil-serving harness sync openclaw --skills`.
+  // Use `--skill-dir` only for checkout-loaded skills; omit it for the
+  // workspace-installed mode shown above.
+  agents: {
+    defaults: {
+      skills: [
+        "anvil-serving-workbench",
+      ],
+    },
+    list: [
+      {
+        name: "anvil-orchestrator",
+        model: "anvil/planning",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-inventory-scout",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-route-analyst",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-serve-operator",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-preflight-runner",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-benchmark-runner",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-evidence-reporter",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-quality-critic",
+        model: "anvil/review",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-adversarial-reviewer",
+        model: "anvil/review",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+    ],
+  },
+}

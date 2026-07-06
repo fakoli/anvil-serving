@@ -9,7 +9,7 @@
 > *Run local where it is measured safe. Verify risky local output. Keep cloud explicit.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.10.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.11.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 [![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
@@ -151,7 +151,7 @@ See [SECURITY.md](SECURITY.md) for the threat model and vulnerability reporting 
 
 ## Status
 
-**The source tree is versioned 0.10.0, while published tags and package releases can lag `main`.**
+**The source tree is versioned 0.11.0, while published tags and package releases can lag `main`.**
 The router, local serving tools, host management, router/serve lifecycle verbs, harness sync, and
 OpenClaw MCP/controller control plane all ship on `main`. Install from a clone when evaluating those
 main-only surfaces. The control plane keeps the request data plane clean: OpenClaw's hook plugin
@@ -177,6 +177,8 @@ OpenClaw config sync.
 | [Product architecture](docs/QUALITY-GATED-ROUTER.md) | Intent presets, quality profile, verification, fallback, and integrations. |
 | [Terminology](docs/TERMINOLOGY.md) | Product naming, user-facing terms, and technical definitions. |
 | [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md) | MCP/controller workflows for status, preflight, benchmark, OpenClaw sync, and promotion evidence. |
+| [Operator skills and sub-agents](docs/OPERATOR-SKILLS-AND-SUBAGENTS.md) | Verb coverage, skill design, and small-model sub-agent workflow slices. |
+| [Operator skills ADR](docs/adr/0015-operator-skills-and-subagent-workflows.md) | Decision record for the workbench skill, harness packaging, and sub-agent model split. |
 | [OpenClaw operations ADRs](docs/adr/0013-openclaw-layers-and-mcp-control-plane.md) | Hook/router/MCP layers and split-host controller transport. |
 | [Model settings](docs/MODEL-SETTINGS-EXAMPLE.md) | Thinking/sampling settings and model-specific serve flags. |
 | [Serves & eval](docs/SERVES-AND-EVAL.md) | Local serve lifecycle and eval entry points. |
