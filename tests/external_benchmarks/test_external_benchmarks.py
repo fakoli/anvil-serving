@@ -7,6 +7,7 @@ from pathlib import Path
 
 from anvil_serving import cli as top_cli
 from anvil_serving.external_benchmarks import cli, schema, store
+from anvil_serving.external_benchmarks.compare import compare_local_to_external
 from anvil_serving.external_benchmarks.normalize import (
     normalize_external_row,
     normalize_engine,
@@ -351,6 +352,23 @@ def test_compare_command_finds_exact_match(capsys):
     assert rc == 0
     assert "exact external match" in out
     assert "| throughput_tok_s | 520.00 | 410.00 | +26.8% |" in out
+
+
+def test_external_bench_compare_api_returns_structured_exact_result():
+    db = _scratch("compare-api") / "benchmarks.sqlite"
+    fixture = FIXTURES / "millstone_sample.json"
+    local = FIXTURES / "local_benchmark_sample.json"
+    assert cli.main(["import", "--source", "millstone", "--file", str(fixture), "--db", str(db)]) == 0
+
+    result = compare_local_to_external(db, local, gpu="RTX PRO 6000", top=3)
+
+    assert result["exact"] is True
+    assert result["fingerprint"]
+    score, mismatches, row = result["chosen"]
+    assert score >= 0
+    assert mismatches == []
+    assert row["source_name"] == "millstone"
+    assert row["throughput_tok_s"] == 410.0
 
 
 def test_compare_gpu_arg_fills_missing_local_gpu(capsys):
