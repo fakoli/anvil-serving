@@ -18,8 +18,8 @@ narration.
    `router_logs`, `router_manage`, `decision_summary`, `router_promote`,
    `serves_status`, `serves_manage`, `serves_logs`, `doctor_summary`,
    `models_inventory`, `route_decision`, `openclaw_sync`,
-   `openclaw_gateway_restart`, `preflight_probe`, and `benchmark_probe` when
-   they cover the request.
+   `openclaw_gateway_restart`, `preflight_probe`, `benchmark_probe`, and
+   `benchmark_artifact` when they cover the request.
 3. Use documented `anvil-serving` CLI verbs only when an MCP wrapper is missing.
    Safe fallbacks are read-only or preview-first verbs such as `profile`,
    `models sync`, `models recipe`, `external-bench list/report/compare`,
@@ -62,8 +62,8 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `router_manage`, and `decision_summary`; lifecycle mutation is preview-first
   and live only with `confirm=true` plus `dry_run=false`.
 - Promotion evidence: assemble status, decision summary, route probes,
-  preflight, benchmark, calibration, profile/config diffs, and reviewer
-  recommendation with `promoted=false`.
+  preflight, benchmark artifacts, calibration, profile/config diffs, and
+  reviewer recommendation with `promoted=false`.
 - Host repair: diagnose and preview only unless the human approves disruptive
   repair through the documented CLI.
 

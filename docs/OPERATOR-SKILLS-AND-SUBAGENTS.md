@@ -55,7 +55,7 @@ The initial checked-in entry points are:
 | Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, host-repair, and voice skills once their backing tools exist. |
 | Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
 | OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Use workspace-installed skills, or pass `--skill-dir <gateway-visible-path>` for checkout-loaded skills. | Split additional specialized skills once their backing tools exist. |
-| MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, benchmark probes, and promotion preview. | Artifact benchmarks, router token handling, and advisory external benchmark report wrappers. |
+| MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, and promotion preview. | Router token handling and advisory external benchmark report wrappers. |
 | Result contract | `operator-workflow/v1` packet documented for skills and reviewers. | Stdlib validator and tests that enforce packet enums and required fields. |
 
 ## OpenClaw Smoke Result
@@ -96,6 +96,7 @@ from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
 | OpenClaw gateway restart | `openclaw_gateway_restart` | Implemented |
 | Correctness gate probe | `preflight_probe` | Implemented |
 | Bounded throughput probe | `benchmark_probe` | Implemented |
+| Benchmark evidence artifact | `benchmark_artifact` | Implemented; writes `--json-out` only to the workspace or server-configured `ANVIL_BENCHMARK_EVIDENCE_DIR` / `ANVIL_EVIDENCE_DIR` roots |
 
 That is enough for status, route checks, basic validation, bounded benchmark
 probes, OpenClaw provider/model sync, and OpenClaw workbench skill rendering. It
@@ -106,7 +107,6 @@ is not yet enough to operate every verb as a structured agent workflow.
 | Gap | Proposed tool or workflow | Safety boundary |
 |---|---|---|
 | Router token handling | `router_token_status` | Report auth configured/unset without returning token values. |
-| Benchmark artifacts | `benchmark_run` | Separate artifact-producing tool; keep `benchmark_probe` quick and bounded. |
 | External priors | `external_bench_report` / `external_bench_compare` | Always `advisory_only=true`; cannot decide promotion. |
 | Host/cache work | `host_summary`, `cache_prune_plan` | Plans only until a separate human-gated mutation path exists. |
 | OpenClaw skills | `harness sync openclaw --skills` | Render/apply Anvil-owned keys only; preserve operator-owned config. |
@@ -121,7 +121,7 @@ is not yet enough to operate every verb as a structured agent workflow.
 | Model inventory | `models sync`, `models pull`, `models recipe` | MCP for catalog inventory with sync preview/confirm; skill/CLI for pull and recipe read | Inventory is read-heavy. Pull is long-running, network/disk-heavy, and explicitly gated. |
 | Bring-up generation | `init`, `doctor`, `deploy` | MCP preview/render plus CLI apply | Generated artifacts should be inspectable before write. |
 | Environment repair | `host doctor`, `host wsl-config`, `host restart-docker`, `host reset-wsl` | MCP summaries and dry-run repair preview; human-confirmed CLI for disruptive repair | Restarting Docker/WSL and editing host config are high-disruption. |
-| Correctness and capacity | `preflight`, `benchmark`, `eval preflight`, `eval benchmark` | MCP probes plus skill sequencing | Preflight must precede benchmark. Benchmark artifacts need explicit output paths. |
+| Correctness and capacity | `preflight`, `benchmark`, `eval preflight`, `eval benchmark` | MCP probes and artifact capture plus skill sequencing | Preflight must precede benchmark. Benchmark artifacts need explicit output paths validated under the workspace or server-configured evidence directory. |
 | Quality profile | `eval bootstrap`, `calibrate`, `router promote` | MCP preview/status; skill evidence packet; human promotion gate | These change routing trust. Small models can collect evidence, but not promote. |
 | External priors | `external-bench init/sources/import/list/report/export/compare` | MCP read/report/compare; skill marks advisory-only | External results are useful priors, not quality evidence. |
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
@@ -282,8 +282,8 @@ flowchart TD
 3. Serve operator previews `serves up <fast>` or the experiment compose target.
 4. After explicit confirmation, serve operator starts or adopts the target serve.
 5. Preflight runner calls `preflight_probe` against `http://127.0.0.1:<port>/v1`.
-6. Benchmark runner calls `benchmark_probe` for a bounded probe, or CLI
-   `benchmark --json-out` until `benchmark_run` exists.
+6. Benchmark runner calls `benchmark_probe` for a bounded probe, or
+   `benchmark_artifact` when the promotion packet needs durable JSON evidence.
 7. Evidence reporter writes the packet: model id, engine, quant, GPU, context,
    preflight result, benchmark metrics, external priors, and config diff.
 8. Quality critic recommends `promote`, `do_not_promote`, or `needs_more_data`.
