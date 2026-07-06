@@ -56,7 +56,7 @@ The initial checked-in entry points are:
 | Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
 | OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Use workspace-installed skills, or pass `--skill-dir <gateway-visible-path>` for checkout-loaded skills. | Split additional specialized skills once their backing tools exist. |
 | MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, external benchmark advisory reports/compares, and promotion preview. | Router token handling. |
-| Result contract | `operator-workflow/v1` packet documented for skills and reviewers; `workflow_packet_validate` validates packet shape, promotion gates, and artifact paths. | Broader packet fixtures from real multi-agent runs. |
+| Result contract | `operator-workflow/v1` packet documented for skills and reviewers; `workflow_packet_validate` validates packet shape, promotion gates, and artifact paths; `tests/fixtures/operator_workflows/model_swap_promotion_evidence.json` covers the model-swap evidence path. | Broader packet fixtures from real multi-agent runs. |
 
 ## OpenClaw Smoke Result
 
@@ -358,6 +358,16 @@ Before a packet is used as promotion evidence, run `workflow_packet_validate`.
 The validator normalizes `artifacts` entries that are either string paths or
 objects with a `path` field, and rejects artifact paths outside the workspace or
 server-configured evidence roots.
+
+`tests/fixtures/operator_workflows/model_swap_promotion_evidence.json` is the
+canonical fixture for small-model workflow checks. It records readiness,
+inventory, serve status, probe arguments, benchmark shape, advisory priors, and
+an independent critic recommendation. The fixture test drives the real MCP
+`preflight_probe` and `benchmark_artifact` handlers with faked command seams,
+asserts the rendered commands carry the fixture arguments, validates the final
+packet with `workflow_packet_validate`, lets `benchmark_artifact` materialize
+JSON only after path validation under a configured evidence root, and asserts
+that the workflow ends with `promoted=false` plus `human_gate_required=true`.
 
 ## Implementation Priorities
 

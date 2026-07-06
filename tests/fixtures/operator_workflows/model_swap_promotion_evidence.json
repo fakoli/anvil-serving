@@ -1,0 +1,211 @@
+{
+  "request": "swap the fast tier candidate, run preflight, collect benchmark evidence, and prepare a promotion packet",
+  "targets": {
+    "router_config": "./router.toml",
+    "serves_manifest": "./serves.toml",
+    "endpoint": "http://127.0.0.1:30001/v1",
+    "model": "qwen36-mtp-local",
+    "candidate_tier": "fast-local"
+  },
+  "steps": [
+    {
+      "role": "inventory_scout",
+      "tool": {
+        "name": "doctor_summary",
+        "source_class": "mcp",
+        "ok": true,
+        "dry_run": false,
+        "confirmed": false,
+        "target": "current-host",
+        "error": null
+      },
+      "data": {
+        "status": "ok",
+        "checks": {
+          "python": "ok",
+          "docker": "ok",
+          "gpu": "ok"
+        }
+      }
+    },
+    {
+      "role": "inventory_scout",
+      "tool": {
+        "name": "models_inventory",
+        "source_class": "mcp",
+        "ok": true,
+        "dry_run": false,
+        "confirmed": false,
+        "target": "model-library",
+        "error": null
+      },
+      "data": {
+        "models": [
+          {
+            "id": "Qwen/Qwen3.6-35B-A3B-MTP",
+            "served_model_name": "qwen36-mtp-local",
+            "format": "safetensors",
+            "sglang_loadable": true
+          }
+        ]
+      }
+    },
+    {
+      "role": "serve_operator",
+      "tool": {
+        "name": "serves_status",
+        "source_class": "mcp",
+        "ok": true,
+        "dry_run": false,
+        "confirmed": false,
+        "target": "fast",
+        "error": null
+      },
+      "data": {
+        "serves": [
+          {
+            "name": "fast",
+            "state": "running",
+            "base_url": "http://127.0.0.1:30001/v1",
+            "model": "qwen36-mtp-local"
+          }
+        ]
+      }
+    },
+    {
+      "role": "serve_operator",
+      "tool": {
+        "name": "serves_manage",
+        "source_class": "mcp",
+        "ok": true,
+        "dry_run": true,
+        "confirmed": false,
+        "target": "fast",
+        "error": null
+      },
+      "data": {
+        "action": "adopt",
+        "would_run": true,
+        "command": [
+          "anvil-serving",
+          "serves",
+          "adopt",
+          "fast"
+        ]
+      }
+    },
+    {
+      "role": "preflight_runner",
+      "tool": {
+        "name": "preflight_probe",
+        "source_class": "mcp",
+        "ok": true,
+        "dry_run": false,
+        "confirmed": true,
+        "target": "http://127.0.0.1:30001/v1",
+        "error": null
+      },
+      "arguments": {
+        "base_url": "http://127.0.0.1:30001/v1",
+        "model": "qwen36-mtp-local",
+        "needle_ctx": 4096,
+        "tool_batch": 4,
+        "no_thinking": true,
+        "confirm": true,
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "role": "benchmark_runner",
+      "tool": {
+        "name": "benchmark_artifact",
+        "source_class": "mcp",
+        "ok": true,
+        "dry_run": false,
+        "confirmed": true,
+        "target": "__MATERIALIZED_BY_TEST__",
+        "error": null
+      },
+      "arguments": {
+        "base_url": "http://127.0.0.1:30001/v1",
+        "model": "qwen36-mtp-local",
+        "requests": 2,
+        "concurrency": 1,
+        "ctx_tokens": 4096,
+        "max_tokens": 64,
+        "confirm": true,
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "role": "quality_critic",
+      "tool": {
+        "name": "quality_critic",
+        "source_class": "manual",
+        "ok": true,
+        "dry_run": false,
+        "confirmed": false,
+        "target": "promotion recommendation",
+        "error": null
+      },
+      "data": {
+        "reviewer_model_class": "strong-independent",
+        "candidate_model": "qwen36-mtp-local",
+        "recommendation": "needs_more_data",
+        "rationale": "preflight and bounded benchmark evidence are present, but this fixture does not include calibration deltas or human approval"
+      }
+    }
+  ],
+  "benchmark_artifact": {
+    "path": "benchmarks/model_swap_fast_local.json",
+    "summary": {
+      "schema": "anvil-serving.benchmark/v1",
+      "run_id": "fixture-model-swap-fast-local",
+      "base_url": "http://127.0.0.1:30001/v1",
+      "model": "qwen36-mtp-local",
+      "served_model_name": "qwen36-mtp-local",
+      "requests": 2,
+      "completed": 2,
+      "concurrency": 1,
+      "context_tokens": 4096,
+      "max_context_tokens": 131072,
+      "max_tokens": 64,
+      "metrics": {
+        "ttft_p50_ms": 120.0,
+        "ttft_p95_ms": 180.0,
+        "e2e_p50_ms": 240.0,
+        "e2e_p95_ms": 320.0,
+        "throughput_tok_s": 91.5,
+        "output_tokens": 128,
+        "prefix_cache_hit_avg": 0.42
+      }
+    }
+  },
+  "preflight_result": {
+    "returncode": 0,
+    "checks": {
+      "models_endpoint": "pass",
+      "chat_completion": "pass",
+      "tool_call": "pass"
+    },
+    "summary": "preflight passed against the candidate fast tier"
+  },
+  "advisory_priors": [
+    {
+      "source": "external_bench_compare",
+      "advisory_only": true,
+      "promotion_quality_evidence": false,
+      "comparison": {
+        "has_external_prior": true,
+        "match_type": "nearby",
+        "throughput_tok_s_delta_pct": 4.8
+      }
+    }
+  ],
+  "critic": {
+    "gate_state": "human_required",
+    "recommendation": "needs_more_data",
+    "human_gate_required": true,
+    "promoted": false
+  }
+}
