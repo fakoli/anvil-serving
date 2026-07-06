@@ -1,0 +1,42 @@
+{
+  // Example fragment for OpenClaw. Merge through
+  // `anvil-serving harness sync openclaw --skills` once that renderer exists.
+  // Until then, load this directory with `skills.load.extraDirs`.
+  skills: {
+    load: {
+      extraDirs: [
+        "./examples/openclaw/skills",
+      ],
+    },
+  },
+  agents: {
+    defaults: {
+      skills: [
+        "anvil-serving-workbench",
+      ],
+    },
+    list: [
+      {
+        name: "anvil-inventory-scout",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-probe-evidence-runner",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-adversarial-reviewer",
+        model: "anvil/review",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+    ],
+  },
+}
