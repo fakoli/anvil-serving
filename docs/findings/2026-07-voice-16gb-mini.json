@@ -16,8 +16,8 @@
     "hostname": "Mac",
     "platform": "darwin",
     "total_gb": 16.0,
-    "available_gb": 3.4,
-    "used_gb": 12.6,
+    "available_gb": 4.22,
+    "used_gb": 11.78,
     "source": "sysctl/vm_stat",
     "error": null
   },
@@ -25,8 +25,8 @@
     "hostname": "Mac",
     "platform": "darwin",
     "total_gb": 16.0,
-    "available_gb": 3.4,
-    "used_gb": 12.6,
+    "available_gb": 4.23,
+    "used_gb": 11.77,
     "source": "sysctl/vm_stat",
     "error": null
   },
@@ -34,14 +34,14 @@
     "hostname": "Mac",
     "platform": "darwin",
     "total_gb": 16.0,
-    "available_gb": 3.58,
-    "used_gb": 12.42,
+    "available_gb": 3.17,
+    "used_gb": 12.83,
     "source": "sysctl/vm_stat",
     "error": null
   },
   "host_is_16gb_class": true,
-  "driver_process_rss_before_mb": 35.59,
-  "driver_process_peak_rss_mb": 38.09,
+  "driver_process_rss_before_mb": 35.58,
+  "driver_process_peak_rss_mb": 38.14,
   "driver_process_rss_note": "this is the DRIVER SCRIPT's own footprint, not the STT/TTS serves' -- see memory_proof per serve",
   "stt": {
     "kind": "stt",
@@ -58,7 +58,7 @@
     "memory_proof": {
       "source": "macos_process_rss",
       "pid": 10877,
-      "rss_mb": 70.42,
+      "rss_mb": 50.92,
       "endpoint_host": "127.0.0.1",
       "port": 30010,
       "listener": "127.0.0.1:30010",
@@ -69,7 +69,7 @@
     "memory_proof_after_benchmark": {
       "source": "macos_process_rss",
       "pid": 10877,
-      "rss_mb": 64.5,
+      "rss_mb": 64.66,
       "endpoint_host": "127.0.0.1",
       "port": 30010,
       "listener": "127.0.0.1:30010",
@@ -103,7 +103,7 @@
     "memory_proof": {
       "source": "macos_process_rss",
       "pid": 11459,
-      "rss_mb": 103.11,
+      "rss_mb": 65.19,
       "endpoint_host": "127.0.0.1",
       "port": 30011,
       "listener": "127.0.0.1:30011",
@@ -114,7 +114,7 @@
     "memory_proof_after_benchmark": {
       "source": "macos_process_rss",
       "pid": 11459,
-      "rss_mb": 92.11,
+      "rss_mb": 82.22,
       "endpoint_host": "127.0.0.1",
       "port": 30011,
       "listener": "127.0.0.1:30011",
@@ -145,7 +145,7 @@
     "status": 200,
     "request_model": "fast-local",
     "auth_env": "ANVIL_ROUTER_TOKEN",
-    "prompt_source": "captured transcript",
+    "prompt_source": "validation probe",
     "response": {
       "tier": "local",
       "model": "qwen36-27b",
@@ -153,7 +153,7 @@
       "work_class": "chat",
       "reason": "pinned; quality gate: on",
       "confidence": 0.9,
-      "session_id": "rte_066f5def144f49bf8b0fa303"
+      "session_id": "rte_90007bff29ba4184aa3ca492"
     },
     "validation_errors": []
   },
@@ -175,10 +175,10 @@
   },
   "benchmark_sample_error": null,
   "benchmark": {
-    "ttfa_ms": 1083.18,
-    "turn_latency_ms": 1083.75,
+    "ttfa_ms": 1015.0,
+    "turn_latency_ms": 1015.44,
     "stt_wer": 0.4,
-    "tts_rtf": 0.1139,
+    "tts_rtf": 0.1127,
     "tts_first_audio_observed": true,
     "tts_output_bytes": 76800,
     "tts_audio_seconds": 1.6,
@@ -189,7 +189,7 @@
     "reference_text": "testing the local voice proof"
   },
   "benchmark_error": null,
-  "measured_at": "2026-07-06T08:08:08Z",
+  "measured_at": "2026-07-06T08:17:40Z",
   "verdict": {
     "status": "supported",
     "failure_modes": [],
