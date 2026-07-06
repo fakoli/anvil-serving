@@ -1419,6 +1419,7 @@ def _voice_manage_plan(config: str) -> dict:
                 "pid_file": cfg.pid_file,
                 "log_file": cfg.log_file,
                 "ready_timeout": cfg.ready_timeout,
+                "stop_timeout": cfg.stop_timeout,
             })
         elif lifecycle == "external":
             item["note"] = "external/manual lifecycle; voice_manage will skip it"
@@ -1454,7 +1455,8 @@ def tool_voice_manage(args: dict) -> dict:
     if preview:
         return _ok({"applied": False, "dry_run": True, "target": target, "command": argv, "plan": plan})
     result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
-    return _ok({"applied": True, "dry_run": False, "target": target, "plan": plan, **result})
+    applied = any(item.get("lifecycle") != "external" for item in plan.get("audio_serves", []))
+    return _ok({"applied": applied, "dry_run": False, "target": target, "plan": plan, **result})
 
 
 def tool_doctor_summary(args: dict) -> dict:
@@ -2144,7 +2146,7 @@ TOOLS: Dict[str, dict] = {
     "voice_manage": {
         "description": "Preview or run guarded voice STT/TTS lifecycle actions: up/down or start/stop aliases.",
         "inputSchema": _schema({
-            "action": {"type": "string"},
+            "action": {"type": "string", "enum": ["up", "down", "start", "stop"]},
             "config": {"type": "string"},
             "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},

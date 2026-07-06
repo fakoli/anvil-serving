@@ -131,7 +131,7 @@ Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
 | `anvil-serving voice` | Manage STT/TTS lifecycle, run the local Realtime voice server, and benchmark voice turns. |
 | `anvil-serving voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings. |
-| `anvil-serving mcp` | Expose status, route probes, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
+| `anvil-serving mcp` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
 | `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |
 
 ## Cost And Security Defaults

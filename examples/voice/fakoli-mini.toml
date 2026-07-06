@@ -5,6 +5,10 @@
 # starts/stops those processes with PID/log files under /tmp/anvil-voice-mini.
 # The LLM remains routed to fakoli-dark over the tailnet. Secrets are env var
 # names only; never paste token values here.
+#
+# This is a live reference manifest, not a portable template. For another
+# laptop or router host, copy it and replace the LLM base_url/expected host,
+# route/model expectations, MLX Audio workdir, ports, and lifecycle fields.
 
 [voice]
 name = "anvil-voice-fakoli-mini"

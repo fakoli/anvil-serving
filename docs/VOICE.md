@@ -27,9 +27,9 @@ Realtime server and cascade itself.
 
 | Command | What It Does | What It Does Not Do |
 |---|---|---|
-| `anvil-serving voice up` | Validates the voice manifest and starts managed STT/TTS serves. | Does not start the Realtime WebSocket server or the LLM router. |
+| `anvil-serving voice up` | Validates the voice manifest and starts manifest-owned managed/native STT/TTS lifecycle. | Does not start the Realtime WebSocket server or the LLM router. |
 | `anvil-serving voice start` | Alias for `voice up`. | Same as `up`. |
-| `anvil-serving voice down` | Stops managed STT/TTS serves. | Does not stop the LLM router; a foreground `voice run` process stops with Ctrl+C. |
+| `anvil-serving voice down` | Stops manifest-owned managed/native STT/TTS lifecycle. | Does not stop the LLM router; a foreground `voice run` process stops with Ctrl+C. |
 | `anvil-serving voice stop` | Alias for `voice down`. | Same as `down`. |
 | `anvil-serving voice run` | Starts the Realtime WebSocket server in the foreground after probing the LLM, STT, and TTS endpoints. | Does not silently continue when required endpoints are unreachable. |
 | `anvil-serving voice benchmark` | Runs one configured end-to-end voice turn and prints latency/quality metrics as JSON. | Does not promote routing policy or prove subjective audio quality by itself. |
@@ -91,6 +91,18 @@ Manifest hygiene follows the rest of the repo:
 - Do not embed credentials in URLs.
 - A non-loopback `realtime_host` requires `realtime_token_env`.
 
+For native audio endpoints, add the lifecycle metadata to the STT/TTS section:
+
+```toml
+lifecycle = "native"
+workdir = "~/code/mlx-audio"
+start_command = ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 30010"
+pid_file = "/tmp/anvil-voice/stt.pid"
+log_file = "/tmp/anvil-voice/stt.log"
+ready_timeout = 120.0
+stop_timeout = 5.0
+```
+
 ## STT/TTS Lifecycle Modes
 
 `voice.stt.lifecycle` and `voice.tts.lifecycle` choose what `voice up/down`
@@ -108,7 +120,7 @@ without a shell.
 
 ## Multi-Device Expansion
 
-Fakoli Mini and fakoli-dark are reference devices, not fixed product roles. The
+Fakoli Mini and Fakoli Dark are reference devices, not fixed product roles. The
 same voice topology can expand to other laptops or hosts when the configured
 endpoints are reachable over Tailscale or another private or direct network path.
 See [Device topologies](DEVICE-TOPOLOGIES.md) for the broader role model.
@@ -137,15 +149,20 @@ it is not a replacement for router, Realtime, or controller auth.
 ## Fakoli Mini
 
 The checked-in Mini topology is one concrete example: audio stays local on the
-16 GB Mac Mini while the LLM turn routes to fakoli-dark:
+16 GB Mac Mini while the LLM turn routes to the Fakoli Dark router:
 
 - STT: `http://127.0.0.1:30010/v1`
 - TTS: `http://127.0.0.1:30011/v1`
-- LLM: fakoli-dark router over the tailnet
+- LLM: Fakoli Dark router over the tailnet
 
 The checked-in manifest is `examples/voice/fakoli-mini.toml`. It uses
 `lifecycle = "native"` for both audio endpoints and starts MLX Audio with PID
 and log files under `/tmp/anvil-voice-mini`.
+
+This manifest is a live reference, not a portable template. For another laptop
+or router host, copy it and replace the LLM `base_url`, expected endpoint host,
+expected route/model fields, MLX Audio `workdir`, and lifecycle fields for that
+device.
 
 Preview the actions:
 

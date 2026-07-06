@@ -163,9 +163,10 @@ operator wants a dedicated voice playbook. It intentionally uses the existing
 `voice-sidecar compose`, `voice up`, `voice down`, `voice run`, and
 `voice benchmark` verbs before proposing new MCP tools.
 
-Voice benchmark JSON should be attached as `voice-pipeline` evidence, for
-example with artifact kind `voice-benchmark`, `evidence_scope: "voice-pipeline"`,
-and `promotion_quality_evidence: false`. The workflow packet validator enforces
+Voice benchmark output is voice-pipeline evidence, not router work-class promotion evidence.
+Voice benchmark JSON should be attached with artifact kind `voice-benchmark`,
+`evidence_scope: "voice-pipeline"`, and
+`promotion_quality_evidence: false`. The workflow packet validator enforces
 those fields for voice artifact kinds. Voice artifacts must not be counted as
 router work-class promotion evidence, and packets should keep `promoted=false`
 unless a separate human-approved router promotion result exists.

@@ -17,7 +17,7 @@ The current reference OpenClaw deployment is split across machines:
 
 - `fakoli-mini` runs the OpenClaw gateway and the OpenClaw plugin runtime.
 - The anvil-serving utility, router management, serve management, and GPU-local
-  model operations may live on another host, such as `fakoli-dark` or a Windows/WSL
+  model operations may live on another host, such as Fakoli Dark (`fakoli-dark`) or a Windows/WSL
   GPU workstation.
 - The OpenClaw gateway host still needs structured access to anvil-serving operations:
   route probes, preflight and benchmark probes, serve/router status, rendered
@@ -78,7 +78,7 @@ The implemented split-host shape is:
   export ANVIL_CONTROLLER_TOKEN="<generate-and-store-out-of-band>"
   anvil-serving controller serve \
     --host anvil-gpu.tailnet.example \
-    --port 8765 \
+    --port 8766 \
     --auth-token-env ANVIL_CONTROLLER_TOKEN
   ```
 
@@ -92,7 +92,7 @@ The implemented split-host shape is:
   ```bash
   export ANVIL_CONTROLLER_TOKEN="<same-secret-as-controller-host>"
   anvil-serving mcp \
-    --controller-url http://anvil-gpu.tailnet.example:8765 \
+    --controller-url http://anvil-gpu.tailnet.example:8766 \
     --auth-env ANVIL_CONTROLLER_TOKEN
   ```
 
@@ -136,7 +136,7 @@ controller's private address, for example:
 ```bash
 curl -fsS \
   -H "Authorization: Bearer $ANVIL_CONTROLLER_TOKEN" \
-  http://anvil-gpu.tailnet.example:8765/health
+  http://anvil-gpu.tailnet.example:8766/health
 ```
 
 ### Product contract
@@ -147,7 +147,7 @@ The split-host product contract becomes:
   actions. In the reference deployment, this is `fakoli-mini`.
 - The anvil-serving host owns router, serve, model, benchmark, preflight, voice
   lifecycle for local voice manifests, and harness rendering operations. In the
-  reference deployment, this is usually `fakoli-dark` or another resource-owning
+  reference deployment, this is usually Fakoli Dark (`fakoli-dark`) or another resource-owning
   host.
 - The controller is the typed transport between those hosts.
 - The operator skill can use either local stdio MCP or remote controller transport

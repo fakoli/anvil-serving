@@ -18,7 +18,7 @@ transport. There are two operator entry points:
 
 - Same-host operation: `anvil-serving mcp --list-tools` exposes the bounded
   stdio tool surface for model inventory, status, route probes, OpenClaw sync,
-  preflight, and benchmark probes.
+  voice lifecycle, preflight, and benchmark probes.
 - Split-host operation: the anvil-serving host runs
   `anvil-serving controller serve`, and the gateway or operator host runs the MCP bridge with
   `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
@@ -36,7 +36,7 @@ resource and keep the same gate semantics.
 
 | Operator need | Preferred MCP/controller shape | CLI/HTTP equivalent today |
 |---|---|---|
-| Controller readiness | Health endpoint on the controller's private address | `GET /health` on `http://anvil-gpu.tailnet.example:8765` |
+| Controller readiness | Health endpoint on the controller's private address | `GET /health` on `http://anvil-gpu.tailnet.example:8766` |
 | Model inventory | `models_inventory` | `anvil-serving models sync --out ./model-library` |
 | Environment and tier health | `doctor_summary`, `serves_status`, `router_status` | `anvil-serving doctor --config ./router.toml`; `anvil-serving serves --manifest ./serves.toml status`; `anvil-serving router status` |
 | Router lifecycle and logs | `router_manage`, `router_logs` | `anvil-serving router reload`; `anvil-serving router logs --tail 200` |
@@ -64,7 +64,7 @@ MCP invocation rules:
 
   ```bash
   anvil-serving mcp \
-    --controller-url http://anvil-gpu.tailnet.example:8765 \
+    --controller-url http://anvil-gpu.tailnet.example:8766 \
     --auth-env ANVIL_CONTROLLER_TOKEN
   ```
 
@@ -102,7 +102,7 @@ MCP invocation rules:
 
 Use this when the operator or OpenClaw gateway is on one trusted device and the
 anvil-serving CLI, router config, serves manifests, voice manifests, or GPU-local
-operations live on another private host. Fakoli Mini and fakoli-dark are the
+operations live on another private host. Fakoli Mini and Fakoli Dark are the
 reference topology; additional laptops can use the same pattern when they are
 reachable over Tailscale or another private or direct network path.
 
@@ -114,7 +114,7 @@ reachable over Tailscale or another private or direct network path.
    export ANVIL_CONTROLLER_TOKEN="<generate-and-store-out-of-band>"
    anvil-serving controller serve \
      --host anvil-gpu.tailnet.example \
-     --port 8765 \
+     --port 8766 \
      --auth-token-env ANVIL_CONTROLLER_TOKEN
    ```
 
@@ -126,7 +126,7 @@ reachable over Tailscale or another private or direct network path.
    ```bash
    curl -fsS \
      -H "Authorization: Bearer $ANVIL_CONTROLLER_TOKEN" \
-     http://anvil-gpu.tailnet.example:8765/health
+     http://anvil-gpu.tailnet.example:8766/health
    ```
 
    This proves the management plane is reachable. It does not prove router tier
@@ -138,7 +138,7 @@ reachable over Tailscale or another private or direct network path.
    ```bash
    export ANVIL_CONTROLLER_TOKEN="<same-secret-as-controller-host>"
    anvil-serving mcp \
-     --controller-url http://anvil-gpu.tailnet.example:8765 \
+     --controller-url http://anvil-gpu.tailnet.example:8766 \
      --auth-env ANVIL_CONTROLLER_TOKEN
    ```
 
@@ -226,7 +226,7 @@ Use this before any swap, benchmark, or harness-sync operation.
    ```bash
    curl -fsS \
      -H "Authorization: Bearer $ANVIL_CONTROLLER_TOKEN" \
-     http://anvil-gpu.tailnet.example:8765/health
+     http://anvil-gpu.tailnet.example:8766/health
    ```
 
    Then use the MCP bridge to call `doctor_summary`, `serves_status`, and
@@ -340,7 +340,7 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
    ```
 
    It runs STT and TTS as native MLX Audio processes on `127.0.0.1:30010` and
-   `127.0.0.1:30011`, while the LLM goes to the fakoli-dark router over the
+   `127.0.0.1:30011`, while the LLM goes to the Fakoli Dark router over the
    tailnet. Additional laptops can use the same manifest shape with device
    names, `base_url` values, and lifecycle fields changed for the new topology.
 

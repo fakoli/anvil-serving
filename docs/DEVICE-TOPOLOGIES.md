@@ -1,7 +1,7 @@
 # Device Topologies
 
 anvil-serving treats machine names as deployment facts, not product roles.
-Fakoli Mini and fakoli-dark are the current reference devices, but the same
+Fakoli Mini and Fakoli Dark are the current reference devices, but the same
 architecture should expand to additional laptops, workstations, or small edge
 hosts when they are reachable over Tailscale or another private or direct network
 path.
@@ -12,8 +12,8 @@ path.
 |---|---|---|
 | Gateway host | OpenClaw gateway, harness runtime, gateway-local restart/apply actions. | Fakoli Mini |
 | Voice host | `anvil-serving voice run`, microphone/speaker path, and same-host STT/TTS when desired. | Fakoli Mini |
-| Router host | `anvil-serving serve` or deployed router container, router config, token auth, decision logs. | fakoli-dark |
-| Serve host | GPU/CPU model serves, `serves.toml`, model cache, preflight and benchmark target endpoints. | fakoli-dark |
+| Router host | `anvil-serving serve` or deployed router container, router config, token auth, decision logs. | Fakoli Dark |
+| Serve host | GPU/CPU model serves, `serves.toml`, model cache, preflight and benchmark target endpoints. | Fakoli Dark |
 | Controller host | `anvil-serving controller serve` for structured remote operations on the resources it owns. | Usually the router/serve host |
 | Operator client | Codex, Claude Code, OpenClaw, or another tool calling MCP/controller tools. | Any trusted host |
 
@@ -78,7 +78,7 @@ For lifecycle and diagnostics, prefer a controller on the same laptop:
 export ANVIL_CONTROLLER_TOKEN="<generate-and-store-out-of-band>"
 anvil-serving controller serve \
   --host anvil-gpu.tailnet.example \
-  --port 8765 \
+  --port 8766 \
   --auth-token-env ANVIL_CONTROLLER_TOKEN
 ```
 
@@ -87,7 +87,7 @@ host:
 
 ```bash
 anvil-serving mcp \
-  --controller-url http://anvil-gpu.tailnet.example:8765 \
+  --controller-url http://anvil-gpu.tailnet.example:8766 \
   --auth-env ANVIL_CONTROLLER_TOKEN
 ```
 

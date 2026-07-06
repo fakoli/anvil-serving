@@ -7,7 +7,7 @@ description: Validate and operate anvil-serving voice manifests, Hugging Face sp
 
 Use this skill for voice-pipeline operations: validating sidecar manifests,
 rendering speech-to-speech commands, previewing compose snippets, bringing
-managed STT/TTS serves up or down, running the realtime voice loop, and running
+manifest-owned managed/native STT/TTS lifecycle up or down, running the realtime voice loop, and running
 bounded voice benchmarks.
 
 ## Start Here
