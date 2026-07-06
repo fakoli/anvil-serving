@@ -116,9 +116,7 @@ def test_provider_shape_and_token_by_reference():
     # the entries key MUST match the packaged plugin id, not the stale spec's "anvil-intent-router"
     entry = prov["plugins"]["entries"]["openclaw-anvil-intent-router"]
     assert entry["hooks"]["allowConversationAccess"] is True
-    assert entry["config"]["nativeProvider"] == "anthropic"
-    assert entry["config"]["nativeModel"] == "claude-sonnet-4-5"
-    assert entry["config"]["routeTimeoutMs"] == 30
+    assert "config" not in entry
 
 
 # ---- cmd_sync_openclaw -------------------------------------------------------
@@ -281,7 +279,76 @@ def test_scp_merge_preserves_existing_plugin_config():
     assert entry["hooks"]["allowConversationAccess"] is True
     assert entry["hooks"]["allowPromptInjection"] is False
     assert entry["config"]["routeAuthEnv"] == "ANVIL_ROUTER_TOKEN"
-    assert entry["config"]["nativeProvider"] == "anthropic"
+    assert "nativeProvider" not in entry["config"]
+
+
+def test_scp_merge_removes_legacy_generated_plugin_defaults():
+    remote = json.dumps({
+        "plugins": {
+            "entries": {
+                "openclaw-anvil-intent-router": {
+                    "hooks": {"allowPromptInjection": False},
+                    "config": {
+                        "nativeProvider": "anthropic",
+                        "nativeModel": "claude-sonnet-4-5",
+                        "routeTimeoutMs": 30,
+                    },
+                }
+            }
+        }
+    })
+    scp = _FakeSCP(remote=remote)
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+    assert rc == 0
+    entry = json.loads(scp.written)["plugins"]["entries"]["openclaw-anvil-intent-router"]
+    assert entry["hooks"]["allowConversationAccess"] is True
+    assert entry["hooks"]["allowPromptInjection"] is False
+    assert "config" not in entry
+
+
+def test_scp_merge_preserves_explicit_plugin_overrides():
+    remote = json.dumps({
+        "plugins": {
+            "entries": {
+                "openclaw-anvil-intent-router": {
+                    "config": {
+                        "nativeProvider": "openai",
+                        "nativeModel": "gpt-5.5",
+                        "routeTimeoutMs": 250,
+                    },
+                }
+            }
+        }
+    })
+    scp = _FakeSCP(remote=remote)
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+    assert rc == 0
+    config = json.loads(scp.written)["plugins"]["entries"]["openclaw-anvil-intent-router"]["config"]
+    assert config["nativeProvider"] == "openai"
+    assert config["nativeModel"] == "gpt-5.5"
+    assert config["routeTimeoutMs"] == 250
+
+
+def test_scp_merge_does_not_seed_plugin_config_for_schema_compatibility():
+    remote = json.dumps({
+        "plugins": {
+            "entries": {
+                "openclaw-anvil-intent-router": {
+                    "hooks": {"allowPromptInjection": False},
+                }
+            }
+        }
+    })
+    scp = _FakeSCP(remote=remote)
+    rc = harness.cmd_sync_openclaw("r.toml", base_url="http://h/v1", api_key_env="T",
+                                   gateway_host="mini", _load=lambda p: _cfg(), _run=scp)
+    assert rc == 0
+    entry = json.loads(scp.written)["plugins"]["entries"]["openclaw-anvil-intent-router"]
+    assert entry["hooks"]["allowConversationAccess"] is True
+    assert entry["hooks"]["allowPromptInjection"] is False
+    assert "config" not in entry
 
 
 def test_openclaw_skills_sync_scp_merge_preserves_operator_owned_config():
