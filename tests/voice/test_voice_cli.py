@@ -449,6 +449,24 @@ def test_probe_endpoint_sends_configured_bearer_token(auth_server):
     assert received == ["Bearer expected-secret"]
 
 
+def test_probe_endpoint_strips_and_redacts_configured_bearer_token():
+    def fake_open(req, timeout):
+        headers = dict(req.header_items())
+        assert headers["Authorization"] == "Bearer secret-token"
+        raise ValueError("Invalid header value b'Bearer secret-token\\r'")
+
+    problem = voice_cli._probe_endpoint(
+        "anvil router (voice.llm)",
+        "http://127.0.0.1:8000/v1",
+        token=" secret-token\r\n",
+        _open=fake_open,
+    )
+
+    assert problem is not None
+    assert "secret-token" not in problem
+    assert "Bearer <redacted>" in problem
+
+
 def test_check_required_endpoints_reachable_resolves_and_sends_each_configured_token(auth_server, monkeypatch):
     """`_check_required_endpoints_reachable` resolves EACH table's own
     `api_key_env` (mirroring how the LLM/STT/TTS stages read theirs) and
@@ -457,7 +475,7 @@ def test_check_required_endpoints_reachable_resolves_and_sends_each_configured_t
     llm_url, llm_received = auth_server("llm-secret")
     stt_url, stt_received = auth_server("stt-secret")
     tts_url, tts_received = auth_server("tts-secret")
-    monkeypatch.setenv("TEST_VOICE_LLM_TOKEN", "llm-secret")
+    monkeypatch.setenv("TEST_VOICE_LLM_TOKEN", " llm-secret\r\n")
     monkeypatch.setenv("TEST_VOICE_STT_TOKEN", "stt-secret")
     monkeypatch.setenv("TEST_VOICE_TTS_TOKEN", "tts-secret")
 
