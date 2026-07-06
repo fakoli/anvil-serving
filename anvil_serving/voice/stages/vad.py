@@ -29,6 +29,7 @@ recognized stale by ``is_stale()`` and dropped.
 from __future__ import annotations
 
 import itertools
+import time
 from dataclasses import dataclass
 from typing import Any, List, Optional, Protocol, runtime_checkable
 
@@ -84,6 +85,8 @@ class SpeechEvent:
     turn_revision: int
     generation: int
     audio_ms: int = 0
+    barge_in: bool = False
+    detected_monotonic_s: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -178,6 +181,7 @@ class VADStage(BaseStage):
     def process(self, frame: bytes) -> Optional[List[Any]]:
         # This frame's own start-of-frame position on this instance's running
         # audio clock, BEFORE incrementing -- see `SpeechEvent.audio_ms`.
+        detected_at = time.perf_counter()
         frame_start_ms = self._frame_index * self.config.frame_ms
         self._frame_index += 1
 
@@ -190,7 +194,15 @@ class VADStage(BaseStage):
                 gen = self._start_new_turn(barge_in=barge_in)
                 self._in_speech = True
                 events.append(
-                    SpeechEvent("started", self._turn_id, self._turn_revision, gen, audio_ms=frame_start_ms)
+                    SpeechEvent(
+                        "started",
+                        self._turn_id,
+                        self._turn_revision,
+                        gen,
+                        audio_ms=frame_start_ms,
+                        barge_in=barge_in,
+                        detected_monotonic_s=detected_at,
+                    )
                 )
             self._buffer.append(frame)
             self._silence_run = 0
@@ -207,7 +219,16 @@ class VADStage(BaseStage):
             turn_id = self._turn_id or "turn-0"
             turn_revision = self._turn_revision
             end_ms = self._frame_index * self.config.frame_ms
-            events.append(SpeechEvent("stopped", turn_id, turn_revision, gen, audio_ms=end_ms))
+            events.append(
+                SpeechEvent(
+                    "stopped",
+                    turn_id,
+                    turn_revision,
+                    gen,
+                    audio_ms=end_ms,
+                    detected_monotonic_s=detected_at,
+                )
+            )
             events.append(
                 VADAudio(
                     turn_id=turn_id,
