@@ -180,6 +180,71 @@ def test_run_benchmark_does_not_count_zero_byte_tts_chunk_as_audio():
     assert result["tts_rtf"] is None
 
 
+def test_run_benchmark_sends_sentence_chunks_to_tts():
+    def fake_stt(pcm, sample_rate, config):
+        yield ("a", True)
+
+    def fake_llm(text, config):
+        yield "First sentence. "
+        yield "Second sentence"
+
+    seen = []
+
+    def fake_tts(text, config):
+        seen.append(text)
+        yield b"\x00\x00"
+
+    result = run_benchmark(
+        stt_config=STTStageConfig(),
+        llm_config=LLMStageConfig(),
+        tts_config=TTSStageConfig(),
+        pcm=b"\x00\x00",
+        sample_rate=16000,
+        reference_text="a",
+        stt_stream_fn=fake_stt,
+        llm_stream_fn=fake_llm,
+        tts_stream_fn=fake_tts,
+        clock=lambda: 0.0,
+    )
+
+    assert seen == ["First sentence.", "Second sentence"]
+    assert result["llm_reply"] == "First sentence. Second sentence"
+    assert result["tts_request_count"] == 2
+
+
+def test_run_benchmark_splits_long_tts_text_on_words():
+    def fake_stt(pcm, sample_rate, config):
+        yield ("a", True)
+
+    long_reply = (
+        "This reply is intentionally long enough to require multiple "
+        "bounded synthesis requests from the benchmark path"
+    )
+
+    seen = []
+
+    def fake_tts(text, config):
+        seen.append(text)
+        yield b"\x00\x00"
+
+    run_benchmark(
+        stt_config=STTStageConfig(),
+        llm_config=LLMStageConfig(),
+        tts_config=TTSStageConfig(),
+        pcm=b"\x00\x00",
+        sample_rate=16000,
+        reference_text="a",
+        stt_stream_fn=fake_stt,
+        llm_stream_fn=lambda _text, _config: iter([long_reply]),
+        tts_stream_fn=fake_tts,
+        clock=lambda: 0.0,
+    )
+
+    assert len(seen) > 1
+    assert all(len(chunk) <= 48 for chunk in seen)
+    assert " ".join(seen) == long_reply
+
+
 def test_run_benchmark_defaults_reference_text_when_not_supplied():
     def fake_stt(pcm, sample_rate, config):
         yield ("whatever", True)

@@ -50,6 +50,9 @@ def test_fakoli_mini_manifest_is_valid_and_preserves_route_contract():
     assert data["voice"]["llm"]["expected_route_provider"] == "fast-local"
     assert data["voice"]["llm"]["expected_route_model"] == "qwen36-27b"
     assert data["voice"]["llm"]["expected_route_tier"] == "local"
+    assert data["voice"]["llm"]["system_prompt"].endswith("I understand.")
+    assert data["voice"]["llm"]["temperature"] == 0.0
+    assert data["voice"]["llm"]["max_tokens"] == 8
     assert data["voice"]["stt"]["lifecycle"] == "external"
     assert data["voice"]["stt"]["stream"] is False
     assert data["voice"]["stt"]["response_format"] == "json"
@@ -166,6 +169,27 @@ def test_rejects_nonpositive_llm_timeout():
     data = _valid_manifest()
     data["voice"]["llm"]["timeout"] = 0
     with pytest.raises(voice_config.ConfigError, match="positive"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_nonpositive_llm_max_tokens():
+    data = _valid_manifest()
+    data["voice"]["llm"]["max_tokens"] = 0
+    with pytest.raises(voice_config.ConfigError, match="positive"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_negative_llm_temperature():
+    data = _valid_manifest()
+    data["voice"]["llm"]["temperature"] = -0.1
+    with pytest.raises(voice_config.ConfigError, match="nonnegative"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_empty_llm_system_prompt():
+    data = _valid_manifest()
+    data["voice"]["llm"]["system_prompt"] = ""
+    with pytest.raises(voice_config.ConfigError, match="system_prompt"):
         voice_config.validate_manifest(data)
 
 

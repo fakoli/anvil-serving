@@ -413,7 +413,7 @@ def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loo
     token = None
     env_name = llm.get("api_key_env")
     if env_name:
-        token = os.environ.get(env_name)
+        token = (os.environ.get(env_name) or "").strip()
         if token:
             headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request(

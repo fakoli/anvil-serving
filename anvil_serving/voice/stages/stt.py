@@ -186,7 +186,7 @@ def transcribe_stream(
     if config.stream:
         headers["Accept"] = "text/event-stream"
     if config.api_key_env:
-        token = os.environ.get(config.api_key_env)
+        token = (os.environ.get(config.api_key_env) or "").strip()
         if token:
             headers["Authorization"] = "Bearer %s" % token
 

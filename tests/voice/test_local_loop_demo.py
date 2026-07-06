@@ -101,7 +101,7 @@ def test_configured_auth_env_errors_passes_when_configured_env_is_set(monkeypatc
             "tts": {},
         }
     }
-    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "test-token")
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", " test-token\r\n")
 
     assert local_loop_demo.configured_auth_env_errors(data) == []
 
@@ -864,7 +864,7 @@ def test_route_decision_probe_uses_authorization_header_only(monkeypatch):
             }
         }
     }
-    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "test-token")
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", " test-token\r\n")
 
     class Response:
         status = 200

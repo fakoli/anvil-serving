@@ -132,6 +132,13 @@ def _positive_float(table: dict, key: str) -> float:
     return value
 
 
+def _nonnegative_float(table: dict, key: str) -> float:
+    value = _float(table, key)
+    if value < 0:
+        raise ConfigError("%s must be nonnegative" % key)
+    return value
+
+
 def _reject_secret_literals(node, path: str = "") -> None:
     """Walk the manifest and reject secret literals wherever they'd hide.
 
@@ -296,8 +303,14 @@ def validate_manifest(data: dict) -> None:
     _string(llm, "model")
     _bool(llm, "stream", True)
     _check_env_name(llm, "api_key")
+    if "system_prompt" in llm:
+        _string(llm, "system_prompt")
     if "timeout" in llm:
         _positive_float(llm, "timeout")
+    if "max_tokens" in llm:
+        _positive_int(llm, "max_tokens")
+    if "temperature" in llm:
+        _nonnegative_float(llm, "temperature")
 
     _validate_endpoint(data, "stt")
     _validate_endpoint(data, "tts")
