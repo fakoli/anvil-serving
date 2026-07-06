@@ -187,6 +187,66 @@ def _profile(tmp_path):
     return str(p)
 
 
+def _bootstrap_profile(tmp_path, name="profile.json", decision="allow"):
+    p = tmp_path / name
+    p.write_text(json.dumps({
+        "schema": "anvil-serving.router.profile_bootstrap/v2",
+        "mode": "live",
+        "eval_max": 25.0,
+        "entries": [{
+            "tier_id": "fast-local",
+            "work_class": "chat",
+            "decision": decision,
+            "quality_score": 0.9 if decision == "allow" else 0.2,
+            "sample_n": 3,
+            "last_measured": "2026-07-06T00:00:00Z",
+        }],
+    }), encoding="utf-8")
+    return str(p)
+
+
+def test_promotion_preview_validates_and_summarizes_profile_diff(tmp_path):
+    current = _bootstrap_profile(tmp_path, "current.json", decision="deny")
+    candidate = _bootstrap_profile(tmp_path, "candidate.json", decision="allow")
+    preview = rm.promotion_preview(candidate, current_profile_path=current)
+    assert preview["valid"] is True
+    assert preview["profile"]["row_count"] == 1
+    assert preview["diff"]["changed_count"] == 1
+    assert preview["diff"]["changed"][0]["fields"] == ["decision", "quality_score"]
+    assert preview["destinations"]["profile_volume_path"] == "/cfg/profile.json"
+
+
+def test_promotion_preview_rejects_config_without_profile_path(tmp_path):
+    candidate = _bootstrap_profile(tmp_path, "candidate.json")
+    bad = tmp_path / "bad.toml"
+    bad.write_text("[router]\nmapping_version = \"x\"\n", encoding="utf-8")
+    try:
+        rm.promotion_preview(candidate, config_path=str(bad))
+        assert False, "promotion_preview should reject configs without profile_path"
+    except ValueError as exc:
+        assert "profile_path" in str(exc)
+
+
+def test_promotion_preview_rejects_config_profile_path_that_differs_from_dest(tmp_path):
+    candidate = _bootstrap_profile(tmp_path, "candidate.json")
+    cfg = tmp_path / "mismatch.toml"
+    cfg.write_text('[router]\nprofile_path = "/etc/anvil/other-profile.json"\n', encoding="utf-8")
+    try:
+        rm.promotion_preview(candidate, config_path=str(cfg), profile_dest="/etc/anvil/profile.json")
+        assert False, "promotion_preview should reject profile_path/profile_dest mismatches"
+    except ValueError as exc:
+        assert "profile_dest" in str(exc)
+
+
+def test_promotion_preview_rejects_unsafe_dest(tmp_path):
+    candidate = _bootstrap_profile(tmp_path, "candidate.json")
+    try:
+        rm.promotion_preview(candidate, profile_dest="/etc/anvil/p;rm -rf x")
+        assert False, "promotion_preview should reject unsafe destinations"
+    except ValueError as exc:
+        assert "unsafe destination" in str(exc)
+
+
 def test_promote_happy_path_orders_validate_backup_write_restart(tmp_path):
     run = FakeRun(state="running")
     rc = rm.cmd_promote(_profile(tmp_path), container="anvil-router",
