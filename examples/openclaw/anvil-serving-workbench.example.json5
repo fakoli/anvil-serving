@@ -1,14 +1,23 @@
 {
-  // Example fragment for OpenClaw. Merge through
-  // `anvil-serving harness sync openclaw --skills` once that renderer exists.
-  // Until then, load this directory with `skills.load.extraDirs`.
-  skills: {
-    load: {
-      extraDirs: [
-        "./examples/openclaw/skills",
-      ],
-    },
-  },
+  // Example fragment for a workspace-installed OpenClaw skill. First run:
+  //   openclaw skills install ./examples/openclaw/skills/anvil-serving-workbench \
+  //     --as anvil-serving-workbench
+  //
+  // That installs the skill under OpenClaw's workspace skill directory, so this
+  // fragment only enables the skill and example agents. Do not add
+  // `skills.load.extraDirs` for the workspace-installed mode.
+  //
+  // Checkout-loaded alternative:
+  //   skills: {
+  //     load: {
+  //       extraDirs: [
+  //         "/absolute/path/to/anvil-serving/examples/openclaw/skills",
+  //       ],
+  //     },
+  //   },
+  //
+  // Merge through `anvil-serving harness sync openclaw --skills` once that
+  // renderer exists.
   agents: {
     defaults: {
       skills: [
