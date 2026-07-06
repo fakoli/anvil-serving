@@ -58,7 +58,7 @@ def test_help_lists_all_four_subcommands(capsys):
         voice_cli.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for sub in ("up", "down", "run", "benchmark"):
+    for sub in ("up", "start", "down", "stop", "run", "benchmark"):
         assert sub in out
 
 
@@ -72,6 +72,13 @@ def test_no_subcommand_errors(capsys):
 def test_each_subcommand_validates_and_reports_ok(action, manifest_path, capsys):
     rc = voice_cli.main([action, "--config", manifest_path])
     assert rc == 0
+    out = capsys.readouterr().out
+    assert "test-voice" in out
+
+
+def test_start_stop_aliases_validate_and_report_ok(manifest_path, capsys):
+    assert voice_cli.main(["start", "--config", manifest_path]) == 0
+    assert voice_cli.main(["stop", "--config", manifest_path]) == 0
     out = capsys.readouterr().out
     assert "test-voice" in out
 
@@ -231,7 +238,7 @@ def test_cmd_up_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys):
     manifest = tmp_path / "voice_external.toml"
     manifest.write_text(
         VALID_MANIFEST
-        + '\n\n# external native Mini sidecars\n'
+        + '\n\n# external manually supervised sidecars\n'
         + 'lifecycle = "external"\n',
         encoding="utf-8",
     )
@@ -293,6 +300,89 @@ def test_cmd_down_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys)
     out = capsys.readouterr().out
     assert "stt serve lifecycle is external" in out
     assert "tts serve lifecycle is external" in out
+
+
+def test_cmd_up_runs_native_lifecycle_for_fakoli_mini_style_manifest(tmp_path, monkeypatch, capsys):
+    manifest = tmp_path / "voice_native.toml"
+    manifest.write_text(
+        VALID_MANIFEST.replace(
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"',
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"\n'
+            'lifecycle = "native"\nstart_command = "python -m mlx_audio.server --port 8090"\n'
+            'pid_file = "/tmp/stt.pid"\nlog_file = "/tmp/stt.log"',
+        ).replace(
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"',
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"\n'
+            'lifecycle = "native"\nstart_command = "python -m mlx_audio.server --port 8091"\n'
+            'pid_file = "/tmp/tts.pid"\nlog_file = "/tmp/tts.log"',
+        ),
+        encoding="utf-8",
+    )
+    calls = []
+
+    class FakeNative:
+        def __init__(self, config):
+            self.config = config
+
+        def bring_up(self, *, dry_run=False):
+            calls.append((self.config.kind, dry_run))
+            return {
+                "returncode": 0,
+                "reason": "started",
+                "pid": 123 if self.config.kind == "stt" else 456,
+                "ready": True,
+                "log_file": self.config.log_file,
+            }
+
+    monkeypatch.setattr(voice_cli.native_serve, "NativeServe", FakeNative)
+
+    rc = voice_cli.main(["up", "--config", str(manifest), "--dry-run"])
+
+    assert rc == 0
+    assert calls == [("stt", True), ("tts", True)]
+    out = capsys.readouterr().out
+    assert "stt native lifecycle rc=0" in out
+    assert "tts native lifecycle rc=0" in out
+
+
+def test_cmd_down_runs_native_lifecycle_for_fakoli_mini_style_manifest(tmp_path, monkeypatch, capsys):
+    manifest = tmp_path / "voice_native.toml"
+    manifest.write_text(
+        VALID_MANIFEST.replace(
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"',
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"\n'
+            'lifecycle = "native"\nstart_command = "python -m mlx_audio.server --port 8090"',
+        ).replace(
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"',
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"\n'
+            'lifecycle = "native"\nstart_command = "python -m mlx_audio.server --port 8091"',
+        ),
+        encoding="utf-8",
+    )
+    calls = []
+
+    class FakeNative:
+        def __init__(self, config):
+            self.config = config
+
+        def tear_down(self, *, dry_run=False):
+            calls.append((self.config.kind, dry_run))
+            return {
+                "returncode": 0,
+                "reason": "pid_file",
+                "pid": 123 if self.config.kind == "stt" else 456,
+                "ready": False,
+            }
+
+    monkeypatch.setattr(voice_cli.native_serve, "NativeServe", FakeNative)
+
+    rc = voice_cli.main(["down", "--config", str(manifest), "--dry-run"])
+
+    assert rc == 0
+    assert calls == [("stt", True), ("tts", True)]
+    out = capsys.readouterr().out
+    assert "stt native lifecycle rc=0" in out
+    assert "tts native lifecycle rc=0" in out
 
 
 def test_cmd_benchmark_prints_success_json(manifest_path, monkeypatch, capsys):

@@ -267,7 +267,7 @@ skills/modules/agent configuration — **starting with OpenClaw**.
    sync openclaw` renders the correct OpenClaw provider + agent config from the live router config,
    and `anvil-serving harness restart openclaw` reloads the gateway. For agent/operator workflows,
    prefer `anvil-serving mcp`; in split-host mode, run `anvil-serving controller serve` on the
-   anvil-serving host and bridge from `fakoli-mini` with
+   anvil-serving host and bridge from the gateway or operator host with
    `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
 3. **Know the MCP verbs and their safety gates.** `anvil-serving mcp --list-tools` exposes
    `router_status`, `serves_status`, `doctor_summary`, `route_decision`, `openclaw_sync`,
@@ -284,8 +284,10 @@ skills/modules/agent configuration — **starting with OpenClaw**.
    `configSchema`, `route.d.mts`, `package.json` `compat.pluginApi`, generated fixtures, and docs in
    sync whenever those capabilities change.
 
-Note: the OpenClaw **gateway** runs on **Fakoli Mini**. The anvil-serving host owns router, serve,
-model, benchmark, preflight, and harness-rendering operations; Mini owns gateway-local apply/restart
+Note: in the current reference deployment, the OpenClaw **gateway** runs on **Fakoli Mini**.
+Additional laptops or hosts may take that role later when they are reachable over Tailscale or
+another private or direct path. The anvil-serving host owns router, serve, model, benchmark,
+preflight, and harness-rendering operations; the gateway host owns gateway-local apply/restart
 actions. Keep that boundary intact unless a tool explicitly supports crossing it.
 
 Controller auth is required by default even on `127.0.0.1`; use

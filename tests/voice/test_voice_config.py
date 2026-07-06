@@ -53,13 +53,16 @@ def test_fakoli_mini_manifest_is_valid_and_preserves_route_contract():
     assert data["voice"]["llm"]["system_prompt"].endswith("I understand.")
     assert data["voice"]["llm"]["temperature"] == 0.0
     assert data["voice"]["llm"]["max_tokens"] == 8
-    assert data["voice"]["stt"]["lifecycle"] == "external"
+    assert data["voice"]["stt"]["lifecycle"] == "native"
     assert data["voice"]["stt"]["stream"] is False
     assert data["voice"]["stt"]["response_format"] == "json"
     assert data["voice"]["stt"]["timeout"] == 120.0
-    assert data["voice"]["tts"]["lifecycle"] == "external"
+    assert data["voice"]["stt"]["start_command"].startswith(".venv/bin/python -m mlx_audio.server")
+    assert data["voice"]["stt"]["pid_file"] == "/tmp/anvil-voice-mini/stt.pid"
+    assert data["voice"]["tts"]["lifecycle"] == "native"
     assert data["voice"]["tts"]["response_format"] == "pcm"
     assert data["voice"]["tts"]["timeout"] == 120.0
+    assert data["voice"]["tts"]["start_command"].startswith(".venv/bin/python -m mlx_audio.server")
 
 
 def test_shipped_example_default_path_used_when_none_given():
@@ -160,9 +163,39 @@ def test_rejects_malformed_env_var_name():
 
 def test_rejects_invalid_audio_lifecycle():
     data = _valid_manifest()
-    data["voice"]["stt"]["lifecycle"] = "native"
+    data["voice"]["stt"]["lifecycle"] = "sidecar"
     with pytest.raises(voice_config.ConfigError, match="lifecycle"):
         voice_config.validate_manifest(data)
+
+
+def test_native_audio_lifecycle_requires_start_command():
+    data = _valid_manifest()
+    data["voice"]["stt"]["lifecycle"] = "native"
+    with pytest.raises(voice_config.ConfigError, match="start_command"):
+        voice_config.validate_manifest(data)
+
+
+def test_external_audio_lifecycle_rejects_native_process_keys():
+    data = _valid_manifest()
+    data["voice"]["stt"]["lifecycle"] = "external"
+    data["voice"]["stt"]["start_command"] = "python -m mlx_audio.server"
+    with pytest.raises(voice_config.ConfigError, match="native process keys"):
+        voice_config.validate_manifest(data)
+
+
+def test_accepts_native_audio_lifecycle_with_process_metadata():
+    data = _valid_manifest()
+    data["voice"]["stt"].update({
+        "lifecycle": "native",
+        "start_command": "python -m mlx_audio.server --host 127.0.0.1 --port 8090",
+        "stop_command": "pkill -f 'mlx_audio.server.*--port 8090'",
+        "workdir": "~/code/mlx-audio",
+        "pid_file": "/tmp/anvil-voice/stt.pid",
+        "log_file": "/tmp/anvil-voice/stt.log",
+        "ready_timeout": 60.0,
+        "stop_timeout": 5.0,
+    })
+    voice_config.validate_manifest(data)
 
 
 def test_rejects_nonpositive_llm_timeout():

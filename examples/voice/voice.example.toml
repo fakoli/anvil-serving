@@ -11,9 +11,11 @@
 #   - No URL-embedded credentials (https://user:pass@host/...).
 #
 # STT and TTS are OUT-OF-PROCESS serves speaking the OpenAI audio
-# sub-protocols (/v1/audio/transcriptions, /v1/audio/speech) -- this manifest
-# only points at them; it does not describe how they're launched (that's
-# `anvil-serving serves`, reused by a later voice unit).
+# sub-protocols (/v1/audio/transcriptions, /v1/audio/speech). By default they
+# are managed through `anvil-serving serves` (`lifecycle = "managed"`).
+# Set `lifecycle = "external"` for a manually managed endpoint, or
+# `lifecycle = "native"` plus start_command/pid_file/log_file for same-host
+# native processes such as Fakoli Mini's MLX Audio setup.
 
 [voice]
 name = "anvil-voice"
@@ -38,6 +40,12 @@ api_key_env = "ANVIL_ROUTER_TOKEN"   # env var holding the router's bearer token
 base_url = "http://127.0.0.1:8090/v1"
 model = "parakeet-tdt-0.6b-v3"
 api_key_env = "ANVIL_VOICE_STT_TOKEN"   # optional; omit if the serve is unauthenticated
+# lifecycle = "native"
+# workdir = "~/code/mlx-audio"
+# start_command = ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 8090 --log-dir /tmp/anvil-voice"
+# pid_file = "/tmp/anvil-voice/stt.pid"
+# log_file = "/tmp/anvil-voice/stt.log"
+# ready_timeout = 60.0
 
 # Out-of-process TTS serve (e.g. Kokoro-FastAPI /v1/audio/speech).
 [voice.tts]

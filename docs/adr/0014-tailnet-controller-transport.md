@@ -13,7 +13,7 @@ transport is a stdio MCP server, which works when the caller can launch the
 `anvil-serving` CLI on the same machine that owns the router, model serves, and
 management verbs.
 
-The target OpenClaw deployment is split across machines:
+The current reference OpenClaw deployment is split across machines:
 
 - `fakoli-mini` runs the OpenClaw gateway and the OpenClaw plugin runtime.
 - The anvil-serving utility, router management, serve management, and GPU-local
@@ -22,6 +22,11 @@ The target OpenClaw deployment is split across machines:
 - The OpenClaw gateway host still needs structured access to anvil-serving operations:
   route probes, preflight and benchmark probes, serve/router status, rendered
   OpenClaw config, and safe lifecycle actions.
+
+These host names are examples, not product roles. Additional laptops,
+workstations, or small edge hosts can take the same gateway, router, serve,
+voice, or controller roles when they are reachable over Tailscale or another
+private or direct network path.
 
 If the only transport is local stdio, the gateway host must either install the full
 anvil-serving CLI stack locally or shell across machines for every operation. That
@@ -81,8 +86,8 @@ The implemented split-host shape is:
   hostname.
 - `anvil-serving mcp` remains the local stdio MCP server when no remote controller
   URL is supplied.
-- On `fakoli-mini`, the MCP bridge points at the controller and resolves the same
-  token from the environment:
+- On the gateway or operator host, the MCP bridge points at the controller and
+  resolves the same token from the environment:
 
   ```bash
   export ANVIL_CONTROLLER_TOKEN="<same-secret-as-controller-host>"
@@ -111,8 +116,8 @@ The controller implementation:
 - binds only to an explicit tailnet hostname/address, an explicitly configured
   private bind address, or `127.0.0.1` for local development;
 - requires an auth token resolved from the environment variable named by
-  `--auth-token-env`; the `fakoli-mini` MCP bridge resolves the same token
-  through `--auth-env`;
+  `--auth-token-env`; the MCP bridge resolves the same token through
+  `--auth-env`;
 - rejects or redacts raw secret values in tool arguments, command previews, logs, and
   structured responses;
 - writes an audit log with request ids, operation names, target metadata,
@@ -122,10 +127,11 @@ The controller implementation:
 - returns structured failure envelopes instead of human-only stderr text;
 - keeps router core modules OpenClaw-free and controller-transport-free.
 
-Tailscale is the network substrate, not the sole security control. Tailnet ACLs should
-limit which machines can reach the controller, and the controller should still verify
-its own token on every request. Health checks should use the controller's private
-address, for example:
+Tailscale or equivalent direct private connectivity is the network substrate,
+not the sole security control. Tailnet ACLs or private network policy should
+limit which machines can reach the controller, and the controller should still
+verify its own token on every request. Health checks should use the
+controller's private address, for example:
 
 ```bash
 curl -fsS \
@@ -137,9 +143,12 @@ curl -fsS \
 
 The split-host product contract becomes:
 
-- `fakoli-mini` owns OpenClaw gateway runtime and gateway-local reload/restart actions.
-- The anvil-serving host owns router, serve, model, benchmark, preflight, and harness
-  rendering operations.
+- The gateway host owns OpenClaw gateway runtime and gateway-local reload/restart
+  actions. In the reference deployment, this is `fakoli-mini`.
+- The anvil-serving host owns router, serve, model, benchmark, preflight, voice
+  lifecycle for local voice manifests, and harness rendering operations. In the
+  reference deployment, this is usually `fakoli-dark` or another resource-owning
+  host.
 - The controller is the typed transport between those hosts.
 - The operator skill can use either local stdio MCP or remote controller transport
   without changing the high-level playbook.
@@ -150,7 +159,7 @@ The split-host product contract becomes:
   deployment. It is the local transport; tailnet controller is the remote transport.
 - `harness sync openclaw` should be refactored toward render/apply primitives that
   support both push and pull flows. In split-host mode, rendering can happen on the
-  anvil-serving host while gateway-local apply/restart happens on `fakoli-mini`.
+  anvil-serving host while gateway-local apply/restart happens on the gateway host.
 - The controller server uses the same tool schemas as `anvil-serving mcp`, not a
   second bespoke REST API with different semantics.
 - Tool schemas must stay transport-neutral. A skill should not care whether a tool

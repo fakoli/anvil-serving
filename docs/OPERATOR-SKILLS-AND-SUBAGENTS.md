@@ -56,7 +56,7 @@ The initial checked-in entry points are:
 | Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs; `skills/anvil-serving-voice-ops` for voice workflow installation. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, and host-repair skills once their backing tools exist. |
 | Sub-agent roles | Orchestrator, inventory scout, route analyst, serve operator, preflight runner, benchmark runner, evidence reporter, quality critic, and adversarial reviewer role files for Codex and Claude Code. | Add more harness-specific tuning only after real workflow traces show a gap. |
 | OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Use workspace-installed skills, or pass `--skill-dir <gateway-visible-path>` for checkout-loaded skills. | Split additional specialized skills once their backing tools exist. |
-| MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, external benchmark advisory reports/compares, and promotion preview. | Router token handling. |
+| MCP/controller tools | Model inventory, status, guarded serve/router/voice lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, external benchmark advisory reports/compares, and promotion preview. | Router token handling. |
 | Result contract | `operator-workflow/v1` packet documented for skills and reviewers; `workflow_packet_validate` validates packet shape, promotion gates, and artifact paths; `tests/fixtures/operator_workflows/model_swap_promotion_evidence.json` covers the model-swap evidence path. | Broader packet fixtures from real multi-agent runs. |
 
 ## OpenClaw Smoke Result
@@ -90,6 +90,7 @@ from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
 | Compose-defined serve health | `serves_status` | Implemented |
 | Guarded serve lifecycle | `serves_manage` | Implemented |
 | Bounded serve logs | `serves_logs` | Implemented |
+| Guarded voice STT/TTS lifecycle | `voice_manage` | Implemented; applies to managed Docker audio serves and same-host native MLX Audio processes on Mini or other voice hosts |
 | Environment and configured tier checks | `doctor_summary` | Implemented |
 | Host WSL/Docker/GPU summary | `host_summary` | Implemented; read-only and non-mutating |
 | Model inventory | `models_inventory` | Implemented |
@@ -134,7 +135,7 @@ agent workflow.
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
 | Controller transport | `controller serve`, `mcp --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
 | Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
-| Voice | `voice up/down/run/benchmark`, `voice-sidecar validate/command/compose` | Skill-only now through `skills/anvil-serving-voice-ops/SKILL.md`; MCP render/validate/status later | Use existing voice verbs first. Voice benchmark output is voice-pipeline evidence, not router work-class promotion evidence. |
+| Voice | `voice up/down/start/stop/run/benchmark`, `voice-sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle; skill/CLI for foreground realtime server and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`. |
 | Local analytics | `profile`, `score`, `cache-prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `score` are offline analysis. `cache-prune` deletion stays CLI-only and human-gated. |
 
 ## Recommended Skills

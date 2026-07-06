@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import urllib.parse
 
 try:
@@ -46,9 +47,11 @@ _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 # through unrejected even though `token` is already in this set.
 _SECRET_KEY_NAMES = {"api_key", "token", "secret", "password", "realtime_token"}
 _SECRET_VALUE_PREFIXES = ("sk-", "hf_", "hf-", "ghp_", "ghp-")
-_LIFECYCLES = {"managed", "external"}
+_LIFECYCLES = {"managed", "external", "native"}
 _STT_RESPONSE_FORMATS = {"json"}
 _TTS_RESPONSE_FORMATS = {"pcm"}
+_NATIVE_COMMAND_KEYS = ("start_command", "stop_command")
+_NATIVE_PATH_KEYS = ("workdir", "pid_file", "log_file")
 
 
 class ConfigError(ValueError):
@@ -238,8 +241,13 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
         raise ConfigError(
             "voice.%s.lifecycle must be one of %s" % (name, ", ".join(sorted(_LIFECYCLES)))
         )
+    _validate_native_lifecycle(table, name, lifecycle)
     if "timeout" in table:
         _positive_float(table, "timeout")
+    if "ready_timeout" in table:
+        _positive_float(table, "ready_timeout")
+    if "stop_timeout" in table:
+        _positive_float(table, "stop_timeout")
     if name == "stt":
         if "stream" in table:
             _bool(table, "stream", True)
@@ -259,6 +267,35 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
         for key in ("source_sample_rate", "target_sample_rate", "chunk_bytes"):
             if key in table:
                 _positive_int(table, key)
+
+
+def _validate_native_lifecycle(table: dict, name: str, lifecycle: str) -> None:
+    has_native_keys = any(key in table for key in (*_NATIVE_COMMAND_KEYS, *_NATIVE_PATH_KEYS))
+    if lifecycle != "native":
+        if has_native_keys:
+            raise ConfigError(
+                "voice.%s native process keys require lifecycle = \"native\"" % name
+            )
+        return
+
+    start = _string(table, "start_command")
+    try:
+        shlex.split(start)
+    except ValueError as exc:
+        raise ConfigError("voice.%s.start_command is not a valid argv string: %s" % (name, exc))
+    if not shlex.split(start):
+        raise ConfigError("voice.%s.start_command must not be empty" % name)
+    if "stop_command" in table:
+        stop = _string(table, "stop_command")
+        try:
+            shlex.split(stop)
+        except ValueError as exc:
+            raise ConfigError("voice.%s.stop_command is not a valid argv string: %s" % (name, exc))
+        if not shlex.split(stop):
+            raise ConfigError("voice.%s.stop_command must not be empty" % name)
+    for key in _NATIVE_PATH_KEYS:
+        if key in table:
+            _string(table, key)
 
 
 def validate_manifest(data: dict) -> None:

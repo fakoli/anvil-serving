@@ -15,8 +15,9 @@ and OpenAI Chat Completions, routes each request by workload intent, checks risk
 returning it, and keeps metered cloud usage explicit.
 
 For OpenClaw and remote operations, it also exposes explicit MCP/controller tools for status,
-preflight, benchmark, OpenClaw sync, and promotion evidence. The router stays the data plane; the
-control plane handles operations.
+voice lifecycle, preflight, benchmark, OpenClaw sync, and promotion evidence. The router stays the
+data plane; the control plane handles operations across same-host, private, and tailnet-reachable
+device topologies.
 
 ## The Product Promise
 
@@ -92,7 +93,9 @@ Follow the full path in [Getting started](GETTING-STARTED.md).
 | Quality profile | The trust table that decides `allow`, `allow-with-verify`, or `deny`. |
 | Verify-and-fallback | The response path that checks local output and escalates when it fails. |
 | Local serving tools | The CLI surface for profiling usage, cataloging models, managing serves, and validating endpoints. |
-| Control plane | MCP/controller tools for status, route probes, preflight, benchmark, OpenClaw sync, and promotion evidence. |
+| Device topology | The assignment of gateway, voice, router, serve, controller, and operator roles to reachable devices. |
+| Voice pipeline | The local Realtime voice runtime: STT -> routed LLM -> TTS, with managed audio serve lifecycle. |
+| Control plane | MCP/controller tools for status, route probes, preflight, benchmark, OpenClaw sync, voice lifecycle, and promotion evidence. |
 
 See [Terminology](TERMINOLOGY.md) for the naming guide.
 
@@ -105,8 +108,10 @@ See [Terminology](TERMINOLOGY.md) for the naming guide.
 | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Run MCP/controller workflows. |
 | [Operator skills and sub-agents](OPERATOR-SKILLS-AND-SUBAGENTS.md) | Map verbs to MCP/skills and run small-model workflow slices safely. |
 | [Operator skills ADR](adr/0015-operator-skills-and-subagent-workflows.md) | Understand the workbench skill, harness packaging, and sub-agent model split. |
+| [Device topologies](DEVICE-TOPOLOGIES.md) | Expand from Fakoli Mini/Dark to additional laptops or hosts over Tailscale/private connectivity. |
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Tune thinking/sampling behavior for a served model. |
 | [Serves & eval](SERVES-AND-EVAL.md) | Manage model serves and run evals. |
+| [Voice pipeline](VOICE.md) | Run native voice commands, multi-device audio/LLM topology, Realtime server, and benchmarks. |
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Use the reference gateway integration. |
 | [OpenClaw operations ADRs](adr/0013-openclaw-layers-and-mcp-control-plane.md) | Understand hook, router, MCP, and tailnet-controller layers. |

@@ -20,7 +20,7 @@ transport. There are two operator entry points:
   stdio tool surface for model inventory, status, route probes, OpenClaw sync,
   preflight, and benchmark probes.
 - Split-host operation: the anvil-serving host runs
-  `anvil-serving controller serve`, and `fakoli-mini` runs the MCP bridge with
+  `anvil-serving controller serve`, and the gateway or operator host runs the MCP bridge with
   `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
   The bridge presents the same tool names while sending calls to the controller
   over the private tailnet.
@@ -44,6 +44,7 @@ resource and keep the same gate semantics.
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
 | Start or restore compose-defined serves | `serves_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves --manifest ./serves.toml up <name>` |
 | Start an experiment serve | `serves_manage` with `compose` preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves up --compose <compose.yml> <service>` |
+| Start or stop voice STT/TTS serves | `voice_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving voice up --config <voice.toml>`; `anvil-serving voice down --config <voice.toml>` |
 | Probe a multiplexer endpoint | Not exposed yet | `GET /healthz`; `GET /v1/models` on the multiplexer base URL |
 | Serve logs | `serves_logs` with bounded `tail`; no follow mode | `anvil-serving serves --manifest ./serves.toml logs <name> --tail 200` |
 | Correctness gate | `preflight_probe` | `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
@@ -71,6 +72,10 @@ MCP invocation rules:
   resolved plan and a dry-run command. A live serve mutation requires both
   `confirm:true` and `dry_run:false` after the exact manifest or compose file
   and serve names are known.
+- For `voice_manage`, use the same preview-first pattern. It starts/stops only
+  the STT/TTS lifecycle declared by the voice manifest on the host where the
+  tool runs: Docker-backed managed audio serves, or same-host native processes
+  such as MLX Audio endpoints with PID/log files.
 - For `router_manage`, use the same preview-first pattern. A live router
   lifecycle change requires both `confirm:true` and `dry_run:false`.
 - For `router_promote`, preview validates the candidate profile/config and
@@ -85,8 +90,8 @@ MCP invocation rules:
   saved evidence.
 - For controller transport, `--auth-env ANVIL_CONTROLLER_TOKEN` names the
   environment variable containing the controller token. The token value must be
-  present on both the controller host and `fakoli-mini`, but it must not appear
-  in tool arguments, command previews, logs, or saved evidence.
+  present on both the controller host and the gateway/operator host, but it
+  must not appear in tool arguments, command previews, logs, or saved evidence.
 - Treat a successful command preview as planning evidence only, not as
   preflight, benchmark, or sync evidence.
 - Preserve returned structured data and the equivalent command line in the
@@ -95,9 +100,11 @@ MCP invocation rules:
 
 ## Controller transport
 
-Use this when the operator or OpenClaw gateway is on `fakoli-mini` and the
-anvil-serving CLI, router config, serves manifests, and GPU-local operations
-live on another private host.
+Use this when the operator or OpenClaw gateway is on one trusted device and the
+anvil-serving CLI, router config, serves manifests, voice manifests, or GPU-local
+operations live on another private host. Fakoli Mini and fakoli-dark are the
+reference topology; additional laptops can use the same pattern when they are
+reachable over Tailscale or another private or direct network path.
 
 1. On the anvil-serving host, bind the controller to a private Tailscale DNS
    name/address or to `127.0.0.1` for single-host local development. Do not bind
@@ -125,8 +132,8 @@ live on another private host.
    This proves the management plane is reachable. It does not prove router tier
    health; run `doctor_summary`, `serves_status`, and `router_status` for that.
 
-3. On `fakoli-mini`, start the MCP bridge with the controller URL and token env
-   var name:
+3. On the gateway or operator host, start the MCP bridge with the controller URL
+   and token env var name:
 
    ```bash
    export ANVIL_CONTROLLER_TOKEN="<same-secret-as-controller-host>"
@@ -213,8 +220,8 @@ Use this before any swap, benchmark, or harness-sync operation.
    anvil-serving router status
    ```
 
-   In split-host mode, first prove the controller itself is reachable from
-   `fakoli-mini`:
+   In split-host mode, first prove the controller itself is reachable from the
+   gateway or operator host:
 
    ```bash
    curl -fsS \
@@ -310,7 +317,105 @@ an MCP wrapper actually exists.
 3. Treat a clean preflight as both the correctness gate and evidence that the
    swap/load path succeeded.
 
-## Playbook C: preflight then benchmark
+## Playbook C: voice lifecycle and validation
+
+Use this when operating `anvil-serving voice` on a gateway, Mini, laptop, or
+other trusted voice host. The voice command surface has three layers: STT/TTS
+lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
+(`benchmark` or `scripts/voice/mini_validation.py`).
+
+1. Identify the voice topology and manifest.
+
+   First name the devices that own each role: voice/Realtime server, STT, TTS,
+   LLM router, and lifecycle control. Same-host endpoints should use
+   `127.0.0.1`; cross-device endpoints should use a private tailnet or direct
+   address. `lifecycle = "native"` starts a process on the host running
+   `voice up`, so use `external` for remote STT/TTS unless operating that
+   remote host through local CLI or a controller.
+
+   The checked-in Mini manifest is one reference topology:
+
+   ```bash
+   examples/voice/fakoli-mini.toml
+   ```
+
+   It runs STT and TTS as native MLX Audio processes on `127.0.0.1:30010` and
+   `127.0.0.1:30011`, while the LLM goes to the fakoli-dark router over the
+   tailnet. Additional laptops can use the same manifest shape with device
+   names, `base_url` values, and lifecycle fields changed for the new topology.
+
+2. Preview STT/TTS lifecycle before mutation.
+
+   ```bash
+   anvil-serving voice up --config examples/voice/fakoli-mini.toml --dry-run
+   ```
+
+   Prefer `voice_manage` through MCP/controller when available:
+
+   ```json
+   {
+     "action": "up",
+     "config": "examples/voice/fakoli-mini.toml"
+   }
+   ```
+
+   The preview should show each audio endpoint's lifecycle. `native` endpoints
+   show the parsed start command, PID file, log file, and readiness timeout.
+
+3. Start the audio endpoints only after the target manifest is exact.
+
+   ```bash
+   anvil-serving voice up --config examples/voice/fakoli-mini.toml
+   ```
+
+   Through MCP/controller, the live call requires:
+
+   ```json
+   {
+     "action": "up",
+     "config": "examples/voice/fakoli-mini.toml",
+     "confirm": true,
+     "dry_run": false
+   }
+   ```
+
+4. Start the Realtime server in the foreground.
+
+   ```bash
+   anvil-serving voice run --config examples/voice/fakoli-mini.toml
+   ```
+
+   This command probes the LLM, STT, and TTS endpoints before binding the
+   WebSocket server. It should fail loudly on unreachable endpoints rather than
+   starting a session pool that cannot serve a turn.
+
+5. Collect evidence.
+
+   For a quick smoke measurement:
+
+   ```bash
+   anvil-serving voice benchmark --config examples/voice/fakoli-mini.toml
+   ```
+
+   For Mini acceptance evidence:
+
+   ```bash
+   python scripts/voice/mini_validation.py --report
+   ```
+
+   The Mini validation report adds host identity, memory, endpoint model ids,
+   router auth proof, and post-benchmark STT/TTS process memory.
+
+6. Stop audio endpoints when done.
+
+   ```bash
+   anvil-serving voice down --config examples/voice/fakoli-mini.toml
+   ```
+
+   `voice down` does not stop the router and does not stop an already-running
+   foreground `voice run`; stop that process with Ctrl+C.
+
+## Playbook D: preflight then benchmark
 
 Never benchmark first. A fast model that fails preflight is not a promotion
 candidate.
@@ -363,7 +468,7 @@ candidate.
    artifact path. External benchmark comparisons may be included as capacity
    priors, but they do not decide work-class quality.
 
-## Playbook D: sync OpenClaw config
+## Playbook E: sync OpenClaw config
 
 Use this after router presets, tier context windows, model ids, or per-tier
 settings change. OpenClaw reads config at gateway startup, so sync usually needs
@@ -404,7 +509,7 @@ a restart.
    available to the operator. If not, report that config was synced but live
    gateway validation remains pending.
 
-## Playbook E: promotion evidence and stop gate
+## Playbook F: promotion evidence and stop gate
 
 The skill may assemble evidence for a human, but promotion changes live routing
 and is not automatic.
