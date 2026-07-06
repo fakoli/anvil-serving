@@ -1650,6 +1650,24 @@ def tool_openclaw_sync(args: dict) -> dict:
     skill_dir = _str_arg(args, "skill_dir", "")
     if skill_dir and not skills:
         raise ToolError("bad_argument", "skill_dir requires skills=true")
+    voice = _arg_bool(args.get("voice"), False, name="voice")
+    voice_realtime_url = _str_arg(
+        args,
+        "voice_realtime_url",
+        harness.DEFAULT_ANVIL_VOICE_REALTIME_URL,
+    )
+    voice_model = _str_arg(args, "voice_model", "fast-local")
+    if "voice_api_key" in args:
+        raise ToolError(
+            "raw_secret_not_allowed",
+            "raw voice_api_key is not accepted; set voice_api_key_env to the credential env var name",
+        )
+    voice_api_key_env = _str_arg(args, "voice_api_key_env", "")
+    if voice_api_key_env:
+        try:
+            harness._validate_env_var_name(voice_api_key_env, arg_name="voice_api_key_env")
+        except ValueError as exc:
+            raise ToolError("bad_voice_api_key_env", str(exc), {"voice_api_key_env": voice_api_key_env})
     overwrite = _arg_bool(args.get("overwrite"), False, name="overwrite")
     restart = _arg_bool(args.get("restart"), False, name="restart")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
@@ -1668,6 +1686,10 @@ def tool_openclaw_sync(args: dict) -> dict:
             api_key_env=api_key_env,
             skills=skills,
             skill_dir=skill_dir or None,
+            voice=voice,
+            voice_realtime_url=voice_realtime_url,
+            voice_model=voice_model,
+            voice_api_key_env=voice_api_key_env or None,
         )
     except FileNotFoundError:
         raise ToolError("config_not_found", "router config not found", {"config": config})
@@ -1682,6 +1704,10 @@ def tool_openclaw_sync(args: dict) -> dict:
         "out": out or None,
         "skills": skills,
         "skill_dir": skill_dir or None,
+        "voice": voice,
+        "voice_realtime_url": voice_realtime_url if voice else None,
+        "voice_model": voice_model if voice else None,
+        "voice_api_key_env": voice_api_key_env or None,
         "overwrite": overwrite,
         "restart": restart,
         "timeout_seconds": timeout_seconds,
@@ -1701,6 +1727,10 @@ def tool_openclaw_sync(args: dict) -> dict:
         api_key_env=api_key_env,
         skills=skills,
         skill_dir=skill_dir or None,
+        voice=voice,
+        voice_realtime_url=voice_realtime_url,
+        voice_model=voice_model,
+        voice_api_key_env=voice_api_key_env or None,
         gateway_host=gateway_host or None,
         gateway_user=gateway_user or None,
         gateway_path=gateway_path,
@@ -1725,6 +1755,10 @@ def tool_openclaw_sync(args: dict) -> dict:
             "skill_load_dirs": preview["skill_load_dirs"],
             "agent_names": preview["agent_names"],
             "agent_models": preview["agent_models"],
+            "voice": preview["voice"],
+            "voice_provider": preview["voice_provider"],
+            "voice_realtime_url": preview["voice_realtime_url"],
+            "voice_model": preview["voice_model"],
         },
     }
     if rc != 0:
@@ -2210,6 +2244,10 @@ TOOLS: Dict[str, dict] = {
             "out": {"type": "string"},
             "skills": {"type": "boolean"},
             "skill_dir": {"type": "string"},
+            "voice": {"type": "boolean"},
+            "voice_realtime_url": {"type": "string"},
+            "voice_model": {"type": "string"},
+            "voice_api_key_env": {"type": "string"},
             "overwrite": {"type": "boolean"},
             "restart": {"type": "boolean"},
             "dry_run": {"type": "boolean"},

@@ -1,0 +1,150 @@
+{
+  "workspaceDir": "/Users/sdoumbouya/.openclaw/workspace",
+  "plugin": {
+    "id": "anvil-voice",
+    "name": "Anvil Voice",
+    "description": "Bundled Anvil Voice realtime provider",
+    "version": "2026.6.11",
+    "packageName": "@openclaw/anvil-voice-plugin",
+    "format": "openclaw",
+    "source": "/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007/index.ts",
+    "rootDir": "/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007",
+    "origin": "config",
+    "enabled": true,
+    "compat": [],
+    "explicitlyEnabled": true,
+    "activated": true,
+    "activationSource": "explicit",
+    "activationReason": "enabled in config",
+    "syntheticAuthRefs": [],
+    "status": "loaded",
+    "toolNames": [],
+    "hookNames": [],
+    "channelIds": [],
+    "cliBackendIds": [],
+    "providerIds": [],
+    "embeddingProviderIds": [],
+    "speechProviderIds": [],
+    "realtimeTranscriptionProviderIds": [],
+    "realtimeVoiceProviderIds": [
+      "anvil"
+    ],
+    "mediaUnderstandingProviderIds": [],
+    "transcriptSourceProviderIds": [],
+    "imageGenerationProviderIds": [],
+    "videoGenerationProviderIds": [],
+    "musicGenerationProviderIds": [],
+    "webFetchProviderIds": [],
+    "webSearchProviderIds": [],
+    "migrationProviderIds": [],
+    "contextEngineIds": [],
+    "memoryEmbeddingProviderIds": [],
+    "agentHarnessIds": [],
+    "cliCommands": [],
+    "services": [],
+    "gatewayDiscoveryServiceIds": [],
+    "commands": [],
+    "httpRoutes": 0,
+    "hookCount": 0,
+    "configSchema": true,
+    "configJsonSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "realtimeUrl": {
+          "type": "string",
+          "description": "Anvil Voice realtime WebSocket URL."
+        },
+        "baseUrl": {
+          "type": "string",
+          "description": "Anvil Voice HTTP or WebSocket base URL; /v1/realtime is appended when needed."
+        },
+        "apiKey": {
+          "type": [
+            "string",
+            "object"
+          ],
+          "description": "Optional bearer token or secret reference for non-loopback Anvil Voice endpoints."
+        },
+        "token": {
+          "type": [
+            "string",
+            "object"
+          ],
+          "description": "Alias for apiKey."
+        },
+        "model": {
+          "type": "string"
+        },
+        "voice": {
+          "type": "string"
+        },
+        "speakerVoice": {
+          "type": "string"
+        },
+        "vadThreshold": {
+          "type": "number"
+        },
+        "silenceDurationMs": {
+          "type": "number"
+        },
+        "prefixPaddingMs": {
+          "type": "number"
+        }
+      }
+    },
+    "contracts": {
+      "realtimeVoiceProviders": [
+        "anvil"
+      ]
+    },
+    "imported": true,
+    "dependencyStatus": {
+      "hasDependencies": false,
+      "installed": true,
+      "requiredInstalled": true,
+      "optionalInstalled": true,
+      "missing": [],
+      "missingOptional": [],
+      "dependencies": [],
+      "optionalDependencies": []
+    }
+  },
+  "shape": "plain-capability",
+  "capabilityMode": "plain",
+  "capabilityCount": 1,
+  "capabilities": [
+    {
+      "kind": "realtime-voice",
+      "ids": [
+        "anvil"
+      ]
+    }
+  ],
+  "typedHooks": [],
+  "customHooks": [],
+  "tools": [],
+  "commands": [],
+  "cliCommands": [],
+  "services": [],
+  "gatewayDiscoveryServices": [],
+  "gatewayMethods": [],
+  "mcpServers": [],
+  "lspServers": [],
+  "httpRouteCount": 0,
+  "bundleCapabilities": [],
+  "diagnostics": [],
+  "policy": {
+    "allowedModels": [],
+    "hasAllowedModelsConfig": false
+  },
+  "usesLegacyBeforeAgentStart": false,
+  "compatibility": [],
+  "install": {
+    "source": "path",
+    "sourcePath": "/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007",
+    "installPath": "/Users/sdoumbouya/anvil/openclaw-anvil-voice-t007",
+    "version": "2026.6.11",
+    "installedAt": "2026-07-06T20:49:42.535Z"
+  }
+}
