@@ -336,7 +336,7 @@ def _probe_api_key_env(args: dict) -> str:
         raise ToolError(
             "unsafe_api_key_env",
             "api_key_env must be ANVIL_ROUTER_TOKEN for MCP probe tools",
-            {"api_key_env": api_key_env},
+            {"allowed_api_key_envs": sorted(_PROBE_API_KEY_ENVS)},
         )
     return api_key_env
 
