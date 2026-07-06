@@ -26,8 +26,8 @@ transport. There are two operator entry points:
   over the private tailnet.
 
 The MCP surface is not yet a complete replacement for every CLI operation:
-direct multiplexer inspection, JSON benchmark artifact capture, and router
-promotion still use the CLI or HTTP contracts below.
+direct multiplexer inspection and some router promotion context still use the
+CLI or HTTP contracts below.
 
 Prefer MCP tools when a current tool exists because they return structured
 results and keep mutating/probe operations behind explicit `confirm` fields.
@@ -47,7 +47,7 @@ resource and keep the same gate semantics.
 | Probe a multiplexer endpoint | Not exposed yet | `GET /healthz`; `GET /v1/models` on the multiplexer base URL |
 | Serve logs | `serves_logs` with bounded `tail`; no follow mode | `anvil-serving serves --manifest ./serves.toml logs <name> --tail 200` |
 | Correctness gate | `preflight_probe` | `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
-| Throughput run | `benchmark_probe` for a bounded probe; CLI when `--json-out` is required | `anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
+| Throughput run | `benchmark_probe` for a bounded probe; `benchmark_artifact` when `--json-out` evidence is required | `anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
 | OpenClaw config sync | `openclaw_sync`, `openclaw_gateway_restart` | `anvil-serving harness sync openclaw --config <router.toml> ...`; `anvil-serving harness restart openclaw ...` |
 | Human-gated promotion | `router_promote` preview; apply requires `confirm:true` and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
 
@@ -76,10 +76,10 @@ MCP invocation rules:
 - For `router_promote`, preview validates the candidate profile/config and
   returns a compact diff summary. Live apply additionally requires
   `human_approved:true`; without it, the tool refuses even when `confirm:true`.
-- For `preflight_probe`, `benchmark_probe`, and `openclaw_sync`, call once with
-  `confirm:false` or `dry_run:true` to preview the command/result shape, then
-  call with `confirm:true` only after the exact endpoint, model, config, and
-  target host are known.
+- For `preflight_probe`, `benchmark_probe`, `benchmark_artifact`, and
+  `openclaw_sync`, call once with `confirm:false` or `dry_run:true` to preview
+  the command/result shape, then call with `confirm:true` only after the exact
+  endpoint, model, config, artifact path, and target host are known.
 - For authenticated probes, pass `api_key_env` such as `ANVIL_ROUTER_TOKEN`;
   never pass a literal token value through MCP arguments, command previews, or
   saved evidence.
@@ -349,9 +349,11 @@ candidate.
      --json-out .anvil/benchmarks/<served-name>-benchmark.json
    ```
 
-   The current `benchmark_probe` MCP tool is useful for a bounded structured
-   probe, but it does not expose `--json-out`. Use the CLI path when the
-   promotion packet needs a benchmark artifact.
+   Through MCP/controller, use `benchmark_probe` for the quick bounded probe and
+   `benchmark_artifact` for promotion evidence. `benchmark_artifact` validates
+   the artifact path before it runs and only writes under the workspace or
+   server-configured `ANVIL_BENCHMARK_EVIDENCE_DIR` / `ANVIL_EVIDENCE_DIR`
+   roots.
 
    Include `--max-model-len` when the endpoint cannot advertise the context
    limit reliably. Include `--no-thinking` only under the same rule as

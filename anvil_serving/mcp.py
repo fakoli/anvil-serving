@@ -31,6 +31,8 @@ PROTOCOL_VERSION = "2024-11-05"
 _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _PROXY_METHODS = {"tools/list", "tools/call"}
 _PROBE_API_KEY_ENVS = {"ANVIL_ROUTER_TOKEN"}
+_WORKSPACE_ROOT_ENVS = ("ANVIL_WORKSPACE_ROOT",)
+_BENCHMARK_EVIDENCE_DIR_ENVS = ("ANVIL_BENCHMARK_EVIDENCE_DIR", "ANVIL_EVIDENCE_DIR")
 _MAX_ERROR_BODY_BYTES = 4096
 _LOG_SECRET_PATTERNS = (
     re.compile(r"(?i)\b((?:authorization|x-api-key)\s*[:=]\s*(?:bearer\s+)?)([^\s]+)"),
@@ -272,6 +274,10 @@ def _safe_probe_url(base_url: str) -> str:
     parsed = urllib.parse.urlparse(base_url)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         raise ToolError("bad_base_url", "base_url must be an http(s) URL with a host")
+    if parsed.username is not None or parsed.password is not None:
+        raise ToolError("bad_base_url", "base_url must not contain credentials; use api_key_env")
+    if parsed.query or parsed.fragment:
+        raise ToolError("bad_base_url", "base_url must not contain query strings or fragments")
     if parsed.hostname.strip().lower() == "localhost":
         raise ToolError("bad_base_url", "use 127.0.0.1 or a private/tailnet host, not localhost")
     host = parsed.hostname
@@ -348,6 +354,170 @@ def _run_argv(argv: list[str], *, confirm: bool, timeout: Optional[int] = None) 
     if proc.returncode != 0:
         raise ToolError("command_failed", "command exited with status %s" % proc.returncode, result)
     return result
+
+
+def _real_path(path: str, *, base: Optional[str] = None) -> str:
+    expanded = os.path.expanduser(path)
+    if not os.path.isabs(expanded):
+        expanded = os.path.join(base or os.getcwd(), expanded)
+    return os.path.realpath(os.path.abspath(expanded))
+
+
+def _path_is_within(path: str, root: str) -> bool:
+    try:
+        return os.path.commonpath([os.path.normcase(path), os.path.normcase(root)]) == os.path.normcase(root)
+    except ValueError:
+        return False
+
+
+def _is_filesystem_root(path: str) -> bool:
+    norm = os.path.normpath(path)
+    return os.path.dirname(norm) == norm
+
+
+def _has_workspace_marker(path: str) -> bool:
+    pyproject = os.path.join(path, "pyproject.toml")
+    if os.path.isfile(pyproject):
+        try:
+            with open(pyproject, "r", encoding="utf-8") as f:
+                text = f.read(4096)
+        except OSError:
+            return False
+        if "anvil-serving" in text:
+            return True
+    readme = os.path.join(path, "README.md")
+    if os.path.isfile(readme):
+        try:
+            with open(readme, "r", encoding="utf-8") as f:
+                text = f.read(4096)
+        except OSError:
+            return False
+        if "# anvil-serving" in text or "quality-gated local-model router" in text:
+            return True
+    return False
+
+
+def _discover_workspace_root(start: Optional[str] = None) -> str:
+    for env_name in _WORKSPACE_ROOT_ENVS:
+        raw = (os.environ.get(env_name) or "").strip()
+        if raw:
+            root = _real_path(raw)
+            if _is_filesystem_root(root) or not os.path.isdir(root) or not _has_workspace_marker(root):
+                raise ToolError(
+                    "bad_workspace_root",
+                    "%s must point to an anvil-serving workspace, not a broad filesystem root" % env_name,
+                    {"env": env_name, "workspace": root},
+                )
+            return root
+
+    current = _real_path(start or os.getcwd())
+    while True:
+        if _has_workspace_marker(current):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            return ""
+        current = parent
+
+
+def _configured_benchmark_evidence_roots() -> list[str]:
+    roots = []
+    for env_name in _BENCHMARK_EVIDENCE_DIR_ENVS:
+        raw = os.environ.get(env_name, "")
+        for item in raw.split(os.pathsep):
+            item = item.strip()
+            if item:
+                root = _real_path(item)
+                if _is_filesystem_root(root):
+                    raise ToolError(
+                        "bad_evidence_dir",
+                        "%s must not point at a broad filesystem root" % env_name,
+                        {"env": env_name, "evidence_dir": root},
+                    )
+                roots.append(root)
+    return roots
+
+
+def _resolve_benchmark_artifact_path(path: str) -> tuple[str, list[str]]:
+    if not path:
+        raise ToolError("missing_argument", "missing required argument 'artifact_path'")
+    if path == "-":
+        raise ToolError("bad_artifact_path", "artifact_path must be a file path, not '-'")
+    if "\x00" in path:
+        raise ToolError("bad_artifact_path", "artifact_path must not contain NUL bytes")
+
+    workspace = _discover_workspace_root()
+    roots = [workspace] if workspace else []
+    roots.extend(root for root in _configured_benchmark_evidence_roots() if root not in roots)
+    if not roots:
+        raise ToolError(
+            "missing_artifact_root",
+            "artifact_path requires an anvil-serving workspace or configured evidence directory",
+            {"workspace_envs": list(_WORKSPACE_ROOT_ENVS), "evidence_dir_envs": list(_BENCHMARK_EVIDENCE_DIR_ENVS)},
+        )
+
+    if os.path.isabs(os.path.expanduser(path)):
+        artifact_path = _real_path(path)
+    elif workspace:
+        artifact_path = _real_path(path, base=workspace)
+    elif len(roots) == 1:
+        artifact_path = _real_path(path, base=roots[0])
+    else:
+        raise ToolError("bad_artifact_path", "relative artifact_path requires a workspace when multiple evidence roots are configured")
+    if not any(_path_is_within(artifact_path, root) for root in roots):
+        raise ToolError(
+            "unsafe_artifact_path",
+            "artifact_path must be inside the workspace or configured evidence directory",
+            {
+                "artifact_path": artifact_path,
+                "workspace": workspace or None,
+                "evidence_dirs": roots[1:] if workspace else roots,
+                "workspace_envs": list(_WORKSPACE_ROOT_ENVS),
+                "evidence_dir_envs": list(_BENCHMARK_EVIDENCE_DIR_ENVS),
+            },
+        )
+    if os.path.isdir(artifact_path):
+        raise ToolError("bad_artifact_path", "artifact_path points at a directory", {"artifact_path": artifact_path})
+    return artifact_path, roots
+
+
+def _benchmark_key_metrics(summary: dict[str, Any]) -> dict[str, Any]:
+    metrics = summary.get("metrics")
+    if not isinstance(metrics, dict):
+        metrics = {}
+    keys = (
+        "ttft_p50_ms",
+        "ttft_p95_ms",
+        "e2e_p50_ms",
+        "e2e_p95_ms",
+        "throughput_tok_s",
+        "output_tokens",
+        "prefix_cache_hit_avg",
+    )
+    return {
+        "requests": summary.get("requests"),
+        "completed": summary.get("completed"),
+        "concurrency": summary.get("concurrency"),
+        "context_tokens": summary.get("context_tokens"),
+        "max_context_tokens": summary.get("max_context_tokens"),
+        "max_tokens": summary.get("max_tokens"),
+        **{key: metrics.get(key) for key in keys},
+    }
+
+
+def _read_benchmark_artifact(path: str) -> dict[str, Any]:
+    if not os.path.isfile(path):
+        raise ToolError("artifact_not_written", "benchmark completed but JSON artifact was not written", {"artifact_path": path})
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            summary = json.load(f)
+    except OSError as exc:
+        raise ToolError("artifact_read_failed", str(exc), {"artifact_path": path})
+    except ValueError as exc:
+        raise ToolError("bad_benchmark_artifact", "benchmark artifact is not valid JSON", {"artifact_path": path, "error": str(exc)})
+    if not isinstance(summary, dict):
+        raise ToolError("bad_benchmark_artifact", "benchmark artifact must be a JSON object", {"artifact_path": path})
+    return summary
 
 
 def _redact_log_text(value: str) -> str:
@@ -1243,6 +1413,63 @@ def tool_benchmark_probe(args: dict) -> dict:
     return _ok(_run_argv(argv, confirm=confirm, timeout=timeout_seconds))
 
 
+def tool_benchmark_artifact(args: dict) -> dict:
+    base_url = _safe_probe_url(_str_arg(args, "base_url", required=True))
+    model = _str_arg(args, "model", required=True)
+    api_key_env = _probe_api_key_env(args)
+    artifact_path, allowed_roots = _resolve_benchmark_artifact_path(_str_arg(args, "artifact_path", required=True))
+    requests = _bounded_int_arg(args, "requests", 60, min_value=1, max_value=200)
+    concurrency = _bounded_int_arg(args, "concurrency", 20, min_value=1, max_value=100)
+    burst = _bounded_int_arg(args, "burst", 0, min_value=0, max_value=200)
+    max_tokens = _bounded_int_arg(args, "max_tokens", 64, min_value=1, max_value=4096)
+    ctx_tokens = _bounded_int_arg(args, "ctx_tokens", 0, min_value=0, max_value=262144)
+    max_model_len = _bounded_int_arg(args, "max_model_len", 0, min_value=0, max_value=1048576)
+    no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 1800, min_value=1, max_value=7200)
+    argv = [sys.executable, "-m", "anvil_serving.benchmark", "--base-url", base_url,
+            "--model", model, "--requests", str(requests), "--concurrency", str(concurrency),
+            "--max-tokens", str(max_tokens), "--ctx-tokens", str(ctx_tokens),
+            "--json-out", artifact_path]
+    if burst:
+        argv += ["--burst", str(burst)]
+    if max_model_len:
+        argv += ["--max-model-len", str(max_model_len)]
+    if api_key_env:
+        argv += ["--api-key-env", api_key_env]
+    if no_thinking:
+        argv.append("--no-thinking")
+
+    if not confirm:
+        return _ok({
+            "applied": False,
+            "dry_run": True,
+            "artifact_path": artifact_path,
+            "allowed_roots": allowed_roots,
+            "command": argv,
+        })
+
+    parent = os.path.dirname(artifact_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    if os.path.exists(artifact_path):
+        try:
+            os.remove(artifact_path)
+        except OSError as exc:
+            raise ToolError("artifact_remove_failed", str(exc), {"artifact_path": artifact_path})
+    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    summary = _read_benchmark_artifact(artifact_path)
+    return _ok({
+        "applied": True,
+        "dry_run": False,
+        "artifact_path": artifact_path,
+        "allowed_roots": allowed_roots,
+        "key_metrics": _benchmark_key_metrics(summary),
+        "summary": summary,
+        **result,
+    })
+
+
 def _schema(properties: dict, required: Optional[list[str]] = None) -> dict:
     return {
         "type": "object",
@@ -1448,6 +1675,25 @@ TOOLS: Dict[str, dict] = {
             "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
         }, required=["base_url", "model"]),
         "handler": tool_benchmark_probe,
+    },
+    "benchmark_artifact": {
+        "description": "Preview or run an anvil-serving benchmark and write a validated local JSON artifact.",
+        "inputSchema": _schema({
+            "base_url": {"type": "string"},
+            "model": {"type": "string"},
+            "artifact_path": {"type": "string"},
+            "api_key_env": {"type": "string"},
+            "requests": _bounded_integer_schema(1, 200, 60),
+            "concurrency": _bounded_integer_schema(1, 100, 20),
+            "burst": _bounded_integer_schema(0, 200, 0),
+            "max_tokens": _bounded_integer_schema(1, 4096, 64),
+            "ctx_tokens": _bounded_integer_schema(0, 262144, 0),
+            "max_model_len": _bounded_integer_schema(0, 1048576, 0),
+            "no_thinking": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
+        }, required=["base_url", "model", "artifact_path"]),
+        "handler": tool_benchmark_artifact,
     },
 }
 

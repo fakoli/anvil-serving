@@ -14,7 +14,7 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   `router_manage`, `decision_summary`, `router_promote`, `serves_status`,
   `serves_manage`, `serves_logs`, `doctor_summary`, `models_inventory`,
   `route_decision`, `openclaw_sync`, `openclaw_gateway_restart`,
-  `preflight_probe`, and `benchmark_probe`.
+  `preflight_probe`, `benchmark_probe`, and `benchmark_artifact`.
 - Use documented `anvil-serving` CLI verbs only when a structured tool is
   missing. Safe fallbacks are read-only or preview-first verbs such as
   `profile`, `models sync`, `models recipe`, `external-bench list/report/compare`,
@@ -42,8 +42,8 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
 - Harness sync: preview OpenClaw provider, skill, and agent config with
   `openclaw_sync`; apply only to an explicit `out` or `gateway_host` target.
 - Promotion evidence: assemble status, decision summaries, route probes,
-  preflight, benchmark, calibration, profile/config diffs, and reviewer
-  recommendation with `promoted=false`.
+  preflight, benchmark artifacts, calibration, profile/config diffs, and
+  reviewer recommendation with `promoted=false`.
 
 ## Roles
 
