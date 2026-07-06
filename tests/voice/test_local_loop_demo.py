@@ -27,9 +27,16 @@ def test_audio_diagnostics_flags_are_early_modes():
     args = local_loop_demo.build_parser().parse_args(["--list-devices"])
     assert args.list_devices is True
 
-    args = local_loop_demo.build_parser().parse_args(["--meter-inputs", "--meter-seconds", "0.25"])
+    args = local_loop_demo.build_parser().parse_args([
+        "--meter-inputs",
+        "--meter-seconds",
+        "0.25",
+        "--input-sample-rate",
+        "48000",
+    ])
     assert args.meter_inputs is True
     assert args.meter_seconds == 0.25
+    assert args.input_sample_rate == 48000
 
 
 def test_list_devices_main_exits_before_manifest_or_pipeline_setup(monkeypatch):
@@ -51,6 +58,7 @@ def test_list_devices_main_exits_before_manifest_or_pipeline_setup(monkeypatch):
 def test_meter_inputs_main_exits_before_manifest_or_pipeline_setup(monkeypatch):
     def fake_meter_inputs(**kwargs):
         assert kwargs["input_device"] == 6
+        assert kwargs["sample_rate"] == 48000
         return 0
 
     monkeypatch.setattr(local_loop_demo, "meter_inputs", fake_meter_inputs)
@@ -65,7 +73,85 @@ def test_meter_inputs_main_exits_before_manifest_or_pipeline_setup(monkeypatch):
         lambda _config: (_ for _ in ()).throw(AssertionError("pipeline should not construct")),
     )
 
-    assert local_loop_demo.main(["--meter-inputs", "--input-device", "6"]) == 0
+    assert local_loop_demo.main(["--meter-inputs", "--input-device", "6", "--input-sample-rate", "48000"]) == 0
+
+
+def test_local_audio_config_separates_input_and_output_rates():
+    cfg = local_loop_demo.LocalAudioConfig(
+        sample_rate=16000,
+        input_sample_rate=48000,
+        output_sample_rate=16000,
+        frame_ms=20,
+    )
+
+    assert cfg.effective_input_sample_rate == 48000
+    assert cfg.effective_output_sample_rate == 16000
+    assert cfg.frame_samples == 960
+
+
+def test_local_audio_duplex_opens_input_and_output_at_separate_rates(monkeypatch):
+    calls = []
+
+    class FakeStream:
+        def __init__(self, kind, **kwargs):
+            calls.append((kind, kwargs))
+
+        def start(self):
+            return None
+
+        def stop(self):
+            return None
+
+        def close(self):
+            return None
+
+        def write(self, _pcm):
+            return None
+
+    class FakeSoundDevice:
+        @staticmethod
+        def RawInputStream(**kwargs):
+            return FakeStream("input", **kwargs)
+
+        @staticmethod
+        def RawOutputStream(**kwargs):
+            return FakeStream("output", **kwargs)
+
+    monkeypatch.setattr(
+        local_loop_demo.LocalAudioDuplex,
+        "_import_sounddevice",
+        staticmethod(lambda: FakeSoundDevice),
+    )
+    audio = local_loop_demo.LocalAudioDuplex(
+        local_loop_demo.LocalAudioConfig(
+            sample_rate=16000,
+            input_sample_rate=48000,
+            output_sample_rate=16000,
+            frame_ms=20,
+            input_device=79,
+            output_device=8,
+        )
+    )
+
+    audio.start()
+
+    assert calls[0][0] == "input"
+    assert calls[0][1]["samplerate"] == 48000
+    assert calls[0][1]["blocksize"] == 960
+    assert calls[0][1]["device"] == 79
+    assert calls[1][0] == "output"
+    assert calls[1][1]["samplerate"] == 16000
+    assert calls[1][1]["device"] == 8
+
+
+def test_normalize_input_frame_downsamples_to_pipeline_rate():
+    samples = [0, 1000, 2000, 3000, 4000, 5000]
+    frame = b"".join(sample.to_bytes(2, "little", signed=True) for sample in samples)
+
+    normalized = local_loop_demo.normalize_input_frame(frame, 48000)
+
+    assert len(normalized) == 4  # 6 samples at 48 kHz -> 2 samples at 16 kHz.
+    assert local_loop_demo.normalize_input_frame(frame, local_loop_demo.PIPELINE_INPUT_SAMPLE_RATE) == frame
 
 
 def test_numeric_device_args_are_resolved_to_indices():

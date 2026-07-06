@@ -83,6 +83,7 @@ from anvil_serving.voice.connections.local_audio import (  # noqa: E402
 )
 from anvil_serving.voice.messages import AudioOut, EndOfResponse, Transcription  # noqa: E402
 from anvil_serving.voice.stages.base import PIPELINE_END  # noqa: E402
+from anvil_serving.voice.stages.tts import resample_int16  # noqa: E402
 from anvil_serving.voice.stages.vad import SpeechEvent, VADConfig  # noqa: E402
 
 from scripts.voice._real_pipeline import (  # noqa: E402
@@ -93,6 +94,7 @@ from scripts.voice._real_pipeline import (  # noqa: E402
 
 FINDINGS_DOC = _REPO_ROOT / "docs" / "findings" / "2026-07-voice-local-loop-proof.md"
 DEFAULT_LOCAL_LOOP_CONFIG = str(_REPO_ROOT / "examples" / "voice" / "fakoli-dark.toml")
+PIPELINE_INPUT_SAMPLE_RATE = 16000
 DEFAULT_CAPTURE_DIR = Path(
     os.environ.get(
         "ANVIL_VOICE_CAPTURE_DIR",
@@ -126,6 +128,7 @@ def build_parser():
     p.add_argument("--vad-threshold", type=float, default=500.0, help="SimpleEnergyVADModel RMS speech threshold")
     p.add_argument("--input-device", default=None, help="sounddevice input device index/name")
     p.add_argument("--output-device", default=None, help="sounddevice output device index/name")
+    p.add_argument("--input-sample-rate", type=int, default=16000, help="PortAudio input sample rate")
     p.add_argument("--list-devices", action="store_true", help="list PortAudio devices and exit")
     p.add_argument("--meter-inputs", action="store_true", help="measure input-device RMS/peak briefly and exit")
     p.add_argument("--meter-seconds", type=float, default=2.0, help="seconds per input device for --meter-inputs")
@@ -224,6 +227,12 @@ def _write_wav(path: str, pcm_frames: List[bytes], sample_rate: int) -> None:
         w.setsampwidth(2)
         w.setframerate(sample_rate)
         w.writeframes(b"".join(pcm_frames))
+
+
+def normalize_input_frame(frame: bytes, input_sample_rate: int) -> bytes:
+    if input_sample_rate == PIPELINE_INPUT_SAMPLE_RATE:
+        return frame
+    return resample_int16(frame, input_sample_rate, PIPELINE_INPUT_SAMPLE_RATE)
 
 
 def pcm_int16_stats(pcm: bytes) -> Dict[str, Any]:
@@ -590,7 +599,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         try:
             return meter_inputs(
                 seconds=args.meter_seconds,
-                sample_rate=16000,
+                sample_rate=args.input_sample_rate,
                 frame_ms=args.frame_ms,
                 threshold=args.vad_threshold,
                 input_device=resolve_device_arg(args.input_device),
@@ -614,7 +623,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         audio = LocalAudioDuplex(
             LocalAudioConfig(
-                sample_rate=16000, frame_ms=args.frame_ms,
+                sample_rate=16000,
+                input_sample_rate=args.input_sample_rate,
+                output_sample_rate=pipeline_config.tts.target_sample_rate,
+                frame_ms=args.frame_ms,
                 input_device=resolve_device_arg(args.input_device),
                 output_device=resolve_device_arg(args.output_device),
             )
@@ -633,7 +645,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     active_playback_lock = threading.Lock()
     active_playback_generations: Set[int] = set()
     playback_intervals: List[Dict[str, Any]] = []
-
     def _start_playback_interval(generation: int) -> Dict[str, Any]:
         interval = {"generation": generation, "start": time.perf_counter(), "end": None}
         with active_playback_lock:
@@ -833,6 +844,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if frame is None:
                     drain_sidebands()
                     continue
+                frame = normalize_input_frame(frame, args.input_sample_rate)
                 if input_frames is not None:
                     input_frames.append(frame)
                 pipeline.audio_in.put(frame)
@@ -865,7 +877,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             capture_prefix,
             input_frames,
             output_frames,
-            16000,
+            PIPELINE_INPUT_SAMPLE_RATE,
             pipeline_config.tts.target_sample_rate,
             turn_metrics,
             events,

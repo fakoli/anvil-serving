@@ -57,6 +57,7 @@ To diagnose input routing before rerunning the proof:
 ```bash
 python scripts/voice/local_loop_demo.py --list-devices
 python scripts/voice/local_loop_demo.py --meter-inputs --meter-seconds 0.35
+python scripts/voice/local_loop_demo.py --meter-inputs --input-sample-rate 48000 --meter-seconds 0.5
 python scripts/voice/local_loop_demo.py --meter-inputs --input-device 6 --meter-seconds 0.35
 ```
 
@@ -102,6 +103,12 @@ PortAudio paths: every openable input device reported RMS about 0.48 with peak
 Wir`) reported RMS 0.49 and peak 2 against the proof threshold 500. The issue is
 therefore outside the router/STT/TTS path and inside Windows/audio-device
 routing or mute state.
+
+A follow-up 48 kHz meter sweep added native-rate input support and downsampling
+back to the 16 kHz pipeline rate. That made additional WASAPI devices openable,
+but still did not expose usable speech: all measured inputs stayed at peak 0-2
+and below the proof threshold. Native-rate capture is therefore supported, but
+does not by itself solve the workstation's muted/silent input route.
 
 Open validation question once input works: does `SimpleEnergyVADModel`'s fixed
 `--vad-threshold` hold up across a real room's noise floor, or does it need
