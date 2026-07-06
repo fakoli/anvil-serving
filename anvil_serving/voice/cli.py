@@ -37,7 +37,6 @@ import argparse
 import json
 import os
 import sys
-import threading
 import time
 import urllib.error
 import urllib.request
@@ -45,24 +44,13 @@ from typing import Any, Callable, Dict, Optional
 
 from . import benchmark as voice_benchmark
 from . import config as voice_config
-from .pipeline import real_pipeline_factory_from_manifest
-from .realtime.pool import SessionPool
-from .realtime.service import RealtimeService
-from .realtime.ws import make_ws_server, serve_forever_in_background
+from .realtime.app import build_realtime_server_from_manifest
+from .realtime.ws import serve_forever_in_background
 from .serves import stt as stt_serve
 from .serves import tts as tts_serve
 from .serves._common import ServeNotConfigured
 
 DEFAULT_MANIFEST = voice_config.DEFAULT_CONFIG
-DEFAULT_POOL_SIZE = 4
-
-#: How often `run`'s per-connection sender thread polls
-#: `RealtimeService.drain_pipeline_events()` and forwards anything buffered to
-#: the client -- mirrors `scripts/voice/realtime_sdk_client_demo.py`'s own
-#: `SENDER_POLL_INTERVAL_S` (a plain sleep-poll, matching
-#: `drain_pipeline_events`'s own non-blocking contract).
-SENDER_POLL_INTERVAL_S = 0.05
-
 #: Preflight reachability-probe timeout for `run`'s "fail loudly, don't
 #: pretend" endpoint check (see `_probe_endpoint`).
 ENDPOINT_PROBE_TIMEOUT_S = 3.0
@@ -106,7 +94,7 @@ def cmd_up(args):
                 exit_code = 1
         except ServeNotConfigured as exc:
             print("voice up: %s serve not configured yet -- %s" % (kind, exc))
-    print("voice up: TODO -- the realtime server process itself ships in a later unit.")
+    print("voice up: realtime server is run in the foreground with `anvil-serving voice run`.")
     return exit_code
 
 
@@ -126,7 +114,7 @@ def cmd_down(args):
                 exit_code = 1
         except ServeNotConfigured as exc:
             print("voice down: %s serve not configured yet -- %s" % (kind, exc))
-    print("voice down: TODO -- realtime-server process teardown ships in a later unit.")
+    print("voice down: realtime server foreground process stops with Ctrl+C in `anvil-serving voice run`.")
     return exit_code
 
 
@@ -244,59 +232,7 @@ def _build_realtime_server(data: dict, voice: Dict[str, Any]):
     turns that into a clean, non-crashing CLI error instead of a traceback.
     Nothing is bound/started before that guard runs.
     """
-    pool_size = int(voice.get("pool_size", DEFAULT_POOL_SIZE))
-    pipeline_factory = real_pipeline_factory_from_manifest(data)
-    pool = SessionPool(size=pool_size, pipeline_factory=pipeline_factory)
-    session_counter = [0]
-
-    def on_connect(conn, path) -> None:
-        session_counter[0] += 1
-        session_id = "voice-run-%d" % session_counter[0]
-        try:
-            unit = pool.claim(session_id)
-        except Exception:  # noqa: BLE001 - SessionPoolExhausted: reject cleanly, matching the Realtime API's own behavior
-            conn.send_json({"type": "error", "event_id": "evt_reject", "error": {
-                "type": "session_limit_reached", "message": "no free session slot",
-            }})
-            conn.close(code=1008, reason="session_limit_reached")
-            return
-
-        service = RealtimeService(pipeline=unit.pipeline, send_event=conn.send_json, session_id=session_id)
-        unit.service = service
-        conn.send_json({"type": "session.created", "event_id": "evt_session", "session": {"id": session_id}})
-
-        stop_sender = threading.Event()
-
-        def sender_loop() -> None:
-            while not stop_sender.is_set():
-                for event in service.drain_pipeline_events():
-                    try:
-                        conn.send_text(json.dumps(event))
-                    except OSError:
-                        return
-                time.sleep(SENDER_POLL_INTERVAL_S)
-
-        sender_thread = threading.Thread(target=sender_loop, daemon=True, name="voice-run-sender-%s" % session_id)
-        sender_thread.start()
-        try:
-            while True:
-                text = conn.recv_text()
-                if text is None:
-                    break
-                service.handle_client_message(text)
-        finally:
-            stop_sender.set()
-            sender_thread.join(timeout=2.0)
-            pool.release(unit)
-
-    server = make_ws_server(
-        voice.get("realtime_host", "127.0.0.1"),
-        int(voice.get("realtime_port", 8765)),
-        on_connect,
-        extra_routes={"/pool": pool.pool_status, "/usage": pool.usage_stats},
-        token_env=voice.get("realtime_token_env"),
-    )
-    return server, pool
+    return build_realtime_server_from_manifest(data, voice)
 
 
 def _wait_forever_default() -> None:
