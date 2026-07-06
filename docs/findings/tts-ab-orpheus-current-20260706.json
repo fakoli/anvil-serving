@@ -1,0 +1,84 @@
+{
+  "gpu": {
+    "available": true,
+    "source": "nvidia-smi",
+    "devices": [
+      {
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 5090",
+        "capability": "sm_120",
+        "memory_total": "32607 MiB",
+        "memory_used": "10700 MiB"
+      },
+      {
+        "index": 1,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "capability": "sm_120",
+        "memory_total": "97887 MiB",
+        "memory_used": "90660 MiB"
+      }
+    ],
+    "detail": "torch not importable; GPU context collected with nvidia-smi"
+  },
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "candidates": [
+    {
+      "name": "orpheus-3b",
+      "base_url": "http://127.0.0.1:30013/v1",
+      "model": "orpheus-3b",
+      "ttfa_ms": 1912.15,
+      "synth_seconds": 1.9132,
+      "audio_seconds": 2.5609,
+      "rtf": 0.7471,
+      "audio_bytes": 122924,
+      "audio_sanity": {
+        "samples": 61462,
+        "rms": 2223.87,
+        "peak": 28006,
+        "nonzero_samples": 61319
+      },
+      "audio_sanity_note": "automated PCM sanity only; no human listening pass by this script",
+      "source_sample_rate": 24000,
+      "capture_path": "C:\\Users\\sdoum\\AppData\\Local\\Temp\\anvil-tts-ab-orpheus-20260706\\orpheus-3b.wav",
+      "quality": "not measured; human listening pass required",
+      "error": null,
+      "readiness": {
+        "ready": true,
+        "health": {
+          "ready": true,
+          "url": "http://127.0.0.1:30013/health",
+          "status": 200
+        },
+        "models": {
+          "ready": true,
+          "url": "http://127.0.0.1:30013/v1/models",
+          "status": 200,
+          "payload": {
+            "object": "list",
+            "data": [
+              {
+                "id": "orpheus-3b",
+                "object": "model",
+                "owned_by": "orpheus"
+              }
+            ]
+          }
+        },
+        "model_ready": true,
+        "advertised_models": [
+          "orpheus-3b"
+        ],
+        "detail": "raw endpoint health/models/container probe plus expected model-id match",
+        "container": {
+          "name": "orpheus-tts",
+          "available": true,
+          "status": "running",
+          "image": "anvil-t009-sidecars-orpheus-tts",
+          "docker_name": "orpheus-tts",
+          "cuda_visible_devices": "",
+          "device_requests": null
+        }
+      }
+    }
+  ]
+}

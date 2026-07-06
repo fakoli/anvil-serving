@@ -1,0 +1,118 @@
+{
+  "gpu": {
+    "available": true,
+    "source": "nvidia-smi",
+    "devices": [
+      {
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 5090",
+        "capability": "sm_120",
+        "memory_total": "32607 MiB",
+        "memory_used": "27991 MiB"
+      },
+      {
+        "index": 1,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "capability": "sm_120",
+        "memory_total": "97887 MiB",
+        "memory_used": "90660 MiB"
+      }
+    ],
+    "detail": "torch not importable; GPU context collected with nvidia-smi"
+  },
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "candidates": [
+    {
+      "name": "kokoro-82m",
+      "base_url": "http://127.0.0.1:30011/v1",
+      "model": "kokoro",
+      "ttfa_ms": 120.92,
+      "synth_seconds": 0.1224,
+      "audio_seconds": 2.8887,
+      "rtf": 0.0424,
+      "audio_bytes": 138656,
+      "audio_sanity": {
+        "samples": 69328,
+        "rms": 1638.63,
+        "peak": 11038,
+        "nonzero_samples": 62754
+      },
+      "audio_sanity_note": "automated PCM sanity only; no human listening pass by this script",
+      "source_sample_rate": 24000,
+      "capture_path": null,
+      "quality": "not measured; human listening pass required",
+      "error": null,
+      "readiness": {
+        "ready": true,
+        "health": {
+          "ready": true,
+          "url": "http://127.0.0.1:30011/health",
+          "status": 200
+        },
+        "models": {
+          "ready": true,
+          "url": "http://127.0.0.1:30011/v1/models",
+          "status": 200,
+          "payload": {
+            "object": "list",
+            "data": [
+              {
+                "id": "tts-1",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "tts-1-hd",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "kokoro",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "gpt-4o-mini-tts",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              }
+            ]
+          }
+        },
+        "model_ready": true,
+        "advertised_models": [
+          "tts-1",
+          "tts-1-hd",
+          "kokoro",
+          "gpt-4o-mini-tts"
+        ],
+        "detail": "raw endpoint health/models/container probe plus expected model-id match",
+        "container": {
+          "name": "kokoro-tts",
+          "available": true,
+          "status": "running",
+          "image": "ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128",
+          "docker_name": "kokoro-tts",
+          "cuda_visible_devices": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+          "device_requests": [
+            {
+              "Driver": "",
+              "Count": -1,
+              "DeviceIDs": null,
+              "Capabilities": [
+                [
+                  "gpu"
+                ]
+              ],
+              "Options": {}
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
