@@ -40,8 +40,8 @@ export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH
 Prerequisite: the `anvil` provider/model config must already be registered by
 `anvil-serving harness sync openclaw` or the setup steps in the
 [`openclaw-anvil-intent-router` README](../../plugins/openclaw-anvil-intent-router/README.md).
-The example agents use `anvil/chat-fast` and `anvil/review`, so they are only
-usable after the provider models exist.
+The example agents use `anvil/planning`, `anvil/chat-fast`, and `anvil/review`,
+so they are only usable after the provider models exist.
 
 1. Confirm the intent router plugin is loaded:
 
@@ -78,8 +78,11 @@ usable after the provider models exist.
      --out -
    ```
 
-   The rendered roles are `anvil-inventory-scout`,
-   `anvil-probe-evidence-runner`, and `anvil-adversarial-reviewer`.
+   The rendered roles are `anvil-orchestrator`, `anvil-inventory-scout`,
+   `anvil-route-analyst`, `anvil-serve-operator`,
+   `anvil-preflight-runner`, `anvil-benchmark-runner`,
+   `anvil-evidence-reporter`, `anvil-quality-critic`, and
+   `anvil-adversarial-reviewer`.
 
 5. Save evidence with the PR or task packet:
 
@@ -114,6 +117,12 @@ providers, agents, plugins, and existing skill directories are preserved and the
 tool attempts a backup before write. Commented JSON5 configs cannot be merged
 by the stdlib renderer; edit them manually or use `--overwrite` only after
 making a separate backup.
+
+Role model mapping is intentionally split: small operational roles use
+`anvil/chat-fast` when present, the orchestrator prefers `anvil/planning`, and
+quality/adversarial critics prefer `anvil/review`. Small-model roles must not
+change routing policy or promote profiles; live promotion, cloud enablement,
+host repair, public bind, and destructive cache work remain human-gated.
 
 ## Run the validator (against the committed fixture)
 
