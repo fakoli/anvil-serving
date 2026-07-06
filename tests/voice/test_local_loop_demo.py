@@ -897,6 +897,33 @@ def test_route_decision_probe_uses_authorization_header_only(monkeypatch):
     assert result["validation_errors"] == []
 
 
+def test_route_decision_probe_redacts_bearer_token_from_errors(monkeypatch):
+    data = {
+        "voice": {
+            "llm": {
+                "base_url": "http://127.0.0.1:8000/v1",
+                "model": "fast-local",
+                "api_key_env": "ANVIL_ROUTER_TOKEN",
+                "expected_route_provider": "fast-local",
+                "expected_route_model": "qwen36-27b",
+                "expected_route_tier": "local",
+            }
+        }
+    }
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "test-token")
+
+    def fake_urlopen(_req, timeout):
+        raise ValueError("Invalid header value b'Bearer test-token\\r'")
+
+    monkeypatch.setattr(local_loop_demo.urllib.request, "urlopen", fake_urlopen)
+
+    result = local_loop_demo.route_decision_probe(data)
+
+    assert result["ok"] is False
+    assert "test-token" not in result["error"]
+    assert "Bearer <redacted>" in result["error"]
+
+
 def test_route_decision_probe_requires_explicit_expected_route(monkeypatch):
     data = {
         "voice": {
