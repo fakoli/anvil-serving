@@ -135,9 +135,11 @@ Portable skill files are the canonical workbench contract:
   custom agents from `.codex/agents/`.
 - Claude Code reads `.claude/skills/anvil-serving-workbench/SKILL.md` and
   optional project agents from `.claude/agents/`.
-- OpenClaw can load `examples/openclaw/skills/` through `skills.load.extraDirs`
-  until `anvil-serving harness sync openclaw --skills` renders or applies the
-  same Anvil-owned entries.
+- OpenClaw can install `examples/openclaw/skills/anvil-serving-workbench` with
+  `openclaw skills install ... --as anvil-serving-workbench`, or load
+  `examples/openclaw/skills/` through `skills.load.extraDirs`, until
+  `anvil-serving harness sync openclaw --skills` renders or applies the same
+  Anvil-owned entries.
 
 `anvil-serving harness sync openclaw --skills` should become the render/apply
 surface for OpenClaw skill and agent configuration. It should keep OpenClaw's
