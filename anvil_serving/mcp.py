@@ -17,6 +17,7 @@ import json
 import os
 import re
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -509,6 +510,30 @@ def _benchmark_key_metrics(summary: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _metric_delta(local_value: Any, external_value: Any) -> dict[str, Any]:
+    def as_float(value: Any) -> float | None:
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    local_num = as_float(local_value)
+    external_num = as_float(external_value)
+    delta_abs = None
+    delta_pct = None
+    if local_num is not None and external_num not in (None, 0.0):
+        delta_abs = local_num - external_num
+        delta_pct = (delta_abs / external_num) * 100.0
+    return {
+        "local": local_num,
+        "external": external_num,
+        "delta_abs": delta_abs,
+        "delta_pct": delta_pct,
+    }
+
+
 def _read_benchmark_artifact(path: str) -> dict[str, Any]:
     if not os.path.isfile(path):
         raise ToolError("artifact_not_written", "benchmark completed but JSON artifact was not written", {"artifact_path": path})
@@ -657,6 +682,20 @@ def validate_workflow_packet(packet: Any) -> dict[str, Any]:
     advisory_priors = packet.get("advisory_priors")
     if not isinstance(advisory_priors, list):
         _workflow_error(errors, "advisory_priors", "advisory_priors must be an array")
+    else:
+        for index, prior in enumerate(advisory_priors):
+            field = "advisory_priors[%d]" % index
+            if not isinstance(prior, dict):
+                _workflow_error(errors, field, "advisory prior must be an object")
+                continue
+            if prior.get("advisory_only") is not True:
+                _workflow_error(errors, field + ".advisory_only", "external priors must declare advisory_only=true")
+            if prior.get("promotion_quality_evidence") is not False:
+                _workflow_error(
+                    errors,
+                    field + ".promotion_quality_evidence",
+                    "external priors must declare promotion_quality_evidence=false",
+                )
 
     has_approved_promote = any(_is_approved_promote_tool(tool) for tool in tools_used if isinstance(tool, dict))
     if packet.get("promoted") is True and not has_approved_promote:
@@ -1632,6 +1671,171 @@ def tool_benchmark_artifact(args: dict) -> dict:
     })
 
 
+def _external_bench_db_path(db_path: str) -> str:
+    return _resolve_benchmark_artifact_path(db_path)[0]
+
+
+def _external_bench_existing_db_path(db_path: str, *, required: bool = True) -> tuple[str, bool]:
+    db = _external_bench_db_path(db_path)
+    if os.path.isfile(db):
+        return db, True
+    if required:
+        raise ToolError(
+            "external_bench_db_not_found",
+            "external benchmark DB not found; run external-bench init/import first",
+            {"db": db},
+        )
+    return db, False
+
+
+def _external_bench_known_sources() -> list[dict[str, Any]]:
+    from .external_benchmarks import store
+
+    rows = []
+    for name, info in sorted(store.KNOWN_SOURCES.items()):
+        rows.append({
+            "name": name,
+            "kind": info.get("kind"),
+            "homepage_url": info.get("homepage_url"),
+            "notes": info.get("notes"),
+            "snapshot_id": None,
+            "imported_at": None,
+            "fetched_at": None,
+            "parse_status": None,
+            "raw_sha256": None,
+        })
+    return rows
+
+
+def _external_bench_read_error(exc: sqlite3.Error, db: str) -> ToolError:
+    return ToolError("bad_external_bench_db", "could not read external benchmark DB", {"db": db, "error": str(exc)})
+
+
+def _external_bench_filters(args: dict, *, default_top: int = 20) -> tuple[str, str, str, int]:
+    gpu = _str_arg(args, "gpu", "")
+    model = _str_arg(args, "model", "")
+    source = _str_arg(args, "source", "")
+    top = _bounded_int_arg(args, "top", default_top, min_value=1, max_value=1000)
+    return gpu, model, source, top
+
+
+def _external_bench_envelope(data: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "advisory_only": True,
+        "promotion_quality_evidence": False,
+        **data,
+    }
+
+
+def _external_bench_match(item: Any, local: dict[str, Any] | None = None) -> dict[str, Any]:
+    score, mismatches, row = item
+    match = {
+        "score": score,
+        "mismatches": list(mismatches),
+        "row": dict(row),
+    }
+    if local is not None:
+        match["deltas"] = {
+            "throughput_tok_s": _metric_delta(local.get("throughput_tok_s"), row.get("throughput_tok_s")),
+            "ttft_ms": _metric_delta(local.get("ttft_ms"), row.get("ttft_ms")),
+        }
+    return match
+
+
+def tool_external_bench_sources(args: dict) -> dict:
+    from .external_benchmarks import store
+
+    db, exists = _external_bench_existing_db_path(_str_arg(args, "db", store.DEFAULT_DB), required=False)
+    if exists:
+        try:
+            rows = store.list_sources(db, initialize=False)
+        except sqlite3.Error as exc:
+            raise _external_bench_read_error(exc, db)
+    else:
+        rows = _external_bench_known_sources()
+    return _ok(_external_bench_envelope({"db": db, "db_exists": exists, "sources": rows}))
+
+
+def tool_external_bench_list(args: dict) -> dict:
+    from .external_benchmarks import store
+
+    db, _ = _external_bench_existing_db_path(_str_arg(args, "db", store.DEFAULT_DB))
+    gpu, model, source, top = _external_bench_filters(args, default_top=20)
+    try:
+        rows = store.query_rows(db, gpu=gpu or None, model=model or None, source=source or None, top=top, initialize=False)
+    except sqlite3.Error as exc:
+        raise _external_bench_read_error(exc, db)
+    return _ok(_external_bench_envelope({
+        "db": db,
+        "filters": {"gpu": gpu or None, "model": model or None, "source": source or None, "top": top},
+        "rows": rows,
+        "count": len(rows),
+    }))
+
+
+def tool_external_bench_report(args: dict) -> dict:
+    from .external_benchmarks import store
+
+    db, _ = _external_bench_existing_db_path(_str_arg(args, "db", store.DEFAULT_DB))
+    gpu, model, source, top = _external_bench_filters(args, default_top=100)
+    try:
+        rows = store.query_rows(db, gpu=gpu or None, model=model or None, source=source or None, top=top, initialize=False)
+    except sqlite3.Error as exc:
+        raise _external_bench_read_error(exc, db)
+    return _ok(_external_bench_envelope({
+        "db": db,
+        "filters": {"gpu": gpu or None, "model": model or None, "source": source or None, "top": top},
+        "columns": [
+            "source_name",
+            "model_id_normalized",
+            "gpu_model",
+            "engine",
+            "quantization",
+            "precision",
+            "context_tokens",
+            "concurrency",
+            "throughput_tok_s",
+            "ttft_ms",
+        ],
+        "rows": rows,
+        "count": len(rows),
+    }))
+
+
+def tool_external_bench_compare(args: dict) -> dict:
+    from .external_benchmarks import compare, store
+
+    db, _ = _external_bench_existing_db_path(_str_arg(args, "db", store.DEFAULT_DB))
+    local_path = _resolve_benchmark_artifact_path(_str_arg(args, "local", required=True))[0]
+    if not os.path.isfile(local_path):
+        raise ToolError("local_benchmark_not_found", "local benchmark artifact not found", {"local": local_path})
+    gpu = _str_arg(args, "gpu", "")
+    top = _bounded_int_arg(args, "top", 5, min_value=1, max_value=100)
+    try:
+        result = compare.compare_local_to_external(db, local_path, gpu=gpu or None, top=top, record=False, initialize=False)
+    except sqlite3.Error as exc:
+        raise _external_bench_read_error(exc, db)
+    local = dict(result["local"])
+    chosen = result.get("chosen")
+    nearest = [_external_bench_match(item, local) for item in (result.get("nearest") or [])]
+    data = {
+        "db": db,
+        "local_path": local_path,
+        "gpu": gpu or None,
+        "local": local,
+        "fingerprint": result["fingerprint"],
+        "exact": bool(result.get("exact")),
+        "warnings": list(result.get("warnings") or []),
+        "chosen": _external_bench_match(chosen, local) if chosen else None,
+        "nearest": nearest,
+        "comparison": {
+            "match_type": "exact" if result.get("exact") else ("nearest" if chosen else "none"),
+            "has_external_prior": bool(chosen),
+        },
+    }
+    return _ok(_external_bench_envelope(data))
+
+
 def tool_workflow_packet_validate(args: dict) -> dict:
     packet = args.get("packet")
     if packet is None:
@@ -1870,6 +2074,45 @@ TOOLS: Dict[str, dict] = {
             "packet": {"type": "object"},
         }, required=["packet"]),
         "handler": tool_workflow_packet_validate,
+    },
+    "external_bench_sources": {
+        "description": "List known external benchmark sources and latest snapshots as advisory-only priors.",
+        "inputSchema": _schema({
+            "db": {"type": "string"},
+        }),
+        "handler": tool_external_bench_sources,
+    },
+    "external_bench_list": {
+        "description": "List normalized external benchmark rows as advisory-only priors.",
+        "inputSchema": _schema({
+            "db": {"type": "string"},
+            "gpu": {"type": "string"},
+            "model": {"type": "string"},
+            "source": {"type": "string"},
+            "top": _bounded_integer_schema(1, 1000, 20),
+        }),
+        "handler": tool_external_bench_list,
+    },
+    "external_bench_report": {
+        "description": "Return a structured external benchmark report as advisory-only priors.",
+        "inputSchema": _schema({
+            "db": {"type": "string"},
+            "gpu": {"type": "string"},
+            "model": {"type": "string"},
+            "source": {"type": "string"},
+            "top": _bounded_integer_schema(1, 1000, 100),
+        }),
+        "handler": tool_external_bench_report,
+    },
+    "external_bench_compare": {
+        "description": "Compare a local benchmark artifact against external advisory priors.",
+        "inputSchema": _schema({
+            "db": {"type": "string"},
+            "local": {"type": "string"},
+            "gpu": {"type": "string"},
+            "top": _bounded_integer_schema(1, 100, 5),
+        }, required=["local"]),
+        "handler": tool_external_bench_compare,
     },
 }
 

@@ -19,13 +19,15 @@ narration.
    `serves_status`, `serves_manage`, `serves_logs`, `doctor_summary`,
    `models_inventory`, `route_decision`, `openclaw_sync`,
    `openclaw_gateway_restart`, `preflight_probe`, `benchmark_probe`, and
-   `benchmark_artifact` when they cover the request. Use
+   `benchmark_artifact`, `external_bench_sources`, `external_bench_list`,
+   `external_bench_report`, and `external_bench_compare` when they cover the
+   request. Use
    `workflow_packet_validate` before treating a packet as promotion evidence.
 3. Use documented `anvil-serving` CLI verbs only when an MCP wrapper is missing.
    Safe fallbacks are read-only or preview-first verbs such as `profile`,
-   `models sync`, `models recipe`, `external-bench list/report/compare`,
-   `score`, `harness sync openclaw --out -`, and `host doctor`. Return the
-   command preview and mark the missing wrapper as a product gap.
+   `models sync`, `models recipe`, `score`, `harness sync openclaw --out -`,
+   and `host doctor`. Return the command preview and mark the missing wrapper as
+   a product gap.
 4. Use `127.0.0.1` in local URLs. Do not introduce `localhost`.
 5. Pass credentials by environment variable name only. Never place literal keys
    in configs, fixtures, packets, logs, or prompts.
@@ -51,8 +53,9 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 
 - Readiness: inspect `router_status`, `serves_status`, `doctor_summary`,
   `models_inventory`, and configured endpoint status.
-- Model catalog: read or sync model inventory and mark external benchmarks as
-  advisory priors only.
+- Model catalog: read or sync model inventory and use `external_bench_sources`,
+  `external_bench_list`, `external_bench_report`, or `external_bench_compare`
+  for benchmark priors. Keep those priors advisory-only.
 - Serve swap: preview with `serves_manage`, inspect `serves_logs`, require exact
   target plus `confirm=true` and `dry_run=false`, then run preflight before
   benchmark.

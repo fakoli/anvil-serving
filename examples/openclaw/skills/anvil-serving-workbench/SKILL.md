@@ -14,13 +14,15 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   `router_manage`, `decision_summary`, `router_promote`, `serves_status`,
   `serves_manage`, `serves_logs`, `doctor_summary`, `models_inventory`,
   `route_decision`, `openclaw_sync`, `openclaw_gateway_restart`,
-  `preflight_probe`, `benchmark_probe`, and `benchmark_artifact`. Use
+  `preflight_probe`, `benchmark_probe`, `benchmark_artifact`,
+  `external_bench_sources`, `external_bench_list`, `external_bench_report`, and
+  `external_bench_compare`. Use
   `workflow_packet_validate` before treating a packet as promotion evidence.
 - Use documented `anvil-serving` CLI verbs only when a structured tool is
   missing. Safe fallbacks are read-only or preview-first verbs such as
-  `profile`, `models sync`, `models recipe`, `external-bench list/report/compare`,
-  `score`, `harness sync openclaw --out -`, and `host doctor`. Return the
-  command preview as evidence and name the missing MCP wrapper as a product gap.
+  `profile`, `models sync`, `models recipe`, `score`,
+  `harness sync openclaw --out -`, and `host doctor`. Return the command
+  preview as evidence and name the missing MCP wrapper as a product gap.
 - Use `127.0.0.1` for local URLs. Do not use `localhost`.
 - Pass credentials by environment variable name only.
 - Stop for a human gate before profile promotion, router policy changes,
@@ -35,8 +37,9 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
 
 - Readiness: inspect router, serves, doctor, model inventory, and configured
   endpoint status.
-- Model catalog: read or sync model inventory and mark external benchmarks as
-  advisory priors only.
+- Model catalog: read or sync model inventory and use `external_bench_sources`,
+  `external_bench_list`, `external_bench_report`, or `external_bench_compare`
+  for benchmark priors. Keep those priors advisory-only.
 - Serve swap: preview with `serves_manage`, inspect bounded logs, require exact
   target plus `confirm=true` and `dry_run=false`, then run preflight before
   benchmark.

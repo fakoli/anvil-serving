@@ -145,6 +145,28 @@ Important warning example:
 Local run used NEXTN speculative decoding; external baseline did not report speculative decoding. Throughput delta is not an apples-to-apples model/engine comparison.
 ```
 
+## Agent MCP Advisory Workflow
+
+Agents should prefer the MCP/controller wrappers when they need external
+benchmark priors:
+
+- `external_bench_sources`
+- `external_bench_list`
+- `external_bench_report`
+- `external_bench_compare`
+
+Every wrapper returns `advisory_only: true` and
+`promotion_quality_evidence: false`. `external_bench_compare` returns structured
+local-vs-external deltas for throughput and TTFT, plus exact/nearest match
+metadata. The MCP wrappers read initialized benchmark stores only: they do not
+import snapshots, initialize a missing DB, or record comparison history. Use the
+CLI `init`, `import`, `fetch`, or `compare` commands when you intentionally want
+those persistent writes. Workflow packets may include MCP results in
+`advisory_priors`, but `workflow_packet_validate` rejects priors that lack
+`advisory_only: true` and `promotion_quality_evidence: false`, and still
+requires a human-approved `router_promote` result before any packet can claim
+`promoted: true`.
+
 ## Local Benchmark JSON
 
 `anvil-serving benchmark` keeps its existing console output. For comparison workflows, pass `--json-out`:
