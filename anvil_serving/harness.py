@@ -11,8 +11,9 @@ preset can route to (the contextWindow-clamp gotcha, docs/OPENCLAW-INTEGRATION-S
 does NOT emit per-preset thinking overrides: the router owns reasoning/thinking per tier now
 (heavy `reasoning_effort`, fast `enable_thinking`), so re-declaring them on the harness is stale.
 
-Skills / agent-config sync is the next step (`--skills`, not yet implemented) — the harness's
-`before_model_resolve` plugin + skills are the follow-on scope.
+`--skills` also renders the OpenClaw-visible workbench skill and Anvil sub-agent roles. It only
+touches Anvil-owned skill/agent keys and keeps operator-owned providers, agents, plugins, and
+skills around it.
 
 The OpenClaw GATEWAY is typically REMOTE from the router (e.g. Fakoli Mini -> fakoli-dark), so this
 either EMITS the config (stdout or `--out`) OR pushes it to the remote gateway over ssh with
@@ -56,6 +57,12 @@ _DEFAULT_NATIVE_PROVIDER = "anthropic"
 _DEFAULT_NATIVE_MODEL = "claude-sonnet-4-5"
 _REMOTE_RESTART_COMMAND = 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"'
 _DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
+_WORKBENCH_SKILL_NAME = "anvil-serving-workbench"
+_OPENCLAW_AGENT_ROLES = (
+    ("anvil-inventory-scout", ("chat-fast", "chat")),
+    ("anvil-probe-evidence-runner", ("chat-fast", "chat")),
+    ("anvil-adversarial-reviewer", ("review", "chat", "planning")),
+)
 
 
 def _title(preset_id):
@@ -116,6 +123,112 @@ def render_openclaw_provider(config, *, base_url, api_key_env="ANVIL_ROUTER_TOKE
     }
 
 
+def _anvil_preset_ref(config, preferred):
+    presets = getattr(config, "presets", {}) or {}
+    for preset_id in preferred:
+        if preset_id in presets:
+            return "anvil/" + preset_id
+    if "chat" in presets:
+        return "anvil/chat"
+    for preset_id in presets:
+        return "anvil/" + str(preset_id)
+    return "anvil/chat"
+
+
+def render_openclaw_skills(config, *, skill_dir=None):
+    """Render Anvil-owned OpenClaw skill and sub-agent config.
+
+    ``skill_dir`` enables checkout-loaded skills through ``skills.load.extraDirs``. When omitted,
+    the payload assumes the workbench skill was installed into OpenClaw's workspace skill directory
+    with ``openclaw skills install ... --as anvil-serving-workbench``.
+    """
+    roles = []
+    for role_name, preferred_presets in _OPENCLAW_AGENT_ROLES:
+        roles.append({
+            "name": role_name,
+            "model": _anvil_preset_ref(config, preferred_presets),
+            "skills": [_WORKBENCH_SKILL_NAME],
+        })
+    out = {
+        "agents": {
+            "defaults": {"skills": [_WORKBENCH_SKILL_NAME]},
+            "list": roles,
+        },
+    }
+    if skill_dir:
+        out["skills"] = {"load": {"extraDirs": [skill_dir]}}
+    return out
+
+
+def _merge_unique_strings(existing, additions):
+    out = []
+    for value in existing if isinstance(existing, list) else []:
+        if isinstance(value, str) and value not in out:
+            out.append(value)
+    for value in additions if isinstance(additions, list) else []:
+        if isinstance(value, str) and value not in out:
+            out.append(value)
+    return out
+
+
+def _merge_openclaw_skill_config(out, rendered):
+    """Merge Anvil-owned skill/agent keys from ``rendered`` into ``out`` in place."""
+    rendered_skills = rendered.get("skills") if isinstance(rendered.get("skills"), dict) else {}
+    rendered_load = rendered_skills.get("load") if isinstance(rendered_skills.get("load"), dict) else {}
+    rendered_dirs = rendered_load.get("extraDirs") if isinstance(rendered_load.get("extraDirs"), list) else []
+    if rendered_dirs:
+        skills = out.setdefault("skills", {})
+        if not isinstance(skills, dict):
+            skills = {}
+            out["skills"] = skills
+        load = skills.setdefault("load", {})
+        if not isinstance(load, dict):
+            load = {}
+            skills["load"] = load
+        load["extraDirs"] = _merge_unique_strings(load.get("extraDirs", []), rendered_dirs)
+
+    rendered_agents = rendered.get("agents") if isinstance(rendered.get("agents"), dict) else {}
+    rendered_defaults = (
+        rendered_agents.get("defaults") if isinstance(rendered_agents.get("defaults"), dict) else {}
+    )
+    rendered_default_skills = rendered_defaults.get("skills")
+    rendered_roles = rendered_agents.get("list")
+    if rendered_default_skills or rendered_roles:
+        agents = out.setdefault("agents", {})
+        if not isinstance(agents, dict):
+            agents = {}
+            out["agents"] = agents
+        defaults = agents.setdefault("defaults", {})
+        if not isinstance(defaults, dict):
+            defaults = {}
+            agents["defaults"] = defaults
+        if rendered_default_skills:
+            defaults["skills"] = _merge_unique_strings(
+                defaults.get("skills", []),
+                rendered_default_skills,
+            )
+        if isinstance(rendered_roles, list):
+            existing_roles = agents.get("list", [])
+            if not isinstance(existing_roles, list):
+                existing_roles = []
+            rendered_by_name = {
+                role.get("name"): role
+                for role in rendered_roles
+                if isinstance(role, dict) and isinstance(role.get("name"), str)
+            }
+            preserved = [
+                role for role in existing_roles
+                if not (isinstance(role, dict) and role.get("name") in rendered_by_name)
+            ]
+            agents["list"] = preserved + list(rendered_by_name.values())
+    return out
+
+
+def _with_openclaw_skills(provider, skills_payload):
+    out = json.loads(json.dumps(provider))
+    return _merge_openclaw_skill_config(out, skills_payload)
+
+
 # --------------------------------------------------------------------------- #
 # remote (ssh) sync — the OpenClaw gateway is typically REMOTE from the router
 # --------------------------------------------------------------------------- #
@@ -157,9 +270,13 @@ def _is_default_openclaw_config_path(path):
     )
 
 
+def _is_stdout_out(path):
+    return not path or path == "-"
+
+
 def _merge_anvil_provider(existing, rendered):
     """Merge ONLY anvil-owned keys of `rendered` into the operator's existing OpenClaw config,
-    preserving their OTHER providers / agents / plugins. Returns a NEW dict (existing untouched)."""
+    preserving their OTHER providers / agents / plugins / skills. Returns a NEW dict."""
     out = json.loads(json.dumps(existing))  # deep copy
     models = out.setdefault("models", {})
     models["mode"] = "merge"
@@ -202,7 +319,19 @@ def _merge_anvil_provider(existing, rendered):
         entries[_PLUGIN_ID] = merged_entry
     else:
         entries[_PLUGIN_ID] = rendered_entry
-    return out
+    return _merge_openclaw_skill_config(out, rendered)
+
+
+def _payload_for_existing_config(existing_text, rendered, *, overwrite, path):
+    if overwrite or not existing_text.strip():
+        return rendered, "overwrite" if existing_text.strip() else "created"
+    try:
+        return _merge_anvil_provider(json.loads(existing_text), rendered), "merged"
+    except ValueError:
+        raise ValueError(
+            "refusing to merge: %s is not plain JSON (JSON5/comments?). Re-run with "
+            "--overwrite (back up the file first), or edit it by hand." % path
+        )
 
 
 def _tmpfile():
@@ -252,16 +381,13 @@ def _sync_over_ssh(host, user, path, rendered, *, overwrite,
             existing_text = f.read() if existed else ""
 
         # 2. MERGE / OVERWRITE locally.
-        if overwrite or not existing_text.strip():
-            payload, mode = rendered, ("overwrite" if existed else "created")
-        else:
-            try:
-                payload = _merge_anvil_provider(json.loads(existing_text), rendered)
-                mode = "merged"
-            except ValueError:
-                print("refusing to merge: remote %s is not plain JSON (JSON5/comments?). Re-run with "
-                      "--overwrite (a .bak is taken first), or edit it by hand." % path, file=sys.stderr)
-                return 1
+        try:
+            payload, mode = _payload_for_existing_config(
+                existing_text, rendered, overwrite=overwrite, path="remote %s" % path,
+            )
+        except ValueError as exc:
+            print(str(exc).replace("back up the file first", "a .bak is taken first"), file=sys.stderr)
+            return 1
         with open(write_tmp, "w", encoding="utf-8") as f:
             f.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
 
@@ -340,13 +466,18 @@ def cmd_restart_openclaw(gateway_host=None, gateway_user=None,
                                      timeout_seconds=timeout_seconds, _run=_run)
 
 
-def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN", _load=None):
+def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
+                          skills=False, skill_dir=None, _load=None):
     """Return the rendered OpenClaw sync payload without writing it anywhere."""
     if _load is None:
         from .router.config import load as _load
     config = _load(config_path)
     provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
+    if skills:
+        provider = _with_openclaw_skills(provider, render_openclaw_skills(config, skill_dir=skill_dir))
     models = provider["models"]["providers"]["anvil"]["models"]
+    roles = provider.get("agents", {}).get("list", [])
+    load_dirs = provider.get("skills", {}).get("load", {}).get("extraDirs", [])
     return {
         "provider": provider,
         "model_count": len(models),
@@ -354,16 +485,25 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
         "plugin_id": _PLUGIN_ID,
         "base_url": provider["models"]["providers"]["anvil"]["baseUrl"],
         "api_key": provider["models"]["providers"]["anvil"]["apiKey"],
+        "skills": bool(skills),
+        "skill_name": _WORKBENCH_SKILL_NAME if skills else None,
+        "skill_load_dirs": list(load_dirs) if isinstance(load_dirs, list) else [],
+        "agent_names": [r.get("name") for r in roles if isinstance(r, dict) and r.get("name")],
+        "agent_models": {
+            r.get("name"): r.get("model")
+            for r in roles
+            if isinstance(r, dict) and r.get("name")
+        },
     }
 
 
 def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,
+                      skill_dir=None,
                       gateway_host=None, gateway_user=None,
                       gateway_path=_DEFAULT_OPENCLAW_CONFIG_PATH, overwrite=False, restart=False,
                       timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _load=None, _run=subprocess.run):
-    if skills:
-        print("harness sync openclaw --skills: skills/agent-config sync is not implemented yet "
-              "(v1 syncs models only); tracking as the next scope.", file=sys.stderr)
+    if skill_dir and not skills:
+        print("--skill-dir requires --skills", file=sys.stderr)
         return 2
     if _load is None:
         from .router.config import load as _load
@@ -380,6 +520,8 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
               file=sys.stderr)
         return 1
     provider = render_openclaw_provider(config, base_url=base_url, api_key_env=api_key_env)
+    if skills:
+        provider = _with_openclaw_skills(provider, render_openclaw_skills(config, skill_dir=skill_dir))
 
     if gateway_host:  # push to the REMOTE gateway over ssh (Mini -> the router)
         rc = _sync_over_ssh(gateway_host, gateway_user, gateway_path, provider,
@@ -389,6 +531,11 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
                                              timeout_seconds=timeout_seconds, _run=_run)
         return rc
 
+    if restart and _is_stdout_out(out):
+        print("--restart with a stdout-only sync would reload the gateway's OLD config (nothing "
+              "was applied). Use --gateway-host <host>, or --out %s." % _DEFAULT_OPENCLAW_CONFIG_PATH,
+              file=sys.stderr)
+        return 2
     if restart and out and not _is_default_openclaw_config_path(out):
         print("--restart with --out requires the real local OpenClaw config path (%s); "
               "%s looks like a preview file." % (_DEFAULT_OPENCLAW_CONFIG_PATH, out),
@@ -396,11 +543,36 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
         return 2
 
     text = json.dumps(provider, indent=2, ensure_ascii=False) + "\n"
-    if out:
+    if out and out != "-":
+        existing_text = ""
+        existed = os.path.exists(out)
+        if existed:
+            try:
+                with open(out, "r", encoding="utf-8") as f:
+                    existing_text = f.read()
+            except OSError as exc:
+                print("cannot read existing OpenClaw config %s: %s" % (out, exc), file=sys.stderr)
+                return 1
+        try:
+            payload, mode = _payload_for_existing_config(existing_text, provider,
+                                                         overwrite=overwrite, path=out)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        if existed and existing_text:
+            try:
+                with open(out + ".bak", "w", encoding="utf-8") as f:
+                    f.write(existing_text)
+            except OSError as exc:
+                print("WARNING: could not back up %s: %s" % (out, exc), file=sys.stderr)
         with open(out, "w", encoding="utf-8") as f:
-            f.write(text)
+            f.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
         n = len(provider["models"]["providers"]["anvil"]["models"])
-        print("wrote OpenClaw provider config (%d preset models) -> %s" % (n, out))
+        suffix = ""
+        if skills:
+            suffix = ", %d workbench agents" % len(provider.get("agents", {}).get("list", []))
+        print("wrote OpenClaw provider config (%d preset models%s, %s) -> %s"
+              % (n, suffix, mode, out))
         print("  apply on the OpenClaw gateway at ~/.openclaw/openclaw.json, or push directly with "
               "--gateway-host <mini> (ssh; merges by default, backs up the remote first).")
     else:
@@ -437,22 +609,26 @@ def main(argv=None):
     p.add_argument("--gateway-path", default=_DEFAULT_OPENCLAW_CONFIG_PATH,
                    help="remote OpenClaw config path for --gateway-host (default: %(default)s).")
     p.add_argument("--overwrite", action="store_true",
-                   help="with --gateway-host: OVERWRITE the remote config instead of merging "
-                        "(a timestamped .bak is taken first either way).")
+                   help="OVERWRITE the target config instead of merging Anvil-owned keys "
+                        "(an existing local/remote target is backed up first).")
     p.add_argument("--restart", action="store_true",
                    help="after `sync`: restart the OpenClaw gateway so it picks up the new config "
                         "(over ssh when --gateway-host is set). Also the `restart` action on its own.")
     p.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
                    help="bound each ssh/scp/openclaw subprocess call (default: %(default)s).")
     p.add_argument("--skills", action="store_true",
-                   help="(not yet implemented) also sync skills/agent config.")
+                   help="also render/apply OpenClaw-visible workbench skill and Anvil sub-agent config.")
+    p.add_argument("--skill-dir",
+                   help="with --skills: add this OpenClaw-gateway-visible directory to "
+                        "skills.load.extraDirs. Omit when the workbench skill is workspace-installed.")
     a = p.parse_args(argv)
 
     if a.action == "restart" and a.harness == "openclaw":
         # `restart` only restarts the gateway; sync-only flags would be silently discarded, which
         # reads as "it did something" — reject them so the misuse is visible.
         stray = [f for f, v in (("--config", a.config), ("--out", a.out),
-                                ("--overwrite", a.overwrite), ("--skills", a.skills)) if v]
+                                ("--overwrite", a.overwrite), ("--skills", a.skills),
+                                ("--skill-dir", a.skill_dir)) if v]
         if stray:
             print("restart openclaw takes only --gateway-host/--gateway-user; drop %s (it does not "
                   "sync)." % ", ".join(stray), file=sys.stderr)
@@ -464,20 +640,25 @@ def main(argv=None):
         if not a.config:
             print("harness sync openclaw requires --config <router.toml>", file=sys.stderr)
             return 2
+        if a.skill_dir and not a.skills:
+            print("--skill-dir requires --skills", file=sys.stderr)
+            return 2
         # A stdout-only sync isn't applied to the gateway's config file, so restarting would just
         # reload the OLD config and falsely report success. Require an APPLIED target for --restart.
-        if a.restart and not a.gateway_host and not a.out:
+        if a.restart and not a.gateway_host and _is_stdout_out(a.out):
             print("--restart with a stdout-only sync would reload the gateway's OLD config (nothing "
                   "was applied). Use --gateway-host <host>, or --out %s." % _DEFAULT_OPENCLAW_CONFIG_PATH,
                   file=sys.stderr)
             return 2
-        if a.restart and a.out and not a.gateway_host and not _is_default_openclaw_config_path(a.out):
+        if (a.restart and a.out and a.out != "-" and not a.gateway_host
+                and not _is_default_openclaw_config_path(a.out)):
             print("--restart with --out requires the real local OpenClaw config path (%s); "
                   "%s looks like a preview file." % (_DEFAULT_OPENCLAW_CONFIG_PATH, a.out),
                   file=sys.stderr)
             return 2
         return cmd_sync_openclaw(a.config, out=a.out, base_url=a.base_url,
                                  api_key_env=a.api_key_env, skills=a.skills,
+                                 skill_dir=a.skill_dir,
                                  gateway_host=a.gateway_host, gateway_user=a.gateway_user,
                                  gateway_path=a.gateway_path, overwrite=a.overwrite,
                                  restart=a.restart, timeout_seconds=a.timeout_seconds)
