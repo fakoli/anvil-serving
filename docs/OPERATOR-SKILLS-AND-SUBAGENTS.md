@@ -23,7 +23,7 @@ and OpenClaw.
 The top recommendations are:
 
 1. Ship checked-in skill files as the canonical playbook, then let
-   `harness sync openclaw --skills` render or register those skills in OpenClaw.
+   a future `harness sync openclaw --skills` render or register those skills in OpenClaw.
    Generated-only OpenClaw config would leave Codex and Claude Code without a
    repo-visible workflow surface; checked-in-only config would fail to preserve
    OpenClaw's provider/model allowlist and gateway ownership boundary.
@@ -45,8 +45,35 @@ The initial checked-in entry points are:
 | Codex | `.codex/agents/anvil-*.toml` | Custom sub-agent roles with model-tier hints. |
 | Claude Code | `.claude/skills/anvil-serving-workbench/SKILL.md` | Project skill using the same workbench contract. |
 | Claude Code | `.claude/agents/anvil-*.md` | Project sub-agents for inventory, probes, and review. |
-| OpenClaw | `examples/openclaw/skills/anvil-serving-workbench/SKILL.md` | Example skill directory for `skills.load.extraDirs`. |
+| OpenClaw | `examples/openclaw/skills/anvil-serving-workbench/SKILL.md` | Installable skill directory or `skills.load.extraDirs` source. |
 | OpenClaw | `examples/openclaw/anvil-serving-workbench.example.json5` | Example skill/agent visibility fragment. |
+
+## Available Today Vs Planned Follow-Ups
+
+| Surface | Available today | Planned follow-up |
+|---|---|---|
+| Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, host-repair, and voice skills once their backing tools exist. |
+| Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
+| OpenClaw install | Checked-in manual example path: `openclaw skills install <skill-dir> --as anvil-serving-workbench`, or checkout-based `skills.load.extraDirs`. | `anvil-serving harness sync openclaw --skills` render/apply path that preserves operator-owned config. |
+| MCP/controller tools | Status, route probes, OpenClaw config sync, gateway restart, preflight probes, and benchmark probes. | Inventory, bounded logs, decision summaries, lifecycle wrappers, artifact benchmarks, and advisory external benchmark report wrappers. |
+| Result contract | `operator-workflow/v1` packet documented for skills and reviewers. | Stdlib validator and tests that enforce packet enums and required fields. |
+
+## OpenClaw Smoke Result
+
+The manual OpenClaw path was checked against Fakoli Mini with OpenClaw
+`2026.6.11`. The captured evidence is summarized in
+[`docs/findings/2026-07-06-openclaw-workbench-skill-smoke.md`](findings/2026-07-06-openclaw-workbench-skill-smoke.md).
+The existing `openclaw-anvil-intent-router` plugin reported `status:"loaded"`
+and `activated:true` with one `before_model_resolve` hook. The workbench skill
+was installed with:
+
+```bash
+openclaw skills install /tmp/anvil-serving-workbench-skill --as anvil-serving-workbench
+```
+
+`openclaw skills info anvil-serving-workbench --json` then reported the skill
+from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
+`eligible`, `modelVisible`, `userInvocable`, and `commandVisible` all `true`.
 
 ## Implemented Now
 
@@ -65,7 +92,8 @@ The initial checked-in entry points are:
 
 That is enough for status, route checks, basic validation, bounded benchmark
 probes, and OpenClaw sync. It is not yet enough to operate every verb as a
-structured agent workflow.
+structured agent workflow. OpenClaw provider/model sync exists today; automated
+OpenClaw skill rendering is still a follow-up.
 
 ## Proposed Gaps
 
@@ -79,7 +107,7 @@ structured agent workflow.
 | Benchmark artifacts | `benchmark_run` | Separate artifact-producing tool; keep `benchmark_probe` quick and bounded. |
 | External priors | `external_bench_report` / `external_bench_compare` | Always `advisory_only=true`; cannot decide promotion. |
 | Host/cache work | `host_summary`, `cache_prune_plan` | Plans only until a separate human-gated mutation path exists. |
-| OpenClaw skills | `harness sync openclaw --skills` | Render/apply Anvil-owned keys only; preserve operator-owned config. |
+| OpenClaw skills | Future `harness sync openclaw --skills` | Render/apply Anvil-owned keys only; preserve operator-owned config. |
 
 ## Verb Enablement Matrix
 
@@ -94,7 +122,7 @@ structured agent workflow.
 | Correctness and capacity | `preflight`, `benchmark`, `eval preflight`, `eval benchmark` | MCP probes plus skill sequencing | Preflight must precede benchmark. Benchmark artifacts need explicit output paths. |
 | Quality profile | `eval bootstrap`, `calibrate`, `router promote` | MCP preview/status; skill evidence packet; human promotion gate | These change routing trust. Small models can collect evidence, but not promote. |
 | External priors | `external-bench init/sources/import/list/report/export/compare` | MCP read/report/compare; skill marks advisory-only | External results are useful priors, not quality evidence. |
-| Harness config | `harness sync/restart openclaw` | Existing MCP plus skill workflow | Keep router presets, model allowlists, and gateway config in lockstep. |
+| Harness config | `harness sync/restart openclaw` | MCP for provider/model sync and restart; manual skill install for OpenClaw workbench | Keep router presets, model allowlists, and gateway config in lockstep. |
 | Controller transport | `controller serve`, `mcp --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
 | Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
 | Voice | `voice up/down/run/benchmark`, `voice-sidecar validate/command/compose` | MCP render/validate/status later; skill-only now | Useful follow-up, but outside the core coding-router workflow. |
@@ -107,11 +135,11 @@ tool-backed, not a new policy engine.
 
 | Skill | Primary model tier | Status | Purpose |
 |---|---|---|---|
-| `anvil-serving-workbench` | orchestrator-selected | Seeded | Choose the playbook, spawn bounded roles, and return the workflow packet. |
+| `anvil-serving-workbench` | orchestrator-selected | Seeded; Mini smoke linked | Choose the playbook, spawn bounded roles, and return the workflow packet. |
 | `anvil-serving-readiness` | small | Planned specialization | Run inventory/status/doctor checks and report blockers before any operation. |
 | `anvil-serving-model-catalog` | small | Planned specialization | Sync or read model inventory, recipes, external priors, and serve facts. |
 | `anvil-serving-serve-swap` | small plus human confirm | Planned specialization | Start, adopt, or swap a serve, then run preflight before benchmark. |
-| `anvil-serving-harness-sync` | small | Planned specialization | Preview/apply OpenClaw config sync after router preset or tier changes. |
+| `anvil-serving-harness-sync` | small | Planned specialization | Preview/apply OpenClaw config sync after router preset or tier changes; provider/model sync exists today, skill sync is future work. |
 | `anvil-serving-promotion-evidence` | small collector, stronger synthesizer | Planned specialization | Assemble preflight, benchmark, calibration, and config evidence without promoting. |
 | `anvil-serving-host-repair` | strong or human-assisted | Planned specialization | Diagnose WSL/Docker/GPU issues and preview safe repairs. |
 | `anvil-serving-voice-ops` | small for validation, strong for failures | Planned specialization | Validate voice sidecar manifests and run bounded voice benchmarks. |
@@ -261,7 +289,7 @@ promotion-quality evidence path.
 3. Add guarded lifecycle wrappers for `serves` and `router` mutation with
    dry-run plus `confirm`, while keeping profile promotion behind a stronger
    human approval artifact.
-4. Implement `harness sync openclaw --skills` as a render/apply path for the
+4. Add `harness sync openclaw --skills` as a render/apply path for the
    skill and agent configuration that points OpenClaw at the right sub-agent
    roles and preset tokens.
 5. Keep promotion, cloud enablement, destructive cache pruning, host repair, and

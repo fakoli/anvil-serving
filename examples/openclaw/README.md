@@ -27,16 +27,75 @@ instead of an assumed one.
 | `skills/anvil-serving-workbench/SKILL.md` | Example OpenClaw-visible workbench skill for operator workflows. |
 | `anvil-serving-workbench.example.json5` | Example `skills.load.extraDirs` and agent visibility fragment for the workbench roles. |
 
+## Overnight operator checklist
+
+Use this checklist on Fakoli Mini when validating that OpenClaw can see the
+anvil-serving workbench skill. Non-interactive shells may need the Homebrew path
+first:
+
+```bash
+export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH
+```
+
+Prerequisite: the `anvil` provider/model config must already be registered by
+`anvil-serving harness sync openclaw` or the setup steps in the
+[`openclaw-anvil-intent-router` README](../../plugins/openclaw-anvil-intent-router/README.md).
+The example agents use `anvil/chat-fast` and `anvil/review`, so they are only
+usable after the provider models exist.
+
+1. Confirm the intent router plugin is loaded:
+
+   ```bash
+   openclaw plugins inspect openclaw-anvil-intent-router --runtime --json
+   ```
+
+   Success means `status:"loaded"`, `activated:true`, and a
+   `before_model_resolve` hook.
+
+2. Install the workbench skill from a checked-out or copied skill directory:
+
+   ```bash
+   openclaw skills install /path/to/examples/openclaw/skills/anvil-serving-workbench \
+     --as anvil-serving-workbench
+   ```
+
+3. Confirm the skill is visible:
+
+   ```bash
+   openclaw skills info anvil-serving-workbench --json
+   openclaw skills check --json
+   ```
+
+   Success means `eligible`, `modelVisible`, `userInvocable`, and
+   `commandVisible` are all `true`.
+
+4. Save evidence with the PR or task packet:
+
+   ```bash
+   openclaw plugins inspect openclaw-anvil-intent-router --runtime --json > openclaw-plugin.json
+   openclaw skills info anvil-serving-workbench --json > openclaw-skill.json
+   openclaw skills check --json > openclaw-skills-check.json
+   ```
+
+`anvil-serving harness sync openclaw` owns provider/model config today.
+`anvil-serving harness sync openclaw --skills` is planned follow-up work, not a
+shipped renderer yet.
+
 ## Workbench skill example
 
 The operator workbench skill is the OpenClaw counterpart to the repo-scoped
 Codex and Claude Code skills. Until `anvil-serving harness sync openclaw
---skills` exists, load `examples/openclaw/skills` through OpenClaw's
-`skills.load.extraDirs` and enable `anvil-serving-workbench` in agent defaults
-or specific agents. The example fragment in
-`anvil-serving-workbench.example.json5` keeps this narrowly scoped to skill
-visibility and role names; provider/model sync remains owned by
-`anvil-serving harness sync openclaw`.
+--skills` exists, use one of two manual paths:
+
+- Workspace install: run `openclaw skills install <skill-dir> --as
+  anvil-serving-workbench`, then merge the agent visibility fragment in
+  `anvil-serving-workbench.example.json5`. No `skills.load.extraDirs` is needed.
+- Checkout load: point `skills.load.extraDirs` at an absolute checkout path such
+  as `/absolute/path/to/anvil-serving/examples/openclaw/skills`, then enable
+  `anvil-serving-workbench` in agent defaults or specific agents.
+
+The example fragment keeps this narrowly scoped to skill visibility and role
+names; provider/model sync remains owned by `anvil-serving harness sync openclaw`.
 
 ## Run the validator (against the committed fixture)
 
