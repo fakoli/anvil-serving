@@ -52,6 +52,8 @@ def _router_cfg(tmp_path):
 
         [router.presets]
         chat = ["fast-local"]
+        chat-fast = ["fast-local"]
+        review = ["fast-local"]
     """), encoding="utf-8")
     return str(p)
 
@@ -154,6 +156,7 @@ def test_tools_list_has_json_schemas():
     assert tools["benchmark_probe"]["inputSchema"]["properties"]["requests"]["maximum"] == 200
     assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
     assert tools["router_promote"]["inputSchema"]["properties"]["human_approved"]["type"] == "boolean"
+    assert tools["openclaw_sync"]["inputSchema"]["properties"]["skills"]["type"] == "boolean"
 
 
 def test_stdio_tools_list_and_call(tmp_path):
@@ -482,9 +485,55 @@ def test_openclaw_sync_preview_uses_harness_logic_and_env_ref(tmp_path):
     assert env["ok"] is True
     assert env["data"]["applied"] is False
     preview = env["data"]["preview"]
-    assert preview["model_ids"] == ["chat"]
+    assert preview["model_ids"] == ["chat", "chat-fast", "review"]
     # Secret hygiene: config references the env var by name; no literal secret is resolved.
     assert preview["api_key"] == "${ANVIL_ROUTER_TOKEN}"
+
+
+def test_openclaw_sync_preview_can_include_skills(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "base_url": "http://127.0.0.1:8000/v1",
+        "api_key_env": "ANVIL_ROUTER_TOKEN",
+        "skills": True,
+        "skill_dir": "/opt/anvil-serving/examples/openclaw/skills",
+    })
+    assert env["ok"] is True
+    preview = env["data"]["preview"]
+    assert preview["skills"] is True
+    assert preview["skill_name"] == "anvil-serving-workbench"
+    assert preview["skill_load_dirs"] == ["/opt/anvil-serving/examples/openclaw/skills"]
+    assert preview["agent_models"]["anvil-inventory-scout"] == "anvil/chat-fast"
+    assert preview["agent_models"]["anvil-adversarial-reviewer"] == "anvil/review"
+
+
+def test_openclaw_sync_confirmed_apply_forwards_skills(tmp_path, monkeypatch):
+    cfg = _router_cfg(tmp_path)
+    out = tmp_path / "openclaw.json"
+    seen = {}
+
+    from anvil_serving import harness
+
+    def fake_sync(config_path, **kwargs):
+        seen["config_path"] = config_path
+        seen["kwargs"] = kwargs
+        return 0
+
+    monkeypatch.setattr(harness, "cmd_sync_openclaw", fake_sync)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "out": str(out),
+        "skills": True,
+        "skill_dir": "/opt/anvil-serving/examples/openclaw/skills",
+        "confirm": True,
+        "dry_run": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is True
+    assert seen["config_path"] == cfg
+    assert seen["kwargs"]["skills"] is True
+    assert seen["kwargs"]["skill_dir"] == "/opt/anvil-serving/examples/openclaw/skills"
 
 
 def test_models_inventory_reads_structured_catalog(tmp_path):
@@ -809,6 +858,16 @@ def test_openclaw_sync_rejects_non_anvil_api_key_env(tmp_path):
     assert env["error"]["code"] == "unsafe_api_key_env"
 
 
+def test_openclaw_sync_skill_dir_requires_skills(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "skill_dir": "/opt/anvil-serving/examples/openclaw/skills",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
 def test_openclaw_sync_rejects_unsafe_gateway_target_in_preview(tmp_path):
     cfg = _router_cfg(tmp_path)
     env = mcp.call_tool("openclaw_sync", {
@@ -828,6 +887,19 @@ def test_openclaw_sync_apply_requires_confirmed_target(tmp_path):
     })
     assert env["ok"] is False
     assert env["error"]["code"] == "missing_target"
+
+
+def test_openclaw_sync_apply_rejects_stdout_out(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "out": "-",
+        "dry_run": False,
+        "confirm": True,
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "missing_target"
+    assert "render-only" in env["error"]["message"]
 
 
 def test_gateway_restart_is_gated_and_uses_argv_preview():
