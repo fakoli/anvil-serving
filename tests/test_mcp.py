@@ -5,6 +5,7 @@ HTTP seams are faked at the module boundary.
 """
 import io
 import json
+import re
 import sys
 import threading
 import textwrap
@@ -145,6 +146,7 @@ def test_tools_list_has_json_schemas():
         "preflight_probe",
         "benchmark_probe",
         "benchmark_artifact",
+        "workflow_packet_validate",
     ]:
         assert name in tools
         schema = tools[name]["inputSchema"]
@@ -158,6 +160,7 @@ def test_tools_list_has_json_schemas():
     assert tools["benchmark_probe"]["inputSchema"]["properties"]["requests"]["maximum"] == 200
     assert tools["benchmark_artifact"]["inputSchema"]["required"] == ["base_url", "model", "artifact_path"]
     assert "evidence_dir" not in tools["benchmark_artifact"]["inputSchema"]["properties"]
+    assert tools["workflow_packet_validate"]["inputSchema"]["required"] == ["packet"]
     assert tools["openclaw_gateway_restart"]["inputSchema"]["properties"]["timeout_seconds"]["default"] == 120
     assert tools["router_promote"]["inputSchema"]["properties"]["human_approved"]["type"] == "boolean"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["skills"]["type"] == "boolean"
@@ -1155,6 +1158,184 @@ def test_benchmark_artifact_confirmed_run_rejects_stale_json(tmp_path, monkeypat
     assert env["ok"] is False
     assert env["error"]["code"] == "artifact_not_written"
     assert not artifact_path.exists()
+
+
+def _workflow_packet(**overrides):
+    packet = {
+        "schema_version": "operator-workflow/v1",
+        "request": "preflight and benchmark fast tier",
+        "gate_state": "human_required",
+        "targets": {
+            "endpoint": "http://127.0.0.1:30001/v1",
+            "model": "fast-local",
+        },
+        "tools_used": [{
+            "name": "preflight_probe",
+            "source_class": "mcp",
+            "ok": True,
+            "dry_run": False,
+            "confirmed": True,
+            "target": "http://127.0.0.1:30001/v1",
+            "error": None,
+        }],
+        "artifacts": [],
+        "advisory_priors": [],
+        "recommendation": "needs_more_data",
+        "human_gate_required": True,
+        "promoted": False,
+    }
+    packet.update(overrides)
+    return packet
+
+
+def test_workflow_packet_docs_example_passes_validator():
+    text = Path("docs/OPERATOR-SKILLS-AND-SUBAGENTS.md").read_text(encoding="utf-8")
+    result_section = text.split("## Result Contract", 1)[1]
+    match = re.search(r"```json\r?\n(\{.*?\})\r?\n```", result_section, re.S)
+    assert match is not None
+    packet = json.loads(match.group(1))
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    assert env["data"]["errors"] == []
+
+
+def test_workflow_packet_promoted_requires_human_approved_router_promote():
+    promote_tool = {
+        "name": "router_promote",
+        "source_class": "mcp",
+        "ok": True,
+        "dry_run": False,
+        "confirmed": True,
+        "target": "router-profile",
+        "error": None,
+    }
+    packet = _workflow_packet(
+        tools_used=[promote_tool],
+        recommendation="promote",
+        promoted=True,
+    )
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "promoted" for error in env["data"]["errors"])
+
+    failed_apply = dict(promote_tool, data={"human_approved": True, "applied": False, "returncode": 1})
+    env = mcp.call_tool("workflow_packet_validate", {"packet": dict(packet, tools_used=[failed_apply])})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "promoted" for error in env["data"]["errors"])
+
+    missing_returncode = dict(promote_tool, data={"human_approved": True, "applied": True})
+    env = mcp.call_tool("workflow_packet_validate", {"packet": dict(packet, tools_used=[missing_returncode])})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "promoted" for error in env["data"]["errors"])
+
+    approved = dict(promote_tool, data={"human_approved": True, "applied": True, "returncode": 0})
+    env = mcp.call_tool("workflow_packet_validate", {"packet": dict(packet, tools_used=[approved])})
+    assert env["data"]["valid"] is True
+
+
+def test_workflow_packet_promote_recommendation_keeps_human_gate_until_applied():
+    packet = _workflow_packet(
+        recommendation="promote",
+        gate_state="not_required",
+        human_gate_required=False,
+    )
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "gate_state" in fields
+    assert "human_gate_required" in fields
+
+    approved_tool = {
+        "name": "router_promote",
+        "source_class": "mcp",
+        "ok": True,
+        "dry_run": False,
+        "confirmed": True,
+        "target": "router-profile",
+        "error": None,
+        "data": {"human_approved": True, "applied": True, "returncode": 0},
+    }
+    env = mcp.call_tool("workflow_packet_validate", {"packet": dict(
+        packet,
+        tools_used=[approved_tool],
+        promoted=True,
+    )})
+    assert env["data"]["valid"] is True
+
+
+def test_workflow_packet_artifact_paths_are_normalized_and_bounded(tmp_path):
+    packet = _workflow_packet(artifacts=[
+        ".anvil/benchmarks/local.json",
+        {"path": ".anvil/benchmarks/object.json", "kind": "benchmark"},
+    ])
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    artifacts = env["data"]["normalized_packet"]["artifacts"]
+    assert Path(artifacts[0]).is_absolute()
+    assert Path(artifacts[1]["path"]).is_absolute()
+    assert artifacts[1]["kind"] == "benchmark"
+
+    bad = _workflow_packet(artifacts=[{"path": str(tmp_path / "outside.json")}])
+    env = mcp.call_tool("workflow_packet_validate", {"packet": bad})
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0].path" for error in env["data"]["errors"])
+
+
+def test_workflow_packet_enums_and_required_tool_fields_are_validated():
+    packet = _workflow_packet(
+        gate_state="done",
+        recommendation="ship_it",
+        tools_used=[{"name": "probe", "source_class": "raw-shell", "ok": "yes"}],
+    )
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    fields = {error["field"] for error in env["data"]["errors"]}
+    assert "gate_state" in fields
+    assert "recommendation" in fields
+    assert "tools_used[0].source_class" in fields
+    assert "tools_used[0].ok" in fields
+    assert "tools_used[0].target" in fields
+
+
+def test_workflow_packet_rejects_non_object_and_missing_required_fields():
+    non_object = mcp.call_tool("workflow_packet_validate", {"packet": []})
+    assert non_object["ok"] is True
+    assert non_object["data"]["valid"] is False
+    assert non_object["data"]["errors"][0]["field"] == "packet"
+
+    missing = mcp.call_tool("workflow_packet_validate", {"packet": {"schema_version": "operator-workflow/v1"}})
+    assert missing["ok"] is True
+    assert missing["data"]["valid"] is False
+    fields = {error["field"] for error in missing["data"]["errors"]}
+    assert "request" in fields
+    assert "tools_used" in fields
+    assert "promoted" in fields
+
+
+def test_workflow_packet_malformed_tool_entries_stay_structured_errors():
+    packet = _workflow_packet(tools_used=["oops"])
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": packet})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is False
+    assert env["data"]["errors"][0]["field"] == "tools_used[0]"
 
 
 def test_probe_tools_use_api_key_env_and_reject_raw_keys(monkeypatch):
