@@ -44,7 +44,7 @@ The initial checked-in entry points are:
 | Codex | `.agents/skills/anvil-serving-workbench/SKILL.md` | Repo-scoped portable workbench skill. |
 | Codex | `.codex/agents/anvil-*.toml` | Custom sub-agent roles with model-tier hints. |
 | Claude Code | `.claude/skills/anvil-serving-workbench/SKILL.md` | Project skill using the same workbench contract. |
-| Claude Code | `.claude/agents/anvil-*.md` | Project sub-agents for inventory, probes, and review. |
+| Claude Code | `.claude/agents/anvil-*.md` | Project sub-agents for orchestration, inventory, route analysis, serve/preflight/benchmark/evidence slices, and independent review. |
 | OpenClaw | `examples/openclaw/skills/anvil-serving-workbench/SKILL.md` | Installable skill directory or `skills.load.extraDirs` source. |
 | OpenClaw | `examples/openclaw/anvil-serving-workbench.example.json5` | Example skill/agent visibility fragment. |
 
@@ -53,7 +53,7 @@ The initial checked-in entry points are:
 | Surface | Available today | Planned follow-up |
 |---|---|---|
 | Portable skills | Checked-in `anvil-serving-workbench` for Codex, Claude Code, and manual OpenClaw example installs. | Split specialized readiness, model-catalog, serve-swap, harness-sync, promotion-evidence, host-repair, and voice skills once their backing tools exist. |
-| Sub-agent roles | Inventory scout, probe/evidence runner, and adversarial reviewer role files for Codex and Claude Code. | Add route analyst, serve operator, benchmark runner, evidence reporter, and quality critic roles as separate reusable profiles. |
+| Sub-agent roles | Orchestrator, inventory scout, route analyst, serve operator, preflight runner, benchmark runner, evidence reporter, quality critic, and adversarial reviewer role files for Codex and Claude Code. | Add more harness-specific tuning only after real workflow traces show a gap. |
 | OpenClaw install | `anvil-serving harness sync openclaw --skills` renders the workbench skill and Anvil role config; apply it with `--out <config>` or `--gateway-host <mini>`. Use workspace-installed skills, or pass `--skill-dir <gateway-visible-path>` for checkout-loaded skills. | Split additional specialized skills once their backing tools exist. |
 | MCP/controller tools | Model inventory, status, guarded serve/router lifecycle, bounded serve/router logs, decision summaries, route probes, OpenClaw config sync, gateway restart, preflight probes, bounded benchmark probes, benchmark artifact capture, external benchmark advisory reports/compares, and promotion preview. | Router token handling. |
 | Result contract | `operator-workflow/v1` packet documented for skills and reviewers; `workflow_packet_validate` validates packet shape, promotion gates, and artifact paths. | Broader packet fixtures from real multi-agent runs. |
@@ -190,13 +190,43 @@ The rendered Anvil-owned keys are:
     },
     "list": [
       {
+        "name": "anvil-orchestrator",
+        "model": "anvil/planning",
+        "skills": ["anvil-serving-workbench"]
+      },
+      {
         "name": "anvil-inventory-scout",
         "model": "anvil/chat-fast",
         "skills": ["anvil-serving-workbench"]
       },
       {
-        "name": "anvil-probe-evidence-runner",
+        "name": "anvil-route-analyst",
         "model": "anvil/chat-fast",
+        "skills": ["anvil-serving-workbench"]
+      },
+      {
+        "name": "anvil-serve-operator",
+        "model": "anvil/chat-fast",
+        "skills": ["anvil-serving-workbench"]
+      },
+      {
+        "name": "anvil-preflight-runner",
+        "model": "anvil/chat-fast",
+        "skills": ["anvil-serving-workbench"]
+      },
+      {
+        "name": "anvil-benchmark-runner",
+        "model": "anvil/chat-fast",
+        "skills": ["anvil-serving-workbench"]
+      },
+      {
+        "name": "anvil-evidence-reporter",
+        "model": "anvil/chat-fast",
+        "skills": ["anvil-serving-workbench"]
+      },
+      {
+        "name": "anvil-quality-critic",
+        "model": "anvil/review",
         "skills": ["anvil-serving-workbench"]
       },
       {
@@ -209,10 +239,15 @@ The rendered Anvil-owned keys are:
 }
 ```
 
-If `chat-fast` is absent in a custom router config, operational roles fall back
-to `anvil/chat`. If `review` is absent, the adversarial reviewer falls back to
-`anvil/chat`, then `anvil/planning`, then the first configured preset. The sync
-merge replaces only Anvil-owned role entries by name and appends
+If `planning` is absent in a custom router config, the orchestrator falls back
+to `anvil/review`, then `anvil/chat`, then remains pinned to `anvil/planning`
+rather than silently using a small-only preset. If `chat-fast` is absent,
+operational small-model roles fall back to `anvil/chat`, then the first
+configured preset. If `review` is absent, the quality critic and adversarial
+reviewer fall back to `anvil/planning`, then `anvil/chat`, then remain pinned to
+`anvil/review` rather than silently judging from a small-only preset. The sync
+merge replaces current Anvil-owned role entries by name, drops the legacy
+`anvil-probe-evidence-runner` OpenClaw entry when present, and appends
 `anvil-serving-workbench` to existing default skills; unrelated providers,
 agents, plugins, and checkout skill directories are preserved when the existing
 OpenClaw config is plain JSON and the merge path can read it.
@@ -229,15 +264,39 @@ execution steps with explicit inputs and outputs.
 
 | Role | Good model class | Inputs | Output | Gate |
 |---|---|---|---|---|
-| Orchestrator | strong/frontier | User request, repo docs, current tool list | Playbook choice, fan-out plan, final recommendation | Must stop for human gates. |
+| Orchestrator | strong/frontier | User request, repo docs, current tool list, role outputs | Playbook choice, fan-out plan, final packet and recommendation | Must stop for human gates. |
 | Inventory scout | small/local | Router config, serves manifest, model catalog, MCP status | Current topology and candidate endpoints | No mutation. |
 | Route analyst | small/local | Prompt/class, router route probe, decision log sample | Expected intent, tier, and risk class | No policy change. |
-| Serve operator | small/local with confirm | Manifest target, serve name, endpoint | Dry-run plan, then confirmed start/adopt/down result | Requires exact target plus `confirm:true` and `dry_run:false` for mutation. |
+| Serve operator | small/local with confirm | Manifest target, serve name, endpoint, confirmation state | Dry-run plan, then confirmed start/adopt/down result | Requires exact target plus `confirm:true` and `dry_run:false` for mutation. |
 | Preflight runner | small/local | Endpoint, model id, context, thinking settings | Pass/fail with failing checks | Benchmark blocked on fail. |
-| Benchmark runner | small/local | Endpoint, model id, request shape, artifact path | JSON artifact and capacity summary | Requires preflight pass. |
-| Evidence reporter | small/local | Status, preflight, benchmark, external priors, config diff | Promotion packet draft | Must mark external priors advisory-only. |
-| Quality critic | strong, independent from candidate generator | Evidence packet, profile diff, acceptance thresholds | `promote`, `do_not_promote`, or `needs_more_data` recommendation | Never self-verifies model output. |
+| Benchmark runner | small/local | Endpoint, model id, request shape, artifact path, preflight proof | JSON artifact and capacity summary | Requires preflight pass. |
+| Evidence reporter | small/local | Status, preflight, benchmark, external priors, config diff | Promotion packet draft and validation result | Must mark external priors advisory-only. |
+| Quality critic | strong, independent from candidate generator | Evidence packet, profile diff, acceptance thresholds | `promote`, `do_not_promote`, `needs_more_data`, or `blocked` recommendation | Never self-verifies model output. |
+| Adversarial reviewer | strong, independent from implementer | Code/docs diff, packet, test output, README/CLAUDE constraints | Severity-ordered findings and residual risk | Does not implement fixes in the same pass. |
 | Human approver | human | Critic recommendation and artifacts | Approve or reject live promotion/destructive action | Required for promotion, cloud enablement, host repair, public bind. |
+
+## Role Contracts
+
+Every role prompt in `.codex/agents/` and `.claude/agents/` carries the same
+contract fields: inputs, outputs, allowed tools, forbidden actions, and
+escalation triggers.
+
+| Role | Allowed tools | Forbidden actions | Escalate when |
+|---|---|---|---|
+| Orchestrator | Workbench MCP/controller tools, read-only file inspection, Anvil state commands, bounded sub-agent delegation | Bypassing human gates, policy/profile promotion from priors alone, cloud enablement, public binds, destructive repair, self-verification | Ambiguous target, missing evidence, policy change, promotion, destructive action, public exposure |
+| Inventory scout | Read-only status tools, file reads, grep/glob, read-only CLI previews | File mutation, serve/router lifecycle mutation, model pulls, cache deletion, profile promotion, host restarts | Missing config, stale status, unsafe URL, missing credentials, unavailable MCP/controller tools |
+| Route analyst | `route_decision`, `decision_summary`, `router_status`, read-only config/log summaries | Routing policy changes, profile edits, promotion, cloud enablement, serve mutation | No available tier, profile/classifier contradiction, stale profile, residency conflict |
+| Serve operator | `serves_status`, `serves_manage`, `serves_logs`, `doctor_summary`, manifest reads | Promotion, policy change, cloud enablement, host/cache repair, public binds, unbounded log follow, mutation without exact target and confirm | Ambiguous serve, manifest mismatch, Docker/GPU failure, missing confirm, failing post-mutation preflight |
+| Preflight runner | `preflight_probe`, `doctor_summary`, route sanity probes, config reads | Benchmark before preflight pass, promotion, policy change, serve mutation, raw secrets, `localhost` URLs | Preflight failure, timeout, unsafe URL, missing endpoint/model, missing auth env, self-verification risk |
+| Benchmark runner | `benchmark_probe`, `benchmark_artifact`, `external_bench_compare`, artifact reads | Benchmark without preflight pass, unbounded load, promotion, policy change, artifact writes outside approved roots | Missing preflight proof, missing artifact root, timeout, high-cost run, promotion request |
+| Evidence reporter | `workflow_packet_validate`, read-only MCP results, external benchmark advisory tools, artifact reads | Creating new probes without approval, policy change, promotion, marking priors promotion-quality, hiding failed evidence | Validation failure, unsafe artifact path, missing advisory flags, contradictory evidence |
+| Quality critic | Read-only evidence review, `workflow_packet_validate`, decision summaries, benchmark artifacts | Running `router_promote`, policy/profile edits, cloud enablement, treating priors as evidence, grading with the evaluated model | Self-verification risk, failed preflight, weak benchmark, stale profile, mismatched fingerprint, live promotion request |
+| Adversarial reviewer | Read-only file/test/evidence inspection and git diff/status/log | Editing in the same pass, applying promotion, changing policy, host/cache repair, judging own work | Unsafe automation, broken gates, docs contradiction, secret leak, non-`127.0.0.1` local URL, failing evidence |
+
+Small-model roles are explicitly barred from routing-policy changes and profile
+promotion. The quality critic must be independent from the model being evaluated
+and from the evidence drafter; this is the workbench's "never self-verify" rule
+applied to model promotion.
 
 Small models are useful where the task is mostly schema filling, status
 summarization, command preview interpretation, or deterministic report drafting.

@@ -153,11 +153,30 @@ def test_openclaw_skills_sync_render_adds_workbench_roles():
     defaults = rendered["agents"]["defaults"]
     roles = {r["name"]: r for r in rendered["agents"]["list"]}
     assert defaults["skills"] == ["anvil-serving-workbench"]
+    assert roles["anvil-orchestrator"]["model"] == "anvil/planning"
     assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
-    assert roles["anvil-probe-evidence-runner"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-route-analyst"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-serve-operator"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-preflight-runner"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-benchmark-runner"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-evidence-reporter"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
     assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
     assert all(r["skills"] == ["anvil-serving-workbench"] for r in roles.values())
     assert "skills" not in rendered
+
+
+def test_openclaw_strong_roles_do_not_fallback_to_small_only_preset():
+    cfg = _Config(
+        presets={"chat-fast": ("fast",)},
+        tiers={"fast": _Tier(32768)},
+    )
+    rendered = harness.render_openclaw_skills(cfg)
+    roles = {r["name"]: r for r in rendered["agents"]["list"]}
+    assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-orchestrator"]["model"] == "anvil/planning"
+    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
+    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
 
 
 def test_openclaw_skills_sync_render_can_add_checkout_skill_dir():
@@ -173,6 +192,7 @@ def test_openclaw_sync_skills_emits_provider_and_agent_config(capsys):
     roles = {r["name"]: r for r in payload["agents"]["list"]}
     assert payload["agents"]["defaults"]["skills"] == ["anvil-serving-workbench"]
     assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
     assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
     assert payload["models"]["providers"]["anvil"]["apiKey"] == "${T}"
 
@@ -271,6 +291,7 @@ def test_openclaw_skills_sync_scp_merge_preserves_operator_owned_config():
             "defaults": {"skills": ["operator-skill"], "model": {"primary": "openai/gpt"}},
             "list": [
                 {"name": "operator-agent", "model": "openai/gpt", "skills": ["operator-skill"]},
+                {"name": "anvil-probe-evidence-runner", "model": "anvil/chat", "skills": ["old"]},
                 {"name": "anvil-inventory-scout", "model": "anvil/chat", "skills": ["old"]},
             ],
         },
@@ -292,7 +313,9 @@ def test_openclaw_skills_sync_scp_merge_preserves_operator_owned_config():
     ]
     roles = {r["name"]: r for r in merged["agents"]["list"]}
     assert roles["operator-agent"]["skills"] == ["operator-skill"]
+    assert "anvil-probe-evidence-runner" not in roles
     assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
+    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
     assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
     assert "operator-plugin" in merged["plugins"]["entries"]
 

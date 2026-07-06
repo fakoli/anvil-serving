@@ -27,6 +27,13 @@
     },
     list: [
       {
+        name: "anvil-orchestrator",
+        model: "anvil/planning",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
         name: "anvil-inventory-scout",
         model: "anvil/chat-fast",
         skills: [
@@ -34,8 +41,43 @@
         ],
       },
       {
-        name: "anvil-probe-evidence-runner",
+        name: "anvil-route-analyst",
         model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-serve-operator",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-preflight-runner",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-benchmark-runner",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-evidence-reporter",
+        model: "anvil/chat-fast",
+        skills: [
+          "anvil-serving-workbench",
+        ],
+      },
+      {
+        name: "anvil-quality-critic",
+        model: "anvil/review",
         skills: [
           "anvil-serving-workbench",
         ],
