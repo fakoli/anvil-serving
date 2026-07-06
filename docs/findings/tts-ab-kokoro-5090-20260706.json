@@ -1,0 +1,97 @@
+{
+  "gpu": {
+    "available": true,
+    "source": "nvidia-smi",
+    "devices": [
+      {
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 5090",
+        "capability": "sm_120",
+        "memory_total": "32607 MiB",
+        "memory_used": "30089 MiB"
+      },
+      {
+        "index": 1,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "capability": "sm_120",
+        "memory_total": "97887 MiB",
+        "memory_used": "90660 MiB"
+      }
+    ],
+    "detail": "torch not importable; GPU context collected with nvidia-smi"
+  },
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "candidates": [
+    {
+      "name": "kokoro-82m-5090",
+      "base_url": "http://127.0.0.1:30012/v1",
+      "model": "kokoro",
+      "ttfa_ms": 183.64,
+      "synth_seconds": 0.1864,
+      "audio_seconds": 2.8881,
+      "rtf": 0.0645,
+      "audio_bytes": 138628,
+      "audio_sanity": {
+        "samples": 69314,
+        "rms": 1638.93,
+        "peak": 10954,
+        "nonzero_samples": 62775
+      },
+      "audio_sanity_note": "automated PCM sanity only; no human listening pass by this script",
+      "source_sample_rate": 24000,
+      "capture_path": "C:\\Users\\sdoum\\AppData\\Local\\Temp\\anvil-tts-ab-5090-20260706\\kokoro-82m-5090.wav",
+      "quality": "not measured; human listening pass required",
+      "error": null,
+      "readiness": {
+        "ready": true,
+        "health": {
+          "ready": true,
+          "url": "http://127.0.0.1:30012/health",
+          "status": 200
+        },
+        "models": {
+          "ready": true,
+          "url": "http://127.0.0.1:30012/v1/models",
+          "status": 200,
+          "payload": {
+            "object": "list",
+            "data": [
+              {
+                "id": "tts-1",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "tts-1-hd",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "kokoro",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              },
+              {
+                "id": "gpt-4o-mini-tts",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "kokoro"
+              }
+            ]
+          }
+        },
+        "detail": "raw endpoint health/models/container probe; no managed serve_name for TTS candidates yet",
+        "container": {
+          "name": "kokoro-tts-5090",
+          "available": true,
+          "status": "running",
+          "image": "ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128",
+          "docker_name": "kokoro-tts-5090"
+        }
+      }
+    }
+  ]
+}
