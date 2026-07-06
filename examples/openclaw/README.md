@@ -25,7 +25,7 @@ instead of an assumed one.
 | `logging-hook/index.ts` | A minimal, **logging-only** `before_model_resolve` plugin. On each fire it appends a JSONL record and returns `{}` (records cadence; **does not route**). This is the instrument you install on the live Fakoli-Mini gateway to produce a REAL `hook-fire-log.jsonl`. |
 | `logging-hook/package.json`, `logging-hook/openclaw.plugin.json` | Minimal packaging so the hook can be installed as a local OpenClaw plugin. |
 | `skills/anvil-serving-workbench/SKILL.md` | Example OpenClaw-visible workbench skill for operator workflows. |
-| `anvil-serving-workbench.example.json5` | Example `skills.load.extraDirs` and agent visibility fragment for the workbench roles. |
+| `anvil-serving-workbench.example.json5` | Example `skills.load.extraDirs` and agent visibility fragment rendered by `harness sync openclaw --skills`. |
 
 ## Overnight operator checklist
 
@@ -69,7 +69,19 @@ usable after the provider models exist.
    Success means `eligible`, `modelVisible`, `userInvocable`, and
    `commandVisible` are all `true`.
 
-4. Save evidence with the PR or task packet:
+4. Preview the provider, skill, and agent config that anvil-serving would render:
+
+   ```bash
+   anvil-serving harness sync openclaw \
+     --config configs/example.toml \
+     --skills \
+     --out -
+   ```
+
+   The rendered roles are `anvil-inventory-scout`,
+   `anvil-probe-evidence-runner`, and `anvil-adversarial-reviewer`.
+
+5. Save evidence with the PR or task packet:
 
    ```bash
    openclaw plugins inspect openclaw-anvil-intent-router --runtime --json > openclaw-plugin.json
@@ -77,25 +89,31 @@ usable after the provider models exist.
    openclaw skills check --json > openclaw-skills-check.json
    ```
 
-`anvil-serving harness sync openclaw` owns provider/model config today.
-`anvil-serving harness sync openclaw --skills` is planned follow-up work, not a
-shipped renderer yet.
+`anvil-serving harness sync openclaw` owns provider/model config. Add
+`--skills` to render the OpenClaw-visible workbench skill and Anvil sub-agent
+roles in the same config payload.
 
 ## Workbench skill example
 
 The operator workbench skill is the OpenClaw counterpart to the repo-scoped
-Codex and Claude Code skills. Until `anvil-serving harness sync openclaw
---skills` exists, use one of two manual paths:
+Codex and Claude Code skills. Use one of two loading modes:
 
 - Workspace install: run `openclaw skills install <skill-dir> --as
-  anvil-serving-workbench`, then merge the agent visibility fragment in
-  `anvil-serving-workbench.example.json5`. No `skills.load.extraDirs` is needed.
+  anvil-serving-workbench`, then preview with `anvil-serving harness sync
+  openclaw --skills --out -` and apply with `--out ~/.openclaw/openclaw.json`
+  locally or `--gateway-host <mini>` remotely. No `skills.load.extraDirs` is
+  needed.
 - Checkout load: point `skills.load.extraDirs` at an absolute checkout path such
-  as `/absolute/path/to/anvil-serving/examples/openclaw/skills`, then enable
-  `anvil-serving-workbench` in agent defaults or specific agents.
+  as `/absolute/path/to/anvil-serving/examples/openclaw/skills` by passing
+  `--skill-dir /absolute/path/to/anvil-serving/examples/openclaw/skills`.
 
-The example fragment keeps this narrowly scoped to skill visibility and role
-names; provider/model sync remains owned by `anvil-serving harness sync openclaw`.
+The sync keeps this narrowly scoped to Anvil-owned skill visibility and role
+names while provider/model sync remains owned by the same command. When applying
+over an existing plain-JSON OpenClaw config through the merge path, unrelated
+providers, agents, plugins, and existing skill directories are preserved and the
+tool attempts a backup before write. Commented JSON5 configs cannot be merged
+by the stdlib renderer; edit them manually or use `--overwrite` only after
+making a separate backup.
 
 ## Run the validator (against the committed fixture)
 

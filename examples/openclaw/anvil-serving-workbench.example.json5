@@ -16,8 +16,9 @@
   //     },
   //   },
   //
-  // Merge through `anvil-serving harness sync openclaw --skills` once that
-  // renderer exists.
+  // This is the shape rendered by `anvil-serving harness sync openclaw --skills`.
+  // Use `--skill-dir` only for checkout-loaded skills; omit it for the
+  // workspace-installed mode shown above.
   agents: {
     defaults: {
       skills: [
