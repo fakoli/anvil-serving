@@ -19,6 +19,7 @@ import re
 import socket
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -208,6 +209,15 @@ def _int_arg(args: dict, name: str, default: int) -> int:
     return value
 
 
+def _str_list_arg(args: dict, name: str) -> list[str]:
+    value = args.get(name, [])
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ToolError("bad_argument", "%r must be an array of strings" % name)
+    return list(value)
+
+
 def _bounded_int_arg(args: dict, name: str, default: int, *, min_value: int, max_value: int) -> int:
     value = _int_arg(args, name, default)
     if value < min_value or value > max_value:
@@ -353,6 +363,296 @@ def tool_serves_status(args: dict) -> dict:
     except Exception as exc:
         raise ToolError("bad_manifest", "could not load serves manifest", {"manifest": manifest, "error": str(exc)})
     return _ok(serves_mod.status_summary(serves, names))
+
+
+def _load_serves_for_tool(manifest: str):
+    from . import serves as serves_mod
+
+    try:
+        return serves_mod.load_manifest(manifest)
+    except FileNotFoundError:
+        raise ToolError("manifest_not_found", "serves manifest not found", {"manifest": manifest})
+    except Exception as exc:
+        raise ToolError("bad_manifest", "could not load serves manifest", {"manifest": manifest, "error": str(exc)})
+
+
+def _serves_cli_argv(action: str, manifest: str, names: list[str], *, dry_run: bool = False,
+                     recreate: bool = False, compose: str = "", tail: Optional[int] = None,
+                     since: str = "") -> list[str]:
+    argv = [sys.executable, "-m", "anvil_serving.cli", "serves", action]
+    if compose:
+        argv += ["--compose", compose]
+    if dry_run:
+        argv.append("--dry-run")
+    if recreate:
+        argv.append("--recreate")
+    if tail is not None:
+        argv += ["--tail", str(tail)]
+    if since:
+        argv += ["--since", since]
+    if not compose:
+        argv += ["--manifest", manifest]
+    argv += names
+    return argv
+
+
+def _dedupe_serves(serves_list: list[dict]) -> list[dict]:
+    seen = set()
+    out = []
+    for serve in serves_list:
+        key = serve.get("name"), serve.get("container")
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(serve)
+    return out
+
+
+def _resolve_manifest_serves(serves_mod, manifest_serves: list[dict], names: list[str], *,
+                             caller: str = "serves_manage") -> list[dict]:
+    if not names:
+        raise ToolError("missing_argument", "%s requires explicit manifest serve names" % caller)
+    selected = []
+    for name in names:
+        matched = serves_mod._select(manifest_serves, [name])
+        if not matched:
+            raise ToolError("no_matching_serve", "no serve in manifest matches %r" % name, {"name": name})
+        if len(matched) > 1:
+            raise ToolError(
+                "ambiguous_serve",
+                "%r matches multiple serves; use an exact container name" % name,
+                {"name": name, "matches": [item.get("name") for item in matched]},
+            )
+        selected.append(matched[0])
+    return _dedupe_serves(selected)
+
+
+def _serves_manage_plan(action: str, manifest_serves: list[dict], names: list[str], *,
+                        compose: str = "", recreate: bool = False,
+                        allow_literal: bool = False) -> tuple[list[dict], dict]:
+    from . import serves as serves_mod
+
+    if compose:
+        if not names:
+            raise ToolError("missing_argument", "compose up through MCP requires explicit service names")
+        command = ["docker", "compose", "-f", compose, "up", "-d", *names]
+        return [], {
+            "mode": "compose",
+            "commands": [{"kind": "compose_up", "argv": command}],
+            "services": names,
+        }
+
+    if action == "rm":
+        commands = []
+        targets = []
+        literal_names = []
+        for name in names:
+            matched = serves_mod._select(manifest_serves, [name])
+            if len(matched) > 1:
+                raise ToolError(
+                    "ambiguous_serve",
+                    "%r matches multiple serves; use an exact container name" % name,
+                    {"name": name, "matches": [item.get("name") for item in matched]},
+                )
+            if matched:
+                target = matched[0]
+                targets.append(target)
+                container = target["container"]
+                target_name = target.get("name")
+            else:
+                if not allow_literal:
+                    literal_names.append(name)
+                    continue
+                container = name
+                target_name = name
+            commands.append({"kind": "docker_rm", "target": target_name, "argv": ["docker", "rm", "-f", container]})
+        if literal_names:
+            raise ToolError(
+                "literal_container_requires_allow",
+                "rm of a container not recognized in the manifest requires allow_literal=true",
+                {"literal_names": literal_names},
+            )
+        targets = _dedupe_serves(targets)
+        return targets, {
+            "mode": "manifest",
+            "targets": [
+                {
+                    "name": item.get("name"),
+                    "container": item.get("container"),
+                    "manifest_up": item.get("up"),
+                }
+                for item in targets
+            ],
+            "commands": commands,
+        }
+
+    targets = _resolve_manifest_serves(serves_mod, manifest_serves, names)
+    plan = {
+        "mode": "manifest",
+        "targets": [
+            {
+                "name": item.get("name"),
+                "container": item.get("container"),
+                "manifest_up": item.get("up"),
+            }
+            for item in targets
+        ],
+        "commands": [],
+    }
+    if action == "down":
+        plan["commands"] = [
+            {"kind": "docker_stop", "target": item.get("name"), "argv": ["docker", "stop", item["container"]]}
+            for item in targets
+        ]
+    elif action == "adopt":
+        for item in targets:
+            plan["commands"].append({
+                "kind": "docker_rm_before_adopt",
+                "target": item.get("name"),
+                "argv": ["docker", "rm", "-f", item["container"]],
+            })
+            if item.get("up"):
+                plan["commands"].append({
+                    "kind": "manifest_up_after_adopt",
+                    "target": item.get("name"),
+                    "argv": item["up"],
+                })
+    elif action == "up":
+        for item in targets:
+            if recreate:
+                plan["commands"].append({
+                    "kind": "docker_rm_before_recreate",
+                    "target": item.get("name"),
+                    "argv": ["docker", "rm", "-f", item["container"]],
+                })
+            if item.get("up"):
+                plan["commands"].append({
+                    "kind": "manifest_up_when_absent_or_compose_reconcile",
+                    "target": item.get("name"),
+                    "argv": item["up"],
+                })
+            plan["commands"].extend([
+                {
+                    "kind": "docker_start_when_existing_script_serve_stopped",
+                    "target": item.get("name"),
+                    "argv": ["docker", "start", item["container"]],
+                },
+                {
+                    "kind": "docker_unpause_when_paused",
+                    "target": item.get("name"),
+                    "argv": ["docker", "unpause", item["container"]],
+                },
+            ])
+    return targets, plan
+
+
+def _read_spooled_text(handle, max_bytes: int) -> tuple[str, bool]:
+    handle.seek(0)
+    raw = handle.read(max_bytes + 1)
+    truncated = len(raw) > max_bytes
+    return raw[:max_bytes].decode("utf-8", "replace"), truncated
+
+
+def _run_argv_spooled(argv: list[str], *, timeout: Optional[int], max_output_bytes: int) -> dict:
+    with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
+        try:
+            proc = subprocess.run(argv, stdout=stdout_file, stderr=stderr_file, timeout=timeout)
+        except FileNotFoundError as exc:
+            raise ToolError("command_not_found", str(exc), {"command": argv})
+        except subprocess.TimeoutExpired as exc:
+            raise ToolError("timeout", "command timed out", {"command": argv, "timeout": exc.timeout})
+
+        stdout, stdout_truncated = _read_spooled_text(stdout_file, max_output_bytes)
+        stderr, stderr_truncated = _read_spooled_text(stderr_file, max_output_bytes)
+        result = {
+            "command": argv,
+            "returncode": proc.returncode,
+            "stdout": stdout,
+            "stderr": stderr,
+            "stdout_truncated": stdout_truncated,
+            "stderr_truncated": stderr_truncated,
+        }
+        if proc.returncode != 0:
+            raise ToolError("command_failed", "command exited with status %s" % proc.returncode, result)
+        return result
+
+
+def tool_serves_manage(args: dict) -> dict:
+    from . import serves as serves_mod
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"up", "down", "rm", "adopt"}:
+        raise ToolError("bad_action", "action must be one of: up, down, rm, adopt", {"action": action})
+    manifest = _str_arg(args, "manifest", serves_mod.DEFAULT_MANIFEST)
+    names = _str_list_arg(args, "names")
+    compose = _str_arg(args, "compose", "")
+    recreate = _arg_bool(args.get("recreate"), False, name="recreate")
+    allow_literal = _arg_bool(args.get("allow_literal"), False, name="allow_literal")
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
+
+    if compose and action != "up":
+        raise ToolError("bad_argument", "'compose' is only valid with action='up'")
+    if compose and recreate:
+        raise ToolError("bad_argument", "'recreate' has no meaning with compose up")
+    if action == "rm" and not names:
+        raise ToolError("missing_argument", "rm requires at least one name")
+
+    manifest_serves = []
+    if not compose:
+        manifest_serves = _load_serves_for_tool(manifest)
+    _, plan = _serves_manage_plan(
+        action,
+        manifest_serves,
+        names,
+        compose=compose,
+        recreate=recreate,
+        allow_literal=allow_literal,
+    )
+
+    preview = dry_run or not confirm
+    argv = _serves_cli_argv(action, manifest, names, dry_run=preview, recreate=recreate, compose=compose)
+    target = {
+        "action": action,
+        "manifest": None if compose else manifest,
+        "names": names,
+        "compose": compose or None,
+        "recreate": recreate,
+        "allow_literal": allow_literal,
+        "timeout_seconds": timeout_seconds,
+    }
+    if preview:
+        return _ok({"applied": False, "dry_run": True, "target": target, "command": argv, "plan": plan})
+    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    return _ok({"applied": True, "dry_run": False, "target": target, "plan": plan, **result})
+
+
+def tool_serves_logs(args: dict) -> dict:
+    from . import serves as serves_mod
+
+    manifest = _str_arg(args, "manifest", serves_mod.DEFAULT_MANIFEST)
+    names = _str_list_arg(args, "names")
+    if len(names) != 1:
+        raise ToolError("bad_argument", "serves_logs requires exactly one serve name", {"names": names})
+    follow = _arg_bool(args.get("follow"), False, name="follow")
+    if follow:
+        raise ToolError("follow_not_allowed", "serves_logs rejects unbounded follow mode; use a bounded tail")
+    tail = _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000)
+    max_output_bytes = _bounded_int_arg(args, "max_output_bytes", 65536, min_value=1024, max_value=1048576)
+    since = _str_arg(args, "since", "")
+    manifest_serves = _load_serves_for_tool(manifest)
+    _resolve_manifest_serves(serves_mod, manifest_serves, names, caller="serves_logs")
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 60, min_value=1, max_value=600)
+    argv = _serves_cli_argv("logs", manifest, names, tail=tail, since=since)
+    result = _run_argv_spooled(argv, timeout=timeout_seconds, max_output_bytes=max_output_bytes)
+    return _ok({
+        "bounded": True,
+        "tail": tail,
+        "since": since or None,
+        "max_output_bytes": max_output_bytes,
+        **result,
+    })
 
 
 def tool_doctor_summary(args: dict) -> dict:
@@ -633,6 +933,34 @@ TOOLS: Dict[str, dict] = {
             "names": {"type": "array", "items": {"type": "string"}},
         }),
         "handler": tool_serves_status,
+    },
+    "serves_manage": {
+        "description": "Preview or run guarded serve lifecycle actions: up, down, rm, or adopt.",
+        "inputSchema": _schema({
+            "action": {"type": "string"},
+            "manifest": {"type": "string"},
+            "names": {"type": "array", "items": {"type": "string"}},
+            "compose": {"type": "string"},
+            "recreate": {"type": "boolean"},
+            "allow_literal": {"type": "boolean"},
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
+        }, required=["action"]),
+        "handler": tool_serves_manage,
+    },
+    "serves_logs": {
+        "description": "Read bounded docker logs for one manifest serve; follow mode is not allowed.",
+        "inputSchema": _schema({
+            "manifest": {"type": "string"},
+            "names": {"type": "array", "items": {"type": "string"}},
+            "tail": _bounded_integer_schema(1, 5000, 200),
+            "max_output_bytes": _bounded_integer_schema(1024, 1048576, 65536),
+            "since": {"type": "string"},
+            "follow": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 600, 60),
+        }, required=["names"]),
+        "handler": tool_serves_logs,
     },
     "doctor_summary": {
         "description": "Run anvil-serving environment checks and return structured results.",
