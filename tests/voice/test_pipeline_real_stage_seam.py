@@ -139,7 +139,7 @@ def test_manifest_pipeline_kwargs_preserve_stage_runtime_knobs():
         "voice": {
             "stt": {
                 "base_url": "http://127.0.0.1:30010/v1",
-                "model": "mlx-community/whisper-tiny-asr-fp16",
+                "model": "mlx-community/parakeet-tdt-0.6b-v3",
                 "stream": False,
                 "response_format": "json",
                 "timeout": 12.5,
