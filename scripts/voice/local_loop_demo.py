@@ -54,6 +54,7 @@ import json
 import math
 import os
 import queue
+import re
 import struct
 import sys
 import tempfile
@@ -388,6 +389,11 @@ def meter_inputs(
     return 0
 
 
+def redact_route_error(text: str) -> str:
+    """Redact bearer tokens from route-probe errors before writing evidence."""
+    return re.sub(r"Bearer\s+[^'\"\s\\]+", "Bearer <redacted>", text)
+
+
 def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loop route proof") -> Dict[str, Any]:
     """Capture a content-light `/v1/route` decision for the manifest's LLM endpoint.
 
@@ -447,7 +453,7 @@ def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loo
             "request_model": llm["model"],
             "auth_env": env_name,
             "prompt_source": "captured transcript" if prompt != "voice local-loop route proof" else "default probe",
-            "error": body_text or str(exc),
+            "error": redact_route_error(body_text or str(exc)),
         }
     except Exception as exc:  # noqa: BLE001 - evidence capture should report, not crash import paths
         return {
@@ -456,7 +462,7 @@ def route_decision_probe(data: Dict[str, Any], *, prompt: str = "voice local-loo
             "request_model": llm["model"],
             "auth_env": env_name,
             "prompt_source": "captured transcript" if prompt != "voice local-loop route proof" else "default probe",
-            "error": "%s: %s" % (type(exc).__name__, exc),
+            "error": redact_route_error("%s: %s" % (type(exc).__name__, exc)),
         }
 
 
