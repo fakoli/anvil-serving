@@ -1650,6 +1650,38 @@ def test_external_bench_priors_do_not_satisfy_workflow_promotion(tmp_path, monke
     assert any(error["field"] == "advisory_priors[0]" for error in env["data"]["errors"])
 
 
+def test_workflow_packet_voice_artifacts_are_scoped_to_voice_pipeline(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    voice_artifact = tmp_path / "voice-benchmark.json"
+    voice_artifact.write_text('{"ok": true}\n', encoding="utf-8")
+    artifact = {
+        "kind": "voice-benchmark",
+        "path": str(voice_artifact),
+        "evidence_scope": "voice-pipeline",
+        "promotion_quality_evidence": False,
+    }
+
+    env = mcp.call_tool("workflow_packet_validate", {"packet": _workflow_packet(artifacts=[artifact])})
+
+    assert env["ok"] is True
+    assert env["data"]["valid"] is True
+    normalized = env["data"]["normalized_packet"]["artifacts"][0]
+    assert normalized["kind"] == "voice-benchmark"
+    assert normalized["evidence_scope"] == "voice-pipeline"
+    assert normalized["promotion_quality_evidence"] is False
+
+    missing_scope = dict(artifact)
+    del missing_scope["evidence_scope"]
+    env = mcp.call_tool("workflow_packet_validate", {"packet": _workflow_packet(artifacts=[missing_scope])})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0].evidence_scope" for error in env["data"]["errors"])
+
+    quality_claim = dict(artifact, promotion_quality_evidence=True)
+    env = mcp.call_tool("workflow_packet_validate", {"packet": _workflow_packet(artifacts=[quality_claim])})
+    assert env["data"]["valid"] is False
+    assert any(error["field"] == "artifacts[0].promotion_quality_evidence" for error in env["data"]["errors"])
+
+
 def _operator_workflow_packet_from_fixture(fixture, evidence_root):
     artifact_path = None
     tools_used = []
