@@ -19,7 +19,8 @@ narration.
    `serves_status`, `serves_manage`, `serves_logs`, `doctor_summary`,
    `models_inventory`, `route_decision`, `openclaw_sync`,
    `openclaw_gateway_restart`, `preflight_probe`, `benchmark_probe`, and
-   `benchmark_artifact` when they cover the request.
+   `benchmark_artifact` when they cover the request. Use
+   `workflow_packet_validate` before treating a packet as promotion evidence.
 3. Use documented `anvil-serving` CLI verbs only when an MCP wrapper is missing.
    Safe fallbacks are read-only or preview-first verbs such as `profile`,
    `models sync`, `models recipe`, `external-bench list/report/compare`,
@@ -82,4 +83,6 @@ Return an `operator-workflow/v1` packet with `schema_version`, `request`,
 entry must include `source_class`, `ok`, `dry_run`, `confirmed`, `target`, and
 `error`. Allowed recommendations are `promote`, `do_not_promote`,
 `needs_more_data`, and `blocked`. Allowed `gate_state` values are
-`not_required`, `confirm_required`, `human_required`, and `blocked`.
+`not_required`, `confirm_required`, `human_required`, and `blocked`. Validate
+final packets with `workflow_packet_validate` when the MCP/control-plane tool is
+available.

@@ -33,6 +33,10 @@ _PROXY_METHODS = {"tools/list", "tools/call"}
 _PROBE_API_KEY_ENVS = {"ANVIL_ROUTER_TOKEN"}
 _WORKSPACE_ROOT_ENVS = ("ANVIL_WORKSPACE_ROOT",)
 _BENCHMARK_EVIDENCE_DIR_ENVS = ("ANVIL_BENCHMARK_EVIDENCE_DIR", "ANVIL_EVIDENCE_DIR")
+_WORKFLOW_SCHEMA_VERSION = "operator-workflow/v1"
+_WORKFLOW_GATE_STATES = {"not_required", "confirm_required", "human_required", "blocked"}
+_WORKFLOW_SOURCE_CLASSES = {"mcp", "controller", "cli", "manual", "fixture"}
+_WORKFLOW_RECOMMENDATIONS = {"promote", "do_not_promote", "needs_more_data", "blocked"}
 _MAX_ERROR_BODY_BYTES = 4096
 _LOG_SECRET_PATTERNS = (
     re.compile(r"(?i)\b((?:authorization|x-api-key)\s*[:=]\s*(?:bearer\s+)?)([^\s]+)"),
@@ -518,6 +522,164 @@ def _read_benchmark_artifact(path: str) -> dict[str, Any]:
     if not isinstance(summary, dict):
         raise ToolError("bad_benchmark_artifact", "benchmark artifact must be a JSON object", {"artifact_path": path})
     return summary
+
+
+def _workflow_error(errors: list[dict[str, Any]], field: str, message: str, details: Optional[dict] = None) -> None:
+    errors.append({"field": field, "message": message, "details": details or {}})
+
+
+def _normalize_workflow_artifacts(packet: dict[str, Any], errors: list[dict[str, Any]]) -> list[Any]:
+    artifacts = packet.get("artifacts")
+    if not isinstance(artifacts, list):
+        _workflow_error(errors, "artifacts", "artifacts must be an array")
+        return []
+    normalized = []
+    for index, artifact in enumerate(artifacts):
+        field = "artifacts[%d]" % index
+        if isinstance(artifact, str):
+            raw_path = artifact
+            item: Any = artifact
+        elif isinstance(artifact, dict):
+            raw_path = artifact.get("path")
+            item = dict(artifact)
+        else:
+            _workflow_error(errors, field, "artifact must be a string path or an object with path")
+            continue
+        if not isinstance(raw_path, str) or not raw_path:
+            _workflow_error(errors, field + ".path", "artifact path must be a non-empty string")
+            continue
+        try:
+            normalized_path, _ = _resolve_benchmark_artifact_path(raw_path)
+        except ToolError as exc:
+            _workflow_error(errors, field + ".path", exc.message, {"code": exc.code, **exc.details})
+            continue
+        if isinstance(item, dict):
+            item["path"] = normalized_path
+            normalized.append(item)
+        else:
+            normalized.append(normalized_path)
+    return normalized
+
+
+def _is_approved_promote_tool(tool: dict[str, Any]) -> bool:
+    if tool.get("name") != "router_promote":
+        return False
+    if tool.get("ok") is not True or tool.get("dry_run") is not False or tool.get("confirmed") is not True:
+        return False
+    if tool.get("error") is not None:
+        return False
+
+    candidates = [tool]
+    for key in ("result", "data", "output"):
+        nested = tool.get(key)
+        if isinstance(nested, dict):
+            candidates.append(nested)
+    for candidate in candidates:
+        if (
+            candidate.get("human_approved") is True
+            and candidate.get("applied") is True
+            and candidate.get("returncode") == 0
+        ):
+            return True
+    return False
+
+
+def validate_workflow_packet(packet: Any) -> dict[str, Any]:
+    errors: list[dict[str, Any]] = []
+    if not isinstance(packet, dict):
+        return {"valid": False, "errors": [{"field": "packet", "message": "packet must be an object", "details": {}}]}
+
+    normalized = dict(packet)
+    required = (
+        "schema_version",
+        "request",
+        "gate_state",
+        "targets",
+        "tools_used",
+        "artifacts",
+        "advisory_priors",
+        "recommendation",
+        "human_gate_required",
+        "promoted",
+    )
+    for field in required:
+        if field not in packet:
+            _workflow_error(errors, field, "missing required field")
+
+    if packet.get("schema_version") != _WORKFLOW_SCHEMA_VERSION:
+        _workflow_error(errors, "schema_version", "schema_version must be %r" % _WORKFLOW_SCHEMA_VERSION)
+    if not isinstance(packet.get("request"), str) or not packet.get("request", "").strip():
+        _workflow_error(errors, "request", "request must be a non-empty string")
+    if packet.get("gate_state") not in _WORKFLOW_GATE_STATES:
+        _workflow_error(errors, "gate_state", "invalid gate_state", {"allowed": sorted(_WORKFLOW_GATE_STATES)})
+    if packet.get("recommendation") not in _WORKFLOW_RECOMMENDATIONS:
+        _workflow_error(errors, "recommendation", "invalid recommendation", {"allowed": sorted(_WORKFLOW_RECOMMENDATIONS)})
+    if not isinstance(packet.get("human_gate_required"), bool):
+        _workflow_error(errors, "human_gate_required", "human_gate_required must be a boolean")
+    if not isinstance(packet.get("promoted"), bool):
+        _workflow_error(errors, "promoted", "promoted must be a boolean")
+
+    targets = packet.get("targets")
+    if not isinstance(targets, dict):
+        _workflow_error(errors, "targets", "targets must be an object")
+    else:
+        for key in targets:
+            if not isinstance(key, str):
+                _workflow_error(errors, "targets", "target keys must be strings")
+                break
+
+    tools_used = packet.get("tools_used")
+    normalized_tools = []
+    if not isinstance(tools_used, list):
+        _workflow_error(errors, "tools_used", "tools_used must be an array")
+        tools_used = []
+    for index, tool in enumerate(tools_used):
+        field = "tools_used[%d]" % index
+        if not isinstance(tool, dict):
+            _workflow_error(errors, field, "tool entry must be an object")
+            continue
+        normalized_tools.append(dict(tool))
+        if not isinstance(tool.get("name"), str) or not tool.get("name"):
+            _workflow_error(errors, field + ".name", "tool name must be a non-empty string")
+        if tool.get("source_class") not in _WORKFLOW_SOURCE_CLASSES:
+            _workflow_error(errors, field + ".source_class", "invalid source_class", {"allowed": sorted(_WORKFLOW_SOURCE_CLASSES)})
+        for bool_field in ("ok", "dry_run", "confirmed"):
+            if not isinstance(tool.get(bool_field), bool):
+                _workflow_error(errors, field + "." + bool_field, "%s must be a boolean" % bool_field)
+        if "target" not in tool:
+            _workflow_error(errors, field + ".target", "target field is required")
+        if "error" not in tool:
+            _workflow_error(errors, field + ".error", "error field is required")
+    normalized["tools_used"] = normalized_tools
+
+    normalized["artifacts"] = _normalize_workflow_artifacts(packet, errors)
+
+    advisory_priors = packet.get("advisory_priors")
+    if not isinstance(advisory_priors, list):
+        _workflow_error(errors, "advisory_priors", "advisory_priors must be an array")
+
+    has_approved_promote = any(_is_approved_promote_tool(tool) for tool in tools_used if isinstance(tool, dict))
+    if packet.get("promoted") is True and not has_approved_promote:
+        _workflow_error(
+            errors,
+            "promoted",
+            "promoted=true requires a human-approved router_promote tool result",
+        )
+    if packet.get("recommendation") == "promote" and not has_approved_promote:
+        if packet.get("human_gate_required") is not True:
+            _workflow_error(
+                errors,
+                "human_gate_required",
+                "recommendation=promote requires human_gate_required=true until a successful human-approved promotion result is present",
+            )
+        if packet.get("gate_state") != "human_required":
+            _workflow_error(
+                errors,
+                "gate_state",
+                "recommendation=promote requires gate_state='human_required' until a successful human-approved promotion result is present",
+            )
+
+    return {"valid": not errors, "errors": errors, "normalized_packet": normalized}
 
 
 def _redact_log_text(value: str) -> str:
@@ -1470,6 +1632,13 @@ def tool_benchmark_artifact(args: dict) -> dict:
     })
 
 
+def tool_workflow_packet_validate(args: dict) -> dict:
+    packet = args.get("packet")
+    if packet is None:
+        raise ToolError("missing_argument", "missing required argument 'packet'")
+    return _ok(validate_workflow_packet(packet))
+
+
 def _schema(properties: dict, required: Optional[list[str]] = None) -> dict:
     return {
         "type": "object",
@@ -1694,6 +1863,13 @@ TOOLS: Dict[str, dict] = {
             "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
         }, required=["base_url", "model", "artifact_path"]),
         "handler": tool_benchmark_artifact,
+    },
+    "workflow_packet_validate": {
+        "description": "Validate and normalize an operator-workflow/v1 result packet before using it as evidence.",
+        "inputSchema": _schema({
+            "packet": {"type": "object"},
+        }, required=["packet"]),
+        "handler": tool_workflow_packet_validate,
     },
 }
 
