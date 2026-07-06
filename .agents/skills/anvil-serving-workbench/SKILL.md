@@ -16,9 +16,9 @@ narration.
    before changing behavior or running operational commands.
 2. List or inspect available MCP tools first. Prefer `router_status`,
    `router_logs`, `router_manage`, `decision_summary`, `router_promote`,
-   `serves_status`, `serves_manage`, `serves_logs`, `doctor_summary`,
-   `host_summary`, `models_inventory`, `cache_prune_plan`, `route_decision`,
-   `openclaw_sync`, `openclaw_gateway_restart`, `preflight_probe`, `benchmark_probe`, and
+   `serves_status`, `serves_manage`, `serves_logs`, `voice_manage`,
+   `doctor_summary`, `host_summary`, `models_inventory`, `cache_prune_plan`,
+   `route_decision`, `openclaw_sync`, `openclaw_gateway_restart`, `preflight_probe`, `benchmark_probe`, and
    `benchmark_artifact`, `external_bench_sources`, `external_bench_list`,
    `external_bench_report`, and `external_bench_compare` when they cover the
    request. Use
@@ -59,6 +59,8 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 - Serve swap: preview with `serves_manage`, inspect `serves_logs`, require exact
   target plus `confirm=true` and `dry_run=false`, then run preflight before
   benchmark.
+- Voice lifecycle: preview with `voice_manage`; live native or managed STT/TTS
+  start/stop on the owning host requires `confirm=true` plus `dry_run=false`.
 - Harness sync: preview OpenClaw provider, skill, and agent config with
   `openclaw_sync`; apply only to an explicit `out`/`gateway_host` target and
   preserve operator-owned keys.

@@ -1379,6 +1379,84 @@ def tool_serves_logs(args: dict) -> dict:
     })
 
 
+def _voice_cli_argv(action: str, config: str, *, dry_run: bool = False) -> list[str]:
+    argv = [sys.executable, "-m", "anvil_serving.cli", "voice", action, "--config", config]
+    if dry_run:
+        argv.append("--dry-run")
+    return argv
+
+
+def _voice_manage_plan(config: str) -> dict:
+    from .voice import config as voice_config
+    from .voice.serves import native as native_serve
+
+    try:
+        data = voice_config.load_manifest(config)
+    except FileNotFoundError:
+        raise ToolError("config_not_found", "voice manifest not found", {"config": config})
+    except voice_config.ConfigError as exc:
+        raise ToolError("bad_config", "could not load voice manifest", {"config": config, "error": str(exc)})
+    voice = data.get("voice", {})
+    audio = []
+    for kind in ("stt", "tts"):
+        table = voice.get(kind, {})
+        lifecycle = table.get("lifecycle", "managed")
+        item = {
+            "kind": kind,
+            "lifecycle": lifecycle,
+            "base_url": table.get("base_url"),
+            "model": table.get("model"),
+        }
+        if lifecycle == "native":
+            cfg = native_serve.NativeServeConfig.from_table(kind, table)
+            item.update({
+                "start_command": native_serve.parse_command(cfg.start_command),
+                "stop_command": (
+                    native_serve.parse_command(cfg.stop_command)
+                    if cfg.stop_command else None
+                ),
+                "workdir": cfg.workdir or None,
+                "pid_file": cfg.pid_file,
+                "log_file": cfg.log_file,
+                "ready_timeout": cfg.ready_timeout,
+            })
+        elif lifecycle == "external":
+            item["note"] = "external/manual lifecycle; voice_manage will skip it"
+        else:
+            item["note"] = "managed through the voice serve adapter and serves.toml"
+        audio.append(item)
+    return {
+        "voice": voice.get("name", "anvil-voice"),
+        "config": config,
+        "audio_serves": audio,
+    }
+
+
+def tool_voice_manage(args: dict) -> dict:
+    from .voice import config as voice_config
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"up", "down", "start", "stop"}:
+        raise ToolError("bad_action", "action must be one of: up, down, start, stop", {"action": action})
+    normalized = {"start": "up", "stop": "down"}.get(action, action)
+    config = _str_arg(args, "config", voice_config.DEFAULT_CONFIG)
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
+    plan = _voice_manage_plan(config)
+    preview = dry_run or not confirm
+    argv = _voice_cli_argv(normalized, config, dry_run=preview)
+    target = {
+        "action": normalized,
+        "config": config,
+        "timeout_seconds": timeout_seconds,
+    }
+    if preview:
+        return _ok({"applied": False, "dry_run": True, "target": target, "command": argv, "plan": plan})
+    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    return _ok({"applied": True, "dry_run": False, "target": target, "plan": plan, **result})
+
+
 def tool_doctor_summary(args: dict) -> dict:
     from . import doctor
 
@@ -2062,6 +2140,17 @@ TOOLS: Dict[str, dict] = {
             "timeout_seconds": _bounded_integer_schema(1, 600, 60),
         }, required=["names"]),
         "handler": tool_serves_logs,
+    },
+    "voice_manage": {
+        "description": "Preview or run guarded voice STT/TTS lifecycle actions: up/down or start/stop aliases.",
+        "inputSchema": _schema({
+            "action": {"type": "string"},
+            "config": {"type": "string"},
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
+        }, required=["action"]),
+        "handler": tool_voice_manage,
     },
     "doctor_summary": {
         "description": "Run anvil-serving environment checks and return structured results.",
