@@ -513,6 +513,42 @@ def test_capture_acceptance_requires_route_barge_in_latency_and_audio():
     )
 
 
+def test_capture_barge_in_hint_distinguishes_too_early_speech_from_no_overlap():
+    early_events = [
+        {"kind": "vad_started", "vad_barge_in": True, "barge_in": False},
+    ]
+
+    assert "before assistant playback was active" in local_loop_demo.capture_barge_in_hint([], early_events)
+
+    completed_turn = local_loop_demo.TurnMetric(
+        turn_index=0,
+        turn_id="turn-1",
+        generation=1,
+        ttfa_ms=10.0,
+        turn_latency_ms=20.0,
+        transcript="hello",
+        barge_in=False,
+        output_bytes=10,
+    )
+
+    assert "no speech onset was detected during playback" in local_loop_demo.capture_barge_in_hint(
+        [completed_turn], []
+    )
+    assert local_loop_demo.capture_barge_in_hint(
+        [local_loop_demo.TurnMetric(
+            turn_index=0,
+            turn_id="turn-2",
+            generation=2,
+            ttfa_ms=10.0,
+            turn_latency_ms=20.0,
+            transcript="interrupt",
+            barge_in=True,
+            output_bytes=10,
+        )],
+        [],
+    ) == ""
+
+
 def test_playback_generations_at_uses_detection_time_not_drain_time():
     intervals = [
         {"generation": 1, "start": 20.0, "end": 30.0},

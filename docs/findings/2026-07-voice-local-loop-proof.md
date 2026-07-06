@@ -1,10 +1,11 @@
 # Voice local loop proof: mic -> VAD -> STT -> anvil LLM -> TTS -> speakers
 
-> **STATUS: LIVE PROOF BLOCKED ON ROUTER AUTH ENV.** The T010 acceptance
-> command has been executed on fakoli-dark. The latest run reached STT and
-> produced a transcript, then the LLM stage hit HTTP 401 from the token-authed
-> router because `ANVIL_ROUTER_TOKEN` was not present in that shell. No
-> successful session row has been recorded below.
+> **STATUS: LIVE PROOF BLOCKED ON PLAYBACK BARGE-IN TIMING.** The T010
+> acceptance command now authenticates against the router and has completed a
+> full mic -> STT -> anvil-routed LLM -> TTS -> speaker turn on fakoli-dark.
+> No successful session row has been recorded yet because the latest captures
+> did not include a speech onset while assistant playback was actively
+> audible.
 
 Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s3
 (barge-in/staleness design) · `anvil_serving/voice/connections/local_audio.py`
@@ -77,6 +78,11 @@ The command exits 0 only after a playback-interrupting barge-in turn completes
 with TTFA, end-to-end latency, non-empty assistant output audio, and a validated
 `/v1/route` proof for the configured local tier.
 
+In capture mode the harness prints a live timing cue:
+`assistant audio started; speak over it now for barge-in proof`. Speak while
+the assistant voice is audible, then let the interrupted reply complete before
+pressing Ctrl+C.
+
 To diagnose input routing before rerunning the proof:
 
 ```bash
@@ -96,6 +102,30 @@ python scripts/voice/local_loop_demo.py --meter-inputs --input-device 6 --meter-
 see `append_finding_row` in that script.)
 
 ## Findings
+
+### 2026-07-06 auth-fixed, no-barge live attempts
+
+Command:
+
+```bash
+python scripts/voice/local_loop_demo.py --capture
+```
+
+Result: auth and the full first-turn pipeline worked. The first capture
+(`local-loop-20260706T042143Z`) completed one turn with transcript `Testing
+one, two, three, testing one, two, three.`, TTFA 1778.27 ms, turn latency
+5848.64 ms, 136096 assistant-output bytes, and a passing route proof:
+`provider=fast-local`, `model=qwen36-27b`, `tier=local`.
+
+That capture still exited 1 because no second speech onset happened during the
+4.253s assistant-output playback window. It is a valid partial proof for
+mic/STT/route/LLM/TTS, but not the T010 acceptance proof.
+
+A second capture (`local-loop-20260706T042231Z`) showed the opposite timing
+problem: VAD detected additional speech while a response was pending, but
+before assistant playback was active, so it was not counted as a
+playback-interrupting barge-in. The harness now prints live timing cues and a
+more specific failure hint for this case.
 
 ### 2026-07-06 router-auth-blocked live attempt
 
@@ -166,8 +196,9 @@ outside a quiet room?
 
 ## Next steps
 
-1. Load `ANVIL_ROUTER_TOKEN` into the process environment, then rerun the exact
-   acceptance command.
+1. Rerun the exact acceptance command, speak one prompt, wait for the
+   `assistant audio started` cue or audible TTS, then speak over the assistant
+   voice and let the interrupted reply finish.
 2. If the default input route regresses to silence, rerun with a known-good
    explicit `--input-device` value from `sounddevice.query_devices()`.
 3. After a successful proof, likely candidates remain: swap in a real

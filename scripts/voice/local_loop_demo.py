@@ -612,6 +612,32 @@ def capture_acceptance_passed(
     return bool(output_frames and any(output_frames))
 
 
+def capture_barge_in_hint(turns: List[TurnMetric], events: List[Dict[str, Any]]) -> str:
+    """Explain the most likely operator timing issue for a missing barge-in."""
+    if any(t.barge_in for t in turns) or any(e.get("barge_in") for e in events):
+        return ""
+    early_interrupts = [
+        e for e in events
+        if e.get("kind") == "vad_started" and e.get("vad_barge_in") and not e.get("barge_in")
+    ]
+    if early_interrupts:
+        return (
+            "speech was detected while a response was pending, but before assistant playback "
+            "was active; wait until the assistant voice is audible, then speak over it"
+        )
+    if turns:
+        return (
+            "assistant audio completed, but no speech onset was detected during playback; "
+            "speak over the audible assistant voice and let the interrupted reply finish"
+        )
+    if any(e.get("kind") == "vad_started" for e in events):
+        return (
+            "speech reached VAD, but no assistant reply completed; stop speaking long enough "
+            "for the assistant to start, then barge in during audible playback"
+        )
+    return "no speech onset reached VAD; check the microphone route or input device"
+
+
 def playback_generations_at(playback_intervals: List[Dict[str, Any]], monotonic_s: float) -> List[int]:
     return sorted(
         {
@@ -755,6 +781,16 @@ def main(argv: Optional[List[str]] = None) -> int:
                         detected_monotonic_s=detected_at,
                         interrupted_generations=interrupted_generations,
                     )
+                    print(
+                        "local_loop_demo: playback barge-in observed; wait for the new reply to finish",
+                        flush=True,
+                    )
+                elif item.barge_in and capture_prefix:
+                    print(
+                        "local_loop_demo: speech detected before playback was active; "
+                        "wait for audible assistant audio, then speak over it",
+                        flush=True,
+                    )
             elif item.kind == "stopped":
                 state["speech_stopped_at"] = now
             _event(
@@ -823,6 +859,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                         generation=item.generation,
                         ttfa_ms=state.get("ttfa_ms"),
                     )
+                    if capture_prefix and not (
+                        any(t.barge_in for t in turn_metrics) or any(e.get("barge_in") for e in events)
+                    ):
+                        print(
+                            "local_loop_demo: assistant audio started; speak over it now for barge-in proof",
+                            flush=True,
+                        )
                 state["output_bytes"] = int(state.get("output_bytes", 0)) + len(item.pcm)
                 interval = _start_playback_interval(item.generation)
                 try:
@@ -856,6 +899,17 @@ def main(argv: Optional[List[str]] = None) -> int:
                         output_bytes=int(state.get("output_bytes", 0)),
                     )
                 )
+                if capture_prefix:
+                    completed = turn_metrics[-1]
+                    print(
+                        "local_loop_demo: turn %d completed (barge-in=%s, output_bytes=%d)"
+                        % (
+                            len(turn_metrics),
+                            "yes" if completed.barge_in else "no",
+                            completed.output_bytes,
+                        ),
+                        flush=True,
+                    )
                 _event(
                     "end_response",
                     turn_id=item.turn_id,
@@ -887,6 +941,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         "local_loop_demo: manifest OK -- %s\nlocal_loop_demo: speak into the mic "
         "(Ctrl+C to stop early; duration cap %.0fs)" % (voice_config.describe(data), args.duration)
     )
+    if capture_prefix:
+        print(
+            "local_loop_demo: capture mode -- speak once, wait for audible assistant audio, "
+            "then speak over it; wait for the interrupted reply to finish before Ctrl+C",
+            flush=True,
+        )
     t_end = time.time() + args.duration
     try:
         with audio:
@@ -945,8 +1005,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             return 1
     if capture_prefix and not barge_in_observed:
+        hint = capture_barge_in_hint(turn_metrics, events)
         print(
-            "local_loop_demo: capture requires a successful barge-in; none was observed",
+            "local_loop_demo: capture requires a successful barge-in; none was observed"
+            + (". Hint: %s" % hint if hint else ""),
             file=sys.stderr,
         )
         return 1
