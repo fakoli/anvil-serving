@@ -6,6 +6,7 @@ Every test is HERMETIC: docker is never invoked (subprocess is mocked or we
 stay on --dry-run). No real docker, no network.
 """
 import pytest
+import json
 
 from anvil_serving import cli
 from anvil_serving import models
@@ -229,6 +230,84 @@ def test_models_sync_still_dispatches(tmp_path, monkeypatch):
     rc = models.main(["sync", "--out", str(tmp_path / "model-library")])
     assert rc == 0
     assert len(calls) == 1  # _sync.py was shelled out exactly once
+
+
+def test_build_sync_argv_includes_optional_roots(tmp_path):
+    out = str(tmp_path / "model-library")
+    argv = models.build_sync_argv(out, hf_roots="C:/hf", model_dirs="D:/models")
+    assert argv[:3] == [models.sys.executable, "-m", "anvil_serving.cli"]
+    assert argv[3:7] == ["models", "sync", "--out", out]
+    assert argv[argv.index("--hf-roots") + 1] == "C:/hf"
+    assert argv[argv.index("--model-dirs") + 1] == "D:/models"
+
+
+def test_models_import_does_not_create_default_catalog_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert not (tmp_path / models.DEFAULT_CATALOG_DIR).exists()
+    assert models.is_real_catalog_entry({"id": "real/model", "format": "safetensors"}) is True
+    assert not (tmp_path / models.DEFAULT_CATALOG_DIR).exists()
+
+
+def test_load_model_catalog_reads_cards_json_not_index(tmp_path):
+    root = tmp_path / "model-library"
+    cards = root / "cards"
+    cards.mkdir(parents=True)
+    (root / "INDEX.md").write_text("| stale human table |\n| fake/model |\n", encoding="utf-8")
+    (cards / "real__model.json").write_text(json.dumps({
+        "id": "real/model",
+        "format": "safetensors",
+        "context": 131072,
+    }), encoding="utf-8")
+
+    catalog = models.load_model_catalog(str(root))
+    assert catalog["count"] == 1
+    assert catalog["index_path"] == str(root / "INDEX.md")
+    assert catalog["entries"][0]["id"] == "real/model"
+    assert "fake/model" not in json.dumps(catalog)
+
+
+def test_load_model_catalog_rejects_index_only_catalog(tmp_path):
+    root = tmp_path / "model-library"
+    (root / "cards").mkdir(parents=True)
+    (root / "INDEX.md").write_text("| stale human table |\n", encoding="utf-8")
+    with pytest.raises(models.CatalogNotFound):
+        models.load_model_catalog(str(root))
+
+
+def test_load_model_catalog_filters_non_model_summaries(tmp_path):
+    root = tmp_path / "model-library"
+    cards = root / "cards"
+    cards.mkdir(parents=True)
+    (cards / "dataset.json").write_text(json.dumps({
+        "id": "not/a-model",
+        "format": "?",
+        "size_gb": 10.0,
+    }), encoding="utf-8")
+    (cards / "real.json").write_text(json.dumps({
+        "id": "real/model",
+        "format": "safetensors",
+        "model_type": "qwen3",
+    }), encoding="utf-8")
+    catalog = models.load_model_catalog(str(root))
+    assert [entry["id"] for entry in catalog["entries"]] == ["real/model"]
+
+
+def test_load_model_catalog_missing_is_clear(tmp_path):
+    missing = tmp_path / "missing-library"
+    with pytest.raises(models.CatalogNotFound) as exc:
+        models.load_model_catalog(str(missing))
+    assert str(missing) in str(exc.value)
+
+
+def test_load_model_catalog_malformed_summary_is_clean_error(tmp_path):
+    root = tmp_path / "model-library"
+    cards = root / "cards"
+    cards.mkdir(parents=True)
+    (cards / "bad.json").write_text("{bad", encoding="utf-8")
+    with pytest.raises(models.CatalogError) as exc:
+        models.load_model_catalog(str(root))
+    assert "summaries" in str(exc.value)
+    assert exc.value.details["errors"][0]["path"].endswith("bad.json")
 
 
 # --- serve-recipe READ tests (models recipe) ---

@@ -17,8 +17,8 @@ ADR-0013 calls for an MCP control plane, and ADR-0014 adds the split-host
 transport. There are two operator entry points:
 
 - Same-host operation: `anvil-serving mcp --list-tools` exposes the bounded
-  stdio tool surface for status, route probes, OpenClaw sync, preflight, and
-  benchmark probes.
+  stdio tool surface for model inventory, status, route probes, OpenClaw sync,
+  preflight, and benchmark probes.
 - Split-host operation: the anvil-serving host runs
   `anvil-serving controller serve`, and `fakoli-mini` runs the MCP bridge with
   `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
@@ -26,9 +26,8 @@ transport. There are two operator entry points:
   over the private tailnet.
 
 The MCP surface is not yet a complete replacement for every CLI operation:
-model inventory, serve start/swap, direct multiplexer inspection, JSON benchmark
-artifact capture, and router promotion still use the CLI or HTTP contracts
-below.
+serve start/swap, direct multiplexer inspection, JSON benchmark artifact
+capture, and router promotion still use the CLI or HTTP contracts below.
 
 Prefer MCP tools when a current tool exists because they return structured
 results and keep mutating/probe operations behind explicit `confirm` fields.
@@ -38,7 +37,7 @@ resource and keep the same gate semantics.
 | Operator need | Preferred MCP/controller shape | CLI/HTTP equivalent today |
 |---|---|---|
 | Controller readiness | Health endpoint on the controller's private address | `GET /health` on `http://anvil-gpu.tailnet.example:8765` |
-| Model inventory | Not exposed yet | `anvil-serving models sync --out ./model-library` |
+| Model inventory | `models_inventory` | `anvil-serving models sync --out ./model-library` |
 | Environment and tier health | `doctor_summary`, `serves_status`, `router_status` | `anvil-serving doctor --config ./router.toml`; `anvil-serving serves --manifest ./serves.toml status`; `anvil-serving router status` |
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
 | Start or restore compose-defined serves | Not exposed yet | `anvil-serving serves --manifest ./serves.toml up <name>` |
@@ -168,8 +167,31 @@ Use this before any swap, benchmark, or harness-sync operation.
    anvil-serving models sync --out ./model-library
    ```
 
-   Read the generated `INDEX.md` or structured MCP result for model id, weight
-   format, loadability, context window, quantization, and thinking defaults.
+   Prefer `models_inventory` when MCP/controller is available. A read-only call
+   reads `cards/*.json` summaries from the generated catalog without scraping
+   `INDEX.md`. If the catalog is missing, preview the sync command first:
+
+   ```json
+   {
+     "catalog_dir": "./model-library",
+     "sync": true,
+     "confirm": false
+   }
+   ```
+
+   Then run the confirmed sync only when the output directory and roots are
+   known:
+
+   ```json
+   {
+     "catalog_dir": "./model-library",
+     "sync": true,
+     "confirm": true
+   }
+   ```
+
+   Preserve the returned model id, weight format, loadability, context window,
+   quantization, and thinking defaults.
 
 2. Capture environment and live topology.
 
