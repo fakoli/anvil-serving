@@ -37,6 +37,7 @@ import array
 import json
 import math
 import time
+from dataclasses import fields
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
 from .stages.llm import LLMStageConfig, stream_chat_completion
@@ -138,6 +139,8 @@ def run_benchmark(
     first_audio_time: Optional[float] = None
     total_audio_bytes = 0
     for chunk in tts_fn(reply_text, tts_config):
+        if not chunk:
+            continue
         if first_audio_time is None:
             first_audio_time = clock()
         total_audio_bytes += len(chunk)
@@ -160,6 +163,8 @@ def run_benchmark(
         "tts_rtf": round(tts_rtf, 4) if tts_rtf is not None else None,
         "tts_first_audio_observed": first_audio_time is not None,
         "tts_output_bytes": total_audio_bytes,
+        "tts_audio_seconds": round(audio_seconds, 4),
+        "tts_source_sample_rate": tts_config.source_sample_rate,
         "stt_hypothesis": hypothesis,
         "llm_reply": reply_text,
         "reference_text": reference,
@@ -167,12 +172,12 @@ def run_benchmark(
 
 
 def _stage_config_from_table(table: Mapping[str, Any], cls) -> Any:
+    allowed = {field.name for field in fields(cls)}
     kwargs: Dict[str, Any] = {
-        "base_url": table.get("base_url", ""),
-        "model": table.get("model", ""),
+        key: value for key, value in table.items() if key in allowed
     }
-    if table.get("api_key_env"):
-        kwargs["api_key_env"] = table["api_key_env"]
+    kwargs.setdefault("base_url", "")
+    kwargs.setdefault("model", "")
     return cls(**kwargs)
 
 

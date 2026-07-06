@@ -152,6 +152,34 @@ def test_run_benchmark_tts_rtf_is_none_when_no_audio_produced():
     assert result["tts_output_bytes"] == 0
 
 
+def test_run_benchmark_does_not_count_zero_byte_tts_chunk_as_audio():
+    def fake_stt(pcm, sample_rate, config):
+        yield ("a", True)
+
+    def fake_llm(text, config):
+        yield "b"
+
+    def fake_tts(text, config):
+        yield b""
+
+    result = run_benchmark(
+        stt_config=STTStageConfig(),
+        llm_config=LLMStageConfig(),
+        tts_config=TTSStageConfig(),
+        pcm=b"\x00\x00",
+        sample_rate=16000,
+        reference_text="a",
+        stt_stream_fn=fake_stt,
+        llm_stream_fn=fake_llm,
+        tts_stream_fn=fake_tts,
+        clock=lambda: 0.0,
+    )
+
+    assert result["tts_output_bytes"] == 0
+    assert result["tts_first_audio_observed"] is False
+    assert result["tts_rtf"] is None
+
+
 def test_run_benchmark_defaults_reference_text_when_not_supplied():
     def fake_stt(pcm, sample_rate, config):
         yield ("whatever", True)
@@ -177,9 +205,27 @@ def test_run_benchmark_defaults_reference_text_when_not_supplied():
 def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
     data = {
         "voice": {
-            "stt": {"base_url": "http://127.0.0.1:8090/v1", "model": "parakeet"},
-            "llm": {"base_url": "http://127.0.0.1:8000/v1", "model": "chat-fast"},
-            "tts": {"base_url": "http://127.0.0.1:8091/v1", "model": "kokoro-82m"},
+            "stt": {
+                "base_url": "http://127.0.0.1:8090/v1",
+                "model": "parakeet",
+                "stream": False,
+                "timeout": 12.5,
+            },
+            "llm": {
+                "base_url": "http://127.0.0.1:8000/v1",
+                "model": "chat-fast",
+                "stream": True,
+                "timeout": 33.0,
+            },
+            "tts": {
+                "base_url": "http://127.0.0.1:8091/v1",
+                "model": "kokoro-82m",
+                "response_format": "pcm",
+                "source_sample_rate": 24000,
+                "target_sample_rate": 16000,
+                "chunk_bytes": 2048,
+                "timeout": 44.0,
+            },
         }
     }
     seen = {}
@@ -203,8 +249,16 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
 
     assert seen["stt_config"].base_url == "http://127.0.0.1:8090/v1"
     assert seen["stt_config"].model == "parakeet"
+    assert seen["stt_config"].stream is False
+    assert seen["stt_config"].timeout == 12.5
     assert seen["llm_config"].base_url == "http://127.0.0.1:8000/v1"
+    assert seen["llm_config"].timeout == 33.0
     assert seen["tts_config"].model == "kokoro-82m"
+    assert seen["tts_config"].response_format == "pcm"
+    assert seen["tts_config"].source_sample_rate == 24000
+    assert seen["tts_config"].target_sample_rate == 16000
+    assert seen["tts_config"].chunk_bytes == 2048
+    assert seen["tts_config"].timeout == 44.0
     assert result["stt_hypothesis"] == "hi"
 
 

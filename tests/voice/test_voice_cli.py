@@ -227,6 +227,35 @@ def test_cmd_up_returns_zero_when_every_serve_bring_up_succeeds(manifest_path, m
     assert rc == 0
 
 
+def test_cmd_up_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys):
+    manifest = tmp_path / "voice_external.toml"
+    manifest.write_text(
+        VALID_MANIFEST
+        + '\n\n# external native Mini sidecars\n'
+        + 'lifecycle = "external"\n',
+        encoding="utf-8",
+    )
+    # Appending lifecycle at EOF attaches it to [voice.tts]; set STT explicitly.
+    text = manifest.read_text(encoding="utf-8").replace(
+        '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"',
+        '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"\nlifecycle = "external"',
+    )
+    manifest.write_text(text, encoding="utf-8")
+
+    from anvil_serving.voice.serves import stt as stt_serve
+    from anvil_serving.voice.serves import tts as tts_serve
+
+    monkeypatch.setattr(stt_serve.STTServe, "bring_up", lambda self, **kw: (_ for _ in ()).throw(AssertionError("skip stt")))
+    monkeypatch.setattr(tts_serve.TTSServe, "bring_up", lambda self, **kw: (_ for _ in ()).throw(AssertionError("skip tts")))
+
+    rc = voice_cli.main(["up", "--config", str(manifest)])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "stt serve lifecycle is external" in out
+    assert "tts serve lifecycle is external" in out
+
+
 def test_cmd_down_returns_nonzero_when_a_serve_tear_down_fails(manifest_path, monkeypatch, capsys):
     from anvil_serving.voice.serves import stt as stt_serve
     from anvil_serving.voice.serves import tts as tts_serve
@@ -237,6 +266,33 @@ def test_cmd_down_returns_nonzero_when_a_serve_tear_down_fails(manifest_path, mo
     assert rc != 0
     out = capsys.readouterr().out
     assert "tear-down rc=1" in out
+
+
+def test_cmd_down_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys):
+    manifest = tmp_path / "voice_external.toml"
+    manifest.write_text(
+        VALID_MANIFEST.replace(
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"',
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"\nlifecycle = "external"',
+        ).replace(
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"',
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"\nlifecycle = "external"',
+        ),
+        encoding="utf-8",
+    )
+
+    from anvil_serving.voice.serves import stt as stt_serve
+    from anvil_serving.voice.serves import tts as tts_serve
+
+    monkeypatch.setattr(stt_serve.STTServe, "tear_down", lambda self: (_ for _ in ()).throw(AssertionError("skip stt")))
+    monkeypatch.setattr(tts_serve.TTSServe, "tear_down", lambda self: (_ for _ in ()).throw(AssertionError("skip tts")))
+
+    rc = voice_cli.main(["down", "--config", str(manifest)])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "stt serve lifecycle is external" in out
+    assert "tts serve lifecycle is external" in out
 
 
 def test_cmd_benchmark_prints_success_json(manifest_path, monkeypatch, capsys):
