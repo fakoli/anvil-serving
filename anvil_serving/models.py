@@ -15,6 +15,7 @@ volume, then serve later with the repo-id as ``--model`` — bytes never touch 9
 """
 import os
 import argparse
+import json
 import shlex
 import subprocess
 import tomllib
@@ -30,6 +31,37 @@ DEFAULT_PULL_IMAGE = "vllm/vllm-openai:nightly"
 # Where the HF cache lives inside the container — the volume is mounted here so
 # downloaded blobs land on native ext4, not a 9P bind mount (gotcha #15).
 HF_CACHE_MOUNTPOINT = "/root/.cache/huggingface"
+DEFAULT_CATALOG_DIR = "model-library"
+
+
+class CatalogNotFound(FileNotFoundError):
+    """Raised when a generated model catalog cannot be found."""
+
+    def __init__(self, catalog_dir):
+        super().__init__("model catalog not found: %s" % catalog_dir)
+        self.catalog_dir = catalog_dir
+
+
+class CatalogError(Exception):
+    """Raised when catalog summary JSON exists but cannot be read."""
+
+    def __init__(self, message, details=None):
+        super().__init__(message)
+        self.details = details or {}
+
+
+def is_real_catalog_entry(entry):
+    """Mirror ``_sync.is_real_model_row`` without importing the sync script.
+
+    ``_sync.py`` has import-time output-directory side effects, so the read-only
+    catalog path keeps the shared predicate duplicated here intentionally.
+    """
+
+    if entry.get("owner") == "unslothai":
+        return False
+    if (entry.get("size_gb") or 0) < 0.2 and entry.get("format") == "?":
+        return False
+    return bool(entry.get("model_type")) or entry.get("format") in ("safetensors", "GGUF")
 
 
 def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
@@ -118,6 +150,77 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
         print(f"[anvil-serving] could not run `docker` ({exc}) — is Docker installed, "
               "on PATH, and running?", file=sys.stderr)
         return 127
+
+
+def build_sync_argv(out=None, hf_roots="", model_dirs=""):
+    """Construct the argv for ``anvil-serving models sync``.
+
+    This is shared by the CLI-adjacent MCP preview path so agents can show the
+    exact command before running a cache scan. It never resolves or inlines any
+    credentials; the sync script reads ``HF_TOKEN`` from the process env if the
+    operator has configured it.
+    """
+
+    out = out or os.path.join(os.getcwd(), DEFAULT_CATALOG_DIR)
+    argv = [sys.executable, "-m", "anvil_serving.cli", "models", "sync", "--out", out]
+    if hf_roots:
+        argv += ["--hf-roots", hf_roots]
+    if model_dirs:
+        argv += ["--model-dirs", model_dirs]
+    return argv
+
+
+def load_model_catalog(catalog_dir=None):
+    """Read a generated model catalog from ``cards/*.json`` summaries.
+
+    ``INDEX.md`` is intentionally ignored: it is a human table, while the JSON
+    summaries are the structured contract written by ``models sync``.
+    """
+
+    catalog_dir = catalog_dir or os.path.join(os.getcwd(), DEFAULT_CATALOG_DIR)
+    catalog_dir = os.path.abspath(catalog_dir)
+    cards_dir = os.path.join(catalog_dir, "cards")
+    index_path = os.path.join(catalog_dir, "INDEX.md")
+    if not os.path.isdir(cards_dir):
+        raise CatalogNotFound(catalog_dir)
+
+    entries = []
+    errors = []
+    for name in sorted(os.listdir(cards_dir)):
+        if not name.endswith(".json"):
+            continue
+        path = os.path.join(cards_dir, name)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append({"path": path, "error": str(exc)})
+            continue
+        if not isinstance(data, dict):
+            errors.append({"path": path, "error": "summary JSON must be an object"})
+            continue
+        if not is_real_catalog_entry(data):
+            continue
+        entry = dict(data)
+        entry["summary_path"] = path
+        entries.append(entry)
+
+    if errors:
+        raise CatalogError("could not read one or more model catalog summaries", {
+            "catalog_dir": catalog_dir,
+            "errors": errors,
+        })
+    if not entries:
+        raise CatalogNotFound(catalog_dir)
+
+    entries.sort(key=lambda item: str(item.get("id") or item.get("repo") or item.get("summary_path") or ""))
+    return {
+        "catalog_dir": catalog_dir,
+        "cards_dir": cards_dir,
+        "index_path": index_path if os.path.exists(index_path) else None,
+        "count": len(entries),
+        "entries": entries,
+    }
 
 
 def pull_main(argv):
@@ -293,7 +396,7 @@ def main(argv):
     ap.add_argument("action", choices=["sync"],
                     help="sync = scan HF caches + build the catalog. "
                          "(For downloads use `models pull <repo-id>`.)")
-    ap.add_argument("--out", default=os.path.join(os.getcwd(), "model-library"),
+    ap.add_argument("--out", default=os.path.join(os.getcwd(), DEFAULT_CATALOG_DIR),
                     help="output dir for cards/ + INDEX.md")
     ap.add_argument("--hf-roots", default="", help="extra HF cache roots (os.pathsep-separated)")
     ap.add_argument("--model-dirs", default="", help="extra plain model dirs (os.pathsep-separated)")
