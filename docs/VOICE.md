@@ -78,6 +78,7 @@ stream = true
 api_key_env = "ANVIL_ROUTER_TOKEN"
 history_max_turns = 8
 history_max_message_chars = 1200
+tool_result_max_chars = 12000
 
 [voice.stt]
 base_url = "http://127.0.0.1:30010/v1"
@@ -118,6 +119,11 @@ Manifest hygiene follows the rest of the repo:
 - `voice.llm.history_max_message_chars` trims each remembered user or assistant
   message before it is replayed into the next LLM request; the default is
   `1200`.
+- `voice.llm.tool_result_max_chars` trims very large realtime tool outputs
+  before the continuation LLM request; the default is `12000`.
+- `voice.llm.model` remains the manifest-owned Anvil router preset. Realtime
+  clients may send `session.model`, but Anvil Voice does not let that field
+  override local routing.
 
 For native audio endpoints, add the lifecycle metadata to the STT/TTS section:
 
@@ -242,13 +248,16 @@ It keeps the Realtime server and MLX Audio endpoints on the Mini loopback and
 routes the LLM turn to the Fakoli Dark router over the private address.
 It also declares profiles for repeatable switching:
 
-When OpenClaw sends realtime tools in `session.update`, Anvil Voice forwards
-them to the Chat Completions LLM request. If the model emits a function call,
-Anvil Voice surfaces it as `conversation.item.done` with
-`item.type = "function_call"`, waits for OpenClaw to submit the matching
-`function_call_output`, then resumes the same spoken response. This is the
-path used by OpenClaw's `openclaw_agent_consult` tool for normal agent tools,
-memory, workspace context, and current-information lookups.
+When OpenClaw sends realtime tools in `session.update` or `response.create`,
+Anvil Voice forwards them to the Chat Completions LLM request. If the model
+emits a function call, Anvil Voice surfaces the standard Realtime
+`response.output_item.added`, `response.function_call_arguments.done`, and
+`response.output_item.done` events, plus an OpenClaw compatibility
+`conversation.item.done` with `item.type = "function_call"`. It waits for
+OpenClaw to submit the matching `function_call_output`, then resumes the same
+spoken response. This is the path used by OpenClaw's `openclaw_agent_consult`
+tool for normal agent tools, memory, workspace context, and
+current-information lookups.
 
 - `mini-audio`: Mini-local MLX Audio STT/TTS, with conversational LLM prompt.
 - `dark-audio`: Dark-host STT/TTS reached through private bridge ports
