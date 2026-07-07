@@ -302,6 +302,8 @@ Controller auth is required by default even on `127.0.0.1`; use
 - `docs/TERMINOLOGY.md` — product naming, user-facing terms, and technical definitions
 - `docs/QUALITY-GATED-ROUTER.md` — full design (intent presets, tier ladder, verify-fallback, profile)
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — OpenClaw adapter plugin spec (verdict: go-with-caveats)
+- `docs/OPENCLAW-ANVIL-VOICE.md` — operator guide for the OpenClaw speech-to-speech provider
+  backed by Anvil Serving
 - `docs/OPERATOR-PLAYBOOKS.md` — MCP/controller playbooks for status, preflight, benchmark,
   OpenClaw sync, and promotion evidence
 - `docs/adr/0013-openclaw-layers-and-mcp-control-plane.md` / `0014-tailnet-controller-transport.md`
