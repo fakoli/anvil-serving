@@ -246,6 +246,7 @@ Gateway relay:
       mode: "realtime",
       transport: "gateway-relay",
       brain: "agent-consult",
+      consultRouting: "force-agent-consult",
       provider: "anvil",
       providers: {
         anvil: {
