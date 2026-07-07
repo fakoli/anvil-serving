@@ -71,6 +71,13 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 - Promotion evidence: assemble status, decision summary, route probes,
   preflight, benchmark artifacts, calibration, profile/config diffs, and
   reviewer recommendation with `promoted=false`.
+- OpenClaw COLO smoke/eval: when validating the Mini-to-Dark path or gathering
+  release/blog evidence, use `examples/openclaw/colo_smoke.py --live`; add
+  `--run-generations --run-interaction-benchmark` for repeatable intent stats.
+  Preserve the artifact's `interaction_benchmarks` and recipe fields. Treat
+  generation caps, exact/stream benchmark caps, benchmark reasoning effort, and
+  per-intent overrides as router tier `params` owned by the model recipe, not
+  as skill or plugin constants.
 - Host/cache work: use `host_summary` and `cache_prune_plan` for read-only
   checks and plans. Report host repair, Docker/WSL restart, WSL config edits,
   and cache deletion as `blocked` or `human_required` unless the human approves
