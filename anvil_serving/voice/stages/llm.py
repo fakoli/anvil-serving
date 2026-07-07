@@ -54,6 +54,12 @@ DEFAULT_HISTORY_MAX_MESSAGE_CHARS = 1200
 DEFAULT_TOOL_RESULT_TIMEOUT = 60.0
 DEFAULT_TOOL_CALL_MAX_ROUNDS = 4
 DEFAULT_TOOL_RESULT_MAX_CHARS = 12000
+_OPENCLAW_FORCED_CONSULT_SPEECH_PREFIX = (
+    "OpenClaw finished checking. Speak this result naturally and concisely."
+)
+_OPENCLAW_FORCED_CONSULT_SPEECH_MARKER = (
+    "Do not mention tool calls, JSON, or internal routing."
+)
 
 # Markdown/formatting characters a TTS engine would mispronounce if spoken
 # verbatim (emphasis/heading markers, code fences/backticks, table pipes,
@@ -199,6 +205,14 @@ def _normalize_tools(tools: Optional[Sequence[Mapping[str, Any]]]) -> Optional[L
             payload["parameters"] = dict(parameters)
         normalized.append({"type": "function", "function": payload})
     return normalized or None
+
+
+def _is_openclaw_forced_consult_speech_turn(text: str) -> bool:
+    stripped = text.lstrip()
+    return (
+        stripped.startswith(_OPENCLAW_FORCED_CONSULT_SPEECH_PREFIX)
+        and _OPENCLAW_FORCED_CONSULT_SPEECH_MARKER in stripped
+    )
 
 
 def _base_request_body(messages: Sequence[Mapping[str, Any]], config: LLMStageConfig) -> Dict[str, Any]:
@@ -537,18 +551,26 @@ class LLMStage(BaseStage):
         return True
 
     def _stream_turn(
-        self, text: str, history: Sequence[ChatMessage], messages: Sequence[Mapping[str, Any]],
+        self,
+        text: str,
+        history: Sequence[ChatMessage],
+        messages: Sequence[Mapping[str, Any]],
+        config: LLMStageConfig,
     ) -> Iterator[Any]:
         if self._stream_fn is None:
-            return stream_chat_completion_events(messages, self.config)
+            return stream_chat_completion_events(messages, config)
         if self._stream_accepts_history:
-            return self._stream_fn(text, self.config, history=history)
-        return self._stream_fn(text, self.config)
+            return self._stream_fn(text, config, history=history)
+        return self._stream_fn(text, config)
 
     def _stream_events(
-        self, text: str, history: Sequence[ChatMessage], messages: Sequence[Mapping[str, Any]],
+        self,
+        text: str,
+        history: Sequence[ChatMessage],
+        messages: Sequence[Mapping[str, Any]],
+        config: LLMStageConfig,
     ) -> Iterator[Any]:
-        for event in self._stream_turn(text, history, messages):
+        for event in self._stream_turn(text, history, messages, config):
             if isinstance(event, (LLMStreamTextDelta, LLMStreamToolCalls)):
                 yield event
             elif isinstance(event, str):
@@ -577,14 +599,23 @@ class LLMStage(BaseStage):
             self._history = self._history[-max_messages:]
 
     def _request_messages(
-        self, history: Sequence[ChatMessage], turn_messages: Sequence[Mapping[str, Any]],
+        self,
+        history: Sequence[ChatMessage],
+        turn_messages: Sequence[Mapping[str, Any]],
+        config: Optional[LLMStageConfig] = None,
     ) -> List[Dict[str, Any]]:
+        active_config = config or self.config
         messages: List[Dict[str, Any]] = []
-        if self.config.system_prompt:
-            messages.append({"role": "system", "content": self.config.system_prompt})
+        if active_config.system_prompt:
+            messages.append({"role": "system", "content": active_config.system_prompt})
         messages.extend(_normalized_history(history))
         messages.extend(dict(message) for message in turn_messages)
         return messages
+
+    def _config_for_request(self, text: str) -> LLMStageConfig:
+        if _is_openclaw_forced_consult_speech_turn(text):
+            return replace(self.config, tools=None, tool_choice=None)
+        return self.config
 
     @staticmethod
     def _assistant_tool_message(
@@ -665,12 +696,13 @@ class LLMStage(BaseStage):
         assistant_parts: List[str] = []
         turn_messages: List[Dict[str, Any]] = [{"role": "user", "content": item.text}]
         tool_rounds = 0
+        request_config = self._config_for_request(item.text)
         try:
             while True:
                 tool_calls: List[Dict[str, str]] = []
-                messages = self._request_messages(history, turn_messages)
+                messages = self._request_messages(history, turn_messages, request_config)
                 custom_history: Sequence[ChatMessage] = history if len(turn_messages) == 1 else turn_messages
-                for event in self._stream_events(item.text, custom_history, messages):
+                for event in self._stream_events(item.text, custom_history, messages, request_config):
                     if self.cancel_scope.is_stale(item.generation):
                         # A barge-in landed mid-stream: stop emitting further
                         # chunks for this now-stale generation. Whatever was

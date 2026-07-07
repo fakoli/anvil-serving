@@ -453,6 +453,41 @@ def test_llm_stage_pauses_for_tool_result_then_resumes_final_answer():
     ]
 
 
+def test_llm_stage_suppresses_tools_for_openclaw_forced_consult_speech_turn():
+    calls = []
+    forced_speech_prompt = "\n".join([
+        "OpenClaw finished checking. Speak this result naturally and concisely.",
+        "Do not mention tool calls, JSON, or internal routing.",
+        "",
+        "The weather is sunny and 72.",
+    ])
+
+    def fake_stream(text, config, history=()):
+        calls.append({"text": text, "tools": config.tools, "tool_choice": config.tool_choice})
+        if config.tools:
+            yield LLMStreamToolCalls([
+                {"id": "call_1", "name": "openclaw_agent_consult", "arguments": "{}"}
+            ])
+        else:
+            yield "The weather is sunny and 72."
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(
+            tools=[{"type": "function", "name": "openclaw_agent_consult"}],
+            tool_choice="auto",
+        ),
+        stream_fn=fake_stream,
+    )
+
+    out = list(stage.process(_gen_request(text=forced_speech_prompt)))
+
+    assert calls == [{"text": forced_speech_prompt, "tools": None, "tool_choice": None}]
+    assert not any(isinstance(m, LLMToolCall) for m in out)
+    assert [m.text for m in out if isinstance(m, LLMChunk)] == ["The weather is sunny and 72."]
+    assert any(isinstance(m, EndOfResponse) for m in out)
+
+
 def test_llm_stage_ignores_will_continue_tool_result_until_final_result():
     calls = []
 
