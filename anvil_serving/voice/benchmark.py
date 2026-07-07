@@ -180,10 +180,13 @@ def run_benchmark(
         hypothesis = text
         if is_final:
             break
+    t_stt_end = clock()
 
+    t_llm_start = t_stt_end
     reply_text, tts_texts = _llm_reply_and_tts_chunks(llm_fn(hypothesis, llm_config))
+    t_llm_end = clock()
 
-    t_tts_start = clock()
+    t_tts_start = t_llm_end
     first_audio_time: Optional[float] = None
     total_audio_bytes = 0
     for tts_text in tts_texts:
@@ -197,6 +200,9 @@ def run_benchmark(
 
     ttfa_ms = ((first_audio_time if first_audio_time is not None else t_end) - t0) * 1000.0
     turn_latency_ms = (t_end - t0) * 1000.0
+    stt_ms = (t_stt_end - t0) * 1000.0
+    llm_ms = (t_llm_end - t_llm_start) * 1000.0
+    tts_ms = (t_end - t_tts_start) * 1000.0
 
     synth_seconds = max(0.0, t_end - t_tts_start)
     audio_seconds = (total_audio_bytes / 2) / tts_config.source_sample_rate if total_audio_bytes else 0.0
@@ -208,6 +214,9 @@ def run_benchmark(
     return {
         "ttfa_ms": round(ttfa_ms, 2),
         "turn_latency_ms": round(turn_latency_ms, 2),
+        "stt_ms": round(stt_ms, 2),
+        "llm_ms": round(llm_ms, 2),
+        "tts_ms": round(tts_ms, 2),
         "stt_wer": round(stt_wer, 4) if stt_wer is not None else None,
         "tts_rtf": round(tts_rtf, 4) if tts_rtf is not None else None,
         "tts_first_audio_observed": first_audio_time is not None,

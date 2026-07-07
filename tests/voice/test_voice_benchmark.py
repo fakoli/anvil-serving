@@ -87,7 +87,7 @@ def test_run_benchmark_computes_all_four_metrics():
         yield b"\x00\x01" * 4  # 8 bytes = 4 samples
         yield b"\x00\x01" * 4  # 8 bytes = 4 samples
 
-    clock = _clock_sequence([0.0, 1.0, 1.2, 1.5])  # t0, t_tts_start, first_audio, t_end
+    clock = _clock_sequence([0.0, 0.4, 1.0, 1.2, 1.5])
 
     result = run_benchmark(
         stt_config=STTStageConfig(),
@@ -101,6 +101,9 @@ def test_run_benchmark_computes_all_four_metrics():
 
     assert result["ttfa_ms"] == 1200.0
     assert result["turn_latency_ms"] == 1500.0
+    assert result["stt_ms"] == 400.0
+    assert result["llm_ms"] == 600.0
+    assert result["tts_ms"] == 500.0
     assert result["stt_wer"] == 0.0  # hypothesis matches reference exactly
     assert result["tts_rtf"] == pytest.approx(1000.0)
     assert result["tts_first_audio_observed"] is True

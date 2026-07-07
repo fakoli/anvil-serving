@@ -395,9 +395,9 @@ Use `voice benchmark` for a quick configured end-to-end sample:
 anvil-serving voice benchmark --config examples/voice/fakoli-mini.toml
 ```
 
-The JSON output includes first-audio latency, total turn latency, STT WER, TTS
-RTF, output byte counts, and the observed STT/LLM text. This is a smoke
-measurement, not a promotion gate.
+The JSON output includes first-audio latency, total turn latency, STT/LLM/TTS
+stage durations, STT WER, TTS RTF, output byte counts, and the observed
+STT/LLM text. This is a smoke measurement, not a promotion gate.
 
 For live Realtime Talk sessions, `voice run` also emits redacted
 `voice_stage_timing` log lines for the core `stt`, `llm`, and `tts` stages.
