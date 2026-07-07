@@ -189,13 +189,18 @@ def test_tools_list_has_json_schemas():
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice"]["type"] == "boolean"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice_api_key_env"]["type"] == "string"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice_consult_model"]["type"] == "string"
-    assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice_consult_thinking_level"]["type"] == "string"
+    thinking_schema = tools["openclaw_sync"]["inputSchema"]["properties"]["voice_consult_thinking_level"]
+    assert thinking_schema["type"] == "string"
+    assert thinking_schema["enum"] == ["adaptive", "high", "low", "max", "medium", "minimal", "off", "xhigh"]
     assert (
         tools["openclaw_sync"]["inputSchema"]["properties"][
             "voice_consult_bootstrap_context_mode"
         ]["type"]
         == "string"
     )
+    assert tools["openclaw_sync"]["inputSchema"]["properties"][
+        "voice_consult_bootstrap_context_mode"
+    ]["enum"] == ["full", "lightweight"]
     assert tools["voice_manage"]["inputSchema"]["required"] == ["action"]
     assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
     assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
@@ -1382,6 +1387,28 @@ def test_openclaw_sync_rejects_bad_voice_api_key_env(tmp_path):
     })
     assert env["ok"] is False
     assert env["error"]["code"] == "bad_voice_api_key_env"
+
+
+def test_openclaw_sync_rejects_bad_voice_consult_thinking_level(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "voice": True,
+        "voice_consult_thinking_level": "turbo",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_openclaw_sync_rejects_bad_voice_consult_bootstrap_context_mode(tmp_path):
+    cfg = _router_cfg(tmp_path)
+    env = mcp.call_tool("openclaw_sync", {
+        "config": cfg,
+        "voice": True,
+        "voice_consult_bootstrap_context_mode": "compact",
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
 
 
 def test_openclaw_sync_rejects_unsafe_gateway_target_in_preview(tmp_path):

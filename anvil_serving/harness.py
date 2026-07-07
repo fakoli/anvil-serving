@@ -883,6 +883,11 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    provided_options = {
+        arg.split("=", 1)[0]
+        for arg in argv
+        if isinstance(arg, str) and arg.startswith("--")
+    }
     p = argparse.ArgumentParser(
         prog="anvil-serving harness",
         description="Own the harness-side config: render a harness's model/provider config FROM "
@@ -943,23 +948,23 @@ def main(argv=None):
     if a.action == "restart" and a.harness == "openclaw":
         # `restart` only restarts the gateway; sync-only flags would be silently discarded, which
         # reads as "it did something" — reject them so the misuse is visible.
-        stray = [f for f, v in (("--config", a.config), ("--out", a.out),
-                                ("--overwrite", a.overwrite), ("--skills", a.skills),
-                                ("--skill-dir", a.skill_dir), ("--voice", a.voice),
-                                ("--voice-api-key-env", a.voice_api_key_env)) if v]
-        if a.voice_realtime_url != DEFAULT_ANVIL_VOICE_REALTIME_URL:
-            stray.append("--voice-realtime-url")
-        if a.voice_model != _DEFAULT_ANVIL_VOICE_MODEL:
-            stray.append("--voice-model")
-        if a.voice_consult_model:
-            stray.append("--voice-consult-model")
-        if a.voice_consult_thinking_level != _DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL:
-            stray.append("--voice-consult-thinking-level")
-        if (
-            a.voice_consult_bootstrap_context_mode
-            != _DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE
-        ):
-            stray.append("--voice-consult-bootstrap-context-mode")
+        sync_only_flags = {
+            "--api-key-env",
+            "--base-url",
+            "--config",
+            "--out",
+            "--overwrite",
+            "--skill-dir",
+            "--skills",
+            "--voice",
+            "--voice-api-key-env",
+            "--voice-consult-bootstrap-context-mode",
+            "--voice-consult-model",
+            "--voice-consult-thinking-level",
+            "--voice-model",
+            "--voice-realtime-url",
+        }
+        stray = sorted(sync_only_flags.intersection(provided_options))
         if stray:
             print("restart openclaw takes only --gateway-host/--gateway-user; drop %s (it does not "
                   "sync)." % ", ".join(stray), file=sys.stderr)

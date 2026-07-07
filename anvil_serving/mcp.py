@@ -1672,6 +1672,26 @@ def tool_openclaw_sync(args: dict) -> dict:
         "voice_consult_bootstrap_context_mode",
         "lightweight",
     )
+    try:
+        voice_consult_thinking_level = (
+            harness._normalize_voice_consult_thinking_level(voice_consult_thinking_level)
+            or ""
+        )
+        voice_consult_bootstrap_context_mode = (
+            harness._normalize_voice_consult_bootstrap_context_mode(
+                voice_consult_bootstrap_context_mode
+            )
+            or ""
+        )
+    except ValueError as exc:
+        raise ToolError(
+            "bad_argument",
+            str(exc),
+            {
+                "voice_consult_thinking_level": voice_consult_thinking_level,
+                "voice_consult_bootstrap_context_mode": voice_consult_bootstrap_context_mode,
+            },
+        )
     if "voice_api_key" in args:
         raise ToolError(
             "raw_secret_not_allowed",
@@ -2280,8 +2300,14 @@ TOOLS: Dict[str, dict] = {
             "voice_realtime_url": {"type": "string"},
             "voice_model": {"type": "string"},
             "voice_consult_model": {"type": "string"},
-            "voice_consult_thinking_level": {"type": "string"},
-            "voice_consult_bootstrap_context_mode": {"type": "string"},
+            "voice_consult_thinking_level": {
+                "type": "string",
+                "enum": ["adaptive", "high", "low", "max", "medium", "minimal", "off", "xhigh"],
+            },
+            "voice_consult_bootstrap_context_mode": {
+                "type": "string",
+                "enum": ["full", "lightweight"],
+            },
             "voice_api_key_env": {"type": "string"},
             "overwrite": {"type": "boolean"},
             "restart": {"type": "boolean"},

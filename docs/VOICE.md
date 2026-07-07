@@ -399,6 +399,19 @@ The JSON output includes first-audio latency, total turn latency, STT WER, TTS
 RTF, output byte counts, and the observed STT/LLM text. This is a smoke
 measurement, not a promotion gate.
 
+For live Realtime Talk sessions, `voice run` also emits redacted
+`voice_stage_timing` log lines for the core `stt`, `llm`, and `tts` stages.
+Use those lines to attribute latency without exposing prompts or transcripts:
+
+```text
+voice_stage_timing stage=llm input_type=GenerateRequest turn_id=rt-turn-7 generation=12 text_chars=84 elapsed_ms=912.4 first_output_ms=488.1 output_count=2 error=false
+```
+
+`elapsed_ms` is the full stage duration for that input. `first_output_ms`
+shows when the first downstream item was available, which is the useful value
+for perceived first-audio latency in streaming LLM and TTS stages. Text values
+are logged as character counts only.
+
 For the 16 GB Mini proof, use the hardware validation harness:
 
 ```bash
