@@ -312,6 +312,7 @@ def test_accepts_llm_history_limits():
     data["voice"]["llm"]["history_max_turns"] = 0
     data["voice"]["llm"]["history_max_message_chars"] = 128
     data["voice"]["llm"]["tool_result_max_chars"] = 4096
+    data["voice"]["llm"]["speech_chunk_max_chars"] = 72
     voice_config.validate_manifest(data)
 
 
@@ -347,6 +348,20 @@ def test_rejects_nonpositive_llm_tool_result_max_chars():
     data = _valid_manifest()
     data["voice"]["llm"]["tool_result_max_chars"] = 0
     with pytest.raises(voice_config.ConfigError, match="positive"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_nonpositive_llm_speech_chunk_max_chars():
+    data = _valid_manifest()
+    data["voice"]["llm"]["speech_chunk_max_chars"] = 0
+    with pytest.raises(voice_config.ConfigError, match="positive"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_non_integer_llm_speech_chunk_max_chars():
+    data = _valid_manifest()
+    data["voice"]["llm"]["speech_chunk_max_chars"] = "fast"
+    with pytest.raises(voice_config.ConfigError, match="integer"):
         voice_config.validate_manifest(data)
 
 

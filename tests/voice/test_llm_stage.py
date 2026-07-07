@@ -306,6 +306,25 @@ def test_sentence_batcher_strips_tts_hostile_chars_from_output():
     assert out == ["Hello there."]
 
 
+def test_sentence_batcher_splits_long_prefix_without_sentence_end():
+    b = SentenceBatcher(max_chars=20)
+    assert b.feed("This answer is long enough") == ["This answer is long"]
+    assert b.flush() == "enough"
+
+
+def test_sentence_batcher_preserves_separator_after_long_prefix_boundary():
+    b = SentenceBatcher(max_chars=10)
+    assert b.feed("one two three and ") == ["one two"]
+    assert b.feed("then done") == ["three and"]
+    assert b.flush() == "then done"
+
+
+def test_sentence_batcher_hard_splits_long_tokens_at_bound():
+    b = SentenceBatcher(max_chars=10)
+    assert b.feed("abcdefghijklmno rest") == ["abcdefghij"]
+    assert b.flush() == "klmno rest"
+
+
 # --------------------------------------------------------------------------- #
 # LLMStage: sentence-batched output + cancel_scope integration
 # --------------------------------------------------------------------------- #
@@ -332,6 +351,25 @@ def test_llm_stage_emits_sentence_batched_chunks_then_end_of_response():
     assert chunks[-1].is_final is True
     assert len(ends) == 1
     assert ends[0].turn_id == "t1"
+
+
+def test_llm_stage_splits_long_speech_chunks_on_word_boundaries():
+    def fake_stream(text, config):
+        yield "This answer is long enough"
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(speech_chunk_max_chars=20),
+        stream_fn=fake_stream,
+    )
+
+    out = list(stage.process(_gen_request()))
+
+    chunks = [m for m in out if isinstance(m, LLMChunk)]
+    assert [c.text for c in chunks] == ["This answer is long", "enough"]
+    assert chunks[0].is_final is False
+    assert chunks[1].is_final is True
+    assert any(isinstance(m, EndOfResponse) for m in out)
 
 
 def test_llm_stage_remembers_completed_turns_for_next_request():
@@ -451,6 +489,41 @@ def test_llm_stage_pauses_for_tool_result_then_resumes_final_answer():
         },
         {"role": "tool", "tool_call_id": "call_1", "content": '{"text":"Sunny and 72."}'},
     ]
+
+
+def test_llm_stage_suppresses_tools_for_openclaw_forced_consult_speech_turn():
+    calls = []
+    forced_speech_prompt = "\n".join([
+        "OpenClaw finished checking. Speak this result naturally and concisely.",
+        "Do not mention tool calls, JSON, or internal routing.",
+        "",
+        "The weather is sunny and 72.",
+    ])
+
+    def fake_stream(text, config, history=()):
+        calls.append({"text": text, "tools": config.tools, "tool_choice": config.tool_choice})
+        if config.tools:
+            yield LLMStreamToolCalls([
+                {"id": "call_1", "name": "openclaw_agent_consult", "arguments": "{}"}
+            ])
+        else:
+            yield "The weather is sunny and 72."
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(
+            tools=[{"type": "function", "name": "openclaw_agent_consult"}],
+            tool_choice="auto",
+        ),
+        stream_fn=fake_stream,
+    )
+
+    out = list(stage.process(_gen_request(text=forced_speech_prompt)))
+
+    assert calls == [{"text": forced_speech_prompt, "tools": None, "tool_choice": None}]
+    assert not any(isinstance(m, LLMToolCall) for m in out)
+    assert [m.text for m in out if isinstance(m, LLMChunk)] == ["The weather is sunny and 72."]
+    assert any(isinstance(m, EndOfResponse) for m in out)
 
 
 def test_llm_stage_ignores_will_continue_tool_result_until_final_result():

@@ -62,6 +62,20 @@ _REMOTE_RESTART_COMMAND = 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"'
 _DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
 DEFAULT_ANVIL_VOICE_REALTIME_URL = "ws://127.0.0.1:8765/v1/realtime"
 _DEFAULT_ANVIL_VOICE_MODEL = "fast-local"
+_DEFAULT_ANVIL_VOICE_CONSULT_MODEL = ""
+_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL = "off"
+_DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE = "lightweight"
+_ANVIL_VOICE_CONSULT_THINKING_LEVELS = frozenset({
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "adaptive",
+    "max",
+})
+_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODES = frozenset({"full", "lightweight"})
 _ANVIL_VOICE_CONSULT_ROUTING = "force-agent-consult"
 _LEGACY_GENERATED_PLUGIN_CONFIG_DEFAULTS = {
     "nativeProvider": "anthropic",
@@ -220,12 +234,46 @@ def _validate_realtime_url(value, *, api_key_env=None):
     return value
 
 
+def _normalize_voice_consult_thinking_level(value):
+    normalized = (value or "").strip().lower()
+    if not normalized:
+        return None
+    if normalized not in _ANVIL_VOICE_CONSULT_THINKING_LEVELS:
+        raise ValueError(
+            "voice consult thinking level must be one of: %s"
+            % ", ".join(sorted(_ANVIL_VOICE_CONSULT_THINKING_LEVELS))
+        )
+    return normalized
+
+
+def _normalize_voice_consult_bootstrap_context_mode(value):
+    normalized = (value or "").strip().lower()
+    if not normalized:
+        return None
+    if normalized not in _ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODES:
+        raise ValueError(
+            "voice consult bootstrap context mode must be one of: %s"
+            % ", ".join(sorted(_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODES))
+        )
+    return normalized
+
+
 def render_openclaw_voice_config(
         *, realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
         model=_DEFAULT_ANVIL_VOICE_MODEL,
+        consult_model=None,
+        consult_thinking_level=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
+        consult_bootstrap_context_mode=_DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE,
         api_key_env=None):
     """Render OpenClaw Talk realtime config for the Anvil Voice gateway-relay provider."""
     env_name = _validate_env_var_name(api_key_env, arg_name="voice_api_key_env")
+    normalized_consult_model = (consult_model or "").strip()
+    normalized_consult_thinking_level = _normalize_voice_consult_thinking_level(
+        consult_thinking_level
+    )
+    normalized_consult_bootstrap_context_mode = _normalize_voice_consult_bootstrap_context_mode(
+        consult_bootstrap_context_mode
+    )
     provider_config = {
         "realtimeUrl": _validate_realtime_url(realtime_url, api_key_env=env_name),
         "model": model or _DEFAULT_ANVIL_VOICE_MODEL,
@@ -235,6 +283,17 @@ def render_openclaw_voice_config(
         provider_config["apiKey"] = {"source": "env", "provider": "default", "id": env_name}
     return {
         "talk": {
+            **({"consultModel": normalized_consult_model} if normalized_consult_model else {}),
+            **(
+                {"consultThinkingLevel": normalized_consult_thinking_level}
+                if normalized_consult_thinking_level
+                else {}
+            ),
+            **(
+                {"consultBootstrapContextMode": normalized_consult_bootstrap_context_mode}
+                if normalized_consult_bootstrap_context_mode
+                else {}
+            ),
             "realtime": {
                 "mode": "realtime",
                 "transport": "gateway-relay",
@@ -245,6 +304,13 @@ def render_openclaw_voice_config(
             }
         }
     }
+
+
+def _openclaw_voice_consult_model(config, explicit=None):
+    explicit = (explicit or "").strip()
+    if explicit:
+        return explicit
+    return _anvil_preset_ref(config, ("chat-fast", "chat"), fallback="chat")
 
 
 def _anvil_preset_ref(config, preferred, *, fallback="chat", allow_first_fallback=True):
@@ -379,6 +445,9 @@ def _merge_openclaw_voice_config(out, rendered):
     if not isinstance(talk, dict):
         talk = {}
         out["talk"] = talk
+    for key, value in rendered_talk.items():
+        if key != "realtime":
+            talk[key] = value
     realtime = talk.setdefault("realtime", {})
     if not isinstance(realtime, dict):
         realtime = {}
@@ -647,6 +716,11 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
                           skills=False, skill_dir=None, voice=False,
                           voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
                           voice_model=_DEFAULT_ANVIL_VOICE_MODEL,
+                          voice_consult_model=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
+                          voice_consult_thinking_level=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
+                          voice_consult_bootstrap_context_mode=(
+                              _DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE
+                          ),
                           voice_api_key_env=None, _load=None):
     """Return the rendered OpenClaw sync payload without writing it anywhere."""
     if _load is None:
@@ -659,6 +733,9 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
         voice_payload = render_openclaw_voice_config(
             realtime_url=voice_realtime_url,
             model=voice_model,
+            consult_model=_openclaw_voice_consult_model(config, voice_consult_model),
+            consult_thinking_level=voice_consult_thinking_level,
+            consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
             api_key_env=voice_api_key_env,
         )
         provider = _with_openclaw_voice_config(provider, voice_payload)
@@ -687,6 +764,11 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
         "voice_provider": realtime.get("provider") if isinstance(realtime, dict) else None,
         "voice_realtime_url": voice_anvil.get("realtimeUrl") if isinstance(voice_anvil, dict) else None,
         "voice_model": voice_anvil.get("model") if isinstance(voice_anvil, dict) else None,
+        "voice_consult_model": provider.get("talk", {}).get("consultModel"),
+        "voice_consult_thinking_level": provider.get("talk", {}).get("consultThinkingLevel"),
+        "voice_consult_bootstrap_context_mode": provider.get("talk", {}).get(
+            "consultBootstrapContextMode"
+        ),
     }
 
 
@@ -694,6 +776,11 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
                       skill_dir=None, voice=False,
                       voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
                       voice_model=_DEFAULT_ANVIL_VOICE_MODEL,
+                      voice_consult_model=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
+                      voice_consult_thinking_level=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
+                      voice_consult_bootstrap_context_mode=(
+                          _DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE
+                      ),
                       voice_api_key_env=None,
                       gateway_host=None, gateway_user=None,
                       gateway_path=_DEFAULT_OPENCLAW_CONFIG_PATH, overwrite=False, restart=False,
@@ -723,6 +810,9 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
             voice_payload = render_openclaw_voice_config(
                 realtime_url=voice_realtime_url,
                 model=voice_model,
+                consult_model=_openclaw_voice_consult_model(config, voice_consult_model),
+                consult_thinking_level=voice_consult_thinking_level,
+                consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
                 api_key_env=voice_api_key_env,
             )
             provider = _with_openclaw_voice_config(provider, voice_payload)
@@ -793,6 +883,11 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    provided_options = {
+        arg.split("=", 1)[0]
+        for arg in argv
+        if isinstance(arg, str) and arg.startswith("--")
+    }
     p = argparse.ArgumentParser(
         prog="anvil-serving harness",
         description="Own the harness-side config: render a harness's model/provider config FROM "
@@ -836,6 +931,16 @@ def main(argv=None):
                    help="with --voice: Anvil Voice WebSocket URL (default: %(default)s).")
     p.add_argument("--voice-model", default=_DEFAULT_ANVIL_VOICE_MODEL,
                    help="with --voice: model sent to the Anvil Voice realtime session (default: %(default)s).")
+    p.add_argument("--voice-consult-model", default=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
+                   help="with --voice: OpenClaw model used for forced agent consults "
+                        "(default: anvil/chat-fast when configured, else anvil/chat).")
+    p.add_argument("--voice-consult-thinking-level", default=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
+                   help="with --voice: OpenClaw thinking level for forced agent consults "
+                        "(default: %(default)s for lower latency).")
+    p.add_argument("--voice-consult-bootstrap-context-mode",
+                   default=_DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE,
+                   help="with --voice: OpenClaw bootstrap context mode for forced agent consults "
+                        "(default: %(default)s to skip workspace bootstrap files).")
     p.add_argument("--voice-api-key-env",
                    help="with --voice: env var name for the Anvil Voice bearer token; omitted for loopback.")
     a = p.parse_args(argv)
@@ -843,14 +948,23 @@ def main(argv=None):
     if a.action == "restart" and a.harness == "openclaw":
         # `restart` only restarts the gateway; sync-only flags would be silently discarded, which
         # reads as "it did something" — reject them so the misuse is visible.
-        stray = [f for f, v in (("--config", a.config), ("--out", a.out),
-                                ("--overwrite", a.overwrite), ("--skills", a.skills),
-                                ("--skill-dir", a.skill_dir), ("--voice", a.voice),
-                                ("--voice-api-key-env", a.voice_api_key_env)) if v]
-        if a.voice_realtime_url != DEFAULT_ANVIL_VOICE_REALTIME_URL:
-            stray.append("--voice-realtime-url")
-        if a.voice_model != _DEFAULT_ANVIL_VOICE_MODEL:
-            stray.append("--voice-model")
+        sync_only_flags = {
+            "--api-key-env",
+            "--base-url",
+            "--config",
+            "--out",
+            "--overwrite",
+            "--skill-dir",
+            "--skills",
+            "--voice",
+            "--voice-api-key-env",
+            "--voice-consult-bootstrap-context-mode",
+            "--voice-consult-model",
+            "--voice-consult-thinking-level",
+            "--voice-model",
+            "--voice-realtime-url",
+        }
+        stray = sorted(sync_only_flags.intersection(provided_options))
         if stray:
             print("restart openclaw takes only --gateway-host/--gateway-user; drop %s (it does not "
                   "sync)." % ", ".join(stray), file=sys.stderr)
@@ -883,6 +997,11 @@ def main(argv=None):
                                  skill_dir=a.skill_dir, voice=a.voice,
                                  voice_realtime_url=a.voice_realtime_url,
                                  voice_model=a.voice_model,
+                                 voice_consult_model=a.voice_consult_model,
+                                 voice_consult_thinking_level=a.voice_consult_thinking_level,
+                                 voice_consult_bootstrap_context_mode=(
+                                     a.voice_consult_bootstrap_context_mode
+                                 ),
                                  voice_api_key_env=a.voice_api_key_env,
                                  gateway_host=a.gateway_host, gateway_user=a.gateway_user,
                                  gateway_path=a.gateway_path, overwrite=a.overwrite,

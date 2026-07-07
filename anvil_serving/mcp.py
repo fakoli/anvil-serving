@@ -1665,6 +1665,33 @@ def tool_openclaw_sync(args: dict) -> dict:
         harness.DEFAULT_ANVIL_VOICE_REALTIME_URL,
     )
     voice_model = _str_arg(args, "voice_model", "fast-local")
+    voice_consult_model = _str_arg(args, "voice_consult_model", "")
+    voice_consult_thinking_level = _str_arg(args, "voice_consult_thinking_level", "off")
+    voice_consult_bootstrap_context_mode = _str_arg(
+        args,
+        "voice_consult_bootstrap_context_mode",
+        "lightweight",
+    )
+    try:
+        voice_consult_thinking_level = (
+            harness._normalize_voice_consult_thinking_level(voice_consult_thinking_level)
+            or ""
+        )
+        voice_consult_bootstrap_context_mode = (
+            harness._normalize_voice_consult_bootstrap_context_mode(
+                voice_consult_bootstrap_context_mode
+            )
+            or ""
+        )
+    except ValueError as exc:
+        raise ToolError(
+            "bad_argument",
+            str(exc),
+            {
+                "voice_consult_thinking_level": voice_consult_thinking_level,
+                "voice_consult_bootstrap_context_mode": voice_consult_bootstrap_context_mode,
+            },
+        )
     if "voice_api_key" in args:
         raise ToolError(
             "raw_secret_not_allowed",
@@ -1697,6 +1724,9 @@ def tool_openclaw_sync(args: dict) -> dict:
             voice=voice,
             voice_realtime_url=voice_realtime_url,
             voice_model=voice_model,
+            voice_consult_model=voice_consult_model,
+            voice_consult_thinking_level=voice_consult_thinking_level,
+            voice_consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
             voice_api_key_env=voice_api_key_env or None,
         )
     except FileNotFoundError:
@@ -1715,6 +1745,11 @@ def tool_openclaw_sync(args: dict) -> dict:
         "voice": voice,
         "voice_realtime_url": voice_realtime_url if voice else None,
         "voice_model": voice_model if voice else None,
+        "voice_consult_model": voice_consult_model if voice and voice_consult_model else None,
+        "voice_consult_thinking_level": voice_consult_thinking_level if voice else None,
+        "voice_consult_bootstrap_context_mode": (
+            voice_consult_bootstrap_context_mode if voice else None
+        ),
         "voice_api_key_env": voice_api_key_env or None,
         "overwrite": overwrite,
         "restart": restart,
@@ -1738,6 +1773,9 @@ def tool_openclaw_sync(args: dict) -> dict:
         voice=voice,
         voice_realtime_url=voice_realtime_url,
         voice_model=voice_model,
+        voice_consult_model=voice_consult_model,
+        voice_consult_thinking_level=voice_consult_thinking_level,
+        voice_consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
         voice_api_key_env=voice_api_key_env or None,
         gateway_host=gateway_host or None,
         gateway_user=gateway_user or None,
@@ -1767,6 +1805,11 @@ def tool_openclaw_sync(args: dict) -> dict:
             "voice_provider": preview["voice_provider"],
             "voice_realtime_url": preview["voice_realtime_url"],
             "voice_model": preview["voice_model"],
+            "voice_consult_model": preview["voice_consult_model"],
+            "voice_consult_thinking_level": preview["voice_consult_thinking_level"],
+            "voice_consult_bootstrap_context_mode": preview[
+                "voice_consult_bootstrap_context_mode"
+            ],
         },
     }
     if rc != 0:
@@ -2256,6 +2299,15 @@ TOOLS: Dict[str, dict] = {
             "voice": {"type": "boolean"},
             "voice_realtime_url": {"type": "string"},
             "voice_model": {"type": "string"},
+            "voice_consult_model": {"type": "string"},
+            "voice_consult_thinking_level": {
+                "type": "string",
+                "enum": ["adaptive", "high", "low", "max", "medium", "minimal", "off", "xhigh"],
+            },
+            "voice_consult_bootstrap_context_mode": {
+                "type": "string",
+                "enum": ["full", "lightweight"],
+            },
             "voice_api_key_env": {"type": "string"},
             "overwrite": {"type": "boolean"},
             "restart": {"type": "boolean"},

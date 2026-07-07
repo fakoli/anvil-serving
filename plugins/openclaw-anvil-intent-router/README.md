@@ -264,6 +264,16 @@ only.
    > names the provider (`providerOverride: "anvil"`) and emits the **bare** preset
    > (`modelOverride: "planning"`); OpenClaw forwards the bare id on the wire. A
    > lone `modelOverride: "anvil/<preset>"` is mis-resolved → `model_not_found`.
+
+   When OpenClaw has already resolved an Anvil model for a trusted runtime path,
+   the plugin honors that context instead of reclassifying the prompt. The main
+   example is Anvil Voice Talk consults with `talk.consultModel:
+   "anvil/chat-fast"`: the hook resolves `chat-fast`, returns the bare
+   `modelOverride`, and marks the decision source as `openclaw-context`.
+   The Anvil Serving voice sync also renders `talk.consultThinkingLevel: "off"`
+   and `talk.consultBootstrapContextMode: "lightweight"` by default so those
+   consults do not inherit stale low-reasoning latency or inject large workspace
+   bootstrap files into each spoken turn.
 4. **Configure the native route — REQUIRED for cloud-preferred preset routing (T008).**
    Cloud-preferred presets use this explicit provider/model instead of falling
    through to `agents.defaults.model.primary`:
