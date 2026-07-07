@@ -295,6 +295,22 @@ Controller auth is required by default even on `127.0.0.1`; use
 
 ---
 
+## Golden rule: operational utilities belong in anvil-serving
+
+Any repeatable utility that manages lifecycle, host state, ports, voice/audio
+routing, harness config, router/serve state, or OpenClaw/agent operations MUST
+be integrated into the `anvil-serving` product surface: a CLI verb first, and an
+MCP/controller wrapper when agents or split-host operation need it. Do not make
+random one-off scripts the canonical way to operate the system.
+
+Scripts are acceptable for demos, fixtures, migrations, and validation harnesses
+when they are not the lifecycle/control surface. If a script starts becoming the
+way operators switch profiles, open ports, restart services, sync configs, or
+run recurring operations, promote that behavior into `anvil_serving/`, document
+it, and keep the script as a thin example or remove it.
+
+---
+
 ## Docs map
 
 - `README.md` — evaluator-facing product framing, smoke test, command surface, and docs map

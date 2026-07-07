@@ -33,9 +33,13 @@ Realtime server and cascade itself.
 | `anvil-serving voice stop` | Alias for `voice down`. | Same as `down`. |
 | `anvil-serving voice run` | Starts the Realtime WebSocket server in the foreground after probing the LLM, STT, and TTS endpoints. | Does not silently continue when required endpoints are unreachable. |
 | `anvil-serving voice benchmark` | Runs one configured end-to-end voice turn and prints latency/quality metrics as JSON. | Does not promote routing policy or prove subjective audio quality by itself. |
+| `anvil-serving voice profiles` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
+| `anvil-serving voice bridge` | Forwards STT/TTS TCP ports from a private interface to local audio endpoints. | Does not add auth, inspect audio traffic, or replace endpoint/router tokens. |
 
-All commands take `--config <voice.toml>`. If omitted, the shipped example
-manifest is used when present.
+Manifest-backed commands take `--config <voice.toml>`. If omitted, the shipped
+example manifest is used when present. `up`, `down`, `run`, and `benchmark`
+also accept `--profile <name>` to apply `[voice.profiles.<name>]` before
+validation.
 
 ## Why These Commands Exist
 
@@ -49,6 +53,9 @@ Voice has three separate operational concerns:
 3. **Evidence capture:** `voice benchmark` and the hardware validation scripts
    measure whether the configured STT -> LLM -> TTS path is usable on the
    target host.
+4. **Private audio bridging:** `voice bridge` exposes same-host STT/TTS
+   endpoints on operator-selected private ports when the audio host and
+   Realtime/gateway host are different devices.
 
 Keeping those concerns separate avoids a common failure mode: a command that
 appears to start "voice" but only starts one part of the pipeline. `voice up`
@@ -80,6 +87,17 @@ base_url = "http://127.0.0.1:30011/v1"
 model = "kokoro"
 lifecycle = "managed"
 response_format = "pcm"
+
+[voice.profiles.dark-audio.stt]
+base_url = "http://100.87.34.66:30110/v1"
+model = "tdt_ctc-110m"
+lifecycle = "external"
+
+[voice.profiles.dark-audio.tts]
+base_url = "http://100.87.34.66:30111/v1"
+model = "kokoro"
+lifecycle = "external"
+response_format = "pcm"
 ```
 
 Manifest hygiene follows the rest of the repo:
@@ -90,6 +108,8 @@ Manifest hygiene follows the rest of the repo:
   name with `*_env` keys.
 - Do not embed credentials in URLs.
 - A non-loopback `realtime_host` requires `realtime_token_env`.
+- Use profiles for repeatable topology switches instead of copying manifests or
+  maintaining one-off shell scripts.
 
 For native audio endpoints, add the lifecycle metadata to the STT/TTS section:
 
@@ -136,6 +156,9 @@ Common layouts:
 - Voice host separate from audio host: set STT/TTS `base_url` values to the
   remote private addresses and use `lifecycle = "external"` unless `voice up`
   is being run on the audio host itself through local CLI or a controller.
+- Audio host exposing loopback-only STT/TTS to a private network: run
+  `anvil-serving voice bridge` on the audio host, then point the voice host's
+  profile at the bridge ports.
 
 `lifecycle = "native"` is intentionally same-host. It starts the manifest
 command on the host where `anvil-serving voice up` runs; it is not a remote
@@ -145,6 +168,12 @@ host or use an anvil-serving controller on that host.
 Any service bound beyond loopback needs the appropriate token env var and
 private network controls. Tailscale reachability is the transport requirement;
 it is not a replacement for router, Realtime, or controller auth.
+
+`voice bridge` defaults to a loopback bind. A non-loopback bind is refused
+unless the operator passes `--i-understand-this-exposes-voice-audio`; use that
+only on a concrete private/tailnet address. Wildcard binds such as `0.0.0.0`
+also require `--allow-wildcard-listen` and should be reserved for cases where a
+firewall or tailnet ACL has already scoped exposure to trusted devices.
 
 ## Fakoli Mini
 
@@ -203,13 +232,54 @@ OpenClaw Talk or Voice Call
 Use `examples/voice/openclaw-anvil-voice.toml` for the Mini reference layout.
 It keeps the Realtime server and MLX Audio endpoints on the Mini loopback and
 routes the LLM turn to the Fakoli Dark router over the private address.
+It also declares profiles for repeatable switching:
+
+- `mini-audio`: Mini-local MLX Audio STT/TTS, with conversational LLM prompt.
+- `dark-audio`: Dark-host STT/TTS reached through private bridge ports
+  `30110` and `30111`.
+- `mini-validation`: Mini-local audio plus the intentional
+  `I understand.` validation prompt.
 
 Start the voice side first:
 
 ```bash
-anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --dry-run
-anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml
-anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml
+anvil-serving voice profiles --config examples/voice/openclaw-anvil-voice.toml
+anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --dry-run
+anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+```
+
+To keep OpenClaw and Realtime on Mini while using STT/TTS on Fakoli Dark, first
+make sure Dark's local STT/TTS endpoints are already running and reachable on
+the Dark host:
+
+```bash
+curl -s -o /dev/null -w "stt %{http_code}\n" http://127.0.0.1:30010/v1/models
+curl -s -o /dev/null -w "tts %{http_code}\n" http://127.0.0.1:30011/v1/models
+```
+
+For STT, a 404 can still prove the HTTP server is listening; connection refusal
+means the local audio endpoint is not up.
+
+Then expose those loopback audio services on private bridge ports from the Dark
+host:
+
+```bash
+anvil-serving voice bridge \
+  --listen-host 100.87.34.66 \
+  --stt-listen-port 30110 \
+  --stt-target-host 127.0.0.1 \
+  --stt-target-port 30010 \
+  --tts-listen-port 30111 \
+  --tts-target-host 127.0.0.1 \
+  --tts-target-port 30011 \
+  --i-understand-this-exposes-voice-audio
+```
+
+Then run the Mini Realtime server with the Dark audio profile:
+
+```bash
+anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 ```
 
 Then render or apply the matching OpenClaw config. The `--voice` flag adds the
@@ -298,7 +368,8 @@ Agents and OpenClaw should prefer `voice_manage` for STT/TTS lifecycle:
 ```json
 {
   "action": "up",
-  "config": "examples/voice/fakoli-mini.toml"
+  "config": "examples/voice/openclaw-anvil-voice.toml",
+  "profile": "mini-audio"
 }
 ```
 
@@ -308,7 +379,8 @@ requires:
 ```json
 {
   "action": "up",
-  "config": "examples/voice/fakoli-mini.toml",
+  "config": "examples/voice/openclaw-anvil-voice.toml",
+  "profile": "mini-audio",
   "confirm": true,
   "dry_run": false
 }

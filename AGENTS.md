@@ -24,6 +24,11 @@ residency-aware routing. The canonical product description is `README.md`; do no
 
 - **Stdlib-only** in `anvil_serving/` — no new runtime dependencies without explicit sign-off.
 - **`127.0.0.1`, never `localhost`** in any URL (config, test fixture, example, docstring).
+- **Operational utilities live in anvil-serving.** If a utility manages lifecycle,
+  ports, host operations, harness config, voice/audio routing, router/serve state,
+  or any repeatable operator action, integrate it as an `anvil-serving` CLI verb
+  and, where appropriate, an MCP/controller tool. Do not create random one-off
+  scripts as the operational path.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
   output. Correctness gates (`verify.py`, `preflight.py`, `eval.py`) are independent.
@@ -58,4 +63,7 @@ Both are in-process; no daemon, no MCP, no external process required for the rou
 - Don't bind to `localhost` — use `127.0.0.1`.
 - Don't add FastAPI, uvicorn, or any async framework to the router or substrate.
 - Don't auto-promote a tuned model config or a routing policy change without a human gate.
+- Don't make ad hoc lifecycle or operations scripts the way to run the product.
+  Scripts may be demos, fixtures, or validation harnesses, but durable operations
+  belong behind the `anvil-serving` utility surface.
 - Don't touch `specs/archive/` — those are historical records, not live design docs.
