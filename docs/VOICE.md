@@ -329,6 +329,7 @@ it at the Anvil Voice Realtime server:
       mode: "realtime",
       transport: "gateway-relay",
       brain: "agent-consult",
+      consultRouting: "force-agent-consult",
       provider: "anvil",
       providers: {
         anvil: {
