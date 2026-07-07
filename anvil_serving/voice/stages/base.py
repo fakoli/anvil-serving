@@ -13,9 +13,11 @@ import inspect
 import logging
 import queue
 import threading
+import time
 from typing import Any, Iterable, List, Optional
 
 logger = logging.getLogger(__name__)
+_TIMED_STAGE_NAMES = {"stt", "llm", "tts"}
 
 # Sentinel enqueued to tell a stage's thread to drain and stop. Forwarded to
 # every downstream queue so a pipeline shuts down stage-by-stage in order,
@@ -82,15 +84,63 @@ class BaseStage:
         for q in self.out_queues:
             q.put(item)
 
-    def _emit_result(self, result: Any) -> None:
+    def _emit_result(self, result: Any) -> int:
         if result is None:
-            return
+            return 0
         if isinstance(result, (list, tuple)):
+            count = 0
             for item in result:
                 if item is not None:
                     self._emit_one(item)
+                    count += 1
+            return count
         else:
             self._emit_one(result)
+            return 1
+
+    def _should_log_timing(self, item: Any) -> bool:
+        return self.name in _TIMED_STAGE_NAMES and hasattr(item, "turn_id")
+
+    @staticmethod
+    def _item_summary(item: Any) -> str:
+        parts = ["input_type=%s" % type(item).__name__]
+        for name in ("turn_id", "turn_revision", "generation"):
+            value = getattr(item, name, None)
+            if value is not None:
+                parts.append("%s=%s" % (name, value))
+        text = getattr(item, "text", None)
+        if isinstance(text, str):
+            parts.append("text_chars=%d" % len(text))
+        pcm = getattr(item, "pcm", None)
+        if isinstance(pcm, (bytes, bytearray)):
+            parts.append("pcm_bytes=%d" % len(pcm))
+        sample_rate = getattr(item, "sample_rate", None)
+        if isinstance(sample_rate, int):
+            parts.append("sample_rate=%d" % sample_rate)
+        return " ".join(parts)
+
+    def _log_timing(
+        self,
+        item: Any,
+        *,
+        elapsed_ms: float,
+        first_output_ms: Optional[float],
+        output_count: int,
+        error: bool = False,
+    ) -> None:
+        if not self._should_log_timing(item):
+            return
+        first = "none" if first_output_ms is None else "%.1f" % first_output_ms
+        logger.warning(
+            "voice_stage_timing stage=%s %s elapsed_ms=%.1f first_output_ms=%s "
+            "output_count=%d error=%s",
+            self.name,
+            self._item_summary(item),
+            elapsed_ms,
+            first,
+            output_count,
+            str(error).lower(),
+        )
 
     def _run(self) -> None:
         while not self._stop_event.is_set():
@@ -101,6 +151,9 @@ class BaseStage:
             if item is PIPELINE_END:
                 self._emit_one(PIPELINE_END)
                 break
+            started = time.perf_counter()
+            first_output_ms: Optional[float] = None
+            output_count = 0
             try:
                 result = self.process(item)
                 if inspect.isgenerator(result):
@@ -110,12 +163,33 @@ class BaseStage:
                     # yields, whatever it already yielded is on the queue
                     # NOW, not after the whole turn finishes.
                     for produced in result:
-                        self._emit_result(produced)
+                        emitted = self._emit_result(produced)
+                        if emitted and first_output_ms is None:
+                            first_output_ms = (time.perf_counter() - started) * 1000.0
+                        output_count += emitted
                 else:
-                    self._emit_result(result)
+                    emitted = self._emit_result(result)
+                    if emitted:
+                        first_output_ms = (time.perf_counter() - started) * 1000.0
+                    output_count += emitted
+                self._log_timing(
+                    item,
+                    elapsed_ms=(time.perf_counter() - started) * 1000.0,
+                    first_output_ms=first_output_ms,
+                    output_count=output_count,
+                )
             except Exception:  # noqa: BLE001 - per-item isolation is the point
+                self._log_timing(
+                    item,
+                    elapsed_ms=(time.perf_counter() - started) * 1000.0,
+                    first_output_ms=first_output_ms,
+                    output_count=output_count,
+                    error=True,
+                )
                 logger.exception(
-                    "%s: process() raised on item %r; continuing", self.name, item
+                    "%s: process() raised on %s; continuing",
+                    self.name,
+                    self._item_summary(item),
                 )
                 continue
 

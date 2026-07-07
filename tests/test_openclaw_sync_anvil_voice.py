@@ -38,9 +38,13 @@ def test_openclaw_voice_sync_emits_anvil_talk_realtime_config(capsys):
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
+    talk = payload["talk"]
     realtime = payload["talk"]["realtime"]
     anvil = realtime["providers"]["anvil"]
 
+    assert talk["consultModel"] == "anvil/chat-fast"
+    assert talk["consultThinkingLevel"] == "off"
+    assert talk["consultBootstrapContextMode"] == "lightweight"
     assert realtime["mode"] == "realtime"
     assert realtime["transport"] == "gateway-relay"
     assert realtime["brain"] == "agent-consult"
@@ -49,6 +53,127 @@ def test_openclaw_voice_sync_emits_anvil_talk_realtime_config(capsys):
     assert anvil["realtimeUrl"] == "ws://127.0.0.1:8765/v1/realtime"
     assert anvil["model"] == "fast-local"
     assert "apiKey" not in anvil
+
+
+def test_openclaw_voice_sync_can_override_consult_model(capsys):
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        voice_consult_model="anvil/chat",
+        _load=lambda _path: _cfg(),
+    )
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["talk"]["consultModel"] == "anvil/chat"
+
+
+def test_openclaw_voice_sync_can_override_consult_thinking_level(capsys):
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        voice_consult_thinking_level="low",
+        _load=lambda _path: _cfg(),
+    )
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["talk"]["consultThinkingLevel"] == "low"
+
+
+def test_openclaw_voice_sync_can_override_consult_bootstrap_context_mode(capsys):
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        voice_consult_bootstrap_context_mode="full",
+        _load=lambda _path: _cfg(),
+    )
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["talk"]["consultBootstrapContextMode"] == "full"
+
+
+def test_openclaw_voice_sync_rejects_bad_consult_thinking_level(capsys):
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        voice_consult_thinking_level="turbo",
+        _load=lambda _path: _cfg(),
+    )
+
+    assert rc == 2
+    assert "voice consult thinking level" in capsys.readouterr().err
+
+
+def test_openclaw_voice_sync_rejects_bad_consult_bootstrap_context_mode(capsys):
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        voice_consult_bootstrap_context_mode="compact",
+        _load=lambda _path: _cfg(),
+    )
+
+    assert rc == 2
+    assert "voice consult bootstrap context mode" in capsys.readouterr().err
+
+
+def test_openclaw_voice_sync_replaces_existing_consult_thinking_level(tmp_path):
+    existing = tmp_path / "openclaw.json"
+    existing.write_text(
+        json.dumps(
+            {
+                "talk": {
+                    "consultThinkingLevel": "low",
+                    "consultBootstrapContextMode": "full",
+                }
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        out=str(existing),
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        _load=lambda _path: _cfg(),
+    )
+
+    assert rc == 0
+    payload = json.loads(existing.read_text(encoding="utf-8"))
+    assert payload["talk"]["consultThinkingLevel"] == "off"
+    assert payload["talk"]["consultBootstrapContextMode"] == "lightweight"
+
+
+def test_openclaw_voice_sync_falls_back_to_chat_consult_model(capsys):
+    cfg = _Config(
+        presets={"chat": ("fast", "heavy")},
+        tiers={"fast": _Tier(32768), "heavy": _Tier(131072)},
+    )
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["talk"]["consultModel"] == "anvil/chat"
 
 
 def test_openclaw_voice_sync_can_emit_env_secretref(capsys):

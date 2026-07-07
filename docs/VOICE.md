@@ -121,6 +121,10 @@ Manifest hygiene follows the rest of the repo:
   `1200`.
 - `voice.llm.tool_result_max_chars` trims very large realtime tool outputs
   before the continuation LLM request; the default is `12000`.
+- `voice.llm.speech_chunk_max_chars` caps each speakable LLM chunk before it
+  is sent to TTS. Sentence punctuation still wins, but long first sentences
+  are split on word boundaries so first audio does not wait for a large clause;
+  the default is `72`.
 - `voice.llm.model` remains the manifest-owned Anvil router preset. Realtime
   clients may send `session.model`, but Anvil Voice does not let that field
   override local routing.
@@ -316,15 +320,26 @@ anvil-serving harness sync openclaw \
   --base-url http://100.87.34.66:8000/v1 \
   --voice \
   --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
+  --voice-consult-model anvil/chat-fast \
+  --voice-consult-thinking-level off \
+  --voice-consult-bootstrap-context-mode lightweight \
   --out ./openclaw.anvil.json
 ```
 
 The generated Talk config selects the OpenClaw provider id `anvil` and points
-it at the Anvil Voice Realtime server:
+it at the Anvil Voice Realtime server. It also pins forced OpenClaw agent
+consults to the low-latency `anvil/chat-fast` preset and disables consult
+thinking for lower spoken-turn latency. It also keeps forced consults on
+OpenClaw's lightweight bootstrap path so workspace bootstrap files such as
+`MEMORY.md` are not injected into every spoken turn, without changing the
+session's normal selected model:
 
 ```json5
 {
   talk: {
+    consultModel: "anvil/chat-fast",
+    consultThinkingLevel: "off",
+    consultBootstrapContextMode: "lightweight",
     realtime: {
       mode: "realtime",
       transport: "gateway-relay",
@@ -342,6 +357,17 @@ it at the Anvil Voice Realtime server:
   }
 }
 ```
+
+`--voice-consult-model` is optional when the router config exposes the
+`chat-fast` preset; `harness sync openclaw --voice` selects `anvil/chat-fast`
+by default and falls back to `anvil/chat` if the preset is absent. Pass
+`--voice-consult-model anvil/chat` to switch the forced consult path back to
+the standard chat preset. `--voice-consult-thinking-level` defaults to `off`
+so old Talk configs that carried `consultThinkingLevel: "low"` are reset during
+sync; raise it only when an operator deliberately trades latency for reasoning.
+`--voice-consult-bootstrap-context-mode` defaults to `lightweight` and replaces
+stale `talk.consultBootstrapContextMode` values during sync; set it to `full`
+only when the voice workflow needs the normal OpenClaw agent bootstrap context.
 
 Same-host Anvil Voice can omit a realtime token. If the Realtime server binds
 to a private/tailnet address, set `voice.realtime_token_env` in the voice
@@ -373,9 +399,27 @@ Use `voice benchmark` for a quick configured end-to-end sample:
 anvil-serving voice benchmark --config examples/voice/fakoli-mini.toml
 ```
 
-The JSON output includes first-audio latency, total turn latency, STT WER, TTS
-RTF, output byte counts, and the observed STT/LLM text. This is a smoke
-measurement, not a promotion gate.
+The JSON output includes first-audio latency, total turn latency, STT/LLM/TTS
+stage durations, STT WER, TTS RTF, output byte counts, and the observed
+STT/LLM text. This is a smoke measurement, not a promotion gate.
+
+For live Realtime Talk sessions, `voice run` also emits redacted
+`voice_stage_timing` log lines for the core `stt`, `llm`, and `tts` stages.
+Use those lines to attribute latency without exposing prompts or transcripts:
+
+```text
+voice_stage_timing stage=llm input_type=GenerateRequest turn_id=rt-turn-7 generation=12 text_chars=84 elapsed_ms=912.4 first_output_ms=488.1 output_count=2 error=false
+```
+
+`elapsed_ms` is the full stage duration for that input. `first_output_ms`
+shows when the first downstream item was available, which is the useful value
+for perceived first-audio latency in streaming LLM and TTS stages. Text values
+are logged as character counts only.
+
+If `tts first_output_ms` is high for a large `text_chars` value, lower
+`voice.llm.speech_chunk_max_chars` in the active voice profile before changing
+models. That keeps the same answer path but starts TTS on smaller word-boundary
+chunks.
 
 For the 16 GB Mini proof, use the hardware validation harness:
 

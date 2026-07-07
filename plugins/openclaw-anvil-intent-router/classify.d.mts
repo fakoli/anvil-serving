@@ -2,10 +2,16 @@
 // Lets index.ts import a typed `classify` while the implementation stays plain
 // ESM so `node make-fixture.mjs` runs without transpilation.
 
-// The CLOSED preset enum = the automatic OpenClaw classifier vocabulary.
-// The router may expose additional manual presets such as "chat-fast"; this
-// plugin does not currently emit them automatically.
-export type AnvilPreset = "planning" | "quick-edit" | "review" | "chat" | "long-context";
+// The CLOSED preset enum = anvil's wire vocabulary. The heuristic does not
+// emit "chat-fast" automatically, but the hook can honor it from OpenClaw's
+// explicit runtime model context.
+export type AnvilPreset =
+  | "planning"
+  | "quick-edit"
+  | "review"
+  | "chat"
+  | "chat-fast"
+  | "long-context";
 
 export declare const PRESETS: readonly AnvilPreset[];
 

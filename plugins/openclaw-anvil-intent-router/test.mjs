@@ -26,6 +26,7 @@ import {
   getRouteEndpoint,
   getRouteTimeoutMs,
   makeRoutingDecision,
+  resolveExplicitAnvilPresetFromContext,
   resolveRouteAuthToken,
 } from "./route.mjs";
 
@@ -67,7 +68,7 @@ describe("makeRoutingDecision — local presets → anvil with correct wire form
   // LIVE-CONFIRMED wire form (OpenClaw 2026.6.6, 2026-06-30):
   //   providerOverride MUST name the provider separately;
   //   modelOverride carries the BARE preset (not "anvil/<preset>").
-  for (const preset of ["chat", "quick-edit", "review", "long-context"]) {
+  for (const preset of ["chat", "chat-fast", "quick-edit", "review", "long-context"]) {
     test(`${preset} → { providerOverride:"anvil", modelOverride:"${preset}" }`, () => {
       const result = makeRoutingDecision(preset, DEFAULT_CLOUD_CLASSES);
       assert.deepEqual(result, {
@@ -76,6 +77,45 @@ describe("makeRoutingDecision — local presets → anvil with correct wire form
       });
     });
   }
+});
+
+describe("resolveExplicitAnvilPresetFromContext — OpenClaw runtime model context", () => {
+  test("honors bare chat-fast when provider context is anvil", () => {
+    assert.equal(
+      resolveExplicitAnvilPresetFromContext({
+        modelProviderId: "anvil",
+        modelId: "chat-fast",
+      }),
+      "chat-fast",
+    );
+  });
+
+  test("honors provider-qualified anvil/chat-fast model ids", () => {
+    assert.equal(
+      resolveExplicitAnvilPresetFromContext({
+        modelProviderId: "anthropic",
+        modelId: "anvil/chat-fast",
+      }),
+      "chat-fast",
+    );
+  });
+
+  test("ignores non-anvil providers and unknown anvil models", () => {
+    assert.equal(
+      resolveExplicitAnvilPresetFromContext({
+        modelProviderId: "anthropic",
+        modelId: "chat-fast",
+      }),
+      undefined,
+    );
+    assert.equal(
+      resolveExplicitAnvilPresetFromContext({
+        modelProviderId: "anvil",
+        modelId: "not-a-preset",
+      }),
+      undefined,
+    );
+  });
 });
 
 // ── getCloudClasses — env var override ──────────────────────────────────────
