@@ -325,6 +325,14 @@ def test_sentence_batcher_hard_splits_long_tokens_at_bound():
     assert b.flush() == "klmno rest"
 
 
+def test_sentence_batcher_avoids_tiny_trailing_split_tail():
+    b = SentenceBatcher(max_chars=56)
+    text = "aaaaaaaaaa bbbbbbbbbb cccccccccc dddddddddd eeeeeeeeee fffff"
+
+    assert b.feed(text) == ["aaaaaaaaaa bbbbbbbbbb cccccccccc dddddddddd"]
+    assert b.flush() == "eeeeeeeeee fffff"
+
+
 # --------------------------------------------------------------------------- #
 # LLMStage: sentence-batched output + cancel_scope integration
 # --------------------------------------------------------------------------- #
