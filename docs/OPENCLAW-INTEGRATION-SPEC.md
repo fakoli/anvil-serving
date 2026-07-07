@@ -243,6 +243,8 @@ Gateway relay:
 {
   talk: {
     consultModel: "anvil/chat-fast",
+    consultThinkingLevel: "off",
+    consultBootstrapContextMode: "lightweight",
     realtime: {
       mode: "realtime",
       transport: "gateway-relay",
@@ -280,11 +282,18 @@ anvil-serving harness sync openclaw \
   --voice \
   --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
   --voice-consult-model anvil/chat-fast \
+  --voice-consult-thinking-level off \
+  --voice-consult-bootstrap-context-mode lightweight \
   --out ./openclaw.anvil.json
 ```
 
 Use `--voice-consult-model anvil/chat` when an operator intentionally wants to
 switch forced voice consults back to the standard chat preset.
+`--voice-consult-thinking-level` defaults to `off` for lower spoken-turn
+latency and replaces stale `talk.consultThinkingLevel` values during sync.
+`--voice-consult-bootstrap-context-mode` defaults to `lightweight` so forced
+Talk consults skip workspace bootstrap-file injection; set it to `full` only
+when a voice workflow needs the normal OpenClaw agent bootstrap context.
 
 Loopback Anvil Voice can omit a realtime bearer token. A private/tailnet
 Realtime bind must set `voice.realtime_token_env` in the voice manifest and

@@ -317,18 +317,25 @@ anvil-serving harness sync openclaw \
   --voice \
   --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
   --voice-consult-model anvil/chat-fast \
+  --voice-consult-thinking-level off \
+  --voice-consult-bootstrap-context-mode lightweight \
   --out ./openclaw.anvil.json
 ```
 
 The generated Talk config selects the OpenClaw provider id `anvil` and points
 it at the Anvil Voice Realtime server. It also pins forced OpenClaw agent
-consults to the low-latency `anvil/chat-fast` preset without changing the
+consults to the low-latency `anvil/chat-fast` preset and disables consult
+thinking for lower spoken-turn latency. It also keeps forced consults on
+OpenClaw's lightweight bootstrap path so workspace bootstrap files such as
+`MEMORY.md` are not injected into every spoken turn, without changing the
 session's normal selected model:
 
 ```json5
 {
   talk: {
     consultModel: "anvil/chat-fast",
+    consultThinkingLevel: "off",
+    consultBootstrapContextMode: "lightweight",
     realtime: {
       mode: "realtime",
       transport: "gateway-relay",
@@ -351,7 +358,12 @@ session's normal selected model:
 `chat-fast` preset; `harness sync openclaw --voice` selects `anvil/chat-fast`
 by default and falls back to `anvil/chat` if the preset is absent. Pass
 `--voice-consult-model anvil/chat` to switch the forced consult path back to
-the standard chat preset.
+the standard chat preset. `--voice-consult-thinking-level` defaults to `off`
+so old Talk configs that carried `consultThinkingLevel: "low"` are reset during
+sync; raise it only when an operator deliberately trades latency for reasoning.
+`--voice-consult-bootstrap-context-mode` defaults to `lightweight` and replaces
+stale `talk.consultBootstrapContextMode` values during sync; set it to `full`
+only when the voice workflow needs the normal OpenClaw agent bootstrap context.
 
 Same-host Anvil Voice can omit a realtime token. If the Realtime server binds
 to a private/tailnet address, set `voice.realtime_token_env` in the voice

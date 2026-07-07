@@ -451,14 +451,19 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
      --base-url http://100.87.34.66:8000/v1 \
      --voice \
      --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
+     --voice-consult-thinking-level off \
+     --voice-consult-bootstrap-context-mode lightweight \
      --out ./openclaw.anvil.json
    ```
 
    The generated `talk.realtime` config must select provider `anvil`,
    transport `gateway-relay`, brain `agent-consult`, consult routing
    `force-agent-consult`, and the same Anvil Voice WebSocket URL that
-   `voice run` binds. For a private/tailnet Realtime bind, keep the bearer
-   token in an env var and pass only its name with `--voice-api-key-env`.
+   `voice run` binds. The generated Talk consult defaults to
+   `consultThinkingLevel: "off"` and `consultBootstrapContextMode:
+   "lightweight"` for lower spoken-turn latency. For a private/tailnet
+   Realtime bind, keep the bearer token in an env var and pass only its name
+   with `--voice-api-key-env`.
 
 7. Collect evidence.
 

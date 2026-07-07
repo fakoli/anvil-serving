@@ -189,6 +189,13 @@ def test_tools_list_has_json_schemas():
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice"]["type"] == "boolean"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice_api_key_env"]["type"] == "string"
     assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice_consult_model"]["type"] == "string"
+    assert tools["openclaw_sync"]["inputSchema"]["properties"]["voice_consult_thinking_level"]["type"] == "string"
+    assert (
+        tools["openclaw_sync"]["inputSchema"]["properties"][
+            "voice_consult_bootstrap_context_mode"
+        ]["type"]
+        == "string"
+    )
     assert tools["voice_manage"]["inputSchema"]["required"] == ["action"]
     assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
     assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
@@ -565,6 +572,8 @@ def test_openclaw_sync_preview_can_include_voice(tmp_path):
     assert preview["voice_realtime_url"] == "ws://127.0.0.1:8765/v1/realtime"
     assert preview["voice_model"] == "fast-local"
     assert preview["voice_consult_model"] == "anvil/chat-fast"
+    assert preview["voice_consult_thinking_level"] == "off"
+    assert preview["voice_consult_bootstrap_context_mode"] == "lightweight"
 
 
 def test_openclaw_sync_confirmed_apply_forwards_skills(tmp_path, monkeypatch):
@@ -615,6 +624,8 @@ def test_openclaw_sync_confirmed_apply_forwards_voice(tmp_path, monkeypatch):
         "voice_realtime_url": "ws://127.0.0.1:8765/v1/realtime",
         "voice_model": "fast-local",
         "voice_consult_model": "anvil/chat",
+        "voice_consult_thinking_level": "low",
+        "voice_consult_bootstrap_context_mode": "full",
         "voice_api_key_env": "ANVIL_VOICE_REALTIME_TOKEN",
         "confirm": True,
         "dry_run": False,
@@ -626,6 +637,8 @@ def test_openclaw_sync_confirmed_apply_forwards_voice(tmp_path, monkeypatch):
     assert seen["kwargs"]["voice_realtime_url"] == "ws://127.0.0.1:8765/v1/realtime"
     assert seen["kwargs"]["voice_model"] == "fast-local"
     assert seen["kwargs"]["voice_consult_model"] == "anvil/chat"
+    assert seen["kwargs"]["voice_consult_thinking_level"] == "low"
+    assert seen["kwargs"]["voice_consult_bootstrap_context_mode"] == "full"
     assert seen["kwargs"]["voice_api_key_env"] == "ANVIL_VOICE_REALTIME_TOKEN"
 
 

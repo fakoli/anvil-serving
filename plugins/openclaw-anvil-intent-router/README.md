@@ -270,6 +270,10 @@ only.
    example is Anvil Voice Talk consults with `talk.consultModel:
    "anvil/chat-fast"`: the hook resolves `chat-fast`, returns the bare
    `modelOverride`, and marks the decision source as `openclaw-context`.
+   The Anvil Serving voice sync also renders `talk.consultThinkingLevel: "off"`
+   and `talk.consultBootstrapContextMode: "lightweight"` by default so those
+   consults do not inherit stale low-reasoning latency or inject large workspace
+   bootstrap files into each spoken turn.
 4. **Configure the native route — REQUIRED for cloud-preferred preset routing (T008).**
    Cloud-preferred presets use this explicit provider/model instead of falling
    through to `agents.defaults.model.primary`:
