@@ -42,7 +42,7 @@ The initial checked-in entry points are:
 | Harness | Entry point | Purpose |
 |---|---|---|
 | Codex | `.agents/skills/anvil-serving-workbench/SKILL.md` | Repo-scoped portable workbench skill. |
-| Codex | `.codex/agents/anvil-*.toml` | Custom sub-agent roles with model-tier hints. |
+| Codex | `.codex/agents/anvil-*.md` | Custom sub-agent roles with model-tier hints. |
 | Claude Code | `.claude/skills/anvil-serving-workbench/SKILL.md` | Project skill using the same workbench contract. |
 | Claude Code | `.claude/agents/anvil-*.md` | Project sub-agents for orchestration, inventory, route analysis, serve/preflight/benchmark/evidence slices, and independent review. |
 | OpenClaw | `examples/openclaw/skills/anvil-serving-workbench/SKILL.md` | Installable skill directory or `skills.load.extraDirs` source. |
