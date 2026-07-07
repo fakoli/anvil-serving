@@ -311,6 +311,7 @@ def test_accepts_llm_history_limits():
     data = _valid_manifest()
     data["voice"]["llm"]["history_max_turns"] = 0
     data["voice"]["llm"]["history_max_message_chars"] = 128
+    data["voice"]["llm"]["tool_result_max_chars"] = 4096
     voice_config.validate_manifest(data)
 
 
@@ -339,6 +340,13 @@ def test_rejects_negative_llm_tool_call_max_rounds():
     data = _valid_manifest()
     data["voice"]["llm"]["tool_call_max_rounds"] = -1
     with pytest.raises(voice_config.ConfigError, match="nonnegative"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_nonpositive_llm_tool_result_max_chars():
+    data = _valid_manifest()
+    data["voice"]["llm"]["tool_result_max_chars"] = 0
+    with pytest.raises(voice_config.ConfigError, match="positive"):
         voice_config.validate_manifest(data)
 
 

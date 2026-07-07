@@ -96,6 +96,7 @@ class LLMToolCall(StageMessage):
     call_id: str
     name: str
     arguments: str
+    output_index: int = 0
 
 
 @dataclass(frozen=True)

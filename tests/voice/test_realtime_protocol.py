@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from anvil_serving.voice.messages import AudioOut, EndOfResponse, LLMChunk, Transcription
+from anvil_serving.voice.messages import AudioOut, EndOfResponse, LLMChunk, LLMToolCall, Transcription
 from anvil_serving.voice.stages.vad import SpeechEvent
 from anvil_serving.voice.realtime.events import (
     ConversationItemCreate,
@@ -23,8 +23,12 @@ from anvil_serving.voice.realtime.events import (
     ResponseAudioDelta,
     ResponseAudioTranscriptDelta,
     ResponseDone,
+    ResponseFunctionCallArgumentsDone,
+    ResponseOutputItemAdded,
+    ResponseOutputItemDone,
     SessionUpdate,
     ConversationItemCreated,
+    ConversationItemDone,
     dispatch_internal_event,
     make_error_event,
     parse_client_event,
@@ -149,6 +153,33 @@ def test_dispatch_audio_out_to_response_audio_delta_base64():
     import base64
 
     assert base64.b64decode(events[0].delta) == b"\x01\x02\x03"
+
+
+def test_dispatch_llm_tool_call_to_standard_and_compat_realtime_events():
+    msg = LLMToolCall(
+        turn_id="t1",
+        turn_revision=0,
+        generation=1,
+        item_id="call_1",
+        call_id="call_1",
+        name="openclaw_agent_consult",
+        arguments='{"question":"weather"}',
+    )
+
+    events = dispatch_internal_event(msg, response_id="resp_1")
+
+    assert [type(event) for event in events] == [
+        ResponseOutputItemAdded,
+        ResponseFunctionCallArgumentsDone,
+        ResponseOutputItemDone,
+        ConversationItemDone,
+    ]
+    assert events[0].response_id == "resp_1"
+    assert events[0].item["type"] == "function_call"
+    assert events[1].call_id == "call_1"
+    assert events[1].arguments == '{"question":"weather"}'
+    assert events[2].item["status"] == "completed"
+    assert events[3].item["call_id"] == "call_1"
 
 
 def test_dispatch_end_of_response_to_response_done():
