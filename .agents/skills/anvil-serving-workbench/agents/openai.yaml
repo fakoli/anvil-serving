@@ -1,7 +1,7 @@
 interface:
   display_name: "Anvil Serving Workbench"
-  short_description: "Operate anvil-serving through MCP-backed playbooks."
-  default_prompt: "Use $anvil-serving-workbench to inspect status, choose a safe playbook, and produce an evidence packet."
+  short_description: "MCP playbooks and benchmark evidence."
+  default_prompt: "Use $anvil-serving-workbench to inspect status, choose a safe playbook, run bounded evidence checks when needed, and produce an operator packet."
 
 dependencies:
   tools:
