@@ -453,7 +453,7 @@ describe("fixture generation", () => {
         stdio: "pipe",
       });
       const after = readFileSync(fixturePath, "utf8");
-      assert.equal(after, before);
+      assert.equal(after.replace(/\r\n/g, "\n"), before.replace(/\r\n/g, "\n"));
     } finally {
       writeFileSync(fixturePath, before);
     }

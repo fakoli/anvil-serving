@@ -1011,9 +1011,43 @@ def test_fakoli_agentic_config_loads():
     cfg = load(str(FAKOLI_AGENTIC))
     assert isinstance(cfg, RouterConfig)
     assert {t.id for t in cfg.tiers} == {"fast-local", "heavy-local"}
+    assert cfg.profile_path is None
+    assert cfg.presets == {
+        "chat": ("heavy-local", "fast-local"),
+        "chat-fast": ("fast-local", "heavy-local"),
+        "quick-edit": ("heavy-local", "fast-local"),
+        "review": ("heavy-local",),
+        "planning": ("heavy-local",),
+        "long-context": ("heavy-local",),
+    }
     # It carries none of the flexibility:T007 engine fields (unchanged live config).
     for t in cfg.tiers:
         assert t.engine is None and t.quantization is None
+    fast = cfg.tier("fast-local")
+    heavy = cfg.tier("heavy-local")
+    assert fast.model == "qwen36-27b"
+    assert fast.base_url == "http://host.docker.internal:30003/v1"
+    assert fast.context_limit == 32768
+    assert dict(fast.extra_body or {}) == {"chat_template_kwargs": {"enable_thinking": False}}
+    assert fast.extra_body_defaults is None
+    assert heavy.model == "gpt-oss-120b"
+    assert heavy.base_url == "http://host.docker.internal:30002/v1"
+    assert heavy.context_limit == 131072
+    assert heavy.extra_body is None
+    assert dict(heavy.extra_body_defaults or {}) == {"reasoning_effort": "high"}
+    assert cfg.tier("fast-local").params == {
+        "generation_probe_max_tokens": 48,
+        "interaction_benchmark_max_tokens": 192,
+        "interaction_benchmark_stream_max_tokens": 128,
+    }
+    assert cfg.tier("heavy-local").params == {
+        "generation_probe_max_tokens": 256,
+        "interaction_benchmark_max_tokens": 1024,
+        "interaction_benchmark_stream_max_tokens": 512,
+        "interaction_benchmark_reasoning_effort": "low",
+        "interaction_benchmark_max_tokens_by_intent": {"planning": 2048},
+        "interaction_benchmark_stream_max_tokens_by_intent": {"planning": 1024},
+    }
 
 
 def test_fakoli_flexibility_config_loads():

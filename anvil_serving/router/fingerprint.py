@@ -36,6 +36,21 @@ from .profile_store import ProfileStore
 #: with a new-scheme one).
 FINGERPRINT_SCHEMA = "anvil-serving.router.fingerprint/v1"
 
+# ``Tier.params`` is part of the serve identity because it can carry
+# quality-affecting serve/sampling metadata. Some keys are deliberately
+# smoke/eval-only recipe metadata: changing them should make benchmark tooling
+# more repeatable, but must not stale measured profile rows.
+FINGERPRINT_IGNORED_PARAM_KEYS = frozenset(
+    {
+        "generation_probe_max_tokens",
+        "interaction_benchmark_max_tokens",
+        "interaction_benchmark_stream_max_tokens",
+        "interaction_benchmark_reasoning_effort",
+        "interaction_benchmark_max_tokens_by_intent",
+        "interaction_benchmark_stream_max_tokens_by_intent",
+    }
+)
+
 # The serve-identity fields that feed the digest, as ``canonical_key -> synonyms``.
 # A spec may be a Mapping or any object with these as attributes (e.g. a
 # config.Tier); the FIRST synonym that resolves to a non-None value wins. Only
@@ -105,6 +120,14 @@ def identity(spec: Any, *, mode: Optional[str] = None) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for canonical, names in IDENTITY_FIELDS:
         value = _resolve(spec, names)
+        if canonical == "params" and isinstance(value, Mapping):
+            value = {
+                key: item
+                for key, item in value.items()
+                if str(key) not in FINGERPRINT_IGNORED_PARAM_KEYS
+            }
+            if not value:
+                value = None
         if value is not None:
             out[canonical] = value
     if mode is not None:

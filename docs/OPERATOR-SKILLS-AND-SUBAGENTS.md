@@ -76,6 +76,25 @@ openclaw skills install /tmp/anvil-serving-workbench-skill --as anvil-serving-wo
 from `/Users/sdoumbouya/.openclaw/workspace/skills/anvil-serving-workbench` with
 `eligible`, `modelVisible`, `userInvocable`, and `commandVisible` all `true`.
 
+## OpenClaw COLO Interaction Benchmark
+
+The repeatable Mini-to-Dark interaction benchmark is summarized in
+[`docs/findings/2026-07-07-openclaw-colo-interaction-benchmark.md`](findings/2026-07-07-openclaw-colo-interaction-benchmark.md).
+It is the site/blog citation source for the current OpenClaw-gateway-host to
+anvil-serving router flow: 10/10 direct router benchmark requests completed
+with HTTP 200, all finish reasons were `stop`, no warnings were recorded,
+latency p50 was 407.6 ms, latency p95 was 1041.9 ms, streaming TTFT p50 was
+411.9 ms, and exact-generation throughput p50 was 85.37 tokens/sec on the
+bounded prompts.
+
+Workbench skills should treat this as an evidence workflow, not a promotion
+shortcut. The measurement knobs belong in router tier `params` with the model
+recipe: generation probe cap, exact benchmark cap, stream benchmark cap,
+benchmark reasoning effort, and per-intent overrides such as the larger
+`planning` cap. A model swap should update those tier params and rerun
+`examples/openclaw/colo_smoke.py --run-interaction-benchmark`; it should not
+require editing a skill, plugin, or benchmark prompt.
+
 ## Implemented Now
 
 `anvil-serving mcp --list-tools` currently exposes:

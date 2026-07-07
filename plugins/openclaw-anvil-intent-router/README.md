@@ -318,6 +318,34 @@ Tests cover:
   behavior, with env-var precedence
 - Wire-form assertion: `modelOverride` is bare preset, never `"anvil/<preset>"`
 
+## Release smoke/eval
+
+After changing plugin routing behavior, OpenClaw provider config, router
+presets, or a tier/model recipe, run the COLO smoke/eval from the repo root.
+The plugin should stay a thin intent adapter; benchmark dimensions live in the
+router config tier `params`, not in plugin constants.
+
+```bash
+python examples/openclaw/colo_smoke.py \
+  --live \
+  --gateway-host fakoli-mini \
+  --router-base-url http://100.87.34.66:8000/v1 \
+  --run-generations \
+  --run-interaction-benchmark \
+  --artifact .anvil/evidence/openclaw-colo-live-interactions.json \
+  --pretty
+```
+
+The repeatable interaction benchmark launches direct-router prompts from the
+OpenClaw gateway host. It records route provider/model from companion
+`/v1/route` probes, exact usage tokens, streaming TTFT, latency, finish reasons,
+and the applied recipe for `chat-fast`, `quick-edit`, `review`, `planning`, and
+`long-context`. It validates gateway-to-router reachability and router behavior;
+it does not by itself prove OpenClaw's full provider attempt loop. For
+publishable numbers, create or update a findings note under `docs/findings/`;
+the current live citation is
+`docs/findings/2026-07-07-openclaw-colo-interaction-benchmark.md`.
+
 ## LIVE validation
 
 > **Status: core wire/cadence behavior is live-confirmed.** The live validation record confirmed the
