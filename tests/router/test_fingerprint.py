@@ -74,6 +74,27 @@ def test_fingerprint_ignores_non_identity_fields():
     assert set(identity(noisy)) == {"tier_id", "model", "endpoint", "dialect"}
 
 
+def test_smoke_eval_params_do_not_stale_quality_fingerprint():
+    base = {"id": "t", "model": "m", "base_url": "http://x", "dialect": "openai"}
+    benchmark_recipe = dict(
+        base,
+        params={
+            "generation_probe_max_tokens": 256,
+            "interaction_benchmark_max_tokens": 1024,
+            "interaction_benchmark_stream_max_tokens": 512,
+            "interaction_benchmark_reasoning_effort": "low",
+            "interaction_benchmark_max_tokens_by_intent": {"planning": 2048},
+            "interaction_benchmark_stream_max_tokens_by_intent": {"planning": 1024},
+        },
+    )
+    assert serve_fingerprint(benchmark_recipe) == serve_fingerprint(base)
+    assert "params" not in identity(benchmark_recipe)
+
+    quality_param = dict(base, params={"temperature": 0.1})
+    assert serve_fingerprint(quality_param) != serve_fingerprint(base)
+    assert identity(quality_param)["params"] == {"temperature": 0.1}
+
+
 def test_fingerprint_accepts_tier_object_and_hashes_only_identity():
     t1 = Tier(
         id="fast-local",
