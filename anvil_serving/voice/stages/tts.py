@@ -54,7 +54,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
 from ..cancel_scope import CancelScope
-from ..messages import AudioOut, EndOfResponse, TTSInput
+from ..messages import AudioOut, EndOfResponse, LLMToolCall, TTSInput
 from .base import BaseStage
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8091/v1"
@@ -249,7 +249,7 @@ class TTSStage(BaseStage):
         self._stream_fn: StreamFn = stream_fn or stream_speech
 
     def process(self, item: Any):
-        if isinstance(item, EndOfResponse):
+        if isinstance(item, (EndOfResponse, LLMToolCall)):
             yield item
             return
         if not isinstance(item, TTSInput):
