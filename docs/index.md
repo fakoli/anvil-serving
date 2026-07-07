@@ -112,6 +112,7 @@ See [Terminology](TERMINOLOGY.md) for the naming guide.
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Tune thinking/sampling behavior for a served model. |
 | [Serves & eval](SERVES-AND-EVAL.md) | Manage model serves and run evals. |
 | [Voice pipeline](VOICE.md) | Run native voice commands, multi-device audio/LLM topology, Realtime server, and benchmarks. |
+| [OpenClaw Anvil Voice extension](OPENCLAW-ANVIL-VOICE.md) | Operate the OpenClaw speech-to-speech provider backed by Anvil Serving. |
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Use the reference gateway integration. |
 | [OpenClaw operations ADRs](adr/0013-openclaw-layers-and-mcp-control-plane.md) | Understand hook, router, MCP, and tailnet-controller layers. |
