@@ -126,17 +126,21 @@ def _split_for_tts(text: str, *, max_chars: int = MAX_TTS_TEXT_CHARS) -> Iterato
         yield current
 
 
-def _llm_reply_and_tts_chunks(llm_deltas: Iterator[str]) -> tuple[str, list[str]]:
+def _llm_reply_and_tts_chunks(
+    llm_deltas: Iterator[str], *, speech_chunk_max_chars: int = MAX_TTS_TEXT_CHARS,
+) -> tuple[str, list[str]]:
     reply_text = ""
     tts_texts: list[str] = []
-    batcher = SentenceBatcher()
+    batcher = SentenceBatcher(max_chars=speech_chunk_max_chars)
     for delta in llm_deltas:
         reply_text += delta
         for sentence in batcher.feed(delta):
-            tts_texts.extend(_split_for_tts(sentence))
-    trailing = batcher.flush()
-    if trailing:
-        tts_texts.extend(_split_for_tts(trailing))
+            tts_texts.extend(_split_for_tts(sentence, max_chars=speech_chunk_max_chars))
+    tts_texts.extend(
+        chunk
+        for trailing in batcher.flush_chunks()
+        for chunk in _split_for_tts(trailing, max_chars=speech_chunk_max_chars)
+    )
     return reply_text, tts_texts
 
 
@@ -183,7 +187,10 @@ def run_benchmark(
     t_stt_end = clock()
 
     t_llm_start = t_stt_end
-    reply_text, tts_texts = _llm_reply_and_tts_chunks(llm_fn(hypothesis, llm_config))
+    reply_text, tts_texts = _llm_reply_and_tts_chunks(
+        llm_fn(hypothesis, llm_config),
+        speech_chunk_max_chars=llm_config.speech_chunk_max_chars,
+    )
     t_llm_end = clock()
 
     t_tts_start = t_llm_end

@@ -232,7 +232,7 @@ def test_run_benchmark_splits_long_tts_text_on_words():
 
     run_benchmark(
         stt_config=STTStageConfig(),
-        llm_config=LLMStageConfig(),
+        llm_config=LLMStageConfig(speech_chunk_max_chars=48),
         tts_config=TTSStageConfig(),
         pcm=b"\x00\x00",
         sample_rate=16000,
@@ -246,6 +246,32 @@ def test_run_benchmark_splits_long_tts_text_on_words():
     assert len(seen) > 1
     assert all(len(chunk) <= 48 for chunk in seen)
     assert " ".join(seen) == long_reply
+
+
+def test_run_benchmark_uses_llm_speech_chunk_limit_for_tts_requests():
+    def fake_stt(pcm, sample_rate, config):
+        yield ("a", True)
+
+    seen = []
+
+    def fake_tts(text, config):
+        seen.append(text)
+        yield b"\x00\x00"
+
+    run_benchmark(
+        stt_config=STTStageConfig(),
+        llm_config=LLMStageConfig(speech_chunk_max_chars=12),
+        tts_config=TTSStageConfig(),
+        pcm=b"\x00\x00",
+        sample_rate=16000,
+        reference_text="a",
+        stt_stream_fn=fake_stt,
+        llm_stream_fn=lambda _text, _config: iter(["one two three four"]),
+        tts_stream_fn=fake_tts,
+        clock=lambda: 0.0,
+    )
+
+    assert seen == ["one two", "three four"]
 
 
 def test_run_benchmark_defaults_reference_text_when_not_supplied():

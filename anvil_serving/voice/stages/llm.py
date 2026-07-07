@@ -374,8 +374,6 @@ def _split_speakable_text(text: str, max_chars: int) -> List[str]:
     while len(remaining) > max_chars:
         cut = remaining.rfind(" ", 0, max_chars + 1)
         if cut <= 0:
-            cut = remaining.find(" ", max_chars)
-        if cut <= 0:
             cut = max_chars
         chunk = remaining[:cut].strip()
         if chunk:
@@ -400,9 +398,14 @@ class SentenceBatcher:
             raise ValueError("max_chars must be a positive integer")
         self.max_chars = max_chars
         self._buf = ""
+        self._pending_separator = False
 
     def feed(self, delta: str) -> List[str]:
         """Feed one text delta; return zero or more completed sentences."""
+        if delta and self._pending_separator and not delta[:1].isspace():
+            self._buf += " "
+        if delta:
+            self._pending_separator = False
         self._buf += delta
         out: List[str] = []
         parts = _SENTENCE_END_RE.split(self._buf)
@@ -415,6 +418,7 @@ class SentenceBatcher:
         return out
 
     def _drain_long_prefix(self) -> List[str]:
+        raw_had_trailing_space = bool(self._buf and self._buf[-1].isspace())
         cleaned = _normalize_speakable(self._buf)
         if len(cleaned) <= self.max_chars:
             return []
@@ -423,20 +427,20 @@ class SentenceBatcher:
         while len(cleaned) > self.max_chars:
             cut = cleaned.rfind(" ", 0, self.max_chars + 1)
             if cut <= 0:
-                cut = cleaned.find(" ", self.max_chars)
-            if cut <= 0:
                 cut = self.max_chars
             chunk = cleaned[:cut].strip()
             if chunk:
                 chunks.append(chunk)
             cleaned = cleaned[cut:].strip()
         self._buf = cleaned
+        self._pending_separator = raw_had_trailing_space and bool(self._buf)
         return chunks
 
     def flush_chunks(self) -> List[str]:
         """Return all trailing speakable chunks once the stream has ended."""
         chunks = _split_speakable_text(self._buf, self.max_chars)
         self._buf = ""
+        self._pending_separator = False
         return chunks
 
     def flush(self) -> Optional[str]:

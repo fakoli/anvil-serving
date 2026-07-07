@@ -312,6 +312,19 @@ def test_sentence_batcher_splits_long_prefix_without_sentence_end():
     assert b.flush() == "enough"
 
 
+def test_sentence_batcher_preserves_separator_after_long_prefix_boundary():
+    b = SentenceBatcher(max_chars=10)
+    assert b.feed("one two three and ") == ["one two"]
+    assert b.feed("then done") == ["three and"]
+    assert b.flush() == "then done"
+
+
+def test_sentence_batcher_hard_splits_long_tokens_at_bound():
+    b = SentenceBatcher(max_chars=10)
+    assert b.feed("abcdefghijklmno rest") == ["abcdefghij"]
+    assert b.flush() == "klmno rest"
+
+
 # --------------------------------------------------------------------------- #
 # LLMStage: sentence-batched output + cancel_scope integration
 # --------------------------------------------------------------------------- #

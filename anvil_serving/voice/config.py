@@ -469,6 +469,8 @@ def validate_manifest(data: dict) -> None:
         _nonnegative_int(llm, "tool_call_max_rounds")
     if "tool_result_max_chars" in llm:
         _positive_int(llm, "tool_result_max_chars")
+    if "speech_chunk_max_chars" in llm:
+        _positive_int(llm, "speech_chunk_max_chars")
 
     _validate_endpoint(data, "stt")
     _validate_endpoint(data, "tts")
