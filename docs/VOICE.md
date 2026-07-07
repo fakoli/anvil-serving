@@ -76,6 +76,8 @@ base_url = "http://127.0.0.1:8000/v1"
 model = "chat-fast"
 stream = true
 api_key_env = "ANVIL_ROUTER_TOKEN"
+history_max_turns = 8
+history_max_message_chars = 1200
 
 [voice.stt]
 base_url = "http://127.0.0.1:30010/v1"
@@ -110,6 +112,12 @@ Manifest hygiene follows the rest of the repo:
 - A non-loopback `realtime_host` requires `realtime_token_env`.
 - Use profiles for repeatable topology switches instead of copying manifests or
   maintaining one-off shell scripts.
+- `voice.llm.history_max_turns` controls session-local memory for completed
+  user/assistant turns. Set it to `0` for deterministic validation prompts or
+  lower it to cap prompt cost; the default is `8`.
+- `voice.llm.history_max_message_chars` trims each remembered user or assistant
+  message before it is replayed into the next LLM request; the default is
+  `1200`.
 
 For native audio endpoints, add the lifecycle metadata to the STT/TTS section:
 
@@ -233,6 +241,14 @@ Use `examples/voice/openclaw-anvil-voice.toml` for the Mini reference layout.
 It keeps the Realtime server and MLX Audio endpoints on the Mini loopback and
 routes the LLM turn to the Fakoli Dark router over the private address.
 It also declares profiles for repeatable switching:
+
+When OpenClaw sends realtime tools in `session.update`, Anvil Voice forwards
+them to the Chat Completions LLM request. If the model emits a function call,
+Anvil Voice surfaces it as `conversation.item.done` with
+`item.type = "function_call"`, waits for OpenClaw to submit the matching
+`function_call_output`, then resumes the same spoken response. This is the
+path used by OpenClaw's `openclaw_agent_consult` tool for normal agent tools,
+memory, workspace context, and current-information lookups.
 
 - `mini-audio`: Mini-local MLX Audio STT/TTS, with conversational LLM prompt.
 - `dark-audio`: Dark-host STT/TTS reached through private bridge ports
@@ -401,3 +417,6 @@ explicit confirmed call.
   manifest.
 - Router auth errors should be fixed by setting the env var named in
   `voice.llm.api_key_env`; do not paste token values into the manifest.
+- If the assistant forgets facts from the same Talk session, verify the active
+  profile is not setting `voice.llm.history_max_turns = 0`, then restart
+  `voice run` so the updated manifest is loaded.
