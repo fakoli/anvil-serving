@@ -1379,19 +1379,23 @@ def tool_serves_logs(args: dict) -> dict:
     })
 
 
-def _voice_cli_argv(action: str, config: str, *, dry_run: bool = False) -> list[str]:
+def _voice_cli_argv(action: str, config: str, *, dry_run: bool = False, profile: str = "") -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "voice", action, "--config", config]
+    if profile:
+        argv += ["--profile", profile]
     if dry_run:
         argv.append("--dry-run")
     return argv
 
 
-def _voice_manage_plan(config: str) -> dict:
+def _voice_manage_plan(config: str, *, profile: str = "") -> dict:
     from .voice import config as voice_config
     from .voice.serves import native as native_serve
 
     try:
-        data = voice_config.load_manifest(config)
+        raw = voice_config.load_raw_manifest(config)
+        available_profiles = voice_config.profile_names(raw)
+        data = voice_config.load_manifest(config, profile=profile) if profile else voice_config.load_manifest(config)
     except FileNotFoundError:
         raise ToolError("config_not_found", "voice manifest not found", {"config": config})
     except voice_config.ConfigError as exc:
@@ -1429,6 +1433,8 @@ def _voice_manage_plan(config: str) -> dict:
     return {
         "voice": voice.get("name", "anvil-voice"),
         "config": config,
+        "profile": profile or None,
+        "available_profiles": available_profiles,
         "audio_serves": audio,
     }
 
@@ -1441,15 +1447,17 @@ def tool_voice_manage(args: dict) -> dict:
         raise ToolError("bad_action", "action must be one of: up, down, start, stop", {"action": action})
     normalized = {"start": "up", "stop": "down"}.get(action, action)
     config = _str_arg(args, "config", voice_config.DEFAULT_CONFIG)
+    profile = _str_arg(args, "profile", "")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
-    plan = _voice_manage_plan(config)
+    plan = _voice_manage_plan(config, profile=profile)
     preview = dry_run or not confirm
-    argv = _voice_cli_argv(normalized, config, dry_run=preview)
+    argv = _voice_cli_argv(normalized, config, dry_run=preview, profile=profile)
     target = {
         "action": normalized,
         "config": config,
+        "profile": profile or None,
         "timeout_seconds": timeout_seconds,
     }
     if preview:
@@ -2178,10 +2186,11 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_serves_logs,
     },
     "voice_manage": {
-        "description": "Preview or run guarded voice STT/TTS lifecycle actions: up/down or start/stop aliases.",
+        "description": "Preview or run guarded voice STT/TTS lifecycle actions with optional voice profile selection.",
         "inputSchema": _schema({
             "action": {"type": "string", "enum": ["up", "down", "start", "stop"]},
             "config": {"type": "string"},
+            "profile": {"type": "string"},
             "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},
             "timeout_seconds": _bounded_integer_schema(1, 7200, 300),

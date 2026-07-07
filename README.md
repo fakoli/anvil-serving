@@ -128,7 +128,7 @@ Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
 | `anvil-serving benchmark` | Replay representative traffic and measure capacity. |
 | `anvil-serving external-bench` | Import and compare external inference benchmark priors. |
 | `anvil-serving harness sync openclaw` | Render OpenClaw model config from live router presets. |
-| `anvil-serving voice` | Manage STT/TTS lifecycle, run the local Realtime voice server, and benchmark voice turns. |
+| `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, and benchmark voice turns. |
 | `anvil-serving voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings. |
 | `anvil-serving mcp` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |

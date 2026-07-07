@@ -6,7 +6,9 @@ prints what it *would* do; no process is spawned, no network touched, no
 GPU/torch import happens anywhere in this module or its import chain.
 """
 import sys
+import socket
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
@@ -58,7 +60,7 @@ def test_help_lists_all_four_subcommands(capsys):
         voice_cli.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for sub in ("up", "start", "down", "stop", "run", "benchmark"):
+    for sub in ("up", "start", "down", "stop", "run", "benchmark", "profiles", "bridge"):
         assert sub in out
 
 
@@ -81,6 +83,221 @@ def test_start_stop_aliases_validate_and_report_ok(manifest_path, capsys):
     assert voice_cli.main(["stop", "--config", manifest_path]) == 0
     out = capsys.readouterr().out
     assert "test-voice" in out
+
+
+def test_profiles_command_lists_and_describes_profiles(tmp_path, capsys):
+    manifest = tmp_path / "voice_profiles.toml"
+    manifest.write_text(
+        VALID_MANIFEST
+        + """
+
+[voice.profiles.dark-audio.stt]
+base_url = "http://100.87.34.66:30110/v1"
+model = "tdt_ctc-110m"
+lifecycle = "external"
+
+[voice.profiles.dark-audio.tts]
+base_url = "http://100.87.34.66:30111/v1"
+model = "kokoro"
+lifecycle = "external"
+""",
+        encoding="utf-8",
+    )
+
+    assert voice_cli.main(["profiles", "--config", str(manifest)]) == 0
+    out = capsys.readouterr().out
+    assert "dark-audio" in out
+
+    assert voice_cli.main(["profiles", "--config", str(manifest), "--profile", "dark-audio"]) == 0
+    out = capsys.readouterr().out
+    assert "dark-audio OK" in out
+    assert "100.87.34.66:30110" in out
+
+
+def test_run_uses_selected_profile(tmp_path, monkeypatch):
+    manifest = tmp_path / "voice_profiles.toml"
+    manifest.write_text(
+        VALID_MANIFEST
+        + """
+
+[voice.profiles.dark-audio.stt]
+base_url = "http://100.87.34.66:30110/v1"
+model = "tdt_ctc-110m"
+lifecycle = "external"
+
+[voice.profiles.dark-audio.tts]
+base_url = "http://100.87.34.66:30111/v1"
+model = "kokoro"
+lifecycle = "external"
+""",
+        encoding="utf-8",
+    )
+    seen = {}
+
+    class _FakeServer:
+        server_address = ("127.0.0.1", 8765)
+
+        def shutdown(self):
+            pass
+
+        def server_close(self):
+            pass
+
+    class _FakeThread:
+        def join(self, timeout=None):
+            pass
+
+    class _FakePool:
+        size = 1
+
+    def _fake_build(data, voice):
+        seen["stt"] = voice["stt"]["base_url"]
+        seen["tts"] = voice["tts"]["base_url"]
+        return _FakeServer(), _FakePool()
+
+    monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
+    monkeypatch.setattr(voice_cli, "_build_realtime_server", _fake_build)
+    monkeypatch.setattr(voice_cli, "serve_forever_in_background", lambda server: _FakeThread())
+    monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
+
+    rc = voice_cli.main(["run", "--config", str(manifest), "--profile", "dark-audio"])
+
+    assert rc == 0
+    assert seen == {
+        "stt": "http://100.87.34.66:30110/v1",
+        "tts": "http://100.87.34.66:30111/v1",
+    }
+
+
+def test_bridge_dry_run_prints_default_routes(capsys):
+    rc = voice_cli.main(["bridge", "--dry-run"])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "stt 127.0.0.1:30110 -> 127.0.0.1:30010" in out
+    assert "tts 127.0.0.1:30111 -> 127.0.0.1:30011" in out
+
+
+def test_bridge_refuses_non_loopback_live_bind_without_ack(capsys):
+    rc = voice_cli.main(["bridge", "--listen-host", "100.87.34.66"])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "--i-understand-this-exposes-voice-audio" in err
+
+
+def test_bridge_refuses_wildcard_without_extra_ack(capsys):
+    rc = voice_cli.main([
+        "bridge",
+        "--listen-host", "0.0.0.0",
+        "--i-understand-this-exposes-voice-audio",
+    ])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "--allow-wildcard-listen" in err
+
+
+def test_bridge_rejects_public_ip_bind(capsys):
+    rc = voice_cli.main([
+        "bridge",
+        "--listen-host", "8.8.8.8",
+        "--i-understand-this-exposes-voice-audio",
+    ])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "public IP" in err
+
+
+def test_bridge_rejects_localhost_hostnames(capsys):
+    rc = voice_cli.main(["bridge", "--listen-host", "localhost", "--dry-run"])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "localhost" in err
+
+
+def test_bridge_calls_package_bridge_server(monkeypatch):
+    seen = {}
+
+    def fake_serve_forever(routes, *, log=None):
+        seen["routes"] = routes
+        if log:
+            log("test-ready")
+
+    monkeypatch.setattr(voice_cli.voice_bridge, "serve_forever", fake_serve_forever)
+
+    rc = voice_cli.main([
+        "bridge",
+        "--listen-host", "127.0.0.1",
+        "--stt-listen-port", "31110",
+        "--tts-listen-port", "31111",
+    ])
+
+    assert rc == 0
+    assert [route.name for route in seen["routes"]] == ["stt", "tts"]
+    assert seen["routes"][0].listen_port == 31110
+    assert seen["routes"][1].listen_port == 31111
+
+
+def _free_tcp_port():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+    finally:
+        sock.close()
+
+
+def test_bridge_module_forwards_bytes_over_loopback():
+    target = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    target.bind(("127.0.0.1", 0))
+    target.listen(1)
+    target_port = target.getsockname()[1]
+    bridge_port = _free_tcp_port()
+    stop_event = threading.Event()
+
+    def echo_once():
+        conn, _addr = target.accept()
+        with conn:
+            payload = conn.recv(64)
+            conn.sendall(b"echo:" + payload)
+        target.close()
+
+    echo_thread = threading.Thread(target=echo_once, daemon=True)
+    echo_thread.start()
+
+    route = voice_cli.voice_bridge.TCPBridgeRoute(
+        "test",
+        "127.0.0.1",
+        bridge_port,
+        "127.0.0.1",
+        target_port,
+    )
+    bridge_thread = threading.Thread(
+        target=voice_cli.voice_bridge.serve_until_stopped,
+        args=([route], stop_event),
+        daemon=True,
+    )
+    bridge_thread.start()
+
+    deadline = time.monotonic() + 3.0
+    last_error = None
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", bridge_port), timeout=1.0) as client:
+                client.sendall(b"ping")
+                assert client.recv(64) == b"echo:ping"
+            break
+        except OSError as exc:
+            last_error = exc
+            time.sleep(0.05)
+    else:
+        raise AssertionError("bridge did not accept a loopback connection: %s" % last_error)
+    stop_event.set()
+    bridge_thread.join(timeout=2.0)
+    echo_thread.join(timeout=2.0)
 
 
 @pytest.mark.parametrize("action", ["up", "down", "run", "benchmark"])
