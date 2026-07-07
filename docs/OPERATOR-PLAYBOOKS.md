@@ -50,6 +50,7 @@ resource and keep the same gate semantics.
 | Correctness gate | `preflight_probe` | `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
 | Throughput run | `benchmark_probe` for a bounded probe; `benchmark_artifact` when `--json-out` evidence is required | `anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
 | OpenClaw config sync | `openclaw_sync`, `openclaw_gateway_restart` | `anvil-serving harness sync openclaw --config <router.toml> ...`; `anvil-serving harness restart openclaw ...` |
+| OpenClaw COLO smoke/eval | Not exposed as MCP yet | `python examples/openclaw/colo_smoke.py --live --gateway-host fakoli-mini --router-base-url http://100.87.34.66:8000/v1 --artifact <file>` |
 | Human-gated promotion | `router_promote` preview; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
 
 Treat missing MCP tools as a product gap, not a reason to scrape Docker output
@@ -529,7 +530,151 @@ a restart.
    available to the operator. If not, report that config was synced but live
    gateway validation remains pending.
 
-## Playbook F: promotion evidence and stop gate
+## Playbook F: OpenClaw COLO smoke/eval
+
+Use this before treating a Fakoli Mini OpenClaw session as valid evidence for
+router behavior or model promotion. The smoke checks the gateway-to-router path,
+the intent plugin, the OpenClaw provider config, router auth, route decisions,
+deterministic capability cases, and optional generation performance.
+
+1. Start with the deterministic fixture run. It proves the artifact schema,
+   story-to-proof mapping, redaction, drift classification, and repair-preview
+   behavior without OpenClaw, SSH, Docker, live router tokens, or model serves.
+
+   ```bash
+   python examples/openclaw/colo_smoke.py \
+     --fixture \
+     --artifact .anvil/evidence/openclaw-colo-fixture.json \
+     --pretty
+   ```
+
+2. Run the live Mini-to-Dark smoke after the fixture passes.
+
+   ```bash
+   python examples/openclaw/colo_smoke.py \
+     --live \
+     --gateway-host fakoli-mini \
+     --router-base-url http://100.87.34.66:8000/v1 \
+     --artifact .anvil/evidence/openclaw-colo-live.json \
+     --pretty
+   ```
+
+   The runner reads only redacted gateway diagnostics. It records API-key shape
+   and env var names, but it must not persist literal router tokens or bearer
+   values. If the plugin or provider config is unavailable, the proof should
+   warn or fail explicitly rather than becoming an informal pass.
+   On macOS LaunchAgent installs, an env-ref provider key such as
+   `${ANVIL_ROUTER_TOKEN}` must be present in the gateway service environment,
+   not only the interactive SSH shell; validate from a process with that env and
+   keep literal router tokens out of `~/.openclaw/openclaw.json`.
+
+3. Add bounded generation probes only when performance evidence is required.
+
+   ```bash
+   python examples/openclaw/colo_smoke.py \
+     --live \
+     --gateway-host fakoli-mini \
+     --router-base-url http://100.87.34.66:8000/v1 \
+     --run-generations \
+     --heavy-generation-max-tokens 256 \
+     --expect-min-tokens-per-second <operator-threshold> \
+     --artifact .anvil/evidence/openclaw-colo-live-generations.json
+   ```
+
+   Treat latency, TTFT, and sentinel-output behavior as evidence for a later
+   recommendation. Exact usage tokens and tokens/sec come from the non-streaming
+   interaction benchmark below. They are not promotion by themselves, and they do not change
+   `[router].profile_path`, routing policy, model selection, or cloud settings.
+   Generation probe budgets are model/tier calibration data: the runner first
+   reads `params.generation_probe_max_tokens` from the routed tier in the router
+   config, then uses the CLI fast/heavy defaults as fallbacks. When the heavy
+   model changes, recalibrate and update the tier metadata so truncation failures
+   are explained by config rather than by a hidden runner constant.
+
+4. Add the repeatable interaction benchmark for release, recipe, or blog
+   evidence. This is heavier than the sentinel smoke: it launches fixed
+   direct-router prompts from the OpenClaw gateway host for `chat-fast`,
+   `quick-edit`, `review`, `planning`, and `long-context`; records
+   route provider/model from companion `/v1/route` probes, finish reasons,
+   exact usage tokens for non-streaming calls, and TTFT for streaming calls; and
+   applies the routed tier's recipe dimensions from `params`. These calls
+   validate gateway-to-router reachability and router behavior; they are not
+   full OpenClaw agent turns.
+
+   ```bash
+   python examples/openclaw/colo_smoke.py \
+     --live \
+     --gateway-host fakoli-mini \
+     --router-base-url http://100.87.34.66:8000/v1 \
+     --run-generations \
+     --run-interaction-benchmark \
+     --artifact .anvil/evidence/openclaw-colo-live-interactions.json \
+     --pretty
+   ```
+
+   Treat these fields as part of any new serve recipe or model swap:
+
+   ```toml
+   [[router.tiers]]
+   id = "heavy-local"
+
+   [router.tiers.params]
+   generation_probe_max_tokens = 256
+   interaction_benchmark_max_tokens = 1024
+   interaction_benchmark_stream_max_tokens = 512
+   interaction_benchmark_reasoning_effort = "low"
+   interaction_benchmark_max_tokens_by_intent = { planning = 2048 }
+   interaction_benchmark_stream_max_tokens_by_intent = { planning = 1024 }
+   ```
+
+   The router does not forward `params` upstream. They are repeatable recipe
+   metadata used by smoke/eval tooling. Runtime defaults that should affect all
+   callers still belong in `extra_body_defaults`; the benchmark can override
+   those defaults per request when a recipe needs a different measurement mode.
+
+5. When the run is for release notes, a blog post, or a public site page, create
+   or update a findings note under `docs/findings/` rather than copying raw JSON
+   into prose. The note should cite the artifact path, capture time, gateway,
+   router URL, route provider/model evidence, recipe dimensions, status counts,
+   finish reasons, latency p50/p95, TTFT p50/p95, exact output tokens, exact
+   tokens/sec p50/p95, warnings, and caveats. The live `2026-07-07` example is
+   [`docs/findings/2026-07-07-openclaw-colo-interaction-benchmark.md`](findings/2026-07-07-openclaw-colo-interaction-benchmark.md).
+
+6. Interpret the artifact by stories and proofs. A useful report should name
+   the failing or warning proof ids, the affected stories, the observed router
+   decisions, and whether paths were Anvil local, Anvil cloud, native OpenClaw,
+   or unknown. The expected top-level sections are `stories`, `proofs`,
+   `environment`, `openclaw_config`, `plugin_runtime`, `router_probes`,
+   `e2e_turns`, `benchmarks`, `interaction_benchmarks`, `drift`, `cloud_usage`,
+   `repair`, and `verdict`.
+
+7. Use repair mode only to preview the human-gated product command:
+
+   ```bash
+   python examples/openclaw/colo_smoke.py \
+     --live \
+     --gateway-host fakoli-mini \
+     --router-base-url http://100.87.34.66:8000/v1 \
+     --repair \
+     --artifact .anvil/evidence/openclaw-colo-repair-preview.json
+   ```
+
+   The previewed repair path is:
+
+   ```bash
+   anvil-serving harness sync openclaw \
+     --config examples/fakoli-dark/anvil-router.live.toml \
+     --base-url http://100.87.34.66:8000/v1 \
+     --gateway-host fakoli-mini \
+     --restart
+   ```
+
+   Do not manually edit `~/.openclaw/openclaw.json` for Anvil-owned provider,
+   model, plugin, or skill keys when `harness sync openclaw` can render them.
+   The smoke runner records the preview; it does not apply config, restart
+   OpenClaw, promote a router profile, or enable metered cloud.
+
+## Playbook G: promotion evidence and stop gate
 
 The skill may assemble evidence for a human, but promotion changes live routing
 and is not automatic.

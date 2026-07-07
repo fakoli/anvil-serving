@@ -180,6 +180,7 @@ benchmarking, and OpenClaw config sync.
 | [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md) | MCP/controller workflows for status, preflight, benchmark, OpenClaw sync, and promotion evidence. |
 | [Operator skills and sub-agents](docs/OPERATOR-SKILLS-AND-SUBAGENTS.md) | Verb coverage, skill design, and small-model sub-agent workflow slices. |
 | [Operator skills ADR](docs/adr/0015-operator-skills-and-subagent-workflows.md) | Decision record for the workbench skill, harness packaging, and sub-agent model split. |
+| [OpenClaw COLO benchmark finding](docs/findings/2026-07-07-openclaw-colo-interaction-benchmark.md) | Site-ready live Mini-to-Dark interaction benchmark stats and citation caveats. |
 | [OpenClaw operations ADRs](docs/adr/0013-openclaw-layers-and-mcp-control-plane.md) | Hook/router/MCP layers and split-host controller transport. |
 | [Device topologies](docs/DEVICE-TOPOLOGIES.md) | Expand from Fakoli Mini/Dark to additional laptops or hosts over Tailscale/private connectivity. |
 | [Model settings](docs/MODEL-SETTINGS-EXAMPLE.md) | Thinking/sampling settings and model-specific serve flags. |

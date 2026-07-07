@@ -21,11 +21,139 @@ instead of an assumed one.
 | File | What it is |
 |------|------------|
 | `validate.py` | Stdlib-only CLI that checks both gaps. PASS/FAIL per check; non-zero exit only on a wire-form violation or a malformed log. |
+| `colo_smoke.py` | Stdlib-only COLO smoke/eval runner for Fakoli Mini OpenClaw -> Fakoli Dark anvil-serving. Writes story-mapped JSON evidence in fixture or live mode. |
 | `hook-fire-log.jsonl` | **A REPRESENTATIVE FIXTURE — not a live capture.** Every record carries `"synthetic": true`. Models a clean 3-message session (one fire per message) so `validate.py` has something to assert against in CI. |
 | `logging-hook/index.ts` | A minimal, **logging-only** `before_model_resolve` plugin. On each fire it appends a JSONL record and returns `{}` (records cadence; **does not route**). This is the instrument you install on the live Fakoli-Mini gateway to produce a REAL `hook-fire-log.jsonl`. |
 | `logging-hook/package.json`, `logging-hook/openclaw.plugin.json` | Minimal packaging so the hook can be installed as a local OpenClaw plugin. |
 | `skills/anvil-serving-workbench/SKILL.md` | Example OpenClaw-visible workbench skill for operator workflows. |
 | `anvil-serving-workbench.example.json5` | Example `skills.load.extraDirs` and agent visibility fragment rendered by `harness sync openclaw --skills`. |
+
+## COLO smoke/eval runner
+
+Use `colo_smoke.py` when validating the live Mini-to-Dark OpenClaw path before
+trusting broader promotion evidence. It is story-driven: every proof in the
+artifact references a product story for provider visibility, local-safe edits,
+planning-route clarity, long-context budget, plugin wiring, router auditability,
+performance evidence, drift repair, and explicit cloud usage.
+
+The deterministic fixture mode is the CI-safe baseline and requires no OpenClaw,
+SSH, router token, Docker, or model serve:
+
+```bash
+python examples/openclaw/colo_smoke.py \
+  --fixture \
+  --artifact .anvil/evidence/openclaw-colo-fixture.json \
+  --pretty
+```
+
+The live COLO run collects Fakoli Mini gateway diagnostics over SSH and probes
+the Fakoli Dark router URL configured for the `anvil` provider:
+
+```bash
+python examples/openclaw/colo_smoke.py \
+  --live \
+  --gateway-host fakoli-mini \
+  --router-base-url http://100.87.34.66:8000/v1 \
+  --artifact .anvil/evidence/openclaw-colo-live.json \
+  --pretty
+```
+
+Live generation and performance probes are explicit because they can consume
+model time. Add `--run-generations` only when the operator wants latency,
+output-token, and tokens/sec measurements from bounded `/v1/chat/completions`
+turns. The bounded generation budget is model/tier-specific: `colo_smoke.py`
+first reads `params.generation_probe_max_tokens` from the routed tier in the
+router config, then falls back to the CLI defaults. When swapping the heavy
+model, recalibrate that tier parameter rather than editing the runner:
+
+```bash
+python examples/openclaw/colo_smoke.py \
+  --live \
+  --gateway-host fakoli-mini \
+  --router-base-url http://100.87.34.66:8000/v1 \
+  --run-generations \
+  --heavy-generation-max-tokens 256 \
+  --expect-min-tokens-per-second <operator-threshold> \
+  --artifact .anvil/evidence/openclaw-colo-live-generations.json
+```
+
+For release or blog evidence, add the repeatable interaction benchmark. This
+runs fixed direct-router intent prompts from the OpenClaw gateway host, records
+route provider/model from companion `/v1/route` probes, exact usage token counts
+for non-streaming calls, TTFT for streaming calls, finish reasons, and the
+recipe dimensions that were applied. These calls validate the gateway-to-router
+path and router behavior; they are not full OpenClaw agent turns. The dimensions
+are read from the routed tier's `params`, not from hidden constants in the
+runner:
+
+```toml
+[[router.tiers]]
+id = "heavy-local"
+
+[router.tiers.params]
+generation_probe_max_tokens = 256
+interaction_benchmark_max_tokens = 1024
+interaction_benchmark_stream_max_tokens = 512
+interaction_benchmark_reasoning_effort = "low"
+interaction_benchmark_max_tokens_by_intent = { planning = 2048 }
+interaction_benchmark_stream_max_tokens_by_intent = { planning = 1024 }
+```
+
+Run it explicitly:
+
+```bash
+python examples/openclaw/colo_smoke.py \
+  --live \
+  --gateway-host fakoli-mini \
+  --router-base-url http://100.87.34.66:8000/v1 \
+  --run-generations \
+  --run-interaction-benchmark \
+  --artifact .anvil/evidence/openclaw-colo-live-interactions.json \
+  --pretty
+```
+
+If a new serve recipe changes model family, reasoning controls, context, or
+throughput, update these `params` in the router config alongside the serve
+recipe. The benchmark artifact should explain truncation, 503 quality-gate
+failures, and token throughput through recipe metadata rather than through a
+one-off command-line tweak.
+
+The live `2026-07-07` Mini-to-Dark run is summarized in
+[`docs/findings/2026-07-07-openclaw-colo-interaction-benchmark.md`](../../docs/findings/2026-07-07-openclaw-colo-interaction-benchmark.md).
+Use that findings note as the site/blog citation block: it records the exact
+artifact hash, recipe, route/model evidence, latency, TTFT, token throughput,
+and caveat language for bounded benchmark claims.
+
+The artifact has these top-level sections: `stories`, `proofs`,
+`environment`, `openclaw_config`, `plugin_runtime`, `router_probes`,
+`e2e_turns`, `benchmarks`, `interaction_benchmarks`, `drift`, `cloud_usage`,
+`repair`, and `verdict`.
+`verdict.status` is `pass`, `warn`, or `fail`; warnings are acceptable for
+skipped live generation or advisory hygiene findings, but they should be copied
+into the operator report instead of being ignored.
+
+Secret hygiene is part of the contract. The runner reports only API-key shape
+such as `env-ref` or `literal`, redacts bearer/token-shaped values, and keeps
+environment variable names such as `ANVIL_ROUTER_TOKEN` as names only.
+For the macOS OpenClaw LaunchAgent, `${ANVIL_ROUTER_TOKEN}` must be present in
+the gateway service environment, not just the interactive shell. Validate with
+`openclaw config validate` from a process that has the same env, and keep the
+literal token out of `~/.openclaw/openclaw.json`.
+
+Repair mode is a human-gated preview. It does not write OpenClaw config or
+restart the gateway. It records the product command the operator should review:
+
+```bash
+anvil-serving harness sync openclaw \
+  --config examples/fakoli-dark/anvil-router.live.toml \
+  --base-url http://100.87.34.66:8000/v1 \
+  --gateway-host fakoli-mini \
+  --restart
+```
+
+Use that path instead of manual edits to `~/.openclaw/openclaw.json`. The smoke
+artifact is evidence for a recommendation; it never promotes a router profile,
+changes routing policy, or enables metered cloud.
 
 ## Overnight operator checklist
 
