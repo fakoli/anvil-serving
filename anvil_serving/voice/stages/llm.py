@@ -54,6 +54,7 @@ DEFAULT_HISTORY_MAX_MESSAGE_CHARS = 1200
 DEFAULT_TOOL_RESULT_TIMEOUT = 60.0
 DEFAULT_TOOL_CALL_MAX_ROUNDS = 4
 DEFAULT_TOOL_RESULT_MAX_CHARS = 12000
+DEFAULT_SPEECH_CHUNK_MAX_CHARS = 72
 _OPENCLAW_FORCED_CONSULT_SPEECH_PREFIX = (
     "OpenClaw finished checking. Speak this result naturally and concisely."
 )
@@ -117,6 +118,10 @@ class LLMStageConfig:
     tool_result_timeout: float = DEFAULT_TOOL_RESULT_TIMEOUT
     tool_call_max_rounds: int = DEFAULT_TOOL_CALL_MAX_ROUNDS
     tool_result_max_chars: int = DEFAULT_TOOL_RESULT_MAX_CHARS
+    # Upper bound for text sent to one TTS request. Sentence punctuation still
+    # wins, but long first sentences are split on word boundaries so spoken
+    # audio can start before the model finishes a large clause.
+    speech_chunk_max_chars: int = DEFAULT_SPEECH_CHUNK_MAX_CHARS
     # Sent verbatim so a thinking-by-default local model (Qwen3.5, gpt-oss,
     # ...) doesn't burn its max_tokens budget reasoning and return empty
     # content (CLAUDE.md gotcha #6/#9). Both knobs are harmless no-ops on a
@@ -358,28 +363,86 @@ def stream_chat_completion_events(
             pass
 
 
+def _normalize_speakable(text: str) -> str:
+    return " ".join(strip_tts_hostile(text).split())
+
+
+def _split_speakable_text(text: str, max_chars: int) -> List[str]:
+    """Split speakable text into TTS-sized chunks on word boundaries."""
+    remaining = _normalize_speakable(text)
+    chunks: List[str] = []
+    while len(remaining) > max_chars:
+        cut = remaining.rfind(" ", 0, max_chars + 1)
+        if cut <= 0:
+            cut = remaining.find(" ", max_chars)
+        if cut <= 0:
+            cut = max_chars
+        chunk = remaining[:cut].strip()
+        if chunk:
+            chunks.append(chunk)
+        remaining = remaining[cut:].strip()
+    if remaining:
+        chunks.append(remaining)
+    return chunks
+
+
 class SentenceBatcher:
     """Accumulates streamed text deltas and yields complete, TTS-cleaned
-    sentence chunks as soon as sentence-ending punctuation arrives."""
+    sentence chunks as soon as sentence-ending punctuation arrives.
 
-    def __init__(self) -> None:
+    Long chunks are bounded on word boundaries even without sentence-ending
+    punctuation. This keeps first-audio latency from depending on a model's
+    willingness to produce a short first sentence.
+    """
+
+    def __init__(self, *, max_chars: int = DEFAULT_SPEECH_CHUNK_MAX_CHARS) -> None:
+        if isinstance(max_chars, bool) or not isinstance(max_chars, int) or max_chars <= 0:
+            raise ValueError("max_chars must be a positive integer")
+        self.max_chars = max_chars
         self._buf = ""
 
     def feed(self, delta: str) -> List[str]:
         """Feed one text delta; return zero or more completed sentences."""
         self._buf += delta
+        out: List[str] = []
         parts = _SENTENCE_END_RE.split(self._buf)
-        if len(parts) <= 1:
+        if len(parts) > 1:
+            *complete, remainder = parts
+            self._buf = remainder
+            for part in complete:
+                out.extend(_split_speakable_text(part, self.max_chars))
+        out.extend(self._drain_long_prefix())
+        return out
+
+    def _drain_long_prefix(self) -> List[str]:
+        cleaned = _normalize_speakable(self._buf)
+        if len(cleaned) <= self.max_chars:
             return []
-        *complete, remainder = parts
-        self._buf = remainder
-        return [strip_tts_hostile(p).strip() for p in complete if p.strip()]
+
+        chunks: List[str] = []
+        while len(cleaned) > self.max_chars:
+            cut = cleaned.rfind(" ", 0, self.max_chars + 1)
+            if cut <= 0:
+                cut = cleaned.find(" ", self.max_chars)
+            if cut <= 0:
+                cut = self.max_chars
+            chunk = cleaned[:cut].strip()
+            if chunk:
+                chunks.append(chunk)
+            cleaned = cleaned[cut:].strip()
+        self._buf = cleaned
+        return chunks
+
+    def flush_chunks(self) -> List[str]:
+        """Return all trailing speakable chunks once the stream has ended."""
+        chunks = _split_speakable_text(self._buf, self.max_chars)
+        self._buf = ""
+        return chunks
 
     def flush(self) -> Optional[str]:
         """Return any trailing partial sentence once the stream has ended."""
-        text = strip_tts_hostile(self._buf).strip()
-        self._buf = ""
-        return text or None
+        chunks = self.flush_chunks()
+        return " ".join(chunks) if chunks else None
 
 
 StreamFn = Callable[..., Iterator[Any]]
@@ -465,6 +528,9 @@ class LLMStage(BaseStage):
         )
         self._tool_result_max_chars = self._validate_positive_int(
             self.config.tool_result_max_chars, "tool_result_max_chars"
+        )
+        self._speech_chunk_max_chars = self._validate_positive_int(
+            self.config.speech_chunk_max_chars, "speech_chunk_max_chars"
         )
         self._history: List[Dict[str, str]] = []
         self._tool_results: "queue.Queue[_PendingToolResult]" = queue.Queue()
@@ -691,12 +757,15 @@ class LLMStage(BaseStage):
         if self.cancel_scope.is_stale(item.generation):
             return  # superseded by a barge-in before we even started
 
-        batcher = SentenceBatcher()
         history = self._history_snapshot()
         assistant_parts: List[str] = []
         turn_messages: List[Dict[str, Any]] = [{"role": "user", "content": item.text}]
         tool_rounds = 0
         request_config = self._config_for_request(item.text)
+        speech_chunk_max_chars = self._validate_positive_int(
+            request_config.speech_chunk_max_chars, "speech_chunk_max_chars"
+        )
+        batcher = SentenceBatcher(max_chars=speech_chunk_max_chars)
         try:
             while True:
                 tool_calls: List[Dict[str, str]] = []
@@ -743,8 +812,7 @@ class LLMStage(BaseStage):
                     yield timeout
                     break
                 tool_rounds += 1
-                pre_tool_text = batcher.flush()
-                if pre_tool_text:
+                for pre_tool_text in batcher.flush_chunks():
                     yield LLMChunk(
                         turn_id=item.turn_id,
                         turn_revision=item.turn_revision,
@@ -801,14 +869,14 @@ class LLMStage(BaseStage):
         if self.cancel_scope.is_stale(item.generation):
             return
 
-        trailing = batcher.flush()
-        if trailing:
+        trailing_chunks = batcher.flush_chunks()
+        for index, trailing in enumerate(trailing_chunks):
             yield LLMChunk(
                 turn_id=item.turn_id,
                 turn_revision=item.turn_revision,
                 generation=item.generation,
                 text=trailing,
-                is_final=True,
+                is_final=index == len(trailing_chunks) - 1,
             )
         self._remember_completed_turn(item.text, "".join(assistant_parts))
         yield EndOfResponse(

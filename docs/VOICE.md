@@ -121,6 +121,10 @@ Manifest hygiene follows the rest of the repo:
   `1200`.
 - `voice.llm.tool_result_max_chars` trims very large realtime tool outputs
   before the continuation LLM request; the default is `12000`.
+- `voice.llm.speech_chunk_max_chars` caps each speakable LLM chunk before it
+  is sent to TTS. Sentence punctuation still wins, but long first sentences
+  are split on word boundaries so first audio does not wait for a large clause;
+  the default is `72`.
 - `voice.llm.model` remains the manifest-owned Anvil router preset. Realtime
   clients may send `session.model`, but Anvil Voice does not let that field
   override local routing.
@@ -411,6 +415,11 @@ voice_stage_timing stage=llm input_type=GenerateRequest turn_id=rt-turn-7 genera
 shows when the first downstream item was available, which is the useful value
 for perceived first-audio latency in streaming LLM and TTS stages. Text values
 are logged as character counts only.
+
+If `tts first_output_ms` is high for a large `text_chars` value, lower
+`voice.llm.speech_chunk_max_chars` in the active voice profile before changing
+models. That keeps the same answer path but starts TTS on smaller word-boundary
+chunks.
 
 For the 16 GB Mini proof, use the hardware validation harness:
 
