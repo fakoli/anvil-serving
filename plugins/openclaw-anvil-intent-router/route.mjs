@@ -89,6 +89,14 @@ export const DEFAULT_NATIVE_PROVIDER = "anthropic";
 export const DEFAULT_NATIVE_MODEL = "claude-sonnet-4-5";
 export const DEFAULT_ROUTE_TIMEOUT_MS = 30;
 export const MAX_ROUTE_TIMEOUT_MS = 5000;
+export const ANVIL_PRESETS = new Set([
+  "planning",
+  "quick-edit",
+  "review",
+  "chat",
+  "chat-fast",
+  "long-context",
+]);
 
 function configValue(pluginConfig, key) {
   try {
@@ -129,6 +137,39 @@ function normalizeRouteTimeoutMs(value) {
   if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) return undefined;
   if (parsed < 1 || parsed > MAX_ROUTE_TIMEOUT_MS) return undefined;
   return parsed;
+}
+
+function normalizeContextString(value) {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/**
+ * Resolve an explicit anvil preset from OpenClaw's model hook context.
+ *
+ * This lets trusted OpenClaw runtime overrides such as `anvil/chat-fast` stay
+ * authoritative instead of being reclassified from prompt text back to `chat`.
+ *
+ * @param {unknown} ctx
+ * @returns {"planning"|"quick-edit"|"review"|"chat"|"chat-fast"|"long-context"|undefined}
+ */
+export function resolveExplicitAnvilPresetFromContext(ctx) {
+  const context = ctx && typeof ctx === "object" ? ctx : {};
+  const provider = normalizeContextString(context.modelProviderId)?.toLowerCase();
+  const modelRaw = normalizeContextString(context.modelId);
+  if (!modelRaw) {
+    return undefined;
+  }
+
+  const slashIndex = modelRaw.indexOf("/");
+  const modelProvider =
+    slashIndex > 0 ? modelRaw.slice(0, slashIndex).trim().toLowerCase() : undefined;
+  const modelId = (slashIndex > 0 ? modelRaw.slice(slashIndex + 1) : modelRaw).trim();
+  if ((provider !== "anvil" && modelProvider !== "anvil") || !ANVIL_PRESETS.has(modelId)) {
+    return undefined;
+  }
+  return modelId;
 }
 
 /**

@@ -628,6 +628,21 @@ def test_restart_action_rejects_sync_only_flags(capsys):
     assert "does not sync" in capsys.readouterr().err
 
 
+def test_restart_action_rejects_explicit_default_valued_sync_only_flags(capsys):
+    rc = harness.main([
+        "restart",
+        "openclaw",
+        "--voice-consult-thinking-level",
+        "off",
+        "--voice-consult-bootstrap-context-mode",
+        "lightweight",
+    ])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "--voice-consult-thinking-level" in err
+    assert "--voice-consult-bootstrap-context-mode" in err
+
+
 def test_stdout_sync_with_restart_rejected(capsys):
     # a stdout-only sync isn't applied, so --restart would reload the OLD gateway config.
     rc = harness.main(["sync", "openclaw", "--config", "r.toml", "--restart"])

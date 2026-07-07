@@ -15,7 +15,9 @@
 // T008 split (mirrors index.ts): a CLOUD-preferred intent (default: planning)
 // routes to the configured native provider/model -> destination:"native".
 // A LOCAL intent routes to anvil -> { providerOverride:"anvil",
-// modelOverride:"<bare preset>" } -> destination:"anvil".
+// modelOverride:"<bare preset>" } -> destination:"anvil". A trusted OpenClaw
+// runtime model context can also provide an explicit preset such as chat-fast;
+// those rows are not produced by classify() and use routingSource:"openclaw-context".
 // `authoritative` is always false here (the fixture never calls /v1/route).
 //
 // Run:  node plugins/openclaw-anvil-intent-router/make-fixture.mjs
@@ -34,8 +36,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "decision_log.fixture.jsonl");
 
 // Labeled synthetic turns. Each `expect` is the preset the plugin MUST produce;
-// generation fails if classify disagrees. Covers ALL five presets (planning
-// included) plus the two attachment-kind paths (image -> review, many
+// generation fails if classify disagrees. Covers all classifier-emitted presets
+// (planning included) plus the two attachment-kind paths (image -> review, many
 // attachments -> long-context) and the multi-file -> review pool.
 const TURNS = [
   {
@@ -122,6 +124,15 @@ const TURNS = [
   },
 ];
 
+const EXPLICIT_CONTEXT_TURNS = [
+  {
+    sessionKey: "sess-synthetic-voice-001",
+    prompt: "Runtime override: OpenClaw Talk consult model anvil/chat-fast.",
+    intent: "chat-fast",
+    routingSource: "openclaw-context",
+  },
+];
+
 // Deterministic clock: fixed base + 47s per turn (no wall-clock noise).
 const BASE_MS = Date.parse("2026-06-30T17:00:00.000Z");
 const STEP_MS = 47_000;
@@ -134,16 +145,7 @@ const CLOUD_CLASSES = new Set(DEFAULT_CLOUD_CLASSES);
 const lines = [];
 const failures = [];
 
-TURNS.forEach((turn, i) => {
-  const intent = classify(turn.prompt, turn.attachments);
-  if (intent !== turn.expect) {
-    failures.push(
-      `turn[${i}] ${JSON.stringify(turn.prompt)} -> classify=${intent} but expected ${turn.expect}`,
-    );
-  }
-  // T008 routing split — the SAME decision index.ts makes (route.mjs), so the
-  // fixture is provably the plugin's real output: cloud-preferred intents ->
-  // explicit native route; local intents -> {providerOverride:"anvil", modelOverride:intent}.
+function appendRecord(turn, i, intent, routingSource) {
   const routeOverride = makeRoutingDecision(intent, CLOUD_CLASSES);
   const destination =
     routeOverride.providerOverride === "anvil" ? "anvil" : "native";
@@ -159,10 +161,27 @@ TURNS.forEach((turn, i) => {
     modelOverride: routeOverride.modelOverride ?? null,
     authoritative: false,
     routeEndpointConfigured: false,
-    routingSource: "client-side",
+    routingSource,
     prompt_chars: turn.prompt.length,
   };
   lines.push(JSON.stringify(record));
+}
+
+TURNS.forEach((turn, i) => {
+  const intent = classify(turn.prompt, turn.attachments);
+  if (intent !== turn.expect) {
+    failures.push(
+      `turn[${i}] ${JSON.stringify(turn.prompt)} -> classify=${intent} but expected ${turn.expect}`,
+    );
+  }
+  // T008 routing split — the SAME decision index.ts makes (route.mjs), so the
+  // fixture is provably the plugin's real output: cloud-preferred intents ->
+  // explicit native route; local intents -> {providerOverride:"anvil", modelOverride:intent}.
+  appendRecord(turn, i, intent, "client-side");
+});
+
+EXPLICIT_CONTEXT_TURNS.forEach((turn, offset) => {
+  appendRecord(turn, TURNS.length + offset, turn.intent, turn.routingSource);
 });
 
 if (failures.length > 0) {

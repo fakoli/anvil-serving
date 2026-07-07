@@ -11,6 +11,7 @@ export declare const DEFAULT_NATIVE_PROVIDER: string;
 export declare const DEFAULT_NATIVE_MODEL: string;
 export declare const DEFAULT_ROUTE_TIMEOUT_MS: number;
 export declare const MAX_ROUTE_TIMEOUT_MS: number;
+export declare const ANVIL_PRESETS: Set<string>;
 
 /**
  * Return the effective cloud-preferred preset set.
@@ -31,6 +32,14 @@ export declare function getRouteEndpoint(pluginConfig?: unknown): string | undef
  * otherwise DEFAULT_ROUTE_TIMEOUT_MS. Invalid values fall back.
  */
 export declare function getRouteTimeoutMs(pluginConfig?: unknown): number;
+
+/**
+ * Resolve an explicit anvil preset from OpenClaw's model hook context.
+ * Used for runtime overrides such as anvil/chat-fast.
+ */
+export declare function resolveExplicitAnvilPresetFromContext(
+  ctx: unknown,
+): "planning" | "quick-edit" | "review" | "chat" | "chat-fast" | "long-context" | undefined;
 
 /**
  * Return the env var name containing the optional /v1/route auth token.

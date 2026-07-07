@@ -24,6 +24,7 @@ stream = true
 system_prompt = "You are Anvil Voice inside OpenClaw. Keep spoken answers concise, direct, and useful."
 temperature = 0.2
 max_tokens = 256
+speech_chunk_max_chars = 72
 history_max_turns = 8
 history_max_message_chars = 1200
 tool_result_max_chars = 12000

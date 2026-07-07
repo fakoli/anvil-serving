@@ -48,6 +48,7 @@ export const PRESETS = /** @type {const} */ ([
   "quick-edit",
   "review",
   "chat",
+  "chat-fast",
   "long-context",
 ]);
 
@@ -142,7 +143,7 @@ const KEYWORD_RULES = loadKeywordRules();
  *
  * @param {string} prompt
  * @param {{ kind: string }[]} [attachments]
- * @returns {"planning"|"quick-edit"|"review"|"chat"|"long-context"}
+ * @returns {"planning"|"quick-edit"|"review"|"chat"|"chat-fast"|"long-context"}
  */
 export function classify(prompt, attachments) {
   try {
