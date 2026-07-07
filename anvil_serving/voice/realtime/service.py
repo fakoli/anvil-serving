@@ -51,6 +51,7 @@ from __future__ import annotations
 
 import base64
 import itertools
+import json
 import os
 import queue
 from dataclasses import dataclass, field
@@ -268,6 +269,9 @@ class RealtimeService:
     # -- individual client-event handlers --------------------------------------
     def _on_session_update(self, event: SessionUpdate) -> None:
         self.state.session_config.update(event.session)
+        configure = getattr(getattr(self.pipeline, "llm", None), "configure_realtime_session", None)
+        if callable(configure):
+            configure(self.state.session_config)
         self.send_event(
             {"type": "session.updated", "event_id": self._evt_id(), "session": dict(self.state.session_config)}
         )
@@ -315,9 +319,15 @@ class RealtimeService:
 
     def _on_item_create(self, event: ConversationItemCreate) -> None:
         item = event.item or {}
-        text = _extract_text(item)
-        if text:
-            self.state.pending_text.append(text)
+        if item.get("type") == "function_call_output":
+            submitted = self._submit_tool_output(item)
+            if not submitted:
+                self._send_error("invalid_request", "conversation.item.create: malformed function_call_output")
+                return
+        else:
+            text = _extract_text(item)
+            if text:
+                self.state.pending_text.append(text)
         item_id = item.get("id") or "item_%d" % next(self.state.turn_counter)
         self.send_event(
             {
@@ -327,10 +337,32 @@ class RealtimeService:
             }
         )
 
+    def _submit_tool_output(self, item: Dict[str, Any]) -> bool:
+        call_id = item.get("call_id")
+        if not isinstance(call_id, str) or not call_id:
+            return False
+        output = item.get("output")
+        if isinstance(output, str):
+            text = output
+        else:
+            text = json.dumps(output if output is not None else {}, separators=(",", ":"))
+        submit = getattr(getattr(self.pipeline, "llm", None), "submit_tool_result", None)
+        if not callable(submit):
+            return False
+        return bool(submit(
+            call_id,
+            text,
+            will_continue=item.get("will_continue") is True,
+            suppress_response=item.get("suppress_response") is True,
+        ))
+
     def _on_response_create(self, event: ResponseCreate) -> None:
         if not self.state.pending_text:
             self._send_error("invalid_request", "response.create: no pending input to respond to")
             return
+        configure = getattr(getattr(self.pipeline, "llm", None), "configure_realtime_response", None)
+        if callable(configure):
+            configure(self.state.session_config, event.response if isinstance(event.response, dict) else {})
         text = "\n".join(self.state.pending_text)
         self.state.pending_text = []
         turn_id = "rt-turn-%d" % next(self.state.turn_counter)

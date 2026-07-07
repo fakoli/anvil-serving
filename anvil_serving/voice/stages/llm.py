@@ -33,19 +33,27 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 import re
+import threading
+import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional
+from dataclasses import dataclass, field, replace
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Set
 
 from ...router.backends.sse import OpenAIStreamAssembler, iter_sse_events
 from ..cancel_scope import CancelScope
-from ..messages import EndOfResponse, GenerateRequest, LLMChunk
+from ..messages import EndOfResponse, GenerateRequest, LLMChunk, LLMToolCall
 from .base import BaseStage
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/v1"
 DEFAULT_MODEL = "chat-fast"  # anvil intent preset: low-latency, fast-tier-first
+DEFAULT_HISTORY_MAX_TURNS = 8
+DEFAULT_HISTORY_MAX_MESSAGE_CHARS = 1200
+DEFAULT_TOOL_RESULT_TIMEOUT = 60.0
+DEFAULT_TOOL_CALL_MAX_ROUNDS = 4
+DEFAULT_TOOL_RESULT_MAX_CHARS = 12000
 
 # Markdown/formatting characters a TTS engine would mispronounce if spoken
 # verbatim (emphasis/heading markers, code fences/backticks, table pipes,
@@ -54,6 +62,26 @@ _TTS_HOSTILE_RE = re.compile(r"[`*_#>|~]|^\s*[-+]\s+", re.MULTILINE)
 
 # Sentence-end punctuation the sentence-batcher splits speakable chunks on.
 _SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
+
+ChatMessage = Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class LLMStreamTextDelta:
+    text: str
+
+
+@dataclass(frozen=True)
+class LLMStreamToolCalls:
+    tool_calls: List[Dict[str, str]]
+
+
+@dataclass(frozen=True)
+class _PendingToolResult:
+    call_id: str
+    output: str
+    will_continue: bool = False
+    suppress_response: bool = False
 
 
 def strip_tts_hostile(text: str) -> str:
@@ -72,6 +100,17 @@ class LLMStageConfig:
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
     system_prompt: Optional[str] = None
+    # Bounded per-Realtime-session memory. Each completed user/assistant turn
+    # is replayed as normal Chat Completions messages before the next user
+    # utterance. `0` disables memory; message trimming keeps long voice
+    # sessions from silently ballooning local/cloud prompt cost.
+    history_max_turns: int = DEFAULT_HISTORY_MAX_TURNS
+    history_max_message_chars: int = DEFAULT_HISTORY_MAX_MESSAGE_CHARS
+    tools: Optional[List[Mapping[str, Any]]] = None
+    tool_choice: Optional[str] = None
+    tool_result_timeout: float = DEFAULT_TOOL_RESULT_TIMEOUT
+    tool_call_max_rounds: int = DEFAULT_TOOL_CALL_MAX_ROUNDS
+    tool_result_max_chars: int = DEFAULT_TOOL_RESULT_MAX_CHARS
     # Sent verbatim so a thinking-by-default local model (Qwen3.5, gpt-oss,
     # ...) doesn't burn its max_tokens budget reasoning and return empty
     # content (CLAUDE.md gotcha #6/#9). Both knobs are harmless no-ops on a
@@ -95,25 +134,112 @@ class LLMClientError(Exception):
     """Raised when the upstream Chat Completions call fails (transport error)."""
 
 
-def build_request_body(text: str, config: LLMStageConfig) -> Dict[str, Any]:
-    """Build the ``/v1/chat/completions`` request body for one user turn."""
+def _normalized_history(history: Optional[Sequence[ChatMessage]]) -> List[Dict[str, str]]:
+    """Return prior turns as OpenAI chat messages, dropping malformed entries."""
+    out: List[Dict[str, str]] = []
+    for message in history or ():
+        if not isinstance(message, Mapping):
+            continue
+        role = message.get("role")
+        content = message.get("content")
+        if role in ("user", "assistant") and isinstance(content, str) and content:
+            out.append({"role": role, "content": content})
+    return out
+
+
+def _trim_history_text(text: str, max_chars: int) -> str:
+    """Normalize whitespace and trim long remembered messages with context."""
+    cleaned = " ".join(text.split())
+    if len(cleaned) <= max_chars:
+        return cleaned
+    marker = " ... "
+    if max_chars <= len(marker) + 2:
+        return cleaned[:max_chars]
+    head = max_chars // 2
+    tail = max_chars - head - len(marker)
+    return cleaned[:head] + marker + cleaned[-tail:]
+
+
+def _trim_tool_result_output(text: str, max_chars: int) -> str:
+    """Trim large tool outputs without changing whitespace inside the result."""
+    if len(text) <= max_chars:
+        return text
+    marker = "\n...[truncated]...\n"
+    if max_chars <= len(marker) + 2:
+        return text[:max_chars]
+    head = max_chars // 2
+    tail = max_chars - head - len(marker)
+    return text[:head] + marker + text[-tail:]
+
+
+def _normalize_tools(tools: Optional[Sequence[Mapping[str, Any]]]) -> Optional[List[Dict[str, Any]]]:
+    """Normalize Realtime-style flat function tools to Chat Completions tools."""
+    normalized: List[Dict[str, Any]] = []
+    for tool in tools or ():
+        if not isinstance(tool, Mapping) or tool.get("type") != "function":
+            continue
+        fn = tool.get("function")
+        if isinstance(fn, Mapping):
+            name = fn.get("name")
+            if not isinstance(name, str) or not name:
+                continue
+            payload: Dict[str, Any] = {"name": name}
+            description = fn.get("description")
+            parameters = fn.get("parameters")
+        else:
+            name = tool.get("name")
+            if not isinstance(name, str) or not name:
+                continue
+            payload = {"name": name}
+            description = tool.get("description")
+            parameters = tool.get("parameters")
+        if isinstance(description, str) and description:
+            payload["description"] = description
+        if isinstance(parameters, Mapping):
+            payload["parameters"] = dict(parameters)
+        normalized.append({"type": "function", "function": payload})
+    return normalized or None
+
+
+def _base_request_body(messages: Sequence[Mapping[str, Any]], config: LLMStageConfig) -> Dict[str, Any]:
     body: Dict[str, Any] = {
         "model": config.model,
-        "messages": [],
+        "messages": [dict(message) for message in messages],
         "stream": True,
     }
-    if config.system_prompt:
-        body["messages"].append({"role": "system", "content": config.system_prompt})
-    body["messages"].append({"role": "user", "content": text})
     if config.max_tokens is not None:
         body["max_tokens"] = config.max_tokens
     if config.temperature is not None:
         body["temperature"] = config.temperature
     if config.modality:
         body["modality"] = config.modality
+    tools = _normalize_tools(config.tools)
+    if tools:
+        body["tools"] = tools
+        if config.tool_choice:
+            body["tool_choice"] = config.tool_choice
     for key, value in config.disable_thinking_body.items():
         body[key] = value
     return body
+
+
+def build_request_body_from_messages(
+    messages: Sequence[Mapping[str, Any]], config: LLMStageConfig,
+) -> Dict[str, Any]:
+    """Build the ``/v1/chat/completions`` request body from prepared messages."""
+    return _base_request_body(messages, config)
+
+
+def build_request_body(
+    text: str, config: LLMStageConfig, *, history: Optional[Sequence[ChatMessage]] = None,
+) -> Dict[str, Any]:
+    """Build the ``/v1/chat/completions`` request body for one user turn."""
+    messages: List[Dict[str, Any]] = []
+    if config.system_prompt:
+        messages.append({"role": "system", "content": config.system_prompt})
+    messages.extend(_normalized_history(history))
+    messages.append({"role": "user", "content": text})
+    return _base_request_body(messages, config)
 
 
 #: Signature every transport (the real one and test fakes) implements:
@@ -154,7 +280,9 @@ def _post_stream(
 
 
 def stream_chat_completion(
-    text: str, config: LLMStageConfig, *, transport: Optional[Transport] = None,
+    text: str, config: LLMStageConfig, *,
+    history: Optional[Sequence[ChatMessage]] = None,
+    transport: Optional[Transport] = None,
 ) -> Iterator[str]:
     """Yield text deltas from a streaming ``/v1/chat/completions`` call.
 
@@ -164,9 +292,24 @@ def stream_chat_completion(
     ``urllib``-backed client (:func:`_default_transport`); pass a fake for
     hermetic tests (see ``tests/voice/test_llm_stage.py``).
     """
+    messages: List[Dict[str, Any]] = []
+    if config.system_prompt:
+        messages.append({"role": "system", "content": config.system_prompt})
+    messages.extend(_normalized_history(history))
+    messages.append({"role": "user", "content": text})
+    for event in stream_chat_completion_events(messages, config, transport=transport):
+        if isinstance(event, LLMStreamTextDelta):
+            yield event.text
+
+
+def stream_chat_completion_events(
+    messages: Sequence[Mapping[str, Any]], config: LLMStageConfig, *,
+    transport: Optional[Transport] = None,
+) -> Iterator[Any]:
+    """Yield text deltas and final tool-call batches from Chat Completions SSE."""
     url = config.base_url.rstrip("/") + "/chat/completions"
     resp = _post_stream(
-        url, build_request_body(text, config),
+        url, build_request_body_from_messages(messages, config),
         api_key_env=config.api_key_env, timeout=config.timeout,
         transport=transport or _default_transport,
     )
@@ -175,9 +318,25 @@ def stream_chat_completion(
         for event, data in iter_sse_events(resp):
             delta = assembler.feed(event, data)
             if delta:
-                yield delta
+                yield LLMStreamTextDelta(delta)
             if assembler.done:
                 break
+        result = assembler.result()
+        if result.tool_calls:
+            calls: List[Dict[str, str]] = []
+            for raw in result.tool_calls:
+                name = raw.get("name")
+                call_id = raw.get("id")
+                arguments = raw.get("arguments")
+                if not isinstance(name, str) or not name:
+                    continue
+                if not isinstance(call_id, str) or not call_id:
+                    call_id = "call_%d" % (len(calls) + 1)
+                if not isinstance(arguments, str):
+                    arguments = json.dumps(arguments if arguments is not None else {})
+                calls.append({"id": call_id, "name": name, "arguments": arguments})
+            if calls:
+                yield LLMStreamToolCalls(calls)
     finally:
         try:
             resp.close()
@@ -209,7 +368,7 @@ class SentenceBatcher:
         return text or None
 
 
-StreamFn = Callable[[str, LLMStageConfig], Iterator[str]]
+StreamFn = Callable[..., Iterator[Any]]
 
 
 class LLMStage(BaseStage):
@@ -271,8 +430,229 @@ class LLMStage(BaseStage):
         super().__init__(in_queue, out_queues)
         self.cancel_scope = cancel_scope or CancelScope()
         self.config = config or LLMStageConfig()
-        # Injectable for tests: defaults to the real streaming HTTP client.
-        self._stream_fn: StreamFn = stream_fn or stream_chat_completion
+        self._manifest_system_prompt = self.config.system_prompt
+        # Injectable for tests. When omitted, the stage uses the real streaming
+        # HTTP client that can surface assembled tool calls.
+        self._stream_fn = stream_fn
+        self._stream_accepts_history = (
+            self._callable_accepts_history(stream_fn) if stream_fn is not None else False
+        )
+        self._history_max_turns = self._validate_nonnegative_int(
+            self.config.history_max_turns, "history_max_turns"
+        )
+        self._history_max_message_chars = self._validate_positive_int(
+            self.config.history_max_message_chars, "history_max_message_chars"
+        )
+        self._tool_call_max_rounds = self._validate_nonnegative_int(
+            self.config.tool_call_max_rounds, "tool_call_max_rounds"
+        )
+        self._tool_result_timeout = self._validate_positive_number(
+            self.config.tool_result_timeout, "tool_result_timeout"
+        )
+        self._tool_result_max_chars = self._validate_positive_int(
+            self.config.tool_result_max_chars, "tool_result_max_chars"
+        )
+        self._history: List[Dict[str, str]] = []
+        self._tool_results: "queue.Queue[_PendingToolResult]" = queue.Queue()
+        self._tool_result_lock = threading.Lock()
+        self._pending_tool_call_ids: Set[str] = set()
+
+    @staticmethod
+    def _validate_nonnegative_int(value: Any, name: str) -> int:
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError("%s must be a nonnegative integer" % name)
+        return value
+
+    @staticmethod
+    def _validate_positive_int(value: Any, name: str) -> int:
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise ValueError("%s must be a positive integer" % name)
+        return value
+
+    @staticmethod
+    def _validate_positive_number(value: Any, name: str) -> float:
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+            raise ValueError("%s must be a positive number" % name)
+        return float(value)
+
+    @staticmethod
+    def _callable_accepts_history(stream_fn: StreamFn) -> bool:
+        try:
+            import inspect
+
+            params = inspect.signature(stream_fn).parameters
+        except (TypeError, ValueError):
+            return False
+        return "history" in params or any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+        )
+
+    def configure_realtime_session(self, session: Mapping[str, Any]) -> None:
+        """Apply Realtime session options that affect subsequent LLM turns."""
+        instructions = session.get("instructions")
+        tools = session.get("tools")
+        tool_choice = session.get("tool_choice")
+        prompts = [
+            self._manifest_system_prompt.strip() if self._manifest_system_prompt else "",
+            instructions.strip() if isinstance(instructions, str) else "",
+        ]
+        system_prompt = "\n\n".join(part for part in prompts if part) or None
+        self.config = replace(
+            self.config,
+            system_prompt=system_prompt,
+            tools=_normalize_tools(tools if isinstance(tools, list) else None),
+            tool_choice=tool_choice.strip() if isinstance(tool_choice, str) and tool_choice.strip() else None,
+        )
+
+    def configure_realtime_response(self, session: Mapping[str, Any], response: Mapping[str, Any]) -> None:
+        """Apply one response's LLM-shaping overrides without trusting client model ids."""
+        merged = dict(session)
+        for key in ("instructions", "tools", "tool_choice"):
+            if key in response:
+                merged[key] = response[key]
+        self.configure_realtime_session(merged)
+
+    def submit_tool_result(
+        self,
+        call_id: str,
+        output: str,
+        *,
+        will_continue: bool = False,
+        suppress_response: bool = False,
+    ) -> bool:
+        """Submit a Realtime function-call output to the active turn, if any."""
+        if not call_id:
+            return False
+        with self._tool_result_lock:
+            if call_id not in self._pending_tool_call_ids:
+                return False
+        self._tool_results.put(
+            _PendingToolResult(
+                call_id=call_id,
+                output=_trim_tool_result_output(output, self._tool_result_max_chars),
+                will_continue=will_continue,
+                suppress_response=suppress_response,
+            )
+        )
+        return True
+
+    def _stream_turn(
+        self, text: str, history: Sequence[ChatMessage], messages: Sequence[Mapping[str, Any]],
+    ) -> Iterator[Any]:
+        if self._stream_fn is None:
+            return stream_chat_completion_events(messages, self.config)
+        if self._stream_accepts_history:
+            return self._stream_fn(text, self.config, history=history)
+        return self._stream_fn(text, self.config)
+
+    def _stream_events(
+        self, text: str, history: Sequence[ChatMessage], messages: Sequence[Mapping[str, Any]],
+    ) -> Iterator[Any]:
+        for event in self._stream_turn(text, history, messages):
+            if isinstance(event, (LLMStreamTextDelta, LLMStreamToolCalls)):
+                yield event
+            elif isinstance(event, str):
+                yield LLMStreamTextDelta(event)
+
+    def _history_snapshot(self) -> List[Dict[str, str]]:
+        return [dict(message) for message in self._history]
+
+    def reset_history(self) -> None:
+        """Clear remembered turns for this pipeline/session."""
+        self._history = []
+
+    def _remember_completed_turn(self, user_text: str, assistant_text: str) -> None:
+        if self._history_max_turns <= 0:
+            return
+        user = _trim_history_text(user_text, self._history_max_message_chars)
+        assistant = _trim_history_text(assistant_text, self._history_max_message_chars)
+        if not user or not assistant:
+            return
+        self._history.extend([
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": assistant},
+        ])
+        max_messages = self._history_max_turns * 2
+        if len(self._history) > max_messages:
+            self._history = self._history[-max_messages:]
+
+    def _request_messages(
+        self, history: Sequence[ChatMessage], turn_messages: Sequence[Mapping[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        messages: List[Dict[str, Any]] = []
+        if self.config.system_prompt:
+            messages.append({"role": "system", "content": self.config.system_prompt})
+        messages.extend(_normalized_history(history))
+        messages.extend(dict(message) for message in turn_messages)
+        return messages
+
+    @staticmethod
+    def _assistant_tool_message(
+        tool_calls: Sequence[Dict[str, str]], content: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "role": "assistant",
+            "content": content,
+            "tool_calls": [
+                {
+                    "id": call["id"],
+                    "type": "function",
+                    "function": {"name": call["name"], "arguments": call["arguments"]},
+                }
+                for call in tool_calls
+            ],
+        }
+
+    @staticmethod
+    def _tool_result_message(result: _PendingToolResult) -> Dict[str, Any]:
+        return {"role": "tool", "tool_call_id": result.call_id, "content": result.output}
+
+    def _set_pending_tool_calls(self, call_ids: Set[str]) -> None:
+        with self._tool_result_lock:
+            self._pending_tool_call_ids = set(call_ids)
+
+    def _clear_pending_tool_calls(self, call_ids: Set[str]) -> None:
+        with self._tool_result_lock:
+            self._pending_tool_call_ids.difference_update(call_ids)
+
+    def _wait_for_tool_results(
+        self, call_ids: Set[str], generation: int,
+    ) -> tuple[List[_PendingToolResult], bool, bool]:
+        results: List[_PendingToolResult] = []
+        pending = set(call_ids)
+        deadline = time.monotonic() + self._tool_result_timeout
+        self._set_pending_tool_calls(pending)
+        try:
+            while pending:
+                if self.cancel_scope.is_stale(generation):
+                    return results, True, False
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return results, False, True
+                try:
+                    result = self._tool_results.get(timeout=min(0.1, remaining))
+                except queue.Empty:
+                    continue
+                if result.call_id not in pending:
+                    continue
+                if result.will_continue:
+                    continue
+                if result.suppress_response:
+                    return results, True, False
+                results.append(result)
+                pending.remove(result.call_id)
+            return results, False, False
+        finally:
+            self._clear_pending_tool_calls(call_ids)
+
+    def _tool_timeout_chunk(self, item: GenerateRequest) -> LLMChunk:
+        return LLMChunk(
+            turn_id=item.turn_id,
+            turn_revision=item.turn_revision,
+            generation=item.generation,
+            text="I could not get the tool result in time.",
+            is_final=True,
+        )
 
     def process(self, item: Any):
         if not isinstance(item, GenerateRequest):
@@ -281,34 +661,93 @@ class LLMStage(BaseStage):
             return  # superseded by a barge-in before we even started
 
         batcher = SentenceBatcher()
+        history = self._history_snapshot()
+        assistant_parts: List[str] = []
+        turn_messages: List[Dict[str, Any]] = [{"role": "user", "content": item.text}]
+        tool_rounds = 0
         try:
-            for delta in self._stream_fn(item.text, self.config):
-                if self.cancel_scope.is_stale(item.generation):
-                    # A barge-in landed mid-stream: stop emitting further
-                    # chunks for this now-stale generation. Whatever was
-                    # already YIELDED (and, per BaseStage._run, therefore
-                    # already put() on the downstream queue) stays forwarded
-                    # -- there's no reason to try to withhold it here.
-                    # Dropping it instead of forwarding it is a LATER-unit
-                    # obligation: the real downstream stage(s) (real TTS /
-                    # the realtime unit) must check cancel_scope.is_stale
-                    # themselves and drop it there (see the class docstring's
-                    # HONESTY NOTE -- today's default stub wiring does not).
-                    #
-                    # Deliberately NOT a terminal EndOfResponse here: a
-                    # superseded (barge-in'd) turn must stay silent on the
-                    # wire -- the realtime service's own cancel path
-                    # (`RealtimeService._on_response_cancel`) emits the
-                    # cancelled turn's terminal instead (see Q1's docstring
-                    # note below). This `return` is UNCHANGED by the Q1 fix.
-                    return
-                for sentence in batcher.feed(delta):
+            while True:
+                tool_calls: List[Dict[str, str]] = []
+                messages = self._request_messages(history, turn_messages)
+                custom_history: Sequence[ChatMessage] = history if len(turn_messages) == 1 else turn_messages
+                for event in self._stream_events(item.text, custom_history, messages):
+                    if self.cancel_scope.is_stale(item.generation):
+                        # A barge-in landed mid-stream: stop emitting further
+                        # chunks for this now-stale generation. Whatever was
+                        # already YIELDED (and, per BaseStage._run, therefore
+                        # already put() on the downstream queue) stays forwarded
+                        # -- there's no reason to try to withhold it here.
+                        # Dropping it instead of forwarding it is a LATER-unit
+                        # obligation: the real downstream stage(s) (real TTS /
+                        # the realtime unit) must check cancel_scope.is_stale
+                        # themselves and drop it there (see the class docstring's
+                        # HONESTY NOTE -- today's default stub wiring does not).
+                        #
+                        # Deliberately NOT a terminal EndOfResponse here: a
+                        # superseded (barge-in'd) turn must stay silent on the
+                        # wire -- the realtime service's own cancel path
+                        # (`RealtimeService._on_response_cancel`) emits the
+                        # cancelled turn's terminal instead (see Q1's docstring
+                        # note below). This `return` is UNCHANGED by the Q1 fix.
+                        return
+                    if isinstance(event, LLMStreamToolCalls):
+                        tool_calls.extend(event.tool_calls)
+                        continue
+                    if not isinstance(event, LLMStreamTextDelta):
+                        continue
+                    assistant_parts.append(event.text)
+                    for sentence in batcher.feed(event.text):
+                        yield LLMChunk(
+                            turn_id=item.turn_id,
+                            turn_revision=item.turn_revision,
+                            generation=item.generation,
+                            text=sentence,
+                        )
+                if not tool_calls:
+                    break
+                if tool_rounds >= self._tool_call_max_rounds:
+                    timeout = self._tool_timeout_chunk(item)
+                    assistant_parts.append(timeout.text)
+                    yield timeout
+                    break
+                tool_rounds += 1
+                pre_tool_text = batcher.flush()
+                if pre_tool_text:
                     yield LLMChunk(
                         turn_id=item.turn_id,
                         turn_revision=item.turn_revision,
                         generation=item.generation,
-                        text=sentence,
+                        text=pre_tool_text,
                     )
+                assistant_content = "".join(assistant_parts).strip() or None
+                turn_messages.append(self._assistant_tool_message(tool_calls, assistant_content))
+                call_ids = {call["id"] for call in tool_calls if call.get("id")}
+                self._set_pending_tool_calls(call_ids)
+                for output_index, call in enumerate(tool_calls):
+                    yield LLMToolCall(
+                        turn_id=item.turn_id,
+                        turn_revision=item.turn_revision,
+                        generation=item.generation,
+                        item_id=call["id"],
+                        call_id=call["id"],
+                        name=call["name"],
+                        arguments=call["arguments"],
+                        output_index=output_index,
+                    )
+                results, suppressed, timed_out = self._wait_for_tool_results(call_ids, item.generation)
+                if suppressed:
+                    yield EndOfResponse(
+                        turn_id=item.turn_id,
+                        turn_revision=item.turn_revision,
+                        generation=item.generation,
+                    )
+                    return
+                if timed_out:
+                    timeout = self._tool_timeout_chunk(item)
+                    assistant_parts.append(timeout.text)
+                    yield timeout
+                    break
+                turn_messages.extend(self._tool_result_message(result) for result in results)
         except Exception:
             # Q1 fix: a mid-turn failure (the streaming HTTP call raising --
             # e.g. the upstream connection dropping mid-reply) used to leave
@@ -339,6 +778,7 @@ class LLMStage(BaseStage):
                 text=trailing,
                 is_final=True,
             )
+        self._remember_completed_turn(item.text, "".join(assistant_parts))
         yield EndOfResponse(
             turn_id=item.turn_id,
             turn_revision=item.turn_revision,

@@ -31,7 +31,7 @@ import itertools
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Type
 
-from ..messages import AudioOut, EndOfResponse, LLMChunk, Transcription
+from ..messages import AudioOut, EndOfResponse, LLMChunk, LLMToolCall, Transcription
 from ..stages.vad import SpeechEvent
 
 # --------------------------------------------------------------------------- #
@@ -192,6 +192,35 @@ class SessionUpdated(ServerEvent):
 
 @dataclass(frozen=True)
 class ConversationItemCreated(ServerEvent):
+    item: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ConversationItemDone(ServerEvent):
+    item: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ResponseOutputItemAdded(ServerEvent):
+    response_id: str = ""
+    output_index: int = 0
+    item: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ResponseFunctionCallArgumentsDone(ServerEvent):
+    response_id: str = ""
+    item_id: str = ""
+    output_index: int = 0
+    call_id: str = ""
+    name: str = ""
+    arguments: str = ""
+
+
+@dataclass(frozen=True)
+class ResponseOutputItemDone(ServerEvent):
+    response_id: str = ""
+    output_index: int = 0
     item: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -429,6 +458,49 @@ def _dispatch_audio_out(msg: AudioOut, id_source: IdSource, response_id: Optiona
     ]
 
 
+def _dispatch_llm_tool_call(msg: LLMToolCall, id_source: IdSource, response_id: Optional[str]) -> List[ServerEvent]:
+    item = {
+        "id": msg.item_id,
+        "type": "function_call",
+        "call_id": msg.call_id,
+        "name": msg.name,
+        "arguments": msg.arguments,
+        "status": "completed",
+    }
+    response = response_id or ""
+    return [
+        ResponseOutputItemAdded(
+            type="response.output_item.added",
+            event_id=id_source(),
+            response_id=response,
+            output_index=msg.output_index,
+            item=dict(item),
+        ),
+        ResponseFunctionCallArgumentsDone(
+            type="response.function_call_arguments.done",
+            event_id=id_source(),
+            response_id=response,
+            item_id=msg.item_id,
+            output_index=msg.output_index,
+            call_id=msg.call_id,
+            name=msg.name,
+            arguments=msg.arguments,
+        ),
+        ResponseOutputItemDone(
+            type="response.output_item.done",
+            event_id=id_source(),
+            response_id=response,
+            output_index=msg.output_index,
+            item=dict(item),
+        ),
+        ConversationItemDone(
+            type="conversation.item.done",
+            event_id=id_source(),
+            item=dict(item),
+        )
+    ]
+
+
 def _dispatch_end_of_response(msg: EndOfResponse, id_source: IdSource, response_id: Optional[str]) -> List[ServerEvent]:
     return [
         ResponseDone(
@@ -443,6 +515,7 @@ DISPATCH: Dict[type, _DispatchFn] = {
     Transcription: _dispatch_transcription,
     SpeechEvent: _dispatch_speech_event,
     LLMChunk: _dispatch_llm_chunk,
+    LLMToolCall: _dispatch_llm_tool_call,
     AudioOut: _dispatch_audio_out,
     EndOfResponse: _dispatch_end_of_response,
 }

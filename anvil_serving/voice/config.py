@@ -215,6 +215,13 @@ def _positive_int(table: dict, key: str) -> int:
     return value
 
 
+def _nonnegative_int(table: dict, key: str) -> int:
+    value = _int(table, key)
+    if value < 0:
+        raise ConfigError("%s must be nonnegative" % key)
+    return value
+
+
 def _positive_float(table: dict, key: str) -> float:
     value = _float(table, key)
     if value <= 0:
@@ -452,6 +459,16 @@ def validate_manifest(data: dict) -> None:
         _positive_int(llm, "max_tokens")
     if "temperature" in llm:
         _nonnegative_float(llm, "temperature")
+    if "history_max_turns" in llm:
+        _nonnegative_int(llm, "history_max_turns")
+    if "history_max_message_chars" in llm:
+        _positive_int(llm, "history_max_message_chars")
+    if "tool_result_timeout" in llm:
+        _positive_float(llm, "tool_result_timeout")
+    if "tool_call_max_rounds" in llm:
+        _nonnegative_int(llm, "tool_call_max_rounds")
+    if "tool_result_max_chars" in llm:
+        _positive_int(llm, "tool_result_max_chars")
 
     _validate_endpoint(data, "stt")
     _validate_endpoint(data, "tts")

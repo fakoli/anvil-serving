@@ -33,6 +33,9 @@ model = "chat-fast"            # an anvil intent preset (see anvil_serving/route
                                 # low-latency, routed fast-tier-first (flexibility:T018)
 stream = true
 api_key_env = "ANVIL_ROUTER_TOKEN"   # env var holding the router's bearer token; optional
+# history_max_turns = 8               # completed user/assistant turns remembered inside one Realtime session; 0 disables
+# history_max_message_chars = 1200    # per remembered message prompt-cost cap
+# tool_result_max_chars = 12000       # per realtime tool-output prompt-cost cap
 
 # Out-of-process STT serve (e.g. parakeet.cpp or a vLLM /v1/audio/transcriptions
 # endpoint -- see the sm_120 guidance in the review doc).
