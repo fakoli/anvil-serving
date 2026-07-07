@@ -26,6 +26,7 @@ temperature = 0.2
 max_tokens = 256
 history_max_turns = 8
 history_max_message_chars = 1200
+tool_result_max_chars = 12000
 api_key_env = "ANVIL_ROUTER_TOKEN"
 expected_endpoint_host = "100.87.34.66"
 expected_route_provider = "fast-local"

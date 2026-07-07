@@ -349,18 +349,20 @@ class RealtimeService:
         submit = getattr(getattr(self.pipeline, "llm", None), "submit_tool_result", None)
         if not callable(submit):
             return False
-        submit(
+        return bool(submit(
             call_id,
             text,
             will_continue=item.get("will_continue") is True,
             suppress_response=item.get("suppress_response") is True,
-        )
-        return True
+        ))
 
     def _on_response_create(self, event: ResponseCreate) -> None:
         if not self.state.pending_text:
             self._send_error("invalid_request", "response.create: no pending input to respond to")
             return
+        configure = getattr(getattr(self.pipeline, "llm", None), "configure_realtime_response", None)
+        if callable(configure):
+            configure(self.state.session_config, event.response if isinstance(event.response, dict) else {})
         text = "\n".join(self.state.pending_text)
         self.state.pending_text = []
         turn_id = "rt-turn-%d" % next(self.state.turn_counter)

@@ -23,6 +23,7 @@ system_prompt = "For this Mini validation manifest, answer every message with ex
 temperature = 0.0
 max_tokens = 8
 history_max_turns = 0
+tool_result_max_chars = 12000
 api_key_env = "ANVIL_ROUTER_TOKEN"
 expected_endpoint_host = "100.87.34.66"
 expected_route_provider = "fast-local"

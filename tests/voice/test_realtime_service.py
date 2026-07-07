@@ -43,13 +43,13 @@ def test_session_update_merges_config_and_echoes():
         pipeline.shutdown_gracefully(join_timeout=1.0)
 
 
-def test_session_update_configures_llm_instructions_and_tools():
+def test_session_update_configures_llm_instructions_and_tools_without_model_override():
     pipeline, service, sent = _make_service()
     try:
         service.handle_client_message(json.dumps({
             "type": "session.update",
             "session": {
-                "model": "fast-local",
+                "model": "gpt-realtime",
                 "instructions": "Use OpenClaw session context.",
                 "tools": [
                     {
@@ -63,7 +63,7 @@ def test_session_update_configures_llm_instructions_and_tools():
             },
         }))
         assert sent[-1]["type"] == "session.updated"
-        assert pipeline.llm.config.model == "fast-local"
+        assert pipeline.llm.config.model == "chat-fast"
         assert pipeline.llm.config.system_prompt == "Use OpenClaw session context."
         assert pipeline.llm.config.tools == [
             {
@@ -74,6 +74,36 @@ def test_session_update_configures_llm_instructions_and_tools():
                     "parameters": {"type": "object", "properties": {"question": {"type": "string"}}},
                 },
             }
+        ]
+        assert pipeline.llm.config.tool_choice == "auto"
+    finally:
+        pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_response_create_applies_response_scoped_instructions_and_tools_without_model_override():
+    pipeline, service, sent = _make_service()
+    try:
+        service.handle_client_message(json.dumps({
+            "type": "session.update",
+            "session": {"instructions": "Session prompt.", "model": "gpt-realtime"},
+        }))
+        item = {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "weather"}]}
+        service.handle_client_message(json.dumps({"type": "conversation.item.create", "item": item}))
+        service.handle_client_message(json.dumps({
+            "type": "response.create",
+            "response": {
+                "model": "another-realtime-model",
+                "instructions": "Response prompt.",
+                "tools": [{"type": "function", "name": "openclaw_agent_consult"}],
+                "tool_choice": "auto",
+            },
+        }))
+
+        assert sent[-1]["type"] == "response.created"
+        assert pipeline.llm.config.model == "chat-fast"
+        assert pipeline.llm.config.system_prompt == "Response prompt."
+        assert pipeline.llm.config.tools == [
+            {"type": "function", "function": {"name": "openclaw_agent_consult"}}
         ]
         assert pipeline.llm.config.tool_choice == "auto"
     finally:
@@ -147,7 +177,9 @@ def test_text_conversation_item_bridges_straight_to_generate_request():
 def test_function_call_output_is_submitted_to_llm_stage():
     calls = []
     llm = SimpleNamespace(
-        submit_tool_result=lambda call_id, output, **kwargs: calls.append((call_id, output, kwargs))
+        submit_tool_result=lambda call_id, output, **kwargs: (
+            calls.append((call_id, output, kwargs)) or True
+        )
     )
     fake_pipeline = SimpleNamespace(audio_in=queue.Queue(), llm=llm)
     service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _e: None, session_id="s1")
@@ -165,6 +197,25 @@ def test_function_call_output_is_submitted_to_llm_stage():
     assert calls == [
         ("call_1", '{"text":"Sunny."}', {"will_continue": True, "suppress_response": False})
     ]
+
+
+def test_function_call_output_rejects_unmatched_call_id():
+    llm = SimpleNamespace(submit_tool_result=lambda *_args, **_kwargs: False)
+    fake_pipeline = SimpleNamespace(audio_in=queue.Queue(), llm=llm)
+    sent = []
+    service = RealtimeService(pipeline=fake_pipeline, send_event=sent.append, session_id="s1")
+
+    service.handle_client_message(json.dumps({
+        "type": "conversation.item.create",
+        "item": {
+            "type": "function_call_output",
+            "call_id": "stale_call",
+            "output": {"text": "Too late."},
+        },
+    }))
+
+    assert sent[-1]["type"] == "error"
+    assert sent[-1]["error"]["type"] == "invalid_request"
 
 
 def test_response_create_with_no_pending_input_is_an_error():
@@ -470,7 +521,7 @@ def test_barge_in_drops_stale_audio_and_emits_exactly_one_terminal_done():
         pipeline.shutdown_gracefully(join_timeout=1.0)
 
 
-def test_drain_pipeline_events_emits_function_call_item_done():
+def test_drain_pipeline_events_emits_standard_and_compat_function_call_events():
     fake_pipeline = SimpleNamespace(
         vad_events=queue.Queue(),
         transcript_events=queue.Queue(),
@@ -494,14 +545,53 @@ def test_drain_pipeline_events_emits_function_call_item_done():
 
     assert events == [
         {
-            "type": "conversation.item.done",
+            "type": "response.output_item.added",
             "event_id": "evt_1",
+            "response_id": "",
+            "output_index": 0,
             "item": {
                 "id": "call_1",
                 "type": "function_call",
                 "call_id": "call_1",
                 "name": "openclaw_agent_consult",
                 "arguments": '{"question":"weather"}',
+                "status": "completed",
+            },
+        },
+        {
+            "type": "response.function_call_arguments.done",
+            "event_id": "evt_2",
+            "response_id": "",
+            "item_id": "call_1",
+            "output_index": 0,
+            "call_id": "call_1",
+            "name": "openclaw_agent_consult",
+            "arguments": '{"question":"weather"}',
+        },
+        {
+            "type": "response.output_item.done",
+            "event_id": "evt_3",
+            "response_id": "",
+            "output_index": 0,
+            "item": {
+                "id": "call_1",
+                "type": "function_call",
+                "call_id": "call_1",
+                "name": "openclaw_agent_consult",
+                "arguments": '{"question":"weather"}',
+                "status": "completed",
+            },
+        },
+        {
+            "type": "conversation.item.done",
+            "event_id": "evt_4",
+            "item": {
+                "id": "call_1",
+                "type": "function_call",
+                "call_id": "call_1",
+                "name": "openclaw_agent_consult",
+                "arguments": '{"question":"weather"}',
+                "status": "completed",
             },
         }
     ]

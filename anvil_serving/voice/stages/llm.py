@@ -35,6 +35,7 @@ import json
 import os
 import queue
 import re
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -52,6 +53,7 @@ DEFAULT_HISTORY_MAX_TURNS = 8
 DEFAULT_HISTORY_MAX_MESSAGE_CHARS = 1200
 DEFAULT_TOOL_RESULT_TIMEOUT = 60.0
 DEFAULT_TOOL_CALL_MAX_ROUNDS = 4
+DEFAULT_TOOL_RESULT_MAX_CHARS = 12000
 
 # Markdown/formatting characters a TTS engine would mispronounce if spoken
 # verbatim (emphasis/heading markers, code fences/backticks, table pipes,
@@ -108,6 +110,7 @@ class LLMStageConfig:
     tool_choice: Optional[str] = None
     tool_result_timeout: float = DEFAULT_TOOL_RESULT_TIMEOUT
     tool_call_max_rounds: int = DEFAULT_TOOL_CALL_MAX_ROUNDS
+    tool_result_max_chars: int = DEFAULT_TOOL_RESULT_MAX_CHARS
     # Sent verbatim so a thinking-by-default local model (Qwen3.5, gpt-oss,
     # ...) doesn't burn its max_tokens budget reasoning and return empty
     # content (CLAUDE.md gotcha #6/#9). Both knobs are harmless no-ops on a
@@ -155,6 +158,18 @@ def _trim_history_text(text: str, max_chars: int) -> str:
     head = max_chars // 2
     tail = max_chars - head - len(marker)
     return cleaned[:head] + marker + cleaned[-tail:]
+
+
+def _trim_tool_result_output(text: str, max_chars: int) -> str:
+    """Trim large tool outputs without changing whitespace inside the result."""
+    if len(text) <= max_chars:
+        return text
+    marker = "\n...[truncated]...\n"
+    if max_chars <= len(marker) + 2:
+        return text[:max_chars]
+    head = max_chars // 2
+    tail = max_chars - head - len(marker)
+    return text[:head] + marker + text[-tail:]
 
 
 def _normalize_tools(tools: Optional[Sequence[Mapping[str, Any]]]) -> Optional[List[Dict[str, Any]]]:
@@ -434,8 +449,13 @@ class LLMStage(BaseStage):
         self._tool_result_timeout = self._validate_positive_number(
             self.config.tool_result_timeout, "tool_result_timeout"
         )
+        self._tool_result_max_chars = self._validate_positive_int(
+            self.config.tool_result_max_chars, "tool_result_max_chars"
+        )
         self._history: List[Dict[str, str]] = []
         self._tool_results: "queue.Queue[_PendingToolResult]" = queue.Queue()
+        self._tool_result_lock = threading.Lock()
+        self._pending_tool_call_ids: Set[str] = set()
 
     @staticmethod
     def _validate_nonnegative_int(value: Any, name: str) -> int:
@@ -469,7 +489,6 @@ class LLMStage(BaseStage):
 
     def configure_realtime_session(self, session: Mapping[str, Any]) -> None:
         """Apply Realtime session options that affect subsequent LLM turns."""
-        model = session.get("model")
         instructions = session.get("instructions")
         tools = session.get("tools")
         tool_choice = session.get("tool_choice")
@@ -480,11 +499,18 @@ class LLMStage(BaseStage):
         system_prompt = "\n\n".join(part for part in prompts if part) or None
         self.config = replace(
             self.config,
-            model=model.strip() if isinstance(model, str) and model.strip() else self.config.model,
             system_prompt=system_prompt,
             tools=_normalize_tools(tools if isinstance(tools, list) else None),
             tool_choice=tool_choice.strip() if isinstance(tool_choice, str) and tool_choice.strip() else None,
         )
+
+    def configure_realtime_response(self, session: Mapping[str, Any], response: Mapping[str, Any]) -> None:
+        """Apply one response's LLM-shaping overrides without trusting client model ids."""
+        merged = dict(session)
+        for key in ("instructions", "tools", "tool_choice"):
+            if key in response:
+                merged[key] = response[key]
+        self.configure_realtime_session(merged)
 
     def submit_tool_result(
         self,
@@ -493,18 +519,22 @@ class LLMStage(BaseStage):
         *,
         will_continue: bool = False,
         suppress_response: bool = False,
-    ) -> None:
+    ) -> bool:
         """Submit a Realtime function-call output to the active turn, if any."""
         if not call_id:
-            return
+            return False
+        with self._tool_result_lock:
+            if call_id not in self._pending_tool_call_ids:
+                return False
         self._tool_results.put(
             _PendingToolResult(
                 call_id=call_id,
-                output=output,
+                output=_trim_tool_result_output(output, self._tool_result_max_chars),
                 will_continue=will_continue,
                 suppress_response=suppress_response,
             )
         )
+        return True
 
     def _stream_turn(
         self, text: str, history: Sequence[ChatMessage], messages: Sequence[Mapping[str, Any]],
@@ -557,10 +587,12 @@ class LLMStage(BaseStage):
         return messages
 
     @staticmethod
-    def _assistant_tool_message(tool_calls: Sequence[Dict[str, str]]) -> Dict[str, Any]:
+    def _assistant_tool_message(
+        tool_calls: Sequence[Dict[str, str]], content: Optional[str] = None,
+    ) -> Dict[str, Any]:
         return {
             "role": "assistant",
-            "content": None,
+            "content": content,
             "tool_calls": [
                 {
                     "id": call["id"],
@@ -575,31 +607,43 @@ class LLMStage(BaseStage):
     def _tool_result_message(result: _PendingToolResult) -> Dict[str, Any]:
         return {"role": "tool", "tool_call_id": result.call_id, "content": result.output}
 
+    def _set_pending_tool_calls(self, call_ids: Set[str]) -> None:
+        with self._tool_result_lock:
+            self._pending_tool_call_ids = set(call_ids)
+
+    def _clear_pending_tool_calls(self, call_ids: Set[str]) -> None:
+        with self._tool_result_lock:
+            self._pending_tool_call_ids.difference_update(call_ids)
+
     def _wait_for_tool_results(
         self, call_ids: Set[str], generation: int,
     ) -> tuple[List[_PendingToolResult], bool, bool]:
         results: List[_PendingToolResult] = []
         pending = set(call_ids)
         deadline = time.monotonic() + self._tool_result_timeout
-        while pending:
-            if self.cancel_scope.is_stale(generation):
-                return results, True, False
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return results, False, True
-            try:
-                result = self._tool_results.get(timeout=min(0.1, remaining))
-            except queue.Empty:
-                continue
-            if result.call_id not in pending:
-                continue
-            if result.will_continue:
-                continue
-            if result.suppress_response:
-                return results, True, False
-            results.append(result)
-            pending.remove(result.call_id)
-        return results, False, False
+        self._set_pending_tool_calls(pending)
+        try:
+            while pending:
+                if self.cancel_scope.is_stale(generation):
+                    return results, True, False
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return results, False, True
+                try:
+                    result = self._tool_results.get(timeout=min(0.1, remaining))
+                except queue.Empty:
+                    continue
+                if result.call_id not in pending:
+                    continue
+                if result.will_continue:
+                    continue
+                if result.suppress_response:
+                    return results, True, False
+                results.append(result)
+                pending.remove(result.call_id)
+            return results, False, False
+        finally:
+            self._clear_pending_tool_calls(call_ids)
 
     def _tool_timeout_chunk(self, item: GenerateRequest) -> LLMChunk:
         return LLMChunk(
@@ -667,9 +711,19 @@ class LLMStage(BaseStage):
                     yield timeout
                     break
                 tool_rounds += 1
-                turn_messages.append(self._assistant_tool_message(tool_calls))
+                pre_tool_text = batcher.flush()
+                if pre_tool_text:
+                    yield LLMChunk(
+                        turn_id=item.turn_id,
+                        turn_revision=item.turn_revision,
+                        generation=item.generation,
+                        text=pre_tool_text,
+                    )
+                assistant_content = "".join(assistant_parts).strip() or None
+                turn_messages.append(self._assistant_tool_message(tool_calls, assistant_content))
                 call_ids = {call["id"] for call in tool_calls if call.get("id")}
-                for call in tool_calls:
+                self._set_pending_tool_calls(call_ids)
+                for output_index, call in enumerate(tool_calls):
                     yield LLMToolCall(
                         turn_id=item.turn_id,
                         turn_revision=item.turn_revision,
@@ -678,6 +732,7 @@ class LLMStage(BaseStage):
                         call_id=call["id"],
                         name=call["name"],
                         arguments=call["arguments"],
+                        output_index=output_index,
                     )
                 results, suppressed, timed_out = self._wait_for_tool_results(call_ids, item.generation)
                 if suppressed:
