@@ -89,6 +89,16 @@ class LLMChunk(StageMessage):
 
 
 @dataclass(frozen=True)
+class LLMToolCall(StageMessage):
+    """One function call requested by the LLM during a realtime response."""
+
+    item_id: str
+    call_id: str
+    name: str
+    arguments: str
+
+
+@dataclass(frozen=True)
 class TTSInput(StageMessage):
     """Text handed to the TTS stage to synthesize into audio."""
 

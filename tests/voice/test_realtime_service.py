@@ -9,7 +9,8 @@ import json
 import queue
 from types import SimpleNamespace
 
-from anvil_serving.voice.messages import AudioOut
+from anvil_serving.voice.cancel_scope import CancelScope
+from anvil_serving.voice.messages import AudioOut, LLMToolCall
 from anvil_serving.voice.pipeline import VoicePipeline
 from anvil_serving.voice.realtime.service import RealtimeService
 from anvil_serving.voice.stages.vad import VADConfig
@@ -38,6 +39,43 @@ def test_session_update_merges_config_and_echoes():
         assert service.state.session_config == {"voice": "alloy"}
         assert sent[-1]["type"] == "session.updated"
         assert sent[-1]["session"] == {"voice": "alloy"}
+    finally:
+        pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_session_update_configures_llm_instructions_and_tools():
+    pipeline, service, sent = _make_service()
+    try:
+        service.handle_client_message(json.dumps({
+            "type": "session.update",
+            "session": {
+                "model": "fast-local",
+                "instructions": "Use OpenClaw session context.",
+                "tools": [
+                    {
+                        "type": "function",
+                        "name": "openclaw_agent_consult",
+                        "description": "Ask OpenClaw.",
+                        "parameters": {"type": "object", "properties": {"question": {"type": "string"}}},
+                    }
+                ],
+                "tool_choice": "auto",
+            },
+        }))
+        assert sent[-1]["type"] == "session.updated"
+        assert pipeline.llm.config.model == "fast-local"
+        assert pipeline.llm.config.system_prompt == "Use OpenClaw session context."
+        assert pipeline.llm.config.tools == [
+            {
+                "type": "function",
+                "function": {
+                    "name": "openclaw_agent_consult",
+                    "description": "Ask OpenClaw.",
+                    "parameters": {"type": "object", "properties": {"question": {"type": "string"}}},
+                },
+            }
+        ]
+        assert pipeline.llm.config.tool_choice == "auto"
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)
 
@@ -104,6 +142,29 @@ def test_text_conversation_item_bridges_straight_to_generate_request():
         assert done_events[0]["response"]["id"] == response_id
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_function_call_output_is_submitted_to_llm_stage():
+    calls = []
+    llm = SimpleNamespace(
+        submit_tool_result=lambda call_id, output, **kwargs: calls.append((call_id, output, kwargs))
+    )
+    fake_pipeline = SimpleNamespace(audio_in=queue.Queue(), llm=llm)
+    service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _e: None, session_id="s1")
+
+    service.handle_client_message(json.dumps({
+        "type": "conversation.item.create",
+        "item": {
+            "type": "function_call_output",
+            "call_id": "call_1",
+            "output": {"text": "Sunny."},
+            "will_continue": True,
+        },
+    }))
+
+    assert calls == [
+        ("call_1", '{"text":"Sunny."}', {"will_continue": True, "suppress_response": False})
+    ]
 
 
 def test_response_create_with_no_pending_input_is_an_error():
@@ -407,3 +468,40 @@ def test_barge_in_drops_stale_audio_and_emits_exactly_one_terminal_done():
         assert done_events[0]["response"]["id"] == response_id
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)
+
+
+def test_drain_pipeline_events_emits_function_call_item_done():
+    fake_pipeline = SimpleNamespace(
+        vad_events=queue.Queue(),
+        transcript_events=queue.Queue(),
+        audio_out=queue.Queue(),
+        cancel_scope=CancelScope(),
+    )
+    fake_pipeline.audio_out.put(
+        LLMToolCall(
+            turn_id="turn-1",
+            turn_revision=0,
+            generation=0,
+            item_id="call_1",
+            call_id="call_1",
+            name="openclaw_agent_consult",
+            arguments='{"question":"weather"}',
+        )
+    )
+    service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _e: None, session_id="s1")
+
+    events = service.drain_pipeline_events()
+
+    assert events == [
+        {
+            "type": "conversation.item.done",
+            "event_id": "evt_1",
+            "item": {
+                "id": "call_1",
+                "type": "function_call",
+                "call_id": "call_1",
+                "name": "openclaw_agent_consult",
+                "arguments": '{"question":"weather"}',
+            },
+        }
+    ]

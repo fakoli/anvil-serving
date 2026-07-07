@@ -31,7 +31,7 @@ import itertools
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Type
 
-from ..messages import AudioOut, EndOfResponse, LLMChunk, Transcription
+from ..messages import AudioOut, EndOfResponse, LLMChunk, LLMToolCall, Transcription
 from ..stages.vad import SpeechEvent
 
 # --------------------------------------------------------------------------- #
@@ -192,6 +192,11 @@ class SessionUpdated(ServerEvent):
 
 @dataclass(frozen=True)
 class ConversationItemCreated(ServerEvent):
+    item: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ConversationItemDone(ServerEvent):
     item: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -429,6 +434,22 @@ def _dispatch_audio_out(msg: AudioOut, id_source: IdSource, response_id: Optiona
     ]
 
 
+def _dispatch_llm_tool_call(msg: LLMToolCall, id_source: IdSource, response_id: Optional[str]) -> List[ServerEvent]:
+    return [
+        ConversationItemDone(
+            type="conversation.item.done",
+            event_id=id_source(),
+            item={
+                "id": msg.item_id,
+                "type": "function_call",
+                "call_id": msg.call_id,
+                "name": msg.name,
+                "arguments": msg.arguments,
+            },
+        )
+    ]
+
+
 def _dispatch_end_of_response(msg: EndOfResponse, id_source: IdSource, response_id: Optional[str]) -> List[ServerEvent]:
     return [
         ResponseDone(
@@ -443,6 +464,7 @@ DISPATCH: Dict[type, _DispatchFn] = {
     Transcription: _dispatch_transcription,
     SpeechEvent: _dispatch_speech_event,
     LLMChunk: _dispatch_llm_chunk,
+    LLMToolCall: _dispatch_llm_tool_call,
     AudioOut: _dispatch_audio_out,
     EndOfResponse: _dispatch_end_of_response,
 }
