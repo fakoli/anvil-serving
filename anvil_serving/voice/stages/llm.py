@@ -55,6 +55,7 @@ DEFAULT_TOOL_RESULT_TIMEOUT = 60.0
 DEFAULT_TOOL_CALL_MAX_ROUNDS = 4
 DEFAULT_TOOL_RESULT_MAX_CHARS = 12000
 DEFAULT_SPEECH_CHUNK_MAX_CHARS = 72
+_SPEECH_CHUNK_MIN_TAIL_CHARS = 12
 _OPENCLAW_FORCED_CONSULT_SPEECH_PREFIX = (
     "OpenClaw finished checking. Speak this result naturally and concisely."
 )
@@ -367,14 +368,32 @@ def _normalize_speakable(text: str) -> str:
     return " ".join(strip_tts_hostile(text).split())
 
 
+def _speech_chunk_min_tail_chars(max_chars: int) -> int:
+    return min(_SPEECH_CHUNK_MIN_TAIL_CHARS, max(1, max_chars // 4))
+
+
+def _speakable_split_cut(text: str, max_chars: int) -> int:
+    """Choose a split point that avoids very small trailing TTS requests."""
+    if len(text) <= max_chars:
+        return len(text)
+    cut_limit = max_chars
+    min_tail = _speech_chunk_min_tail_chars(max_chars)
+    if len(text) - max_chars < min_tail:
+        cut_limit = max(1, len(text) - min_tail)
+    cut = text.rfind(" ", 0, cut_limit + 1)
+    if cut <= 0 and cut_limit != max_chars:
+        cut = text.rfind(" ", 0, max_chars + 1)
+    if cut <= 0:
+        cut = max_chars
+    return cut
+
+
 def _split_speakable_text(text: str, max_chars: int) -> List[str]:
     """Split speakable text into TTS-sized chunks on word boundaries."""
     remaining = _normalize_speakable(text)
     chunks: List[str] = []
     while len(remaining) > max_chars:
-        cut = remaining.rfind(" ", 0, max_chars + 1)
-        if cut <= 0:
-            cut = max_chars
+        cut = _speakable_split_cut(remaining, max_chars)
         chunk = remaining[:cut].strip()
         if chunk:
             chunks.append(chunk)
@@ -425,9 +444,7 @@ class SentenceBatcher:
 
         chunks: List[str] = []
         while len(cleaned) > self.max_chars:
-            cut = cleaned.rfind(" ", 0, self.max_chars + 1)
-            if cut <= 0:
-                cut = self.max_chars
+            cut = _speakable_split_cut(cleaned, self.max_chars)
             chunk = cleaned[:cut].strip()
             if chunk:
                 chunks.append(chunk)

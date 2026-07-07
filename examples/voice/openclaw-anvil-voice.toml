@@ -64,7 +64,12 @@ source_sample_rate = 24000
 target_sample_rate = 16000
 
 [voice.profiles.mini-audio]
-# Explicit alias for the base Mini-local STT/TTS topology.
+# Mini-local MLX Audio/Kokoro works best with a slightly smaller first
+# speakable chunk than the cross-topology default. Live Talk A/B rejected 48
+# chars because it triggered Kokoro stream errors on some sentence fragments.
+
+[voice.profiles.mini-audio.llm]
+speech_chunk_max_chars = 56
 
 [voice.profiles.dark-audio.stt]
 base_url = "http://100.87.34.66:30110/v1"

@@ -46,8 +46,10 @@ Stdlib-only: ``array``, ``json``, ``os``, ``urllib.request``/``urllib.error``.
 from __future__ import annotations
 
 import array
+import http.client
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -59,6 +61,8 @@ from .base import BaseStage
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8091/v1"
 DEFAULT_MODEL = "tts"
+_PRE_AUDIO_STREAM_RETRY_ATTEMPTS = 1
+_TTS_FALLBACK_SEPARATOR_RE = re.compile(r"[-/\\]+")
 
 
 @dataclass
@@ -123,6 +127,12 @@ def resample_int16(pcm: bytes, in_rate: int, out_rate: int) -> bytes:
         s1 = src[idx + 1] if idx < last_idx else s0
         out[i] = int(s0 + (s1 - s0) * frac)
     return out.tobytes()
+
+
+def _fallback_tts_text(text: str) -> Optional[str]:
+    """Return a more conservative spoken form for a chunk that TTS rejects."""
+    fallback = " ".join(_TTS_FALLBACK_SEPARATOR_RE.sub(" ", text).split())
+    return fallback if fallback and fallback != text else None
 
 
 #: Same DI shape as ``stages/llm.py``'s ``Transport``.
@@ -247,6 +257,7 @@ class TTSStage(BaseStage):
         self.cancel_scope = cancel_scope or CancelScope()
         self.config = config or TTSStageConfig()
         self._stream_fn: StreamFn = stream_fn or stream_speech
+        self._pre_audio_stream_retry_attempts = _PRE_AUDIO_STREAM_RETRY_ATTEMPTS
 
     def process(self, item: Any):
         if isinstance(item, (EndOfResponse, LLMToolCall)):
@@ -257,23 +268,47 @@ class TTSStage(BaseStage):
         if self.cancel_scope.is_stale(item.generation):
             return  # superseded by a barge-in before synthesis even started
 
-        leftover = b""
-        for chunk in self._stream_fn(item.text, self.config):
-            if self.cancel_scope.is_stale(item.generation):
-                return  # barge-in mid-synthesis: abort, drop further audio
-            data = leftover + chunk
-            if len(data) % 2:
-                leftover = data[-1:]
-                data = data[:-1]
-            else:
+        candidate_texts = [item.text]
+        fallback = _fallback_tts_text(item.text)
+        if fallback is not None:
+            candidate_texts.append(fallback)
+
+        last_error: Optional[BaseException] = None
+        for text in candidate_texts:
+            attempts = 0
+            while True:
+                emitted_audio = False
                 leftover = b""
-            if not data:
-                continue
-            resampled = resample_int16(data, self.config.source_sample_rate, self.config.target_sample_rate)
-            yield AudioOut(
-                turn_id=item.turn_id,
-                turn_revision=item.turn_revision,
-                generation=item.generation,
-                pcm=resampled,
-                sample_rate=self.config.target_sample_rate,
-            )
+                try:
+                    for chunk in self._stream_fn(text, self.config):
+                        if self.cancel_scope.is_stale(item.generation):
+                            return  # barge-in mid-synthesis: abort, drop further audio
+                        data = leftover + chunk
+                        if len(data) % 2:
+                            leftover = data[-1:]
+                            data = data[:-1]
+                        else:
+                            leftover = b""
+                        if not data:
+                            continue
+                        resampled = resample_int16(
+                            data, self.config.source_sample_rate, self.config.target_sample_rate
+                        )
+                        emitted_audio = True
+                        yield AudioOut(
+                            turn_id=item.turn_id,
+                            turn_revision=item.turn_revision,
+                            generation=item.generation,
+                            pcm=resampled,
+                            sample_rate=self.config.target_sample_rate,
+                        )
+                    return
+                except (http.client.HTTPException, OSError) as exc:
+                    if emitted_audio:
+                        raise
+                    last_error = exc
+                    if attempts >= self._pre_audio_stream_retry_attempts:
+                        break
+                    attempts += 1
+        if last_error is not None:
+            raise last_error

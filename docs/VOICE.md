@@ -269,6 +269,12 @@ current-information lookups.
 - `mini-validation`: Mini-local audio plus the intentional
   `I understand.` validation prompt.
 
+The `mini-audio` profile lowers `voice.llm.speech_chunk_max_chars` to `56` for
+the Mini-local Kokoro TTS path. In live Talk measurements this reduced first
+audio latency versus the `72` character cross-topology default, while a more
+aggressive `48` character split produced Kokoro stream errors on some sentence
+fragments.
+
 Start the voice side first:
 
 ```bash
@@ -420,6 +426,13 @@ If `tts first_output_ms` is high for a large `text_chars` value, lower
 `voice.llm.speech_chunk_max_chars` in the active voice profile before changing
 models. That keeps the same answer path but starts TTS on smaller word-boundary
 chunks.
+For the Mini-local Kokoro path, keep the checked-in `mini-audio` override near
+`56` unless fresh `voice_stage_timing` evidence shows a better value; values
+near `48` have produced stream errors in live A/B tests.
+If Kokoro closes a TTS stream before producing any audio for a chunk, the TTS
+stage retries once and can fall back to a separator-safe spoken form such as
+`up to date` instead of `up-to-date`; failures after audio has started still
+surface as real stage errors.
 
 For the 16 GB Mini proof, use the hardware validation harness:
 
