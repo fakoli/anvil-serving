@@ -200,6 +200,9 @@ OpenClaw Talk or Voice Call
   -> STT -> [voice.llm] anvil router -> TTS
 ```
 
+For the operator-facing extension boundary, setup path, validation checklist,
+and review prompts, see [OpenClaw Anvil Voice Extension](OPENCLAW-ANVIL-VOICE.md).
+
 Use `examples/voice/openclaw-anvil-voice.toml` for the Mini reference layout.
 It keeps the Realtime server and MLX Audio endpoints on the Mini loopback and
 routes the LLM turn to the Fakoli Dark router over the private address.
