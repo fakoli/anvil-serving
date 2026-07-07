@@ -38,9 +38,11 @@ def test_openclaw_voice_sync_emits_anvil_talk_realtime_config(capsys):
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
+    talk = payload["talk"]
     realtime = payload["talk"]["realtime"]
     anvil = realtime["providers"]["anvil"]
 
+    assert talk["consultModel"] == "anvil/chat-fast"
     assert realtime["mode"] == "realtime"
     assert realtime["transport"] == "gateway-relay"
     assert realtime["brain"] == "agent-consult"
@@ -49,6 +51,39 @@ def test_openclaw_voice_sync_emits_anvil_talk_realtime_config(capsys):
     assert anvil["realtimeUrl"] == "ws://127.0.0.1:8765/v1/realtime"
     assert anvil["model"] == "fast-local"
     assert "apiKey" not in anvil
+
+
+def test_openclaw_voice_sync_can_override_consult_model(capsys):
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        voice_consult_model="anvil/chat",
+        _load=lambda _path: _cfg(),
+    )
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["talk"]["consultModel"] == "anvil/chat"
+
+
+def test_openclaw_voice_sync_falls_back_to_chat_consult_model(capsys):
+    cfg = _Config(
+        presets={"chat": ("fast", "heavy")},
+        tiers={"fast": _Tier(32768), "heavy": _Tier(131072)},
+    )
+    rc = harness.cmd_sync_openclaw(
+        "router.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        api_key_env="ANVIL_ROUTER_TOKEN",
+        voice=True,
+        _load=lambda _path: cfg,
+    )
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["talk"]["consultModel"] == "anvil/chat"
 
 
 def test_openclaw_voice_sync_can_emit_env_secretref(capsys):

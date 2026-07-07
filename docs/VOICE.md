@@ -316,15 +316,19 @@ anvil-serving harness sync openclaw \
   --base-url http://100.87.34.66:8000/v1 \
   --voice \
   --voice-realtime-url ws://127.0.0.1:8765/v1/realtime \
+  --voice-consult-model anvil/chat-fast \
   --out ./openclaw.anvil.json
 ```
 
 The generated Talk config selects the OpenClaw provider id `anvil` and points
-it at the Anvil Voice Realtime server:
+it at the Anvil Voice Realtime server. It also pins forced OpenClaw agent
+consults to the low-latency `anvil/chat-fast` preset without changing the
+session's normal selected model:
 
 ```json5
 {
   talk: {
+    consultModel: "anvil/chat-fast",
     realtime: {
       mode: "realtime",
       transport: "gateway-relay",
@@ -342,6 +346,12 @@ it at the Anvil Voice Realtime server:
   }
 }
 ```
+
+`--voice-consult-model` is optional when the router config exposes the
+`chat-fast` preset; `harness sync openclaw --voice` selects `anvil/chat-fast`
+by default and falls back to `anvil/chat` if the preset is absent. Pass
+`--voice-consult-model anvil/chat` to switch the forced consult path back to
+the standard chat preset.
 
 Same-host Anvil Voice can omit a realtime token. If the Realtime server binds
 to a private/tailnet address, set `voice.realtime_token_env` in the voice

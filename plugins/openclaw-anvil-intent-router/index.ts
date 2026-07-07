@@ -60,6 +60,7 @@ import {
   getRouteTimeoutMs,
   makeRoutingDecision,
   fetchAnvilTier,
+  resolveExplicitAnvilPresetFromContext,
   resolveRouteAuthToken,
 } from "./route.mjs";
 
@@ -111,8 +112,11 @@ export default definePluginEntry({
         try {
           // Coerce ONCE to the exact string classify sees.
           const promptText = String(event?.prompt ?? "");
+          const explicitPreset = resolveExplicitAnvilPresetFromContext(ctx) as
+            | AnvilPreset
+            | undefined;
           // classify NEVER throws; default "chat" is the safe floor.
-          const preset: AnvilPreset = classify(promptText, event?.attachments);
+          const preset: AnvilPreset = explicitPreset ?? classify(promptText, event?.attachments);
 
           // ── ROUTING SPLIT (T008) ─────────────────────────────────────────
           //
@@ -126,13 +130,15 @@ export default definePluginEntry({
           //
           let routeOverride: BeforeModelResolveResult;
           let authoritative = false;
-          let routingSource = "client-side";
+          let routingSource = explicitPreset ? "openclaw-context" : "client-side";
 
           const pluginConfig = getPluginConfig(api);
           const nativeRoute = getNativeRoute(pluginConfig);
           const routeEndpoint = getRouteEndpoint(pluginConfig);
           const routeTimeoutMs = getRouteTimeoutMs(pluginConfig);
-          if (routeEndpoint) {
+          if (explicitPreset) {
+            routeOverride = { providerOverride: "anvil", modelOverride: preset };
+          } else if (routeEndpoint) {
             // Path A: authoritative POST /v1/route.
             const tier = await fetchAnvilTier(
               promptText,
