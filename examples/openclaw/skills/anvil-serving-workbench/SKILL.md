@@ -55,6 +55,13 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
 - Promotion evidence: assemble status, decision summaries, route probes,
   preflight, benchmark artifacts, calibration, profile/config diffs, and
   reviewer recommendation with `promoted=false`.
+- OpenClaw COLO smoke/eval: for Mini-to-Dark validation or release/blog stats,
+  use `examples/openclaw/colo_smoke.py --live`; add `--run-generations
+  --run-interaction-benchmark` for repeatable intent stats. Preserve
+  `interaction_benchmarks` and recipe fields. Treat generation caps,
+  exact/stream benchmark caps, benchmark reasoning effort, and per-intent
+  overrides as router tier `params` owned by the model recipe, not as skill or
+  plugin constants.
 - Host/cache work: collect `host_summary` and `cache_prune_plan`; MCP cache
   pruning is plan-only and must not delete.
 
