@@ -44,6 +44,7 @@ def test_openclaw_voice_sync_emits_anvil_talk_realtime_config(capsys):
     assert realtime["mode"] == "realtime"
     assert realtime["transport"] == "gateway-relay"
     assert realtime["brain"] == "agent-consult"
+    assert realtime["consultRouting"] == "force-agent-consult"
     assert realtime["provider"] == "anvil"
     assert anvil["realtimeUrl"] == "ws://127.0.0.1:8765/v1/realtime"
     assert anvil["model"] == "fast-local"

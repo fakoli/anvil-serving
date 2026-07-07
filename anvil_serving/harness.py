@@ -62,6 +62,7 @@ _REMOTE_RESTART_COMMAND = 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"'
 _DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
 DEFAULT_ANVIL_VOICE_REALTIME_URL = "ws://127.0.0.1:8765/v1/realtime"
 _DEFAULT_ANVIL_VOICE_MODEL = "fast-local"
+_ANVIL_VOICE_CONSULT_ROUTING = "force-agent-consult"
 _LEGACY_GENERATED_PLUGIN_CONFIG_DEFAULTS = {
     "nativeProvider": "anthropic",
     "nativeModel": "claude-sonnet-4-5",
@@ -238,6 +239,7 @@ def render_openclaw_voice_config(
                 "mode": "realtime",
                 "transport": "gateway-relay",
                 "brain": "agent-consult",
+                "consultRouting": _ANVIL_VOICE_CONSULT_ROUTING,
                 "provider": "anvil",
                 "providers": {"anvil": provider_config},
             }

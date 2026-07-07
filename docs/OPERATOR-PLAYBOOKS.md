@@ -455,10 +455,10 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    ```
 
    The generated `talk.realtime` config must select provider `anvil`,
-   transport `gateway-relay`, brain `agent-consult`, and the same Anvil Voice
-   WebSocket URL that `voice run` binds. For a private/tailnet Realtime bind,
-   keep the bearer token in an env var and pass only its name with
-   `--voice-api-key-env`.
+   transport `gateway-relay`, brain `agent-consult`, consult routing
+   `force-agent-consult`, and the same Anvil Voice WebSocket URL that
+   `voice run` binds. For a private/tailnet Realtime bind, keep the bearer
+   token in an env var and pass only its name with `--voice-api-key-env`.
 
 7. Collect evidence.
 
