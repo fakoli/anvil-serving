@@ -10,6 +10,7 @@ no network.
 from __future__ import annotations
 
 import array
+import http.client
 import json
 from types import SimpleNamespace
 
@@ -385,6 +386,67 @@ def test_tts_stage_handles_odd_byte_chunk_boundaries():
     out = list(stage.process(_tts_input()))
     combined = b"".join(m.pcm for m in out)
     assert combined == full
+
+
+def test_tts_stage_retries_pre_audio_incomplete_read_once():
+    scope = CancelScope()
+    audio = _int16_bytes([1, 2, 3, 4])
+    calls = 0
+
+    def fake_stream(text, config):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise http.client.IncompleteRead(b"")
+        yield audio
+
+    config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
+    stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
+
+    out = list(stage.process(_tts_input()))
+
+    assert calls == 2
+    assert b"".join(m.pcm for m in out) == audio
+
+
+def test_tts_stage_falls_back_to_separator_safe_text_after_pre_audio_failures():
+    scope = CancelScope()
+    audio = _int16_bytes([1, 2, 3, 4])
+    calls = []
+
+    def fake_stream(text, config):
+        calls.append(text)
+        if "-" in text:
+            raise http.client.IncompleteRead(b"")
+        yield audio
+
+    config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
+    stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
+
+    out = list(stage.process(_tts_input(text="up-to-date forecast")))
+
+    assert calls == ["up-to-date forecast", "up-to-date forecast", "up to date forecast"]
+    assert b"".join(m.pcm for m in out) == audio
+
+
+def test_tts_stage_does_not_retry_after_audio_emitted():
+    scope = CancelScope()
+    audio = _int16_bytes([1, 2, 3, 4])
+    calls = 0
+
+    def fake_stream(text, config):
+        nonlocal calls
+        calls += 1
+        yield audio
+        raise http.client.IncompleteRead(b"")
+
+    config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
+    stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
+
+    with pytest.raises(http.client.IncompleteRead):
+        list(stage.process(_tts_input()))
+
+    assert calls == 1
 
 
 def test_tts_stage_aborts_on_mid_stream_barge_in():

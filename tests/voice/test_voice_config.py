@@ -76,10 +76,19 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     raw = voice_config.load_manifest("examples/voice/openclaw-anvil-voice.toml")
     assert voice_config.profile_names(raw) == ["dark-audio", "mini-audio", "mini-validation"]
 
+    mini = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="mini-audio",
+    )
+    assert mini["voice"]["llm"]["speech_chunk_max_chars"] == 56
+    assert mini["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
+    assert mini["voice"]["tts"]["base_url"] == "http://127.0.0.1:30011/v1"
+
     dark = voice_config.load_manifest(
         "examples/voice/openclaw-anvil-voice.toml",
         profile="dark-audio",
     )
+    assert dark["voice"]["llm"]["speech_chunk_max_chars"] == 72
     assert dark["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
     assert dark["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
     assert dark["voice"]["stt"]["lifecycle"] == "external"
