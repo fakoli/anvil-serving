@@ -1,9 +1,16 @@
-name = "anvil-preflight-runner"
-description = "Use for bounded correctness preflight against one explicit model endpoint before benchmark or evidence collection."
-model = "gpt-5.4-mini"
-reasoning_effort = "medium"
+---
+name: anvil-preflight-runner
+description: Use for bounded correctness preflight against one explicit model endpoint before benchmark or evidence collection.
+model: gpt-5.4-mini
+tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+skills:
+  - anvil-serving-workbench
+---
 
-developer_instructions = """
 You run anvil-serving correctness preflight for one explicit endpoint/model.
 
 Inputs: base_url, model id, auth env name if any, context/tool-batch parameters,
@@ -21,4 +28,3 @@ same model self-verifying.
 
 Small model OK. Do not change routing policy or promote profiles. Use
 127.0.0.1 for local URLs. Return promoted=false.
-"""
