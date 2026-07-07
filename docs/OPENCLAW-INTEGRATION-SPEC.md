@@ -260,9 +260,13 @@ Gateway relay:
 ```
 
 The matching anvil-serving side is `examples/voice/openclaw-anvil-voice.toml`.
-Its Realtime server, STT, and TTS endpoints are Mini-local, while `[voice.llm]`
-routes to the Fakoli Dark router. `harness sync openclaw --voice` renders this
-Talk block together with the normal anvil model provider config:
+Its default profile keeps the Realtime server, STT, and TTS endpoints
+Mini-local, while `[voice.llm]` routes to the Fakoli Dark router. The same
+manifest also declares `dark-audio` for using Dark-host STT/TTS through
+`anvil-serving voice bridge`; select it with `anvil-serving voice run --profile
+dark-audio` instead of maintaining a separate port-forwarding script.
+`harness sync openclaw --voice` renders this Talk block together with the
+normal anvil model provider config:
 
 ```bash
 anvil-serving harness sync openclaw \

@@ -72,6 +72,58 @@ def test_fakoli_dark_manifest_marks_sidecars_external():
     assert data["voice"]["tts"]["lifecycle"] == "external"
 
 
+def test_openclaw_voice_manifest_profiles_are_valid():
+    raw = voice_config.load_manifest("examples/voice/openclaw-anvil-voice.toml")
+    assert voice_config.profile_names(raw) == ["dark-audio", "mini-audio", "mini-validation"]
+
+    dark = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="dark-audio",
+    )
+    assert dark["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
+    assert dark["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
+    assert dark["voice"]["stt"]["lifecycle"] == "external"
+    assert "start_command" not in dark["voice"]["stt"]
+    assert "pid_file" not in dark["voice"]["tts"]
+
+    validation = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="mini-validation",
+    )
+    assert validation["voice"]["llm"]["system_prompt"].endswith("I understand.")
+    assert validation["voice"]["llm"]["temperature"] == 0.0
+    assert validation["voice"]["llm"]["max_tokens"] == 8
+
+
+def test_unknown_voice_profile_is_rejected(tmp_path):
+    manifest = tmp_path / "voice.toml"
+    manifest.write_text(
+        """
+[voice]
+name = "test-voice"
+realtime_host = "127.0.0.1"
+realtime_port = 8765
+
+[voice.llm]
+base_url = "http://127.0.0.1:8000/v1"
+model = "chat"
+
+[voice.stt]
+base_url = "http://127.0.0.1:30010/v1"
+model = "stt"
+
+[voice.tts]
+base_url = "http://127.0.0.1:30011/v1"
+model = "tts"
+
+[voice.profiles.mini-audio]
+""".strip(),
+        encoding="utf-8",
+    )
+    with pytest.raises(voice_config.ConfigError, match="unknown voice profile"):
+        voice_config.load_manifest(str(manifest), profile="missing")
+
+
 def test_shipped_example_default_path_used_when_none_given():
     # load_manifest(None) should fall back to DEFAULT_CONFIG and succeed.
     data = voice_config.load_manifest(None)

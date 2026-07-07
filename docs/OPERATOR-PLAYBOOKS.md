@@ -44,7 +44,9 @@ resource and keep the same gate semantics.
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
 | Start or restore compose-defined serves | `serves_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves --manifest ./serves.toml up <name>` |
 | Start an experiment serve | `serves_manage` with `compose` preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves up --compose <compose.yml> <service>` |
-| Start or stop voice STT/TTS serves | `voice_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving voice up --config <voice.toml>`; `anvil-serving voice down --config <voice.toml>` |
+| Start or stop voice STT/TTS serves | `voice_manage` with preview, optional `profile`, then `confirm:true` and `dry_run:false` | `anvil-serving voice up --config <voice.toml> --profile <name>`; `anvil-serving voice down --config <voice.toml> --profile <name>` |
+| Switch or inspect voice profiles | `voice_manage` plan with `profile`; no separate mutation required | `anvil-serving voice profiles --config <voice.toml>`; `anvil-serving voice run --config <voice.toml> --profile <name>` |
+| Expose private STT/TTS bridge ports | Human-gated CLI on the audio host | `anvil-serving voice bridge --listen-host <private-tailnet-address> ... --i-understand-this-exposes-voice-audio` |
 | Probe a multiplexer endpoint | Not exposed yet | `GET /healthz`; `GET /v1/models` on the multiplexer base URL |
 | Serve logs | `serves_logs` with bounded `tail`; no follow mode | `anvil-serving serves --manifest ./serves.toml logs <name> --tail 200` |
 | Correctness gate | `preflight_probe` | `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
@@ -76,7 +78,9 @@ MCP invocation rules:
 - For `voice_manage`, use the same preview-first pattern. It starts/stops only
   the STT/TTS lifecycle declared by the voice manifest on the host where the
   tool runs: Docker-backed managed audio serves, or same-host native processes
-  such as MLX Audio endpoints with PID/log files.
+  such as MLX Audio endpoints with PID/log files. Pass `profile` when the
+  operator wants a declared Mini/Dark/laptop topology rather than the manifest
+  default.
 - For `router_manage`, use the same preview-first pattern. A live router
   lifecycle change requires both `confirm:true` and `dry_run:false`.
 - For `router_promote`, preview validates the candidate profile/config and
@@ -322,8 +326,9 @@ an MCP wrapper actually exists.
 
 Use this when operating `anvil-serving voice` on a gateway, Mini, laptop, or
 other trusted voice host. The voice command surface has three layers: STT/TTS
-lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
-(`benchmark` or `scripts/voice/mini_validation.py`).
+lifecycle (`up`/`down`), optional private audio bridging (`bridge`),
+foreground Realtime serving (`run`), and evidence (`benchmark` or
+`scripts/voice/mini_validation.py`).
 
 1. Identify the voice topology and manifest.
 
@@ -344,11 +349,19 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
    `127.0.0.1:30011`, while the LLM goes to the Fakoli Dark router over the
    tailnet. Additional laptops can use the same manifest shape with device
    names, `base_url` values, and lifecycle fields changed for the new topology.
+   For OpenClaw Talk, `examples/voice/openclaw-anvil-voice.toml` declares
+   `mini-audio`, `dark-audio`, and `mini-validation` profiles so the switch is
+   made with `--profile`, not by editing files or running a separate proxy
+   script.
+
+   ```bash
+   anvil-serving voice profiles --config examples/voice/openclaw-anvil-voice.toml
+   ```
 
 2. Preview STT/TTS lifecycle before mutation.
 
    ```bash
-   anvil-serving voice up --config examples/voice/fakoli-mini.toml --dry-run
+   anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --dry-run
    ```
 
    Prefer `voice_manage` through MCP/controller when available:
@@ -356,7 +369,8 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
    ```json
    {
      "action": "up",
-     "config": "examples/voice/fakoli-mini.toml"
+     "config": "examples/voice/openclaw-anvil-voice.toml",
+     "profile": "mini-audio"
    }
    ```
 
@@ -366,7 +380,7 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
 3. Start the audio endpoints only after the target manifest is exact.
 
    ```bash
-   anvil-serving voice up --config examples/voice/fakoli-mini.toml
+   anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
    ```
 
    Through MCP/controller, the live call requires:
@@ -374,23 +388,61 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
    ```json
    {
      "action": "up",
-     "config": "examples/voice/fakoli-mini.toml",
+     "config": "examples/voice/openclaw-anvil-voice.toml",
+     "profile": "mini-audio",
      "confirm": true,
      "dry_run": false
    }
    ```
 
-4. Start the Realtime server in the foreground.
+4. If STT/TTS should run on a separate audio host, first verify the audio
+   endpoints are already running on that host. `voice bridge` forwards traffic;
+   it does not start STT/TTS:
 
    ```bash
-   anvil-serving voice run --config examples/voice/fakoli-mini.toml
+   curl -s -o /dev/null -w "stt %{http_code}\n" http://127.0.0.1:30010/v1/models
+   curl -s -o /dev/null -w "tts %{http_code}\n" http://127.0.0.1:30011/v1/models
+   ```
+
+   A 4xx response still proves a listener is present; connection refusal means
+   the local audio endpoint is not up.
+
+   Then expose those endpoints through the `anvil-serving voice bridge` command
+   on the audio host. This is a product utility, not a one-off port-forwarding
+   script. Bind a concrete private/tailnet address and acknowledge the
+   non-loopback exposure explicitly:
+
+   ```bash
+   anvil-serving voice bridge \
+     --listen-host 100.87.34.66 \
+     --stt-listen-port 30110 \
+     --stt-target-host 127.0.0.1 \
+     --stt-target-port 30010 \
+     --tts-listen-port 30111 \
+     --tts-target-host 127.0.0.1 \
+     --tts-target-port 30011 \
+     --i-understand-this-exposes-voice-audio
+   ```
+
+   Wildcard binds such as `0.0.0.0` are not the normal path. They require the
+   additional `--allow-wildcard-listen` flag and should be used only after
+   firewall or tailnet ACL scoping is proven.
+
+   On Fakoli Mini, select that topology in the Realtime and benchmark commands
+   by using `--profile dark-audio` instead of `--profile mini-audio`.
+
+5. Start the Realtime server in the foreground. Use `mini-audio` for Mini-local
+   STT/TTS, or `dark-audio` after the bridge above is listening.
+
+   ```bash
+   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
    ```
 
    This command probes the LLM, STT, and TTS endpoints before binding the
    WebSocket server. It should fail loudly on unreachable endpoints rather than
    starting a session pool that cannot serve a turn.
 
-5. If OpenClaw Talk or Voice Call will use Anvil Voice, sync the OpenClaw
+6. If OpenClaw Talk or Voice Call will use Anvil Voice, sync the OpenClaw
    realtime provider block after the Realtime URL is exact.
 
    ```bash
@@ -408,12 +460,12 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
    keep the bearer token in an env var and pass only its name with
    `--voice-api-key-env`.
 
-6. Collect evidence.
+7. Collect evidence.
 
    For a quick smoke measurement:
 
    ```bash
-   anvil-serving voice benchmark --config examples/voice/fakoli-mini.toml
+   anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
    ```
 
    For Mini acceptance evidence:
@@ -425,10 +477,10 @@ lifecycle (`up`/`down`), foreground Realtime serving (`run`), and evidence
    The Mini validation report adds host identity, memory, endpoint model ids,
    router auth proof, and post-benchmark STT/TTS process memory.
 
-7. Stop audio endpoints when done.
+8. Stop audio endpoints when done.
 
    ```bash
-   anvil-serving voice down --config examples/voice/fakoli-mini.toml
+   anvil-serving voice down --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
    ```
 
    `voice down` does not stop the router and does not stop an already-running
@@ -744,5 +796,7 @@ and is not automatic.
   audit log to find the failed request before falling back to raw SSH.
 - OpenClaw config drift: run `harness sync openclaw` from the router config; do
   not hand-edit the provider block.
-- Need for raw Docker or SSH: report the missing Anvil verb/MCP wrapper unless
-  the operator explicitly approves an emergency action.
+- Need for raw Docker, SSH, or one-off lifecycle scripts: report the missing
+  Anvil verb/MCP wrapper unless the operator explicitly approves an emergency
+  action. Repeatable lifecycle, port, profile, harness, router, serve, and voice
+  operations belong in `anvil-serving`.

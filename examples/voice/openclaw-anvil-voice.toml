@@ -7,6 +7,10 @@
 # STT, routes the LLM turn through the Fakoli Dark router, then returns TTS
 # audio through its OpenAI Realtime-compatible WebSocket server.
 # Credentials are env var names only; never paste token values here.
+#
+# Use --profile to switch the active audio topology without copying this file:
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 
 [voice]
 name = "anvil-voice-openclaw"
@@ -54,3 +58,28 @@ ready_timeout = 120.0
 response_format = "pcm"
 source_sample_rate = 24000
 target_sample_rate = 16000
+
+[voice.profiles.mini-audio]
+# Explicit alias for the base Mini-local STT/TTS topology.
+
+[voice.profiles.dark-audio.stt]
+base_url = "http://100.87.34.66:30110/v1"
+model = "tdt_ctc-110m"
+stream = false
+response_format = "json"
+timeout = 120.0
+lifecycle = "external"
+
+[voice.profiles.dark-audio.tts]
+base_url = "http://100.87.34.66:30111/v1"
+model = "kokoro"
+timeout = 120.0
+lifecycle = "external"
+response_format = "pcm"
+source_sample_rate = 24000
+target_sample_rate = 16000
+
+[voice.profiles.mini-validation.llm]
+system_prompt = "For this Mini validation profile, answer every message with exactly: I understand."
+temperature = 0.0
+max_tokens = 8
