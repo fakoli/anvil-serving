@@ -27,6 +27,7 @@ Stdlib-only: ``tomllib``, ``re``, ``urllib.parse``, ``os``.
 """
 from __future__ import annotations
 
+import copy
 import os
 import re
 import shlex
@@ -69,20 +70,105 @@ def _resolve_config_path(path: str | None) -> str:
     )
 
 
-def load_manifest(path: str | None = None) -> dict:
-    """Load and validate the voice manifest TOML at `path` (or the shipped example)."""
+def load_raw_manifest(path: str | None = None) -> dict:
+    """Load the voice manifest TOML without applying profiles or validation."""
     if tomllib is None:  # pragma: no cover - guarded by requires-python >=3.11
         raise ConfigError("tomllib unavailable (need Python >= 3.11)")
     config_path = _resolve_config_path(path)
     try:
         with open(config_path, "rb") as f:
-            data = tomllib.load(f)
+            return tomllib.load(f)
     except FileNotFoundError:
         raise ConfigError("config not found: %s" % config_path)
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError("cannot parse %s: %s" % (config_path, exc))
+
+
+def load_manifest(path: str | None = None, *, profile: str | None = None) -> dict:
+    """Load and validate the voice manifest TOML at `path` (or the shipped example).
+
+    When `profile` is provided, `[voice.profiles.<name>]` is applied as an
+    operator-selected overlay before validation. Profiles are for topology
+    switching, such as keeping Realtime on a gateway host while selecting Mini
+    or Dark STT/TTS endpoints through the same anvil-serving utility command.
+    """
+    data = load_raw_manifest(path)
+    if profile:
+        _reject_secret_literals(data)
+        data = apply_profile(data, profile)
     validate_manifest(data)
     return data
+
+
+def profile_names(data: dict) -> list[str]:
+    """Return sorted profile names declared under `[voice.profiles]`."""
+    voice = data.get("voice") if isinstance(data, dict) else None
+    profiles = voice.get("profiles", {}) if isinstance(voice, dict) else {}
+    if profiles is None:
+        return []
+    if not isinstance(profiles, dict):
+        raise ConfigError("voice.profiles must be a TOML table")
+    for name, value in profiles.items():
+        if not isinstance(value, dict):
+            raise ConfigError("voice.profiles.%s must be a TOML table" % name)
+    return sorted(str(name) for name in profiles)
+
+
+def apply_profile(data: dict, profile: str) -> dict:
+    """Return a copy of `data` with the named voice profile applied.
+
+    Profile overlays live under `[voice.profiles.<name>]`. Top-level keys in
+    that profile merge into `[voice]`; nested `llm`, `stt`, and `tts` tables
+    merge into their active endpoint sections. If a profile changes an audio
+    endpoint away from `lifecycle = "native"`, inherited native process keys
+    are stripped so a Mini-native base profile can safely switch to Dark-host
+    external audio endpoints.
+    """
+    if not isinstance(profile, str) or not profile:
+        raise ConfigError("profile must be a non-empty string")
+    if not isinstance(data, dict):
+        raise ConfigError("manifest must be a TOML table")
+    voice = data.get("voice")
+    if not isinstance(voice, dict):
+        raise ConfigError("missing [voice] section")
+    profiles = voice.get("profiles", {})
+    if not isinstance(profiles, dict):
+        raise ConfigError("voice.profiles must be a TOML table")
+    overlay = profiles.get(profile)
+    if overlay is None:
+        names = ", ".join(profile_names(data)) or "(none)"
+        raise ConfigError("unknown voice profile %s; available profiles: %s" % (profile, names))
+    if not isinstance(overlay, dict):
+        raise ConfigError("voice.profiles.%s must be a TOML table" % profile)
+
+    resolved = copy.deepcopy(data)
+    resolved_voice = resolved["voice"]
+    resolved_voice.pop("profiles", None)
+    for key, value in overlay.items():
+        if key == "profiles":
+            raise ConfigError("voice.profiles.%s must not contain nested profiles" % profile)
+        if isinstance(value, dict):
+            base = resolved_voice.get(key)
+            if isinstance(base, dict):
+                merged = copy.deepcopy(base)
+                _merge_table(merged, value)
+                if key in ("stt", "tts") and value.get("lifecycle", merged.get("lifecycle")) != "native":
+                    for native_key in (*_NATIVE_COMMAND_KEYS, *_NATIVE_PATH_KEYS):
+                        merged.pop(native_key, None)
+                resolved_voice[key] = merged
+            else:
+                resolved_voice[key] = copy.deepcopy(value)
+        else:
+            resolved_voice[key] = copy.deepcopy(value)
+    return resolved
+
+
+def _merge_table(base: dict, overlay: dict) -> None:
+    for key, value in overlay.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _merge_table(base[key], value)
+        else:
+            base[key] = copy.deepcopy(value)
 
 
 def _section(data: dict, *keys: str) -> dict:

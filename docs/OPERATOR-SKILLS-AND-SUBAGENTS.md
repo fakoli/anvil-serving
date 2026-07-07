@@ -109,7 +109,7 @@ require editing a skill, plugin, or benchmark prompt.
 | Compose-defined serve health | `serves_status` | Implemented |
 | Guarded serve lifecycle | `serves_manage` | Implemented |
 | Bounded serve logs | `serves_logs` | Implemented |
-| Guarded voice STT/TTS lifecycle | `voice_manage` | Implemented; applies to managed Docker audio serves and same-host native MLX Audio processes on Mini or other voice hosts |
+| Guarded voice STT/TTS lifecycle | `voice_manage` | Implemented; applies to managed Docker audio serves and same-host native MLX Audio processes on Mini or other voice hosts, with optional manifest `profile` selection |
 | Environment and configured tier checks | `doctor_summary` | Implemented |
 | Host WSL/Docker/GPU summary | `host_summary` | Implemented; read-only and non-mutating |
 | Model inventory | `models_inventory` | Implemented |
@@ -154,7 +154,7 @@ agent workflow.
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
 | Controller transport | `controller serve`, `mcp --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
 | Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
-| Voice | `voice up/down/start/stop/run/benchmark`, `voice-sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle; skill/CLI for foreground realtime server and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`. |
+| Voice | `voice up/down/start/stop/run/benchmark/profiles/bridge`, `voice-sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle and profile-aware previews; skill/CLI for foreground realtime server, private audio bridge, and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`; private STT/TTS port exposure uses `voice bridge`, not one-off proxy scripts. |
 | Local analytics | `profile`, `score`, `cache-prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `score` are offline analysis. `cache-prune` deletion stays CLI-only and human-gated. |
 
 ## Recommended Skills
@@ -179,8 +179,9 @@ tool-backed, not a new policy engine.
 skill source. Install or copy it into the active harness skill store when the
 operator wants a dedicated voice playbook. It intentionally uses the existing
 `anvil-serving voice-sidecar validate`, `voice-sidecar command`,
-`voice-sidecar compose`, `voice up`, `voice down`, `voice run`, and
-`voice benchmark` verbs before proposing new MCP tools.
+`voice-sidecar compose`, `voice up`, `voice down`, `voice profiles`,
+`voice bridge`, `voice run`, and `voice benchmark` verbs before proposing new
+MCP tools or fallback scripts.
 
 Voice benchmark output is voice-pipeline evidence, not router work-class promotion evidence.
 Voice benchmark JSON should be attached with artifact kind `voice-benchmark`,

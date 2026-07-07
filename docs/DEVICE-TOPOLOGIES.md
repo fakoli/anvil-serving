@@ -66,6 +66,23 @@ command is being run on the audio host itself through local CLI or a controller.
 `lifecycle = "native"` starts a process on the host running `voice up`; it is
 not a remote shell mechanism.
 
+If the audio host's STT/TTS services are intentionally loopback-only, expose
+private bridge ports with the product utility on the audio host:
+
+```bash
+anvil-serving voice bridge \
+  --listen-host 100.87.34.66 \
+  --stt-listen-port 30110 \
+  --tts-listen-port 30111 \
+  --i-understand-this-exposes-voice-audio
+```
+
+Then point the voice host manifest profile at those private bridge ports and
+keep the STT/TTS lifecycle as `external`.
+Use a concrete private or tailnet address for `--listen-host`; wildcard binds
+require `--allow-wildcard-listen` and should be reserved for firewall-scoped
+deployments.
+
 ### Add Another Laptop As A Router Or Serve Host
 
 Run the router or model serves on that laptop, bind them to a private reachable

@@ -1111,6 +1111,111 @@ def test_voice_manage_preview_is_dry_run_argv(tmp_path):
     assert data["plan"]["audio_serves"][0]["stop_timeout"] == 3.0
 
 
+def test_voice_manage_accepts_profile_selection(tmp_path):
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        name = "openclaw"
+        realtime_host = "127.0.0.1"
+        realtime_port = 8765
+
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+
+        [voice.stt]
+        base_url = "http://127.0.0.1:30010/v1"
+        model = "mlx-stt"
+        lifecycle = "native"
+        start_command = "python -m mlx_audio.server --port 30010"
+        pid_file = "/tmp/stt.pid"
+        log_file = "/tmp/stt.log"
+
+        [voice.tts]
+        base_url = "http://127.0.0.1:30011/v1"
+        model = "mlx-tts"
+        lifecycle = "native"
+        start_command = "python -m mlx_audio.server --port 30011"
+        pid_file = "/tmp/tts.pid"
+        log_file = "/tmp/tts.log"
+
+        [voice.profiles.dark-audio.stt]
+        base_url = "http://100.87.34.66:30110/v1"
+        model = "tdt_ctc-110m"
+        lifecycle = "external"
+
+        [voice.profiles.dark-audio.tts]
+        base_url = "http://100.87.34.66:30111/v1"
+        model = "kokoro"
+        lifecycle = "external"
+    """), encoding="utf-8")
+
+    env = mcp.call_tool("voice_manage", {
+        "action": "up",
+        "config": str(config),
+        "profile": "dark-audio",
+    })
+
+    assert env["ok"] is True
+    data = env["data"]
+    assert data["command"][:7] == [
+        sys.executable,
+        "-m",
+        "anvil_serving.cli",
+        "voice",
+        "up",
+        "--config",
+        str(config),
+    ]
+    assert data["command"][7:9] == ["--profile", "dark-audio"]
+    assert data["plan"]["profile"] == "dark-audio"
+    assert data["plan"]["available_profiles"] == ["dark-audio"]
+    assert data["plan"]["audio_serves"][0]["lifecycle"] == "external"
+    assert data["plan"]["audio_serves"][0]["base_url"] == "http://100.87.34.66:30110/v1"
+
+
+def test_voice_manage_profile_does_not_validate_unprofiled_base_first(tmp_path):
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        name = "openclaw"
+        realtime_host = "127.0.0.1"
+        realtime_port = 8765
+
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+
+        [voice.stt]
+        base_url = "http://localhost:30010/v1"
+        model = "bad-base-stt"
+
+        [voice.tts]
+        base_url = "http://localhost:30011/v1"
+        model = "bad-base-tts"
+
+        [voice.profiles.dark-audio.stt]
+        base_url = "http://100.87.34.66:30110/v1"
+        model = "tdt_ctc-110m"
+        lifecycle = "external"
+
+        [voice.profiles.dark-audio.tts]
+        base_url = "http://100.87.34.66:30111/v1"
+        model = "kokoro"
+        lifecycle = "external"
+    """), encoding="utf-8")
+
+    env = mcp.call_tool("voice_manage", {
+        "action": "up",
+        "config": str(config),
+        "profile": "dark-audio",
+    })
+
+    assert env["ok"] is True
+    assert env["data"]["plan"]["profile"] == "dark-audio"
+    assert env["data"]["plan"]["audio_serves"][0]["base_url"] == "http://100.87.34.66:30110/v1"
+
+
 def test_voice_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, monkeypatch):
     config = tmp_path / "voice.toml"
     config.write_text(textwrap.dedent("""
@@ -1228,6 +1333,7 @@ def test_voice_manage_bad_action_and_bad_config(tmp_path):
 def test_voice_manage_schema_exposes_action_enum():
     tool = next(item for item in mcp.list_tools() if item["name"] == "voice_manage")
     assert tool["inputSchema"]["properties"]["action"]["enum"] == ["up", "down", "start", "stop"]
+    assert tool["inputSchema"]["properties"]["profile"]["type"] == "string"
 
 
 def test_openclaw_sync_rejects_non_anvil_api_key_env(tmp_path):

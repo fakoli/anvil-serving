@@ -1,14 +1,15 @@
 ---
 name: anvil-serving-voice-ops
-description: Validate and operate anvil-serving voice manifests, Hugging Face speech-to-speech sidecars, realtime run commands, and bounded voice benchmarks without treating voice evidence as router promotion evidence.
+description: Validate and operate anvil-serving voice manifests, profile switches, private audio bridges, Hugging Face speech-to-speech sidecars, realtime run commands, and bounded voice benchmarks without treating voice evidence as router promotion evidence.
 ---
 
 # Anvil Serving Voice Ops
 
 Use this skill for voice-pipeline operations: validating sidecar manifests,
 rendering speech-to-speech commands, previewing compose snippets, bringing
-manifest-owned managed/native STT/TTS lifecycle up or down, running the realtime voice loop, and running
-bounded voice benchmarks.
+manifest-owned managed/native STT/TTS lifecycle up or down, selecting declared
+voice profiles, running private STT/TTS bridge ports, running the realtime voice
+loop, and running bounded voice benchmarks.
 
 ## Start Here
 
@@ -19,7 +20,8 @@ bounded voice benchmarks.
    `anvil-serving voice-sidecar validate`,
    `anvil-serving voice-sidecar command`,
    `anvil-serving voice-sidecar compose`, `anvil-serving voice up`,
-   `anvil-serving voice down`, `anvil-serving voice run`, and
+   `anvil-serving voice down`, `anvil-serving voice profiles`,
+   `anvil-serving voice bridge`, `anvil-serving voice run`, and
    `anvil-serving voice benchmark`.
 3. Use `127.0.0.1` for local URLs. Do not introduce `localhost`.
 4. Pass secrets by environment variable name only. Do not put literal API keys
@@ -27,13 +29,16 @@ bounded voice benchmarks.
 5. Treat voice benchmark output as voice-pipeline evidence. Voice results are
    not router work-class promotion evidence and must not satisfy a
    `router_promote` gate.
+6. Do not introduce one-off lifecycle, proxy, or port-forwarding scripts as the
+   operational path. If repeatable voice operation needs a new control, it
+   belongs in `anvil-serving voice` and, when agent-operated, MCP/controller.
 
 ## Gates
 
 Stop for a human gate before public or non-loopback realtime binds, exposing a
-realtime token, changing cloud/STT/TTS spend, installing or updating external
-speech-to-speech packages, or starting long-running foreground services on a
-shared host.
+realtime token, exposing non-loopback STT/TTS bridge ports, changing
+cloud/STT/TTS spend, installing or updating external speech-to-speech packages,
+or starting long-running foreground services on a shared host.
 
 `voice-sidecar command --with-auth` and `voice-sidecar compose --with-auth`
 render environment variable references for authenticated router calls. The
@@ -63,6 +68,16 @@ review, and human approval.
   `anvil-serving voice up --config <manifest>` and
   `anvil-serving voice down --config <manifest>`; external lifecycle serves
   should be reported as skipped rather than forced into local Docker control.
+- Profile selection:
+  `anvil-serving voice profiles --config <manifest>` to list profiles, then add
+  `--profile <name>` to `voice up`, `voice down`, `voice run`, or
+  `voice benchmark` when switching Mini/Dark/laptop audio topology.
+- Private audio bridge:
+  `anvil-serving voice bridge --dry-run` first. A non-loopback live bind must
+  be private/tailnet-scoped and include
+  `--i-understand-this-exposes-voice-audio`. Prefer a concrete private or
+  tailnet listen address; wildcard binds require `--allow-wildcard-listen` and
+  prior firewall or tailnet ACL proof.
 - Realtime loop:
   `anvil-serving voice run --config <manifest>` after endpoint reachability is
   understood. Treat unreachable STT/TTS/router endpoints as blockers.

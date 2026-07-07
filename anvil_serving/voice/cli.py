@@ -1,4 +1,4 @@
-"""anvil-serving voice — up / down / start / stop / run / benchmark (anvil task T001;
+"""anvil-serving voice — up / down / start / stop / run / benchmark / profiles / bridge (anvil task T001;
 `run` wired to the real cascade for PUNCH-LIST #2).
 
 The voice-pipeline verb for the anvil-style stdlib orchestrator described in
@@ -35,6 +35,7 @@ must FAIL LOUDLY with a clear, non-crashing message -- never pretend the
 pool is usable when it is not.
 """
 import argparse
+import ipaddress
 import json
 import os
 import re
@@ -45,6 +46,7 @@ import urllib.request
 from typing import Any, Callable, Dict, Optional
 
 from . import benchmark as voice_benchmark
+from . import bridge as voice_bridge
 from . import config as voice_config
 from .realtime.app import build_realtime_server_from_manifest
 from .realtime.ws import serve_forever_in_background
@@ -57,6 +59,7 @@ DEFAULT_MANIFEST = voice_config.DEFAULT_CONFIG
 #: Preflight reachability-probe timeout for `run`'s "fail loudly, don't
 #: pretend" endpoint check (see `_probe_endpoint`).
 ENDPOINT_PROBE_TIMEOUT_S = 3.0
+TAILNET_IPV4 = ipaddress.ip_network("100.64.0.0/10")
 
 
 def _redact_bearer_token(text: str) -> str:
@@ -97,20 +100,21 @@ def _print_native_result(prefix: str, kind: str, result: dict) -> None:
         print("%s: %s %s" % (prefix, kind, result["error"]), file=sys.stderr)
 
 
-def _load(config_path):
+def _load(config_path, profile=None):
     """Load + validate the manifest; returns (data, None) or (None, error message)."""
     try:
-        return voice_config.load_manifest(config_path), None
+        return voice_config.load_manifest(config_path, profile=profile), None
     except voice_config.ConfigError as exc:
         return None, str(exc)
 
 
 def cmd_up(args):
-    data, err = _load(args.config)
+    data, err = _load(args.config, getattr(args, "profile", None))
     if err:
         print("voice up: %s" % err, file=sys.stderr)
         return 2
-    print("voice up: manifest OK -- %s" % voice_config.describe(data))
+    profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
+    print("voice up: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
     voice = data.get("voice", {})
     exit_code = 0
     for kind, lifecycle, table, serve in _audio_serves(voice):
@@ -143,11 +147,12 @@ def cmd_up(args):
 
 
 def cmd_down(args):
-    data, err = _load(args.config)
+    data, err = _load(args.config, getattr(args, "profile", None))
     if err:
         print("voice down: %s" % err, file=sys.stderr)
         return 2
-    print("voice down: manifest OK -- %s" % voice_config.describe(data))
+    profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
+    print("voice down: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
     voice = data.get("voice", {})
     exit_code = 0
     for kind, lifecycle, table, serve in _audio_serves(voice):
@@ -311,12 +316,13 @@ def _wait_forever_default() -> None:
 
 
 def cmd_run(args):
-    data, err = _load(args.config)
+    data, err = _load(args.config, getattr(args, "profile", None))
     if err:
         print("voice run: %s" % err, file=sys.stderr)
         return 2
     voice = data.get("voice", {})
-    print("voice run: manifest OK -- %s" % voice_config.describe(data))
+    profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
+    print("voice run: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
 
     problem = _check_required_endpoints_reachable(voice)
     if problem:
@@ -353,11 +359,12 @@ def cmd_run(args):
 
 
 def cmd_benchmark(args):
-    data, err = _load(args.config)
+    data, err = _load(args.config, getattr(args, "profile", None))
     if err:
         print("voice benchmark: %s" % err, file=sys.stderr)
         return 2
-    print("voice benchmark: manifest OK -- %s" % voice_config.describe(data))
+    profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
+    print("voice benchmark: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
     try:
         result = voice_benchmark.run_benchmark_from_manifest(data)
     except Exception as exc:  # noqa: BLE001 - the configured serves may simply not be up yet
@@ -367,6 +374,133 @@ def cmd_benchmark(args):
         )
         return 0
     print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_profiles(args):
+    data, err = _load(args.config, getattr(args, "profile", None))
+    if err:
+        print("voice profiles: %s" % err, file=sys.stderr)
+        return 2
+    if getattr(args, "profile", None):
+        print("voice profiles: %s OK -- %s" % (args.profile, voice_config.describe(data)))
+        return 0
+
+    names = voice_config.profile_names(data)
+    if not names:
+        print("voice profiles: no profiles declared")
+        return 0
+    print("voice profiles:")
+    for name in names:
+        print("  %s" % name)
+    return 0
+
+
+def _tcp_port(value: str) -> int:
+    try:
+        port = int(value, 10)
+    except ValueError:
+        raise argparse.ArgumentTypeError("port must be an integer")
+    if port < 1 or port > 65535:
+        raise argparse.ArgumentTypeError("port must be between 1 and 65535")
+    return port
+
+
+def _host_is_loopback(host: str) -> bool:
+    if host.lower() == "localhost":
+        return False
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _host_is_wildcard(host: str) -> bool:
+    return host in ("0.0.0.0", "::")
+
+
+def _host_is_public_ip(host: str) -> bool:
+    try:
+        parsed = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    if parsed.is_loopback or parsed.is_private:
+        return False
+    if parsed.version == 4 and parsed in TAILNET_IPV4:
+        return False
+    return parsed.is_global
+
+
+def _validate_bridge_hosts(args) -> Optional[str]:
+    hosts = (
+        ("listen_host", args.listen_host),
+        ("stt_target_host", args.stt_target_host),
+        ("tts_target_host", args.tts_target_host),
+    )
+    for key, host in hosts:
+        if host.lower() == "localhost":
+            return "%s must use 127.0.0.1 or an explicit private/tailnet address, not localhost" % key
+        if key != "listen_host" and _host_is_wildcard(host):
+            return "%s must be a concrete target host, not %s" % (key, host)
+        if _host_is_public_ip(host):
+            return "%s must be a private/tailnet address or private DNS name, not a public IP (%s)" % (key, host)
+    if _host_is_wildcard(args.listen_host) and not args.allow_wildcard_listen:
+        return (
+            "voice bridge listen_host is wildcard (%s); bind a concrete private/tailnet address "
+            "or pass --allow-wildcard-listen only after firewall/private-network scoping is proven"
+            % args.listen_host
+        )
+    if (
+        not args.dry_run
+        and not _host_is_loopback(args.listen_host)
+        and not args.i_understand_this_exposes_voice_audio
+    ):
+        return (
+            "voice bridge listen_host is non-loopback (%s); rerun with "
+            "--i-understand-this-exposes-voice-audio after confirming the bind is private/tailnet-scoped"
+            % args.listen_host
+        )
+    return None
+
+
+def _bridge_routes_from_args(args):
+    return [
+        voice_bridge.TCPBridgeRoute(
+            "stt",
+            args.listen_host,
+            args.stt_listen_port,
+            args.stt_target_host,
+            args.stt_target_port,
+        ),
+        voice_bridge.TCPBridgeRoute(
+            "tts",
+            args.listen_host,
+            args.tts_listen_port,
+            args.tts_target_host,
+            args.tts_target_port,
+        ),
+    ]
+
+
+def cmd_bridge(args):
+    problem = _validate_bridge_hosts(args)
+    if problem:
+        print("voice bridge: %s" % problem, file=sys.stderr)
+        return 2
+    routes = _bridge_routes_from_args(args)
+    for route in routes:
+        prefix = "voice bridge: dry-run" if args.dry_run else "voice bridge: forwarding"
+        print("%s %s" % (prefix, voice_bridge.describe_route(route)))
+    if args.dry_run:
+        return 0
+    try:
+        voice_bridge.serve_forever(routes, log=lambda message: print("voice bridge: %s" % message))
+    except KeyboardInterrupt:
+        print("\nvoice bridge: interrupted -- shutting down")
+        return 0
+    except OSError as exc:
+        print("voice bridge: failed to bind or forward routes (%s)" % exc, file=sys.stderr)
+        return 1
     return 0
 
 
@@ -386,30 +520,63 @@ def build_parser():
             % DEFAULT_MANIFEST,
         )
 
+    def add_profile(sp):
+        sp.add_argument("--profile", help="voice profile overlay from [voice.profiles.<name>]")
+
     def add_dry_run(sp):
         sp.add_argument("--dry-run", action="store_true", help="print the lifecycle action without starting/stopping processes")
 
     sp = sub.add_parser("up", help="bring up the STT/TTS serves (validates manifest)")
     add_config(sp)
+    add_profile(sp)
     add_dry_run(sp)
 
     sp = sub.add_parser("start", help="alias for up")
     add_config(sp)
+    add_profile(sp)
     add_dry_run(sp)
 
     sp = sub.add_parser("down", help="tear down the STT/TTS serves")
     add_config(sp)
+    add_profile(sp)
     add_dry_run(sp)
 
     sp = sub.add_parser("stop", help="alias for down")
     add_config(sp)
+    add_profile(sp)
     add_dry_run(sp)
 
     sp = sub.add_parser("run", help="run the realtime server in the foreground")
     add_config(sp)
+    add_profile(sp)
 
     sp = sub.add_parser("benchmark", help="replay a recorded session end-to-end and report latency")
     add_config(sp)
+    add_profile(sp)
+
+    sp = sub.add_parser("profiles", help="list profiles or validate one resolved profile")
+    add_config(sp)
+    add_profile(sp)
+
+    sp = sub.add_parser("bridge", help="forward STT/TTS TCP ports from this host to local audio endpoints")
+    sp.add_argument("--listen-host", default="127.0.0.1", help="host/interface to bind; non-loopback requires explicit acknowledgement")
+    sp.add_argument("--stt-listen-port", type=_tcp_port, default=30110, help="bridge listen port for STT")
+    sp.add_argument("--stt-target-host", default="127.0.0.1", help="target host for the local STT endpoint")
+    sp.add_argument("--stt-target-port", type=_tcp_port, default=30010, help="target port for the local STT endpoint")
+    sp.add_argument("--tts-listen-port", type=_tcp_port, default=30111, help="bridge listen port for TTS")
+    sp.add_argument("--tts-target-host", default="127.0.0.1", help="target host for the local TTS endpoint")
+    sp.add_argument("--tts-target-port", type=_tcp_port, default=30011, help="target port for the local TTS endpoint")
+    sp.add_argument("--dry-run", action="store_true", help="print bridge routes without binding sockets")
+    sp.add_argument(
+        "--i-understand-this-exposes-voice-audio",
+        action="store_true",
+        help="acknowledge that a non-loopback bridge bind exposes STT/TTS audio traffic",
+    )
+    sp.add_argument(
+        "--allow-wildcard-listen",
+        action="store_true",
+        help="allow 0.0.0.0/:: listen hosts after separate firewall/private-network scoping",
+    )
 
     return p
 
@@ -424,6 +591,8 @@ def main(argv=None):
         "stop": cmd_down,
         "run": cmd_run,
         "benchmark": cmd_benchmark,
+        "profiles": cmd_profiles,
+        "bridge": cmd_bridge,
     }
     return handlers[args.action](args)
 
