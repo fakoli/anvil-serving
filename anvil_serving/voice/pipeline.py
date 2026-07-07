@@ -49,7 +49,7 @@ from dataclasses import fields
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from .cancel_scope import CancelScope
-from .messages import AudioOut, EndOfResponse, GenerateRequest, TTSInput, Transcription, VADAudio
+from .messages import AudioOut, EndOfResponse, GenerateRequest, LLMToolCall, TTSInput, Transcription, VADAudio
 from .stages.base import PIPELINE_END, BaseStage, ThreadManager
 from .stages.llm import LLMStage, LLMStageConfig
 from .stages.llm import StreamFn as LLMStreamFn
@@ -111,7 +111,7 @@ class LLMChunkToTTSInput(BaseStage):
     name = "llm-chunk-bridge"
 
     def process(self, item: Any):
-        if isinstance(item, EndOfResponse):
+        if isinstance(item, (EndOfResponse, LLMToolCall)):
             return item
         text = getattr(item, "text", None)
         if not text:
@@ -137,7 +137,7 @@ class EchoTTSStage(BaseStage):
     name = "tts-stub"
 
     def process(self, item: Any):
-        if isinstance(item, EndOfResponse):
+        if isinstance(item, (EndOfResponse, LLMToolCall)):
             return item
         if not isinstance(item, TTSInput):
             return None

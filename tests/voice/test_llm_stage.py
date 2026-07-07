@@ -16,12 +16,14 @@ import json
 import pytest
 
 from anvil_serving.voice.cancel_scope import CancelScope
-from anvil_serving.voice.messages import EndOfResponse, GenerateRequest, LLMChunk
+from anvil_serving.voice.messages import EndOfResponse, GenerateRequest, LLMChunk, LLMToolCall
 from anvil_serving.voice.stages.llm import (
     LLMStage,
     LLMStageConfig,
+    LLMStreamToolCalls,
     SentenceBatcher,
     build_request_body,
+    stream_chat_completion_events,
     stream_chat_completion,
     strip_tts_hostile,
 )
@@ -72,6 +74,16 @@ def _chunk(text: str, finish: str | None = None) -> dict:
     return {"choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}
 
 
+def _tool_call_chunk(index: int, *, call_id: str | None = None, name: str | None = None, args: str = "") -> dict:
+    call = {"index": index, "function": {"arguments": args}}
+    if call_id:
+        call["id"] = call_id
+        call["type"] = "function"
+    if name:
+        call["function"]["name"] = name
+    return {"choices": [{"index": 0, "delta": {"tool_calls": [call]}, "finish_reason": None}]}
+
+
 # --------------------------------------------------------------------------- #
 # build_request_body: wire contract
 # --------------------------------------------------------------------------- #
@@ -104,6 +116,51 @@ def test_build_request_body_is_streaming():
     assert body["messages"] == [{"role": "user", "content": "hi"}]
 
 
+def test_build_request_body_includes_prior_turn_history_before_current_user():
+    body = build_request_body(
+        "what is my zip?",
+        LLMStageConfig(system_prompt="answer briefly"),
+        history=[
+            {"role": "user", "content": "my zip is 90210"},
+            {"role": "assistant", "content": "Got it."},
+        ],
+    )
+    assert body["messages"] == [
+        {"role": "system", "content": "answer briefly"},
+        {"role": "user", "content": "my zip is 90210"},
+        {"role": "assistant", "content": "Got it."},
+        {"role": "user", "content": "what is my zip?"},
+    ]
+
+
+def test_build_request_body_normalizes_realtime_tools_to_chat_completions_shape():
+    body = build_request_body(
+        "what is the weather?",
+        LLMStageConfig(
+            tools=[
+                {
+                    "type": "function",
+                    "name": "openclaw_agent_consult",
+                    "description": "Ask OpenClaw.",
+                    "parameters": {"type": "object", "properties": {"question": {"type": "string"}}},
+                }
+            ],
+            tool_choice="auto",
+        ),
+    )
+    assert body["tools"] == [
+        {
+            "type": "function",
+            "function": {
+                "name": "openclaw_agent_consult",
+                "description": "Ask OpenClaw.",
+                "parameters": {"type": "object", "properties": {"question": {"type": "string"}}},
+            },
+        }
+    ]
+    assert body["tool_choice"] == "auto"
+
+
 def test_build_request_body_supports_system_prompt_and_temperature():
     body = build_request_body(
         "hi",
@@ -132,6 +189,47 @@ def test_stream_chat_completion_posts_to_chat_completions_path():
     assert deltas == ["Hello", " world"]
     assert transport.calls[0]["url"] == "http://127.0.0.1:8000/v1/chat/completions"
     assert not transport.calls[0]["url"].endswith("/responses")
+
+
+def test_stream_chat_completion_sends_history_messages():
+    transport = FakeTransport(_sse(_chunk("ok", "stop")))
+    config = LLMStageConfig(base_url="http://127.0.0.1:8000/v1")
+    list(stream_chat_completion(
+        "what did I say?",
+        config,
+        history=[
+            {"role": "user", "content": "my zip is 90210"},
+            {"role": "assistant", "content": "Got it."},
+        ],
+        transport=transport,
+    ))
+    assert transport.calls[0]["body"]["messages"] == [
+        {"role": "user", "content": "my zip is 90210"},
+        {"role": "assistant", "content": "Got it."},
+        {"role": "user", "content": "what did I say?"},
+    ]
+
+
+def test_stream_chat_completion_events_surfaces_final_tool_calls():
+    transport = FakeTransport(_sse(
+        _tool_call_chunk(0, call_id="call_1", name="openclaw_agent_consult", args='{"question":'),
+        _tool_call_chunk(0, args='"weather?"}'),
+        {"choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]},
+    ))
+    events = list(stream_chat_completion_events(
+        [{"role": "user", "content": "weather"}],
+        LLMStageConfig(base_url="http://127.0.0.1:8000/v1"),
+        transport=transport,
+    ))
+    assert events == [
+        LLMStreamToolCalls([
+            {
+                "id": "call_1",
+                "name": "openclaw_agent_consult",
+                "arguments": '{"question":"weather?"}',
+            }
+        ])
+    ]
 
 
 def test_stream_chat_completion_never_responses_api():
@@ -234,6 +332,258 @@ def test_llm_stage_emits_sentence_batched_chunks_then_end_of_response():
     assert chunks[-1].is_final is True
     assert len(ends) == 1
     assert ends[0].turn_id == "t1"
+
+
+def test_llm_stage_remembers_completed_turns_for_next_request():
+    calls = []
+
+    def fake_stream(text, config, history=()):
+        calls.append({"text": text, "history": [dict(m) for m in history]})
+        if text == "my zip is 90210":
+            yield "Got it."
+        else:
+            yield "Your zip is 90210."
+
+    stage = LLMStage(in_queue=None, stream_fn=fake_stream)
+
+    list(stage.process(_gen_request(turn_id="t1", text="my zip is 90210")))
+    list(stage.process(_gen_request(turn_id="t2", text="what is my zip?")))
+
+    assert calls[0]["history"] == []
+    assert calls[1]["history"] == [
+        {"role": "user", "content": "my zip is 90210"},
+        {"role": "assistant", "content": "Got it."},
+    ]
+
+
+def test_llm_stage_history_is_bounded_by_turn_count_and_message_chars():
+    calls = []
+
+    def fake_stream(text, config, history=()):
+        calls.append([dict(m) for m in history])
+        yield "assistant reply for %s." % text
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(history_max_turns=1, history_max_message_chars=18),
+        stream_fn=fake_stream,
+    )
+
+    list(stage.process(_gen_request(turn_id="t1", text="first turn with a very long body")))
+    list(stage.process(_gen_request(turn_id="t2", text="second turn with a very long body")))
+    list(stage.process(_gen_request(turn_id="t3", text="third turn")))
+
+    assert calls[2][0]["role"] == "user"
+    assert "second" in calls[2][0]["content"]
+    assert "first" not in calls[2][0]["content"]
+    assert len(calls[2]) == 2
+    assert all(len(m["content"]) <= 18 for m in calls[2])
+
+
+def test_llm_stage_history_can_be_disabled():
+    calls = []
+
+    def fake_stream(text, config, history=()):
+        calls.append([dict(m) for m in history])
+        yield "ok."
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(history_max_turns=0),
+        stream_fn=fake_stream,
+    )
+
+    list(stage.process(_gen_request(turn_id="t1", text="remember this")))
+    list(stage.process(_gen_request(turn_id="t2", text="what did I say?")))
+
+    assert calls == [[], []]
+
+
+def test_llm_stage_pauses_for_tool_result_then_resumes_final_answer():
+    calls = []
+
+    def fake_stream(text, config, history=()):
+        calls.append([dict(m) for m in history])
+        if len(calls) == 1:
+            yield LLMStreamToolCalls([
+                {
+                    "id": "call_1",
+                    "name": "openclaw_agent_consult",
+                    "arguments": '{"question":"weather"}',
+                }
+            ])
+        else:
+            yield "It is sunny."
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(tool_result_timeout=1.0),
+        stream_fn=fake_stream,
+    )
+    gen = stage.process(_gen_request(text="what is the weather?"))
+
+    first = next(gen)
+    assert isinstance(first, LLMToolCall)
+    assert first.call_id == "call_1"
+    assert first.name == "openclaw_agent_consult"
+
+    assert stage.submit_tool_result("call_1", '{"text":"Sunny and 72."}') is True
+    rest = list(gen)
+
+    chunks = [m for m in rest if isinstance(m, LLMChunk)]
+    assert [c.text for c in chunks] == ["It is sunny."]
+    assert any(isinstance(m, EndOfResponse) for m in rest)
+    assert calls[1] == [
+        {"role": "user", "content": "what is the weather?"},
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                        "name": "openclaw_agent_consult",
+                        "arguments": '{"question":"weather"}',
+                    },
+                }
+            ],
+        },
+        {"role": "tool", "tool_call_id": "call_1", "content": '{"text":"Sunny and 72."}'},
+    ]
+
+
+def test_llm_stage_ignores_will_continue_tool_result_until_final_result():
+    calls = []
+
+    def fake_stream(text, config, history=()):
+        calls.append([dict(m) for m in history])
+        if len(calls) == 1:
+            yield LLMStreamToolCalls([
+                {"id": "call_1", "name": "openclaw_agent_consult", "arguments": "{}"}
+            ])
+        else:
+            yield "Done."
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(tool_result_timeout=1.0),
+        stream_fn=fake_stream,
+    )
+    gen = stage.process(_gen_request())
+    assert isinstance(next(gen), LLMToolCall)
+    assert stage.submit_tool_result("call_1", '{"status":"working"}', will_continue=True) is True
+    assert stage.submit_tool_result("call_1", '{"text":"final"}') is True
+    out = list(gen)
+
+    assert [m.text for m in out if isinstance(m, LLMChunk)] == ["Done."]
+    assert calls[-1][-1] == {"role": "tool", "tool_call_id": "call_1", "content": '{"text":"final"}'}
+
+
+def test_llm_stage_rejects_tool_results_without_matching_pending_call():
+    calls = []
+
+    def fake_stream(text, config, history=()):
+        calls.append([dict(m) for m in history])
+        if len(calls) == 1:
+            yield LLMStreamToolCalls([
+                {"id": "call_1", "name": "openclaw_agent_consult", "arguments": "{}"}
+            ])
+        else:
+            yield "Done."
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(tool_result_timeout=1.0),
+        stream_fn=fake_stream,
+    )
+
+    assert stage.submit_tool_result("call_1", '{"too":"early"}') is False
+    gen = stage.process(_gen_request())
+    assert isinstance(next(gen), LLMToolCall)
+    assert stage.submit_tool_result("stale_call", '{"wrong":"turn"}') is False
+    assert stage.submit_tool_result("call_1", '{"text":"final"}') is True
+    out = list(gen)
+
+    assert [m.text for m in out if isinstance(m, LLMChunk)] == ["Done."]
+
+
+def test_llm_stage_preserves_pre_tool_text_in_continuation_prompt():
+    calls = []
+
+    def fake_stream(text, config, history=()):
+        calls.append([dict(m) for m in history])
+        if len(calls) == 1:
+            yield "Let me check"
+            yield LLMStreamToolCalls([
+                {"id": "call_1", "name": "openclaw_agent_consult", "arguments": "{}"}
+            ])
+        else:
+            yield "It is sunny."
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(tool_result_timeout=1.0),
+        stream_fn=fake_stream,
+    )
+    gen = stage.process(_gen_request(text="weather?"))
+
+    first = next(gen)
+    assert isinstance(first, LLMChunk)
+    assert first.text == "Let me check"
+    second = next(gen)
+    assert isinstance(second, LLMToolCall)
+    assert stage.submit_tool_result("call_1", '{"text":"Sunny"}') is True
+    list(gen)
+
+    assert calls[1][1]["content"] == "Let me check"
+
+
+def test_llm_stage_trims_large_tool_outputs_without_changing_small_json():
+    calls = []
+
+    def fake_stream(text, config, history=()):
+        calls.append([dict(m) for m in history])
+        if len(calls) == 1:
+            yield LLMStreamToolCalls([
+                {"id": "call_1", "name": "openclaw_agent_consult", "arguments": "{}"}
+            ])
+        else:
+            yield "Done."
+
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(tool_result_timeout=1.0, tool_result_max_chars=40),
+        stream_fn=fake_stream,
+    )
+    gen = stage.process(_gen_request())
+    assert isinstance(next(gen), LLMToolCall)
+    assert stage.submit_tool_result("call_1", "a" * 80) is True
+    list(gen)
+
+    tool_message = calls[1][-1]
+    assert tool_message["role"] == "tool"
+    assert len(tool_message["content"]) == 40
+    assert "truncated" in tool_message["content"]
+
+
+def test_configure_realtime_session_ignores_client_model_override():
+    stage = LLMStage(
+        in_queue=None,
+        config=LLMStageConfig(model="fast-local", system_prompt="Manifest prompt."),
+        stream_fn=lambda text, config: iter(()),
+    )
+
+    stage.configure_realtime_session({
+        "model": "gpt-realtime",
+        "instructions": "Session prompt.",
+        "tools": [{"type": "function", "name": "openclaw_agent_consult"}],
+        "tool_choice": "auto",
+    })
+
+    assert stage.config.model == "fast-local"
+    assert stage.config.system_prompt == "Manifest prompt.\n\nSession prompt."
+    assert stage.config.tool_choice == "auto"
 
 
 def test_llm_stage_skips_already_stale_request():
