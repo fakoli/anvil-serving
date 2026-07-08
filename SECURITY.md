@@ -2,12 +2,14 @@
 
 ## Supported versions
 
-anvil-serving is pre-1.0. Security fixes target the latest `0.4.x` release line.
+anvil-serving is pre-1.0. Security fixes target the **latest minor release line** (currently
+`0.11.x`, matching the source tree version in [CHANGELOG.md](CHANGELOG.md)); older minor lines
+are not supported.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.4.x   | :white_check_mark: |
-| < 0.4   | :x:                |
+| Version              | Supported          |
+| -------------------- | ------------------ |
+| Latest 0.x minor     | :white_check_mark: |
+| Older 0.x minors     | :x:                |
 
 ## Reporting a vulnerability
 
