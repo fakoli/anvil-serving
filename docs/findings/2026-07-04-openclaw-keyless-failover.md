@@ -4,8 +4,9 @@
 - **Task:** `advise-and-defer:T005` — "Live-validate the OpenClaw failover trigger (resolve the ADR-0001 UNCONFIRMED)"
 - **Resolves:** the `Must validate live (currently UNCONFIRMED)` item in
   [ADR-0001 §Mechanism](../adr/0001-cloud-cost-and-subscription-auth.md)
-- **Related:** [ADR-0005](../adr/0005-anvil-503-native-failover-unreliable.md) (the reliability caveat),
-  `docs/OPENCLAW-LIVE-VALIDATION.md` Gap 4, `docs/PLAN-advise-and-defer.md` Phase 1
+- **Related:** [ADR-0005](../adr/0005-anvil-503-native-failover-unreliable.md) (the reliability caveat);
+  the dated live-validation runbook (Gap 4) and advise-and-defer plan referenced at the time now
+  live in the private `fakoli/anvil-serving-notes` repo
 
 ## The question
 

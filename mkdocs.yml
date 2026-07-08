@@ -25,19 +25,24 @@ plugins:
 nav:
   - Home: index.md
   - Get started: GETTING-STARTED.md
-  - Product guide:
-      - Product architecture: QUALITY-GATED-ROUTER.md
-      - Cost and cloud model: PLAN-advise-and-defer.md
+  - Architecture: ARCHITECTURE.md
+  - Reference:
+      - CLI: CLI.md
+      - Configuration: CONFIGURATION.md
       - Terminology: TERMINOLOGY.md
+  - Product design:
+      - Quality-gated router (deep dive): QUALITY-GATED-ROUTER.md
   - Operations:
-      - Model settings: MODEL-SETTINGS-EXAMPLE.md
-      - Serves & eval: SERVES-AND-EVAL.md
-      - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Operator playbooks: OPERATOR-PLAYBOOKS.md
+      - Troubleshooting: TROUBLESHOOTING.md
+      - Serves & eval: SERVES-AND-EVAL.md
+      - Model settings: MODEL-SETTINGS-EXAMPLE.md
+      - Device topologies: DEVICE-TOPOLOGIES.md
+      - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
   - Integrations:
-      - Integration spec: OPENCLAW-INTEGRATION-SPEC.md
-      - Live validation: OPENCLAW-LIVE-VALIDATION.md
+      - OpenClaw integration spec: OPENCLAW-INTEGRATION-SPEC.md
+      - Voice pipeline: VOICE.md
   - Decisions & research:
       - ADR overview: adr/README.md
       - 'ADR-0001: Cloud cost & subscription auth': adr/0001-cloud-cost-and-subscription-auth.md
@@ -55,10 +60,8 @@ nav:
       - 'ADR-0013: OpenClaw layers and MCP control plane': adr/0013-openclaw-layers-and-mcp-control-plane.md
       - 'ADR-0014: Tailnet controller transport': adr/0014-tailnet-controller-transport.md
       - 'ADR-0015: Operator skills and sub-agent workflows': adr/0015-operator-skills-and-subagent-workflows.md
-      - '2026-07-02: Architecture & models': REVIEW-2026-07-02-architecture-and-models.md
-      - 'Blackwell sm_120 lab notebook': findings/blackwell-sm120-lab-notebook.md
-      - 'OpenClaw keyless failover': findings/2026-07-04-openclaw-keyless-failover.md
       - ADR template: adr/template.md
+      - Findings index: findings/README.md
   - Changelog: changelog.md
 
 markdown_extensions:
