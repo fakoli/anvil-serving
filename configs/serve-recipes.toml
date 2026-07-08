@@ -24,6 +24,55 @@
 schema = "anvil-serving.serve-recipes/v1"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED — Qwen3.6-27B-NVFP4 : current OpenClaw Talk fast-tier baseline
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/Qwen3.6-27B-NVFP4"
+status = "verified"
+source = "live fakoli-dark fast tier + voice-latency-model-ab:T001 baseline, 2026-07-07"
+family = "qwen3.6"
+total_params_b = 27
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Current fast-local serve caps context at 32768 and max-num-seqs at 4 to stay inside the 5090 budget."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"
+  quantization = "modelopt_fp4"
+  context_tokens = 32768
+  port = 30003
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--served-model-name qwen36-27b",
+    "--kv-cache-dtype fp8",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 4",
+    "--gpu-memory-utilization 0.85",
+  ]
+
+  [recipe.measured]
+  voice_baseline = "CLI voice benchmark median TTFA 1014.89 ms, median turn latency 1230.51 ms; runs 2-3 average LLM stage 297.15 ms"
+  route_proof = "fast-local / qwen36-27b / chat-fast via fakoli-dark router"
+
+  [recipe.intent]
+  suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
+  mode = "agentic"
+  rationale = "Current OpenClaw Talk baseline: local, tool-capable, session-memory path is working; use as the control for every model A/B."
+
+# ─────────────────────────────────────────────────────────────────────────────
 # VERIFIED — gpt-oss-120b : the flexibility-mode quality ceiling-raise (T014/T015)
 # ─────────────────────────────────────────────────────────────────────────────
 [[recipe]]
@@ -112,6 +161,75 @@ total_params_b = 32
   suited = ["heavy", "quality", "agentic-candidate"]
   mode = "either"
   rationale = "DENSE (not MoE) so it sidesteps the sm_120 MoE-NVFP4 grouped-GEMM crash; NVFP4 ~1.8x faster than FP8, ~half the VRAM."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Gemma 4 12B IT : dense Gemma voice-latency scout
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "google/gemma-4-12B-it"
+status = "unverified"
+source = "voice-latency-model-ab:T002 shortlist; Google/vLLM docs only, not measured on fakoli-dark"
+family = "gemma4"
+total_params_b = 12
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+  arch = "sm_120"
+  vram_total_gb = 96
+  vram_note = "First serve should target the 96 GB card to avoid conflating model behavior with 5090 memory pressure; 5090 use requires a separate reduced-context or quantized plan."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:gemma4-unified"
+  quantization = "bf16"
+  context_tokens = 32768
+  note = "Requires Gemma 4-capable vLLM image/nightly and Gemma 4 chat template/parser validation before tool-call testing."
+  flags = [
+    "--enable-auto-tool-choice",
+    "--reasoning-parser gemma4",
+    "--tool-call-parser gemma4",
+    "--chat-template examples/tool_chat_template_gemma4.jinja",
+    "--max-model-len 32768",
+  ]
+
+  [recipe.intent]
+  suited = ["voice-candidate", "gemma-scout", "low-latency"]
+  mode = "experiment"
+  rationale = "Dense 12B Gemma-class candidate with expected first-audio upside from smaller dense size and MTP; tool protocol and quality are the main risks."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Gemma 4 E4B IT : ultra-fast Gemma lower-bound scout
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "google/gemma-4-E4B-it"
+status = "unverified"
+source = "voice-latency-model-ab:T002 shortlist; use only as a latency lower-bound scout"
+family = "gemma4"
+total_params_b = 4
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  vram_total_gb = 32
+  vram_note = "Low memory risk; quality and tool-use reliability are the expected limiting factors."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:gemma4-unified"
+  quantization = "bf16"
+  context_tokens = 32768
+  note = "Human-gated experiment only. Do not promote without live Talk memory/tool/session validation."
+  flags = [
+    "--enable-auto-tool-choice",
+    "--reasoning-parser gemma4",
+    "--tool-call-parser gemma4",
+    "--max-model-len 32768",
+  ]
+
+  [recipe.intent]
+  suited = ["voice-candidate", "latency-floor"]
+  mode = "experiment"
+  rationale = "Useful for measuring the fastest plausible Gemma Talk path; likely too small to trust until tool-call and conversation-memory validation pass."
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UNVERIFIED / PARKED — Qwen3.6-27B (GDN hybrid) : flexibility-only quality candidate
