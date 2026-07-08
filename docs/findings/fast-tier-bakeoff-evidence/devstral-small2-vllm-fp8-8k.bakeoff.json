@@ -1,0 +1,162 @@
+{
+  "context": {
+    "cap_tokens": 6976,
+    "max_model_len": 8192,
+    "targets": [
+      {
+        "attempted_context_tokens": 6976,
+        "clamped_tokens": 6976,
+        "e2e_ms": 3755.5558681488037,
+        "estimated_prompt_tokens": 6976,
+        "output_tokens": 174,
+        "status": "passed",
+        "target_tokens": 8192,
+        "ttft_ms": 742.4616813659668,
+        "usage": {
+          "completion_tokens": 175,
+          "prompt_tokens": 5237,
+          "total_tokens": 5412
+        }
+      }
+    ]
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:39014/v1",
+    "candidate_id": "devstral-small2-vllm-fp8",
+    "config_id": "vllm-fp8-8k",
+    "model": "devstral-small-2-24b",
+    "started_at": "2026-07-08T18:33:09Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 794.1551208496094,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": true
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "The problem is that the total turn time (550 + 1800 + 650 = 3000 ms) exceeds the 2500 ms timeout, primarily due to the LLM's slow response (1800 ms). A practical fix is to optimize the LLM's inference",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 1562.6871585845947,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260708T183309Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 3755.5558681488037,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "unsupported",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 742.4616813659668,
+    "usable_context_tokens": 8192,
+    "voice_latency_ms": 923.98
+  },
+  "selection": {
+    "context_targets": [
+      8192
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence",
+      "voice"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "RIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 162.9781723022461,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": "configs/serve-recipes.toml#mistralai-devstral-small2-24b-instruct-2512",
+    "serve_command": "FAST_DEVSTRAL_SMALL2_MAX_MODEL_LEN=8192 FAST_DEVSTRAL_SMALL2_MAX_NUM_SEQS=2 anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-devstral-small2"
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "unsupported",
+    "unsupported": true
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 3755.5558681488037,
+      "e2e_p95_ms": 3755.5558681488037,
+      "output_tokens": 174,
+      "ttft_p50_ms": 742.4616813659668,
+      "ttft_p95_ms": 742.4616813659668
+    },
+    "wall_ms": 6628.046035766602
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 351.96495056152344,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "recorded",
+    "stt_latency_ms": 107.77,
+    "total_turn_latency_ms": 923.98,
+    "tts_latency_ms": 383.08
+  }
+}

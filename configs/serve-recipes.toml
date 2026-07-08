@@ -268,19 +268,22 @@ total_params_b = 31
   arch = "sm_120"
   gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
   vram_total_gb = 32
-  vram_note = "Required bakeoff candidate. Expected KV pressure is high; begin with FP8 KV and reduced context before testing long-context targets."
+  vram_note = "Required bakeoff candidate. Expected KV pressure is high; begin with FP8 KV and reduced context before testing long-context targets. The Gemma 4 vLLM image currently needs integer GPU ids during model inspection; this recipe uses device 0, which fakoli-dark status evidence maps to the RTX 5090."
 
   [recipe.serve]
   engine = "vllm"
   image = "vllm/vllm-openai:gemma4-unified"
   quantization = "modelopt_fp4"
   context_tokens = 32768
-  note = "Start with the NVIDIA NVFP4 checkpoint and FP8 KV; validate Gemma tool parser/template before any voice recommendation."
+  note = "Start with the NVIDIA NVFP4 checkpoint and FP8 KV; validate Gemma tool parser/template before any voice recommendation. The experiment compose exposes FAST_GEMMA4_MAX_MODEL_LEN, FAST_GEMMA4_MAX_NUM_SEQS, and FAST_GEMMA4_GPU_MEMORY_UTILIZATION for reduced-context retries after the 32K profile."
   flags = [
     "--served-model-name gemma4-31b-it-nvfp4",
     "--quantization modelopt_fp4",
     "--kv-cache-dtype fp8",
     "--enable-auto-tool-choice",
+    "--reasoning-parser gemma4",
+    "--tool-call-parser gemma4",
+    "--chat-template examples/tool_chat_template_gemma4.jinja",
     "--trust-remote-code",
     "--max-model-len 32768",
     "--max-num-seqs 2",
@@ -330,9 +333,11 @@ active_params_b = 3
   image = "lmsysorg/sglang:latest"
   quantization = "bf16-or-gguf"
   context_tokens = 32768
-  note = "Research SGLang/vLLM model-card recipe first. GGUF/llama.cpp is required to test when a known-good quant is available, but current community reports flag implementation risk."
+  note = "Research SGLang/vLLM model-card recipe first. GGUF/llama.cpp uses the Anvil-managed cached unsloth/GLM-4.7-Flash-GGUF:UD-Q4_K_XL artifact by explicit -m path with repeat penalty disabled after SGLang BF16 loadability is checked."
   flags = [
     "--served-model-name glm-4.7-flash",
+    "--tool-call-parser glm47",
+    "--reasoning-parser glm45",
     "--context-length 32768",
     "--max-running-requests 2",
     "--mem-fraction-static 0.85",
@@ -354,6 +359,7 @@ active_params_b = 3
     "https://www.reddit.com/r/LocalLLaMA/comments/1qh5wdq/zaiorgglm47flash_hugging_face/",
     "https://www.reddit.com/r/LocalLLaMA/comments/1qih9r8/current_glm47flash_implementation_confirmed_to_be/",
     "https://agentnativedev.medium.com/glm-4-7-flash-on-24gb-gpu-llama-ccp-vllm-sglang-transformers-b3358d2f0e78",
+    "https://huggingface.co/unsloth/GLM-4.7-Flash-GGUF",
   ]
   local = [
     "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
@@ -381,10 +387,11 @@ total_params_b = 24
   image = "vllm/vllm-openai:nightly"
   quantization = "fp8"
   context_tokens = 32768
-  note = "Start with official FP8 checkpoint; test llama.cpp GGUF Q5/Q6 when a sourced quant is available."
+  note = "Start with official FP8 checkpoint; 32K may exceed RTX 5090 KV headroom, so the experiment compose exposes FAST_DEVSTRAL_SMALL2_MAX_MODEL_LEN, FAST_DEVSTRAL_SMALL2_MAX_NUM_SEQS, and FAST_DEVSTRAL_SMALL2_GPU_MEMORY_UTILIZATION for the reduced-context retry. Test llama.cpp GGUF Q5/Q6 when a sourced quant is available."
   flags = [
     "--served-model-name devstral-small-2-24b",
     "--enable-auto-tool-choice",
+    "--tool-call-parser mistral",
     "--trust-remote-code",
     "--max-model-len 32768",
     "--max-num-seqs 4",

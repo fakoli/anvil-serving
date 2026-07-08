@@ -56,6 +56,68 @@ baseline on total score, passes every hard gate, and does not introduce unaccept
 tool, context, or operational regressions. Otherwise keep the current baseline and mark the best
 alternate as verified/non-promoted or needs-more-data.
 
+## Live Results
+
+Evidence directory:
+[`docs/findings/fast-tier-bakeoff-evidence/`](fast-tier-bakeoff-evidence/)
+Typed summary:
+[`t006-evidence-summary.json`](fast-tier-bakeoff-evidence/t006-evidence-summary.json)
+
+All voice runs used Fakoli Dark audio endpoints over the private address and
+recorded `mini_model_free_assertion.passed=true`; Mini was not used to host STT,
+TTS, or LLM models. Final runtime restoration evidence is recorded in
+[`runtime-restoration.md`](fast-tier-bakeoff-evidence/runtime-restoration.md):
+Heavy used the same running container with restart count `0` and health `200`
+observations during the matrix window and final handoff; production Fast was
+restored to `vllm-qwen36` with health `200`; and all experimental candidate
+serves were stopped or absent.
+
+Voice artifacts in this report are stage-latency evidence. They measure STT,
+LLM, and TTS timing with TTS first-audio observed, but the STT hypothesis field
+is empty with WER `1.0`, so these artifacts must not be read as semantic STT
+accuracy evidence.
+
+| Candidate/config | Engine and context | Voice total / LLM stage | Bakeoff TTFT / E2E | Tool / session / intelligence | Evidence | Result |
+|---|---|---:|---:|---|---|---|
+| `nvidia/Qwen3.6-27B-NVFP4` control | vLLM NVFP4, 32K | 1130.21 ms / 814.83 ms | 6203.94 ms / 9041.91 ms | pass / pass / 0.50 | `qwen36-27b-baseline-vllm-32k.voice.json`, `qwen36-27b-baseline-vllm-32k.bakeoff.json` | Control rerun succeeded |
+| `nvidia/Qwen3.6-35B-A3B-NVFP4` | vLLM NVFP4, 32K | 377.52 ms / 165.40 ms | 1489.36 ms / 2302.37 ms | pass / pass / 0.50 | `qwen36-35b-a3b-vllm-nvfp4-32k.voice.json`, `qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json` | Best promotion candidate |
+| `nvidia/Gemma-4-31B-IT-NVFP4` | vLLM NVFP4, 32K then 8K retry | no successful voice run | no benchmark artifact | no score | `load-failures.md` | Rejected: does not fit 5090 recipe |
+| `zai-org/GLM-4.7-Flash` | SGLang BF16, 32K | no successful SGLang voice run | no SGLang benchmark artifact | no score | `load-failures.md` | Rejected for SGLang: no KV headroom |
+| `zai-org/GLM-4.7-Flash` | llama.cpp `UD-Q4_K_XL`, 32K | 2376.21 ms / 961.49 ms | 6196.05 ms / 7417.46 ms | pass / pass / 0.00 | `glm47-flash-llamacpp-q4-32k.voice.json`, `glm47-flash-llamacpp-q4-32k.bakeoff.json` | Verified but not competitive |
+| `mistralai/Devstral-Small-2-24B-Instruct-2512` | vLLM FP8, reduced 8K | 923.98 ms / 433.12 ms | 742.46 ms / 3755.56 ms | pass / pass / 1.00 | `devstral-small2-vllm-fp8-8k.voice.json`, `devstral-small2-vllm-fp8-8k.bakeoff.json`, `load-failures.md` | Promising fallback, context-limited |
+
+## Rubric Score
+
+Scores below apply the 100-point rubric to the measured configuration, not to
+the model family in general. They are promotion guidance, not an automatic
+router policy change.
+
+| Candidate/config | Voice | Intelligence/tool | Context | Agent reliability | Ops fit | Total | Notes |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `nvidia/Qwen3.6-35B-A3B-NVFP4`, vLLM NVFP4 32K | 30 | 22 | 15 | 14 | 8 | 89 | Fastest measured stage-latency path, 32K context, same deterministic intelligence miss as baseline |
+| `nvidia/Qwen3.6-27B-NVFP4`, production control | 20 | 22 | 15 | 13 | 10 | 80 | Stable baseline, but much slower than 35B-A3B |
+| `mistralai/Devstral-Small-2-24B-Instruct-2512`, vLLM FP8 8K | 24 | 29 | 5 | 14 | 6 | 78 | Passed the small intelligence suite, but only after reducing context to 8K and adding Mistral request fallback |
+| `zai-org/GLM-4.7-Flash`, llama.cpp Q4 32K | 8 | 10 | 15 | 10 | 5 | 48 | Tool/session pass, but voice latency and deterministic intelligence failures make it unsuitable for Fast voice |
+| `nvidia/Gemma-4-31B-IT-NVFP4` | 0 | 0 | 0 | 0 | 0 | 0 | No viable loaded endpoint on the 32 GB 5090 recipe |
+
+## Determination
+
+Recommend `nvidia/Qwen3.6-35B-A3B-NVFP4` as the next human-gated Fast-tier
+promotion candidate. It beat the production `nvidia/Qwen3.6-27B-NVFP4` control
+on the measured voice path and loaded-endpoint bakeoff while preserving the
+same 32K context target, tool-call pass, and session-recall pass. It should not
+be auto-promoted by this task because router policy promotion remains a human
+gate and the deterministic intelligence suite still has one shared failure with
+the current baseline.
+
+Keep the current production Fast baseline until the promotion task explicitly
+updates the deployed route. `Devstral-Small-2` is worth keeping as a reduced
+context fallback candidate for agent/code behavior, but it is not a default
+Fast voice replacement because the successful evidence is 8K, not 32K.
+`GLM-4.7-Flash` via llama.cpp is verified but too slow for this use case.
+`Gemma-4-31B-IT-NVFP4` is rejected for the RTX 5090 Fast role under the tested
+vLLM recipe.
+
 ## Source Classes
 
 Use these source labels in `configs/serve-recipes.toml` and final evidence:

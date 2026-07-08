@@ -244,13 +244,17 @@ services:
       - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39011:39011"
     environment:
       <<: *fast-candidate-env
-      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      # The Gemma 4 support image's model-inspection subprocess currently
+      # parses NVIDIA/CUDA-visible device ids as integers, so this one service
+      # uses device 0. On fakoli-dark, status evidence shows GPU 0 is the RTX
+      # 5090; other candidates keep UUID pinning.
+      CUDA_VISIBLE_DEVICES: ${FAST_GEMMA4_CUDA_VISIBLE_DEVICES:-0}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              device_ids: ["${FAST_GEMMA4_DEVICE_ID:-0}"]
               capabilities: [gpu]
     command: >
       serve nvidia/Gemma-4-31B-IT-NVFP4
@@ -258,10 +262,13 @@ services:
       --quantization modelopt_fp4
       --kv-cache-dtype fp8
       --enable-auto-tool-choice
+      --reasoning-parser gemma4
+      --tool-call-parser gemma4
+      --chat-template examples/tool_chat_template_gemma4.jinja
       --trust-remote-code
-      --max-model-len 32768
-      --max-num-seqs 2
-      --gpu-memory-utilization 0.88
+      --max-model-len ${FAST_GEMMA4_MAX_MODEL_LEN:-32768}
+      --max-num-seqs ${FAST_GEMMA4_MAX_NUM_SEQS:-2}
+      --gpu-memory-utilization ${FAST_GEMMA4_GPU_MEMORY_UTILIZATION:-0.88}
       --host 0.0.0.0 --port 39011
 
   fast-glm47-flash-sglang:
@@ -283,6 +290,8 @@ services:
       python3 -m sglang.launch_server
       --model-path zai-org/GLM-4.7-Flash
       --served-model-name glm-4.7-flash
+      --tool-call-parser glm47
+      --reasoning-parser glm45
       --context-length 32768
       --max-running-requests 2
       --mem-fraction-static 0.85
@@ -304,11 +313,15 @@ services:
               device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
               capabilities: [gpu]
     command: >
-      -hf ${FAST_GLM47_FLASH_GGUF:-zai-org/GLM-4.7-Flash-GGUF}
+      -m ${FAST_GLM47_FLASH_GGUF_PATH:-/root/.cache/llama.cpp/hub/models--unsloth--GLM-4.7-Flash-GGUF/snapshots/0d32489ecb9db6d2a4fc93bd27ef01519f95474d/GLM-4.7-Flash-UD-Q4_K_XL.gguf}
       --alias glm-4.7-flash-gguf
       --host 0.0.0.0 --port 39013
       -c 32768
       -ngl 999
+      --repeat-penalty 1.0
+      --temp 0.7
+      --top-p 1.0
+      --min-p 0.01
 
   fast-devstral-small2:
     <<: *fast-vllm-common
@@ -329,10 +342,11 @@ services:
       serve mistralai/Devstral-Small-2-24B-Instruct-2512
       --served-model-name devstral-small-2-24b
       --enable-auto-tool-choice
+      --tool-call-parser mistral
       --trust-remote-code
-      --max-model-len 32768
-      --max-num-seqs 4
-      --gpu-memory-utilization 0.85
+      --max-model-len ${FAST_DEVSTRAL_SMALL2_MAX_MODEL_LEN:-32768}
+      --max-num-seqs ${FAST_DEVSTRAL_SMALL2_MAX_NUM_SEQS:-4}
+      --gpu-memory-utilization ${FAST_DEVSTRAL_SMALL2_GPU_MEMORY_UTILIZATION:-0.85}
       --host 0.0.0.0 --port 39014
 
   fast-devstral-small2-llamacpp:

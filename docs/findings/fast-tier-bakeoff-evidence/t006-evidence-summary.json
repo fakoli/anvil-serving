@@ -1,0 +1,139 @@
+{
+  "schema_version": "fast-tier-llm-bakeoff-evidence/v1",
+  "task_id": "fast-tier-llm-bakeoff-2026-07:T006",
+  "generated_at": "2026-07-08T18:47:56Z",
+  "promotion_applied": false,
+  "recommendation": "human_gated_preview_for_qwen36_35b_a3b_nvfp4",
+  "topology": {
+    "mini_model_free_reference": true,
+    "model_host": "fakoli-dark",
+    "heavy_disrupted": false
+  },
+  "required_candidates": [
+    {
+      "candidate": "nvidia/Qwen3.6-27B-NVFP4",
+      "role": "production_control",
+      "status": "benchmarked",
+      "context_tokens": 32768,
+      "voice_total_ms": 1130.21,
+      "llm_stage_ms": 814.83,
+      "ttft_p50_ms": 6203.944444656372,
+      "e2e_p50_ms": 9041.908979415894,
+      "tool_passed": true,
+      "session_passed": true,
+      "intelligence_pass_rate": 0.5,
+      "artifacts": [
+        "docs/findings/fast-tier-bakeoff-evidence/qwen36-27b-baseline-vllm-32k.voice.json",
+        "docs/findings/fast-tier-bakeoff-evidence/qwen36-27b-baseline-vllm-32k.bakeoff.json"
+      ]
+    },
+    {
+      "candidate": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+      "role": "promotion_candidate",
+      "status": "benchmarked",
+      "context_tokens": 32768,
+      "voice_total_ms": 377.52,
+      "llm_stage_ms": 165.4,
+      "ttft_p50_ms": 1489.3593788146973,
+      "e2e_p50_ms": 2302.365303039551,
+      "tool_passed": true,
+      "session_passed": true,
+      "intelligence_pass_rate": 0.5,
+      "artifacts": [
+        "docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.voice.json",
+        "docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json"
+      ]
+    },
+    {
+      "candidate": "nvidia/Gemma-4-31B-IT-NVFP4",
+      "role": "dense_gemma_candidate",
+      "status": "load_failed",
+      "root_cause": "No practical RTX 5090 headroom under the tested vLLM Gemma 4 NVFP4 recipe, including the reduced 8K single-sequence retry.",
+      "artifacts": [
+        "docs/findings/fast-tier-bakeoff-evidence/load-failures.md"
+      ]
+    },
+    {
+      "candidate": "zai-org/GLM-4.7-Flash",
+      "role": "tool_agent_candidate",
+      "status": "benchmarked_with_llamacpp_gguf",
+      "context_tokens": 32768,
+      "voice_total_ms": 2376.21,
+      "llm_stage_ms": 961.49,
+      "ttft_p50_ms": 6196.052312850952,
+      "e2e_p50_ms": 7417.45662689209,
+      "tool_passed": true,
+      "session_passed": true,
+      "intelligence_pass_rate": 0.0,
+      "failed_variant": "SGLang BF16 had no KV cache headroom after weight load.",
+      "artifacts": [
+        "docs/findings/fast-tier-bakeoff-evidence/glm47-flash-llamacpp-q4-32k.voice.json",
+        "docs/findings/fast-tier-bakeoff-evidence/glm47-flash-llamacpp-q4-32k.bakeoff.json",
+        "docs/findings/fast-tier-bakeoff-evidence/load-failures.md"
+      ]
+    },
+    {
+      "candidate": "mistralai/Devstral-Small-2-24B-Instruct-2512",
+      "role": "coding_agent_candidate",
+      "status": "benchmarked_reduced_context",
+      "context_tokens": 8192,
+      "voice_total_ms": 923.98,
+      "llm_stage_ms": 433.12,
+      "ttft_p50_ms": 742.4616813659668,
+      "e2e_p50_ms": 3755.5558681488037,
+      "tool_passed": true,
+      "session_passed": true,
+      "intelligence_pass_rate": 1.0,
+      "artifacts": [
+        "docs/findings/fast-tier-bakeoff-evidence/devstral-small2-vllm-fp8-8k.voice.json",
+        "docs/findings/fast-tier-bakeoff-evidence/devstral-small2-vllm-fp8-8k.bakeoff.json",
+        "docs/findings/fast-tier-bakeoff-evidence/load-failures.md"
+      ]
+    }
+  ],
+  "runtime_observations": {
+    "heavy_container": {
+      "container": "vllm-gptoss120",
+      "started_at": "2026-07-07T08:08:16.490006854Z",
+      "running": true,
+      "restart_count": 0,
+      "matrix_window_health_200_observed_at": [
+        "2026-07-08T16:59:42.255817263Z",
+        "2026-07-08T17:03:33.924299374Z",
+        "2026-07-08T17:10:43.597347407Z",
+        "2026-07-08T18:40:48.536277436Z",
+        "2026-07-08T18:43:56.317369855Z"
+      ],
+      "final_status_health": 200,
+      "final_direct_health": 200
+    },
+    "fast_container": {
+      "production_container": "vllm-qwen36",
+      "production_port": 30003,
+      "restored": true,
+      "final_status_health": 200,
+      "final_direct_health": 200
+    },
+    "experimental_fast_candidates": {
+      "fast-qwen36-35b-a3b": "exited",
+      "fast-gemma4-31b": "exited",
+      "fast-glm47-flash-sglang": "exited",
+      "fast-glm47-flash-llamacpp": "exited",
+      "fast-devstral-small2": "exited",
+      "fast-devstral-small2-llamacpp": "absent",
+      "fast-qwen3-30b-a3b": "absent"
+    }
+  },
+  "voice_artifact_caveat": {
+    "scope": "stage_latency",
+    "stt_semantic_accuracy_proven": false,
+    "reason": "Successful voice evidence files measured staged STT, LLM, and TTS latency with first audio observed, but the STT hypothesis field was empty and WER was 1.0. Treat these as latency artifacts, not semantic STT accuracy artifacts."
+  },
+  "verification_commands": [
+    "anvil-serving serves --manifest examples/fakoli-dark/serves.toml status",
+    "anvil-serving benchmark --help",
+    "anvil-serving voice benchmark --help",
+    "docker compose -f examples/fakoli-dark/docker-compose.experiment.yml config --quiet"
+  ]
+}
+

@@ -1,0 +1,178 @@
+{
+  "context": {
+    "cap_tokens": 31552,
+    "max_model_len": 32768,
+    "targets": [
+      {
+        "attempted_context_tokens": 31552,
+        "clamped_tokens": 31552,
+        "e2e_ms": 7417.45662689209,
+        "estimated_prompt_tokens": 31552,
+        "output_tokens": 192,
+        "status": "passed",
+        "target_tokens": 32768,
+        "ttft_ms": 6196.052312850952,
+        "usage": {
+          "completion_tokens": 192,
+          "prompt_tokens": 23895,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 24087
+        }
+      }
+    ]
+  },
+  "failures": [
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "unified_diff_timeout_edit",
+      "suite": "intelligence"
+    },
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "parallel_timeout_triage",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39013/v1",
+    "candidate_id": "glm47-flash-llamacpp-q4",
+    "config_id": "llamacpp-ud-q4-k-xl-32k",
+    "model": "glm-4.7-flash-gguf",
+    "started_at": "2026-07-08T18:07:30Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "```diff\n-timeout = 30\n+timeout = 45\n```",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 143.56756210327148,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": false
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "The problem is that the LLM's 1800 ms response exceeds the total turn timeout of 2500 ms, causing the call to fail. A practical fix is to implement a timeout fallback mechanism that triggers a TTS res",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 361.24348640441895,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": false
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260708T180730Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 7417.45662689209,
+    "intelligence_pass_rate": 0.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 6196.052312850952,
+    "usable_context_tokens": 32768,
+    "voice_latency_ms": 2376.21
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence",
+      "voice"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "RIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 164.72458839416504,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": "configs/serve-recipes.toml#zai-org-glm47-flash",
+    "serve_command": "anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-glm47-flash-llamacpp"
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 7417.45662689209,
+      "e2e_p95_ms": 7417.45662689209,
+      "output_tokens": 192,
+      "ttft_p50_ms": 6196.052312850952,
+      "ttft_p95_ms": 6196.052312850952
+    },
+    "wall_ms": 11679.618835449219
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 3591.3169384002686,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "recorded",
+    "stt_latency_ms": 210.69,
+    "total_turn_latency_ms": 2376.21,
+    "tts_latency_ms": 1204.03
+  }
+}
