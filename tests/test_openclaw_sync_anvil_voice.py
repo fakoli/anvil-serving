@@ -51,7 +51,7 @@ def test_openclaw_voice_sync_emits_anvil_talk_realtime_config(capsys):
     assert realtime["consultRouting"] == "force-agent-consult"
     assert realtime["provider"] == "anvil"
     assert anvil["realtimeUrl"] == "ws://127.0.0.1:8765/v1/realtime"
-    assert anvil["model"] == "fast-local"
+    assert anvil["model"] == "chat-fast"
     assert "apiKey" not in anvil
 
 
@@ -269,7 +269,7 @@ def test_openclaw_anvil_voice_example_manifest_is_valid_and_hygienic():
     assert data["voice"]["realtime_host"] == "127.0.0.1"
     assert data["voice"]["realtime_port"] == 8765
     assert data["voice"]["llm"]["base_url"] == "http://100.87.34.66:8000/v1"
-    assert data["voice"]["llm"]["model"] == "fast-local"
+    assert data["voice"]["llm"]["model"] == "chat-fast"
     assert data["voice"]["llm"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
     assert data["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
     assert data["voice"]["stt"]["model"] == "tdt_ctc-110m"

@@ -4,8 +4,8 @@
 # "which model containers exist, on which ports". Manage the serves ONLY through
 # `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
 #
-# 2026-07-04 reconcile: heavy = gpt-oss-120b @high (promoted heavy tier, :30002, PRO 6000);
-# fast = Qwen3.6-27B-NVFP4 (:30003, RTX 5090). These back the router tiers in the live
+# 2026-07-08 reconcile: heavy = gpt-oss-120b @high (promoted heavy tier, :30002, PRO 6000);
+# fast = Qwen3.6-35B-A3B-NVFP4 (:30003, RTX 5090). These back the router tiers in the live
 # config (heavy-local -> :30002, fast-local -> :30003). `{dir}` resolves to this file's dir.
 #
 # BOTH serves are Docker-Compose-defined (docker-compose.yml holds a service per tier) — see
@@ -24,10 +24,10 @@ health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
 
 [[serve]]
-name = "fast"                  # fast tier — Qwen3.6-27B-NVFP4 on the RTX 5090
+name = "fast"                  # fast tier — Qwen3.6-35B-A3B-NVFP4 on the RTX 5090
 container = "vllm-qwen36"
 port = 30003
-model = "qwen36-27b"           # served-model-name (used by `anvil-serving eval`)
+model = "qwen36-35b-a3b-nvfp4" # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"

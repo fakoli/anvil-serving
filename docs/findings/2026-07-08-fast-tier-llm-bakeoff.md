@@ -117,10 +117,18 @@ auto-promoted by this task because router policy promotion remains a human gate
 and the deterministic intelligence suite still has one shared failure with the
 current baseline.
 
-Keep the current production Fast baseline until the promotion task explicitly
-updates the deployed route. `Devstral-Small-2` is worth keeping as a reduced
-context fallback candidate for agent/code behavior, but it is not a default
-Fast voice replacement because the successful evidence is 8K, not 32K.
+Promotion addendum: the human gate was later approved, and the repo promotion
+changes are tracked in
+[`2026-07-08-fast-tier-promotion.md`](2026-07-08-fast-tier-promotion.md).
+The original task still did not auto-promote; the later promotion step updates
+the production Fast serve and router config explicitly.
+
+Historical close-out note: keep the `qwen36-27b` production Fast baseline until
+the promotion task explicitly updates the deployed route. That condition is
+satisfied by the follow-up promotion addendum above. `Devstral-Small-2` is worth
+keeping as a reduced-context fallback candidate for agent/code behavior, but it
+is not a default Fast voice replacement because the successful evidence is 8K,
+not 32K.
 `GLM-4.7-Flash` via llama.cpp is verified but too slow for this use case.
 `Gemma-4-31B-IT-NVFP4` is rejected for the RTX 5090 Fast role under the tested
 vLLM recipe.

@@ -23,6 +23,7 @@ class FakeRun:
     def __init__(self, state="running", state_seq=None, fail_prefixes=(), val_rc=0):
         self.calls = []
         self.inputs = []
+        self.kwargs = []
         self._state = state
         self._state_seq = list(state_seq) if state_seq else None
         self._fail_prefixes = fail_prefixes  # list of argv-slices that should fail
@@ -36,6 +37,7 @@ class FakeRun:
     def __call__(self, argv, **kw):
         self.calls.append(argv)
         self.inputs.append(kw.get("input"))
+        self.kwargs.append(kw)
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
             st = self._next_state()
             if st == "absent":
@@ -293,6 +295,43 @@ def test_promote_writes_config_when_given(tmp_path):
     assert rc == 0
     assert any(any("mv /cfg/config.toml.new /cfg/config.toml" in tok for tok in a)
                for a in run.calls)
+
+
+def test_promote_writes_config_as_utf8_when_comments_are_non_ascii(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        '# box drawing ─ and arrow → in a comment\n'
+        '[router]\nprofile_path = "/etc/anvil/profile.json"\n',
+        encoding="utf-8",
+    )
+    run = FakeRun(state="running")
+    rc = rm.cmd_promote(_profile(tmp_path), config_path=str(cfg),
+                        _run=run, _sleep=lambda *a: None)
+    assert rc == 0
+    i_write_cfg = next(
+        i for i, a in enumerate(run.calls)
+        if any("mv /cfg/config.toml.new /cfg/config.toml" in tok for tok in a)
+    )
+    assert "arrow →" in run.inputs[i_write_cfg]
+    assert run.kwargs[i_write_cfg]["encoding"] == "utf-8"
+
+
+def test_promote_normalizes_config_line_endings_for_linux_volume(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_bytes(
+        b'# windows checkout\r\n'
+        b'[router]\r\nprofile_path = "/etc/anvil/profile.json"\r\n'
+    )
+    run = FakeRun(state="running")
+    rc = rm.cmd_promote(_profile(tmp_path), config_path=str(cfg),
+                        _run=run, _sleep=lambda *a: None)
+    assert rc == 0
+    i_write_cfg = next(
+        i for i, a in enumerate(run.calls)
+        if any("mv /cfg/config.toml.new /cfg/config.toml" in tok for tok in a)
+    )
+    assert "\r" not in run.inputs[i_write_cfg]
+    assert "[router]\n" in run.inputs[i_write_cfg]
 
 
 def test_promote_rejects_config_without_profile_path(tmp_path):

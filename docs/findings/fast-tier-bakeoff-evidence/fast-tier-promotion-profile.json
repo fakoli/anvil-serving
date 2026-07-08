@@ -1,0 +1,101 @@
+{
+  "schema": "anvil-serving.router.profile_bootstrap/v1",
+  "entries": [
+    {
+      "tier_id": "fast-local",
+      "work_class": "planning",
+      "decision": "deny",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "heavy-local",
+      "work_class": "planning",
+      "decision": "allow",
+      "quality_score": 0.92,
+      "sample_n": 2,
+      "last_measured": "2026-07-04T02:49:38Z"
+    },
+    {
+      "tier_id": "fast-local",
+      "work_class": "multi-file-refactor",
+      "decision": "deny",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "heavy-local",
+      "work_class": "multi-file-refactor",
+      "decision": "allow-with-verify",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "fast-local",
+      "work_class": "long-context",
+      "decision": "deny",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "heavy-local",
+      "work_class": "long-context",
+      "decision": "allow",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "fast-local",
+      "work_class": "review",
+      "decision": "deny",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "heavy-local",
+      "work_class": "review",
+      "decision": "allow",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "fast-local",
+      "work_class": "bounded-edit",
+      "decision": "allow",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "heavy-local",
+      "work_class": "bounded-edit",
+      "decision": "allow",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "fast-local",
+      "work_class": "chat",
+      "decision": "allow",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    },
+    {
+      "tier_id": "heavy-local",
+      "work_class": "chat",
+      "decision": "allow",
+      "quality_score": null,
+      "sample_n": 0,
+      "last_measured": null
+    }
+  ]
+}
