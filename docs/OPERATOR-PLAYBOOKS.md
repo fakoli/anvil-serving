@@ -81,6 +81,11 @@ MCP invocation rules:
   such as MLX Audio endpoints with PID/log files. Pass `profile` when the
   operator wants a declared Mini/Dark/laptop topology rather than the manifest
   default.
+- For OpenClaw Talk voice profiles, remember that loopback is host-relative.
+  `mini-audio` means Mini loopback STT/TTS; `dark-audio` means Mini reaches
+  Dark private bridge ports; `mini-dark-audio-proxy` means Mini loopback proxy
+  ports forwarding to Dark. A Windows or other non-gateway checkout cannot
+  validate Mini-local loopback by calling its own `127.0.0.1`.
 - For `router_manage`, use the same preview-first pattern. A live router
   lifecycle change requires both `confirm:true` and `dry_run:false`.
 - For `router_promote`, preview validates the candidate profile/config and
@@ -509,6 +514,25 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
      --candidate qwen3-32b-nvfp4
    ```
 
+   Interpret stage timing before deciding where to spend work:
+
+   - A stage dominates when its p50 elapsed time is at least half of total turn
+     latency, or at least twice the next-largest stage across comparable
+     successful runs.
+   - Prefer LLM/model work when LLM is dominant, or when LLM first-output is
+     above about `300 ms` while STT and TTS are below their thresholds.
+   - Prefer STT work when STT p50 is above about `200 ms`, WER is unacceptable,
+     or STT errors appear.
+   - Prefer TTS/chunking work when TTS p50 is above about `350 ms`, TTS
+     first-output is above about `250 ms`, or TTS stream errors recur.
+   - If no stage dominates, tune prompt/chunk/profile settings before loading
+     another model.
+
+   Current T005/T006 evidence says not to promote a voice LLM candidate yet.
+   The successful Mini baseline has LLM and TTS as co-dominant stages; the
+   candidate rows failed before STT from a non-gateway loopback path. Treat the
+   next step as more comparable Mini-run data, not production promotion.
+
    For Mini acceptance evidence:
 
    ```bash
@@ -619,8 +643,9 @@ a restart.
    and takes a backup. Use `--overwrite` only when the operator explicitly requested
    replacement.
 
-3. Do not pass `--skills` as part of the deterministic workflow; the current CLI
-   documents that skills/agent-config sync is not implemented yet.
+3. Add `--skills` only when intentionally syncing the OpenClaw-visible
+   workbench skill and Anvil role config. Keep the normal provider/model sync
+   deterministic when skills are not part of the requested change.
 
 4. After restart, run a small OpenClaw-side smoke check if the gateway is
    available to the operator. If not, report that config was synced but live

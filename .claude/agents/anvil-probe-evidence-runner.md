@@ -37,3 +37,8 @@ policy; keep `promoted=false` unless a separate human-approved promotion command
 actually ran. Use `127.0.0.1` in URLs, never `localhost`. If the harness has not
 exposed the needed MCP/controller probe tools to this agent, report
 `gate_state: "blocked"` instead of falling back to shell commands.
+
+For OpenClaw voice probes, `127.0.0.1` is valid only on the host that owns the
+endpoint. Run Mini-local voice probes on Fakoli Mini or through a Mini
+controller/agent, and use Dark private/tailnet addresses for Dark bridge
+endpoints.

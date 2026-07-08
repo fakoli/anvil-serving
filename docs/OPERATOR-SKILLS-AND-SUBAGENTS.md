@@ -303,6 +303,16 @@ Use a single orchestrator with bounded sidecar agents. The orchestrator owns the
 user request, safety policy, and final recommendation. Sidecars own facts or
 execution steps with explicit inputs and outputs.
 
+For OpenClaw Talk / Anvil Voice workflows, every role that reports topology,
+probes endpoints, benchmarks, drafts evidence, or reviews evidence must name
+the command host and the resource-owning host. In the reference deployment,
+OpenClaw Gateway and Anvil Voice run on Fakoli Mini; Fakoli Dark owns the router,
+candidate LLM serves, and optional Dark audio bridge. `mini-audio` loopback
+belongs to Mini. `mini-dark-audio-proxy` loopback also belongs to Mini and
+forwards to Dark audio. A non-gateway checkout failing to reach
+`127.0.0.1:30010`, `30011`, `30110`, or `30111` is a topology negative control,
+not evidence that the live Mini/Dark path is down.
+
 | Role | Good model class | Inputs | Output | Gate |
 |---|---|---|---|---|
 | Orchestrator | strong/frontier | User request, repo docs, current tool list, role outputs | Playbook choice, fan-out plan, final packet and recommendation | Must stop for human gates. |
