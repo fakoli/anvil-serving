@@ -27,6 +27,7 @@ from anvil_serving.voice.stages.stt import (
     STTStreamAssembler,
     build_transcription_fields,
     pcm_to_wav,
+    postprocess_transcript_text,
     transcribe_stream,
 )
 
@@ -260,6 +261,28 @@ def test_build_transcription_fields_includes_response_format_when_configured():
     assert fields["response_format"] == "json"
 
 
+def test_build_transcription_fields_includes_extra_request_fields():
+    fields = build_transcription_fields(
+        STTStageConfig(
+            stream=False,
+            request_fields={"language": "en", "max_completion_tokens": 64, "timestamp_granularities": True},
+        )
+    )
+    assert fields["language"] == "en"
+    assert fields["max_completion_tokens"] == "64"
+    assert fields["timestamp_granularities"] == "true"
+
+
+def test_qwen3_asr_postprocess_strips_language_and_asr_tags():
+    assert (
+        postprocess_transcript_text(
+            "language English<asr_text>The quick brown fox.",
+            "qwen3_asr",
+        )
+        == "The quick brown fox."
+    )
+
+
 # --------------------------------------------------------------------------- #
 # STTStreamAssembler
 # --------------------------------------------------------------------------- #
@@ -310,6 +333,15 @@ def test_transcribe_stream_non_streaming_returns_single_final_result():
     config = STTStageConfig(stream=False)
     results = list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
     assert results == [("non streaming result", True)]
+
+
+def test_transcribe_stream_non_streaming_applies_qwen3_asr_postprocess():
+    transport = FakeTransport(FakeReadResponse(
+        json.dumps({"text": "language English<asr_text>The quick brown fox."}).encode()
+    ))
+    config = STTStageConfig(stream=False, postprocess="qwen3_asr")
+    results = list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
+    assert results == [("The quick brown fox.", True)]
 
 
 def test_transcribe_stream_non_streaming_raises_on_non_json_body():

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import io
 import json
+import wave
 
 import pytest
 
@@ -18,6 +19,8 @@ from anvil_serving.voice.benchmark import (
     DEFAULT_REFERENCE_TEXT,
     EVIDENCE_SCHEMA_VERSION,
     build_evidence_record,
+    load_sample_wav,
+    normalized_word_error_rate,
     run_benchmark,
     run_benchmark_from_manifest,
     synth_sample_pcm,
@@ -56,6 +59,13 @@ def test_wer_empty_reference_nonempty_hypothesis_is_one():
     assert word_error_rate("", "a b c") == 1.0
 
 
+def test_normalized_wer_ignores_case_and_punctuation():
+    assert normalized_word_error_rate(
+        "the quick brown fox jumps over the lazy dog",
+        "The quick brown fox jumps over the lazy dog.",
+    ) == 0.0
+
+
 # --------------------------------------------------------------------------- #
 # synth_sample_pcm
 # --------------------------------------------------------------------------- #
@@ -68,6 +78,33 @@ def test_synth_sample_pcm_is_deterministic():
     a = synth_sample_pcm(duration_s=0.1, sample_rate=8000)
     b = synth_sample_pcm(duration_s=0.1, sample_rate=8000)
     assert a == b
+
+
+def test_load_sample_wav_returns_pcm_and_sample_rate(tmp_path):
+    path = tmp_path / "sample.wav"
+    pcm = b"\x01\x00\x02\x00\x03\x00"
+    with wave.open(str(path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(8000)
+        wav.writeframes(pcm)
+
+    loaded_pcm, sample_rate = load_sample_wav(str(path))
+
+    assert loaded_pcm == pcm
+    assert sample_rate == 8000
+
+
+def test_load_sample_wav_rejects_non_16_bit_pcm(tmp_path):
+    path = tmp_path / "sample.wav"
+    with wave.open(str(path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(1)
+        wav.setframerate(16000)
+        wav.writeframes(b"\x01\x02\x03")
+
+    with pytest.raises(ValueError, match="16-bit PCM"):
+        load_sample_wav(str(path))
 
 
 # --------------------------------------------------------------------------- #
@@ -107,6 +144,7 @@ def test_run_benchmark_computes_all_four_metrics():
     assert result["llm_ms"] == 600.0
     assert result["tts_ms"] == 500.0
     assert result["stt_wer"] == 0.0  # hypothesis matches reference exactly
+    assert result["stt_wer_normalized"] == 0.0
     assert result["tts_rtf"] == pytest.approx(1000.0)
     assert result["tts_first_audio_observed"] is True
     assert result["tts_output_bytes"] == 16
@@ -417,6 +455,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
         "llm_ms": 3.4,
         "tts_ms": 5.6,
         "stt_wer": 0.0,
+        "stt_wer_normalized": 0.0,
         "tts_rtf": 0.25,
         "tts_first_audio_observed": True,
         "tts_output_bytes": 32000,
@@ -489,6 +528,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
             },
             "comparison": {
                 "stt_wer": 0.0,
+                "stt_wer_normalized": 0.0,
                 "tts_rtf": 0.25,
                 "tts_first_audio_observed": True,
             },

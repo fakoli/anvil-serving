@@ -1,0 +1,11 @@
+[voice.stt]
+base_url = "http://100.87.34.66:39102/v1"
+model = "whisper-large-v3-turbo-fp8"
+stream = false
+response_format = "json"
+timeout = 120.0
+lifecycle = "external"
+
+[voice.stt.request_fields]
+language = "en"
+max_completion_tokens = 64

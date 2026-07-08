@@ -33,11 +33,12 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 import uuid
 import wave
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional, Tuple
 
 from ...router.backends.sse import iter_sse_events
@@ -63,6 +64,14 @@ class STTStageConfig:
     # For non-streaming OpenAI-compatible servers that default to another
     # format, request the JSON shape this client consumes.
     response_format: Optional[str] = None
+    # Optional provider-specific transcript cleanup. Qwen3-ASR through some
+    # serving paths returns "language English<asr_text>..." instead of just the
+    # transcript text.
+    postprocess: Optional[str] = None
+    # Additional OpenAI/vLLM-compatible transcription form fields. Useful for
+    # provider-neutral tuning such as language, prompt, temperature, or
+    # max_completion_tokens without adding a provider-specific code path.
+    request_fields: Mapping[str, str | int | float | bool] = field(default_factory=dict)
 
 
 class STTClientError(Exception):
@@ -127,7 +136,22 @@ def build_transcription_fields(config: STTStageConfig) -> Dict[str, str]:
         fields["stream"] = "true"
     if config.response_format:
         fields["response_format"] = config.response_format
+    for key, value in config.request_fields.items():
+        if isinstance(value, bool):
+            fields[key] = "true" if value else "false"
+        else:
+            fields[key] = str(value)
     return fields
+
+
+def postprocess_transcript_text(text: str, postprocess: Optional[str]) -> str:
+    if postprocess in (None, "", "none"):
+        return text
+    if postprocess != "qwen3_asr":
+        return text
+    cleaned = re.sub(r"^\s*language\s+[^<\s]+", "", text, flags=re.IGNORECASE)
+    cleaned = cleaned.replace("<asr_text>", "").replace("</asr_text>", "")
+    return cleaned.strip()
 
 
 class STTStreamAssembler:
@@ -197,7 +221,8 @@ def transcribe_stream(
             for event, data in iter_sse_events(resp):
                 result = assembler.feed(event, data)
                 if result:
-                    yield result
+                    text, is_final = result
+                    yield postprocess_transcript_text(text, config.postprocess), is_final
                 if assembler.done:
                     break
         else:
@@ -220,7 +245,7 @@ def transcribe_stream(
                 raise STTClientError(
                     "STT stage: non-streaming response missing a string 'text' field: %r" % (obj,)
                 )
-            yield (obj["text"], True)
+            yield (postprocess_transcript_text(obj["text"], config.postprocess), True)
     finally:
         try:
             resp.close()

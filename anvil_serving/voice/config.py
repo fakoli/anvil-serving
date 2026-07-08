@@ -52,6 +52,8 @@ _SECRET_VALUE_PREFIXES = ("sk-", "hf_", "hf-", "ghp_", "ghp-")
 _SECRET_VALUE_RE = re.compile(r"\b(sk-(?:proj-)?[A-Za-z0-9_-]{8,}|hf[_-][A-Za-z0-9_-]{8,}|ghp[_-][A-Za-z0-9_-]{8,})\b")
 _LIFECYCLES = {"managed", "external", "native"}
 _STT_RESPONSE_FORMATS = {"json"}
+_STT_POSTPROCESS = {"none", "qwen3_asr"}
+_STT_RESERVED_REQUEST_FIELDS = {"file", "model", "response_format", "stream"}
 _TTS_RESPONSE_FORMATS = {"pcm"}
 _NATIVE_COMMAND_KEYS = ("start_command", "stop_command")
 _NATIVE_PATH_KEYS = ("workdir", "pid_file", "log_file")
@@ -511,6 +513,14 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
                 raise ConfigError(
                     "voice.stt.response_format must be json because the non-streaming STT client consumes JSON"
                 )
+        if "postprocess" in table:
+            postprocess = _string(table, "postprocess")
+            if postprocess not in _STT_POSTPROCESS:
+                raise ConfigError(
+                    "voice.stt.postprocess must be one of %s" % ", ".join(sorted(_STT_POSTPROCESS))
+                )
+        if "request_fields" in table:
+            _validate_stt_request_fields(table["request_fields"])
     if name == "tts":
         if "response_format" in table:
             response_format = _string(table, "response_format")
@@ -555,6 +565,22 @@ def _validate_native_lifecycle(table: dict, name: str, lifecycle: str, parsed_ba
     for key in _NATIVE_PATH_KEYS:
         if key in table:
             _string(table, key)
+
+
+def _validate_stt_request_fields(value: object) -> None:
+    if not isinstance(value, dict):
+        raise ConfigError("voice.stt.request_fields must be a TOML table")
+    for key, field_value in value.items():
+        if not isinstance(key, str) or not key:
+            raise ConfigError("voice.stt.request_fields keys must be non-empty strings")
+        if key in _STT_RESERVED_REQUEST_FIELDS:
+            raise ConfigError("voice.stt.request_fields.%s is reserved by the STT client" % key)
+        if isinstance(field_value, bool):
+            continue
+        if not isinstance(field_value, (str, int, float)):
+            raise ConfigError(
+                "voice.stt.request_fields.%s must be a string, integer, number, or boolean" % key
+            )
 
 
 def validate_manifest(data: dict) -> None:
