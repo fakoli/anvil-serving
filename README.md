@@ -11,7 +11,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Source Version](https://img.shields.io/badge/source-0.11.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
-[![Marketplace](https://img.shields.io/badge/marketplace-fakoli-purple.svg)](https://github.com/fakoli/anvil-serving)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
 
 </div>
@@ -72,10 +71,13 @@ flowchart LR
     V -->|"fail"| E
 ```
 
-The response stays transparent: anvil-serving reports the real tier/model that served the request
-and logs the routing decision.
+Every routed request is logged as a metadata-only decision record — work class, tier attempts,
+verify outcomes, token counts — retrievable from the router's `/v1/decisions` endpoint.
 
 ## Evaluate Quickly
+
+The only prerequisite is **Python >= 3.11** — the runtime is standard-library only. Docker (and a
+GPU) matter only when you stand up real local model serves.
 
 Install from a clone when evaluating the current `main` documentation and control-plane commands:
 
@@ -104,7 +106,8 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
 ```
 
 To route real local tiers, start compatible OpenAI-style model serves on the URLs named in
-`configs/example.toml`, validate them with `preflight`, then run:
+`configs/example.toml` (`anvil-serving serves` manages them as Docker Compose services), validate
+them with `preflight`, then run:
 
 ```bash
 anvil-serving serve --config configs/example.toml
@@ -116,23 +119,50 @@ Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
 
 ## Command Surface
 
+One CLI covers the router, the local serving tools, the measurement loop that feeds the quality
+profile, and the control plane. Full flags and examples: [CLI reference](docs/CLI.md).
+
+**Data plane** — run and manage the router:
+
 | Command | Purpose |
 |---------|---------|
 | `anvil-serving serve` | Start the Anthropic/OpenAI router front door. |
 | `anvil-serving router` | Manage the deployed router container, token, logs, reloads, and profile promotion. |
+
+**Local serving tools** — stand up and validate the tiers the router routes across:
+
+| Command | Purpose |
+|---------|---------|
 | `anvil-serving serves` | Manage local model serves through Docker Compose. |
-| `anvil-serving profile` | Measure real coding-agent usage to right-size local tiers. |
-| `anvil-serving models sync` | Catalog cached models and serving facts. |
-| `anvil-serving models pull` | Pull Hugging Face repos into a named Docker volume. |
+| `anvil-serving models sync` / `models pull` | Catalog cached models and serving facts; pull Hugging Face repos into a named Docker volume. |
+| `anvil-serving deploy` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
+| `anvil-serving init` (alias `onboard`) | Generate a consistent local bring-up from scratch. |
 | `anvil-serving preflight` | Correctness-check a model endpoint before trusting it. |
 | `anvil-serving benchmark` | Replay representative traffic and measure capacity. |
 | `anvil-serving external-bench` | Import and compare external inference benchmark priors. |
+| `anvil-serving multiplexer` | Swap a single resident model on one GPU (SGLang and vLLM backends). |
+| `anvil-serving cache-prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |
+| `anvil-serving doctor` | Preflight the environment a router deploy depends on (Python, Docker, Compose, GPU runtime). |
+| `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings (memory caps, mmap gotchas). |
+
+**Quality loop** — the measurements behind the routing profile:
+
+| Command | Purpose |
+|---------|---------|
+| `anvil-serving profile` | Measure real coding-agent usage to right-size local tiers. |
+| `anvil-serving eval` | Run the shadow-eval harness; bootstrap a quality profile from it. |
+| `anvil-serving calibrate` | Grade confirmed local traffic with an independent judge and write a candidate profile (never auto-promotes). |
+| `anvil-serving score` | Rank models for a role from a transcribed benchmark table. |
+
+**Control plane and integrations:**
+
+| Command | Purpose |
+|---------|---------|
 | `anvil-serving harness sync openclaw` | Render OpenClaw model config from live router presets. |
-| `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, and benchmark voice turns. |
-| `anvil-serving voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
-| `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings. |
 | `anvil-serving mcp` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
 | `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |
+| `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, and benchmark voice turns. |
+| `anvil-serving voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
 
 ## Cost And Security Defaults
 
@@ -172,17 +202,31 @@ benchmarking, and OpenClaw config sync.
 
 ## Documentation
 
+Start with the path that matches you:
+
+- **Evaluating anvil-serving?** This README → [Getting started](docs/GETTING-STARTED.md) (no-GPU
+  smoke test) → [Architecture](docs/ARCHITECTURE.md) → the full
+  [Quality-gated router](docs/QUALITY-GATED-ROUTER.md) design reference.
+- **Operating a deployment?** [Getting started](docs/GETTING-STARTED.md) (real tiers) →
+  [Configuration reference](docs/CONFIGURATION.md) → [CLI reference](docs/CLI.md) →
+  [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md) →
+  [Troubleshooting](docs/TROUBLESHOOTING.md); [`examples/fakoli-dark/`](examples/fakoli-dark/) is
+  a fully worked two-GPU instance.
+- **Contributing?** [CONTRIBUTING.md](CONTRIBUTING.md) (module map and extension recipes) →
+  [Architecture](docs/ARCHITECTURE.md) → [ADRs](docs/adr/README.md).
+
 | Read this | When you need |
 |-----------|---------------|
 | [Getting started](docs/GETTING-STARTED.md) | No-GPU smoke test, real-tier setup, and harness pointers. |
-| [Product architecture](docs/QUALITY-GATED-ROUTER.md) | Intent presets, quality profile, verification, fallback, and integrations. |
+| [Architecture](docs/ARCHITECTURE.md) | The concise system overview: request path, tier ladder, quality profile, deployment shapes. |
+| [Configuration reference](docs/CONFIGURATION.md) | Every `[server]`/`[router]`/tier/mode key, env vars, and the shipped example configs. |
+| [CLI reference](docs/CLI.md) | Every verb, subcommand, and key flag. |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Symptom-first fixes: 503 exhaustion, preflight failures, empty responses, auth. |
+| [Quality-gated router](docs/QUALITY-GATED-ROUTER.md) | The full design reference: intent presets, quality profile, verification, fallback, integrations. |
 | [Terminology](docs/TERMINOLOGY.md) | Product naming, user-facing terms, and technical definitions. |
 | [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md) | MCP/controller workflows for status, preflight, benchmark, OpenClaw sync, and promotion evidence. |
 | [Operator skills and sub-agents](docs/OPERATOR-SKILLS-AND-SUBAGENTS.md) | Verb coverage, skill design, and small-model sub-agent workflow slices. |
-| [Operator skills ADR](docs/adr/0015-operator-skills-and-subagent-workflows.md) | Decision record for the workbench skill, harness packaging, and sub-agent model split. |
-| [OpenClaw COLO benchmark finding](docs/findings/2026-07-07-openclaw-colo-interaction-benchmark.md) | Site-ready live Mini-to-Dark interaction benchmark stats and citation caveats. |
-| [OpenClaw operations ADRs](docs/adr/0013-openclaw-layers-and-mcp-control-plane.md) | Hook/router/MCP layers and split-host controller transport. |
-| [Device topologies](docs/DEVICE-TOPOLOGIES.md) | Expand from Fakoli Mini/Dark to additional laptops or hosts over Tailscale/private connectivity. |
+| [Device topologies](docs/DEVICE-TOPOLOGIES.md) | Spreading gateway, voice, router, and serve roles across hosts over private connectivity. |
 | [Model settings](docs/MODEL-SETTINGS-EXAMPLE.md) | Thinking/sampling settings and model-specific serve flags. |
 | [Serves & eval](docs/SERVES-AND-EVAL.md) | Local serve lifecycle and eval entry points. |
 | [Voice pipeline](docs/VOICE.md) | Native voice runtime commands, multi-device audio/LLM topology, Realtime server, and benchmarks. |
@@ -190,6 +234,10 @@ benchmarking, and OpenClaw config sync.
 | [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md) | Reference integration contract and current caveats. |
 | [Hugging Face speech-to-speech](examples/huggingface-speech-to-speech/) | Voice sidecar recipe for Realtime audio with anvil-routed LLM turns. |
 | [ADRs](docs/adr/README.md) | Architecture decisions and rationale. |
+| [Findings](docs/findings/README.md) | Dated evidence snapshots behind the decisions. |
 | [Changelog](CHANGELOG.md) | Release history. |
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[code of conduct](CODE_OF_CONDUCT.md).
 
 MIT licensed.
