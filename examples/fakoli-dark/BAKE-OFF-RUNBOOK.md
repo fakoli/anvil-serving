@@ -12,13 +12,15 @@ the refiner agent) is **gated on this**. Owning the hardware changes the *supply
 not the *demand* question. Run this first.
 
 > ### Revised 2026-06-28 — what the discovery changed (read this first)
-> Two measured findings (now on `main`) reshaped the goals below. **Read them before running:**
-> - [`docs/findings/2026-06-28-anvil-integration-audit.md`](../../docs/findings/2026-06-28-anvil-integration-audit.md)
+> Two measured findings reshaped the goals below (the dated finding documents now live in the
+> private companion repo `fakoli/anvil-serving-notes`; their conclusions are summarized here).
+> **Read them before running:**
+> - `2026-06-28-anvil-integration-audit` *(private notes repo)*
 >   — Anvil is **not** an LLM gateway. It has a **single** `custom_base_url` that backs only its
 >   *planning augmentation* (`plan/score/expand`); it ships **no router** and cannot do heavy-vs-fast
 >   endpoint routing. The critic is a Claude Code subagent (its model comes from frontmatter /
 >   `CLAUDE_CODE_SUBAGENT_MODEL`), **not** from `llm_provider: custom`.
-> - [`docs/findings/2026-06-28-planning-capability-eval.md`](../../docs/findings/2026-06-28-planning-capability-eval.md)
+> - `2026-06-28-planning-capability-eval` *(private notes repo)*
 >   — On Anvil's real PRD→tasks prompt, local quality is **~55–65% of frontier** (frontier 24.75/25,
 >   fast 16.0, heavy 13.25), with the gap in **dependency/ordering reasoning**. Planning is also *free*
 >   on the Claude subscription. So routing Anvil's planner/critic to local is a **quality downgrade

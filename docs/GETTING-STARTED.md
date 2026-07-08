@@ -7,6 +7,15 @@ This guide has two tracks:
 
 Use `127.0.0.1` in local URLs.
 
+## Prerequisites
+
+- **Python >= 3.11** — the runtime is standard-library only; there are no required dependencies
+  to install beyond the package itself.
+- **No GPU and no Docker** are needed for Track A.
+- **For Track B:** OpenAI-compatible model serves (SGLang or vLLM), typically run with Docker and
+  Compose v2 on a GPU host. `anvil-serving doctor` checks a machine for exactly these
+  requirements.
+
 ## Install
 
 For the current `main` documentation and MCP/controller command surface, install from this clone:
@@ -70,6 +79,14 @@ the tier routing policy.
 | `fast-local` | `http://127.0.0.1:30001/v1` | Low-latency local work. |
 | `heavy-local` | `http://127.0.0.1:30000/v1` | Higher-capacity local work. |
 
+**Where do these serves come from?** anvil-serving manages local model serves as Docker Compose
+services: declare them in a manifest, then run `anvil-serving serves up` (see
+[Serves & eval](SERVES-AND-EVAL.md)). `anvil-serving deploy` renders a tuned compose file for a
+given GPU and model, and `configs/serve-recipes.toml` in the repository carries known-good serve
+recipes. The model names below (`gpt-oss-20b`, `qwen35-awq-local`) are not magic — they are the
+`model` values the two tiers in `configs/example.toml` declare; if your serves run different
+models, change the config's tier `model` fields (and these commands) to match.
+
 Before starting the router, stand up those serves and validate each endpoint:
 
 ```bash
@@ -110,9 +127,24 @@ Then set the token in the environment and send it as either `Authorization: Bear
 
 Do not put cloud API keys, router tokens, or other secrets directly in config files.
 
+## If Something Fails
+
+The [Troubleshooting](TROUBLESHOOTING.md) guide is symptom-first; the entries you are most likely
+to need on a first run:
+
+- Port `8000` already in use → pass `--port <free-port>`.
+- `preflight` fails → the serve is not up, or the `--model` name does not match the serve's
+  served model name.
+- The router answers `503` → that is the quality gate exhausting cleanly, not a crash; see the
+  troubleshooting entry before changing anything.
+- Requests hang ~20s on Windows → a `localhost` URL sneaked in; use `127.0.0.1`.
+
 ## Next Steps
 
-- Read [Product architecture](QUALITY-GATED-ROUTER.md) for the routing model.
+- Read [Architecture](ARCHITECTURE.md) for the concise system overview, then
+  [Quality-gated router](QUALITY-GATED-ROUTER.md) for the full design rationale.
+- Read the [Configuration reference](CONFIGURATION.md) to adapt `configs/example.toml` to your
+  serves, and the [CLI reference](CLI.md) for the full command surface.
 - Read [Device topologies](DEVICE-TOPOLOGIES.md) before spreading gateway, voice, router, or serve roles across more devices.
 - Read [Model settings](MODEL-SETTINGS-EXAMPLE.md) before serving thinking-by-default models.
 - Read [Serves & eval](SERVES-AND-EVAL.md) to manage Docker Compose model serves.
