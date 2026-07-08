@@ -268,6 +268,10 @@ current-information lookups.
   `30110` and `30111`.
 - `mini-validation`: Mini-local audio plus the intentional
   `I understand.` validation prompt.
+- `candidate-qwen3-32b`, `candidate-gemma4-12b`, and
+  `candidate-gemma4-e4b`: LLM-only A/B profiles for the checked-in Dark
+  experiment serves. They preserve the base Mini STT/TTS path and point the
+  LLM stage at direct candidate ports `39000` through `39002`.
 
 The `mini-audio` profile lowers `voice.llm.speech_chunk_max_chars` to `56` for
 the Mini-local Kokoro TTS path. In live Talk measurements this reduced first
@@ -282,6 +286,19 @@ anvil-serving voice profiles --config examples/voice/openclaw-anvil-voice.toml
 anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --dry-run
 anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
 anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+```
+
+For a candidate LLM A/B, start the matching opt-in serve through the managed
+serves surface. Leave `VOICE_CANDIDATE_PUBLISH` unset for same-host benchmark
+runs; set it to the Dark host's private/tailnet address only when Mini must
+reach the direct candidate endpoint:
+
+```bash
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
+anvil-serving voice benchmark \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile candidate-qwen3-32b \
+  --evidence-out voice-evidence/qwen3-32b.json
 ```
 
 To keep OpenClaw and Realtime on Mini while using STT/TTS on Fakoli Dark, first

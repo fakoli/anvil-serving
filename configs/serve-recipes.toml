@@ -150,8 +150,30 @@ total_params_b = 32
 
   [recipe.serve]
   engine = "vllm"
+  image = "vllm/vllm-openai:nightly"
+  managed_serve = "voice-qwen3-32b"
+  served_model_name = "qwen3-32b-nvfp4"
   quantization = "modelopt_fp4"        # NVIDIA nvidia/* checkpoints take --quantization modelopt_fp4; RedHatAI *-NVFP4 => OMIT (auto)
-  context_tokens = 131072
+  context_tokens = 32768
+  port = 39000
+  note = "Voice A/B managed serve uses the experiment compose service voice-qwen3-32b on an opt-in 39xxx port; it does not replace fast-local."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--served-model-name qwen3-32b-nvfp4",
+    "--quantization modelopt_fp4",
+    "--kv-cache-dtype fp8",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 4",
+    "--gpu-memory-utilization 0.85",
+  ]
 
   [recipe.measured]
   throughput_single_tok_s = 340        # ~1.8x faster than FP8 (190) — the FP4:FP8 hardware ceiling on sm_120
@@ -180,11 +202,20 @@ total_params_b = 12
 
   [recipe.serve]
   engine = "vllm"
+  managed_serve = "voice-gemma4-12b"
+  served_model_name = "gemma4-12b-it"
   image = "vllm/vllm-openai:gemma4-unified"
   quantization = "bf16"
   context_tokens = 32768
+  port = 39001
   note = "Requires Gemma 4-capable vLLM image/nightly and Gemma 4 chat template/parser validation before tool-call testing."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
   flags = [
+    "--served-model-name gemma4-12b-it",
     "--enable-auto-tool-choice",
     "--reasoning-parser gemma4",
     "--tool-call-parser gemma4",
@@ -215,11 +246,20 @@ total_params_b = 4
 
   [recipe.serve]
   engine = "vllm"
+  managed_serve = "voice-gemma4-e4b"
+  served_model_name = "gemma4-e4b-it"
   image = "vllm/vllm-openai:gemma4-unified"
   quantization = "bf16"
   context_tokens = 32768
+  port = 39002
   note = "Human-gated experiment only. Do not promote without live Talk memory/tool/session validation."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
   flags = [
+    "--served-model-name gemma4-e4b-it",
     "--enable-auto-tool-choice",
     "--reasoning-parser gemma4",
     "--tool-call-parser gemma4",

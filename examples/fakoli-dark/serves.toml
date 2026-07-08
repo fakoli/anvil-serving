@@ -29,3 +29,37 @@ port = 30003
 model = "qwen36-27b"           # served-model-name (used by `anvil-serving eval`)
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"
+
+# Voice latency A/B candidates. These are opt-in experiment serves, not production tiers:
+# they use separate ports, `restart: "no"` compose services, and do not replace `fast`.
+#
+# Start/stop through the managed surface:
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml down voice-qwen3-32b
+#
+# The experiment compose defaults to loopback-only publishes. For cross-host Mini validation,
+# set VOICE_CANDIDATE_PUBLISH to this host's tailnet/private address before `serves up`.
+
+[[serve]]
+name = "voice-qwen3-32b"
+container = "vllm-voice-qwen3-32b"
+port = 39000
+model = "qwen3-32b-nvfp4"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-qwen3-32b"
+
+[[serve]]
+name = "voice-gemma4-12b"
+container = "vllm-voice-gemma4-12b"
+port = 39001
+model = "gemma4-12b-it"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-12b"
+
+[[serve]]
+name = "voice-gemma4-e4b"
+container = "vllm-voice-gemma4-e4b"
+port = 39002
+model = "gemma4-e4b-it"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-e4b"

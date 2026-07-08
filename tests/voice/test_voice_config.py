@@ -76,7 +76,14 @@ def test_fakoli_dark_manifest_marks_sidecars_external():
 
 def test_openclaw_voice_manifest_profiles_are_valid():
     raw = voice_config.load_manifest("examples/voice/openclaw-anvil-voice.toml")
-    assert voice_config.profile_names(raw) == ["dark-audio", "mini-audio", "mini-validation"]
+    assert voice_config.profile_names(raw) == [
+        "candidate-gemma4-12b",
+        "candidate-gemma4-e4b",
+        "candidate-qwen3-32b",
+        "dark-audio",
+        "mini-audio",
+        "mini-validation",
+    ]
 
     mini = voice_config.load_manifest(
         "examples/voice/openclaw-anvil-voice.toml",
@@ -104,6 +111,18 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert validation["voice"]["llm"]["system_prompt"].endswith("I understand.")
     assert validation["voice"]["llm"]["temperature"] == 0.0
     assert validation["voice"]["llm"]["max_tokens"] == 8
+
+    candidate = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="candidate-qwen3-32b",
+    )
+    assert candidate["voice"]["llm"]["base_url"] == "http://100.87.34.66:39000/v1"
+    assert candidate["voice"]["llm"]["model"] == "qwen3-32b-nvfp4"
+    assert candidate["voice"]["llm"]["api_key_env"] == "ANVIL_CANDIDATE_LLM_TOKEN"
+    assert candidate["voice"]["llm"]["expected_route_provider"] == "direct-vllm"
+    assert candidate["voice"]["llm"]["expected_route_model"] == "qwen3-32b-nvfp4"
+    assert candidate["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
+    assert candidate["voice"]["tts"]["base_url"] == "http://127.0.0.1:30011/v1"
 
 
 def test_resolve_manifest_data_returns_profile_identity():

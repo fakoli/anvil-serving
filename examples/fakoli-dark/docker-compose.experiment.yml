@@ -33,6 +33,20 @@
 # name to the directory (`fakoli-dark`), so an experiment `down` reports the live tiers as
 # orphans and churns the shared network.
 name: fakoli-experiment
+
+x-voice-candidate-env: &voice-candidate-env
+  CUDA_DEVICE_ORDER: PCI_BUS_ID
+  VLLM_USE_V2_MODEL_RUNNER: "0"
+  FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+  HF_TOKEN: ${HF_TOKEN:-}
+
+x-voice-candidate-common: &voice-candidate-common
+  restart: "no"
+  ipc: host
+  volumes:
+    - "vllm-hfcache:/root/.cache/huggingface"
+  entrypoint: ["vllm"]
+
 services:
   experiment:
     image: vllm/vllm-openai:latest
@@ -72,6 +86,95 @@ services:
       --gpu-memory-utilization 0.90
       --host 0.0.0.0 --port ${PORT:-30002}
       ${EXTRA_ARGS:-}
+
+  # Managed voice-latency candidates. These are opt-in A/B serves, not production tiers.
+  # They use distinct container names and ports so `anvil-serving serves up/down <name>`
+  # can manage them without touching the live heavy/fast/router compose services.
+  #
+  # Default publish is loopback-only. For OpenClaw-on-Mini cross-host validation, set
+  # VOICE_CANDIDATE_PUBLISH to fakoli-dark's tailnet/private address before `serves up`.
+  voice-qwen3-32b:
+    <<: *voice-candidate-common
+    image: vllm/vllm-openai:nightly
+    container_name: vllm-voice-qwen3-32b
+    ports:
+      - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39000:39000"
+    environment:
+      <<: *voice-candidate-env
+      CUDA_VISIBLE_DEVICES: ${VOICE_QWEN3_32B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${VOICE_QWEN3_32B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    command: >
+      serve nvidia/Qwen3-32B-NVFP4
+      --served-model-name qwen3-32b-nvfp4
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --trust-remote-code
+      --max-model-len 32768
+      --max-num-seqs 4
+      --gpu-memory-utilization 0.85
+      --host 0.0.0.0 --port 39000
+
+  voice-gemma4-12b:
+    <<: *voice-candidate-common
+    image: ${VOICE_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
+    container_name: vllm-voice-gemma4-12b
+    ports:
+      - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39001:39001"
+    environment:
+      <<: *voice-candidate-env
+      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_12B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${VOICE_GEMMA4_12B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    command: >
+      serve google/gemma-4-12B-it
+      --served-model-name gemma4-12b-it
+      --enable-auto-tool-choice
+      --reasoning-parser gemma4
+      --tool-call-parser gemma4
+      --chat-template examples/tool_chat_template_gemma4.jinja
+      --max-model-len 32768
+      --gpu-memory-utilization 0.85
+      --host 0.0.0.0 --port 39001
+
+  voice-gemma4-e4b:
+    <<: *voice-candidate-common
+    image: ${VOICE_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
+    container_name: vllm-voice-gemma4-e4b
+    ports:
+      - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39002:39002"
+    environment:
+      <<: *voice-candidate-env
+      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_E4B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${VOICE_GEMMA4_E4B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      serve google/gemma-4-E4B-it
+      --served-model-name gemma4-e4b-it
+      --enable-auto-tool-choice
+      --reasoning-parser gemma4
+      --tool-call-parser gemma4
+      --max-model-len 32768
+      --gpu-memory-utilization 0.85
+      --host 0.0.0.0 --port 39002
 
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache

@@ -11,6 +11,12 @@
 # Use --profile to switch the active audio topology without copying this file:
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+#
+# Candidate LLM profiles are opt-in A/B surfaces. They preserve the base Mini-local
+# STT/TTS path and require the matching fakoli-dark candidate serve to be running:
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
+# For Mini cross-host validation, start that serve with VOICE_CANDIDATE_PUBLISH set
+# to fakoli-dark's tailnet/private address so the direct candidate endpoint is reachable.
 
 [voice]
 name = "anvil-voice-openclaw"
@@ -93,3 +99,33 @@ system_prompt = "For this Mini validation profile, answer every message with exa
 temperature = 0.0
 max_tokens = 8
 history_max_turns = 0
+
+[voice.profiles.candidate-qwen3-32b.llm]
+base_url = "http://100.87.34.66:39000/v1"
+model = "qwen3-32b-nvfp4"
+api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
+speech_chunk_max_chars = 56
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "direct-vllm"
+expected_route_model = "qwen3-32b-nvfp4"
+expected_route_tier = "candidate"
+
+[voice.profiles.candidate-gemma4-12b.llm]
+base_url = "http://100.87.34.66:39001/v1"
+model = "gemma4-12b-it"
+api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
+speech_chunk_max_chars = 56
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "direct-vllm"
+expected_route_model = "gemma4-12b-it"
+expected_route_tier = "candidate"
+
+[voice.profiles.candidate-gemma4-e4b.llm]
+base_url = "http://100.87.34.66:39002/v1"
+model = "gemma4-e4b-it"
+api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
+speech_chunk_max_chars = 56
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "direct-vllm"
+expected_route_model = "gemma4-e4b-it"
+expected_route_tier = "candidate"
