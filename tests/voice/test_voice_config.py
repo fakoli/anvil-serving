@@ -538,6 +538,37 @@ def test_rejects_stt_response_format_not_consumed_by_client():
         voice_config.validate_manifest(data)
 
 
+def test_accepts_qwen3_asr_stt_postprocess():
+    data = _valid_manifest()
+    data["voice"]["stt"]["postprocess"] = "qwen3_asr"
+    voice_config.validate_manifest(data)
+
+
+def test_accepts_stt_request_fields():
+    data = _valid_manifest()
+    data["voice"]["stt"]["request_fields"] = {
+        "language": "en",
+        "temperature": 0.0,
+        "max_completion_tokens": 64,
+        "include_stop_str_in_output": False,
+    }
+    voice_config.validate_manifest(data)
+
+
+def test_rejects_reserved_stt_request_field():
+    data = _valid_manifest()
+    data["voice"]["stt"]["request_fields"] = {"model": "other-model"}
+    with pytest.raises(voice_config.ConfigError, match="reserved"):
+        voice_config.validate_manifest(data)
+
+
+def test_rejects_unknown_stt_postprocess():
+    data = _valid_manifest()
+    data["voice"]["stt"]["postprocess"] = "provider-magic"
+    with pytest.raises(voice_config.ConfigError, match="postprocess"):
+        voice_config.validate_manifest(data)
+
+
 def test_rejects_tts_container_response_format():
     data = _valid_manifest()
     data["voice"]["tts"]["response_format"] = "wav"

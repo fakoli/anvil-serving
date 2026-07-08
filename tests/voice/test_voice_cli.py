@@ -10,6 +10,7 @@ import sys
 import socket
 import threading
 import time
+import wave
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
@@ -61,7 +62,7 @@ def test_help_lists_all_four_subcommands(capsys):
         voice_cli.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for sub in ("up", "start", "down", "stop", "run", "benchmark", "profiles", "bridge"):
+    for sub in ("up", "start", "down", "stop", "run", "benchmark", "stt-benchmark", "profiles", "bridge"):
         assert sub in out
 
 
@@ -703,10 +704,115 @@ def test_cmd_benchmark_prints_success_json(manifest_path, monkeypatch, capsys):
 
     assert rc == 0
     assert seen["data"]["voice"]["llm"]["model"] == "chat"
-    assert seen["kwargs"] == {"profile": None, "candidate": None}
+    assert seen["kwargs"] == {
+        "profile": None,
+        "candidate": None,
+        "pcm": None,
+        "sample_rate": 16000,
+        "reference_text": None,
+    }
     out = capsys.readouterr().out
     assert '"ok": true' in out
     assert '"ttfa_ms": 12.3' in out
+
+
+def test_cmd_benchmark_forwards_sample_and_reference_text(
+    tmp_path, manifest_path, monkeypatch
+):
+    sample = tmp_path / "utterance.wav"
+    pcm = b"\x01\x00\x02\x00\x03\x00"
+    with wave.open(str(sample), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(8000)
+        wav.writeframes(pcm)
+    seen = {}
+
+    def fake_run(data, **kwargs):
+        seen["kwargs"] = kwargs
+        return {"ok": True}
+
+    monkeypatch.setattr(voice_cli.voice_benchmark, "run_benchmark_from_manifest", fake_run)
+
+    rc = voice_cli.main([
+        "benchmark",
+        "--config",
+        manifest_path,
+        "--sample",
+        str(sample),
+        "--reference-text",
+        "one two three",
+    ])
+
+    assert rc == 0
+    assert seen["kwargs"] == {
+        "profile": None,
+        "candidate": None,
+        "pcm": pcm,
+        "sample_rate": 8000,
+        "reference_text": "one two three",
+    }
+
+
+def test_cmd_benchmark_rejects_non_mono_sample(tmp_path, manifest_path, capsys):
+    sample = tmp_path / "stereo.wav"
+    with wave.open(str(sample), "wb") as wav:
+        wav.setnchannels(2)
+        wav.setsampwidth(2)
+        wav.setframerate(16000)
+        wav.writeframes(b"\x00\x00\x00\x00")
+
+    rc = voice_cli.main(["benchmark", "--config", manifest_path, "--sample", str(sample)])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "expected mono WAV" in err
+
+
+def test_cmd_stt_benchmark_transcribes_sample_and_writes_evidence(
+    tmp_path, manifest_path, monkeypatch, capsys
+):
+    sample = tmp_path / "utterance.wav"
+    pcm = b"\x01\x00\x02\x00\x03\x00"
+    with wave.open(str(sample), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(8000)
+        wav.writeframes(pcm)
+
+    def fake_transcribe(pcm_bytes, sample_rate, config):
+        assert pcm_bytes == pcm
+        assert sample_rate == 8000
+        assert config.model == "parakeet-tdt-0.6b-v3"
+        yield ("one two three", True)
+
+    evidence_path = tmp_path / "stt.json"
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
+    monkeypatch.setattr(voice_cli, "transcribe_stream", fake_transcribe)
+
+    rc = voice_cli.main([
+        "stt-benchmark",
+        "--config",
+        manifest_path,
+        "--sample",
+        str(sample),
+        "--reference-text",
+        "one two three",
+        "--evidence-out",
+        str(evidence_path),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    assert evidence["schema_version"] == "voice-stt-benchmark/v1"
+    assert evidence["sample"]["sample_rate"] == 8000
+    assert evidence["latency_ms"] >= 0.0
+    assert evidence["wer"] == 0.0
+    assert evidence["wer_normalized"] == 0.0
+    assert evidence["hypothesis"] == "one two three"
+    out = capsys.readouterr().out
+    assert "voice stt-benchmark: manifest OK" in out
+    assert '"schema_version": "voice-stt-benchmark/v1"' in out
 
 
 def test_cmd_benchmark_resolves_profile_candidate_overlay_and_writes_evidence(
@@ -770,7 +876,13 @@ model = "gemma-3n-e4b-it"
     )
 
     assert rc == 0
-    assert seen["kwargs"] == {"profile": "dark-audio", "candidate": "gemma-fast"}
+    assert seen["kwargs"] == {
+        "profile": "dark-audio",
+        "candidate": "gemma-fast",
+        "pcm": None,
+        "sample_rate": 16000,
+        "reference_text": None,
+    }
     assert seen["data"]["voice"]["llm"]["model"] == "gemma-3n-e4b-it"
     assert seen["data"]["voice"]["llm"]["base_url"] == "http://127.0.0.1:9010/v1"
     assert seen["data"]["voice"]["stt"]["model"] == "tdt_ctc-110m"
@@ -813,6 +925,21 @@ def test_cmd_benchmark_help_lists_profile_candidate_overlay_and_evidence_options
     out = capsys.readouterr().out
     assert "--profile" in out
     assert "--candidate-overlay" in out
+    assert "--evidence-out" in out
+    assert "--sample" in out
+    assert "--reference-text" in out
+
+
+def test_cmd_stt_benchmark_help_lists_profile_candidate_sample_and_evidence_options(capsys):
+    with pytest.raises(SystemExit) as exc:
+        voice_cli.main(["stt-benchmark", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "--profile" in out
+    assert "--candidate" in out
+    assert "--candidate-overlay" in out
+    assert "--sample" in out
+    assert "--reference-text" in out
     assert "--evidence-out" in out
 
 

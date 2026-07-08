@@ -29,14 +29,16 @@ nothing here is proven against real audio/GPU hardware. The default sample
 audio (:func:`synth_sample_pcm`) is a synthetically generated tone, never
 recorded human speech.
 
-Stdlib-only: ``array``, ``json``, ``math``, ``time``.
+Stdlib-only: ``array``, ``json``, ``math``, ``time``, ``wave``.
 """
 from __future__ import annotations
 
 import array
 import json
 import math
+import re
 import time
+import wave
 from dataclasses import fields
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
@@ -47,6 +49,7 @@ from .stages.tts import TTSStageConfig, stream_speech
 DEFAULT_REFERENCE_TEXT = "the quick brown fox jumps over the lazy dog"
 EVIDENCE_SCHEMA_VERSION = "voice-benchmark-evidence/v1"
 MAX_TTS_TEXT_CHARS = 48
+_NORMALIZED_WORD_RE = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?")
 
 StreamFn = Callable[..., Iterator[Any]]
 
@@ -79,6 +82,13 @@ def word_error_rate(reference: str, hypothesis: str) -> float:
     return min(1.0, prev[m] / n)
 
 
+def normalized_word_error_rate(reference: str, hypothesis: str) -> float:
+    """Case/punctuation-insensitive WER for speech recognizer comparisons."""
+    normalized_reference = " ".join(_NORMALIZED_WORD_RE.findall(reference.lower()))
+    normalized_hypothesis = " ".join(_NORMALIZED_WORD_RE.findall(hypothesis.lower()))
+    return word_error_rate(normalized_reference, normalized_hypothesis)
+
+
 def synth_sample_pcm(*, duration_s: float = 1.0, sample_rate: int = 16000, freq_hz: float = 220.0) -> bytes:
     """A short, deterministic synthetic tone (NOT recorded speech) good
     enough to exercise the STT/TTS wire round-trip in a benchmark run when no
@@ -90,6 +100,29 @@ def synth_sample_pcm(*, duration_s: float = 1.0, sample_rate: int = 16000, freq_
         for i in range(n)
     ))
     return samples.tobytes()
+
+
+def load_sample_wav(path: str) -> tuple[bytes, int]:
+    """Load a mono 16-bit PCM WAV sample for a live benchmark run.
+
+    The STT stage accepts raw int16 PCM bytes plus a sample rate. Keeping the
+    CLI loader strict avoids silently benchmark-testing the wrong channel
+    layout or sample width.
+    """
+    try:
+        with wave.open(str(path), "rb") as sample:
+            channels = sample.getnchannels()
+            sample_width = sample.getsampwidth()
+            sample_rate = sample.getframerate()
+            if channels != 1:
+                raise ValueError("expected mono WAV, got %d channels" % channels)
+            if sample_width != 2:
+                raise ValueError("expected 16-bit PCM WAV, got %d bytes/sample" % sample_width)
+            if sample_rate <= 0:
+                raise ValueError("expected positive sample rate, got %d" % sample_rate)
+            return sample.readframes(sample.getnframes()), sample_rate
+    except wave.Error as exc:
+        raise ValueError("not a readable WAV file: %s" % exc) from exc
 
 
 def _split_for_tts(text: str, *, max_chars: int = MAX_TTS_TEXT_CHARS) -> Iterator[str]:
@@ -213,6 +246,7 @@ def _evidence_run(result: Mapping[str, Any], *, run_id: str) -> Dict[str, Any]:
         },
         "comparison": {
             "stt_wer": result.get("stt_wer"),
+            "stt_wer_normalized": result.get("stt_wer_normalized"),
             "tts_rtf": result.get("tts_rtf"),
             "tts_first_audio_observed": result.get("tts_first_audio_observed"),
         },
@@ -332,6 +366,7 @@ def run_benchmark(
 
     reference = DEFAULT_REFERENCE_TEXT if reference_text is None else reference_text
     stt_wer = word_error_rate(reference, hypothesis) if reference else None
+    stt_wer_normalized = normalized_word_error_rate(reference, hypothesis) if reference else None
 
     result: Dict[str, Any] = {
         "ttfa_ms": round(ttfa_ms, 2),
@@ -340,6 +375,7 @@ def run_benchmark(
         "llm_ms": round(llm_ms, 2),
         "tts_ms": round(tts_ms, 2),
         "stt_wer": round(stt_wer, 4) if stt_wer is not None else None,
+        "stt_wer_normalized": round(stt_wer_normalized, 4) if stt_wer_normalized is not None else None,
         "tts_rtf": round(tts_rtf, 4) if tts_rtf is not None else None,
         "tts_first_audio_observed": first_audio_time is not None,
         "tts_output_bytes": total_audio_bytes,
