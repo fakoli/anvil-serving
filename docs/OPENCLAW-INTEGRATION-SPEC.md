@@ -43,7 +43,8 @@ important operational consequence: the resolved provider can stick through OpenC
 fallback walk, so router-side fallback remains load-bearing.
 
 **Original validate-first gaps** are settled and retained only as provenance; see
-`OPENCLAW-LIVE-VALIDATION.md`, ADR-0005, and the plugin README. The live wire form is
+ADR-0005 and the plugin README (the dated live-validation runbook now lives in the private
+`fakoli/anvil-serving-notes` repo). The live wire form is
 `providerOverride:"anvil"` plus a bare preset `modelOverride`, and the hook fires once per run above
 OpenClaw's attempt loop.
 
@@ -375,8 +376,8 @@ Net: this matches anvil's existing design (`QUALITY-GATED-ROUTER.md` §7) — ve
 `plugins/openclaw-anvil-intent-router`'s T008 upfront split). anvil returned 503 (`"no
 quality-gated tier is available for this request"` — the keyless-handoff signal, ADR-0001).
 OpenClaw's native failover (`agents.defaults.model.fallbacks -> [openai/gpt-5.5,
-openai/gpt-5.4-mini]`) DID fire (so the 503-is-a-transport-failure-trigger assumption from
-`docs/PLAN-advise-and-defer.md` Phase 1 is confirmed correct) — but **both configured fallback
+openai/gpt-5.4-mini]`) DID fire (so the 503-is-a-transport-failure-trigger assumption from the ADR-0001
+advise-and-defer plan is confirmed correct) — but **both configured fallback
 models also 503'd through the `anvil` provider**, never reaching the native cloud provider. The
 agent turn ended in "couldn't generate a response" instead of a graceful cloud handoff.
 
@@ -416,5 +417,5 @@ the exact config):
    OpenClaw's (unreliable) native failover is never invoked at all. This is the durable fix, gated by
    the explicit billing opt-in ADR-0001 already requires.
 
-See also `docs/adr/0005-anvil-503-native-failover-unreliable.md` (the ADR record of this finding) and
-`docs/OPENCLAW-LIVE-VALIDATION.md` (Gap 4).
+See also `docs/adr/0005-anvil-503-native-failover-unreliable.md` (the ADR record of this finding)
+and `docs/findings/2026-07-04-openclaw-keyless-failover.md` (the dated evidence snapshot).

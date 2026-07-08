@@ -26,8 +26,10 @@ import urllib.parse
 import urllib.request
 from typing import Any, Callable, Dict, Iterable, Optional
 
+from . import __version__
 
-SERVER_INFO = {"name": "anvil-serving", "version": "0.1.0"}
+
+SERVER_INFO = {"name": "anvil-serving", "version": __version__}
 PROTOCOL_VERSION = "2024-11-05"
 _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _PROXY_METHODS = {"tools/list", "tools/call"}

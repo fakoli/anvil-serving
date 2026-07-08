@@ -1,4 +1,4 @@
-"""anvil-serving CLI — profile / models / deploy / init / serves / serve / voice / voice-sidecar / router / harness / host / mcp / controller / preflight / benchmark / external-bench / eval / calibrate / multiplexer / doctor."""
+"""anvil-serving CLI — profile / models / deploy / init / serves / serve / voice / voice-sidecar / router / harness / host / mcp / controller / preflight / benchmark / external-bench / eval / calibrate / score / multiplexer / cache-prune / doctor."""
 import sys
 import os
 import subprocess
