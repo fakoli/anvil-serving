@@ -42,6 +42,11 @@ also accept `--profile <name>` to apply `[voice.profiles.<name>]` before
 validation. `run` and `benchmark` also accept `--candidate-overlay <toml>` and
 `--candidate <label>` so live A/B tests can compose one audio topology with one
 LLM candidate without copying manifests.
+`benchmark` additionally accepts `--candidate-base-url`,
+`--candidate-model`, and `--candidate-api-key-env` for a Fast candidate that is
+already loaded on a direct OpenAI-compatible endpoint. Those flags create an
+in-memory LLM overlay for that benchmark run only; they do not write the voice
+manifest, router config, or production routing policy.
 
 ## Why These Commands Exist
 
@@ -476,6 +481,27 @@ anvil-serving voice benchmark \
   --evidence-out .anvil/evidence/voice-qwen3-32b-dark-audio.json
 ```
 
+For a candidate that is already loaded, use the direct candidate flags instead
+of writing a temporary overlay. The candidate URL is relative to the host where
+the benchmark command runs: use `http://127.0.0.1:<port>/v1` only on the model
+host itself, and use the Dark private address when running the benchmark from
+Fakoli Mini or another gateway host:
+
+```bash
+anvil-serving voice benchmark \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile dark-audio \
+  --candidate-base-url http://100.87.34.66:39000/v1 \
+  --candidate-model qwen3-32b-nvfp4 \
+  --candidate qwen3-32b-nvfp4-dark-direct \
+  --evidence-out .anvil/evidence/voice-qwen3-32b-dark-direct.json
+```
+
+Do not combine `--candidate-overlay` with the direct candidate flags. Both
+paths preserve the selected audio profile and only replace `[voice.llm]` for
+the benchmark process. They do not promote the candidate, change the router's
+Fast preset, or make OpenClaw use the candidate outside this explicit run.
+
 Use `--profile dark-audio` only after Dark-host bridge ports are listening.
 Use `--profile mini-dark-audio-proxy` only after Mini-local proxy ports
 `127.0.0.1:30110` and `127.0.0.1:30111` are listening on Mini and forwarding
@@ -483,7 +509,34 @@ to Dark audio.
 
 The JSON output includes first-audio latency, total turn latency, STT/LLM/TTS
 stage durations, STT WER, TTS RTF, output byte counts, and the observed
-STT/LLM text. This is a smoke measurement, not a promotion gate.
+STT/LLM text. The durable evidence envelope is
+`voice-benchmark-evidence/v1` and records:
+
+- `identity.profile`, `identity.candidate`, `identity.llm`,
+  `identity.stt`, `identity.tts`, and `identity.route`.
+- `topology.profile`, `topology.mode`, `topology.endpoints`, and
+  `topology.mini_model_free_assertion`.
+- `runs[0].latency.ttfa_ms`, `turn_latency_ms`,
+  `total_turn_latency_ms`, `stt_ms`, `llm_ms`,
+  `llm_stage_latency_ms`, and `tts_ms`.
+- `runs[0].transcript.stt_hypothesis`, `llm_reply`, and
+  `reference_text`.
+- `runs[0].tool.status`, `successful`, `tool_call_count`, and `calls`.
+
+`total_turn_latency_ms` is the end-to-end STT -> LLM -> TTS duration for the
+sample turn. `llm_stage_latency_ms` is the separately timed LLM stage, so model
+latency can be compared without subtracting STT or TTS time. `tool.status` is
+`observed` when the candidate emitted a realtime tool call such as
+`openclaw_agent_consult`; a textual claim that a tool was used is not counted
+as a tool call. This is a smoke measurement, not a promotion gate.
+
+For reference OpenClaw Talk evidence, `topology.mini_model_free_assertion` must
+show a reference profile such as `dark-audio` or `mini-dark-audio-proxy`,
+`mini_hosts_models = false`, and `passed = true`. Fakoli Mini must remain
+model-free in this path: it runs OpenClaw Gateway, Anvil Voice
+Realtime/proxy, Claude Code, and Codex, while Fakoli Dark owns the router,
+candidate LLM serves, and STT/TTS endpoints or bridge ports. Use `mini-audio`
+only for explicit optional same-host Mini-local audio validation.
 
 Interpret stage timing before swapping models:
 
