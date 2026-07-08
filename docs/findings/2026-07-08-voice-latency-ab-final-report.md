@@ -1,12 +1,18 @@
-# OpenClaw Talk voice latency A/B final report (2026-07-08)
+# OpenClaw Talk voice latency candidate A/B status report (2026-07-08)
 
-> Status: final synthesis of the `voice-latency-model-ab` evidence set. This
-> report does not promote a model, change router policy, change
-> `[router].profile_path`, or alter OpenClaw production model selection.
+> Status: synthesis of the `voice-latency-model-ab` evidence set. This is not
+> completed candidate A/B evidence: the baseline was measured, but the candidate
+> rows failed before reaching the LLM stage. This report does not promote a
+> model, change router policy, change `[router].profile_path`, or alter OpenClaw
+> production model selection.
 
 ## Executive Determination
 
 Do not promote a new voice LLM candidate yet.
+
+Candidate model A/B testing is incomplete. The successful measurement is the
+current baseline only. I should not treat the retained candidate failure rows as
+proof that the candidate models were tested.
 
 The current OpenClaw Talk path is functionally healthy: spoken turns reach the
 main chat session, session context is retained, tool calls work, hidden control
@@ -20,9 +26,10 @@ failed before STT because they were executed from a non-gateway checkout whose
 `127.0.0.1` was not Fakoli Mini's loopback. Those failures prove the topology
 guardrail, not candidate model speed or quality.
 
-Final recommendation: keep the current production fast Talk model in place,
-capture comparable Mini-run candidate evidence with `--candidate-overlay`, then
-reconsider promotion only after live Talk validation passes.
+Final recommendation: keep the current production fast Talk model in place and
+rerun the actual candidate tests from Fakoli Mini with `--candidate-overlay`.
+Only reconsider promotion after comparable candidate timing and live Talk
+validation both pass.
 
 ## What Was Tested
 
@@ -32,7 +39,7 @@ The evidence set covered these phases:
 |---|---|---|
 | Baseline | `mini-audio` using `baseline-qwen36-27b` through Fakoli Dark router | Successful timing row captured |
 | Shortlist | Qwen3 dense NVFP4 and Gemma 4 dense candidates | Candidate set defined; no promotion implied |
-| Matrix | Baseline plus candidate profiles and tool-relevant weather turn | Baseline measured; candidate rows failed before STT from wrong host context |
+| Matrix | Baseline plus candidate profiles and tool-relevant weather turn | Baseline measured; candidate rows failed before STT from wrong host context, so candidate models were not benchmarked |
 | Live Talk validation | Fakoli Mini gateway and voice runtime with Dark router | Functional Talk path passed with warning-only COLO smoke |
 | Final recommendation | Promotion readiness synthesis | Needs more comparable Mini-run data before model change |
 
@@ -73,7 +80,7 @@ the current bottleneck in the successful baseline measurement.
 
 The candidate rows are retained in
 `tests/fixtures/operator_workflows/voice_latency_model_ab_matrix.json`, but none
-of them produced a valid latency comparison:
+of them produced a valid latency comparison or a candidate model timing:
 
 | Candidate row | Status | Determination |
 |---|---|---|
@@ -82,9 +89,10 @@ of them produced a valid latency comparison:
 | `candidate-gemma4-e4b` generated-audio run | Failed before STT | Invalid latency comparison; wrong loopback context |
 | `candidate-qwen3-32b` weather/location tool turn | Blocked before live tool validation | Cannot evaluate tool-call regression yet |
 
-The candidate failures should not be interpreted as model failures. They show
-that LLM-only candidate overlays must be run from Mini, or through a verified
-Mini/Dark bridge profile, so that the STT/TTS path is valid.
+The candidate failures should not be interpreted as model failures, and they
+should not be counted as completed model tests. They show that LLM-only
+candidate overlays must be run from Mini, or through a verified Mini/Dark bridge
+profile, so that the STT/TTS path is valid before the candidate LLM is measured.
 
 ## Functional Talk Result
 
@@ -113,7 +121,7 @@ was `568.6 ms` / `1259.9 ms`, and exact-generation throughput p50/p95 was
 | Hidden prompt pollution fix | Pass | Checked session contained zero visible forced-consult/control-text markers |
 | Duplicate spam fix | Pass with monitoring | Historical burst remains in old logs, but no new sustained repeat sequence was observed |
 | Baseline latency capture | Pass | Mini-run baseline captured with TTFA `611.29 ms` and turn latency `789.06 ms` |
-| Candidate latency A/B | Fail for promotion evidence | Candidate rows did not run in a comparable valid topology |
+| Candidate latency A/B | Incomplete / fail for promotion evidence | Candidate rows did not reach the LLM stage, so candidate models were not actually tested |
 | Model promotion readiness | Fail / not ready | No successful candidate timing plus live Talk regression check exists |
 | Cost-control gate | Pass | No cloud model path or metered promotion was introduced |
 
@@ -122,9 +130,9 @@ was `568.6 ms` / `1259.9 ms`, and exact-generation throughput p50/p95 was
 Keep the current `baseline-qwen36-27b` fast Talk path in production.
 
 Do not promote Qwen3-32B, Gemma 4 12B, or Gemma 4 E4B from the current evidence.
-They remain candidates, not rejected models. The evidence is insufficient
-because the candidate runs did not exercise the full voice path from the correct
-host/topology.
+They remain untested candidates, not rejected models. The evidence is
+insufficient because the candidate runs did not exercise the full voice path
+from the correct host/topology and did not reach candidate LLM timing.
 
 Latency work should continue on two tracks:
 
