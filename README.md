@@ -71,8 +71,8 @@ flowchart LR
     V -->|"fail"| E
 ```
 
-The response stays transparent: anvil-serving reports the real tier/model that served the request
-and logs the routing decision.
+Every routed request is logged as a metadata-only decision record — work class, tier attempts,
+verify outcomes, token counts — retrievable from the router's `/v1/decisions` endpoint.
 
 ## Evaluate Quickly
 

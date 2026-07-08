@@ -73,7 +73,7 @@ sequenceDiagram
     T-->>V: response (buffered when allow-with-verify)
     alt verification passes
         V-->>FD: commit response
-        FD-->>H: response (real tier/model reported)
+        FD-->>H: response (decision logged server-side)
     else verification fails
         V->>P: escalate to next candidate
         P-->>FD: no candidates left
@@ -81,9 +81,12 @@ sequenceDiagram
     end
 ```
 
-The response is transparent: the router reports the tier and model that actually served the
-request, and every request writes a metadata-only decision record (`router/decision_log.py`) —
-verifier *names*, token counts, and outcomes, never response content or secrets.
+The routing outcome is recorded server-side: every request that walks the fallback ladder writes
+a metadata-only decision record (`router/decision_log.py`) — work class, per-tier attempts,
+verifier *names*, token counts, and outcomes, never response content or secrets — retrievable via
+`GET /v1/decisions`. (The wire response's `model` field echoes the caller's routing token;
+requests refused before the ladder runs, and cloud-tier `allow` responses streamed straight
+through, are visible in the stderr log rather than the decision record.)
 
 ## The Tier Ladder And The Two Cost Postures
 
@@ -111,9 +114,10 @@ flowchart TD
 
 Reading the ladder:
 
-- **`allow`** rows stream directly — time-to-first-token is preserved (a minimal
-  `NonEmptyContent` + `NotTruncated` window still applies to local tiers unless
-  `verify_local_min = false`).
+- **`allow`** rows skip the full verifier chain. A cloud `allow` tier streams straight through
+  (time-to-first-token preserved); a *local* `allow` tier still passes a minimal buffered
+  `NonEmptyContent` + `NotTruncated` window before the first byte under the default
+  `verify_local_min = true` — set it to `false` to stream local raw.
 - **`allow-with-verify`** rows buffer the whole local response, verify it, and only then release
   the first byte; a failure discards the local output and escalates.
 - **`deny`** rows are filtered before dispatch. `planning` never routes to an unmeasured local
@@ -144,8 +148,9 @@ flowchart LR
 - `anvil-serving calibrate` grades confirmed local-tier traffic with an independent judge and
   writes a **candidate** profile — it never auto-promotes.
 - `anvil-serving score` ranks models for a role from a transcribed benchmark table.
-- `anvil-serving router promote` (or the guarded MCP `router_promote` tool) is the only path that
-  makes a reviewed profile live, via `[router].profile_path`.
+- `anvil-serving router promote` (or the guarded MCP `router_promote` tool) is the supported
+  operator path for making a reviewed profile live; the underlying mechanism is
+  `[router].profile_path` plus a router reload.
 
 Two invariants hold everywhere: **no self-verification** (the judge is never the model that
 produced the output) and **fail-closed** (an unmeasured high-risk local row denies).
