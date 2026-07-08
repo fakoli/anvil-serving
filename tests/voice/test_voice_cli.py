@@ -5,6 +5,7 @@ is foundation-only -- each subcommand loads + validates the manifest and
 prints what it *would* do; no process is spawned, no network touched, no
 GPU/torch import happens anywhere in this module or its import chain.
 """
+import json
 import sys
 import socket
 import threading
@@ -603,18 +604,134 @@ def test_cmd_down_runs_native_lifecycle_for_fakoli_mini_style_manifest(tmp_path,
 
 
 def test_cmd_benchmark_prints_success_json(manifest_path, monkeypatch, capsys):
+    seen = {}
+
+    def fake_run(data, **kwargs):
+        seen["data"] = data
+        seen["kwargs"] = kwargs
+        return {"ok": True, "ttfa_ms": 12.3}
+
     monkeypatch.setattr(
         voice_cli.voice_benchmark,
         "run_benchmark_from_manifest",
-        lambda data: {"ok": True, "ttfa_ms": 12.3},
+        fake_run,
     )
 
     rc = voice_cli.main(["benchmark", "--config", manifest_path])
 
     assert rc == 0
+    assert seen["data"]["voice"]["llm"]["model"] == "chat"
+    assert seen["kwargs"] == {"profile": None, "candidate": None}
     out = capsys.readouterr().out
     assert '"ok": true' in out
     assert '"ttfa_ms": 12.3' in out
+
+
+def test_cmd_benchmark_resolves_profile_candidate_overlay_and_writes_evidence(
+    tmp_path, monkeypatch, capsys
+):
+    manifest = tmp_path / "voice_profiles.toml"
+    manifest.write_text(
+        VALID_MANIFEST
+        + """
+
+[voice.profiles.dark-audio.stt]
+base_url = "http://100.87.34.66:30110/v1"
+model = "tdt_ctc-110m"
+lifecycle = "external"
+
+[voice.profiles.dark-audio.tts]
+base_url = "http://100.87.34.66:30111/v1"
+model = "kokoro"
+lifecycle = "external"
+""",
+        encoding="utf-8",
+    )
+    overlay = tmp_path / "gemma-fast.toml"
+    overlay.write_text(
+        """
+[voice.llm]
+base_url = "http://127.0.0.1:9010/v1"
+model = "gemma-3n-e4b-it"
+""".strip(),
+        encoding="utf-8",
+    )
+    evidence = {
+        "schema_version": "voice-benchmark-evidence/v1",
+        "identity": {"profile": "dark-audio", "candidate": "gemma-fast"},
+        "runs": [],
+    }
+    seen = {}
+
+    def fake_run(data, **kwargs):
+        seen["data"] = data
+        seen["kwargs"] = kwargs
+        return {"ttfa_ms": 1.0, "evidence": evidence}
+
+    evidence_root = tmp_path / "evidence-root"
+    evidence_path = evidence_root / "voice" / "run.json"
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(evidence_root))
+    monkeypatch.setattr(voice_cli.voice_benchmark, "run_benchmark_from_manifest", fake_run)
+
+    rc = voice_cli.main(
+        [
+            "benchmark",
+            "--config",
+            str(manifest),
+            "--profile",
+            "dark-audio",
+            "--candidate-overlay",
+            str(overlay),
+            "--evidence-out",
+            str(evidence_path),
+        ]
+    )
+
+    assert rc == 0
+    assert seen["kwargs"] == {"profile": "dark-audio", "candidate": "gemma-fast"}
+    assert seen["data"]["voice"]["llm"]["model"] == "gemma-3n-e4b-it"
+    assert seen["data"]["voice"]["llm"]["base_url"] == "http://127.0.0.1:9010/v1"
+    assert seen["data"]["voice"]["stt"]["model"] == "tdt_ctc-110m"
+    assert seen["data"]["voice"]["tts"]["model"] == "kokoro"
+    assert json.loads(evidence_path.read_text(encoding="utf-8")) == evidence
+    out = capsys.readouterr().out
+    assert "profile=dark-audio" in out
+    assert "candidate=gemma-fast" in out
+    assert "llm_model=gemma-3n-e4b-it" in out
+    assert "llm_base_url=http://127.0.0.1:9010/v1" in out
+    assert "stt_model=tdt_ctc-110m" in out
+    assert "tts_model=kokoro" in out
+    assert "evidence written" in out
+
+
+def test_cmd_benchmark_missing_endpoint_error_includes_active_config(
+    manifest_path, monkeypatch, capsys
+):
+    def fake_run(data, **kwargs):
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr(voice_cli.voice_benchmark, "run_benchmark_from_manifest", fake_run)
+
+    rc = voice_cli.main(["benchmark", "--config", manifest_path])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "connection refused" in out
+    assert "profile=-" in out
+    assert "llm_model=chat" in out
+    assert "llm_base_url=http://127.0.0.1:8000/v1" in out
+    assert "stt_model=parakeet-tdt-0.6b-v3" in out
+    assert "tts_model=kokoro-82m" in out
+
+
+def test_cmd_benchmark_help_lists_profile_candidate_overlay_and_evidence_options(capsys):
+    with pytest.raises(SystemExit) as exc:
+        voice_cli.main(["benchmark", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "--profile" in out
+    assert "--candidate-overlay" in out
+    assert "--evidence-out" in out
 
 
 # --------------------------------------------------------------------------- #
