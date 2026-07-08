@@ -32,6 +32,7 @@ import os
 import re
 import shlex
 import urllib.parse
+from dataclasses import dataclass
 
 try:
     import tomllib  # Python 3.11+
@@ -60,6 +61,33 @@ class ConfigError(ValueError):
     """Raised when a voice manifest is missing, malformed, or unsafe to use."""
 
 
+@dataclass(frozen=True)
+class ResolvedVoiceConfig:
+    """A validated voice manifest plus its resolved benchmark identity."""
+
+    data: dict
+    profile: str | None
+    candidate: str | None
+    llm_base_url: str
+    llm_model: str
+    stt_base_url: str
+    stt_model: str
+    tts_base_url: str
+    tts_model: str
+
+    def identity(self) -> dict[str, str | None]:
+        return {
+            "profile": self.profile,
+            "candidate": self.candidate,
+            "llm_base_url": self.llm_base_url,
+            "llm_model": self.llm_model,
+            "stt_base_url": self.stt_base_url,
+            "stt_model": self.stt_model,
+            "tts_base_url": self.tts_base_url,
+            "tts_model": self.tts_model,
+        }
+
+
 def _resolve_config_path(path: str | None) -> str:
     if path:
         return path
@@ -84,7 +112,13 @@ def load_raw_manifest(path: str | None = None) -> dict:
         raise ConfigError("cannot parse %s: %s" % (config_path, exc))
 
 
-def load_manifest(path: str | None = None, *, profile: str | None = None) -> dict:
+def load_manifest(
+    path: str | None = None,
+    *,
+    profile: str | None = None,
+    candidate_overlay: dict | None = None,
+    candidate: str | None = None,
+) -> dict:
     """Load and validate the voice manifest TOML at `path` (or the shipped example).
 
     When `profile` is provided, `[voice.profiles.<name>]` is applied as an
@@ -92,12 +126,58 @@ def load_manifest(path: str | None = None, *, profile: str | None = None) -> dic
     switching, such as keeping Realtime on a gateway host while selecting Mini
     or Dark STT/TTS endpoints through the same anvil-serving utility command.
     """
+    return resolve_manifest(
+        path,
+        profile=profile,
+        candidate_overlay=candidate_overlay,
+        candidate=candidate,
+    ).data
+
+
+def resolve_manifest(
+    path: str | None = None,
+    *,
+    profile: str | None = None,
+    candidate_overlay: dict | None = None,
+    candidate: str | None = None,
+) -> ResolvedVoiceConfig:
+    """Load, apply profile/candidate overlays, validate, and summarize a manifest."""
     data = load_raw_manifest(path)
-    if profile:
+    return resolve_manifest_data(
+        data,
+        profile=profile,
+        candidate_overlay=candidate_overlay,
+        candidate=candidate,
+    )
+
+
+def resolve_manifest_data(
+    data: dict,
+    *,
+    profile: str | None = None,
+    candidate_overlay: dict | None = None,
+    candidate: str | None = None,
+) -> ResolvedVoiceConfig:
+    """Resolve an already-loaded manifest into one concrete voice config.
+
+    Candidate overlays are deliberately in-memory only. They use the same shape
+    as a profile overlay, merge after the selected profile, and never mutate the
+    caller's manifest dictionary or on-disk production config.
+    """
+    if not isinstance(data, dict):
+        raise ConfigError("manifest must be a TOML table")
+    if profile or candidate_overlay is not None:
         _reject_secret_literals(data)
+    if profile:
         data = apply_profile(data, profile)
+    else:
+        data = copy.deepcopy(data)
+    if candidate_overlay is not None:
+        _reject_secret_literals(candidate_overlay)
+        data = apply_candidate_overlay(data, candidate_overlay, name=candidate)
+    identity = _resolved_identity(data, profile=profile, candidate=candidate)
     validate_manifest(data)
-    return data
+    return ResolvedVoiceConfig(data=data, **identity)
 
 
 def profile_names(data: dict) -> list[str]:
@@ -141,12 +221,53 @@ def apply_profile(data: dict, profile: str) -> dict:
     if not isinstance(overlay, dict):
         raise ConfigError("voice.profiles.%s must be a TOML table" % profile)
 
+    return _apply_voice_overlay(
+        data,
+        overlay,
+        label="voice.profiles.%s" % profile,
+        strip_profiles=True,
+    )
+
+
+def apply_candidate_overlay(
+    data: dict,
+    overlay: dict,
+    *,
+    name: str | None = None,
+) -> dict:
+    """Return a copy of `data` with an in-memory candidate overlay applied."""
+    if not isinstance(overlay, dict):
+        raise ConfigError("candidate overlay must be a TOML table")
+    label = "candidate overlay %s" % name if name else "candidate overlay"
+    return _apply_voice_overlay(data, overlay, label=label, strip_profiles=True)
+
+
+def _apply_voice_overlay(
+    data: dict,
+    overlay: dict,
+    *,
+    label: str,
+    strip_profiles: bool,
+) -> dict:
+    if not isinstance(data, dict):
+        raise ConfigError("manifest must be a TOML table")
+    voice = data.get("voice")
+    if not isinstance(voice, dict):
+        raise ConfigError("missing [voice] section")
+    if "voice" in overlay:
+        if len(overlay) != 1 or not isinstance(overlay["voice"], dict):
+            raise ConfigError("%s must contain either voice keys or a single [voice] table" % label)
+        overlay = overlay["voice"]
+    if not isinstance(overlay, dict):
+        raise ConfigError("%s must be a TOML table" % label)
+
     resolved = copy.deepcopy(data)
     resolved_voice = resolved["voice"]
-    resolved_voice.pop("profiles", None)
+    if strip_profiles:
+        resolved_voice.pop("profiles", None)
     for key, value in overlay.items():
         if key == "profiles":
-            raise ConfigError("voice.profiles.%s must not contain nested profiles" % profile)
+            raise ConfigError("%s must not contain nested profiles" % label)
         if isinstance(value, dict):
             base = resolved_voice.get(key)
             if isinstance(base, dict):
@@ -161,6 +282,33 @@ def apply_profile(data: dict, profile: str) -> dict:
         else:
             resolved_voice[key] = copy.deepcopy(value)
     return resolved
+
+
+def _resolved_string(data: dict, section: str, key: str) -> str:
+    table = _section(data, "voice", section)
+    value = table.get(key)
+    path = "voice.%s.%s" % (section, key)
+    if not isinstance(value, str) or not value:
+        raise ConfigError("resolved voice config missing %s" % path)
+    return value
+
+
+def _resolved_identity(
+    data: dict,
+    *,
+    profile: str | None,
+    candidate: str | None,
+) -> dict[str, object]:
+    return {
+        "profile": profile,
+        "candidate": candidate,
+        "llm_base_url": _resolved_string(data, "llm", "base_url"),
+        "llm_model": _resolved_string(data, "llm", "model"),
+        "stt_base_url": _resolved_string(data, "stt", "base_url"),
+        "stt_model": _resolved_string(data, "stt", "model"),
+        "tts_base_url": _resolved_string(data, "tts", "base_url"),
+        "tts_model": _resolved_string(data, "tts", "model"),
+    }
 
 
 def _merge_table(base: dict, overlay: dict) -> None:

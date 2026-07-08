@@ -106,6 +106,28 @@ anvil-serving external-bench report \
 
 The output is a Markdown table suitable for docs or README inclusion.
 
+## Use External Priors For Voice Model A/B
+
+For OpenClaw Talk or other voice-latency experiments, external benchmark rows are
+only a candidate-selection aid. They can help decide which local model to test
+first, but they do not prove tool-call behavior, session-memory behavior, audio
+turn latency, or promotion safety.
+
+The practical workflow is:
+
+1. Start from the current local baseline in `configs/serve-recipes.toml`.
+2. Use `anvil-serving external-bench sources` and `anvil-serving external-bench
+   report` to find advisory throughput or TTFT priors for the same GPU family.
+3. Mark any candidate that needs a model download, cache deletion, new image, new
+   port, cloud API usage, or current-serve disruption as human-gated.
+4. Run local `preflight`, `benchmark`, and `voice benchmark` before any live Talk
+   trial.
+5. Promote nothing from external priors alone.
+
+The dated findings under `docs/findings/` should record why a candidate was
+included or rejected, the exact serve recipe used, and whether the evidence came
+from local measurement or an external advisory source.
+
 ## Export Rows
 
 ```bash
