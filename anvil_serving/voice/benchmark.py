@@ -40,13 +40,16 @@ import time
 from dataclasses import fields
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
-from .stages.llm import LLMStageConfig, SentenceBatcher, stream_chat_completion
+from .stages.llm import LLMStageConfig, LLMStreamToolCalls, SentenceBatcher, stream_chat_completion
 from .stages.stt import STTStageConfig, transcribe_stream
 from .stages.tts import TTSStageConfig, stream_speech
 
 DEFAULT_REFERENCE_TEXT = "the quick brown fox jumps over the lazy dog"
 EVIDENCE_SCHEMA_VERSION = "voice-benchmark-evidence/v1"
 MAX_TTS_TEXT_CHARS = 48
+REFERENCE_MODEL_FREE_PROFILES = {"dark-audio", "mini-dark-audio-proxy"}
+MINI_LOCAL_AUDIO_PROFILES = {"mini-audio", "mini-validation"}
+MINI_LOCAL_AUDIO_PORTS = {30010, 30011}
 
 StreamFn = Callable[..., Iterator[Any]]
 
@@ -127,13 +130,58 @@ def _split_for_tts(text: str, *, max_chars: int = MAX_TTS_TEXT_CHARS) -> Iterato
         yield current
 
 
+def _coerce_tool_call(call: Mapping[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": _json_scalar(call.get("id")),
+        "name": _json_scalar(call.get("name")),
+        "arguments": _json_scalar(call.get("arguments")),
+    }
+
+
+def _tool_calls_from_delta(delta: Any) -> list[Dict[str, Any]]:
+    if isinstance(delta, LLMStreamToolCalls):
+        return [_coerce_tool_call(call) for call in delta.tool_calls]
+    if isinstance(delta, Mapping):
+        calls = delta.get("tool_calls")
+        if isinstance(calls, list):
+            return [
+                _coerce_tool_call(call)
+                for call in calls
+                if isinstance(call, Mapping)
+            ]
+    return []
+
+
+def _tool_call_outcome(tool_calls: list[Dict[str, Any]]) -> Dict[str, Any]:
+    if not tool_calls:
+        return {
+            "status": "not_run",
+            "successful": None,
+            "tool_call_count": 0,
+            "calls": [],
+        }
+    return {
+        "status": "observed",
+        "successful": True,
+        "tool_call_count": len(tool_calls),
+        "calls": tool_calls,
+    }
+
+
 def _llm_reply_and_tts_chunks(
-    llm_deltas: Iterator[str], *, speech_chunk_max_chars: int = MAX_TTS_TEXT_CHARS,
-) -> tuple[str, list[str]]:
+    llm_deltas: Iterator[Any], *, speech_chunk_max_chars: int = MAX_TTS_TEXT_CHARS,
+) -> tuple[str, list[str], list[Dict[str, Any]]]:
     reply_text = ""
     tts_texts: list[str] = []
+    tool_calls: list[Dict[str, Any]] = []
     batcher = SentenceBatcher(max_chars=speech_chunk_max_chars)
     for delta in llm_deltas:
+        extracted_tool_calls = _tool_calls_from_delta(delta)
+        if extracted_tool_calls:
+            tool_calls.extend(extracted_tool_calls)
+            continue
+        if not isinstance(delta, str):
+            continue
         reply_text += delta
         for sentence in batcher.feed(delta):
             tts_texts.extend(_split_for_tts(sentence, max_chars=speech_chunk_max_chars))
@@ -142,13 +190,68 @@ def _llm_reply_and_tts_chunks(
         for trailing in batcher.flush_chunks()
         for chunk in _split_for_tts(trailing, max_chars=speech_chunk_max_chars)
     )
-    return reply_text, tts_texts
+    return reply_text, tts_texts, tool_calls
 
 
 def _json_scalar(value: Any) -> Any:
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
     return str(value)
+
+
+def _url_port(base_url: str) -> Optional[int]:
+    try:
+        from urllib.parse import urlparse
+    except ImportError:  # pragma: no cover - stdlib always has urllib.parse
+        return None
+    parsed = urlparse(base_url or "")
+    return parsed.port
+
+
+def _uses_mini_local_audio_endpoint(base_url: str) -> bool:
+    return (base_url or "").startswith("http://127.0.0.1:") and _url_port(base_url) in MINI_LOCAL_AUDIO_PORTS
+
+
+def _topology_evidence(
+    *,
+    profile: Optional[str],
+    stt_config: STTStageConfig,
+    llm_config: LLMStageConfig,
+    tts_config: TTSStageConfig,
+) -> Dict[str, Any]:
+    mini_endpoint_stages = [
+        stage for stage, base_url in (
+            ("stt", stt_config.base_url),
+            ("tts", tts_config.base_url),
+        )
+        if _uses_mini_local_audio_endpoint(base_url)
+    ]
+    reference_test = profile in REFERENCE_MODEL_FREE_PROFILES
+    mini_local_profile = profile in MINI_LOCAL_AUDIO_PROFILES
+    mini_hosts_models = mini_local_profile or bool(mini_endpoint_stages)
+    if reference_test:
+        assertion_passed: Optional[bool] = not mini_hosts_models
+    else:
+        assertion_passed = None
+    return {
+        "profile": profile,
+        "mode": "reference-model-free" if reference_test else "non-reference-or-unspecified",
+        "endpoints": {
+            "stt_base_url": stt_config.base_url,
+            "llm_base_url": llm_config.base_url,
+            "tts_base_url": tts_config.base_url,
+        },
+        "mini_model_free_assertion": {
+            "checked": True,
+            "method": "profile_and_endpoint_config",
+            "reference_test": reference_test,
+            "passed": assertion_passed,
+            "mini_hosts_models": mini_hosts_models,
+            "mini_local_audio_profile": mini_local_profile,
+            "mini_local_model_endpoint_stages": mini_endpoint_stages,
+            "reference_model_free_profiles": sorted(REFERENCE_MODEL_FREE_PROFILES),
+        },
+    }
 
 
 def _route_identity_from_manifest(data: Mapping[str, Any]) -> Dict[str, Any]:
@@ -231,6 +334,7 @@ def _evidence_run(result: Mapping[str, Any], *, run_id: str) -> Dict[str, Any]:
             "llm_reply": result.get("llm_reply"),
             "reference_text": result.get("reference_text"),
         },
+        "tool": result.get("tool_call_outcome", _tool_call_outcome([])),
     }
 
 
@@ -246,6 +350,14 @@ def build_evidence_record(
     run_id: str = "run-001",
 ) -> Dict[str, Any]:
     """Return the stable JSON evidence envelope for one voice benchmark run."""
+    topology = result.get("topology")
+    if not isinstance(topology, Mapping):
+        topology = _topology_evidence(
+            profile=profile,
+            stt_config=stt_config,
+            llm_config=llm_config,
+            tts_config=tts_config,
+        )
     return {
         "schema_version": EVIDENCE_SCHEMA_VERSION,
         "identity": _evidence_identity(
@@ -256,6 +368,7 @@ def build_evidence_record(
             candidate=candidate,
             route_identity=route_identity,
         ),
+        "topology": dict(topology),
         "runs": [_evidence_run(result, run_id=run_id)],
     }
 
@@ -306,7 +419,7 @@ def run_benchmark(
     t_stt_end = clock()
 
     t_llm_start = t_stt_end
-    reply_text, tts_texts = _llm_reply_and_tts_chunks(
+    reply_text, tts_texts, tool_calls = _llm_reply_and_tts_chunks(
         llm_fn(hypothesis, llm_config),
         speech_chunk_max_chars=llm_config.speech_chunk_max_chars,
     )
@@ -355,6 +468,13 @@ def run_benchmark(
         "stt_hypothesis": hypothesis,
         "llm_reply": reply_text,
         "reference_text": reference,
+        "tool_call_outcome": _tool_call_outcome(tool_calls),
+        "topology": _topology_evidence(
+            profile=profile,
+            stt_config=stt_config,
+            llm_config=llm_config,
+            tts_config=tts_config,
+        ),
     }
     result["evidence"] = build_evidence_record(
         result,
