@@ -1,0 +1,68 @@
+{
+  "schema_version": "fast-tier-llm-bakeoff-final-report-evidence/v1",
+  "task_id": "fast-tier-llm-bakeoff-2026-07:T007",
+  "generated_at": "2026-07-08T19:03:38Z",
+  "promotion_applied": false,
+  "recommendation": "promote_qwen36_35b_a3b_nvfp4_as_human_gated_candidate_do_not_auto_promote",
+  "acceptance_coverage": {
+    "candidate_rows_include_required_fields": true,
+    "recommendation_includes_required_decision": "promote",
+    "adversarial_review_packets_summarized": true,
+    "rerun_workflow_documented_through_anvil_serving": true
+  },
+  "verification_commands": [
+    {
+      "command": "python -m ruff check anvil_serving tests",
+      "exit_code": 0,
+      "summary": "All checks passed."
+    },
+    {
+      "command": "python -m pytest tests/ -q",
+      "exit_code": 0,
+      "summary": "2081 passed, 2 skipped in 114.06s."
+    },
+    {
+      "command": "anvil-serving serves --manifest examples/fakoli-dark/serves.toml status",
+      "exit_code": 0,
+      "summary": "heavy/vllm-gptoss120 health 200; fast/vllm-qwen36 health 200; candidate experiment serves exited or absent."
+    }
+  ],
+  "review_packets": [
+    {
+      "path": "docs/findings/fast-tier-bakeoff-evidence/t007-review-docs-fixtures.json",
+      "blocker": false
+    },
+    {
+      "path": "docs/findings/fast-tier-bakeoff-evidence/t007-review-evidence-gate.json",
+      "blocker": false
+    }
+  ],
+  "runtime_final_status": {
+    "heavy": {
+      "container": "vllm-gptoss120",
+      "port": 30002,
+      "docker": "running",
+      "health": 200
+    },
+    "fast": {
+      "container": "vllm-qwen36",
+      "port": 30003,
+      "docker": "running",
+      "health": 200
+    },
+    "experimental_candidates": {
+      "fast-qwen36-35b-a3b": "exited",
+      "fast-gemma4-31b": "exited",
+      "fast-glm47-flash-sglang": "exited",
+      "fast-glm47-flash-llamacpp": "exited",
+      "fast-devstral-small2": "exited",
+      "fast-devstral-small2-llamacpp": "absent",
+      "fast-qwen3-30b-a3b": "absent"
+    }
+  },
+  "topology": {
+    "mini_model_free_reference": true,
+    "model_host": "fakoli-dark",
+    "heavy_disrupted": false
+  }
+}

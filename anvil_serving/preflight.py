@@ -58,6 +58,41 @@ TOOLS = [{"type": "function", "function": {
     "description": "Get current weather for a city",
     "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}}}]
 
+def validate_tool_call(message, expected_name="get_weather", required_args=None):
+    """Validate that a chat response produced a usable OpenAI-style tool call."""
+    required_args = required_args or ["city"]
+    content = message.get("content") or ""
+    if any(g in content for g in ("<<tool", "<|", "function=", "�")):
+        return False, f"garbage content: {content[:60]!r}"
+
+    tool_calls = message.get("tool_calls") or []
+    if not tool_calls:
+        return False, "response did not include tool_calls"
+
+    first = tool_calls[0] or {}
+    function = first.get("function") or {}
+    if function.get("name") != expected_name:
+        return False, f"wrong function name: {function.get('name')!r}"
+
+    raw_args = function.get("arguments")
+    try:
+        args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+    except Exception as exc:
+        return False, f"arguments are not valid JSON: {exc}"
+    if not isinstance(args, dict):
+        return False, "arguments are not a JSON object"
+
+    missing = []
+    for arg in required_args:
+        value = args.get(arg)
+        if not isinstance(value, str) or not value.strip():
+            missing.append(arg)
+    if missing:
+        return False, "missing required string argument(s): " + ", ".join(missing)
+
+    shown = ", ".join(f"{arg}={args[arg]!r}" for arg in required_args)
+    return True, f"valid tool_call {expected_name}({shown})"
+
 def t_tool_one(base, model, key, shared_prefix, ctk=None):
     msgs = [{"role": "system", "content": shared_prefix},
             {"role": "user", "content": "What's the weather in Oakland? Use the tool."}]
@@ -65,15 +100,8 @@ def t_tool_one(base, model, key, shared_prefix, ctk=None):
         resp, dt = chat(base, model, msgs, key, max_tokens=256, tools=TOOLS,
                         tool_choice="auto", chat_template_kwargs=ctk)
         m = resp["choices"][0]["message"]
-        content = (m.get("content") or "")
-        # garbage signatures seen with sm_120 / bad spec-decode
-        if any(g in content for g in ("<<tool", "<|", "function=", "�")):
-            return False, f"garbage content: {content[:60]!r}"
-        tcs = m.get("tool_calls") or []
-        if tcs:
-            json.loads(tcs[0]["function"]["arguments"])  # must parse
-            return True, "valid tool_call"
-        return (len(content) > 0), f"text-only: {content[:40]!r}"
+        ok, detail = validate_tool_call(m)
+        return ok, f"{dt:.1f}s {detail}"
     except Exception as e:
         return False, f"error: {e}"
 

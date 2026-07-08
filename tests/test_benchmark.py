@@ -306,3 +306,223 @@ def test_main_incomplete_run_skips_verified_recipe(monkeypatch, tmp_path, capsys
     assert not recipe_path.exists()
     captured = capsys.readouterr()
     assert "skipping serve recipe" in captured.err
+
+
+# ---- Fast-tier bakeoff evidence mode -------------------------------------------
+
+def test_parse_context_targets_rejects_non_positive():
+    assert bm.parse_context_targets("32768, 65536") == [32768, 65536]
+    with pytest.raises(ValueError):
+        bm.parse_context_targets("0")
+
+
+def test_bakeoff_evidence_records_identity_context_score_and_failures(monkeypatch, tmp_path):
+    calls = {"n": 0}
+
+    def fake_stream_chat(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("second context failed")
+        return dict(ttft=0.05, e2e=0.20, out_toks=12, usage=None)
+
+    monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
+    out = tmp_path / "bakeoff.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39010/v1",
+        "--model", "qwen36-35b-a3b-nvfp4",
+        "--candidate-id", "qwen36-35b-a3b",
+        "--config-id", "vllm-nvfp4-32k",
+        "--context-targets", "1024,2048",
+        "--suite", "chat,context",
+        "--max-model-len", "4096",
+        "--evidence-out", str(out),
+        "--source-recipe", "configs/serve-recipes.toml#qwen36-35b-a3b",
+        "--serve-command", "anvil-serving serves up fast-qwen36-35b-a3b",
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["schema"] == "anvil-serving.fast-tier-bakeoff/v1"
+    assert evidence["identity"] == {
+        "candidate_id": "qwen36-35b-a3b",
+        "config_id": "vllm-nvfp4-32k",
+        "model": "qwen36-35b-a3b-nvfp4",
+        "base_url": "http://127.0.0.1:39010/v1",
+        "started_at": evidence["identity"]["started_at"],
+    }
+    assert evidence["source_recipe"]["serve_command"].startswith("anvil-serving serves up")
+    assert [r["status"] for r in evidence["context"]["targets"]] == ["passed", "failed"]
+    assert evidence["score_inputs"]["usable_context_tokens"] == 1024
+    assert evidence["score_inputs"]["ttft_p50_ms"] == 50.0
+    assert evidence["failures"] == [{
+        "suite": "context",
+        "target_tokens": 2048,
+        "error": "second context failed",
+    }]
+
+
+def test_bakeoff_tool_suite_records_tool_call(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.12,
+            "response": {
+                "choices": [{
+                    "message": {
+                        "tool_calls": [{
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {"name": "record_weather_zip", "arguments": '{"zip": "98101"}'},
+                        }]
+                    }
+                }]
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "tool.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39012/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite", "tool",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["tool"]["status"] == "passed"
+    assert evidence["tool"]["checks"][0]["tool_call_count"] == 1
+    assert evidence["tool"]["checks"][0]["valid_tool_call_count"] == 1
+    assert evidence["tool"]["checks"][0]["arguments"] == {"zip": "98101"}
+    assert evidence["failures"] == []
+
+
+def test_bakeoff_tool_suite_rejects_plain_text_tool_claim(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.12,
+            "response": {
+                "choices": [{
+                    "message": {"content": "I called record_weather_zip with 98101."}
+                }]
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "tool-fail.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39012/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite", "tool",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["tool"]["status"] == "failed"
+    assert evidence["tool"]["checks"][0]["tool_call_count"] == 0
+    assert evidence["failures"] == [{
+        "suite": "tool",
+        "error": "response did not include tool_calls",
+    }]
+
+
+def test_bakeoff_session_intelligence_and_thinking_evidence(monkeypatch, tmp_path):
+    responses = iter([
+        "RIVER-918",
+        "--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n retries = 2\n",
+        "The three stages exceed the timeout budget, so use a faster LLM or reduce output.",
+    ])
+
+    def fake_post_chat(*args, **kwargs):
+        assert kwargs["chat_template_kwargs"] == {"enable_thinking": False}
+        return {
+            "latency_s": 0.10,
+            "response": {
+                "choices": [{
+                    "message": {"content": next(responses)}
+                }]
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "quality.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39013/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "llamacpp-q6-32k",
+        "--suite", "session,intelligence",
+        "--thinking-mode", "disabled",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["session"]["status"] == "passed"
+    assert evidence["intelligence"]["status"] == "passed"
+    assert evidence["score_inputs"]["session_recall_passed"] is True
+    assert evidence["score_inputs"]["intelligence_pass_rate"] == 1.0
+    assert evidence["thinking"] == {
+        "mode": "disabled",
+        "chat_template_kwargs": {"enable_thinking": False},
+        "unsupported": False,
+    }
+    assert evidence["failures"] == []
+
+
+def test_bakeoff_thinking_unsupported_is_recorded(tmp_path):
+    out = tmp_path / "thinking.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39014/v1",
+        "--model", "devstral-small-2-24b",
+        "--candidate-id", "devstral-small2",
+        "--config-id", "vllm-fp8-32k",
+        "--suite", "voice",
+        "--thinking-mode", "unsupported",
+        "--voice-latency-ms", "1234",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["thinking"] == {
+        "mode": "unsupported",
+        "chat_template_kwargs": None,
+        "unsupported": True,
+    }
+
+
+def test_bakeoff_voice_suite_records_supplied_metrics(tmp_path):
+    out = tmp_path / "voice.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39014/v1",
+        "--model", "devstral-small-2-24b",
+        "--candidate-id", "devstral-small2",
+        "--config-id", "vllm-fp8-32k",
+        "--suite", "voice",
+        "--voice-latency-ms", "1234",
+        "--stt-latency-ms", "100",
+        "--tts-latency-ms", "300",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["voice"] == {
+        "status": "recorded",
+        "stt_latency_ms": 100.0,
+        "llm_latency_ms": None,
+        "tts_latency_ms": 300.0,
+        "total_turn_latency_ms": 1234.0,
+    }
+    assert evidence["score_inputs"]["voice_latency_ms"] == 1234.0

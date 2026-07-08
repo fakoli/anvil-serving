@@ -72,6 +72,19 @@ total_params_b = 27
   mode = "agentic"
   rationale = "Current OpenClaw Talk baseline: local, tool-capable, session-memory path is working; use as the control for every model A/B."
 
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/nvidia/Qwen3.6-27B-NVFP4",
+    "https://recipes.vllm.ai/Qwen/Qwen3.6-27B",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1t5dya8/qwen36_27b_nvfp4_mtp_on_a_single_rtx_5090_200k/",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1sv8eua/qwen3627b_at_80_tps_with_218k_context_window_on/",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
 # ─────────────────────────────────────────────────────────────────────────────
 # VERIFIED — gpt-oss-120b : the flexibility-mode quality ceiling-raise (T014/T015)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -183,6 +196,270 @@ total_params_b = 32
   suited = ["heavy", "quality", "agentic-candidate"]
   mode = "either"
   rationale = "DENSE (not MoE) so it sidesteps the sm_120 MoE-NVFP4 grouped-GEMM crash; NVFP4 ~1.8x faster than FP8, ~half the VRAM."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Qwen3.6-35B-A3B-NVFP4 : required Fast-tier bakeoff candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/Qwen3.6-35B-A3B-NVFP4"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 registry; official/community prior only, not measured on fakoli-dark"
+family = "qwen3.6"
+total_params_b = 35
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Required bakeoff candidate. Treat MoE-NVFP4 on consumer sm_120 as a load-risk until the local serve passes preflight."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"
+  quantization = "modelopt_fp4"
+  context_tokens = 32768
+  note = "Start with vLLM NVFP4 at 32K; attempt 64K/128K only after health, tool-call, and memory headroom pass."
+  flags = [
+    "--served-model-name qwen36-35b-a3b-nvfp4",
+    "--quantization modelopt_fp4",
+    "--kv-cache-dtype fp8",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 2",
+    "--gpu-memory-utilization 0.85",
+  ]
+
+  [recipe.bakeoff]
+  required = true
+  variant_budget = 3
+  context_targets = [32768, 65536, 131072]
+  score_role = "Fast-tier MoE Qwen alternative; compare quality/context gain against baseline latency and sm_120 stability."
+  source_status = "official-plus-community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "https://recipes.vllm.ai/Qwen/Qwen3.6-35B-A3B",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1ts6j6j/nvidiaqwen3635ba3bnvfp4_hugging_face/",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Gemma-4-31B-IT-NVFP4 : required dense/near-dense bakeoff candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/Gemma-4-31B-IT-NVFP4"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 registry; official/community prior only, not measured on fakoli-dark"
+family = "gemma4"
+total_params_b = 31
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Required bakeoff candidate. Expected KV pressure is high; begin with FP8 KV and reduced context before testing long-context targets. The Gemma 4 vLLM image currently needs integer GPU ids during model inspection; this recipe uses device 0, which fakoli-dark status evidence maps to the RTX 5090."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:gemma4-unified"
+  quantization = "modelopt_fp4"
+  context_tokens = 32768
+  note = "Start with the NVIDIA NVFP4 checkpoint and FP8 KV; validate Gemma tool parser/template before any voice recommendation. The experiment compose exposes FAST_GEMMA4_MAX_MODEL_LEN, FAST_GEMMA4_MAX_NUM_SEQS, and FAST_GEMMA4_GPU_MEMORY_UTILIZATION for reduced-context retries after the 32K profile."
+  flags = [
+    "--served-model-name gemma4-31b-it-nvfp4",
+    "--quantization modelopt_fp4",
+    "--kv-cache-dtype fp8",
+    "--enable-auto-tool-choice",
+    "--reasoning-parser gemma4",
+    "--tool-call-parser gemma4",
+    "--chat-template examples/tool_chat_template_gemma4.jinja",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 2",
+    "--gpu-memory-utilization 0.88",
+  ]
+
+  [recipe.bakeoff]
+  required = true
+  variant_budget = 3
+  context_targets = [32768, 65536, 131072]
+  score_role = "Dense/near-dense Gemma quality candidate; test whether quality/context beats Qwen baseline at acceptable voice latency."
+  source_status = "official-plus-community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/nvidia/Gemma-4-31B-IT-NVFP4",
+    "https://build.nvidia.com/google/gemma-4-31b-it/modelcard",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1sbivxj/gemma431b_nvfp4_inference_numbers_on_1x_rtx_pro/",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1sffapb/might_be_an_amateur_question_but_how_do_i_get_the/",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — GLM-4.7-Flash : required Fast-tier bakeoff candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "zai-org/GLM-4.7-Flash"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 registry; official/community prior only, not measured on fakoli-dark"
+family = "glm4.7"
+total_params_b = 30
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Required bakeoff candidate. Community reports around llama.cpp quality are mixed; prefer SGLang/vLLM first, then GGUF only with explicit caveat tracking."
+
+  [recipe.serve]
+  engine = "sglang"
+  image = "lmsysorg/sglang:latest"
+  quantization = "bf16-or-gguf"
+  context_tokens = 32768
+  note = "Research SGLang/vLLM model-card recipe first. GGUF/llama.cpp uses the Anvil-managed cached unsloth/GLM-4.7-Flash-GGUF:UD-Q4_K_XL artifact by explicit -m path with repeat penalty disabled after SGLang BF16 loadability is checked."
+  flags = [
+    "--served-model-name glm-4.7-flash",
+    "--tool-call-parser glm47",
+    "--reasoning-parser glm45",
+    "--context-length 32768",
+    "--max-running-requests 2",
+    "--mem-fraction-static 0.85",
+    "--trust-remote-code",
+  ]
+
+  [recipe.bakeoff]
+  required = true
+  variant_budget = 3
+  context_targets = [32768, 65536]
+  score_role = "Tool/agent MoE candidate; test whether published quality gains survive local serving and voice latency."
+  source_status = "official-plus-community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/zai-org/GLM-4.7-Flash",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1qh5wdq/zaiorgglm47flash_hugging_face/",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1qih9r8/current_glm47flash_implementation_confirmed_to_be/",
+    "https://agentnativedev.medium.com/glm-4-7-flash-on-24gb-gpu-llama-ccp-vllm-sglang-transformers-b3358d2f0e78",
+    "https://huggingface.co/unsloth/GLM-4.7-Flash-GGUF",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Devstral-Small-2-24B-Instruct-2512 : required coding-agent candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "mistralai/Devstral-Small-2-24B-Instruct-2512"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 registry; official/community prior only, not measured on fakoli-dark"
+family = "devstral"
+total_params_b = 24
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Required bakeoff candidate. FP8 and GGUF paths should fit more easily than 31B/35B candidates; validate tool quality and voice latency."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"
+  quantization = "fp8"
+  context_tokens = 32768
+  note = "Start with official FP8 checkpoint; 32K may exceed RTX 5090 KV headroom, so the experiment compose exposes FAST_DEVSTRAL_SMALL2_MAX_MODEL_LEN, FAST_DEVSTRAL_SMALL2_MAX_NUM_SEQS, and FAST_DEVSTRAL_SMALL2_GPU_MEMORY_UTILIZATION for the reduced-context retry. Test llama.cpp GGUF Q5/Q6 when a sourced quant is available."
+  flags = [
+    "--served-model-name devstral-small-2-24b",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser mistral",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 4",
+    "--gpu-memory-utilization 0.85",
+  ]
+
+  [recipe.bakeoff]
+  required = true
+  variant_budget = 3
+  context_targets = [32768, 65536, 131072]
+  score_role = "Agentic coding candidate; compare tool quality/intelligence against Qwen baseline while watching latency."
+  source_status = "official-plus-community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512",
+    "https://mistral.ai/news/devstral/",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1piabn8/devstralsmall224binstruct2512_on_hugging_face/",
+    "https://huggingface.co/bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF",
+    "https://unsloth.ai/docs/basics/inference-and-deployment/llama-server-and-openai-endpoint",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED / OPTIONAL — Qwen3-30B-A3B : fallback only
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 optional fallback; use only if a primary candidate fails or a stronger sourced recipe appears"
+family = "qwen3"
+total_params_b = 30
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+
+  [recipe.serve]
+  engine = "vllm-or-llamacpp"
+  quantization = "nvfp4-or-gguf"
+  context_tokens = 32768
+  note = "Optional fallback candidate. Do not count it as one of the required five unless a required model cannot run."
+
+  [recipe.bakeoff]
+  required = false
+  variant_budget = 2
+  context_targets = [32768, 65536]
+  score_role = "Fallback speed/quality reference if the primary set leaves a gap."
+  source_status = "community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507",
+  ]
+  community = [
+    "https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/discussions/24",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1qh5wdq/zaiorgglm47flash_hugging_face/",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UNVERIFIED — Gemma 4 12B IT : dense Gemma voice-latency scout

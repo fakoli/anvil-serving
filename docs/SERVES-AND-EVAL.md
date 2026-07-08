@@ -56,6 +56,7 @@ name = "fast"                 # logical name (also accepted by down/up)
 container = "vllm-gptoss"     # docker container name (== the compose service's container_name)
 port = 30001
 model = "gpt-oss-20b"         # served-model-name (used by `eval`)
+engine = "vllm"               # vllm, sglang, or llamacpp
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"   # {dir} = the manifest's dir
 ```
@@ -79,9 +80,89 @@ PORT=30002 SERVED_NAME=qwen3-32b-nvfp4 \
 #   EXTRA_ARGS="--reasoning-parser qwen3 --tool-call-parser qwen3_coder --trust-remote-code"
 ```
 
-`MODEL` and `GPU_UUID` are required; `SERVED_NAME` / `PORT` / `EXTRA_ARGS` default. Once it
-answers on `:{PORT}`, point `anvil-serving eval preflight --base-url http://127.0.0.1:{PORT}/v1
---model {SERVED_NAME}` at it.
+`MODEL`, `GPU_UUID`, `SERVED_NAME`, `PORT`, and `EXTRA_ARGS` can all be overridden. With no
+overrides, the generic experiment service uses the RTX 5090 and a loopback-only sandbox port so
+`docker compose ... config --quiet` is a useful validation gate. Once it answers on `:{PORT}`,
+point `anvil-serving eval preflight --base-url http://127.0.0.1:{PORT}/v1 --model {SERVED_NAME}`
+at it.
+
+### Fast-tier LLM bakeoff registry
+
+The July 2026 Fast-tier bakeoff is tracked in
+[`docs/findings/2026-07-08-fast-tier-llm-bakeoff.md`](findings/2026-07-08-fast-tier-llm-bakeoff.md)
+and `configs/serve-recipes.toml`. Treat `status = "unverified"` rows as source-backed
+candidate priors, not promotion evidence. A row graduates only after a local Fakoli Dark run
+captures serve health, preflight/tool results, context behavior, voice-cycle latency, and rollback
+proof through Anvil Serving commands.
+
+The required candidate set for that bakeoff is:
+
+- `nvidia/Qwen3.6-27B-NVFP4` as the current Fast baseline/control.
+- `nvidia/Qwen3.6-35B-A3B-NVFP4`.
+- `nvidia/Gemma-4-31B-IT-NVFP4`.
+- `zai-org/GLM-4.7-Flash`.
+- `mistralai/Devstral-Small-2-24B-Instruct-2512`.
+
+`Qwen/Qwen3-30B-A3B-Instruct-2507` is optional fallback coverage only. Do not run candidate LLM
+serves on Fakoli Mini, do not use the Heavy card for these small Fast experiments, and do not
+promote a recipe into production routing from registry data alone.
+
+The loaded-endpoint benchmark mode records one candidate/config run without starting or stopping
+the serve:
+
+```bash
+anvil-serving benchmark \
+  --bakeoff \
+  --base-url http://127.0.0.1:39010/v1 \
+  --model qwen36-35b-a3b-nvfp4 \
+  --candidate-id qwen36-35b-a3b \
+  --config-id vllm-nvfp4-32k \
+  --context-targets 32768,65536 \
+  --suite chat,context,tool \
+  --source-recipe configs/serve-recipes.toml#qwen36-35b-a3b \
+  --serve-command "anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b" \
+  --evidence-out .anvil/evidence/fast-qwen36-35b-a3b-vllm-32k.json
+```
+
+The evidence JSON includes identity, source recipe, timing, context targets, tool/voice sections,
+score inputs, and a `failures` list. Failed sub-checks stay in the same artifact as successful
+checks so the final scoring pass can compare partial candidates without rerunning a loaded model.
+
+For the full Fast-tier bakeoff loop, pair that loaded-endpoint artifact with a
+voice benchmark artifact and an explicit restoration check:
+
+```bash
+anvil-serving voice benchmark \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile dark-audio \
+  --candidate-base-url http://127.0.0.1:39010/v1 \
+  --candidate-model qwen36-35b-a3b-nvfp4 \
+  --candidate qwen36-35b-a3b-vllm-nvfp4-32k \
+  --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.voice.json
+
+anvil-serving benchmark \
+  --bakeoff \
+  --base-url http://127.0.0.1:39010/v1 \
+  --model qwen36-35b-a3b-nvfp4 \
+  --candidate-id qwen36-35b-a3b \
+  --config-id vllm-nvfp4-32k \
+  --context-targets 32768 \
+  --suite chat,context,tool,session,intelligence,voice \
+  --voice-latency-ms 377.52 \
+  --stt-latency-ms 68.65 \
+  --tts-latency-ms 143.46 \
+  --source-recipe configs/serve-recipes.toml#nvidia-qwen36-35b-a3b-nvfp4 \
+  --serve-command "anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b" \
+  --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json
+
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml down fast-qwen36-35b-a3b
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml status
+```
+
+Treat the voice benchmark artifact as stage-latency evidence unless its STT
+hypothesis and WER prove semantic transcription quality for the test prompt.
+Promotion remains a separate human-gated router/profile decision.
 
 ## `anvil-serving eval` — one entry point for the evals
 

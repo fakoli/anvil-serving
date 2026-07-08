@@ -1,0 +1,65 @@
+{
+  "schema_version": "adversarial-review-packet/v1",
+  "task_id": "fast-tier-llm-bakeoff-2026-07:T007",
+  "review_id": "t007-review-evidence-gate",
+  "reviewer": {
+    "agent_id": "019f4319-ad68-7270-8828-7f402a79f93c",
+    "model": "gpt-5.5",
+    "reasoning_effort": "high"
+  },
+  "completed_at": "2026-07-08T19:03:38Z",
+  "focus": "Acceptance evidence, review-packet durability, final gate metadata, topology, and promotion wording.",
+  "findings": [
+    {
+      "severity": "medium",
+      "summary": "The adversarial-review acceptance was summarized in prose without durable packet identifiers.",
+      "evidence": [
+        "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md"
+      ],
+      "resolution": "Added T007 review packet JSON files and linked them from the report."
+    },
+    {
+      "severity": "medium",
+      "summary": "The report linked only the T006 evidence summary, which did not describe the T007 final gate command set.",
+      "evidence": [
+        "docs/findings/fast-tier-bakeoff-evidence/t006-evidence-summary.json"
+      ],
+      "resolution": "Added a T007 evidence summary with the required T007 verification commands and final serve status."
+    }
+  ],
+  "checks": [
+    {
+      "name": "candidate table coverage",
+      "result": "pass",
+      "notes": "The report table includes engine, quantization, context, latency, throughput, tool/session/intelligence result, evidence, and status."
+    },
+    {
+      "name": "promotion wording",
+      "result": "pass",
+      "notes": "The determination recommends a human-gated promotion candidate and explicitly says not to auto-promote."
+    },
+    {
+      "name": "topology",
+      "result": "pass",
+      "notes": "Mini remains model-free; Dark owns model, STT, and TTS paths; voice evidence caveat prevents semantic STT overclaiming."
+    }
+  ],
+  "verification": [
+    {
+      "command": "python -m ruff check anvil_serving tests",
+      "exit_code": 0,
+      "summary": "All checks passed"
+    },
+    {
+      "command": "python -m pytest tests/ -q",
+      "exit_code": 0,
+      "summary": "2081 passed, 2 skipped"
+    },
+    {
+      "command": "anvil-serving serves --manifest examples/fakoli-dark/serves.toml status",
+      "exit_code": 0,
+      "summary": "Heavy and production Fast running with health 200; experimental candidates exited or absent."
+    }
+  ],
+  "final_blocker": false
+}

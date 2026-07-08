@@ -1,0 +1,56 @@
+{
+  "schema_version": "adversarial-review-packet/v1",
+  "task_id": "fast-tier-llm-bakeoff-2026-07:T007",
+  "review_id": "t007-review-docs-fixtures",
+  "reviewer": {
+    "agent_id": "019f4319-d517-76f1-b1eb-db4fb4f90ba0",
+    "model": "gpt-5.5",
+    "reasoning_effort": "high"
+  },
+  "completed_at": "2026-07-08T19:03:38Z",
+  "focus": "Docs, topology, unsafe URL use, voice-evidence overclaiming, and manifest-schema fixture coverage.",
+  "findings": [
+    {
+      "severity": "medium",
+      "summary": "The SERVES rerun example included the bakeoff voice suite without voice latency inputs, which would mark the voice subsection skipped.",
+      "evidence": [
+        "docs/SERVES-AND-EVAL.md",
+        "anvil_serving/benchmark.py"
+      ],
+      "resolution": "Added --voice-latency-ms, --stt-latency-ms, and --tts-latency-ms to the documented bakeoff command."
+    },
+    {
+      "severity": "low",
+      "summary": "The approximate decode-rate formula omitted the milliseconds-to-seconds conversion.",
+      "evidence": [
+        "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md"
+      ],
+      "resolution": "Changed the formula to output_tokens * 1000 / (e2e_ms - ttft_ms)."
+    }
+  ],
+  "checks": [
+    {
+      "name": "unsafe loopback-alias scan",
+      "result": "pass",
+      "notes": "Only intentional negative tests mention the forbidden loopback alias."
+    },
+    {
+      "name": "mini model-free topology",
+      "result": "pass",
+      "notes": "Docs preserve Mini as gateway/proxy host only and Dark as model/audio host."
+    },
+    {
+      "name": "manifest schema fixture coverage",
+      "result": "pass",
+      "notes": "Manifest schema coverage for required engine and model/served_name remains in tests/test_serves.py."
+    }
+  ],
+  "verification": [
+    {
+      "command": "python -m pytest tests/test_mcp.py tests/voice/test_stt_serve.py tests/voice/test_tts_serve.py tests/test_serves.py -q",
+      "exit_code": 0,
+      "summary": "204 passed"
+    }
+  ],
+  "final_blocker": false
+}

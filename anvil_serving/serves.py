@@ -66,6 +66,12 @@ EXAMPLE_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
 
 # States meaning the container exists but is already stopped (nothing to free).
 _STOPPED = ("exited", "created", "dead")
+_ENGINE_ALIASES = {
+    "llama.cpp": "llamacpp",
+    "llama-cpp": "llamacpp",
+    "llama_cpp": "llamacpp",
+}
+_ENGINES = {"vllm", "sglang", "llamacpp"}
 
 
 def load_manifest(path):
@@ -83,8 +89,27 @@ def load_manifest(path):
     serves = []
     for raw in data.get("serve", []):
         s = dict(raw)
-        if not s.get("name") or not s.get("container") or "port" not in s:
-            raise ValueError(f"serve entry missing name/container/port: {raw!r}")
+        missing = [
+            field for field in ("name", "container", "port", "engine")
+            if field not in s or s.get(field) in ("", None)
+        ]
+        if not s.get("model") and not s.get("served_name"):
+            missing.append("model/served_name")
+        if missing:
+            raise ValueError(
+                "serve entry missing required field(s) "
+                f"{', '.join(missing)}: {raw!r}"
+            )
+        if not isinstance(s.get("port"), int):
+            raise ValueError(f"serve entry port must be an integer: {raw!r}")
+        s["model"] = s.get("model") or s.get("served_name")
+        s["served_name"] = s.get("served_name") or s["model"]
+        engine = _ENGINE_ALIASES.get(str(s["engine"]).lower(), str(s["engine"]).lower())
+        if engine not in _ENGINES:
+            raise ValueError(
+                f"serve entry engine must be one of {sorted(_ENGINES)}: {raw!r}"
+            )
+        s["engine"] = engine
         s.setdefault("health", "/health")
         if s.get("up"):
             # split the TEMPLATE (forward-slash, no backslashes) then substitute,
@@ -160,6 +185,7 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
             "running": st == "running",
             "health_status": health,
             "model": s.get("model"),
+            "engine": s.get("engine"),
         })
     return {
         "serves": rows,
