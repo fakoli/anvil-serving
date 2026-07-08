@@ -83,6 +83,27 @@ PORT=30002 SERVED_NAME=qwen3-32b-nvfp4 \
 answers on `:{PORT}`, point `anvil-serving eval preflight --base-url http://127.0.0.1:{PORT}/v1
 --model {SERVED_NAME}` at it.
 
+### Fast-tier LLM bakeoff registry
+
+The July 2026 Fast-tier bakeoff is tracked in
+[`docs/findings/2026-07-08-fast-tier-llm-bakeoff.md`](findings/2026-07-08-fast-tier-llm-bakeoff.md)
+and `configs/serve-recipes.toml`. Treat `status = "unverified"` rows as source-backed
+candidate priors, not promotion evidence. A row graduates only after a local Fakoli Dark run
+captures serve health, preflight/tool results, context behavior, voice-cycle latency, and rollback
+proof through Anvil Serving commands.
+
+The required candidate set for that bakeoff is:
+
+- `nvidia/Qwen3.6-27B-NVFP4` as the current Fast baseline/control.
+- `nvidia/Qwen3.6-35B-A3B-NVFP4`.
+- `nvidia/Gemma-4-31B-IT-NVFP4`.
+- `zai-org/GLM-4.7-Flash`.
+- `mistralai/Devstral-Small-2-24B-Instruct-2512`.
+
+`Qwen/Qwen3-30B-A3B-Instruct-2507` is optional fallback coverage only. Do not run candidate LLM
+serves on Fakoli Mini, do not use the Heavy card for these small Fast experiments, and do not
+promote a recipe into production routing from registry data alone.
+
 ## `anvil-serving eval` — one entry point for the evals
 
 ```bash
