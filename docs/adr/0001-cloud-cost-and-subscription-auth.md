@@ -1,6 +1,8 @@
 # ADR-0001 — Cloud cost & subscription auth: why anvil should not relay cloud
 
-- **Status:** **Accepted** (2026-06-30) — advise-and-defer; implementation plan in `docs/PLAN-advise-and-defer.md`.
+- **Status:** **Accepted** (2026-06-30) — advise-and-defer; shipped. The dated implementation
+  plan now lives in the private `fakoli/anvil-serving-notes` repo; the shipped behavior is
+  documented in `docs/CONFIGURATION.md` and `docs/ARCHITECTURE.md`.
 - **Date:** 2026-06-30
 - **Context owner:** product direction (cost).
 - **Supersedes / relates to:** the Agent-SDK golden rule in `CLAUDE.md`; `OPENCLAW-INTEGRATION-SPEC.md`; issues #42 (tool-call passthrough), #43 (provider-model resolution).
@@ -205,4 +207,6 @@ model, provider, work_class, reason, confidence, session_id }`; status 200 (deci
 - **Non-OpenClaw / single-endpoint harnesses (Codex, raw Claude Code):** supported via the opt-in
   metered cloud tier (they accept the metered $) or by adopting a gateway — documented, not blocked.
 
-**Implementation plan:** [`docs/PLAN-advise-and-defer.md`](../PLAN-advise-and-defer.md).
+**Implementation plan:** shipped; the dated plan document now lives in the private
+`fakoli/anvil-serving-notes` repo. The resulting knobs are documented in the
+[Configuration reference](../CONFIGURATION.md).

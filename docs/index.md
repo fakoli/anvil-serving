@@ -11,13 +11,43 @@
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 anvil-serving sits between coding agents and local/cloud model tiers. It speaks Anthropic Messages
-and OpenAI Chat Completions, routes each request by workload intent, checks risky local output before
-returning it, and keeps metered cloud usage explicit.
+and OpenAI Chat Completions, routes each request by workload intent, checks risky local output
+before returning it, and keeps metered cloud usage explicit. A token proxy moves requests;
+anvil-serving answers the question a proxy cannot: **is this local model trusted for this kind of
+work?**
 
 For OpenClaw and remote operations, it also exposes explicit MCP/controller tools for status,
 voice lifecycle, preflight, benchmark, OpenClaw sync, and promotion evidence. The router stays the
 data plane; the control plane handles operations across same-host, private, and tailnet-reachable
 device topologies.
+
+## Choose Your Path
+
+**Evaluating anvil-serving?**
+
+1. [Getting started](GETTING-STARTED.md) — the no-GPU smoke test proves the protocol front door
+   in two commands.
+2. [Architecture](ARCHITECTURE.md) — the concise system overview with diagrams.
+3. [Quality-gated router](QUALITY-GATED-ROUTER.md) — the full design reference and the evidence
+   behind it.
+
+**Operating a deployment?**
+
+1. [Getting started](GETTING-STARTED.md) (Track B) — route real local tiers.
+2. [Configuration reference](CONFIGURATION.md) and [CLI reference](CLI.md) — every knob and verb.
+3. [Operator playbooks](OPERATOR-PLAYBOOKS.md) — MCP/controller workflows for day-to-day
+   operations.
+4. [Device topologies](DEVICE-TOPOLOGIES.md) and [Troubleshooting](TROUBLESHOOTING.md) — grow the
+   deployment and fix it when it misbehaves.
+5. [`examples/fakoli-dark/`](https://github.com/fakoli/anvil-serving/tree/main/examples/fakoli-dark/)
+   — a fully worked two-GPU reference instance.
+
+**Contributing?**
+
+1. [CONTRIBUTING](https://github.com/fakoli/anvil-serving/blob/main/CONTRIBUTING.md) — setup, the
+   hard rules, the module map, and extension recipes.
+2. [Architecture](ARCHITECTURE.md) — how the pipeline fits together.
+3. [ADRs](adr/README.md) — the *why* behind the design decisions.
 
 ## The Product Promise
 
@@ -28,50 +58,6 @@ device topologies.
 | What if local cannot serve it? | Exhaust cleanly or use an explicitly configured cloud tier. |
 | Will this lock me into one harness? | No. The front door is protocol-standard; OpenClaw is the reference integration. |
 | How do agents operate it? | Through explicit MCP/controller tools, not raw SSH as the product contract. |
-
-## Why Not Just Use A Proxy?
-
-Token proxies move requests. They do not know whether a specific local model is good enough for a
-specific coding task on your workload. anvil-serving adds the missing quality gate:
-
-- **Intent presets** let clients ask for `planning`, `quick-edit`, `review`, `chat`, `chat-fast`,
-  or `long-context` instead of pinning a model everywhere.
-- **Quality profiles** record per-tier, per-work-class trust decisions.
-- **Structural verification** catches cheap, concrete failures before the agent sees them.
-- **Transparent responses** report what actually served the request.
-
-## Evaluate It
-
-Start with the no-GPU front door smoke test:
-
-```bash
-pip install -e .
-python -m anvil_serving.router
-```
-
-Install from this clone when evaluating the current `main` docs. Published packages can lag the
-source tree and may not include main-only MCP/controller commands yet.
-
-If port `8000` is already in use, pass `--port <free-port>` and use that port in the URLs below.
-
-Then query the protocol surface:
-
-```bash
-curl -s http://127.0.0.1:8000/v1/models
-curl -s http://127.0.0.1:8000/v1/chat/completions \
-  -H 'content-type: application/json' \
-  -d '{"model":"chat","messages":[{"role":"user","content":"hello from anvil-serving"}]}'
-```
-
-That proves the front door, model discovery, request parsing, and response rendering. To evaluate
-real routing, run compatible local model serves at the `base_url` values in `configs/example.toml`
-and start:
-
-```bash
-anvil-serving serve --config configs/example.toml
-```
-
-Follow the full path in [Getting started](GETTING-STARTED.md).
 
 ## Operating Defaults
 
@@ -84,37 +70,26 @@ Follow the full path in [Getting started](GETTING-STARTED.md).
   use `ANVIL_CLOUD_CLASSES` or anvil-serving's opt-in cloud tier for at-risk work.
 - The MCP/controller control plane is for explicit operations; the router remains the model data plane.
 
-## Core Terms
-
-| Term | Meaning |
-|------|---------|
-| Intent preset | The value a client sends in `model`, such as `planning` or `quick-edit`. |
-| Tier | A configured backend candidate, usually fast-local, heavy-local, or cloud. |
-| Quality profile | The trust table that decides `allow`, `allow-with-verify`, or `deny`. |
-| Verify-and-fallback | The response path that checks local output and escalates when it fails. |
-| Local serving tools | The CLI surface for profiling usage, cataloging models, managing serves, and validating endpoints. |
-| Device topology | The assignment of gateway, voice, router, serve, controller, and operator roles to reachable devices. |
-| Voice pipeline | The local Realtime voice runtime: STT -> routed LLM -> TTS, with manifest-owned managed/native audio lifecycle, profiles, and private audio bridge support. |
-| Control plane | MCP/controller tools for status, route probes, preflight, benchmark, OpenClaw sync, voice lifecycle, and promotion evidence. |
-
-See [Terminology](TERMINOLOGY.md) for the naming guide.
-
 ## Documentation Map
 
 | Read this | When you need |
 |-----------|---------------|
 | [Getting started](GETTING-STARTED.md) | Evaluate the front door, then route real local tiers. |
-| [Product architecture](QUALITY-GATED-ROUTER.md) | Understand intents, routing, verification, and fallback. |
+| [Architecture](ARCHITECTURE.md) | The concise system overview: request path, tier ladder, quality profile, deployment shapes. |
+| [Configuration reference](CONFIGURATION.md) | Every `[server]`/`[router]`/tier/mode key, env vars, and the shipped example configs. |
+| [CLI reference](CLI.md) | Every verb, subcommand, and key flag. |
+| [Troubleshooting](TROUBLESHOOTING.md) | Symptom-first fixes: 503 exhaustion, preflight failures, empty responses, auth. |
+| [Quality-gated router](QUALITY-GATED-ROUTER.md) | The full design reference: intents, routing, verification, and fallback. |
+| [Terminology](TERMINOLOGY.md) | Product naming, user-facing terms, and technical definitions. |
 | [Operator playbooks](OPERATOR-PLAYBOOKS.md) | Run MCP/controller workflows. |
 | [Operator skills and sub-agents](OPERATOR-SKILLS-AND-SUBAGENTS.md) | Map verbs to MCP/skills and run small-model workflow slices safely. |
-| [Operator skills ADR](adr/0015-operator-skills-and-subagent-workflows.md) | Understand the workbench skill, harness packaging, and sub-agent model split. |
-| [Device topologies](DEVICE-TOPOLOGIES.md) | Expand from Fakoli Mini/Dark to additional laptops or hosts over Tailscale/private connectivity. |
+| [Device topologies](DEVICE-TOPOLOGIES.md) | Spread gateway, voice, router, and serve roles across hosts over private connectivity. |
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Tune thinking/sampling behavior for a served model. |
 | [Serves & eval](SERVES-AND-EVAL.md) | Manage model serves and run evals. |
 | [Voice pipeline](VOICE.md) | Run native voice commands, profile switches, private audio bridges, multi-device audio/LLM topology, Realtime server, and benchmarks. |
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Use the reference gateway integration. |
-| [OpenClaw operations ADRs](adr/0013-openclaw-layers-and-mcp-control-plane.md) | Understand hook, router, MCP, and tailnet-controller layers. |
 | [Hugging Face speech-to-speech](https://github.com/fakoli/anvil-serving/tree/main/examples/huggingface-speech-to-speech/) | Run Realtime audio with anvil-routed LLM turns. |
 | [ADRs](adr/README.md) | Read why major decisions were made. |
+| [Findings](findings/README.md) | Dated evidence snapshots behind the decisions. |
 | [Changelog](changelog.md) | Track release history. |

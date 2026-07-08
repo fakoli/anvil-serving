@@ -4,7 +4,9 @@
 - **Date:** 2026-07-01
 - **Relates to:** [ADR-0001](0001-cloud-cost-and-subscription-auth.md) (keyless handoff mechanism this
   finding falsifies part of), `docs/OPENCLAW-INTEGRATION-SPEC.md` §7,
-  `docs/OPENCLAW-LIVE-VALIDATION.md` (Gap 4), `plugins/openclaw-anvil-intent-router/`
+  `docs/findings/2026-07-04-openclaw-keyless-failover.md` (the dated evidence snapshot; the
+  original live-validation runbook now lives in the private `fakoli/anvil-serving-notes` repo),
+  `plugins/openclaw-anvil-intent-router/`
 
 ## Context
 
@@ -75,8 +77,9 @@ provider resolution, not anvil-serving's or the plugin's. Ship the following ins
    a bound cloud tier **inside the same `provider="anvil"` HTTP response** — anvil never returns 503
    for those classes, so OpenClaw's native failover (reliable or not) is never invoked. This requires
    the explicit billing opt-in ADR-0001 already gates; it is not a silent behavior change.
-4. **Record this as a live-validation gap (Gap 4)** in `docs/OPENCLAW-LIVE-VALIDATION.md`, alongside
-   the reproduction steps, so a future OpenClaw release can be re-tested and this ADR revisited (if
+4. **Record this as a live-validation gap (Gap 4)** — reproduction steps preserved in
+   `docs/findings/2026-07-04-openclaw-keyless-failover.md` and the private notes repo —
+   so a future OpenClaw release can be re-tested and this ADR revisited (if
    OpenClaw's attempt loop changes, mitigation B remains valid regardless — it never depends on
    OpenClaw's failover behavior at all).
 
@@ -99,5 +102,6 @@ trustworthy when the plugin has not itself pinned a provider for the run.
   tokens on exhaustion) is unchanged and correct; this finding is entirely about what happens
   downstream of that 503 inside OpenClaw.
 - **Follow-up:** if a future OpenClaw release changes attempt-loop provider resolution, re-run the
-  Gap 4 reproduction in `docs/OPENCLAW-LIVE-VALIDATION.md` and update this ADR's status accordingly
+  Gap 4 reproduction in `docs/findings/2026-07-04-openclaw-keyless-failover.md` and update this
+  ADR's status accordingly
   (do not delete it — supersede if the finding no longer holds).

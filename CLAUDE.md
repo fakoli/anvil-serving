@@ -27,8 +27,8 @@ The shipped default (`configs/example.toml`) is **local-only**: anvil holds no c
 incurs $0 metered API billing. The opt-in metered cloud tier (`configs/example-with-cloud.toml`)
 must be explicitly configured; only work-classes listed in `[router].metered_cloud` are eligible
 to route to a cloud tier. Never add a metered cloud tier silently — it is a billing decision.
-See [ADR-0001](docs/adr/0001-cloud-cost-and-subscription-auth.md) and
-[`docs/PLAN-advise-and-defer.md`](docs/PLAN-advise-and-defer.md).
+See [ADR-0001](docs/adr/0001-cloud-cost-and-subscription-auth.md) and the
+[Configuration reference](docs/CONFIGURATION.md).
 
 ---
 
@@ -341,6 +341,11 @@ it, and keep the script as a thin example or remove it.
 
 - `README.md` — evaluator-facing product framing, smoke test, command surface, and docs map
 - `docs/GETTING-STARTED.md` — no-GPU front-door smoke test, real-tier setup, and harness pointers
+- `docs/ARCHITECTURE.md` — concise system overview (request path, tier ladder, calibration loop,
+  deployment shapes) with diagrams
+- `docs/CONFIGURATION.md` — full config reference: `[server]`/`[router]`/tier/mode keys + env vars
+- `docs/CLI.md` — full CLI reference: every verb, subcommand, and key flag
+- `docs/TROUBLESHOOTING.md` — symptom-first fixes (503 exhaustion, preflight, empty content, auth)
 - `docs/TERMINOLOGY.md` — product naming, user-facing terms, and technical definitions
 - `docs/QUALITY-GATED-ROUTER.md` — full design (intent presets, tier ladder, verify-fallback, profile)
 - `docs/OPENCLAW-INTEGRATION-SPEC.md` — OpenClaw adapter plugin spec (verdict: go-with-caveats)
@@ -349,10 +354,10 @@ it, and keep the script as a thin example or remove it.
 - `docs/adr/0013-openclaw-layers-and-mcp-control-plane.md` / `0014-tailnet-controller-transport.md`
   — clean OpenClaw layers and split-host controller transport
 - `docs/adr/` — **Architecture Decision Records** — the *why* behind significant design decisions
-- `docs/REVIEW-2026-07-02-architecture-and-models.md` — full architecture review record (the
-  PR #96–#102 series: wire fidelity, measured profile, bug bash, swap draining, residency +
-  streaming relay), remaining open items, and the mid-2026 sm_120 model-landscape findings
-  (Qwen3.6-27B-NVFP4 fast-tier recommendation, MoE-NVFP4 status, next actions)
+- the full 2026-07-02 architecture review record (the PR #96–#102 series: wire fidelity, measured
+  profile, bug bash, swap draining, residency + streaming relay) and the mid-2026 sm_120
+  model-landscape findings now live in the private companion repo `fakoli/anvil-serving-notes`;
+  the durable sm_120 evidence remains in `docs/findings/blackwell-sm120-lab-notebook.md`
 - `examples/fakoli-dark/` — real two-tier instance (heavy :30000 SGLang, fast :30001 vLLM)
 
 > **Companion repo:** internal design discussions, planning context, dated bake-off findings,
