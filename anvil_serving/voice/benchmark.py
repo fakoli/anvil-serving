@@ -202,13 +202,17 @@ def _evidence_identity(
 
 
 def _evidence_run(result: Mapping[str, Any], *, run_id: str) -> Dict[str, Any]:
+    total_turn_latency_ms = result.get("total_turn_latency_ms", result.get("turn_latency_ms"))
+    llm_stage_latency_ms = result.get("llm_stage_latency_ms", result.get("llm_ms"))
     return {
         "id": run_id,
         "latency": {
             "ttfa_ms": result.get("ttfa_ms"),
             "turn_latency_ms": result.get("turn_latency_ms"),
+            "total_turn_latency_ms": total_turn_latency_ms,
             "stt_ms": result.get("stt_ms"),
             "llm_ms": result.get("llm_ms"),
+            "llm_stage_latency_ms": llm_stage_latency_ms,
             "tts_ms": result.get("tts_ms"),
         },
         "comparison": {
@@ -336,8 +340,10 @@ def run_benchmark(
     result: Dict[str, Any] = {
         "ttfa_ms": round(ttfa_ms, 2),
         "turn_latency_ms": round(turn_latency_ms, 2),
+        "total_turn_latency_ms": round(turn_latency_ms, 2),
         "stt_ms": round(stt_ms, 2),
         "llm_ms": round(llm_ms, 2),
+        "llm_stage_latency_ms": round(llm_ms, 2),
         "tts_ms": round(tts_ms, 2),
         "stt_wer": round(stt_wer, 4) if stt_wer is not None else None,
         "tts_rtf": round(tts_rtf, 4) if tts_rtf is not None else None,

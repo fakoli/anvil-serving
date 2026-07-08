@@ -103,8 +103,11 @@ def test_run_benchmark_computes_all_four_metrics():
 
     assert result["ttfa_ms"] == 1200.0
     assert result["turn_latency_ms"] == 1500.0
+    assert result["total_turn_latency_ms"] == 1500.0
     assert result["stt_ms"] == 400.0
     assert result["llm_ms"] == 600.0
+    assert result["llm_stage_latency_ms"] == 600.0
+    assert result["llm_stage_latency_ms"] != result["total_turn_latency_ms"]
     assert result["tts_ms"] == 500.0
     assert result["stt_wer"] == 0.0  # hypothesis matches reference exactly
     assert result["tts_rtf"] == pytest.approx(1000.0)
@@ -115,6 +118,8 @@ def test_run_benchmark_computes_all_four_metrics():
     assert result["evidence"]["schema_version"] == EVIDENCE_SCHEMA_VERSION
     assert result["evidence"]["identity"]["llm"]["model"] == "chat-fast"
     assert result["evidence"]["runs"][0]["latency"]["ttfa_ms"] == 1200.0
+    assert result["evidence"]["runs"][0]["latency"]["total_turn_latency_ms"] == 1500.0
+    assert result["evidence"]["runs"][0]["latency"]["llm_stage_latency_ms"] == 600.0
 
 
 def test_run_benchmark_ttfa_never_exceeds_turn_latency():
@@ -413,8 +418,10 @@ def test_build_evidence_record_has_stable_json_schema_fields():
     result = {
         "ttfa_ms": 12.3,
         "turn_latency_ms": 45.6,
+        "total_turn_latency_ms": 45.6,
         "stt_ms": 1.2,
         "llm_ms": 3.4,
+        "llm_stage_latency_ms": 3.4,
         "tts_ms": 5.6,
         "stt_wer": 0.0,
         "tts_rtf": 0.25,
@@ -483,8 +490,10 @@ def test_build_evidence_record_has_stable_json_schema_fields():
             "latency": {
                 "ttfa_ms": 12.3,
                 "turn_latency_ms": 45.6,
+                "total_turn_latency_ms": 45.6,
                 "stt_ms": 1.2,
                 "llm_ms": 3.4,
+                "llm_stage_latency_ms": 3.4,
                 "tts_ms": 5.6,
             },
             "comparison": {
