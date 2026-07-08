@@ -35,6 +35,7 @@ must FAIL LOUDLY with a clear, non-crashing message -- never pretend the
 pool is usable when it is not.
 """
 import argparse
+from dataclasses import fields
 import ipaddress
 import json
 import os
@@ -56,6 +57,7 @@ from .serves import native as native_serve
 from .serves import stt as stt_serve
 from .serves import tts as tts_serve
 from .serves._common import ServeNotConfigured
+from .stages.stt import STTStageConfig, transcribe_stream
 
 try:
     import tomllib  # Python 3.11+
@@ -199,6 +201,76 @@ def _write_benchmark_evidence(path: str, evidence: dict) -> str:
         f.write(json.dumps(evidence, indent=2, sort_keys=True))
         f.write("\n")
     return target
+
+
+def _load_benchmark_sample(args) -> tuple[Optional[bytes], int]:
+    sample = getattr(args, "sample", None)
+    if not sample:
+        return None, 16000
+    try:
+        return voice_benchmark.load_sample_wav(sample)
+    except (OSError, ValueError) as exc:
+        raise voice_config.ConfigError("could not load benchmark sample %s: %s" % (sample, exc))
+
+
+def _benchmark_pcm_from_args(args) -> tuple[bytes, int]:
+    sample_pcm, sample_rate = _load_benchmark_sample(args)
+    if sample_pcm is None:
+        return voice_benchmark.synth_sample_pcm(sample_rate=sample_rate), sample_rate
+    return sample_pcm, sample_rate
+
+
+def _stt_stage_config_from_table(table: Dict[str, Any]) -> STTStageConfig:
+    allowed = {field.name for field in fields(STTStageConfig)}
+    kwargs = {key: value for key, value in table.items() if key in allowed}
+    kwargs.setdefault("base_url", "")
+    kwargs.setdefault("model", "")
+    return STTStageConfig(**kwargs)
+
+
+def _stt_benchmark_result(
+    *,
+    resolved: voice_config.ResolvedVoiceConfig,
+    pcm: bytes,
+    sample_rate: int,
+    reference_text: Optional[str],
+) -> dict:
+    voice = resolved.data.get("voice", {})
+    config = _stt_stage_config_from_table(voice.get("stt", {}))
+    reference = voice_benchmark.DEFAULT_REFERENCE_TEXT if reference_text is None else reference_text
+    t0 = time.perf_counter()
+    hypothesis = ""
+    for text, is_final in transcribe_stream(pcm, sample_rate, config):
+        hypothesis = text
+        if is_final:
+            break
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    wer = voice_benchmark.word_error_rate(reference, hypothesis) if reference else None
+    wer_normalized = (
+        voice_benchmark.normalized_word_error_rate(reference, hypothesis)
+        if reference
+        else None
+    )
+    return {
+        "schema_version": "voice-stt-benchmark/v1",
+        "identity": {
+            "profile": resolved.profile,
+            "candidate": resolved.candidate,
+            "stt": {
+                "base_url": config.base_url,
+                "model": config.model,
+            },
+        },
+        "sample": {
+            "bytes": len(pcm),
+            "sample_rate": sample_rate,
+        },
+        "latency_ms": round(latency_ms, 2),
+        "wer": round(wer, 4) if wer is not None else None,
+        "wer_normalized": round(wer_normalized, 4) if wer_normalized is not None else None,
+        "hypothesis": hypothesis,
+        "reference_text": reference,
+    }
 
 
 def cmd_up(args):
@@ -462,6 +534,7 @@ def cmd_benchmark(args):
     summary = _identity_summary(resolved)
     try:
         evidence_target = _resolve_evidence_output_path(getattr(args, "evidence_out", None))
+        sample_pcm, sample_rate = _load_benchmark_sample(args)
     except voice_config.ConfigError as exc:
         print("voice benchmark: %s" % exc, file=sys.stderr)
         return 2
@@ -471,6 +544,9 @@ def cmd_benchmark(args):
             resolved.data,
             profile=resolved.profile,
             candidate=resolved.candidate,
+            pcm=sample_pcm,
+            sample_rate=sample_rate,
+            reference_text=getattr(args, "reference_text", None),
         )
     except Exception as exc:  # noqa: BLE001 - the configured serves may simply not be up yet
         print(
@@ -487,6 +563,41 @@ def cmd_benchmark(args):
         _write_benchmark_evidence(evidence_target, evidence)
         print("voice benchmark: evidence written %s" % evidence_target)
     print(voice_benchmark.to_json(result))
+    return 0
+
+
+def cmd_stt_benchmark(args):
+    resolved, err = _load_benchmark_config(args)
+    if err:
+        print("voice stt-benchmark: %s" % err, file=sys.stderr)
+        return 2
+    assert resolved is not None
+    summary = _identity_summary(resolved)
+    try:
+        evidence_target = _resolve_evidence_output_path(getattr(args, "evidence_out", None))
+        sample_pcm, sample_rate = _benchmark_pcm_from_args(args)
+    except voice_config.ConfigError as exc:
+        print("voice stt-benchmark: %s" % exc, file=sys.stderr)
+        return 2
+    print("voice stt-benchmark: manifest OK -- %s" % summary)
+    try:
+        result = _stt_benchmark_result(
+            resolved=resolved,
+            pcm=sample_pcm,
+            sample_rate=sample_rate,
+            reference_text=getattr(args, "reference_text", None),
+        )
+    except Exception as exc:  # noqa: BLE001 - the configured STT serve may simply not be up yet
+        print(
+            "voice stt-benchmark: could not reach the configured STT serve (%s); "
+            "bring it up with `anvil-serving voice up` or `anvil-serving serves up` first. "
+            "Active config: %s" % (exc, summary)
+        )
+        return 1
+    if evidence_target:
+        _write_benchmark_evidence(evidence_target, result)
+        print("voice stt-benchmark: evidence written %s" % evidence_target)
+    print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 
 
@@ -686,6 +797,38 @@ def build_parser():
         "--evidence-out",
         help="write structured benchmark evidence JSON under the workspace or configured evidence root",
     )
+    sp.add_argument(
+        "--sample",
+        help="mono 16-bit PCM WAV utterance to replay instead of the synthetic tone",
+    )
+    sp.add_argument(
+        "--reference-text",
+        help="reference transcript for STT WER scoring when --sample is supplied",
+    )
+
+    sp = sub.add_parser("stt-benchmark", help="measure only the configured STT endpoint")
+    add_config(sp)
+    add_profile(sp)
+    sp.add_argument(
+        "--candidate",
+        help="candidate label recorded in STT benchmark evidence; defaults to overlay file stem",
+    )
+    sp.add_argument(
+        "--candidate-overlay",
+        help="candidate TOML overlay applied after the selected profile for this STT benchmark run",
+    )
+    sp.add_argument(
+        "--sample",
+        help="mono 16-bit PCM WAV utterance to transcribe instead of the synthetic tone",
+    )
+    sp.add_argument(
+        "--reference-text",
+        help="reference transcript for STT WER scoring",
+    )
+    sp.add_argument(
+        "--evidence-out",
+        help="write structured STT benchmark evidence JSON under the workspace or configured evidence root",
+    )
 
     sp = sub.add_parser("profiles", help="list profiles or validate one resolved profile")
     add_config(sp)
@@ -724,6 +867,7 @@ def main(argv=None):
         "stop": cmd_down,
         "run": cmd_run,
         "benchmark": cmd_benchmark,
+        "stt-benchmark": cmd_stt_benchmark,
         "profiles": cmd_profiles,
         "bridge": cmd_bridge,
     }

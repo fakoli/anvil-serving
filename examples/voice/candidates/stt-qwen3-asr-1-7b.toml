@@ -1,0 +1,8 @@
+[voice.stt]
+base_url = "http://100.87.34.66:39101/v1"
+model = "qwen3-asr-1.7b"
+stream = false
+response_format = "json"
+postprocess = "qwen3_asr"
+timeout = 120.0
+lifecycle = "external"

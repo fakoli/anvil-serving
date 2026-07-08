@@ -90,6 +90,8 @@ services:
   # Managed voice-latency candidates. These are opt-in A/B serves, not production tiers.
   # They use distinct container names and ports so `anvil-serving serves up/down <name>`
   # can manage them without touching the live heavy/fast/router compose services.
+  # Voice candidates default to the RTX 5090 fast lane. Do not point these at the
+  # RTX PRO 6000 heavy card unless an operator explicitly creates a heavy-card test.
   #
   # Default publish is loopback-only. For OpenClaw-on-Mini cross-host validation, set
   # VOICE_CANDIDATE_PUBLISH to fakoli-dark's tailnet/private address before `serves up`.
@@ -101,13 +103,13 @@ services:
       - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39000:39000"
     environment:
       <<: *voice-candidate-env
-      CUDA_VISIBLE_DEVICES: ${VOICE_QWEN3_32B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${VOICE_QWEN3_32B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${VOICE_QWEN3_32B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${VOICE_QWEN3_32B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
               capabilities: [gpu]
     command: >
       serve nvidia/Qwen3-32B-NVFP4
@@ -123,6 +125,42 @@ services:
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39000
 
+  voice-qwen3-32b-sglang:
+    image: lmsysorg/sglang:latest
+    container_name: sglang-voice-qwen3-32b
+    restart: "no"
+    shm_size: "16g"
+    ports:
+      - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39003:39003"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${VOICE_QWEN3_32B_SGLANG_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${VOICE_QWEN3_32B_SGLANG_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      python3 -m sglang.launch_server
+      --model-path nvidia/Qwen3-32B-FP4
+      --served-model-name qwen3-32b-fp4-sglang
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8_e5m2
+      --reasoning-parser qwen3
+      --tool-call-parser qwen3_coder
+      --trust-remote-code
+      --context-length 32768
+      --max-running-requests 4
+      --mem-fraction-static 0.85
+      --enable-metrics
+      --host 0.0.0.0 --port 39003
+
   voice-gemma4-12b:
     <<: *voice-candidate-common
     image: ${VOICE_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
@@ -131,13 +169,16 @@ services:
       - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39001:39001"
     environment:
       <<: *voice-candidate-env
-      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_12B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      # The Gemma 4 vLLM image inspects CUDA device capability in a subprocess
+      # and currently expects CUDA_VISIBLE_DEVICES to be an integer ordinal, not
+      # a GPU UUID. Keep this candidate on the 5090 fast lane with ordinal 0.
+      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_12B_CUDA_VISIBLE_DEVICES:-0}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${VOICE_GEMMA4_12B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${VOICE_GEMMA4_12B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
               capabilities: [gpu]
     command: >
       serve google/gemma-4-12B-it
@@ -146,8 +187,10 @@ services:
       --reasoning-parser gemma4
       --tool-call-parser gemma4
       --chat-template examples/tool_chat_template_gemma4.jinja
-      --max-model-len 32768
-      --gpu-memory-utilization 0.85
+      --limit-mm-per-prompt '{"image": 0, "video": 0, "audio": 0}'
+      --kv-cache-dtype fp8
+      --max-model-len 16384
+      --gpu-memory-utilization 0.90
       --host 0.0.0.0 --port 39001
 
   voice-gemma4-e4b:
@@ -158,7 +201,7 @@ services:
       - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39002:39002"
     environment:
       <<: *voice-candidate-env
-      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_E4B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_E4B_CUDA_VISIBLE_DEVICES:-0}
     deploy:
       resources:
         reservations:
@@ -172,9 +215,137 @@ services:
       --enable-auto-tool-choice
       --reasoning-parser gemma4
       --tool-call-parser gemma4
+      --limit-mm-per-prompt '{"image": 0, "video": 0, "audio": 0}'
+      --kv-cache-dtype fp8
       --max-model-len 32768
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39002
+
+  voice-stt-qwen3-asr-0-6b:
+    restart: "no"
+    ipc: host
+    shm_size: "4g"
+    image: qwenllm/qwen3-asr:latest
+    container_name: qwen3-asr-0-6b
+    ports:
+      - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39100:39100"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${VOICE_STT_QWEN3_ASR_06B_CUDA_VISIBLE_DEVICES:-0}
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${VOICE_STT_QWEN3_ASR_06B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["qwen-asr-serve"]
+    command: >
+      Qwen/Qwen3-ASR-0.6B
+      --served-model-name qwen3-asr-0.6b
+      --gpu-memory-utilization 0.35
+      --max-model-len 4096
+      --max-num-seqs 16
+      --host 0.0.0.0 --port 39100
+
+  voice-stt-qwen3-asr-1-7b:
+    restart: "no"
+    ipc: host
+    shm_size: "4g"
+    image: qwenllm/qwen3-asr:latest
+    container_name: qwen3-asr-1-7b
+    ports:
+      - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39101:39101"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${VOICE_STT_QWEN3_ASR_17B_CUDA_VISIBLE_DEVICES:-0}
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${VOICE_STT_QWEN3_ASR_17B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["qwen-asr-serve"]
+    command: >
+      Qwen/Qwen3-ASR-1.7B
+      --served-model-name qwen3-asr-1.7b
+      --gpu-memory-utilization 0.45
+      --max-model-len 4096
+      --max-num-seqs 16
+      --host 0.0.0.0 --port 39101
+
+  voice-stt-whisper-large-v3-turbo-fp8:
+    restart: "no"
+    ipc: host
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    entrypoint: ["vllm"]
+    image: qwenllm/qwen3-asr:latest
+    container_name: vllm-stt-whisper-large-v3-turbo-fp8
+    ports:
+      - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39102:39102"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${VOICE_STT_WHISPER_TURBO_CUDA_VISIBLE_DEVICES:-0}
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${VOICE_STT_WHISPER_TURBO_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      serve RedHatAI/whisper-large-v3-turbo-FP8-dynamic
+      --served-model-name whisper-large-v3-turbo-fp8
+      --gpu-memory-utilization 0.35
+      --max-model-len 448
+      --max-num-seqs 8
+      --host 0.0.0.0 --port 39102
+
+  voice-stt-whisper-large-v3-turbo:
+    restart: "no"
+    ipc: host
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    entrypoint: ["vllm"]
+    image: qwenllm/qwen3-asr:latest
+    container_name: vllm-stt-whisper-large-v3-turbo
+    ports:
+      - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39103:39103"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${VOICE_STT_WHISPER_TURBO_CUDA_VISIBLE_DEVICES:-0}
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${VOICE_STT_WHISPER_TURBO_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      serve openai/whisper-large-v3-turbo
+      --served-model-name whisper-large-v3-turbo
+      --gpu-memory-utilization 0.35
+      --max-model-len 448
+      --max-num-seqs 8
+      --host 0.0.0.0 --port 39103
 
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache

@@ -32,6 +32,9 @@ up = "docker compose -f {dir}/docker-compose.yml up -d fast"
 
 # Voice latency A/B candidates. These are opt-in experiment serves, not production tiers:
 # they use separate ports, `restart: "no"` compose services, and do not replace `fast`.
+# The experiment compose defaults these candidates to the RTX 5090 fast lane. The
+# RTX PRO 6000 heavy card is reserved for the heavy tier unless an operator
+# intentionally creates a separate heavy-card experiment.
 #
 # Start/stop through the managed surface:
 #   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
@@ -49,6 +52,14 @@ health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-qwen3-32b"
 
 [[serve]]
+name = "voice-qwen3-32b-sglang"
+container = "sglang-voice-qwen3-32b"
+port = 39003
+model = "qwen3-32b-fp4-sglang"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-qwen3-32b-sglang"
+
+[[serve]]
 name = "voice-gemma4-12b"
 container = "vllm-voice-gemma4-12b"
 port = 39001
@@ -63,3 +74,35 @@ port = 39002
 model = "gemma4-e4b-it"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-e4b"
+
+[[serve]]
+name = "voice-stt-qwen3-asr-0-6b"
+container = "qwen3-asr-0-6b"
+port = 39100
+model = "qwen3-asr-0.6b"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-stt-qwen3-asr-0-6b"
+
+[[serve]]
+name = "voice-stt-qwen3-asr-1-7b"
+container = "qwen3-asr-1-7b"
+port = 39101
+model = "qwen3-asr-1.7b"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-stt-qwen3-asr-1-7b"
+
+[[serve]]
+name = "voice-stt-whisper-large-v3-turbo-fp8"
+container = "vllm-stt-whisper-large-v3-turbo-fp8"
+port = 39102
+model = "whisper-large-v3-turbo-fp8"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-stt-whisper-large-v3-turbo-fp8"
+
+[[serve]]
+name = "voice-stt-whisper-large-v3-turbo"
+container = "vllm-stt-whisper-large-v3-turbo"
+port = 39103
+model = "whisper-large-v3-turbo"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-stt-whisper-large-v3-turbo"

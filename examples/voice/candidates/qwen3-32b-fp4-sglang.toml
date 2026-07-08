@@ -1,0 +1,8 @@
+[voice.llm]
+base_url = "http://100.87.34.66:39003/v1"
+model = "qwen3-32b-fp4-sglang"
+speech_chunk_max_chars = 56
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "direct-sglang"
+expected_route_model = "qwen3-32b-fp4-sglang"
+expected_route_tier = "candidate"

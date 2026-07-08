@@ -33,6 +33,7 @@ Realtime server and cascade itself.
 | `anvil-serving voice stop` | Alias for `voice down`. | Same as `down`. |
 | `anvil-serving voice run` | Starts the Realtime WebSocket server in the foreground after probing the LLM, STT, and TTS endpoints. | Does not silently continue when required endpoints are unreachable. |
 | `anvil-serving voice benchmark` | Runs one configured end-to-end voice turn and prints latency/quality metrics as JSON. | Does not promote routing policy or prove subjective audio quality by itself. |
+| `anvil-serving voice stt-benchmark` | Runs a focused STT-only sample against the resolved voice manifest or a candidate overlay. | Does not test LLM memory, tool calls, TTS quality, or end-to-end Talk behavior. |
 | `anvil-serving voice profiles` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
 | `anvil-serving voice bridge` | Forwards STT/TTS TCP ports from a private interface to local audio endpoints. | Does not add auth, inspect audio traffic, or replace endpoint/router tokens. |
 
@@ -86,6 +87,12 @@ tool_result_max_chars = 12000
 base_url = "http://127.0.0.1:30010/v1"
 model = "parakeet"
 lifecycle = "managed"
+stream = false
+response_format = "json"
+
+[voice.stt.request_fields]
+language = "en"
+max_completion_tokens = 64
 
 [voice.tts]
 base_url = "http://127.0.0.1:30011/v1"
@@ -130,6 +137,10 @@ Manifest hygiene follows the rest of the repo:
 - `voice.llm.model` remains the manifest-owned Anvil router preset. Realtime
   clients may send `session.model`, but Anvil Voice does not let that field
   override local routing.
+- `voice.stt.request_fields` is an optional table of scalar OpenAI/vLLM
+  transcription form fields. Use it for provider-neutral tuning such as
+  `language`, `prompt`, `temperature`, or `max_completion_tokens`; it cannot
+  override reserved fields owned by the STT client.
 
 For native audio endpoints, add the lifecycle metadata to the STT/TTS section:
 
@@ -289,9 +300,14 @@ current-information lookups.
 - `candidate-qwen3-32b`, `candidate-gemma4-12b`, and
   `candidate-gemma4-e4b`: LLM-only A/B profiles for the checked-in Dark
   experiment serves. They preserve the base Dark-host audio path and point the
-  LLM stage at direct candidate ports `39000` through `39002`. For live Talk
-  A/B runs, prefer the reusable overlays in `examples/voice/candidates/` so
-  the audio topology and LLM candidate remain independent.
+  LLM stage at direct candidate ports `39000` through `39002`.
+- `voice-qwen3-32b-sglang`: an SGLang Qwen3 FP4 candidate on port `39003`,
+  exposed through the overlay
+  `examples/voice/candidates/qwen3-32b-fp4-sglang.toml`.
+
+For live Talk A/B runs, prefer the reusable overlays in
+`examples/voice/candidates/` so the audio topology and LLM candidate remain
+independent.
 
 The `mini-audio` profile lowers `voice.llm.speech_chunk_max_chars` to `56` for
 the Mini-local Kokoro TTS path. In live Talk measurements this reduced first
@@ -328,6 +344,34 @@ anvil-serving voice benchmark \
   --candidate qwen3-32b-nvfp4 \
   --evidence-out voice-evidence/qwen3-32b-dark-audio.json
 ```
+
+Gemma 4 candidates default to the RTX 5090 fast lane. The Gemma-specific vLLM
+image expects an integer `CUDA_VISIBLE_DEVICES` value during capability
+inspection, so the Fakoli Dark compose pins Gemma candidates with ordinal `0`
+and keeps the Docker device reservation on the 5090 UUID. Do not use the RTX
+PRO 6000 heavy card for these voice candidates unless an operator creates a
+separate heavy-card experiment.
+
+The checked-in Gemma 4 12B recipe follows the vLLM and Google guidance for a
+single-card, low-latency, text-only voice test:
+
+- `vllm/vllm-openai:gemma4-unified`
+- `google/gemma-4-12B-it`
+- `--enable-auto-tool-choice`
+- `--reasoning-parser gemma4`
+- `--tool-call-parser gemma4`
+- `--chat-template examples/tool_chat_template_gemma4.jinja`
+- `--limit-mm-per-prompt '{"image": 0, "video": 0, "audio": 0}'`
+- `--kv-cache-dtype fp8`
+- `--max-model-len 16384`
+- `--gpu-memory-utilization 0.90`
+
+The rationale is documented in the vLLM Gemma 4 recipe and Google Gemma 4
+model docs: Gemma 4 supports function calling and OpenAI-compatible serving in
+vLLM, FP8 KV cache reduces KV memory, multimodal prompt limits bound per-turn
+memory, and Gemma 4 12B has a 26.7 GB approximate BF16 weight footprint before
+KV cache. Keep context bounded for voice latency tests; a 16K text-only context
+fit on the 32 GB 5090 during the 2026-07-08 run.
 
 To keep OpenClaw and Realtime on Mini while using STT/TTS on Fakoli Dark, first
 make sure Dark's local STT/TTS endpoints are already running and reachable on
@@ -485,6 +529,33 @@ The JSON output includes first-audio latency, total turn latency, STT/LLM/TTS
 stage durations, STT WER, TTS RTF, output byte counts, and the observed
 STT/LLM text. This is a smoke measurement, not a promotion gate.
 
+For focused STT model comparisons, use `voice stt-benchmark` with the same
+profile and an optional STT candidate overlay:
+
+```bash
+anvil-serving voice stt-benchmark \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile dark-audio \
+  --candidate-overlay examples/voice/candidates/stt-qwen3-asr-0-6b.toml \
+  --candidate stt-qwen3-asr-0-6b \
+  --sample .anvil/evidence/voice-samples/quick-brown-fox-kokoro-16k.wav \
+  --reference-text "the quick brown fox jumps over the lazy dog" \
+  --evidence-out .anvil/evidence/stt-qwen3-asr-0-6b.json
+```
+
+The STT benchmark emits `voice-stt-benchmark/v1` JSON with the endpoint
+identity, sample size/rate, hypothesis, exact WER, and normalized WER.
+Normalized WER ignores case and punctuation and is the preferred smoke metric
+for ASR content. Exact WER remains useful for spotting punctuation or casing
+drift.
+
+The 2026-07-08 STT candidate pass is documented in
+[`docs/findings/2026-07-08-stt-model-benchmark.md`](findings/2026-07-08-stt-model-benchmark.md).
+Current recommendation: keep the existing Dark-host Parakeet/`tdt_ctc-110m`
+endpoint as the Talk default, keep Qwen3-ASR 0.6B as the next managed
+alternative for a larger real-voice corpus, and do not use the vLLM-served
+Whisper Turbo recipes until their repeated-transcript failure is fixed.
+
 Interpret stage timing before swapping models:
 
 - Treat a stage as dominant when its p50 elapsed time is at least half of total
@@ -500,15 +571,20 @@ Interpret stage timing before swapping models:
 - If no stage dominates, prefer cheaper prompt/chunk/profile tuning before
   loading a new model.
 
-The current T005/T006 evidence does **not** justify promoting a candidate LLM.
-The only successful timing row was gathered on the now-optional Mini-local
-audio path (`ttfa_ms 611.29`, `turn_latency_ms 789.06`, `stt_ms 106.28`,
-`llm_ms 356.82`, `tts_ms 325.95`), where LLM and TTS were co-dominant rather
-than a clear model-only bottleneck. Candidate rows were retained as topology
-negative controls because they failed before STT from a wrong-host loopback
-path. Gather comparable successful data with Dark-host or Mini-proxied audio
-before any production promotion, and keep promotion behind the normal human
-`router_promote` gate.
+The 2026-07-08 dark-audio A/B rerun measured the production fast baseline and
+three direct candidate LLMs with the same Dark-host STT/TTS path:
+
+| Candidate | TTFA ms | Turn ms | STT ms | LLM ms | TTS ms | Determination |
+|---|---:|---:|---:|---:|---:|---|
+| `baseline-qwen36-27b` | 544.21 | 629.88 | 101.99 | 272.62 | 255.26 | Keep as production default for now; best LLM-stage latency |
+| `qwen3-32b-fp4-sglang` | 791.82 | 874.18 | 73.28 | 584.59 | 216.32 | Viable serve path, slower LLM stage |
+| `gemma4-12b-it` | 633.99 | 760.33 | 86.68 | 439.62 | 234.02 | Viable on the 5090 with the Gemma-specific vLLM recipe, slower than baseline |
+| `gemma4-e4b-it` | 506.94 | 507.50 | 68.80 | 341.96 | 96.74 | Fastest single end-to-end sample, but shorter reply and needs live Talk/tool validation before promotion |
+
+This evidence still does **not** justify production promotion by itself.
+Promote only after comparable live OpenClaw Talk validation confirms tool use,
+session memory, transcript delivery, and no duplicate-message regression, and
+only through the normal human `router_promote` gate.
 
 For live Realtime Talk sessions, `voice run` also emits redacted
 `voice_stage_timing` log lines for the core `stt`, `llm`, and `tts` stages.

@@ -1,187 +1,102 @@
-# OpenClaw Talk voice latency candidate A/B status report (2026-07-08)
+# OpenClaw Talk voice latency A/B report (2026-07-08)
 
-> Status: synthesis of the `voice-latency-model-ab` evidence set. This is not
-> completed candidate A/B evidence: the baseline was measured, but the candidate
-> rows failed before reaching the LLM stage. This report does not promote a
-> model, change router policy, change `[router].profile_path`, or alter OpenClaw
-> production model selection.
+> Status: updated after the corrected dark-audio candidate rerun. This report
+> records the final state of the voice-latency model A/B workstream for
+> 2026-07-08. It does not promote a model or change router policy.
 
 ## Executive Determination
 
-Do not promote a new voice LLM candidate yet.
+Keep the current production fast Talk model in place.
 
-Candidate model A/B testing is incomplete. The successful measurement is the
-current baseline only. I should not treat the retained candidate failure rows as
-proof that the candidate models were tested.
+The corrected A/B run proved that Gemma 4 candidates can run on the RTX 5090
+fast lane when served with the Gemma-specific vLLM image and bounded text-only
+memory settings. The measured Gemma 4 12B row did not beat the production
+baseline LLM latency. Gemma 4 E4B produced the fastest single end-to-end sample,
+but the reply was shorter and still needs live Talk/tool validation before it
+can be considered for promotion.
 
-Topology correction after follow-up review: `mini-audio` is a supported
-optional Mini-local audio mode, but it is not the intended topology for the
-candidate benchmark workflow. Fakoli Mini's 16 GB RAM is reserved for OpenClaw
-Gateway, Anvil Voice Realtime/proxy, Claude Code, and Codex. Do not run
-STT/TTS/LLM model serves on Mini for reference Talk validation or candidate
-A/B. The intended candidate benchmark needs remote or proxied audio, such as
-`dark-audio` or `mini-dark-audio-proxy`, after the matching bridge/proxy is
-verified.
-
-The current OpenClaw Talk path is functionally healthy: spoken turns reach the
-main chat session, session context is retained, tool calls work, hidden control
-text is absent from visible user prompts, and the duplicate-message spam did
-not recur in the checked session.
-
-The latency evidence is not yet a valid candidate-model A/B. The only
-successful timing row is the Mini-run baseline for `baseline-qwen36-27b` on the
-`mini-audio` profile. The candidate rows were retained as evidence, but they
-failed before STT because they were executed from a non-gateway checkout whose
-`127.0.0.1` was not Fakoli Mini's loopback. Those failures prove the topology
-guardrail, not candidate model speed or quality.
-
-Final recommendation: keep the current production fast Talk model in place and
-rerun the intended-topology baseline and actual candidate tests from Fakoli
-Mini with the correct audio profile plus `--candidate-overlay`. Only reconsider
-promotion after comparable candidate timing and live Talk validation both pass.
-
-## What Was Tested
-
-The evidence set covered these phases:
-
-| Phase | Evidence | Result |
-|---|---|---|
-| Baseline | `mini-audio` using `baseline-qwen36-27b` through Fakoli Dark router | Successful supported-mode timing row captured; not the intended remote-audio benchmark baseline |
-| Shortlist | Qwen3 dense NVFP4 and Gemma 4 dense candidates | Candidate set defined; no promotion implied |
-| Matrix | Baseline plus candidate profiles and tool-relevant weather turn | Baseline measured; candidate rows failed before STT from wrong host context, so candidate models were not benchmarked |
-| Live Talk validation | Fakoli Mini gateway and voice runtime with Dark router | Functional Talk path passed with warning-only COLO smoke |
-| Final recommendation | Promotion readiness synthesis | Needs more comparable Mini-run data before model change |
+The RTX PRO 6000 heavy card was not used for these voice candidates and should
+remain reserved for the heavy tier. Fakoli Mini remains model-free for reference
+OpenClaw Talk validation.
 
 ## Current Reference Topology
 
-The interpretation depends on where a command is executed:
-
 | Host | Owns |
 |---|---|
-| Fakoli Mini | OpenClaw Gateway and Anvil Voice Realtime/proxy only in the reference path. Its 16 GB RAM is reserved for OpenClaw, Claude Code, and Codex. |
-| Fakoli Dark | Anvil router at `http://100.87.34.66:8000/v1`, candidate LLM serves, and the intended STT/TTS model hosting or bridge boundary for candidate testing. |
-| Mini proxy profile | `mini-dark-audio-proxy` loopback endpoints on Mini at `127.0.0.1:30110` and `127.0.0.1:30111`, only valid after Mini-side proxy listeners are up |
-| Optional Mini-local profile | `mini-audio`, valid only for explicit same-host/local-audio validation, not normal candidate A/B |
+| Fakoli Mini | OpenClaw Gateway and Anvil Voice Realtime/proxy only |
+| Fakoli Dark | Router at `http://100.87.34.66:8000/v1`, candidate LLM serves, STT/TTS endpoints, and Dark audio bridge |
+| Fast GPU | RTX 5090 for production fast tier and voice LLM candidates |
+| Heavy GPU | RTX PRO 6000 for heavy tier only |
 
-A Windows/operator checkout cannot validate Mini-local audio by calling its own
-`127.0.0.1`. Candidate runs that fail on those loopback ports from a non-gateway
-host are topology negative controls.
+`mini-audio` is still an explicit optional same-host/local-audio mode, but it is
+not the reference OpenClaw Talk or candidate benchmark topology.
+
+## What Changed During The Investigation
+
+The first candidate matrix contained failed rows from a non-gateway checkout
+that called its own `127.0.0.1` audio ports. Those rows were topology negative
+controls, not model results.
+
+The corrected run used `dark-audio`: Mini remained model-free, STT/TTS stayed on
+Fakoli Dark, and only the LLM candidate changed via direct endpoint overlays.
+
+Gemma 4 12B initially failed under a generic vLLM nightly path. The working
+configuration used:
+
+- `vllm/vllm-openai:gemma4-unified`
+- `google/gemma-4-12B-it`
+- `--enable-auto-tool-choice`
+- `--reasoning-parser gemma4`
+- `--tool-call-parser gemma4`
+- `--chat-template examples/tool_chat_template_gemma4.jinja`
+- `--limit-mm-per-prompt '{"image": 0, "video": 0, "audio": 0}'`
+- `--kv-cache-dtype fp8`
+- `--max-model-len 16384`
+- `--gpu-memory-utilization 0.90`
+
+The Gemma vLLM image also required `CUDA_VISIBLE_DEVICES=0` on Fakoli Dark
+rather than a GPU UUID for its capability-inspection subprocess. The compose
+file now keeps Gemma 12B on the 5090 by default instead of defaulting its device
+reservation to the heavy card.
 
 ## Timing Results
 
-The successful measured timing row is the rerun `mini-audio` baseline. Treat it
-as a supported-mode measurement, not as the intended remote-audio candidate
-benchmark baseline:
-
-| Profile | Candidate | Status | TTFA ms | Turn ms | STT ms | LLM ms | TTS ms |
-|---|---|---|---:|---:|---:|---:|---:|
-| `mini-audio` | `baseline-qwen36-27b` | measured prior rerun | 611.29 | 789.06 | 106.28 | 356.82 | 325.95 |
-
-Stage share of total turn latency:
-
-| Stage | Time ms | Share |
-|---|---:|---:|
-| STT | 106.28 | 13.5% |
-| LLM | 356.82 | 45.2% |
-| TTS | 325.95 | 41.3% |
-
-Determination from this row: the LLM and TTS stages are co-dominant for the
-`mini-audio` mode. This does not establish the latency split for the intended
-remote/proxied-audio candidate benchmark topology.
-
-## Candidate Matrix Outcome
-
-The candidate rows are retained in
-`tests/fixtures/operator_workflows/voice_latency_model_ab_matrix.json`, but none
-of them produced a valid latency comparison or a candidate model timing:
-
-| Candidate row | Status | Determination |
-|---|---|---|
-| `candidate-qwen3-32b` generated-audio run | Failed before STT | Invalid latency comparison; wrong loopback context |
-| `candidate-gemma4-12b` generated-audio run | Failed before STT | Invalid latency comparison; wrong loopback context |
-| `candidate-gemma4-e4b` generated-audio run | Failed before STT | Invalid latency comparison; wrong loopback context |
-| `candidate-qwen3-32b` weather/location tool turn | Blocked before live tool validation | Cannot evaluate tool-call regression yet |
-
-The candidate failures should not be interpreted as model failures, and they
-should not be counted as completed model tests. They show that LLM-only
-candidate overlays must be run with a verified Dark-host or Mini-proxied audio
-profile, so that the STT/TTS path is valid before the candidate LLM is measured.
-
-## Functional Talk Result
-
-Live OpenClaw Talk validation on the Mini-to-Dark path passed the behaviors that
-were causing concern earlier:
-
-| Behavior | Result |
-|---|---|
-| Session transcript delivery | Visible spoken turns reached the active main session |
-| Session memory | Conversation context persisted across turns |
-| Tool calls | Weather request produced an `exec` tool call and weather result |
-| Hidden forced-consult text | Not present in the checked visible session history |
-| Duplicate message spam | No repeated dense burst recurred after cleanup in the checked window |
-| COLO smoke | Exited `0`; verdict was `warn` because the command did not include `--run-generations` |
-
-The live COLO interaction benchmark recorded 10 interaction benchmark requests,
-10 HTTP `200` statuses, and finish reason `stop` for all 10. Latency p50/p95
-was `568.6 ms` / `1259.9 ms`, and exact-generation throughput p50/p95 was
-`82.77` / `171.82` tokens/sec.
+| Candidate | Model | Provider | TTFA ms | Turn ms | STT ms | LLM ms | TTS ms | TTS RTF | Chunks |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `baseline-qwen36-27b` | `fast-local` | `fast-local` | 544.21 | 629.88 | 101.99 | 272.62 | 255.26 | 0.1091 | 2 |
+| `qwen3-32b-fp4-sglang` | `qwen3-32b-fp4-sglang` | `direct-sglang` | 791.82 | 874.18 | 73.28 | 584.59 | 216.32 | 0.0534 | 2 |
+| `gemma4-12b-it` | `gemma4-12b-it` | `direct-vllm` | 633.99 | 760.33 | 86.68 | 439.62 | 234.02 | 0.0542 | 3 |
+| `gemma4-e4b-it` | `gemma4-e4b-it` | `direct-vllm` | 506.94 | 507.50 | 68.80 | 341.96 | 96.74 | 0.0709 | 1 |
 
 ## Pass / Fail
 
 | Gate | Verdict | Reason |
 |---|---|---|
-| OpenClaw Talk functional path | Pass | Memory, tools, transcript delivery, and cleanup checks passed |
-| Hidden prompt pollution fix | Pass | Checked session contained zero visible forced-consult/control-text markers |
-| Duplicate spam fix | Pass with monitoring | Historical burst remains in old logs, but no new sustained repeat sequence was observed |
-| Baseline latency capture | Pass | Mini-run baseline captured with TTFA `611.29 ms` and turn latency `789.06 ms` |
-| Candidate latency A/B | Incomplete / fail for promotion evidence | Candidate rows did not reach the LLM stage, so candidate models were not actually tested |
-| Model promotion readiness | Fail / not ready | No successful candidate timing plus live Talk regression check exists |
-| Cost-control gate | Pass | No cloud model path or metered promotion was introduced |
+| Correct topology | Pass | Candidate rerun used Dark-host audio with Mini model-free |
+| Heavy-card guardrail | Pass | Candidate services default to RTX 5090 after compose correction |
+| Gemma 4 12B serve viability | Pass | Completed a voice turn on the 5090 with Gemma-specific vLLM config |
+| Current baseline latency | Pass | Baseline LLM stage remains best measured at `272.62 ms` |
+| Candidate promotion readiness | Fail / not ready | No candidate has repeated Talk/tool/session validation plus better comparable latency |
+| Cost-control gate | Pass | No cloud path or metered promotion was introduced |
 
 ## Final Decision
 
-Keep the current `baseline-qwen36-27b` fast Talk path in production.
+Do not promote a voice LLM candidate from this run.
 
-Do not promote Qwen3-32B, Gemma 4 12B, or Gemma 4 E4B from the current evidence.
-They remain untested candidates, not rejected models. The evidence is
-insufficient because the candidate runs did not exercise the full voice path
-from the correct host/topology and did not reach candidate LLM timing.
+Recommended next order:
 
-Latency work should continue on two tracks:
-
-1. Re-run the baseline and model candidates with Fakoli Mini as
-   gateway/realtime/proxy only, using the intended audio profile, likely
-   `dark-audio` or `mini-dark-audio-proxy`, after verifying the bridge/proxy
-   endpoints.
-2. Keep audio topology fixed and change only the LLM via `--candidate-overlay`.
-3. Investigate TTS latency/chunking alongside LLM latency, because the
-   supported-mode baseline shows TTS can be nearly as large as the LLM stage.
-
-## Required Next Evidence Before Promotion
-
-Before any production model or routing profile change, capture:
-
-| Required evidence | Acceptance condition |
-|---|---|
-| Fresh intended-topology baseline JSON | Same command host, audio profile, prompt shape, and evidence output path as candidate runs |
-| At least one successful candidate overlay JSON | Candidate differs only by LLM overlay; STT/TTS profile remains comparable |
-| Tool-relevant live Talk turn | Weather/location or equivalent tool call succeeds after candidate selection |
-| Session transcript check | Spoken user and assistant turns land in the main session without hidden control text |
-| Duplicate-message scan | No sustained repeat burst after candidate live turn |
-| Human promotion gate | `router_promote` or `anvil-serving router promote` remains explicitly human-approved |
-
-Recommended first candidate order remains:
-
-1. `nvidia/Qwen3-32B-NVFP4` as the closest dense Qwen operational comparison.
-2. `google/gemma-4-12B-it` as the main Gemma dense scout.
-3. `google/gemma-4-E4B-it` only to measure the fastest plausible lower-quality
-   bound for spoken responsiveness.
+1. Keep `baseline-qwen36-27b` in production.
+2. Repeat Gemma 4 E4B and Gemma 4 12B with the final checked-in 5090 defaults.
+3. If E4B remains fastest on a broader prompt set, run live OpenClaw Talk
+   validation for tool calls, session memory, transcript delivery, hidden prompt
+   pollution, and duplicate-message behavior.
+4. Only promote through a human-approved `router_promote` workflow.
 
 ## Source Evidence
 
-- `docs/findings/2026-07-07-voice-latency-baseline.md`
-- `docs/findings/2026-07-07-voice-latency-model-shortlist.md`
+- `.anvil/evidence/voice-baseline-qwen36-27b-dark-audio-20260708-run1.json`
+- `.anvil/evidence/voice-qwen3-32b-fp4-sglang-dark-audio-20260708-run1.json`
+- `.anvil/evidence/voice-gemma4-12b-it-dark-audio-20260708-run1.json`
+- `.anvil/evidence/voice-gemma4-e4b-it-dark-audio-20260708-run1.json`
 - `docs/findings/2026-07-08-voice-latency-candidate-matrix.md`
-- `docs/findings/2026-07-08-openclaw-talk-live-validation.md`
 - `docs/findings/2026-07-08-voice-latency-final-recommendation.md`
-- `tests/fixtures/operator_workflows/voice_latency_model_ab_matrix.json`
