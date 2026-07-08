@@ -80,6 +80,58 @@ def build_body(model, prompt, max_tokens, chat_template_kwargs=None):
         body["chat_template_kwargs"] = chat_template_kwargs
     return body
 
+def parse_csv(values, default=None):
+    """Parse repeatable/comma-separated CLI values into a flat list of strings."""
+    if not values:
+        return list(default or [])
+    out = []
+    for value in values:
+        for item in str(value).split(","):
+            item = item.strip()
+            if item:
+                out.append(item)
+    return out
+
+def parse_context_targets(value):
+    """Parse `--context-targets 32768,65536` into positive integer targets."""
+    if not value:
+        return [32768]
+    targets = []
+    for item in str(value).split(","):
+        item = item.strip()
+        if not item:
+            continue
+        target = int(item)
+        if target <= 0:
+            raise ValueError("context targets must be positive integers")
+        targets.append(target)
+    return targets or [32768]
+
+def post_chat(base, model, key, messages, max_tokens=128, timeout=120,
+              tools=None, chat_template_kwargs=None):
+    """Non-streaming OpenAI-compatible chat call for smoke/tool probes."""
+    url = base.rstrip("/") + "/chat/completions"
+    body = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.0,
+        "stream": False,
+    }
+    if tools:
+        body["tools"] = tools
+        body["tool_choice"] = "auto"
+    if chat_template_kwargs:
+        body["chat_template_kwargs"] = chat_template_kwargs
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = "Bearer " + key
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
+    t0 = time.time()
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        data = json.loads(r.read())
+    return {"latency_s": time.time() - t0, "response": data}
+
 def detect_max_model_len(base, model=None, key=None, timeout=15):
     """Best-effort probe of <base>/models for the serve's context window. SGLang & vLLM
     expose it on the model card. Returns None on any problem so callers fall back to
@@ -156,6 +208,18 @@ def pctile(xs, q):
     i = min(len(xs)-1, int(round((len(xs)-1)*q/100)))
     return xs[i]
 
+def _result_metrics(results):
+    ttfts = [r.get("ttft") for r in results if isinstance(r, dict)]
+    e2es = [r.get("e2e") for r in results if isinstance(r, dict)]
+    out_tot = sum(r.get("out_toks") or 0 for r in results if isinstance(r, dict))
+    return {
+        "ttft_p50_ms": pctile(ttfts, 50) * 1000.0,
+        "ttft_p95_ms": pctile(ttfts, 95) * 1000.0,
+        "e2e_p50_ms": pctile(e2es, 50) * 1000.0,
+        "e2e_p95_ms": pctile(e2es, 95) * 1000.0,
+        "output_tokens": out_tot,
+    }
+
 # measured subagent ctx percentiles (from role_split): rough inverse-CDF sampler
 SUBAGENT_CTX = [(0.0,16000),(0.218,32768),(0.602,65536),(0.906,131072),(0.995,262144)]
 def sample_ctx():
@@ -163,6 +227,174 @@ def sample_ctx():
     for p, v in SUBAGENT_CTX:
         if r <= p: return v
     return 262144
+
+def run_bakeoff(a, api_key):
+    """Run selected bakeoff suites against one already-loaded endpoint.
+
+    This mode intentionally never starts, stops, unloads, or reloads models. It
+    only sends OpenAI-compatible requests to the supplied base URL and records
+    both successful sub-checks and failures in one JSON artifact.
+    """
+    started_at = time.time()
+    suites = parse_csv(a.suite, default=["chat"])
+    context_targets = parse_context_targets(a.context_targets)
+    max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, api_key)
+    cap = ctx_cap(max_model_len, a.max_tokens, a.margin)
+    ctk = {"enable_thinking": False} if a.no_thinking else None
+    failures = []
+    chat_results = []
+    context_results = []
+
+    should_run_context = "chat" in suites or "context" in suites
+    if should_run_context:
+        shared = (FILLER % (0, 0)) * max(1, int(a.shared_prefix_tokens * 0.75) // 6)
+        for target in context_targets:
+            clamped = clamp_ctx(target, cap)
+            prompt = make_prompt(
+                shared, clamped, target, max_prompt_tokens=cap
+            )
+            row = {
+                "target_tokens": target,
+                "clamped_tokens": clamped,
+                "estimated_prompt_tokens": est_tokens(prompt),
+                "status": "pending",
+            }
+            try:
+                result = stream_chat(
+                    a.base_url, a.model, prompt, api_key, a.max_tokens,
+                    timeout=a.timeout, chat_template_kwargs=ctk,
+                )
+                row.update({
+                    "status": "passed",
+                    "ttft_ms": result["ttft"] * 1000.0,
+                    "e2e_ms": result["e2e"] * 1000.0,
+                    "output_tokens": result["out_toks"],
+                    "usage": result.get("usage"),
+                })
+                chat_results.append(result)
+            except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
+                row.update({"status": "failed", "error": str(exc)})
+                failures.append({
+                    "suite": "context" if "context" in suites else "chat",
+                    "target_tokens": target,
+                    "error": str(exc),
+                })
+            context_results.append(row)
+
+    tool_section = {"status": "not_run", "checks": []}
+    if "tool" in suites:
+        tool = {
+            "type": "function",
+            "function": {
+                "name": "record_weather_zip",
+                "description": "Record the ZIP code the user supplied for weather lookup.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"zip": {"type": "string"}},
+                    "required": ["zip"],
+                },
+            },
+        }
+        check = {"name": "openai_tool_call_smoke", "status": "pending"}
+        try:
+            result = post_chat(
+                a.base_url,
+                a.model,
+                api_key,
+                [{"role": "user", "content": "Call record_weather_zip with zip 98101."}],
+                max_tokens=128,
+                timeout=a.timeout,
+                tools=[tool],
+                chat_template_kwargs=ctk,
+            )
+            choices = result.get("response", {}).get("choices", [])
+            tool_calls = []
+            for choice in choices:
+                message = choice.get("message") or {}
+                tool_calls.extend(message.get("tool_calls") or [])
+            check.update({
+                "status": "passed" if tool_calls else "failed",
+                "latency_ms": result["latency_s"] * 1000.0,
+                "tool_call_count": len(tool_calls),
+            })
+            if not tool_calls:
+                check["error"] = "response did not include tool_calls"
+                failures.append({"suite": "tool", "error": check["error"]})
+        except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
+            check.update({"status": "failed", "error": str(exc)})
+            failures.append({"suite": "tool", "error": str(exc)})
+        tool_section = {"status": check["status"], "checks": [check]}
+
+    voice_section = {
+        "status": "not_run",
+        "stt_latency_ms": a.stt_latency_ms,
+        "llm_latency_ms": None,
+        "tts_latency_ms": a.tts_latency_ms,
+        "total_turn_latency_ms": a.voice_latency_ms,
+    }
+    if "voice" in suites:
+        if a.voice_latency_ms is None:
+            voice_section["status"] = "skipped"
+            voice_section["reason"] = "voice latency metrics were not supplied"
+        else:
+            voice_section["status"] = "recorded"
+
+    metrics = _result_metrics(chat_results)
+    wall_ms = (time.time() - started_at) * 1000.0
+    passed_contexts = [
+        r["target_tokens"] for r in context_results if r.get("status") == "passed"
+    ]
+    evidence = {
+        "schema": "anvil-serving.fast-tier-bakeoff/v1",
+        "run_id": time.strftime("fast-bakeoff-%Y%m%dT%H%M%SZ", time.gmtime(started_at)),
+        "identity": {
+            "candidate_id": a.candidate_id,
+            "config_id": a.config_id,
+            "model": a.model,
+            "base_url": a.base_url,
+            "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
+        },
+        "source_recipe": {
+            "ref": a.source_recipe,
+            "serve_command": a.serve_command,
+        },
+        "selection": {
+            "suites": suites,
+            "context_targets": context_targets,
+            "requests_per_context": 1,
+            "endpoint_already_loaded": True,
+        },
+        "timing": {
+            "wall_ms": wall_ms,
+            "chat": metrics,
+        },
+        "context": {
+            "max_model_len": max_model_len,
+            "cap_tokens": cap,
+            "targets": context_results,
+        },
+        "tool": tool_section,
+        "voice": voice_section,
+        "score_inputs": {
+            "voice_latency_ms": a.voice_latency_ms,
+            "tool_call_passed": tool_section.get("status") == "passed",
+            "usable_context_tokens": max(passed_contexts) if passed_contexts else None,
+            "ttft_p50_ms": metrics["ttft_p50_ms"],
+            "e2e_p50_ms": metrics["e2e_p50_ms"],
+            "operational_fit_notes": [
+                "endpoint was already loaded; benchmark did not start or stop serves"
+            ],
+        },
+        "failures": failures,
+    }
+    if a.evidence_out:
+        with open(a.evidence_out, "w", encoding="utf-8") as f:
+            json.dump(evidence, f, indent=2, sort_keys=True)
+            f.write("\n")
+        print("wrote bakeoff evidence: " + a.evidence_out)
+    else:
+        print(json.dumps(evidence, indent=2, sort_keys=True))
+    return 0
 
 def _serve_recipes():
     """Import the shared serve-recipe helpers, working whether benchmark.py is imported
@@ -294,8 +526,40 @@ def main(argv=None):
                     help="recipe provenance status (default %(default)s = measured on-box)")
     ap.add_argument("--recipe-model", default=None, metavar="NAME",
                     help="model id recorded in the recipe (default: --model)")
+    # --- Fast-tier bakeoff evidence mode: target an already-loaded endpoint -----
+    ap.add_argument("--bakeoff", action="store_true",
+                    help="run selected Fast-tier bakeoff checks against an already-loaded "
+                         "OpenAI-compatible endpoint and emit structured evidence JSON")
+    ap.add_argument("--candidate-id", default=None,
+                    help="candidate identifier recorded in --bakeoff evidence")
+    ap.add_argument("--config-id", default=None,
+                    help="serve/config identifier recorded in --bakeoff evidence")
+    ap.add_argument("--context-targets", default="32768",
+                    help="comma-separated context targets for --bakeoff (default %(default)s)")
+    ap.add_argument("--suite", action="append",
+                    help="bakeoff suite(s) to run; repeatable or comma-separated. "
+                         "Known suites: chat, context, tool, voice")
+    ap.add_argument("--evidence-out", default=None,
+                    help="write --bakeoff structured evidence JSON to this path")
+    ap.add_argument("--source-recipe", default=None,
+                    help="recipe/config source reference recorded in --bakeoff evidence")
+    ap.add_argument("--serve-command", default=None,
+                    help="command needed to reproduce the already-loaded serve")
+    ap.add_argument("--voice-latency-ms", type=float, default=None,
+                    help="optional externally measured STT->LLM->TTS total latency")
+    ap.add_argument("--stt-latency-ms", type=float, default=None,
+                    help="optional externally measured STT stage latency")
+    ap.add_argument("--tts-latency-ms", type=float, default=None,
+                    help="optional externally measured TTS stage latency")
+    ap.add_argument("--timeout", type=float, default=900.0,
+                    help="request timeout in seconds (default %(default)s)")
     a = ap.parse_args(argv)
     api_key = resolve_api_key(a.api_key_env)
+
+    if a.bakeoff:
+        if not a.candidate_id or not a.config_id:
+            ap.error("--bakeoff requires --candidate-id and --config-id")
+        return run_bakeoff(a, api_key)
 
     # Resolve the serve's context window: explicit flag wins; else best-effort probe /v1/models.
     max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, api_key)
