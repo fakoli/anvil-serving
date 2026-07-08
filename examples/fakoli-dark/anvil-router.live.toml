@@ -1,5 +1,5 @@
 # =============================================================================
-# CAPTURED LIVE DEPLOY CONFIG — fakoli-dark anvil-router (captured 2026-07-06)
+# CAPTURED LIVE DEPLOY CONFIG — fakoli-dark anvil-router (captured 2026-07-08)
 # -----------------------------------------------------------------------------
 # This is a normalized deploy recipe for the `anvil-router` container, captured
 # from the `anvil-router-cfg` docker volume
@@ -27,8 +27,8 @@
 # =============================================================================
 
 # LIVE router config for the containerized deploy on fakoli-dark (ADR-0004).
-# Based on configs/example-docker.toml, updated to the 2026-07-06 two-tier
-# deployment: qwen36-27b for fast local work and gpt-oss-120b for heavy local work.
+# Based on configs/example-docker.toml, updated to the 2026-07-08 two-tier
+# deployment: qwen36-35b-a3b-nvfp4 for fast local work and gpt-oss-120b for heavy local work.
 # The router runs in a container on the `fakoli-dark_default` network and reaches the
 # serves via `host.docker.internal` (see the tier `base_url`s below); only the router
 # is published (authed via the token).
@@ -36,17 +36,19 @@
 auth_env = "ANVIL_ROUTER_TOKEN"
 
 [router]
-mapping_version = "2026-07-06.fakoli-dark"
+mapping_version = "2026-07-08.fakoli-dark-fast-qwen36-35b-a3b"
 # verify_local_min at its default (true): an empty local 200 becomes a 503 so the gateway
 # fails over to native. (v0.7.0 note: tool-call-only replies — empty content + populated
 # tool_calls — correctly PASS this gate; regression-pinned in #94. Tools now actually reach
 # the local model since #96.)
 verify_local_min = true
+# The deployed router image reads this path inside the anvil-router-cfg volume.
+profile_path = "/etc/anvil/profile.json"
 
 [[router.tiers]]
 id            = "fast-local"
 base_url      = "http://host.docker.internal:30003/v1"
-model         = "qwen36-27b"
+model         = "qwen36-35b-a3b-nvfp4"
 dialect       = "openai"
 context_limit = 32768
 privacy       = "local"

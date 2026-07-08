@@ -10,10 +10,11 @@ machine it was built on. Read this file before you copy anything.
 `fakoli-dark` is actually **two separate physical machines** on the same private network:
 
 - **The GPU box (`fakoli-dark` itself)** — runs the local model serves (this directory's
-  compose files): **heavy** `:30000` (Qwen3.5-35B-A3B AWQ on SGLang, RTX PRO 6000 96GB) and
-  **fast** `:30001` (gpt-oss-20b on vLLM, RTX 5090 32GB). It also runs the **router**,
+  compose files): **heavy** `:30002` (`gpt-oss-120b` on vLLM, RTX PRO 6000 96GB) and
+  **fast** `:30003` (`nvidia/Qwen3.6-35B-A3B-NVFP4` on vLLM, RTX 5090 32GB, served as
+  `qwen36-35b-a3b-nvfp4`). It also runs the **router**,
   **containerized per [ADR-0004](../../docs/adr/0004-router-as-a-service-containerized-and-authed.md)**
-  — reaching both serves by Docker **service name** over the internal compose network, and it
+  — reaching both serves through `host.docker.internal:<port>` from the router container, and it
   is the **only** service on this box published beyond loopback (behind a token).
 - **The gateway box (`Fakoli Mini`)** — a separate, smaller machine that runs **OpenClaw**
   (the harness). It is where coding-agent traffic originates; its `anvil` provider is
@@ -23,20 +24,21 @@ machine it was built on. Read this file before you copy anything.
 Fakoli Mini (gateway)                    fakoli-dark (GPU box)
 ┌─────────────────────┐   private net    ┌───────────────────────────────────────────┐
 │ OpenClaw             │ ────────────────▶ │ router (Docker, auth-gated) : 8000        │
-│ anvil provider ->     │  Authorization:   │  ├── sglang (internal only, no publish)   │
-│ http://<fakoli-dark>:8000/v1  Bearer $TOKEN│  └── fast   (internal only, no publish)   │
+│ anvil provider ->     │  Authorization:   │  ├── heavy  (loopback only)               │
+│ http://<fakoli-dark>:8000/v1  Bearer $TOKEN│  └── fast   (loopback only)               │
 └─────────────────────┘                    └───────────────────────────────────────────┘
 ```
 
 Note the shift from earlier revisions of this doc: **the raw serves are no longer published
 beyond loopback at all.** The router is the single, authenticated, network-facing boundary; the
-serves sit behind it on the internal Docker network.
+serves sit behind it on host loopback as reached from the router container through
+`host.docker.internal`.
 
 ## Cross-box exposure — the router is the ONE authenticated boundary
 
 Everywhere else in this repo, `127.0.0.1` is the right (and only supported) default — see
 `CLAUDE.md` gotcha #1 and [`SECURITY.md`](../../SECURITY.md). That still holds **within** the
-GPU box: `sglang` and `fast` bind loopback / the internal Docker network only — never publish
+GPU box: `heavy` and `fast` bind loopback only — never publish
 either serve directly. Only the containerized **router** crosses the box boundary, and per
 ADR-0004 it is the one endpoint that must be (and is) **authenticated**.
 
@@ -46,8 +48,8 @@ ADR-0004 it is the one endpoint that must be (and is) **authenticated**.
    `ROUTER_PUBLISH=<fakoli-dark's-tailnet-IP> docker compose up -d router` — and **always**
    configure `[server].auth_env = "ANVIL_ROUTER_TOKEN"` before the router is reachable from
    another box. This never touches the public internet. The router's tier `base_url`s point at
-   the serves **by service name** (`http://sglang:30000/v1`, `http://fast:30001/v1`), not
-   `127.0.0.1` — they're all in the same compose network now.
+   the serves via `host.docker.internal` (`http://host.docker.internal:30002/v1`,
+   `http://host.docker.internal:30003/v1`), not gateway-local `127.0.0.1`.
 2. **On the gateway (`Fakoli Mini`), repoint OpenClaw's `anvil` provider at the router**, not at
    either raw serve:
    ```bash
@@ -74,14 +76,14 @@ below is the consolidated list.
 
 | Value | Example (this box) | Find yours with | Where it appears |
 |---|---|---|---|
-| GPU UUID (heavy card) | `GPU-d0f446cf-1771-414c-e116-a39138798a8c` | `nvidia-smi -L` | `docker-compose.yml` (`sglang.environment.CUDA_VISIBLE_DEVICES`) |
-| GPU UUID (fast card) | `GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1` | `nvidia-smi -L` | `docker-compose.yml` (`fast.environment.CUDA_VISIBLE_DEVICES`, `fast.deploy.resources.reservations.devices.device_ids`), `serve-fast-gptoss-vllm.sh`, `serve-fast-glm-vllm.sh` (`GPU0_UUID`) |
+| GPU UUID (heavy card) | `GPU-d0f446cf-1771-414c-e116-a39138798a8c` | `nvidia-smi -L` | `docker-compose.yml` (`heavy.environment.CUDA_VISIBLE_DEVICES`, `heavy.deploy.resources.reservations.devices.device_ids`) |
+| GPU UUID (fast card) | `GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1` | `nvidia-smi -L` | `docker-compose.yml` (`fast.environment.CUDA_VISIBLE_DEVICES`, `fast.deploy.resources.reservations.devices.device_ids`) |
 | GPU index (heavy card, reference-only) | `1` | `nvidia-smi -L` (0-based index) | `docker-compose.heavy.yml` (`deploy.resources.reservations.devices.device_ids`) |
-| Model weights volume | `fakoli-models` (external named docker volume, mounted read-only at `/models`) | create once and copy your weights in: `docker volume create fakoli-models`, then the one-time `docker run ... cp` documented at the top of `docker-compose.yml` (host bind mounts are deliberately not used — 9P/virtiofs made cold loads take 20-90 minutes, see #107) | `docker-compose.yml`, `docker-compose.heavy.yml`, `serve-fast-gptoss-vllm.sh`, `serve-fast-glm-vllm.sh` (`volumes`/`-v`) |
-| Model directory names inside the volume | `/models/qwen35-awq`, `/models/gpt-oss-20b`, `/models/glm47-flash-awq` (optional alt fast serve) | your directory names inside the `fakoli-models` volume | `docker-compose.yml`, `docker-compose.heavy.yml` (`--model-path`), `serve-fast-gptoss-vllm.sh`, `serve-fast-glm-vllm.sh` (`--model`) |
-| Heavy served-model-name | `qwen35-awq-local` | your choice — must match across every file that names it | `docker-compose.yml`, `docker-compose.heavy.yml` (`--served-model-name`), `serves.toml` (`[[serve]] name = "heavy"` `.model`), `../../configs/example.toml` (`[[router.tiers]] id = "heavy-local"` `.model`), `../../README.md` |
-| Fast served-model-name | `gpt-oss-20b` | your choice | `docker-compose.yml`, `serve-fast-gptoss-vllm.sh` (`--served-model-name`), `serves.toml` (`[[serve]] name = "fast"` `.model`), `../../configs/example.toml` (`[[router.tiers]] id = "fast-local"` `.model`) |
-| Ports | `30000` (heavy), `30001` (fast), `8000` (router front door) | your choice — must not collide with other local services | every compose/script file, `../../configs/example.toml` (`base_url`) |
+| Model weights volume | `vllm-hfcache` (external named docker volume mounted at `/root/.cache/huggingface`) | `docker volume create vllm-hfcache`; pull models with `anvil-serving models pull` so weights live on native ext4 rather than a slow Windows bind mount | `docker-compose.yml`, `docker-compose.experiment.yml`, `serves.toml` |
+| Model repo IDs | `openai/gpt-oss-120b`, `nvidia/Qwen3.6-35B-A3B-NVFP4` | the Hugging Face repo ID or engine-supported model identifier | `docker-compose.yml`, `configs/serve-recipes.toml` |
+| Heavy served-model-name | `gpt-oss-120b` | your choice — must match across every file that names it | `docker-compose.yml`, `serves.toml` (`[[serve]] name = "heavy"` `.model`), `anvil-router.live.toml` (`[[router.tiers]] id = "heavy-local"` `.model`) |
+| Fast served-model-name | `qwen36-35b-a3b-nvfp4` | your choice | `docker-compose.yml`, `serves.toml` (`[[serve]] name = "fast"` `.model`), `anvil-router.live.toml` (`[[router.tiers]] id = "fast-local"` `.model`) |
+| Ports | `30002` (heavy), `30003` (fast), `8000` (router front door) | your choice — must not collide with other local services | `docker-compose.yml`, `serves.toml`, `anvil-router.live.toml` |
 | Cross-box tailnet/private IP | *(none committed — machine-specific)* | your mesh network's assigned address for the GPU box (e.g. `tailscale ip -4`) | the gateway's OpenClaw `anvil` provider `baseUrl`, and the router's `ROUTER_PUBLISH` / `--host` — see "Cross-box exposure" above |
 | Router token | *(none committed — secret, generate your own)* | e.g. `openssl rand -hex 32` | `ANVIL_ROUTER_TOKEN` env var on **both** boxes, `[server].auth_env` in `../../configs/example.toml`, the gateway's OpenClaw `anvil` provider `Authorization: Bearer` header — see [ADR-0004](../../docs/adr/0004-router-as-a-service-containerized-and-authed.md) |
 

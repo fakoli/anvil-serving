@@ -614,9 +614,9 @@ def test_fakoli_dark_manifest_is_valid_and_pins_fast_tier():
     data = voice_config.load_manifest("examples/voice/fakoli-dark.toml")
 
     assert data["voice"]["llm"]["base_url"] == "http://100.87.34.66:8000/v1"
-    assert data["voice"]["llm"]["model"] == "fast-local"
+    assert data["voice"]["llm"]["model"] == "chat-fast"
     assert data["voice"]["llm"]["expected_route_provider"] == "fast-local"
-    assert data["voice"]["llm"]["expected_route_model"] == "qwen36-27b"
+    assert data["voice"]["llm"]["expected_route_model"] == "qwen36-35b-a3b-nvfp4"
     assert data["voice"]["llm"]["expected_route_tier"] == "local"
     assert data["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
     assert data["voice"]["stt"]["stream"] is False
@@ -665,7 +665,11 @@ def test_write_capture_writes_full_bundle_and_finding_row(tmp_path, monkeypatch)
     route_proof = {
         "ok": True,
         "status": 200,
-        "response": {"provider": "fast-local", "model": "qwen36-27b", "tier": "local"},
+        "response": {
+            "provider": "fast-local",
+            "model": "qwen36-35b-a3b-nvfp4",
+            "tier": "local",
+        },
     }
     finding_status = {"row_written": False}
 
@@ -856,10 +860,10 @@ def test_route_decision_probe_uses_authorization_header_only(monkeypatch):
         "voice": {
             "llm": {
                 "base_url": "http://127.0.0.1:8000/v1",
-                "model": "fast-local",
+                "model": "chat-fast",
                 "api_key_env": "ANVIL_ROUTER_TOKEN",
                 "expected_route_provider": "fast-local",
-                "expected_route_model": "qwen36-27b",
+                "expected_route_model": "qwen36-35b-a3b-nvfp4",
                 "expected_route_tier": "local",
             }
         }
@@ -876,7 +880,7 @@ def test_route_decision_probe_uses_authorization_header_only(monkeypatch):
             return False
 
         def read(self):
-            return b'{"provider":"fast-local","model":"qwen36-27b","tier":"local"}'
+            return b'{"provider":"fast-local","model":"qwen36-35b-a3b-nvfp4","tier":"local"}'
 
         def getcode(self):
             return 200
@@ -902,10 +906,10 @@ def test_route_decision_probe_redacts_bearer_token_from_errors(monkeypatch):
         "voice": {
             "llm": {
                 "base_url": "http://127.0.0.1:8000/v1",
-                "model": "fast-local",
+                "model": "chat-fast",
                 "api_key_env": "ANVIL_ROUTER_TOKEN",
                 "expected_route_provider": "fast-local",
-                "expected_route_model": "qwen36-27b",
+                "expected_route_model": "qwen36-35b-a3b-nvfp4",
                 "expected_route_tier": "local",
             }
         }
@@ -944,7 +948,7 @@ def test_route_decision_probe_requires_explicit_expected_route(monkeypatch):
             return False
 
         def read(self):
-            return b'{"provider":"fast-local","model":"qwen36-27b","tier":"local"}'
+            return b'{"provider":"fast-local","model":"qwen36-35b-a3b-nvfp4","tier":"local"}'
 
         def getcode(self):
             return 200
@@ -965,9 +969,9 @@ def test_route_decision_probe_rejects_unexpected_route_shape(monkeypatch):
         "voice": {
             "llm": {
                 "base_url": "http://127.0.0.1:8000/v1",
-                "model": "fast-local",
+                "model": "chat-fast",
                 "expected_route_provider": "fast-local",
-                "expected_route_model": "qwen36-27b",
+                "expected_route_model": "qwen36-35b-a3b-nvfp4",
                 "expected_route_tier": "local",
             }
         }
@@ -1002,9 +1006,9 @@ def test_route_decision_probe_accepts_explicit_prompt_source(monkeypatch):
         "voice": {
             "llm": {
                 "base_url": "http://127.0.0.1:8000/v1",
-                "model": "fast-local",
+                "model": "chat-fast",
                 "expected_route_provider": "fast-local",
-                "expected_route_model": "qwen36-27b",
+                "expected_route_model": "qwen36-35b-a3b-nvfp4",
                 "expected_route_tier": "local",
             }
         }
@@ -1020,7 +1024,7 @@ def test_route_decision_probe_accepts_explicit_prompt_source(monkeypatch):
             return False
 
         def read(self):
-            return b'{"provider":"fast-local","model":"qwen36-27b","tier":"local"}'
+            return b'{"provider":"fast-local","model":"qwen36-35b-a3b-nvfp4","tier":"local"}'
 
         def getcode(self):
             return 200

@@ -11,14 +11,14 @@ realtime_port = 8765
 
 [voice.llm]
 base_url = "http://100.87.34.66:8000/v1"
-# The deployed router currently predates the source `chat-fast` preset. Pin the
-# fast local tier for T010 so live turns route through the Qwen 27B fast serve.
-model = "fast-local"
+# Route live Talk turns through the Fast preset; the router resolves it to the
+# current human-gated Fast served model on fakoli-dark.
+model = "chat-fast"
 stream = true
 api_key_env = "ANVIL_ROUTER_TOKEN"
 expected_endpoint_host = "100.87.34.66"
 expected_route_provider = "fast-local"
-expected_route_model = "qwen36-27b"
+expected_route_model = "qwen36-35b-a3b-nvfp4"
 expected_route_tier = "local"
 
 [voice.stt]

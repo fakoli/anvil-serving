@@ -50,7 +50,7 @@ def test_fakoli_mini_manifest_is_valid_and_preserves_route_contract():
     assert data["voice"]["llm"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
     assert data["voice"]["llm"]["expected_endpoint_host"] == "100.87.34.66"
     assert data["voice"]["llm"]["expected_route_provider"] == "fast-local"
-    assert data["voice"]["llm"]["expected_route_model"] == "qwen36-27b"
+    assert data["voice"]["llm"]["expected_route_model"] == "qwen36-35b-a3b-nvfp4"
     assert data["voice"]["llm"]["expected_route_tier"] == "local"
     assert data["voice"]["llm"]["system_prompt"].endswith("I understand.")
     assert data["voice"]["llm"]["temperature"] == 0.0

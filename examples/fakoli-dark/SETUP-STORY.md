@@ -1,5 +1,9 @@
 # SGLang Overnight Setup — Morning Report (2026-06-27, ~01:40)
 
+> Historical setup story only. Do not use this as the current Fakoli Dark or
+> OpenClaw wiring guide; current operations go through `anvil-serving serves`,
+> `anvil-serving router`, and `anvil-serving harness sync openclaw`.
+
 > ## ✅ UPDATE 10:47 — IT'S LIVE
 > Docker came up (62.8 GB VM), the container loaded cleanly (no OOM — used ~42 GB RAM during load, which is exactly what the old 46 GB cap killed), and the endpoint is serving:
 > `health=200`, `/v1/models` → **`qwen35-awq-local`** @ 64K ctx on the 96 GB card (~60 GB KV pool). A real completion returned correct code.
@@ -42,10 +46,10 @@ Most of your good coders are **GGUF** (`Ornith-1.0-35B`, `Qwen3-Coder-30B`, `Qwe
 2. **Start (or confirm) the serve:**
    `powershell -ExecutionPolicy Bypass -File C:\Users\sdoum\ai-code\cowork-env\projects\claude-usage-analysis\deploy\sglang-up.ps1`
    then watch: `docker logs -f sglang` until **"The server is fired up and ready to roll!"** (with 62 GB RAM it should load in ~1–2 min, no OOM).
-3. **Health:** `curl http://localhost:30000/health` → expect `200`; `curl http://localhost:30000/v1/models`.
+3. **Health:** `curl http://127.0.0.1:30000/health` -> expect `200`; `curl http://127.0.0.1:30000/v1/models`.
 4. **Validate + benchmark** (Python is on your PATH):
-   `python C:\Users\sdoum\ai-code\cowork-env\projects\claude-usage-analysis\scripts\preflight.py --base-url http://localhost:30000/v1 --model qwen35-awq-local --needle-ctx 60000`
-   `python C:\Users\sdoum\ai-code\cowork-env\projects\claude-usage-analysis\scripts\benchmark.py --base-url http://localhost:30000/v1 --model qwen35-awq-local --burst 20 --shared-prefix-tokens 8000 --ctx-tokens 32000`
+   `python C:\Users\sdoum\ai-code\cowork-env\projects\claude-usage-analysis\scripts\preflight.py --base-url http://127.0.0.1:30000/v1 --model qwen35-awq-local --needle-ctx 60000`
+   `python C:\Users\sdoum\ai-code\cowork-env\projects\claude-usage-analysis\scripts\benchmark.py --base-url http://127.0.0.1:30000/v1 --model qwen35-awq-local --burst 20 --shared-prefix-tokens 8000 --ctx-tokens 32000`
 5. **Wire OpenClaw** to `http://100.87.34.66:30000/v1` (model `qwen35-awq-local`) over Tailscale once you've picked the final model.
 
 ## If it still hangs after "using attn output gate!"

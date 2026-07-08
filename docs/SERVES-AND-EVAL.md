@@ -90,15 +90,17 @@ at it.
 
 The July 2026 Fast-tier bakeoff is tracked in
 [`docs/findings/2026-07-08-fast-tier-llm-bakeoff.md`](findings/2026-07-08-fast-tier-llm-bakeoff.md)
-and `configs/serve-recipes.toml`. Treat `status = "unverified"` rows as source-backed
+and `configs/serve-recipes.toml`. The human-gated recommendation from that bakeoff promotes
+`nvidia/Qwen3.6-35B-A3B-NVFP4` as the production Fast recipe on port `30003`, served as
+`qwen36-35b-a3b-nvfp4`. Treat remaining `status = "unverified"` rows as source-backed
 candidate priors, not promotion evidence. A row graduates only after a local Fakoli Dark run
-captures serve health, preflight/tool results, context behavior, voice-cycle latency, and rollback
-proof through Anvil Serving commands.
+captures serve health, preflight/tool results, context behavior, voice-cycle latency, and
+rollback proof through Anvil Serving commands.
 
 The required candidate set for that bakeoff is:
 
-- `nvidia/Qwen3.6-27B-NVFP4` as the current Fast baseline/control.
-- `nvidia/Qwen3.6-35B-A3B-NVFP4`.
+- `nvidia/Qwen3.6-27B-NVFP4` as the previous Fast baseline/control.
+- `nvidia/Qwen3.6-35B-A3B-NVFP4` as the promoted Fast recipe.
 - `nvidia/Gemma-4-31B-IT-NVFP4`.
 - `zai-org/GLM-4.7-Flash`.
 - `mistralai/Devstral-Small-2-24B-Instruct-2512`.
@@ -117,9 +119,9 @@ anvil-serving benchmark \
   --model qwen36-35b-a3b-nvfp4 \
   --candidate-id qwen36-35b-a3b \
   --config-id vllm-nvfp4-32k \
-  --context-targets 32768,65536 \
+  --context-targets 32768 \
   --suite chat,context,tool \
-  --source-recipe configs/serve-recipes.toml#qwen36-35b-a3b \
+  --source-recipe configs/serve-recipes.toml#nvidia-qwen36-35b-a3b-nvfp4 \
   --serve-command "anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b" \
   --evidence-out .anvil/evidence/fast-qwen36-35b-a3b-vllm-32k.json
 ```

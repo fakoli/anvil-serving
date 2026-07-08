@@ -55,7 +55,7 @@ DEFAULT_CFG_VOLUME = "anvil-router-cfg"
 # with the LIVE image's own loader is what makes promote version-safe — a newer local
 # checkout must not re-verdict a profile the deployed router would reject. Keep this in
 # lockstep with the `router` service image in examples/fakoli-dark/docker-compose.yml.
-DEFAULT_IMAGE = "anvil-serving:0.9.0"
+DEFAULT_IMAGE = "anvil-serving:0.10.0"
 # The router READS its config volume mounted at ROUTER_CFG_MOUNT (/etc/anvil); the
 # side-container mounts the SAME volume at _SIDE_MOUNT (/cfg). `_volume_path` translates a
 # router-visible dest to its /cfg path, PRESERVING subdirectories (so /etc/anvil/x/p.json
@@ -251,6 +251,17 @@ _VALIDATOR = (
     "from anvil_serving.router.profile_bootstrap import store_from_profile; "
     "store_from_profile(json.load(sys.stdin))"
 )
+
+
+def _volume_text(text):
+    """Normalize text written into the Linux router config volume.
+
+    PowerShell/Git checkouts on Windows can leave repo TOML files with CRLF
+    endings. The deployed router image reads TOML inside Linux, and its parser
+    rejects literal ``\r`` bytes in config.toml, so the promotion side-container
+    must write LF-normalized payloads.
+    """
+    return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 # --------------------------------------------------------------------------- #
@@ -496,6 +507,7 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
     except ValueError as e:
         print("profile is not valid JSON: %s" % e)
         return 1
+    profile_text = _volume_text(profile_text)
 
     config_text = None
     if config_path is not None:
@@ -518,7 +530,7 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
             print("config %s does not set [router].profile_path — refusing to promote "
                   "a config the router would ignore the profile for." % config_path)
             return 1
-        config_text = raw.decode("utf-8")
+        config_text = _volume_text(raw.decode("utf-8"))
 
     # In-volume paths: translate each router-visible dest to the /cfg side mount (PRESERVING
     # subdirs), so the temp+mv stays within the SAME filesystem (the volume) and is atomic.
@@ -556,7 +568,13 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
     print("  validate: %s (against %s loader)" % (profile_path, image))
     if not dry_run:
         try:
-            r = _run(val_argv, input=profile_text, capture_output=True, text=True)
+            r = _run(
+                val_argv,
+                input=profile_text,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
         except FileNotFoundError:
             print("  ABORT: docker not available")
             return 1
@@ -587,7 +605,13 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
                   "mkdir -p %s && cat > %s && mv %s %s" % (prof_dir, prof_new, prof_new, prof)]
     print("  write profile: %s (atomic mv within the volume)" % prof)
     if not dry_run:
-        r = _run(write_argv, input=profile_text, capture_output=True, text=True)
+        r = _run(
+            write_argv,
+            input=profile_text,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
         if r.returncode != 0:
             print("  FAILED to write profile: %s" % (r.stderr or r.stdout or "").strip())
             return 1
@@ -598,7 +622,13 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
                           "mkdir -p %s && cat > %s && mv %s %s" % (cfg_dir, cfg_new, cfg_new, cfg_file)]
         print("  write config: %s (atomic mv within the volume)" % cfg_file)
         if not dry_run:
-            r = _run(write_cfg_argv, input=config_text, capture_output=True, text=True)
+            r = _run(
+                write_cfg_argv,
+                input=config_text,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
             if r.returncode != 0:
                 print("  FAILED to write config: %s" % (r.stderr or r.stdout or "").strip())
                 # The profile was already written; restore it so the volume isn't left with a
