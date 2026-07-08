@@ -12,6 +12,13 @@
 > python scripts/voice/mini_validation.py --report
 > ```
 
+> **SUPERSEDED FOR NORMAL OPERATIONS (2026-07-08).** This remains a valid
+> optional Mini-local audio proof, but it is no longer the reference OpenClaw
+> Talk or candidate benchmark topology. Fakoli Mini's 16 GB RAM is reserved for
+> OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude Code, and Codex during
+> normal validation. Do not use this note to justify running STT/TTS/LLM model
+> serves on Mini outside an explicit same-host/local-audio test.
+
 Related: `docs/findings/2026-07-04-hf-speech-to-speech-review.md` s8 (VRAM/RAM
 math: STT ~1-4GB, TTS ~0.5-7GB — comfortably small even on a 16GB box) · the
 saved Mini<->router tailnet-binding note (router publishes its tailnet IP,
@@ -32,7 +39,8 @@ not loopback) · `scripts/voice/mini_validation.py`
    or GPU host must be read as `unsupported` unless the report proves a
    16GB-class macOS host, a Fakoli Mini host identity, and the expected Mini
    hardware model (`Mac16,10` by default).
-3. **The Mini manifest uses native STT/TTS lifecycle by default.**
+3. **The Mini manifest uses native STT/TTS lifecycle for optional local-audio
+   validation.**
    `examples/voice/fakoli-mini.toml` declares `lifecycle = "native"` for both
    audio endpoints. `anvil-serving voice up/down` now starts and stops the MLX
    Audio processes with manifest-declared commands, PID files, and logs under

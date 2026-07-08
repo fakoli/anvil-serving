@@ -11,8 +11,8 @@ T001/T002 shipped manifest loading + validation + this CLI skeleton.
 `up`/`down` (T006/T008) bring up/tear down the STT and TTS serves via
 `anvil_serving.voice.serves`: Docker-managed endpoints delegate to
 `anvil_serving.serves`'s declarative lifecycle, while `lifecycle = "native"`
-endpoints (Fakoli Mini's MLX Audio setup) launch/stop trusted manifest
-commands with PID/log files. `benchmark` (T015) now replays one turn end-to-end
+endpoints on a same-host audio owner launch/stop trusted manifest commands with
+PID/log files. `benchmark` (T015) now replays one turn end-to-end
 via `anvil_serving.voice.benchmark` and prints the TTFA/latency/WER/RTF metrics
 as JSON. `run` now builds the REAL cascade (STT/TTS out-of-process serves + the
 LLM stage routed at the anvil router, wired via

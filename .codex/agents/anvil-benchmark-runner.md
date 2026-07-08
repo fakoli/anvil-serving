@@ -29,3 +29,9 @@ timeout, high cost/long run request, or promotion request.
 
 Small model OK. Do not change routing policy or promote profiles. Mark external
 benchmarks as advisory_priors only and keep promoted=false.
+
+For voice latency benchmarks, keep audio topology and LLM candidate selection
+separate: --profile selects audio topology, --candidate-overlay selects the
+candidate LLM. For reference OpenClaw Talk and candidate A/B, keep Fakoli Mini
+model-free and use dark-audio or mini-dark-audio-proxy; use mini-audio only
+when the task explicitly validates optional same-host/local-audio mode.

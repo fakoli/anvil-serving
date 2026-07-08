@@ -39,6 +39,7 @@ exposed the needed MCP/controller probe tools to this agent, report
 `gate_state: "blocked"` instead of falling back to shell commands.
 
 For OpenClaw voice probes, `127.0.0.1` is valid only on the host that owns the
-endpoint. Run Mini-local voice probes on Fakoli Mini or through a Mini
-controller/agent, and use Dark private/tailnet addresses for Dark bridge
-endpoints.
+endpoint. In reference OpenClaw Talk, Fakoli Mini hosts Gateway and Anvil Voice
+Realtime/proxy, not STT/TTS/LLM model serves. Use Dark private/tailnet
+addresses for Dark bridge endpoints, or probe Mini-side proxy loopback only on
+Mini. Use `mini-audio` only for explicit optional same-host audio tests.

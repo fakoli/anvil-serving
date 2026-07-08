@@ -27,11 +27,13 @@ loop, and running bounded voice benchmarks.
 4. Pass secrets by environment variable name only. Do not put literal API keys
    in manifests, commands, compose snippets, packets, or logs.
 5. Record the command host before interpreting loopback. In the reference
-   OpenClaw topology, Gateway and Anvil Voice run on Fakoli Mini; `mini-audio`
-   STT/TTS is Mini loopback `127.0.0.1:30010/30011`; `dark-audio` uses Dark
-   private bridge ports; `mini-dark-audio-proxy` uses Mini loopback proxy ports
-   `127.0.0.1:30110/30111` forwarding to Dark. A non-gateway checkout cannot
-   validate those Mini-local paths by calling its own `127.0.0.1`.
+   OpenClaw topology, Fakoli Mini runs Gateway plus Anvil Voice Realtime/proxy
+   and reserves its 16 GB RAM for OpenClaw, Claude Code, and Codex. Do not run
+   STT/TTS/LLM model serves on Mini for reference testing. Use `dark-audio` for
+   Dark bridge ports or `mini-dark-audio-proxy` for Mini proxy ports forwarding
+   to Dark. `mini-audio` is an explicit optional same-host/local-audio mode
+   only. A non-gateway checkout cannot validate Mini-local proxy paths by
+   calling its own `127.0.0.1`.
 6. Treat voice benchmark output as voice-pipeline evidence. Voice results are
    not router work-class promotion evidence and must not satisfy a
    `router_promote` gate.
@@ -77,9 +79,10 @@ review, and human approval.
 - Profile selection:
   `anvil-serving voice profiles --config <manifest>` to list profiles, then add
   `--profile <name>` to `voice up`, `voice down`, `voice run`, or
-  `voice benchmark` when switching Mini/Dark/laptop audio topology. Run
-  Mini-local profiles on Mini or through a Mini controller/agent; use
-  private/tailnet addresses for cross-device endpoints.
+  `voice benchmark` when switching audio topology. For reference OpenClaw Talk
+  and candidate benchmarks, keep Mini model-free and select Dark-host audio or
+  a Mini-side proxy to Dark. Use `mini-audio` only when explicitly testing the
+  optional same-host/local-audio mode.
 - Private audio bridge:
   `anvil-serving voice bridge --dry-run` first. A non-loopback live bind must
   be private/tailnet-scoped and include

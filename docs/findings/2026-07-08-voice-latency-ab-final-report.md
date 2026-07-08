@@ -15,10 +15,11 @@ current baseline only. I should not treat the retained candidate failure rows as
 proof that the candidate models were tested.
 
 Topology correction after follow-up review: `mini-audio` is a supported
-Mini-local audio mode, but it is not the intended topology for the candidate
-benchmark workflow. Fakoli Mini should be treated as the OpenClaw Gateway /
-Anvil Voice host for this workflow, not as the normal STT/TTS model host. The
-intended candidate benchmark needs remote or proxied audio, such as
+optional Mini-local audio mode, but it is not the intended topology for the
+candidate benchmark workflow. Fakoli Mini's 16 GB RAM is reserved for OpenClaw
+Gateway, Anvil Voice Realtime/proxy, Claude Code, and Codex. Do not run
+STT/TTS/LLM model serves on Mini for reference Talk validation or candidate
+A/B. The intended candidate benchmark needs remote or proxied audio, such as
 `dark-audio` or `mini-dark-audio-proxy`, after the matching bridge/proxy is
 verified.
 
@@ -57,9 +58,10 @@ The interpretation depends on where a command is executed:
 
 | Host | Owns |
 |---|---|
-| Fakoli Mini | OpenClaw Gateway and Anvil Voice Realtime server. It may support the optional `mini-audio` local-audio mode, but that is not the intended candidate benchmark topology. |
+| Fakoli Mini | OpenClaw Gateway and Anvil Voice Realtime/proxy only in the reference path. Its 16 GB RAM is reserved for OpenClaw, Claude Code, and Codex. |
 | Fakoli Dark | Anvil router at `http://100.87.34.66:8000/v1`, candidate LLM serves, and the intended STT/TTS model hosting or bridge boundary for candidate testing. |
 | Mini proxy profile | `mini-dark-audio-proxy` loopback endpoints on Mini at `127.0.0.1:30110` and `127.0.0.1:30111`, only valid after Mini-side proxy listeners are up |
+| Optional Mini-local profile | `mini-audio`, valid only for explicit same-host/local-audio validation, not normal candidate A/B |
 
 A Windows/operator checkout cannot validate Mini-local audio by calling its own
 `127.0.0.1`. Candidate runs that fail on those loopback ports from a non-gateway
@@ -102,7 +104,7 @@ of them produced a valid latency comparison or a candidate model timing:
 
 The candidate failures should not be interpreted as model failures, and they
 should not be counted as completed model tests. They show that LLM-only
-candidate overlays must be run from Mini, or through a verified Mini/Dark bridge
+candidate overlays must be run with a verified Dark-host or Mini-proxied audio
 profile, so that the STT/TTS path is valid before the candidate LLM is measured.
 
 ## Functional Talk Result
@@ -147,9 +149,10 @@ from the correct host/topology and did not reach candidate LLM timing.
 
 Latency work should continue on two tracks:
 
-1. Re-run the baseline and model candidates from Fakoli Mini using the intended
-   audio profile, likely `dark-audio` or `mini-dark-audio-proxy`, after
-   verifying the bridge/proxy endpoints.
+1. Re-run the baseline and model candidates with Fakoli Mini as
+   gateway/realtime/proxy only, using the intended audio profile, likely
+   `dark-audio` or `mini-dark-audio-proxy`, after verifying the bridge/proxy
+   endpoints.
 2. Keep audio topology fixed and change only the LLM via `--candidate-overlay`.
 3. Investigate TTS latency/chunking alongside LLM latency, because the
    supported-mode baseline shows TTS can be nearly as large as the LLM stage.

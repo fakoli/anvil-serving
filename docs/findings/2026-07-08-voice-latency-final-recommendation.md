@@ -4,8 +4,9 @@
 
 ## Recommendation
 
-Do not promote a voice LLM candidate yet. Gather more comparable Mini-run data
-before changing the production model or routing profile.
+Do not promote a voice LLM candidate yet. Gather more comparable data with
+Fakoli Mini kept model-free before changing the production model or routing
+profile.
 
 Production promotion remains explicitly human-gated through the normal
 `router_promote` / `anvil-serving router promote` workflow. This benchmark work
@@ -14,7 +15,8 @@ model selection, or cloud settings.
 
 ## Evidence Summary
 
-The only successful voice timing row is the Mini baseline from
+The only successful voice timing row is the historical optional Mini-local
+audio baseline from
 `docs/findings/2026-07-08-voice-latency-candidate-matrix.md`:
 
 | Profile | Candidate | TTFA ms | Turn ms | STT ms | LLM ms | TTS ms |
@@ -23,6 +25,11 @@ The only successful voice timing row is the Mini baseline from
 
 The LLM and TTS stages are co-dominant: LLM is about `45%` of total turn
 latency and TTS is about `41%`. STT is not the bottleneck in this row.
+
+Post-report topology correction: Fakoli Mini's 16 GB RAM is reserved for
+OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude Code, and Codex. Do not
+run STT/TTS/LLM model serves on Mini for reference Talk validation or candidate
+A/B. Treat the table above as optional same-host/local-audio evidence only.
 
 The candidate rows are retained evidence, but they are not valid latency
 comparisons. They failed before STT because the run happened from a
@@ -37,13 +44,15 @@ duplicate message spam did not recur.
 
 ## Benchmark Workflow
 
-Run baseline from Fakoli Mini, or through a Mini-owned controller/agent:
+Run the baseline with Mini as gateway/realtime/proxy only. Use `dark-audio`
+after the Dark bridge is verified, or `mini-dark-audio-proxy` after the Mini
+proxy forwards to Dark:
 
 ```bash
 anvil-serving voice benchmark \
   --config examples/voice/openclaw-anvil-voice.toml \
-  --profile mini-audio \
-  --evidence-out .anvil/evidence/voice-baseline-mini-audio.json
+  --profile dark-audio \
+  --evidence-out .anvil/evidence/voice-baseline-dark-audio.json
 ```
 
 Run an LLM candidate with the same audio topology:
@@ -52,17 +61,15 @@ Run an LLM candidate with the same audio topology:
 anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
 anvil-serving voice benchmark \
   --config examples/voice/openclaw-anvil-voice.toml \
-  --profile mini-audio \
+  --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
   --candidate qwen3-32b-nvfp4 \
-  --evidence-out .anvil/evidence/voice-qwen3-32b-mini-audio.json
+  --evidence-out .anvil/evidence/voice-qwen3-32b-dark-audio.json
 ```
 
-Use `--profile dark-audio` only after Dark bridge ports are listening. Use
-`--profile mini-dark-audio-proxy` only after Mini-local proxy ports
-`127.0.0.1:30110` and `127.0.0.1:30111` are listening on Mini and forwarding to
-Dark audio. A non-gateway checkout cannot validate those loopback paths by
-calling its own `127.0.0.1`.
+Use `--profile mini-audio` only for explicit optional same-host/local-audio
+validation. A non-gateway checkout cannot validate Mini proxy or optional
+Mini-local audio loopback paths by calling its own `127.0.0.1`.
 
 ## Stage Decision Rule
 
@@ -82,8 +89,9 @@ gateway host.
 
 ## Next Data To Gather
 
-1. Re-run the baseline on Fakoli Mini and capture a durable JSON artifact.
-2. Run at least one candidate overlay on the same Mini audio profile.
+1. Re-run the baseline with Mini model-free and capture a durable JSON artifact.
+2. Run at least one candidate overlay on the same Dark-host or Mini-proxied
+   audio profile.
 3. Include one tool-relevant OpenClaw Talk turn after the candidate run, not
    only generated PCM benchmark audio.
 4. Promote only if the candidate improves latency without regressing tool use,

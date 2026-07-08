@@ -6,20 +6,23 @@
 # The OpenClaw Gateway talks to Anvil Voice on 127.0.0.1:8765. Anvil Voice owns
 # STT, routes the LLM turn through the Fakoli Dark router, then returns TTS
 # audio through its OpenAI Realtime-compatible WebSocket server.
+# Reference OpenClaw Talk keeps Mini model-free: Mini runs gateway/realtime/proxy
+# only, while STT/TTS/LLM model serves live on Fakoli Dark or another non-Mini
+# host. `mini-audio` is an explicit optional same-host/local-audio profile.
 # Credentials are env var names only; never paste token values here.
 #
 # Use --profile to switch the active audio topology without copying this file:
-#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio  # optional local-audio test only
 #
 # For live LLM A/B tests, keep the audio topology in --profile and compose the
 # candidate LLM with --candidate-overlay:
 #   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
-#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml
-# Static candidate-* profiles below are retained as LLM-only shortcuts for
-# Mini-local audio. Use --candidate-overlay when combining a candidate with
-# dark-audio or a Mini-local proxy to Dark.
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml
+# Static candidate-* profiles below are retained as LLM-only shortcuts. Use
+# --candidate-overlay when combining a candidate with a different audio
+# topology.
 
 [voice]
 name = "anvil-voice-openclaw"
@@ -44,6 +47,32 @@ expected_route_model = "qwen36-27b"
 expected_route_tier = "local"
 
 [voice.stt]
+base_url = "http://100.87.34.66:30110/v1"
+model = "tdt_ctc-110m"
+stream = false
+response_format = "json"
+timeout = 120.0
+lifecycle = "external"
+
+[voice.tts]
+base_url = "http://100.87.34.66:30111/v1"
+model = "kokoro"
+timeout = 120.0
+lifecycle = "external"
+response_format = "pcm"
+source_sample_rate = 24000
+target_sample_rate = 16000
+
+[voice.profiles.mini-audio]
+# Mini-local MLX Audio/Kokoro works best with a slightly smaller first
+# speakable chunk than the cross-topology default. Live Talk A/B rejected 48
+# chars because it triggered Kokoro stream errors on some sentence fragments.
+# This profile is not the reference OpenClaw Talk or candidate benchmark path.
+
+[voice.profiles.mini-audio.llm]
+speech_chunk_max_chars = 56
+
+[voice.profiles.mini-audio.stt]
 base_url = "http://127.0.0.1:30010/v1"
 model = "mlx-community/parakeet-tdt-0.6b-v3"
 stream = false
@@ -57,7 +86,7 @@ pid_file = "/tmp/anvil-voice-mini/stt.pid"
 log_file = "/tmp/anvil-voice-mini/stt.log"
 ready_timeout = 120.0
 
-[voice.tts]
+[voice.profiles.mini-audio.tts]
 base_url = "http://127.0.0.1:30011/v1"
 model = "mlx-community/Kokoro-82M-bf16"
 timeout = 120.0
@@ -71,14 +100,6 @@ ready_timeout = 120.0
 response_format = "pcm"
 source_sample_rate = 24000
 target_sample_rate = 16000
-
-[voice.profiles.mini-audio]
-# Mini-local MLX Audio/Kokoro works best with a slightly smaller first
-# speakable chunk than the cross-topology default. Live Talk A/B rejected 48
-# chars because it triggered Kokoro stream errors on some sentence fragments.
-
-[voice.profiles.mini-audio.llm]
-speech_chunk_max_chars = 56
 
 [voice.profiles.dark-audio.stt]
 base_url = "http://100.87.34.66:30110/v1"
@@ -124,7 +145,6 @@ history_max_turns = 0
 base_url = "http://100.87.34.66:39000/v1"
 model = "qwen3-32b-nvfp4"
 api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
-speech_chunk_max_chars = 56
 expected_endpoint_host = "100.87.34.66"
 expected_route_provider = "direct-vllm"
 expected_route_model = "qwen3-32b-nvfp4"
@@ -134,7 +154,6 @@ expected_route_tier = "candidate"
 base_url = "http://100.87.34.66:39001/v1"
 model = "gemma4-12b-it"
 api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
-speech_chunk_max_chars = 56
 expected_endpoint_host = "100.87.34.66"
 expected_route_provider = "direct-vllm"
 expected_route_model = "gemma4-12b-it"
@@ -144,7 +163,6 @@ expected_route_tier = "candidate"
 base_url = "http://100.87.34.66:39002/v1"
 model = "gemma4-e4b-it"
 api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
-speech_chunk_max_chars = 56
 expected_endpoint_host = "100.87.34.66"
 expected_route_provider = "direct-vllm"
 expected_route_model = "gemma4-e4b-it"

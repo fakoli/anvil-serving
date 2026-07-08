@@ -109,7 +109,7 @@ require editing a skill, plugin, or benchmark prompt.
 | Compose-defined serve health | `serves_status` | Implemented |
 | Guarded serve lifecycle | `serves_manage` | Implemented |
 | Bounded serve logs | `serves_logs` | Implemented |
-| Guarded voice STT/TTS lifecycle | `voice_manage` | Implemented; applies to managed Docker audio serves and same-host native MLX Audio processes on Mini or other voice hosts, with optional manifest `profile` selection |
+| Guarded voice STT/TTS lifecycle | `voice_manage` | Implemented; applies to managed Docker audio serves and same-host native processes on the host that actually owns audio models, with optional manifest `profile` selection. Reference OpenClaw Talk keeps Fakoli Mini model-free and uses Dark-host audio or a Mini proxy to Dark. |
 | Environment and configured tier checks | `doctor_summary` | Implemented |
 | Host WSL/Docker/GPU summary | `host_summary` | Implemented; read-only and non-mutating |
 | Model inventory | `models_inventory` | Implemented |
@@ -154,7 +154,7 @@ agent workflow.
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
 | Controller transport | `controller serve`, `mcp --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
 | Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
-| Voice | `voice up/down/start/stop/run/benchmark/profiles/bridge`, `voice-sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle and profile-aware previews; skill/CLI for foreground realtime server, private audio bridge, and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`; private STT/TTS port exposure uses `voice bridge`, not one-off proxy scripts. |
+| Voice | `voice up/down/start/stop/run/benchmark/profiles/bridge`, `voice-sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle and profile-aware previews; skill/CLI for foreground realtime server, private audio bridge, and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`; reference OpenClaw Talk keeps Mini model-free and reaches Dark-host audio directly or through a Mini proxy. Private STT/TTS port exposure uses `voice bridge`, not one-off proxy scripts. |
 | Local analytics | `profile`, `score`, `cache-prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `score` are offline analysis. `cache-prune` deletion stays CLI-only and human-gated. |
 
 ## Recommended Skills
@@ -306,12 +306,13 @@ execution steps with explicit inputs and outputs.
 For OpenClaw Talk / Anvil Voice workflows, every role that reports topology,
 probes endpoints, benchmarks, drafts evidence, or reviews evidence must name
 the command host and the resource-owning host. In the reference deployment,
-OpenClaw Gateway and Anvil Voice run on Fakoli Mini; Fakoli Dark owns the router,
-candidate LLM serves, and optional Dark audio bridge. `mini-audio` loopback
-belongs to Mini. `mini-dark-audio-proxy` loopback also belongs to Mini and
-forwards to Dark audio. A non-gateway checkout failing to reach
-`127.0.0.1:30010`, `30011`, `30110`, or `30111` is a topology negative control,
-not evidence that the live Mini/Dark path is down.
+Fakoli Mini runs OpenClaw Gateway plus Anvil Voice Realtime/proxy and reserves
+its 16 GB RAM for OpenClaw, Claude Code, and Codex. Fakoli Dark owns the
+router, candidate LLM serves, and STT/TTS model endpoints or bridge ports.
+`mini-dark-audio-proxy` loopback belongs to Mini and forwards to Dark audio;
+`mini-audio` is an explicit optional same-host/local-audio mode only. A
+non-gateway checkout failing to reach Mini proxy loopback is a topology
+negative control, not evidence that the live Mini/Dark path is down.
 
 | Role | Good model class | Inputs | Output | Gate |
 |---|---|---|---|---|

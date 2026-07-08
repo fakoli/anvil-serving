@@ -2,6 +2,13 @@
 
 Date: 2026-07-06
 
+> **Topology addendum (2026-07-08).** The live Mini-local audio validation
+> below remains historical evidence for the optional same-host/local-audio
+> mode. It is no longer the reference OpenClaw Talk topology. Fakoli Mini's
+> 16 GB RAM is reserved for OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude
+> Code, and Codex; normal Talk validation and candidate A/B should use Dark-host
+> STT/TTS or a Mini proxy to Dark.
+
 ## Scope
 
 This note captures the baseline research for Anvil task `openclaw-anvil-voice-option:T001`. The goal is to add Anvil Voice as an OpenClaw realtime voice option without changing the existing OpenClaw client relay protocol.

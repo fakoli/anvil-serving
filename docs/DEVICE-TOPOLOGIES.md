@@ -11,9 +11,10 @@ path.
 | Role | Owns | Current Reference Example |
 |---|---|---|
 | Gateway host | OpenClaw gateway, harness runtime, gateway-local restart/apply actions. | Fakoli Mini |
-| Voice host | `anvil-serving voice run`, microphone/speaker path, and same-host STT/TTS when desired. | Fakoli Mini |
+| Voice host | `anvil-serving voice run`, microphone/speaker path, and Realtime/proxy orchestration. | Fakoli Mini |
+| Audio model host | STT/TTS model endpoints and optional private bridge ports. | Fakoli Dark or another non-Mini audio host |
 | Router host | `anvil-serving serve` or deployed router container, router config, token auth, decision logs. | Fakoli Dark |
-| Serve host | GPU/CPU model serves, `serves.toml`, model cache, preflight and benchmark target endpoints. | Fakoli Dark |
+| Serve host | GPU/CPU LLM serves, `serves.toml`, model cache, preflight and benchmark target endpoints. | Fakoli Dark |
 | Controller host | `anvil-serving controller serve` for structured remote operations on the resources it owns. | Usually the router/serve host |
 | Operator client | Codex, Claude Code, OpenClaw, or another tool calling MCP/controller tools. | Any trusted host |
 
@@ -21,6 +22,12 @@ A single device can hold several roles. A laptop can be a voice host, a router
 host, a gateway host, or all three. The important boundary is ownership: run
 lifecycle commands on the host that owns the process, config, manifest, and
 logs being changed.
+
+In the current reference OpenClaw topology, Fakoli Mini is intentionally
+model-free: its 16 GB RAM is reserved for OpenClaw Gateway, Anvil Voice
+Realtime/proxy, Claude Code, and Codex. Do not place STT, TTS, or LLM model
+serves on Mini for reference validation or candidate benchmarking. Mini-local
+audio remains an optional same-host mode for explicit local-audio tests only.
 
 ## Connectivity Requirements
 
@@ -115,6 +122,12 @@ right auth env vars available in the gateway process. Gateway-local actions,
 such as OpenClaw restart/apply, should stay local to that gateway. Remote
 router, serve, and benchmark operations should go through the controller on the
 resource-owning host.
+
+For OpenClaw Talk, the gateway host may also run Anvil Voice Realtime/proxy.
+That does not mean it should host STT/TTS/LLM models. Point audio profiles at
+remote private endpoints or at a same-gateway proxy that forwards to the audio
+model host; use same-host/native audio only when the task explicitly tests that
+optional mode.
 
 ## Operator Checklist
 

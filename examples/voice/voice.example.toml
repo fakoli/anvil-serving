@@ -15,7 +15,7 @@
 # are managed through `anvil-serving serves` (`lifecycle = "managed"`).
 # Set `lifecycle = "external"` for a manually managed endpoint, or
 # `lifecycle = "native"` plus start_command/pid_file/log_file for same-host
-# native processes such as Fakoli Mini's MLX Audio setup.
+# native processes on a host that intentionally owns audio models.
 
 [voice]
 name = "anvil-voice"

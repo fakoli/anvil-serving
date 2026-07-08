@@ -76,6 +76,10 @@ def test_fakoli_dark_manifest_marks_sidecars_external():
 
 def test_openclaw_voice_manifest_profiles_are_valid():
     raw = voice_config.load_manifest("examples/voice/openclaw-anvil-voice.toml")
+    assert raw["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
+    assert raw["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
+    assert raw["voice"]["stt"]["lifecycle"] == "external"
+    assert raw["voice"]["tts"]["lifecycle"] == "external"
     assert voice_config.profile_names(raw) == [
         "candidate-gemma4-12b",
         "candidate-gemma4-e4b",
@@ -140,8 +144,10 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert candidate["voice"]["llm"]["api_key_env"] == "ANVIL_CANDIDATE_LLM_TOKEN"
     assert candidate["voice"]["llm"]["expected_route_provider"] == "direct-vllm"
     assert candidate["voice"]["llm"]["expected_route_model"] == "qwen3-32b-nvfp4"
-    assert candidate["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
-    assert candidate["voice"]["tts"]["base_url"] == "http://127.0.0.1:30011/v1"
+    assert candidate["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
+    assert candidate["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
+    assert candidate["voice"]["stt"]["lifecycle"] == "external"
+    assert candidate["voice"]["tts"]["lifecycle"] == "external"
 
     composed = voice_config.resolve_manifest(
         "examples/voice/openclaw-anvil-voice.toml",

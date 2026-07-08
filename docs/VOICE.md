@@ -199,12 +199,19 @@ firewall or tailnet ACL has already scoped exposure to trusted devices.
 
 ## Fakoli Mini
 
-The checked-in Mini topology is one concrete example: audio stays local on the
-16 GB Mac Mini while the LLM turn routes to the Fakoli Dark router:
+The checked-in Mini-local topology is an optional same-host audio example. It
+keeps STT/TTS on the 16 GB Mac Mini while the LLM turn routes to the Fakoli
+Dark router:
 
 - STT: `http://127.0.0.1:30010/v1`
 - TTS: `http://127.0.0.1:30011/v1`
 - LLM: Fakoli Dark router over the tailnet
+
+This is **not** the reference OpenClaw Talk or candidate benchmark topology.
+Fakoli Mini's 16 GB RAM is reserved for OpenClaw Gateway, Anvil Voice
+Realtime/proxy, Claude Code, and Codex. Do not run STT, TTS, or LLM model
+serves on Mini during normal validation. Use this manifest only when explicitly
+testing the optional Mini-local audio mode.
 
 The checked-in manifest is `examples/voice/fakoli-mini.toml`. It uses
 `lifecycle = "native"` for both audio endpoints and starts MLX Audio with PID
@@ -251,10 +258,12 @@ OpenClaw Talk or Voice Call
   -> STT -> [voice.llm] anvil router -> TTS
 ```
 
-Use `examples/voice/openclaw-anvil-voice.toml` for the Mini reference layout.
-It keeps the Realtime server and MLX Audio endpoints on the Mini loopback and
-routes the LLM turn to the Fakoli Dark router over the private address.
-It also declares profiles for repeatable switching:
+Use `examples/voice/openclaw-anvil-voice.toml` for the Mini gateway layout.
+It keeps the Realtime server on the Mini loopback, routes the LLM turn to the
+Fakoli Dark router over the private address, and selects STT/TTS from Dark-host
+audio or a Mini-side proxy to Dark for normal validation. Mini-local STT/TTS is
+declared only as an explicit optional profile. It also declares profiles for
+repeatable switching:
 
 When OpenClaw sends realtime tools in `session.update` or `response.create`,
 Anvil Voice forwards them to the Chat Completions LLM request. If the model
@@ -267,17 +276,19 @@ spoken response. This is the path used by OpenClaw's `openclaw_agent_consult`
 tool for normal agent tools, memory, workspace context, and
 current-information lookups.
 
-- `mini-audio`: Mini-local MLX Audio STT/TTS, with conversational LLM prompt.
 - `dark-audio`: Dark-host STT/TTS reached through private bridge ports
   `30110` and `30111`.
 - `mini-dark-audio-proxy`: Mini-local proxy ports `30110` and `30111` that
   forward to Dark-host STT/TTS. Use this only after that Mini-side proxy is
   actually listening.
+- `mini-audio`: optional Mini-local MLX Audio STT/TTS, with conversational LLM
+  prompt. Do not use it for normal OpenClaw Talk validation or LLM candidate
+  A/B on the 16 GB Mini.
 - `mini-validation`: Mini-local audio plus the intentional
   `I understand.` validation prompt.
 - `candidate-qwen3-32b`, `candidate-gemma4-12b`, and
   `candidate-gemma4-e4b`: LLM-only A/B profiles for the checked-in Dark
-  experiment serves. They preserve the base Mini STT/TTS path and point the
+  experiment serves. They preserve the base Dark-host audio path and point the
   LLM stage at direct candidate ports `39000` through `39002`. For live Talk
   A/B runs, prefer the reusable overlays in `examples/voice/candidates/` so
   the audio topology and LLM candidate remain independent.
@@ -288,13 +299,14 @@ audio latency versus the `72` character cross-topology default, while a more
 aggressive `48` character split produced Kokoro stream errors on some sentence
 fragments.
 
-Start the voice side first:
+Start the voice side first. `dark-audio` has external lifecycle, so `voice up`
+will validate the manifest and report that audio is externally managed:
 
 ```bash
 anvil-serving voice profiles --config examples/voice/openclaw-anvil-voice.toml
-anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --dry-run
-anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
-anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --dry-run
+anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 ```
 
 For a candidate LLM A/B, start the matching opt-in serve through the managed
@@ -306,15 +318,15 @@ reach the direct candidate endpoint:
 anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
 anvil-serving voice run \
   --config examples/voice/openclaw-anvil-voice.toml \
-  --profile mini-audio \
+  --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
   --candidate qwen3-32b-nvfp4
 anvil-serving voice benchmark \
   --config examples/voice/openclaw-anvil-voice.toml \
-  --profile mini-audio \
+  --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
   --candidate qwen3-32b-nvfp4 \
-  --evidence-out voice-evidence/qwen3-32b.json
+  --evidence-out voice-evidence/qwen3-32b-dark-audio.json
 ```
 
 To keep OpenClaw and Realtime on Mini while using STT/TTS on Fakoli Dark, first
@@ -442,13 +454,14 @@ Non-loopback binds require a bearer token env var in the manifest.
 
 ## Benchmark And Validation
 
-Use `voice benchmark` for a quick configured end-to-end sample. Run Mini-local
-profiles on Fakoli Mini or through a Mini-owned controller/agent; running
-`mini-audio` from a non-gateway checkout only tests that checkout's loopback
-and is a topology negative control.
+Use `voice benchmark` for a quick configured end-to-end sample. For reference
+OpenClaw Talk and candidate A/B, keep Mini model-free and use `dark-audio` or
+`mini-dark-audio-proxy`. Run `mini-audio` only when explicitly validating the
+optional same-host/local-audio mode; running it from a non-gateway checkout
+only tests that checkout's loopback and is a topology negative control.
 
 ```bash
-anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 ```
 
 For candidate LLM A/B, keep audio topology in `--profile` and compose the LLM
@@ -457,10 +470,10 @@ candidate with an overlay:
 ```bash
 anvil-serving voice benchmark \
   --config examples/voice/openclaw-anvil-voice.toml \
-  --profile mini-audio \
+  --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
   --candidate qwen3-32b-nvfp4 \
-  --evidence-out .anvil/evidence/voice-qwen3-32b-mini-audio.json
+  --evidence-out .anvil/evidence/voice-qwen3-32b-dark-audio.json
 ```
 
 Use `--profile dark-audio` only after Dark-host bridge ports are listening.
@@ -488,13 +501,14 @@ Interpret stage timing before swapping models:
   loading a new model.
 
 The current T005/T006 evidence does **not** justify promoting a candidate LLM.
-The only successful voice timing row is the Mini baseline (`ttfa_ms 611.29`,
-`turn_latency_ms 789.06`, `stt_ms 106.28`, `llm_ms 356.82`, `tts_ms 325.95`),
-where LLM and TTS are co-dominant rather than a clear model-only bottleneck.
-Candidate rows were retained as topology negative controls because they failed
-before STT from a non-gateway loopback path. Gather comparable successful
-Mini-run candidate data before any production promotion, and keep promotion
-behind the normal human `router_promote` gate.
+The only successful timing row was gathered on the now-optional Mini-local
+audio path (`ttfa_ms 611.29`, `turn_latency_ms 789.06`, `stt_ms 106.28`,
+`llm_ms 356.82`, `tts_ms 325.95`), where LLM and TTS were co-dominant rather
+than a clear model-only bottleneck. Candidate rows were retained as topology
+negative controls because they failed before STT from a wrong-host loopback
+path. Gather comparable successful data with Dark-host or Mini-proxied audio
+before any production promotion, and keep promotion behind the normal human
+`router_promote` gate.
 
 For live Realtime Talk sessions, `voice run` also emits redacted
 `voice_stage_timing` log lines for the core `stt`, `llm`, and `tts` stages.
@@ -513,15 +527,16 @@ If `tts first_output_ms` is high for a large `text_chars` value, lower
 `voice.llm.speech_chunk_max_chars` in the active voice profile before changing
 models. That keeps the same answer path but starts TTS on smaller word-boundary
 chunks.
-For the Mini-local Kokoro path, keep the checked-in `mini-audio` override near
-`56` unless fresh `voice_stage_timing` evidence shows a better value; values
-near `48` have produced stream errors in live A/B tests.
+For the optional Mini-local Kokoro path, keep the checked-in `mini-audio`
+override near `56` unless fresh `voice_stage_timing` evidence shows a better
+value; values near `48` have produced stream errors in live A/B tests.
 If Kokoro closes a TTS stream before producing any audio for a chunk, the TTS
 stage retries once and can fall back to a separator-safe spoken form such as
 `up to date` instead of `up-to-date`; failures after audio has started still
 surface as real stage errors.
 
-For the 16 GB Mini proof, use the hardware validation harness:
+For explicit optional Mini-local audio proof, use the hardware validation
+harness:
 
 ```bash
 python scripts/voice/mini_validation.py --report
@@ -530,6 +545,8 @@ python scripts/voice/mini_validation.py --report
 That report adds target-host checks, router auth proof, endpoint model identity
 proof, post-benchmark STT/TTS memory attribution, and a verdict. A non-Mini run
 is a negative control unless explicitly allowed with `--allow-unsupported`.
+This harness is not the reference OpenClaw Talk topology because Mini should
+remain model-free for normal validation.
 
 ## MCP And Controller Operation
 
@@ -539,7 +556,7 @@ Agents and OpenClaw should prefer `voice_manage` for STT/TTS lifecycle:
 {
   "action": "up",
   "config": "examples/voice/openclaw-anvil-voice.toml",
-  "profile": "mini-audio"
+  "profile": "dark-audio"
 }
 ```
 
@@ -550,7 +567,7 @@ requires:
 {
   "action": "up",
   "config": "examples/voice/openclaw-anvil-voice.toml",
-  "profile": "mini-audio",
+  "profile": "dark-audio",
   "confirm": true,
   "dry_run": false
 }
@@ -567,8 +584,8 @@ explicit confirmed call.
   and TTS base URLs named in the manifest.
 - Native `voice down` reports `ready_but_unmanaged`: the endpoint is answering,
   but no PID file or `stop_command` can identify what to stop.
-- Mini STT/TTS logs live under `/tmp/anvil-voice-mini` in the checked-in Mini
-  manifest.
+- Optional Mini-local STT/TTS logs live under `/tmp/anvil-voice-mini` in the
+  checked-in Mini-local manifest.
 - Router auth errors should be fixed by setting the env var named in
   `voice.llm.api_key_env`; do not paste token values into the manifest.
 - If the assistant forgets facts from the same Talk session, verify the active

@@ -6,6 +6,12 @@ Task: `openclaw-anvil-voice-option:T008`
 
 Result: PASS for the live speech-to-speech goal.
 
+> **Topology addendum (2026-07-08).** This PASS covers the optional Mini-local
+> audio mode. It does not set the current reference topology. Fakoli Mini's
+> 16 GB RAM is reserved for OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude
+> Code, and Codex; normal Talk validation and candidate A/B should keep Mini
+> model-free and use Dark-host or Mini-proxied audio.
+
 ## Evidence files
 
 - `docs/findings/2026-07-openclaw-anvil-voice-option-live.json`
