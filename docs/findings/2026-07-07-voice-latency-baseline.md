@@ -164,6 +164,34 @@ python -m pytest tests/voice/test_voice_benchmark.py tests/voice/test_voice_cli.
 The Mini benchmark command passed three times after providing the router token
 through `ANVIL_ROUTER_TOKEN`.
 
+## Evidence Rerun
+
+The T001 evidence gate was rerun on 2026-07-08 after reopening the task because
+the earlier verification commands were not captured as typed Anvil evidence.
+The rerun used the same Mini checkout and command, with the router token copied
+in-memory from the already running Realtime process and not printed or written.
+
+| Run | TTFA ms | Turn latency ms | STT ms | LLM ms | TTS ms | TTS RTF | TTS requests | Output bytes |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 774.13 | 965.70 | 107.45 | 447.99 | 410.26 | 0.1292 | 2 | 152400 |
+| 2 | 611.29 | 789.06 | 106.28 | 356.82 | 325.95 | 0.1027 | 2 | 152400 |
+| 3 | 586.71 | 762.12 | 94.38 | 353.88 | 313.87 | 0.0989 | 2 | 152400 |
+
+Rerun median:
+
+| Metric | Median |
+|---|---:|
+| TTFA | 611.29 ms |
+| Turn latency | 789.06 ms |
+| STT | 106.28 ms |
+| LLM | 356.82 ms |
+| TTS | 325.95 ms |
+
+The rerun confirms the warmed path remains under one second TTFA in this CLI
+benchmark. The first-audio latency and total turn latency are still separate
+numbers: TTFA is the user-perceived first audio boundary, while turn latency
+also includes complete TTS output generation.
+
 ## Follow-Up
 
 - Use this as the `qwen36-27b` baseline for candidate LLM A/B.
