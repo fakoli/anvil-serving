@@ -29,8 +29,11 @@ was hit (see [Request rejected with 413 or a size cap](#request-rejected-with-41
 
 **What to check.**
 
-- `GET http://127.0.0.1:8000/v1/decisions` — the recent-decision summary shows which tiers were
-  dropped and why (`dropped_by_deny`, `dropped_by_metered_gate`, `dropped_missing`, ...).
+- `POST http://127.0.0.1:8000/v1/route` with the same payload — a no-generation routing probe
+  whose response includes the routing `reason` (deny, metered-cloud gate, unknown tier, ...).
+  Note that an *unbound* 503 is raised before the fallback walk runs, so `GET /v1/decisions`
+  has no record of that request — the router's stderr log and `/v1/route` are the diagnostic
+  surfaces.
 - Profile deny rows for the work class: the quality gate fails closed, so an unmeasured *local*
   tier on an eval-proven-weak class (e.g. `planning`) is denied by design
   (`anvil_serving/router/policy.py`).
@@ -117,8 +120,9 @@ per-model settings walkthrough: [Model settings](MODEL-SETTINGS-EXAMPLE.md).
 custom presets (`anvil_serving/router/policy.py`, the metered-cloud gate; ADR-0001,
 [`docs/adr/0001-cloud-cost-and-subscription-auth.md`](adr/0001-cloud-cost-and-subscription-auth.md)).
 
-**What to check.** `GET /v1/decisions` — cloud tiers dropped for this reason appear under
-`dropped_by_metered_gate` in the decision notes.
+**What to check.** `POST /v1/route` with the same payload — the routing probe's `reason` shows
+when the metered-cloud gate excluded a cloud tier (drop reasons are not part of the
+`GET /v1/decisions` summary).
 
 **Fix.** If you *want* metered cloud for specific classes, start from
 `configs/example-with-cloud.toml` and list them explicitly:
@@ -233,7 +237,12 @@ The install is stdlib-only — no required runtime dependencies.
 ## Where to look when diagnosing
 
 - **`GET http://127.0.0.1:8000/v1/decisions`** — per-request decision summary from the decision
-  log (`?limit=1..500`, default 20): work class, selected tier, drop reasons, verify failures.
+  log (`?limit=1..500`, default 20): work class, requested tiers, per-tier attempts (including
+  verify failures), served tier, tokens, and cost. Requests refused *before* the fallback walk
+  (unbound or over-context) write no record — check the stderr log for those.
+- **`POST http://127.0.0.1:8000/v1/route`** — a no-generation routing probe for one payload:
+  returns the selected tier, confidence, and the routing `reason` (deny, metered-cloud gate,
+  ...).
 - **`anvil-serving router logs`** — docker logs for the deployed router container
   (`--tail`/`--since`/`--follow`). Exhaustion and over-context refusals are logged to stderr
   with the tier list and reason.
