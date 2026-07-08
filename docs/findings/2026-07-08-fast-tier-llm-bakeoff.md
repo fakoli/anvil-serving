@@ -60,8 +60,10 @@ alternate as verified/non-promoted or needs-more-data.
 
 Evidence directory:
 [`docs/findings/fast-tier-bakeoff-evidence/`](fast-tier-bakeoff-evidence/)
-Typed summary:
+Matrix typed summary:
 [`t006-evidence-summary.json`](fast-tier-bakeoff-evidence/t006-evidence-summary.json)
+Final T007 gate summary:
+[`t007-evidence-summary.json`](fast-tier-bakeoff-evidence/t007-evidence-summary.json)
 
 All voice runs used Fakoli Dark audio endpoints over the private address and
 recorded `mini_model_free_assertion.passed=true`; Mini was not used to host STT,
@@ -77,14 +79,18 @@ LLM, and TTS timing with TTS first-audio observed, but the STT hypothesis field
 is empty with WER `1.0`, so these artifacts must not be read as semantic STT
 accuracy evidence.
 
-| Candidate/config | Engine and context | Voice total / LLM stage | Bakeoff TTFT / E2E | Tool / session / intelligence | Evidence | Result |
-|---|---|---:|---:|---|---|---|
-| `nvidia/Qwen3.6-27B-NVFP4` control | vLLM NVFP4, 32K | 1130.21 ms / 814.83 ms | 6203.94 ms / 9041.91 ms | pass / pass / 0.50 | `qwen36-27b-baseline-vllm-32k.voice.json`, `qwen36-27b-baseline-vllm-32k.bakeoff.json` | Control rerun succeeded |
-| `nvidia/Qwen3.6-35B-A3B-NVFP4` | vLLM NVFP4, 32K | 377.52 ms / 165.40 ms | 1489.36 ms / 2302.37 ms | pass / pass / 0.50 | `qwen36-35b-a3b-vllm-nvfp4-32k.voice.json`, `qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json` | Best promotion candidate |
-| `nvidia/Gemma-4-31B-IT-NVFP4` | vLLM NVFP4, 32K then 8K retry | no successful voice run | no benchmark artifact | no score | `load-failures.md` | Rejected: does not fit 5090 recipe |
-| `zai-org/GLM-4.7-Flash` | SGLang BF16, 32K | no successful SGLang voice run | no SGLang benchmark artifact | no score | `load-failures.md` | Rejected for SGLang: no KV headroom |
-| `zai-org/GLM-4.7-Flash` | llama.cpp `UD-Q4_K_XL`, 32K | 2376.21 ms / 961.49 ms | 6196.05 ms / 7417.46 ms | pass / pass / 0.00 | `glm47-flash-llamacpp-q4-32k.voice.json`, `glm47-flash-llamacpp-q4-32k.bakeoff.json` | Verified but not competitive |
-| `mistralai/Devstral-Small-2-24B-Instruct-2512` | vLLM FP8, reduced 8K | 923.98 ms / 433.12 ms | 742.46 ms / 3755.56 ms | pass / pass / 1.00 | `devstral-small2-vllm-fp8-8k.voice.json`, `devstral-small2-vllm-fp8-8k.bakeoff.json`, `load-failures.md` | Promising fallback, context-limited |
+| Candidate/config | Engine / quant / context | Voice total / LLM stage | TTFT / E2E | Approx decode tok/s | Tool / session / intelligence | Evidence | Result |
+|---|---|---:|---:|---:|---|---|---|
+| `nvidia/Qwen3.6-27B-NVFP4` control | vLLM / NVFP4 / 32K | 1130.21 ms / 814.83 ms | 6203.94 ms / 9041.91 ms | 67.65 | pass / pass / 0.50 | `qwen36-27b-baseline-vllm-32k.voice.json`, `qwen36-27b-baseline-vllm-32k.bakeoff.json` | Control rerun succeeded |
+| `nvidia/Qwen3.6-35B-A3B-NVFP4` | vLLM / NVFP4 / 32K | 377.52 ms / 165.40 ms | 1489.36 ms / 2302.37 ms | 236.16 | pass / pass / 0.50 | `qwen36-35b-a3b-vllm-nvfp4-32k.voice.json`, `qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json` | Best promotion candidate |
+| `nvidia/Gemma-4-31B-IT-NVFP4` | vLLM / NVFP4 / 32K then 8K retry | no successful voice run | no benchmark artifact | n/a | no score | `load-failures.md` | Rejected: does not fit 5090 recipe |
+| `zai-org/GLM-4.7-Flash` | SGLang / BF16 / 32K | no successful SGLang voice run | no SGLang benchmark artifact | n/a | no score | `load-failures.md` | Rejected for SGLang: no KV headroom |
+| `zai-org/GLM-4.7-Flash` | llama.cpp / `UD-Q4_K_XL` / 32K | 2376.21 ms / 961.49 ms | 6196.05 ms / 7417.46 ms | 157.20 | pass / pass / 0.00 | `glm47-flash-llamacpp-q4-32k.voice.json`, `glm47-flash-llamacpp-q4-32k.bakeoff.json` | Verified but not competitive |
+| `mistralai/Devstral-Small-2-24B-Instruct-2512` | vLLM / FP8 / reduced 8K | 923.98 ms / 433.12 ms | 742.46 ms / 3755.56 ms | 57.75 | pass / pass / 1.00 | `devstral-small2-vllm-fp8-8k.voice.json`, `devstral-small2-vllm-fp8-8k.bakeoff.json`, `load-failures.md` | Promising fallback, context-limited |
+
+`Approx decode tok/s` is derived from the evidence JSON as
+`output_tokens * 1000 / (e2e_ms - ttft_ms)` because the timing fields are
+recorded in milliseconds.
 
 ## Rubric Score
 
@@ -102,13 +108,14 @@ router policy change.
 
 ## Determination
 
-Recommend `nvidia/Qwen3.6-35B-A3B-NVFP4` as the next human-gated Fast-tier
-promotion candidate. It beat the production `nvidia/Qwen3.6-27B-NVFP4` control
-on the measured voice path and loaded-endpoint bakeoff while preserving the
-same 32K context target, tool-call pass, and session-recall pass. It should not
-be auto-promoted by this task because router policy promotion remains a human
-gate and the deterministic intelligence suite still has one shared failure with
-the current baseline.
+Recommendation: promote `nvidia/Qwen3.6-35B-A3B-NVFP4` as the next
+human-gated Fast-tier promotion candidate, but do not auto-promote it in this
+task. It beat the production `nvidia/Qwen3.6-27B-NVFP4` control on the measured
+voice path and loaded-endpoint bakeoff while preserving the same 32K context
+target, tool-call pass, and session-recall pass. It should not be
+auto-promoted by this task because router policy promotion remains a human gate
+and the deterministic intelligence suite still has one shared failure with the
+current baseline.
 
 Keep the current production Fast baseline until the promotion task explicitly
 updates the deployed route. `Devstral-Small-2` is worth keeping as a reduced
@@ -117,6 +124,102 @@ Fast voice replacement because the successful evidence is 8K, not 32K.
 `GLM-4.7-Flash` via llama.cpp is verified but too slow for this use case.
 `Gemma-4-31B-IT-NVFP4` is rejected for the RTX 5090 Fast role under the tested
 vLLM recipe.
+
+## Recipe Table
+
+| Config | Serve recipe | Reproduction command | Notes |
+|---|---|---|---|
+| Qwen3.6-27B baseline | `configs/serve-recipes.toml#nvidia-qwen36-27b-nvfp4` | `anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast` | Production Fast control on port `30003` |
+| Qwen3.6-35B-A3B | `configs/serve-recipes.toml#nvidia-qwen36-35b-a3b-nvfp4` | `anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b` | Best measured candidate, vLLM NVFP4 32K |
+| Gemma-4-31B | `configs/serve-recipes.toml#nvidia-gemma4-31b-it-nvfp4` | `anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-gemma4-31b` | Requires Gemma parser/template flags; failed memory gate |
+| GLM-4.7 SGLang | `configs/serve-recipes.toml#zai-glm47-flash` | `anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-glm47-flash-sglang` | BF16 path failed KV allocation |
+| GLM-4.7 llama.cpp | `configs/serve-recipes.toml#zai-glm47-flash` | `anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-glm47-flash-llamacpp` | Uses cached Unsloth `UD-Q4_K_XL` GGUF by explicit `-m` path |
+| Devstral Small 2 | `configs/serve-recipes.toml#mistralai-devstral-small2-24b-instruct-2512` | `FAST_DEVSTRAL_SMALL2_MAX_MODEL_LEN=8192 FAST_DEVSTRAL_SMALL2_MAX_NUM_SEQS=2 anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-devstral-small2` | 32K recipe exceeded practical 5090 KV headroom; reduced 8K run succeeded |
+
+## Adversarial Reviews
+
+Two T007 adversarial review packets were run and resolved before final submit:
+
+| Packet | Reviewer | Objections | Resolution |
+|---|---|---|---|
+| [`t007-review-docs-fixtures.json`](fast-tier-bakeoff-evidence/t007-review-docs-fixtures.json) | `gpt-5.5` high reasoning | SERVES rerun command would skip the bakeoff voice subsection without latency flags; decode-rate formula omitted the ms-to-sec conversion | Added the voice latency flags to the SERVES rerun command and corrected the formula to `output_tokens * 1000 / (e2e_ms - ttft_ms)` |
+| [`t007-review-evidence-gate.json`](fast-tier-bakeoff-evidence/t007-review-evidence-gate.json) | `gpt-5.5` high reasoning | Review acceptance was prose-backed only; report linked only the T006 typed evidence summary | Added durable T007 review packets and the T007 final gate summary, then linked them from this report |
+
+Three earlier review passes were run before T006 was applied:
+
+| Reviewer | Focus | Objections | Resolution |
+|---|---|---|---|
+| Evidence audit, small model | Candidate and artifact coverage | Heavy health and Fast restoration were initially thin | Added `runtime-restoration.md` and `t006-evidence-summary.json`; final status showed Fast and Heavy health `200` |
+| Code/docs adversarial review, `gpt-5.5` high reasoning | Diff, policy, and Mistral fallback | Low concern that Compose-style env placeholders in `serve-recipes.toml` weakened copyability | Restored literal default values in `configs/serve-recipes.toml`; kept env overrides only in Compose |
+| Evidence/gates adversarial review, `gpt-5.5` high reasoning | Acceptance gates and overclaims | Heavy before/after proof was incomplete; voice artifacts were being described too broadly | Added Heavy container continuity, health timestamps, typed summary, and the stage-latency caveat; re-review reported no remaining blocker |
+
+## Rerun Workflow
+
+Use Anvil Serving surfaces only; do not run one-off lifecycle scripts as the
+operational path.
+
+1. Confirm the topology and keep Mini model-free:
+
+   ```bash
+   anvil-serving serves --manifest examples/fakoli-dark/serves.toml status
+   ```
+
+2. Start exactly one candidate on Fakoli Dark:
+
+   ```bash
+   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b
+   ```
+
+3. Gate the loaded endpoint before benchmarking:
+
+   ```bash
+   anvil-serving preflight \
+     --base-url http://127.0.0.1:39010/v1 \
+     --model qwen36-35b-a3b-nvfp4 \
+     --needle-ctx 32768 \
+     --tool-batch 5 \
+     --no-thinking
+   ```
+
+4. Capture staged voice latency against the same loaded endpoint:
+
+   ```bash
+   anvil-serving voice benchmark \
+     --config examples/voice/openclaw-anvil-voice.toml \
+     --profile dark-audio \
+     --candidate-base-url http://127.0.0.1:39010/v1 \
+     --candidate-model qwen36-35b-a3b-nvfp4 \
+     --candidate qwen36-35b-a3b-vllm-nvfp4-32k \
+     --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.voice.json
+   ```
+
+5. Capture the loaded-endpoint bakeoff artifact:
+
+   ```bash
+   anvil-serving benchmark \
+     --bakeoff \
+     --base-url http://127.0.0.1:39010/v1 \
+     --model qwen36-35b-a3b-nvfp4 \
+     --candidate-id qwen36-35b-a3b \
+     --config-id vllm-nvfp4-32k \
+     --context-targets 32768 \
+     --suite chat,context,tool,session,intelligence,voice \
+     --thinking-mode disabled \
+     --voice-latency-ms 377.52 \
+     --stt-latency-ms 68.65 \
+     --tts-latency-ms 143.46 \
+     --source-recipe configs/serve-recipes.toml#nvidia-qwen36-35b-a3b-nvfp4 \
+     --serve-command "anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b" \
+     --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json
+   ```
+
+6. Restore production Fast and verify Heavy:
+
+   ```bash
+   anvil-serving serves --manifest examples/fakoli-dark/serves.toml down fast-qwen36-35b-a3b
+   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast
+   anvil-serving serves --manifest examples/fakoli-dark/serves.toml status
+   ```
 
 ## Source Classes
 

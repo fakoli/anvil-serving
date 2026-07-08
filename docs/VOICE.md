@@ -502,6 +502,14 @@ paths preserve the selected audio profile and only replace `[voice.llm]` for
 the benchmark process. They do not promote the candidate, change the router's
 Fast preset, or make OpenClaw use the candidate outside this explicit run.
 
+For Fast-tier LLM bakeoffs, pair `voice benchmark` with
+`anvil-serving benchmark --bakeoff` against the same loaded endpoint and record
+the final `anvil-serving serves --manifest examples/fakoli-dark/serves.toml
+status` after restoring production Fast. Voice benchmark JSON is stage-latency
+evidence unless the STT hypothesis and WER prove semantic transcription quality
+for the prompt; do not treat first-audio timing alone as a model-promotion
+gate.
+
 Use `--profile dark-audio` only after Dark-host bridge ports are listening.
 Use `--profile mini-dark-audio-proxy` only after Mini-local proxy ports
 `127.0.0.1:30110` and `127.0.0.1:30111` are listening on Mini and forwarding

@@ -128,6 +128,42 @@ The evidence JSON includes identity, source recipe, timing, context targets, too
 score inputs, and a `failures` list. Failed sub-checks stay in the same artifact as successful
 checks so the final scoring pass can compare partial candidates without rerunning a loaded model.
 
+For the full Fast-tier bakeoff loop, pair that loaded-endpoint artifact with a
+voice benchmark artifact and an explicit restoration check:
+
+```bash
+anvil-serving voice benchmark \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile dark-audio \
+  --candidate-base-url http://127.0.0.1:39010/v1 \
+  --candidate-model qwen36-35b-a3b-nvfp4 \
+  --candidate qwen36-35b-a3b-vllm-nvfp4-32k \
+  --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.voice.json
+
+anvil-serving benchmark \
+  --bakeoff \
+  --base-url http://127.0.0.1:39010/v1 \
+  --model qwen36-35b-a3b-nvfp4 \
+  --candidate-id qwen36-35b-a3b \
+  --config-id vllm-nvfp4-32k \
+  --context-targets 32768 \
+  --suite chat,context,tool,session,intelligence,voice \
+  --voice-latency-ms 377.52 \
+  --stt-latency-ms 68.65 \
+  --tts-latency-ms 143.46 \
+  --source-recipe configs/serve-recipes.toml#nvidia-qwen36-35b-a3b-nvfp4 \
+  --serve-command "anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b" \
+  --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json
+
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml down fast-qwen36-35b-a3b
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml status
+```
+
+Treat the voice benchmark artifact as stage-latency evidence unless its STT
+hypothesis and WER prove semantic transcription quality for the test prompt.
+Promotion remains a separate human-gated router/profile decision.
+
 ## `anvil-serving eval` — one entry point for the evals
 
 ```bash
