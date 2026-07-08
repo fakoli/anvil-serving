@@ -61,7 +61,7 @@ DEFAULT_TRANSPORT_TIMEOUT_SECONDS = 120
 _REMOTE_RESTART_COMMAND = 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"'
 _DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
 DEFAULT_ANVIL_VOICE_REALTIME_URL = "ws://127.0.0.1:8765/v1/realtime"
-_DEFAULT_ANVIL_VOICE_MODEL = "fast-local"
+_DEFAULT_ANVIL_VOICE_MODEL = "chat-fast"
 _DEFAULT_ANVIL_VOICE_CONSULT_MODEL = ""
 _DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL = "off"
 _DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE = "lightweight"
@@ -311,6 +311,20 @@ def _openclaw_voice_consult_model(config, explicit=None):
     if explicit:
         return explicit
     return _anvil_preset_ref(config, ("chat-fast", "chat"), fallback="chat")
+
+
+def _openclaw_voice_model(config, explicit=None):
+    explicit = (explicit or "").strip()
+    if explicit:
+        return explicit
+    presets = getattr(config, "presets", {}) or {}
+    if "chat-fast" in presets:
+        return "chat-fast"
+    if "chat" in presets:
+        return "chat"
+    for preset_id in presets:
+        return str(preset_id)
+    return _DEFAULT_ANVIL_VOICE_MODEL
 
 
 def _anvil_preset_ref(config, preferred, *, fallback="chat", allow_first_fallback=True):
@@ -715,7 +729,7 @@ def cmd_restart_openclaw(gateway_host=None, gateway_user=None,
 def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
                           skills=False, skill_dir=None, voice=False,
                           voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
-                          voice_model=_DEFAULT_ANVIL_VOICE_MODEL,
+                          voice_model=None,
                           voice_consult_model=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
                           voice_consult_thinking_level=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
                           voice_consult_bootstrap_context_mode=(
@@ -732,7 +746,7 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
     if voice:
         voice_payload = render_openclaw_voice_config(
             realtime_url=voice_realtime_url,
-            model=voice_model,
+            model=_openclaw_voice_model(config, voice_model),
             consult_model=_openclaw_voice_consult_model(config, voice_consult_model),
             consult_thinking_level=voice_consult_thinking_level,
             consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
@@ -775,7 +789,7 @@ def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TO
 def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=False,
                       skill_dir=None, voice=False,
                       voice_realtime_url=DEFAULT_ANVIL_VOICE_REALTIME_URL,
-                      voice_model=_DEFAULT_ANVIL_VOICE_MODEL,
+                      voice_model=None,
                       voice_consult_model=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
                       voice_consult_thinking_level=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
                       voice_consult_bootstrap_context_mode=(
@@ -809,7 +823,7 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
         if voice:
             voice_payload = render_openclaw_voice_config(
                 realtime_url=voice_realtime_url,
-                model=voice_model,
+                model=_openclaw_voice_model(config, voice_model),
                 consult_model=_openclaw_voice_consult_model(config, voice_consult_model),
                 consult_thinking_level=voice_consult_thinking_level,
                 consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
@@ -929,8 +943,9 @@ def main(argv=None):
                    help="also render/apply OpenClaw Talk realtime config for the Anvil Voice provider.")
     p.add_argument("--voice-realtime-url", default=DEFAULT_ANVIL_VOICE_REALTIME_URL,
                    help="with --voice: Anvil Voice WebSocket URL (default: %(default)s).")
-    p.add_argument("--voice-model", default=_DEFAULT_ANVIL_VOICE_MODEL,
-                   help="with --voice: model sent to the Anvil Voice realtime session (default: %(default)s).")
+    p.add_argument("--voice-model",
+                   help="with --voice: model sent to the Anvil Voice realtime session "
+                        "(default: chat-fast when configured, else chat).")
     p.add_argument("--voice-consult-model", default=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
                    help="with --voice: OpenClaw model used for forced agent consults "
                         "(default: anvil/chat-fast when configured, else anvil/chat).")

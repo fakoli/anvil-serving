@@ -7,13 +7,14 @@
 # `anvil-serving serves` so the management experience stays consistent.
 #
 #   heavy  -> service `heavy`  (gpt-oss-120b, vLLM/MXFP4, :30002, RTX PRO 6000 96GB / GPU 1)
-#   fast   -> service `fast`   (Qwen3.6-27B-NVFP4, vLLM, :30003, RTX 5090 / GPU 0)
+#   fast   -> service `fast`   (Qwen3.6-35B-A3B-NVFP4, vLLM, :30003, RTX 5090 / GPU 0)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
-# 2026-07-04 flexibility-mode reconcile: heavy is now gpt-oss-120b @ reasoning_effort=high
-# (measured planning 0.92 — the promoted heavy tier) and fast is Qwen3.6-27B-NVFP4 (measured
-# 0.70). Both replaced the agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live in
-# git history. The convention also shifted: weights now resolve as HF REPO-IDS from the
+# 2026-07-08 fast-tier promotion: heavy remains gpt-oss-120b @ reasoning_effort=high
+# (measured planning 0.92 — the promoted heavy tier), and fast is Qwen3.6-35B-A3B-NVFP4
+# (the human-approved Fast recommendation from the 2026-07-08 bakeoff). These replaced the
+# agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live in git history. The
+# convention also shifted: weights now resolve as HF REPO-IDS from the
 # `vllm-hfcache` docker volume (the `anvil-serving models pull` path) — NOT `/models/<dir>`
 # bind paths from `fakoli-models`. A named volume is native ext4 inside WSL2 (~15s loads); a
 # C:/ bind rides 9P and turns a cold load into 20-90 min (CLAUDE.md gotcha #15).
@@ -71,7 +72,8 @@ services:
       --max-model-len 131072
       --host 0.0.0.0 --port 30002
 
-  # Fast tier: Qwen3.6-27B-NVFP4 on vLLM (RTX 5090 / GPU 0, :30003). Hybrid Gated-DeltaNet.
+  # Fast tier: Qwen3.6-35B-A3B-NVFP4 on vLLM (RTX 5090 / GPU 0, :30003).
+  # The container name is retained so the managed `fast` serve can be recreated in place.
   fast:
     image: vllm/vllm-openai:nightly
     container_name: vllm-qwen36
@@ -85,7 +87,7 @@ services:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       VLLM_USE_V2_MODEL_RUNNER: "0"
-      # Fixes the GDN illegal-instruction crash at ~13k prefill on sm_120 (make-or-break).
+      # Make-or-break on sm_120 for the NVFP4 kernels; plain 12.0 can select unsupported codegen.
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
       HF_TOKEN: ${HF_TOKEN:-}
@@ -98,11 +100,11 @@ services:
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # nvidia/*-NVFP4 is modelopt-packed -> --quantization modelopt_fp4 (gotcha #10). Qwen NVFP4
-    # needs the qwen3 reasoning/tool parsers + trust-remote-code. 32K ctx / max-num-seqs 4 keeps
-    # the KV+Mamba cache inside the 5090's 32GB (dodges the ~16GB hidden WSL2 allocator overhead).
+    # needs the qwen3 reasoning/tool parsers + trust-remote-code. The promoted 35B-A3B recipe
+    # keeps 32K ctx / max-num-seqs 2 inside the 5090's 32GB envelope.
     command: >
-      serve nvidia/Qwen3.6-27B-NVFP4
-      --served-model-name qwen36-27b
+      serve nvidia/Qwen3.6-35B-A3B-NVFP4
+      --served-model-name qwen36-35b-a3b-nvfp4
       --quantization modelopt_fp4
       --kv-cache-dtype fp8
       --reasoning-parser qwen3
@@ -110,18 +112,18 @@ services:
       --tool-call-parser qwen3_coder
       --trust-remote-code
       --max-model-len 32768
-      --max-num-seqs 4
+      --max-num-seqs 2
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 30003
 
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
-  # host.docker.internal:<port>. Pinned to the DEPLOYED RELEASE image anvil-serving:0.8.0
+  # host.docker.internal:<port>. Pinned to the DEPLOYED RELEASE image anvil-serving:0.10.0
   # (rebuilt from main — flexibility-mode + the v2 profile loader, which is backward-compatible
   # with the live v1 profile) and a config VOLUME (anvil-router-cfg). Pin the released TAG (not
   # `build:`) so `up` reproduces the deployment and `router promote --image` validates against it.
   # Bump this tag + router_manage.DEFAULT_IMAGE together on each router release.
   router:
-    image: anvil-serving:0.9.0
+    image: anvil-serving:0.10.0
     container_name: anvil-router
     restart: unless-stopped
     depends_on:
