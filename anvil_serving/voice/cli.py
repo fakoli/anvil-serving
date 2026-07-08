@@ -140,6 +140,11 @@ def _candidate_name(args) -> Optional[str]:
 
 def _load_benchmark_config(args):
     """Resolve benchmark config with profile/candidate overlays and preserve identity."""
+    return _load_resolved_config(args)
+
+
+def _load_resolved_config(args):
+    """Resolve a voice config with profile/candidate overlays and preserve identity."""
     try:
         candidate_overlay = _load_candidate_overlay(getattr(args, "candidate_overlay", None))
         return (
@@ -404,13 +409,15 @@ def _wait_forever_default() -> None:
 
 
 def cmd_run(args):
-    data, err = _load(args.config, getattr(args, "profile", None))
+    resolved, err = _load_resolved_config(args)
     if err:
         print("voice run: %s" % err, file=sys.stderr)
         return 2
+    assert resolved is not None
+    data = resolved.data
     voice = data.get("voice", {})
-    profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
-    print("voice run: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
+    summary = _identity_summary(resolved)
+    print("voice run: manifest OK -- %s -- %s" % (summary, voice_config.describe(data)))
 
     problem = _check_required_endpoints_reachable(voice)
     if problem:
@@ -655,6 +662,14 @@ def build_parser():
     sp = sub.add_parser("run", help="run the realtime server in the foreground")
     add_config(sp)
     add_profile(sp)
+    sp.add_argument(
+        "--candidate",
+        help="candidate label recorded in run logs; defaults to overlay file stem",
+    )
+    sp.add_argument(
+        "--candidate-overlay",
+        help="candidate TOML overlay applied after the selected profile for this run",
+    )
 
     sp = sub.add_parser("benchmark", help="replay a recorded session end-to-end and report latency")
     add_config(sp)

@@ -11,12 +11,15 @@
 # Use --profile to switch the active audio topology without copying this file:
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
 #
-# Candidate LLM profiles are opt-in A/B surfaces. They preserve the base Mini-local
-# STT/TTS path and require the matching fakoli-dark candidate serve to be running:
+# For live LLM A/B tests, keep the audio topology in --profile and compose the
+# candidate LLM with --candidate-overlay:
 #   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
-# For Mini cross-host validation, start that serve with VOICE_CANDIDATE_PUBLISH set
-# to fakoli-dark's tailnet/private address so the direct candidate endpoint is reachable.
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml
+# Static candidate-* profiles below are retained as LLM-only shortcuts for
+# Mini-local audio. Use --candidate-overlay when combining a candidate with
+# dark-audio or a Mini-local proxy to Dark.
 
 [voice]
 name = "anvil-voice-openclaw"
@@ -87,6 +90,23 @@ lifecycle = "external"
 
 [voice.profiles.dark-audio.tts]
 base_url = "http://100.87.34.66:30111/v1"
+model = "kokoro"
+timeout = 120.0
+lifecycle = "external"
+response_format = "pcm"
+source_sample_rate = 24000
+target_sample_rate = 16000
+
+[voice.profiles.mini-dark-audio-proxy.stt]
+base_url = "http://127.0.0.1:30110/v1"
+model = "tdt_ctc-110m"
+stream = false
+response_format = "json"
+timeout = 120.0
+lifecycle = "external"
+
+[voice.profiles.mini-dark-audio-proxy.tts]
+base_url = "http://127.0.0.1:30111/v1"
 model = "kokoro"
 timeout = 120.0
 lifecycle = "external"

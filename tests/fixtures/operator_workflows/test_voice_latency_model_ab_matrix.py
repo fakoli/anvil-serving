@@ -63,3 +63,15 @@ def test_voice_latency_matrix_has_measured_baseline_timing():
     assert baseline["errors"] == []
     assert baseline["stage_timings_ms"]["ttfa_ms"] > 0
     assert baseline["stage_timings_ms"]["llm_ms"] > 0
+
+
+def test_voice_latency_matrix_labels_non_gateway_loopback_failure():
+    matrix = _load_matrix()
+    negative = next(
+        a for a in matrix["artifacts"]
+        if a["artifact_id"] == "baseline-non-gateway-negative-control"
+    )
+    messages = " ".join(error["message"] for error in negative["errors"])
+    assert "gateway-local" in messages
+    assert "topology negative control" in messages
+    assert "Windows-side" not in json.dumps(matrix)

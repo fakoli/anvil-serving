@@ -350,9 +350,11 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    tailnet. Additional laptops can use the same manifest shape with device
    names, `base_url` values, and lifecycle fields changed for the new topology.
    For OpenClaw Talk, `examples/voice/openclaw-anvil-voice.toml` declares
-   `mini-audio`, `dark-audio`, `mini-validation`, and opt-in
-   `candidate-*` LLM profiles so the switch is made with `--profile`, not by
-   editing files or running a separate proxy script.
+   `mini-audio`, `dark-audio`, `mini-dark-audio-proxy`, `mini-validation`,
+   and opt-in `candidate-*` LLM profiles. Use `--profile` for the audio
+   topology. Use `--candidate-overlay` for live LLM A/B so a candidate model
+   can be tested against Mini-local audio, Dark-direct bridge ports, or a
+   Mini-local proxy without copying manifests.
 
    ```bash
    anvil-serving voice profiles --config examples/voice/openclaw-anvil-voice.toml
@@ -429,7 +431,10 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    firewall or tailnet ACL scoping is proven.
 
    On Fakoli Mini, select that topology in the Realtime and benchmark commands
-   by using `--profile dark-audio` instead of `--profile mini-audio`.
+   by using `--profile dark-audio` instead of `--profile mini-audio`. If the
+   operator runs a proxy on Mini that forwards local ports `30110` and `30111`
+   to Dark audio, use `--profile mini-dark-audio-proxy`; first verify those
+   Mini-local proxy ports are listening.
 
    For LLM latency A/B runs, first start the matching Dark candidate serve
    through the managed surface:
@@ -440,10 +445,19 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
 
    Leave `VOICE_CANDIDATE_PUBLISH` unset for same-host benchmark runs; set it to
    the Dark host's private/tailnet address only when Mini must reach a direct
-   candidate endpoint.
+   candidate endpoint. Prefer candidate overlay files for live runs:
+
+   ```bash
+   anvil-serving voice run \
+     --config examples/voice/openclaw-anvil-voice.toml \
+     --profile mini-audio \
+     --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
+     --candidate qwen3-32b-nvfp4
+   ```
 
 5. Start the Realtime server in the foreground. Use `mini-audio` for Mini-local
-   STT/TTS, or `dark-audio` after the bridge above is listening.
+   STT/TTS, `dark-audio` after the Dark-host bridge above is listening, or
+   `mini-dark-audio-proxy` after a Mini-local proxy to Dark is listening.
 
    ```bash
    anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
@@ -482,6 +496,17 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
 
    ```bash
    anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+   ```
+
+   For a candidate LLM measurement, keep the audio topology in `--profile` and
+   add the overlay:
+
+   ```bash
+   anvil-serving voice benchmark \
+     --config examples/voice/openclaw-anvil-voice.toml \
+     --profile mini-audio \
+     --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
+     --candidate qwen3-32b-nvfp4
    ```
 
    For Mini acceptance evidence:

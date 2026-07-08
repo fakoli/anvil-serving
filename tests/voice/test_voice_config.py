@@ -82,6 +82,7 @@ def test_openclaw_voice_manifest_profiles_are_valid():
         "candidate-qwen3-32b",
         "dark-audio",
         "mini-audio",
+        "mini-dark-audio-proxy",
         "mini-validation",
     ]
 
@@ -104,6 +105,16 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert "start_command" not in dark["voice"]["stt"]
     assert "pid_file" not in dark["voice"]["tts"]
 
+    proxy = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="mini-dark-audio-proxy",
+    )
+    assert proxy["voice"]["stt"]["base_url"] == "http://127.0.0.1:30110/v1"
+    assert proxy["voice"]["tts"]["base_url"] == "http://127.0.0.1:30111/v1"
+    assert proxy["voice"]["stt"]["lifecycle"] == "external"
+    assert "start_command" not in proxy["voice"]["stt"]
+    assert "pid_file" not in proxy["voice"]["tts"]
+
     validation = voice_config.load_manifest(
         "examples/voice/openclaw-anvil-voice.toml",
         profile="mini-validation",
@@ -123,6 +134,20 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert candidate["voice"]["llm"]["expected_route_model"] == "qwen3-32b-nvfp4"
     assert candidate["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
     assert candidate["voice"]["tts"]["base_url"] == "http://127.0.0.1:30011/v1"
+
+    composed = voice_config.resolve_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="dark-audio",
+        candidate_overlay=voice_config.load_raw_manifest(
+            "examples/voice/candidates/qwen3-32b-nvfp4.toml"
+        ),
+        candidate="qwen3-32b-nvfp4",
+    )
+    assert composed.profile == "dark-audio"
+    assert composed.candidate == "qwen3-32b-nvfp4"
+    assert composed.llm_base_url == "http://100.87.34.66:39000/v1"
+    assert composed.stt_base_url == "http://100.87.34.66:30110/v1"
+    assert composed.tts_base_url == "http://100.87.34.66:30111/v1"
 
 
 def test_resolve_manifest_data_returns_profile_identity():

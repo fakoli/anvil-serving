@@ -170,6 +170,88 @@ lifecycle = "external"
     }
 
 
+def test_run_resolves_profile_candidate_overlay(tmp_path, monkeypatch, capsys):
+    manifest = tmp_path / "voice_profiles.toml"
+    manifest.write_text(
+        VALID_MANIFEST
+        + """
+
+[voice.profiles.dark-audio.stt]
+base_url = "http://100.87.34.66:30110/v1"
+model = "tdt_ctc-110m"
+lifecycle = "external"
+
+[voice.profiles.dark-audio.tts]
+base_url = "http://100.87.34.66:30111/v1"
+model = "kokoro"
+lifecycle = "external"
+""",
+        encoding="utf-8",
+    )
+    overlay = tmp_path / "qwen3-32b.toml"
+    overlay.write_text(
+        """
+[voice.llm]
+base_url = "http://100.87.34.66:39000/v1"
+model = "qwen3-32b-nvfp4"
+api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
+""".strip(),
+        encoding="utf-8",
+    )
+    seen = {}
+
+    class _FakeServer:
+        server_address = ("127.0.0.1", 8765)
+
+        def shutdown(self):
+            pass
+
+        def server_close(self):
+            pass
+
+    class _FakeThread:
+        def join(self, timeout=None):
+            pass
+
+    class _FakePool:
+        size = 1
+
+    def _fake_build(data, voice):
+        seen["llm"] = voice["llm"]["base_url"]
+        seen["llm_model"] = voice["llm"]["model"]
+        seen["stt"] = voice["stt"]["base_url"]
+        seen["tts"] = voice["tts"]["base_url"]
+        return _FakeServer(), _FakePool()
+
+    monkeypatch.setenv("ANVIL_CANDIDATE_LLM_TOKEN", "test-token")
+    monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
+    monkeypatch.setattr(voice_cli, "_build_realtime_server", _fake_build)
+    monkeypatch.setattr(voice_cli, "serve_forever_in_background", lambda server: _FakeThread())
+    monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
+
+    rc = voice_cli.main([
+        "run",
+        "--config",
+        str(manifest),
+        "--profile",
+        "dark-audio",
+        "--candidate-overlay",
+        str(overlay),
+    ])
+
+    assert rc == 0
+    assert seen == {
+        "llm": "http://100.87.34.66:39000/v1",
+        "llm_model": "qwen3-32b-nvfp4",
+        "stt": "http://100.87.34.66:30110/v1",
+        "tts": "http://100.87.34.66:30111/v1",
+    }
+    out = capsys.readouterr().out
+    assert "profile=dark-audio" in out
+    assert "candidate=qwen3-32b" in out
+    assert "llm_model=qwen3-32b-nvfp4" in out
+
+
 def test_bridge_dry_run_prints_default_routes(capsys):
     rc = voice_cli.main(["bridge", "--dry-run"])
 
@@ -732,6 +814,16 @@ def test_cmd_benchmark_help_lists_profile_candidate_overlay_and_evidence_options
     assert "--profile" in out
     assert "--candidate-overlay" in out
     assert "--evidence-out" in out
+
+
+def test_cmd_run_help_lists_profile_candidate_overlay_options(capsys):
+    with pytest.raises(SystemExit) as exc:
+        voice_cli.main(["run", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "--profile" in out
+    assert "--candidate" in out
+    assert "--candidate-overlay" in out
 
 
 # --------------------------------------------------------------------------- #

@@ -8,7 +8,7 @@
     "repo": "anvil-serving",
     "branch": "agent/voice-latency-model-ab-t005-run-candidate-benchmark-matrix-and-captu",
     "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
-    "notes": "Revision used for bounded Windows-side profile probes before this report fixture was committed."
+    "notes": "Revision used for bounded non-gateway profile probes before this report fixture was committed. T006 corrected the interpretation: loopback audio endpoints are gateway-local to Fakoli Mini."
   },
   "prompt_sets": [
     {
@@ -70,7 +70,7 @@
       "evidence_source": "docs/findings/2026-07-07-voice-latency-baseline.md#evidence-rerun"
     },
     {
-      "artifact_id": "baseline-mini-windows-negative-control",
+      "artifact_id": "baseline-non-gateway-negative-control",
       "status": "failed_unavailable",
       "profile": "mini-audio",
       "candidate_identity": {
@@ -113,7 +113,7 @@
         {
           "stage": "stt",
           "kind": "connection_refused",
-          "message": "Windows-side probe could not reach Mini-local STT at http://127.0.0.1:30010/v1/audio/transcriptions; WinError 10061."
+          "message": "Non-gateway probe could not reach Mini-local STT at http://127.0.0.1:30010/v1/audio/transcriptions because that loopback is gateway-local to Fakoli Mini; this is a topology negative control."
         }
       ],
       "evidence_source": "required T005 verification command output"
@@ -162,7 +162,7 @@
         {
           "stage": "stt",
           "kind": "connection_refused",
-          "message": "The candidate profile resolved correctly, but this checkout could not reach Mini-local STT before the direct candidate LLM endpoint was used."
+          "message": "The LLM-only candidate profile resolved correctly, but this non-gateway checkout could not reach the inherited Mini-local STT path before the direct candidate LLM endpoint was used."
         }
       ],
       "evidence_source": "bounded candidate profile probe"
@@ -211,7 +211,7 @@
         {
           "stage": "stt",
           "kind": "connection_refused",
-          "message": "The Gemma 4 12B profile resolved correctly, but this checkout could not reach Mini-local STT before the direct candidate LLM endpoint was used."
+          "message": "The Gemma 4 12B LLM-only profile resolved correctly, but this non-gateway checkout could not reach the inherited Mini-local STT path before the direct candidate LLM endpoint was used."
         }
       ],
       "evidence_source": "bounded candidate profile probe"
@@ -260,7 +260,7 @@
         {
           "stage": "stt",
           "kind": "connection_refused",
-          "message": "The Gemma 4 E4B profile resolved correctly, but this checkout could not reach Mini-local STT before the direct candidate LLM endpoint was used."
+          "message": "The Gemma 4 E4B LLM-only profile resolved correctly, but this non-gateway checkout could not reach the inherited Mini-local STT path before the direct candidate LLM endpoint was used."
         }
       ],
       "evidence_source": "bounded candidate profile probe"
@@ -310,7 +310,7 @@
         {
           "stage": "setup",
           "kind": "endpoint_unavailable",
-          "message": "Tool-relevant turn was retained in the benchmark matrix, but the current checkout could not reach Mini-local STT; live tool validation remains blocked until T006 runs on the correct host topology."
+          "message": "Tool-relevant turn was retained in the benchmark matrix, but the non-gateway checkout could not reach the Mini-local STT loopback; live tool validation remains blocked until T006 runs on the gateway topology or a verified Dark audio bridge/proxy."
         }
       ],
       "evidence_source": "matrix turn-shape requirement"
@@ -326,6 +326,6 @@
     "failed_candidates_retained": true,
     "tool_relevant_turn_included": true,
     "promotion_recommendation": "do_not_promote",
-    "next_gate": "Run T006 live OpenClaw Talk validation from the Mini topology after Mini-local STT/TTS and the selected Dark candidate serve are reachable."
+    "next_gate": "Run T006 live OpenClaw Talk validation from Fakoli Mini. Use Mini-local audio from Mini, or select dark-audio / mini-dark-audio-proxy only after the matching Dark bridge or Mini proxy is reachable; compose LLM candidates with --candidate-overlay."
   }
 }
