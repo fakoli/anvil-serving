@@ -16,6 +16,8 @@ import pytest
 
 from anvil_serving.voice.benchmark import (
     DEFAULT_REFERENCE_TEXT,
+    EVIDENCE_SCHEMA_VERSION,
+    build_evidence_record,
     run_benchmark,
     run_benchmark_from_manifest,
     synth_sample_pcm,
@@ -110,6 +112,9 @@ def test_run_benchmark_computes_all_four_metrics():
     assert result["tts_output_bytes"] == 16
     assert result["stt_hypothesis"] == "hello world"
     assert result["llm_reply"] == "reply"
+    assert result["evidence"]["schema_version"] == EVIDENCE_SCHEMA_VERSION
+    assert result["evidence"]["identity"]["llm"]["model"] == "chat-fast"
+    assert result["evidence"]["runs"][0]["latency"]["ttfa_ms"] == 1200.0
 
 
 def test_run_benchmark_ttfa_never_exceeds_turn_latency():
@@ -311,6 +316,9 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
                 "model": "chat-fast",
                 "stream": True,
                 "timeout": 33.0,
+                "expected_route_provider": "fast-local",
+                "expected_route_model": "qwen36-27b",
+                "expected_route_tier": "local",
             },
             "tts": {
                 "base_url": "http://127.0.0.1:8091/v1",
@@ -339,6 +347,8 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
 
     result = run_benchmark_from_manifest(
         data, pcm=b"\x00\x00", sample_rate=16000, reference_text="hi",
+        profile="mini-audio",
+        candidate="qwen36-baseline",
         stt_stream_fn=fake_stt, llm_stream_fn=fake_llm, tts_stream_fn=fake_tts,
     )
 
@@ -356,6 +366,16 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
     assert seen["tts_config"].chunk_bytes == 2048
     assert seen["tts_config"].timeout == 44.0
     assert result["stt_hypothesis"] == "hi"
+    identity = result["evidence"]["identity"]
+    assert identity["profile"] == "mini-audio"
+    assert identity["candidate"] == "qwen36-baseline"
+    assert identity["llm"]["base_url"] == "http://127.0.0.1:8000/v1"
+    assert identity["llm"]["model"] == "chat-fast"
+    assert identity["stt"]["model"] == "parakeet"
+    assert identity["tts"]["model"] == "kokoro-82m"
+    assert identity["route"]["provider"] == "fast-local"
+    assert identity["route"]["model"] == "qwen36-27b"
+    assert identity["route"]["tier"] == "local"
 
 
 def test_run_benchmark_from_manifest_generates_sample_pcm_when_none_given():
@@ -387,6 +407,108 @@ def test_to_json_round_trips():
     result = {"ttfa_ms": 12.3, "turn_latency_ms": 45.6, "stt_wer": 0.1, "tts_rtf": 0.5}
     parsed = json.loads(to_json(result))
     assert parsed == result
+
+
+def test_build_evidence_record_has_stable_json_schema_fields():
+    result = {
+        "ttfa_ms": 12.3,
+        "turn_latency_ms": 45.6,
+        "stt_ms": 1.2,
+        "llm_ms": 3.4,
+        "tts_ms": 5.6,
+        "stt_wer": 0.0,
+        "tts_rtf": 0.25,
+        "tts_first_audio_observed": True,
+        "tts_output_bytes": 32000,
+        "tts_audio_seconds": 1.0,
+        "tts_source_sample_rate": 16000,
+        "tts_request_count": 1,
+        "stt_hypothesis": "hello",
+        "llm_reply": "hi",
+        "reference_text": "hello",
+    }
+
+    evidence = build_evidence_record(
+        result,
+        stt_config=STTStageConfig(
+            base_url="http://127.0.0.1:30010/v1",
+            model="parakeet",
+        ),
+        llm_config=LLMStageConfig(
+            base_url="http://127.0.0.1:8000/v1",
+            model="fast-local",
+        ),
+        tts_config=TTSStageConfig(
+            base_url="http://127.0.0.1:30011/v1",
+            model="kokoro",
+        ),
+        profile="mini-audio",
+        candidate="baseline",
+        route_identity={
+            "endpoint_host": "100.87.34.66",
+            "provider": "fast-local",
+            "model": "qwen36-27b",
+            "tier": "local",
+            "work_class": "chat-fast",
+        },
+    )
+
+    assert evidence["schema_version"] == EVIDENCE_SCHEMA_VERSION
+    assert evidence["identity"] == {
+        "profile": "mini-audio",
+        "candidate": "baseline",
+        "llm": {
+            "base_url": "http://127.0.0.1:8000/v1",
+            "model": "fast-local",
+        },
+        "stt": {
+            "base_url": "http://127.0.0.1:30010/v1",
+            "model": "parakeet",
+        },
+        "tts": {
+            "base_url": "http://127.0.0.1:30011/v1",
+            "model": "kokoro",
+        },
+        "route": {
+            "endpoint_host": "100.87.34.66",
+            "provider": "fast-local",
+            "model": "qwen36-27b",
+            "tier": "local",
+            "work_class": "chat-fast",
+        },
+    }
+    assert evidence["runs"] == [
+        {
+            "id": "run-001",
+            "latency": {
+                "ttfa_ms": 12.3,
+                "turn_latency_ms": 45.6,
+                "stt_ms": 1.2,
+                "llm_ms": 3.4,
+                "tts_ms": 5.6,
+            },
+            "comparison": {
+                "stt_wer": 0.0,
+                "tts_rtf": 0.25,
+                "tts_first_audio_observed": True,
+            },
+            "tts": {
+                "output_bytes": 32000,
+                "audio_seconds": 1.0,
+                "source_sample_rate": 16000,
+                "request_count": 1,
+            },
+            "transcript": {
+                "stt_hypothesis": "hello",
+                "llm_reply": "hi",
+                "reference_text": "hello",
+            },
+        }
+    ]
+
+    encoded = json.dumps(evidence, sort_keys=True)
+    assert json.loads(encoded) == evidence
+    assert to_json({"evidence": evidence}) == to_json(json.loads(to_json({"evidence": evidence})))
 
 
 # --------------------------------------------------------------------------- #

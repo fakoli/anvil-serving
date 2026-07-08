@@ -45,6 +45,7 @@ from .stages.stt import STTStageConfig, transcribe_stream
 from .stages.tts import TTSStageConfig, stream_speech
 
 DEFAULT_REFERENCE_TEXT = "the quick brown fox jumps over the lazy dog"
+EVIDENCE_SCHEMA_VERSION = "voice-benchmark-evidence/v1"
 MAX_TTS_TEXT_CHARS = 48
 
 StreamFn = Callable[..., Iterator[Any]]
@@ -144,6 +145,117 @@ def _llm_reply_and_tts_chunks(
     return reply_text, tts_texts
 
 
+def _json_scalar(value: Any) -> Any:
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _route_identity_from_manifest(data: Mapping[str, Any]) -> Dict[str, Any]:
+    voice = data.get("voice", {}) if isinstance(data, Mapping) else {}
+    llm = voice.get("llm", {}) if isinstance(voice, Mapping) else {}
+    return {
+        "endpoint_host": _json_scalar(llm.get("expected_endpoint_host")),
+        "provider": _json_scalar(llm.get("expected_route_provider")),
+        "model": _json_scalar(llm.get("expected_route_model")),
+        "tier": _json_scalar(llm.get("expected_route_tier")),
+        "work_class": _json_scalar(llm.get("expected_route_work_class")),
+    }
+
+
+def _evidence_identity(
+    *,
+    stt_config: STTStageConfig,
+    llm_config: LLMStageConfig,
+    tts_config: TTSStageConfig,
+    profile: Optional[str],
+    candidate: Optional[str],
+    route_identity: Optional[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    route = {
+        "endpoint_host": None,
+        "provider": None,
+        "model": None,
+        "tier": None,
+        "work_class": None,
+    }
+    if route_identity:
+        for key in route:
+            route[key] = _json_scalar(route_identity.get(key))
+    return {
+        "profile": profile,
+        "candidate": candidate,
+        "llm": {
+            "base_url": llm_config.base_url,
+            "model": llm_config.model,
+        },
+        "stt": {
+            "base_url": stt_config.base_url,
+            "model": stt_config.model,
+        },
+        "tts": {
+            "base_url": tts_config.base_url,
+            "model": tts_config.model,
+        },
+        "route": route,
+    }
+
+
+def _evidence_run(result: Mapping[str, Any], *, run_id: str) -> Dict[str, Any]:
+    return {
+        "id": run_id,
+        "latency": {
+            "ttfa_ms": result.get("ttfa_ms"),
+            "turn_latency_ms": result.get("turn_latency_ms"),
+            "stt_ms": result.get("stt_ms"),
+            "llm_ms": result.get("llm_ms"),
+            "tts_ms": result.get("tts_ms"),
+        },
+        "comparison": {
+            "stt_wer": result.get("stt_wer"),
+            "tts_rtf": result.get("tts_rtf"),
+            "tts_first_audio_observed": result.get("tts_first_audio_observed"),
+        },
+        "tts": {
+            "output_bytes": result.get("tts_output_bytes"),
+            "audio_seconds": result.get("tts_audio_seconds"),
+            "source_sample_rate": result.get("tts_source_sample_rate"),
+            "request_count": result.get("tts_request_count"),
+        },
+        "transcript": {
+            "stt_hypothesis": result.get("stt_hypothesis"),
+            "llm_reply": result.get("llm_reply"),
+            "reference_text": result.get("reference_text"),
+        },
+    }
+
+
+def build_evidence_record(
+    result: Mapping[str, Any],
+    *,
+    stt_config: STTStageConfig,
+    llm_config: LLMStageConfig,
+    tts_config: TTSStageConfig,
+    profile: Optional[str] = None,
+    candidate: Optional[str] = None,
+    route_identity: Optional[Mapping[str, Any]] = None,
+    run_id: str = "run-001",
+) -> Dict[str, Any]:
+    """Return the stable JSON evidence envelope for one voice benchmark run."""
+    return {
+        "schema_version": EVIDENCE_SCHEMA_VERSION,
+        "identity": _evidence_identity(
+            stt_config=stt_config,
+            llm_config=llm_config,
+            tts_config=tts_config,
+            profile=profile,
+            candidate=candidate,
+            route_identity=route_identity,
+        ),
+        "runs": [_evidence_run(result, run_id=run_id)],
+    }
+
+
 def run_benchmark(
     *,
     stt_config: STTStageConfig,
@@ -159,6 +271,9 @@ def run_benchmark(
     llm_stream_fn: Optional[StreamFn] = None,
     tts_stream_fn: Optional[StreamFn] = None,
     clock: Callable[[], float] = time.perf_counter,
+    profile: Optional[str] = None,
+    candidate: Optional[str] = None,
+    route_identity: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Replay one turn through STT -> LLM -> TTS, returning the four metrics
     (plus the intermediate hypothesis/reply text, useful for debugging a run).
@@ -218,7 +333,7 @@ def run_benchmark(
     reference = DEFAULT_REFERENCE_TEXT if reference_text is None else reference_text
     stt_wer = word_error_rate(reference, hypothesis) if reference else None
 
-    return {
+    result: Dict[str, Any] = {
         "ttfa_ms": round(ttfa_ms, 2),
         "turn_latency_ms": round(turn_latency_ms, 2),
         "stt_ms": round(stt_ms, 2),
@@ -235,6 +350,16 @@ def run_benchmark(
         "llm_reply": reply_text,
         "reference_text": reference,
     }
+    result["evidence"] = build_evidence_record(
+        result,
+        stt_config=stt_config,
+        llm_config=llm_config,
+        tts_config=tts_config,
+        profile=profile,
+        candidate=candidate,
+        route_identity=route_identity,
+    )
+    return result
 
 
 def _stage_config_from_table(table: Mapping[str, Any], cls) -> Any:
@@ -250,6 +375,8 @@ def _stage_config_from_table(table: Mapping[str, Any], cls) -> Any:
 def run_benchmark_from_manifest(
     data: Mapping[str, Any],
     *,
+    profile: Optional[str] = None,
+    candidate: Optional[str] = None,
     pcm: Optional[bytes] = None,
     sample_rate: int = 16000,
     reference_text: Optional[str] = None,
@@ -274,14 +401,16 @@ def run_benchmark_from_manifest(
     llm_config = _stage_config_from_table(voice.get("llm", {}), LLMStageConfig)
     tts_config = _stage_config_from_table(voice.get("tts", {}), TTSStageConfig)
     sample = pcm if pcm is not None else synth_sample_pcm(sample_rate=sample_rate)
+    route_identity = _route_identity_from_manifest(data)
     return run_benchmark(
         stt_config=stt_config, llm_config=llm_config, tts_config=tts_config,
         pcm=sample, sample_rate=sample_rate, reference_text=reference_text,
         stt_transport=stt_transport, llm_transport=llm_transport, tts_transport=tts_transport,
         stt_stream_fn=stt_stream_fn, llm_stream_fn=llm_stream_fn, tts_stream_fn=tts_stream_fn,
+        profile=profile, candidate=candidate, route_identity=route_identity,
     )
 
 
 def to_json(result: Mapping[str, Any]) -> str:
     """Render a benchmark result as pretty-printed JSON (what the CLI prints)."""
-    return json.dumps(dict(result), indent=2)
+    return json.dumps(dict(result), indent=2, sort_keys=True)
