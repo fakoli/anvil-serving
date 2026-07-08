@@ -19,6 +19,7 @@ from anvil_serving.voice.cancel_scope import CancelScope
 from anvil_serving.voice.messages import EndOfResponse, GenerateRequest, LLMChunk, LLMToolCall
 from anvil_serving.voice.stages.llm import (
     LLMStage,
+    LLMClientError,
     LLMStageConfig,
     LLMStreamToolCalls,
     SentenceBatcher,
@@ -230,6 +231,36 @@ def test_stream_chat_completion_events_surfaces_final_tool_calls():
             }
         ])
     ]
+
+
+def test_stream_chat_completion_retries_mistral_unsupported_thinking_knobs():
+    payload = _sse(_chunk("Hello.", "stop"))
+    calls = []
+
+    def transport(url, *, data, headers, timeout):
+        calls.append(json.loads(data))
+        if len(calls) == 1:
+            raise LLMClientError(
+                "HTTP Error 400: chat_template is not supported for Mistral tokenizers."
+            )
+        if len(calls) == 2:
+            raise LLMClientError(
+                "HTTP Error 400: reasoning_effort=low is not supported by Mistral models."
+            )
+        return FakeResponse(payload)
+
+    events = list(stream_chat_completion_events(
+        [{"role": "user", "content": "hi"}],
+        LLMStageConfig(base_url="http://127.0.0.1:8000/v1"),
+        transport=transport,
+    ))
+
+    assert [event.text for event in events] == ["Hello."]
+    assert calls[0]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "chat_template_kwargs" not in calls[1]
+    assert calls[1]["reasoning_effort"] == "low"
+    assert "chat_template_kwargs" not in calls[2]
+    assert calls[2]["reasoning_effort"] == "none"
 
 
 def test_stream_chat_completion_never_responses_api():

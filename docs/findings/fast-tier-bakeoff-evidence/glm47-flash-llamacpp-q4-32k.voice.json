@@ -1,0 +1,84 @@
+{
+  "identity": {
+    "candidate": "glm47-flash-llamacpp-q4",
+    "llm": {
+      "base_url": "http://127.0.0.1:39013/v1",
+      "model": "glm-4.7-flash-gguf"
+    },
+    "profile": "dark-audio",
+    "route": {
+      "endpoint_host": "100.87.34.66",
+      "model": "qwen36-27b",
+      "provider": "fast-local",
+      "tier": "local",
+      "work_class": null
+    },
+    "stt": {
+      "base_url": "http://100.87.34.66:30110/v1",
+      "model": "tdt_ctc-110m"
+    },
+    "tts": {
+      "base_url": "http://100.87.34.66:30111/v1",
+      "model": "kokoro"
+    }
+  },
+  "runs": [
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.2872
+      },
+      "id": "run-001",
+      "latency": {
+        "llm_ms": 961.49,
+        "llm_stage_latency_ms": 961.49,
+        "stt_ms": 210.69,
+        "total_turn_latency_ms": 2376.21,
+        "ttfa_ms": 2150.18,
+        "tts_ms": 1204.03,
+        "turn_latency_ms": 2376.21
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Understood. I am ready to assist. What can I help you with?",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 4.1919,
+        "output_bytes": 201210,
+        "request_count": 3,
+        "source_sample_rate": 24000
+      }
+    }
+  ],
+  "schema_version": "voice-benchmark-evidence/v1",
+  "topology": {
+    "endpoints": {
+      "llm_base_url": "http://127.0.0.1:39013/v1",
+      "stt_base_url": "http://100.87.34.66:30110/v1",
+      "tts_base_url": "http://100.87.34.66:30111/v1"
+    },
+    "mini_model_free_assertion": {
+      "checked": true,
+      "method": "profile_and_endpoint_config",
+      "mini_hosts_models": false,
+      "mini_local_audio_profile": false,
+      "mini_local_model_endpoint_stages": [],
+      "passed": true,
+      "reference_model_free_profiles": [
+        "dark-audio",
+        "mini-dark-audio-proxy"
+      ],
+      "reference_test": true
+    },
+    "mode": "reference-model-free",
+    "profile": "dark-audio"
+  }
+}

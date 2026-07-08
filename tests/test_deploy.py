@@ -98,6 +98,7 @@ def test_deploy_render_serve_entry_matches_compose_fields():
     assert 'container = "sglang"' in entry
     assert 'port = 30000' in entry
     assert 'model = "qwen35-awq-local"' in entry
+    assert 'engine = "sglang"' in entry
 
 
 def test_deploy_append_serve_entry_creates_manifest(tmp_path):
@@ -111,6 +112,7 @@ def test_deploy_append_serve_entry_creates_manifest(tmp_path):
     assert parsed[0]["container"] == "sglang"
     assert parsed[0]["port"] == 30000
     assert parsed[0]["model"] == "qwen35-awq-local"
+    assert parsed[0]["engine"] == "sglang"
 
 
 def test_deploy_append_serve_entry_appends_to_existing(tmp_path):
@@ -150,7 +152,8 @@ def test_deploy_cli_emits_manifest_and_tier_stub(tmp_path, monkeypatch, capsys):
     assert len(parsed) == 1
     assert parsed[0] == {
         "name": "heavy-local", "container": "sglang", "port": 30000,
-        "model": "qwen35-awq-local", "health": "/health",
+        "model": "qwen35-awq-local", "served_name": "qwen35-awq-local",
+        "engine": "sglang", "health": "/health",
         "up": ["docker", "compose", "-f", str(out_path).replace("\\", "/"), "up", "-d", "sglang"],
     }
     out = capsys.readouterr().out
@@ -232,6 +235,7 @@ def test_deploy_cli_engine_vllm_end_to_end(tmp_path, monkeypatch):
                 "--manifest-out", str(manifest_path)])
     parsed = deploy._serves.load_manifest(str(manifest_path))
     assert parsed[0]["container"] == "vllm-gpt-oss-20b"
+    assert parsed[0]["engine"] == "vllm"
     assert parsed[0]["up"][-1] == "vllm"  # `up -d vllm` (the compose SERVICE key)
 
 

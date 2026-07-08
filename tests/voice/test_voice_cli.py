@@ -786,6 +786,63 @@ model = "gemma-3n-e4b-it"
     assert "evidence written" in out
 
 
+def test_cmd_benchmark_targets_loaded_candidate_without_mutating_manifest(
+    manifest_path, monkeypatch, capsys
+):
+    original_manifest = open(manifest_path, encoding="utf-8").read()
+    seen = {}
+
+    def fake_run(data, **kwargs):
+        seen["data"] = data
+        seen["kwargs"] = kwargs
+        return {
+            "ttfa_ms": 1.0,
+            "evidence": {
+                "schema_version": "voice-benchmark-evidence/v1",
+                "identity": kwargs,
+                "runs": [],
+            },
+        }
+
+    monkeypatch.setattr(voice_cli.voice_benchmark, "run_benchmark_from_manifest", fake_run)
+
+    rc = voice_cli.main([
+        "benchmark",
+        "--config",
+        manifest_path,
+        "--candidate-base-url",
+        "http://100.87.34.66:39012/v1",
+        "--candidate-model",
+        "glm-4.7-flash",
+    ])
+
+    assert rc == 0
+    assert seen["kwargs"] == {"profile": None, "candidate": "glm-4.7-flash"}
+    assert seen["data"]["voice"]["llm"]["base_url"] == "http://100.87.34.66:39012/v1"
+    assert seen["data"]["voice"]["llm"]["model"] == "glm-4.7-flash"
+    assert open(manifest_path, encoding="utf-8").read() == original_manifest
+    production = voice_cli.voice_config.load_manifest(manifest_path)
+    assert production["voice"]["llm"]["base_url"] == "http://127.0.0.1:8000/v1"
+    assert production["voice"]["llm"]["model"] == "chat"
+    out = capsys.readouterr().out
+    assert "candidate=glm-4.7-flash" in out
+    assert "llm_base_url=http://100.87.34.66:39012/v1" in out
+
+
+def test_cmd_benchmark_rejects_partial_loaded_candidate_options(manifest_path, capsys):
+    rc = voice_cli.main([
+        "benchmark",
+        "--config",
+        manifest_path,
+        "--candidate-base-url",
+        "http://100.87.34.66:39012/v1",
+    ])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "--candidate-base-url and --candidate-model" in err
+
+
 def test_cmd_benchmark_missing_endpoint_error_includes_active_config(
     manifest_path, monkeypatch, capsys
 ):
@@ -813,6 +870,9 @@ def test_cmd_benchmark_help_lists_profile_candidate_overlay_and_evidence_options
     out = capsys.readouterr().out
     assert "--profile" in out
     assert "--candidate-overlay" in out
+    assert "--candidate-base-url" in out
+    assert "--candidate-model" in out
+    assert "--candidate-api-key-env" in out
     assert "--evidence-out" in out
 
 

@@ -24,7 +24,7 @@ from anvil_serving.voice.benchmark import (
     to_json,
     word_error_rate,
 )
-from anvil_serving.voice.stages.llm import LLMStageConfig
+from anvil_serving.voice.stages.llm import LLMStageConfig, LLMStreamToolCalls
 from anvil_serving.voice.stages.stt import STTStageConfig
 from anvil_serving.voice.stages.tts import TTSStageConfig
 
@@ -103,8 +103,11 @@ def test_run_benchmark_computes_all_four_metrics():
 
     assert result["ttfa_ms"] == 1200.0
     assert result["turn_latency_ms"] == 1500.0
+    assert result["total_turn_latency_ms"] == 1500.0
     assert result["stt_ms"] == 400.0
     assert result["llm_ms"] == 600.0
+    assert result["llm_stage_latency_ms"] == 600.0
+    assert result["llm_stage_latency_ms"] != result["total_turn_latency_ms"]
     assert result["tts_ms"] == 500.0
     assert result["stt_wer"] == 0.0  # hypothesis matches reference exactly
     assert result["tts_rtf"] == pytest.approx(1000.0)
@@ -115,6 +118,72 @@ def test_run_benchmark_computes_all_four_metrics():
     assert result["evidence"]["schema_version"] == EVIDENCE_SCHEMA_VERSION
     assert result["evidence"]["identity"]["llm"]["model"] == "chat-fast"
     assert result["evidence"]["runs"][0]["latency"]["ttfa_ms"] == 1200.0
+    assert result["evidence"]["runs"][0]["latency"]["total_turn_latency_ms"] == 1500.0
+    assert result["evidence"]["runs"][0]["latency"]["llm_stage_latency_ms"] == 600.0
+
+
+def test_run_benchmark_populates_transcript_tool_and_topology_evidence():
+    def fake_stt(pcm, sample_rate, config):
+        yield ("what is the weather for 98101", True)
+
+    def fake_llm(text, config):
+        yield LLMStreamToolCalls([{
+            "id": "call_1",
+            "name": "openclaw_agent_consult",
+            "arguments": '{"question":"weather 98101"}',
+        }])
+        yield "It is sunny."
+
+    def fake_tts(text, config):
+        yield b"\x00\x01" * 4
+
+    clock = _clock_sequence([0.0, 0.1, 0.2, 0.25, 0.3])
+
+    result = run_benchmark(
+        stt_config=STTStageConfig(base_url="http://100.87.34.66:30110/v1", model="parakeet"),
+        llm_config=LLMStageConfig(base_url="http://100.87.34.66:8000/v1", model="chat-fast"),
+        tts_config=TTSStageConfig(base_url="http://100.87.34.66:30111/v1", model="kokoro"),
+        pcm=b"\x00\x00",
+        sample_rate=16000,
+        reference_text="what is the weather for 98101",
+        stt_stream_fn=fake_stt,
+        llm_stream_fn=fake_llm,
+        tts_stream_fn=fake_tts,
+        clock=clock,
+        profile="dark-audio",
+        candidate="glm47-flash",
+    )
+
+    assert result["stt_hypothesis"] == "what is the weather for 98101"
+    assert result["llm_reply"] == "It is sunny."
+    assert result["tool_call_outcome"] == {
+        "status": "observed",
+        "successful": True,
+        "tool_call_count": 1,
+        "calls": [{
+            "id": "call_1",
+            "name": "openclaw_agent_consult",
+            "arguments": '{"question":"weather 98101"}',
+        }],
+    }
+
+    evidence = result["evidence"]
+    run = evidence["runs"][0]
+    assert run["transcript"]["stt_hypothesis"] == "what is the weather for 98101"
+    assert run["transcript"]["llm_reply"] == "It is sunny."
+    assert run["tool"]["status"] == "observed"
+    assert run["tool"]["calls"][0]["name"] == "openclaw_agent_consult"
+    assert evidence["topology"]["profile"] == "dark-audio"
+    assert evidence["topology"]["endpoints"] == {
+        "stt_base_url": "http://100.87.34.66:30110/v1",
+        "llm_base_url": "http://100.87.34.66:8000/v1",
+        "tts_base_url": "http://100.87.34.66:30111/v1",
+    }
+    mini_assertion = evidence["topology"]["mini_model_free_assertion"]
+    assert mini_assertion["checked"] is True
+    assert mini_assertion["reference_test"] is True
+    assert mini_assertion["passed"] is True
+    assert mini_assertion["mini_hosts_models"] is False
 
 
 def test_run_benchmark_ttfa_never_exceeds_turn_latency():
@@ -413,8 +482,10 @@ def test_build_evidence_record_has_stable_json_schema_fields():
     result = {
         "ttfa_ms": 12.3,
         "turn_latency_ms": 45.6,
+        "total_turn_latency_ms": 45.6,
         "stt_ms": 1.2,
         "llm_ms": 3.4,
+        "llm_stage_latency_ms": 3.4,
         "tts_ms": 5.6,
         "stt_wer": 0.0,
         "tts_rtf": 0.25,
@@ -477,14 +548,35 @@ def test_build_evidence_record_has_stable_json_schema_fields():
             "work_class": "chat-fast",
         },
     }
+    assert evidence["topology"] == {
+        "profile": "mini-audio",
+        "mode": "non-reference-or-unspecified",
+        "endpoints": {
+            "stt_base_url": "http://127.0.0.1:30010/v1",
+            "llm_base_url": "http://127.0.0.1:8000/v1",
+            "tts_base_url": "http://127.0.0.1:30011/v1",
+        },
+        "mini_model_free_assertion": {
+            "checked": True,
+            "method": "profile_and_endpoint_config",
+            "reference_test": False,
+            "passed": None,
+            "mini_hosts_models": True,
+            "mini_local_audio_profile": True,
+            "mini_local_model_endpoint_stages": ["stt", "tts"],
+            "reference_model_free_profiles": ["dark-audio", "mini-dark-audio-proxy"],
+        },
+    }
     assert evidence["runs"] == [
         {
             "id": "run-001",
             "latency": {
                 "ttfa_ms": 12.3,
                 "turn_latency_ms": 45.6,
+                "total_turn_latency_ms": 45.6,
                 "stt_ms": 1.2,
                 "llm_ms": 3.4,
+                "llm_stage_latency_ms": 3.4,
                 "tts_ms": 5.6,
             },
             "comparison": {
@@ -502,6 +594,12 @@ def test_build_evidence_record_has_stable_json_schema_fields():
                 "stt_hypothesis": "hello",
                 "llm_reply": "hi",
                 "reference_text": "hello",
+            },
+            "tool": {
+                "status": "not_run",
+                "successful": None,
+                "tool_call_count": 0,
+                "calls": [],
             },
         }
     ]

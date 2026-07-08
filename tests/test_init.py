@@ -92,6 +92,7 @@ def test_init_tier_model_equals_served_name_and_ports_match(tmp_path):
     assert len(manifest) == 1
     assert manifest[0]["port"] == 30000
     assert manifest[0]["model"] == "qwen35-awq-local"
+    assert manifest[0]["engine"] == "sglang"
 
     cfg = router_config.load(result["router"])
     tier = cfg.tiers[0]

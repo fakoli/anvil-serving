@@ -277,6 +277,15 @@ def _default_transport(url: str, *, data: bytes, headers: Mapping[str, str], tim
     req = urllib.request.Request(url, data=data, headers=dict(headers), method="POST")
     try:
         return urllib.request.urlopen(req, timeout=timeout)  # noqa: S310 - local/router URL only
+    except urllib.error.HTTPError as exc:
+        try:
+            detail = exc.read().decode("utf-8", errors="replace")
+        except Exception:  # noqa: BLE001 - best-effort diagnostic
+            detail = ""
+        message = "LLM stage: request to %s failed: %s" % (url, exc)
+        if detail:
+            message += " %s" % detail[:500]
+        raise LLMClientError(message) from exc
     except urllib.error.URLError as exc:
         raise LLMClientError("LLM stage: request to %s failed: %s" % (url, exc)) from exc
 
@@ -297,6 +306,22 @@ def _post_stream(
             headers["Authorization"] = "Bearer %s" % token
     data = json.dumps(body).encode("utf-8")
     return transport(url, data=data, headers=headers, timeout=timeout)
+
+
+def _without_chat_template_kwargs(body: Mapping[str, Any]) -> Dict[str, Any]:
+    stripped = dict(body)
+    stripped.pop("chat_template_kwargs", None)
+    return stripped
+
+
+def _chat_template_kwargs_unsupported(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "chat_template" in message and "not supported" in message
+
+
+def _reasoning_effort_low_unsupported(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "reasoning_effort=low" in message and "not supported" in message
 
 
 def stream_chat_completion(
@@ -328,11 +353,25 @@ def stream_chat_completion_events(
 ) -> Iterator[Any]:
     """Yield text deltas and final tool-call batches from Chat Completions SSE."""
     url = config.base_url.rstrip("/") + "/chat/completions"
-    resp = _post_stream(
-        url, build_request_body_from_messages(messages, config),
-        api_key_env=config.api_key_env, timeout=config.timeout,
-        transport=transport or _default_transport,
-    )
+    active_transport = transport or _default_transport
+    body = build_request_body_from_messages(messages, config)
+    while True:
+        try:
+            resp = _post_stream(
+                url, body,
+                api_key_env=config.api_key_env, timeout=config.timeout,
+                transport=active_transport,
+            )
+            break
+        except LLMClientError as exc:
+            if "chat_template_kwargs" in body and _chat_template_kwargs_unsupported(exc):
+                body = _without_chat_template_kwargs(body)
+                continue
+            if body.get("reasoning_effort") == "low" and _reasoning_effort_low_unsupported(exc):
+                body = dict(body)
+                body["reasoning_effort"] = "none"
+                continue
+            raise
     assembler = OpenAIStreamAssembler()
     try:
         for event, data in iter_sse_events(resp):
