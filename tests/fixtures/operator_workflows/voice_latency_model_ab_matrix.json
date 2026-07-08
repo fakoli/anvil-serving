@@ -1,0 +1,331 @@
+{
+  "schema_version": "anvil-serving.voice-latency-model-ab.matrix/v1",
+  "task": "voice-latency-model-ab:T005",
+  "matrix_id": "voice-latency-model-ab-2026-07-08",
+  "generated_at": "2026-07-08",
+  "manifest": "examples/voice/openclaw-anvil-voice.toml",
+  "source_revision": {
+    "repo": "anvil-serving",
+    "branch": "agent/voice-latency-model-ab-t005-run-candidate-benchmark-matrix-and-captu",
+    "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
+    "notes": "Revision used for bounded Windows-side profile probes before this report fixture was committed."
+  },
+  "prompt_sets": [
+    {
+      "id": "generated_audio_roundtrip",
+      "tool_relevant": false,
+      "turn_shape": "CLI benchmark generated PCM -> STT -> LLM -> TTS smoke path",
+      "reference_text": "the quick brown fox jumps over the lazy dog"
+    },
+    {
+      "id": "tool_weather_zip",
+      "tool_relevant": true,
+      "turn_shape": "spoken weather/location turn that should exercise the OpenClaw tool path",
+      "user_turn": "What's the weather in 94107?",
+      "expected_tool_behavior": "The voice LLM should retain the ZIP code context and invoke the OpenClaw weather/location tool path instead of asking for the location again."
+    }
+  ],
+  "artifacts": [
+    {
+      "artifact_id": "baseline-mini-prior-rerun",
+      "status": "measured_prior",
+      "profile": "mini-audio",
+      "candidate_identity": {
+        "candidate_id": "baseline-qwen36-27b",
+        "role": "baseline",
+        "request_model": "fast-local",
+        "served_model": "qwen36-27b",
+        "managed_serve": "fast",
+        "llm_base_url": "http://100.87.34.66:8000/v1",
+        "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
+        "tts_model": "mlx-community/Kokoro-82M-bf16"
+      },
+      "route_identity": {
+        "provider": "fast-local",
+        "model": "qwen36-27b",
+        "tier": "local",
+        "work_class": "chat-fast",
+        "route_source": "docs/findings/2026-07-07-voice-latency-baseline.md"
+      },
+      "source_revision": {
+        "repo": "anvil-serving",
+        "git_commit": "6d024c2480b9f935b06ae26213ca7cfb69568485",
+        "checkout": "/Users/sdoumbouya/anvil-serving-t007"
+      },
+      "command": ".venv/bin/anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio",
+      "prompt_set_id": "generated_audio_roundtrip",
+      "turn_shape": {
+        "tool_relevant": false,
+        "input_modality": "generated_pcm",
+        "reference_text": "the quick brown fox jumps over the lazy dog"
+      },
+      "stage_timings_ms": {
+        "ttfa_ms": 611.29,
+        "turn_latency_ms": 789.06,
+        "stt_ms": 106.28,
+        "llm_ms": 356.82,
+        "tts_ms": 325.95
+      },
+      "errors": [],
+      "evidence_source": "docs/findings/2026-07-07-voice-latency-baseline.md#evidence-rerun"
+    },
+    {
+      "artifact_id": "baseline-mini-windows-negative-control",
+      "status": "failed_unavailable",
+      "profile": "mini-audio",
+      "candidate_identity": {
+        "candidate_id": "baseline-qwen36-27b",
+        "role": "baseline",
+        "request_model": "fast-local",
+        "served_model": "qwen36-27b",
+        "managed_serve": "fast",
+        "llm_base_url": "http://100.87.34.66:8000/v1",
+        "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
+        "tts_model": "mlx-community/Kokoro-82M-bf16"
+      },
+      "route_identity": {
+        "provider": "fast-local",
+        "model": "qwen36-27b",
+        "tier": "local",
+        "work_class": "chat-fast",
+        "route_source": "manifest expected_route fields"
+      },
+      "source_revision": {
+        "repo": "anvil-serving",
+        "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
+        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+      },
+      "command": "anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio",
+      "prompt_set_id": "generated_audio_roundtrip",
+      "turn_shape": {
+        "tool_relevant": false,
+        "input_modality": "generated_pcm",
+        "reference_text": "the quick brown fox jumps over the lazy dog"
+      },
+      "stage_timings_ms": {
+        "ttfa_ms": null,
+        "turn_latency_ms": null,
+        "stt_ms": null,
+        "llm_ms": null,
+        "tts_ms": null
+      },
+      "errors": [
+        {
+          "stage": "stt",
+          "kind": "connection_refused",
+          "message": "Windows-side probe could not reach Mini-local STT at http://127.0.0.1:30010/v1/audio/transcriptions; WinError 10061."
+        }
+      ],
+      "evidence_source": "required T005 verification command output"
+    },
+    {
+      "artifact_id": "candidate-qwen3-32b-generated-audio",
+      "status": "failed_unavailable",
+      "profile": "candidate-qwen3-32b",
+      "candidate_identity": {
+        "candidate_id": "candidate-qwen3-32b",
+        "role": "candidate",
+        "request_model": "qwen3-32b-nvfp4",
+        "served_model": "qwen3-32b-nvfp4",
+        "managed_serve": "voice-qwen3-32b",
+        "llm_base_url": "http://100.87.34.66:39000/v1",
+        "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
+        "tts_model": "mlx-community/Kokoro-82M-bf16"
+      },
+      "route_identity": {
+        "provider": "direct-vllm",
+        "model": "qwen3-32b-nvfp4",
+        "tier": "candidate",
+        "work_class": "chat-fast",
+        "route_source": "examples/voice/openclaw-anvil-voice.toml"
+      },
+      "source_revision": {
+        "repo": "anvil-serving",
+        "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
+        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+      },
+      "command": "anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile candidate-qwen3-32b",
+      "prompt_set_id": "generated_audio_roundtrip",
+      "turn_shape": {
+        "tool_relevant": false,
+        "input_modality": "generated_pcm",
+        "reference_text": "the quick brown fox jumps over the lazy dog"
+      },
+      "stage_timings_ms": {
+        "ttfa_ms": null,
+        "turn_latency_ms": null,
+        "stt_ms": null,
+        "llm_ms": null,
+        "tts_ms": null
+      },
+      "errors": [
+        {
+          "stage": "stt",
+          "kind": "connection_refused",
+          "message": "The candidate profile resolved correctly, but this checkout could not reach Mini-local STT before the direct candidate LLM endpoint was used."
+        }
+      ],
+      "evidence_source": "bounded candidate profile probe"
+    },
+    {
+      "artifact_id": "candidate-gemma4-12b-generated-audio",
+      "status": "failed_unavailable",
+      "profile": "candidate-gemma4-12b",
+      "candidate_identity": {
+        "candidate_id": "candidate-gemma4-12b",
+        "role": "candidate",
+        "request_model": "gemma4-12b-it",
+        "served_model": "gemma4-12b-it",
+        "managed_serve": "voice-gemma4-12b",
+        "llm_base_url": "http://100.87.34.66:39001/v1",
+        "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
+        "tts_model": "mlx-community/Kokoro-82M-bf16"
+      },
+      "route_identity": {
+        "provider": "direct-vllm",
+        "model": "gemma4-12b-it",
+        "tier": "candidate",
+        "work_class": "chat-fast",
+        "route_source": "examples/voice/openclaw-anvil-voice.toml"
+      },
+      "source_revision": {
+        "repo": "anvil-serving",
+        "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
+        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+      },
+      "command": "anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile candidate-gemma4-12b",
+      "prompt_set_id": "generated_audio_roundtrip",
+      "turn_shape": {
+        "tool_relevant": false,
+        "input_modality": "generated_pcm",
+        "reference_text": "the quick brown fox jumps over the lazy dog"
+      },
+      "stage_timings_ms": {
+        "ttfa_ms": null,
+        "turn_latency_ms": null,
+        "stt_ms": null,
+        "llm_ms": null,
+        "tts_ms": null
+      },
+      "errors": [
+        {
+          "stage": "stt",
+          "kind": "connection_refused",
+          "message": "The Gemma 4 12B profile resolved correctly, but this checkout could not reach Mini-local STT before the direct candidate LLM endpoint was used."
+        }
+      ],
+      "evidence_source": "bounded candidate profile probe"
+    },
+    {
+      "artifact_id": "candidate-gemma4-e4b-generated-audio",
+      "status": "failed_unavailable",
+      "profile": "candidate-gemma4-e4b",
+      "candidate_identity": {
+        "candidate_id": "candidate-gemma4-e4b",
+        "role": "candidate",
+        "request_model": "gemma4-e4b-it",
+        "served_model": "gemma4-e4b-it",
+        "managed_serve": "voice-gemma4-e4b",
+        "llm_base_url": "http://100.87.34.66:39002/v1",
+        "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
+        "tts_model": "mlx-community/Kokoro-82M-bf16"
+      },
+      "route_identity": {
+        "provider": "direct-vllm",
+        "model": "gemma4-e4b-it",
+        "tier": "candidate",
+        "work_class": "chat-fast",
+        "route_source": "examples/voice/openclaw-anvil-voice.toml"
+      },
+      "source_revision": {
+        "repo": "anvil-serving",
+        "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
+        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+      },
+      "command": "anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile candidate-gemma4-e4b",
+      "prompt_set_id": "generated_audio_roundtrip",
+      "turn_shape": {
+        "tool_relevant": false,
+        "input_modality": "generated_pcm",
+        "reference_text": "the quick brown fox jumps over the lazy dog"
+      },
+      "stage_timings_ms": {
+        "ttfa_ms": null,
+        "turn_latency_ms": null,
+        "stt_ms": null,
+        "llm_ms": null,
+        "tts_ms": null
+      },
+      "errors": [
+        {
+          "stage": "stt",
+          "kind": "connection_refused",
+          "message": "The Gemma 4 E4B profile resolved correctly, but this checkout could not reach Mini-local STT before the direct candidate LLM endpoint was used."
+        }
+      ],
+      "evidence_source": "bounded candidate profile probe"
+    },
+    {
+      "artifact_id": "candidate-qwen3-32b-tool-weather-turn",
+      "status": "blocked_unavailable",
+      "profile": "candidate-qwen3-32b",
+      "candidate_identity": {
+        "candidate_id": "candidate-qwen3-32b",
+        "role": "candidate",
+        "request_model": "qwen3-32b-nvfp4",
+        "served_model": "qwen3-32b-nvfp4",
+        "managed_serve": "voice-qwen3-32b",
+        "llm_base_url": "http://100.87.34.66:39000/v1",
+        "stt_model": "mlx-community/parakeet-tdt-0.6b-v3",
+        "tts_model": "mlx-community/Kokoro-82M-bf16"
+      },
+      "route_identity": {
+        "provider": "direct-vllm",
+        "model": "qwen3-32b-nvfp4",
+        "tier": "candidate",
+        "work_class": "chat-fast",
+        "route_source": "examples/voice/openclaw-anvil-voice.toml"
+      },
+      "source_revision": {
+        "repo": "anvil-serving",
+        "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
+        "checkout": "C:/Users/sdoum/ai-code/anvil-serving"
+      },
+      "command": "candidate matrix row retained for T006 live Talk validation after endpoint availability is restored",
+      "prompt_set_id": "tool_weather_zip",
+      "turn_shape": {
+        "tool_relevant": true,
+        "input_modality": "spoken_transcript",
+        "user_turn": "What's the weather in 94107?",
+        "expected_tool_behavior": "Call the OpenClaw weather/location tool path and remember the ZIP code in the session context."
+      },
+      "stage_timings_ms": {
+        "ttfa_ms": null,
+        "turn_latency_ms": null,
+        "stt_ms": null,
+        "llm_ms": null,
+        "tts_ms": null
+      },
+      "errors": [
+        {
+          "stage": "setup",
+          "kind": "endpoint_unavailable",
+          "message": "Tool-relevant turn was retained in the benchmark matrix, but the current checkout could not reach Mini-local STT; live tool validation remains blocked until T006 runs on the correct host topology."
+        }
+      ],
+      "evidence_source": "matrix turn-shape requirement"
+    }
+  ],
+  "summary": {
+    "baseline_measured": true,
+    "candidate_profiles_probed": [
+      "candidate-qwen3-32b",
+      "candidate-gemma4-12b",
+      "candidate-gemma4-e4b"
+    ],
+    "failed_candidates_retained": true,
+    "tool_relevant_turn_included": true,
+    "promotion_recommendation": "do_not_promote",
+    "next_gate": "Run T006 live OpenClaw Talk validation from the Mini topology after Mini-local STT/TTS and the selected Dark candidate serve are reachable."
+  }
+}
