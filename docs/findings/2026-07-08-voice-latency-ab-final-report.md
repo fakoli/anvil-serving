@@ -4,15 +4,17 @@
 > completed candidate A/B evidence: the baseline was measured, but the candidate
 > rows failed before reaching the LLM stage. This report does not promote a
 > model, change router policy, change `[router].profile_path`, or alter OpenClaw
-> production model selection.
+> production model selection. Historical note: a later Fast-tier promotion
+> changed the production Fast route to `qwen36-35b-a3b-nvfp4`; see
+> [`2026-07-08-fast-tier-promotion.md`](2026-07-08-fast-tier-promotion.md).
 
 ## Executive Determination
 
 Do not promote a new voice LLM candidate yet.
 
-Candidate model A/B testing is incomplete. The successful measurement is the
-current baseline only. I should not treat the retained candidate failure rows as
-proof that the candidate models were tested.
+Candidate model A/B testing was incomplete at the time of this report. The
+successful measurement was the then-current baseline only. Do not treat the
+retained candidate failure rows as proof that the candidate models were tested.
 
 Topology correction after follow-up review: `mini-audio` is a supported
 optional Mini-local audio mode, but it is not the intended topology for the
@@ -35,7 +37,7 @@ failed before STT because they were executed from a non-gateway checkout whose
 `127.0.0.1` was not Fakoli Mini's loopback. Those failures prove the topology
 guardrail, not candidate model speed or quality.
 
-Final recommendation: keep the current production fast Talk model in place and
+Original recommendation: keep the then-current production fast Talk model in place and
 rerun the intended-topology baseline and actual candidate tests from Fakoli
 Mini with the correct audio profile plus `--candidate-overlay`. Only reconsider
 promotion after comparable candidate timing and live Talk validation both pass.
@@ -138,9 +140,10 @@ was `568.6 ms` / `1259.9 ms`, and exact-generation throughput p50/p95 was
 | Model promotion readiness | Fail / not ready | No successful candidate timing plus live Talk regression check exists |
 | Cost-control gate | Pass | No cloud model path or metered promotion was introduced |
 
-## Final Decision
+## Historical Decision
 
-Keep the current `baseline-qwen36-27b` fast Talk path in production.
+At the time of this report, keep the then-current `baseline-qwen36-27b` fast
+Talk path in production.
 
 Do not promote Qwen3-32B, Gemma 4 12B, or Gemma 4 E4B from the current evidence.
 They remain untested candidates, not rejected models. The evidence is

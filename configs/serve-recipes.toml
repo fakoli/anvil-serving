@@ -24,12 +24,12 @@
 schema = "anvil-serving.serve-recipes/v1"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# VERIFIED — Qwen3.6-27B-NVFP4 : current OpenClaw Talk fast-tier baseline
+# VERIFIED — Qwen3.6-27B-NVFP4 : previous OpenClaw Talk fast-tier control
 # ─────────────────────────────────────────────────────────────────────────────
 [[recipe]]
 model = "nvidia/Qwen3.6-27B-NVFP4"
 status = "verified"
-source = "live fakoli-dark fast tier + voice-latency-model-ab:T001 baseline, 2026-07-07"
+source = "previous live fakoli-dark fast tier + fast-tier-llm-bakeoff-2026-07 control rerun"
 family = "qwen3.6"
 total_params_b = 27
 
@@ -38,7 +38,7 @@ total_params_b = 27
   arch = "sm_120"
   gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
   vram_total_gb = 32
-  vram_note = "Current fast-local serve caps context at 32768 and max-num-seqs at 4 to stay inside the 5090 budget."
+  vram_note = "Previous fast-local control capped context at 32768 and max-num-seqs at 4 to stay inside the 5090 budget."
 
   [recipe.serve]
   engine = "vllm"
@@ -64,13 +64,13 @@ total_params_b = 27
   ]
 
   [recipe.measured]
-  voice_baseline = "CLI voice benchmark median TTFA 1014.89 ms, median turn latency 1230.51 ms; runs 2-3 average LLM stage 297.15 ms"
-  route_proof = "fast-local / qwen36-27b / chat-fast via fakoli-dark router"
+  voice_baseline = "Fast-tier bakeoff control: voice total 1130.21 ms, LLM stage 814.83 ms; loaded-endpoint TTFT 6203.94 ms, E2E 9041.91 ms, approx decode 67.65 tok/s."
+  route_proof = "previous fast-local / qwen36-27b / chat-fast via fakoli-dark router"
 
   [recipe.intent]
   suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
   mode = "agentic"
-  rationale = "Current OpenClaw Talk baseline: local, tool-capable, session-memory path is working; use as the control for every model A/B."
+  rationale = "Previous OpenClaw Talk baseline and control: local, tool-capable, session-memory path worked, but the 35B-A3B bakeoff candidate beat it on latency."
 
   [recipe.sources]
   official = [
@@ -198,12 +198,12 @@ total_params_b = 32
   rationale = "DENSE (not MoE) so it sidesteps the sm_120 MoE-NVFP4 grouped-GEMM crash; NVFP4 ~1.8x faster than FP8, ~half the VRAM."
 
 # ─────────────────────────────────────────────────────────────────────────────
-# UNVERIFIED — Qwen3.6-35B-A3B-NVFP4 : required Fast-tier bakeoff candidate
+# VERIFIED — Qwen3.6-35B-A3B-NVFP4 : promoted Fast-tier recommendation
 # ─────────────────────────────────────────────────────────────────────────────
 [[recipe]]
 model = "nvidia/Qwen3.6-35B-A3B-NVFP4"
-status = "unverified"
-source = "fast-tier-llm-bakeoff-2026-07:T001 registry; official/community prior only, not measured on fakoli-dark"
+status = "verified"
+source = "fast-tier-llm-bakeoff-2026-07 locally measured recommendation; human-approved Fast-tier promotion"
 family = "qwen3.6"
 total_params_b = 35
 active_params_b = 3
@@ -213,14 +213,20 @@ active_params_b = 3
   arch = "sm_120"
   gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
   vram_total_gb = 32
-  vram_note = "Required bakeoff candidate. Treat MoE-NVFP4 on consumer sm_120 as a load-risk until the local serve passes preflight."
+  vram_note = "Promoted Fast recipe. The locally measured 32K / max-num-seqs 2 vLLM recipe passed the Fast bakeoff hard gates on the RTX 5090."
 
   [recipe.serve]
   engine = "vllm"
   image = "vllm/vllm-openai:nightly"
   quantization = "modelopt_fp4"
   context_tokens = 32768
-  note = "Start with vLLM NVFP4 at 32K; attempt 64K/128K only after health, tool-call, and memory headroom pass."
+  port = 30003
+  note = "Production Fast recipe on port 30003. The historical experiment service used port 39010 for bakeoff evidence."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
   flags = [
     "--served-model-name qwen36-35b-a3b-nvfp4",
     "--quantization modelopt_fp4",
@@ -236,10 +242,23 @@ active_params_b = 3
 
   [recipe.bakeoff]
   required = true
-  variant_budget = 3
-  context_targets = [32768, 65536, 131072]
+  variant_budget = 1
+  context_targets = [32768]
   score_role = "Fast-tier MoE Qwen alternative; compare quality/context gain against baseline latency and sm_120 stability."
-  source_status = "official-plus-community-prior"
+  source_status = "locally-verified"
+
+  [recipe.measured]
+  voice_total_ms = 377.52
+  voice_llm_stage_ms = 165.40
+  loaded_endpoint_ttft_ms = 1489.36
+  loaded_endpoint_e2e_ms = 2302.37
+  approx_decode_tok_s = 236.16
+  hard_gates = "loads on Fakoli Dark RTX 5090; Heavy not disrupted; voice cycle pass; tool pass; session pass; 32K context target preserved"
+
+  [recipe.intent]
+  suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
+  mode = "agentic"
+  rationale = "Promoted Fast recipe after beating the 27B production control on measured voice and loaded-endpoint latency while preserving tool and session behavior."
 
   [recipe.sources]
   official = [
@@ -251,6 +270,7 @@ active_params_b = 3
   ]
   local = [
     "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+    "docs/findings/2026-07-08-fast-tier-promotion.md",
   ]
 
 # ─────────────────────────────────────────────────────────────────────────────
