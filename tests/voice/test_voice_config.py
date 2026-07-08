@@ -5,6 +5,8 @@ shipped example manifest plus synthetic manifests built in-memory / via
 tmp_path so nothing here depends on real STT/TTS/router serves being up.
 """
 
+import copy
+
 import pytest
 
 from anvil_serving.voice import config as voice_config
@@ -74,7 +76,23 @@ def test_fakoli_dark_manifest_marks_sidecars_external():
 
 def test_openclaw_voice_manifest_profiles_are_valid():
     raw = voice_config.load_manifest("examples/voice/openclaw-anvil-voice.toml")
-    assert voice_config.profile_names(raw) == ["dark-audio", "mini-audio", "mini-validation"]
+    assert voice_config.profile_names(raw) == [
+        "candidate-gemma4-12b",
+        "candidate-gemma4-e4b",
+        "candidate-qwen3-32b",
+        "dark-audio",
+        "mini-audio",
+        "mini-dark-audio-proxy",
+        "mini-validation",
+    ]
+
+    mini = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="mini-audio",
+    )
+    assert mini["voice"]["llm"]["speech_chunk_max_chars"] == 56
+    assert mini["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
+    assert mini["voice"]["tts"]["base_url"] == "http://127.0.0.1:30011/v1"
 
     mini = voice_config.load_manifest(
         "examples/voice/openclaw-anvil-voice.toml",
@@ -95,6 +113,16 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert "start_command" not in dark["voice"]["stt"]
     assert "pid_file" not in dark["voice"]["tts"]
 
+    proxy = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="mini-dark-audio-proxy",
+    )
+    assert proxy["voice"]["stt"]["base_url"] == "http://127.0.0.1:30110/v1"
+    assert proxy["voice"]["tts"]["base_url"] == "http://127.0.0.1:30111/v1"
+    assert proxy["voice"]["stt"]["lifecycle"] == "external"
+    assert "start_command" not in proxy["voice"]["stt"]
+    assert "pid_file" not in proxy["voice"]["tts"]
+
     validation = voice_config.load_manifest(
         "examples/voice/openclaw-anvil-voice.toml",
         profile="mini-validation",
@@ -102,6 +130,122 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert validation["voice"]["llm"]["system_prompt"].endswith("I understand.")
     assert validation["voice"]["llm"]["temperature"] == 0.0
     assert validation["voice"]["llm"]["max_tokens"] == 8
+
+    candidate = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="candidate-qwen3-32b",
+    )
+    assert candidate["voice"]["llm"]["base_url"] == "http://100.87.34.66:39000/v1"
+    assert candidate["voice"]["llm"]["model"] == "qwen3-32b-nvfp4"
+    assert candidate["voice"]["llm"]["api_key_env"] == "ANVIL_CANDIDATE_LLM_TOKEN"
+    assert candidate["voice"]["llm"]["expected_route_provider"] == "direct-vllm"
+    assert candidate["voice"]["llm"]["expected_route_model"] == "qwen3-32b-nvfp4"
+    assert candidate["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
+    assert candidate["voice"]["tts"]["base_url"] == "http://127.0.0.1:30011/v1"
+
+    composed = voice_config.resolve_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="dark-audio",
+        candidate_overlay=voice_config.load_raw_manifest(
+            "examples/voice/candidates/qwen3-32b-nvfp4.toml"
+        ),
+        candidate="qwen3-32b-nvfp4",
+    )
+    assert composed.profile == "dark-audio"
+    assert composed.candidate == "qwen3-32b-nvfp4"
+    assert composed.llm_base_url == "http://100.87.34.66:39000/v1"
+    assert composed.stt_base_url == "http://100.87.34.66:30110/v1"
+    assert composed.tts_base_url == "http://100.87.34.66:30111/v1"
+
+
+def test_resolve_manifest_data_returns_profile_identity():
+    data = _valid_manifest()
+    data["voice"]["profiles"] = {
+        "dark-audio": {
+            "llm": {
+                "base_url": "http://100.87.34.66:8000/v1",
+                "model": "fast-local",
+            },
+            "stt": {
+                "base_url": "http://100.87.34.66:30110/v1",
+                "model": "tdt_ctc-110m",
+            },
+            "tts": {
+                "base_url": "http://100.87.34.66:30111/v1",
+                "model": "kokoro",
+            },
+        },
+    }
+
+    resolved = voice_config.resolve_manifest_data(data, profile="dark-audio")
+
+    assert resolved.profile == "dark-audio"
+    assert resolved.candidate is None
+    assert resolved.llm_base_url == "http://100.87.34.66:8000/v1"
+    assert resolved.llm_model == "fast-local"
+    assert resolved.stt_model == "tdt_ctc-110m"
+    assert resolved.tts_model == "kokoro"
+    assert resolved.identity()["tts_base_url"] == "http://100.87.34.66:30111/v1"
+
+
+def test_candidate_overlay_merges_after_profile_without_mutating_source():
+    data = _valid_manifest()
+    data["voice"]["profiles"] = {
+        "mini-audio": {
+            "llm": {"model": "fast-local"},
+            "stt": {"model": "mini-stt"},
+        },
+    }
+    original = copy.deepcopy(data)
+
+    resolved = voice_config.resolve_manifest_data(
+        data,
+        profile="mini-audio",
+        candidate="gemma4-12b",
+        candidate_overlay={
+            "llm": {
+                "base_url": "http://127.0.0.1:39000/v1",
+                "model": "gemma4-12b",
+            },
+            "tts": {"model": "candidate-tts"},
+        },
+    )
+
+    assert data == original
+    assert resolved.profile == "mini-audio"
+    assert resolved.candidate == "gemma4-12b"
+    assert resolved.llm_base_url == "http://127.0.0.1:39000/v1"
+    assert resolved.llm_model == "gemma4-12b"
+    assert resolved.stt_model == "mini-stt"
+    assert resolved.tts_model == "candidate-tts"
+    assert "profiles" not in resolved.data["voice"]
+
+
+def test_candidate_overlay_can_be_wrapped_in_voice_table():
+    resolved = voice_config.resolve_manifest_data(
+        _valid_manifest(),
+        candidate="qwen3-32b",
+        candidate_overlay={
+            "voice": {
+                "llm": {
+                    "base_url": "http://127.0.0.1:39001/v1",
+                    "model": "qwen3-32b",
+                },
+            },
+        },
+    )
+
+    assert resolved.llm_model == "qwen3-32b"
+    assert resolved.llm_base_url == "http://127.0.0.1:39001/v1"
+
+
+def test_candidate_overlay_missing_endpoint_is_clear():
+    with pytest.raises(voice_config.ConfigError, match=r"voice\.llm\.base_url"):
+        voice_config.resolve_manifest_data(
+            _valid_manifest(),
+            candidate="broken",
+            candidate_overlay={"llm": {"base_url": ""}},
+        )
 
 
 def test_unknown_voice_profile_is_rejected(tmp_path):

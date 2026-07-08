@@ -268,7 +268,22 @@ Its default profile keeps the Realtime server, STT, and TTS endpoints
 Mini-local, while `[voice.llm]` routes to the Fakoli Dark router. The same
 manifest also declares `dark-audio` for using Dark-host STT/TTS through
 `anvil-serving voice bridge`; select it with `anvil-serving voice run --profile
-dark-audio` instead of maintaining a separate port-forwarding script.
+dark-audio` instead of maintaining a separate port-forwarding script. If the
+operational boundary is a Mini-side proxy that forwards local ports to Dark
+audio, select `mini-dark-audio-proxy` after verifying the Mini-local proxy
+ports are listening.
+
+For candidate LLM A/B, keep audio selection in `--profile` and apply a
+candidate overlay to `voice run` or `voice benchmark`:
+
+```bash
+anvil-serving voice run \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile mini-audio \
+  --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
+  --candidate qwen3-32b-nvfp4
+```
+
 `harness sync openclaw --voice` renders this Talk block together with the
 normal anvil model provider config. When the router config includes
 `chat-fast`, the rendered `talk.consultModel` defaults to `anvil/chat-fast` so

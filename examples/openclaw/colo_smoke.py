@@ -30,6 +30,7 @@ DEFAULT_CONFIG_PATH = "examples/fakoli-dark/anvil-router.live.toml"
 DEFAULT_EXPECTED_CONTEXT_WINDOW = 131072
 DEFAULT_ARTIFACT = ".anvil/evidence/openclaw-colo-smoke.json"
 HOMEBREW_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+GATEWAY_ENV_PATH = "$HOME/.openclaw/service-env/ai.openclaw.gateway.env"
 
 PRESETS = ("planning", "quick-edit", "review", "chat", "chat-fast", "long-context")
 PROOF_STATUSES = {"pass", "warn", "fail", "skipped"}
@@ -1495,7 +1496,9 @@ def run_gateway_collector(args: argparse.Namespace) -> dict[str, Any]:
         "interaction_benchmark_recipe_by_preset": interaction_recipes.get("by_preset", {}),
     }
     remote = (
-        "export PATH=" + HOMEBREW_PATH + "; "
+        'if [ -f "%s" ]; then set -a; . "%s"; set +a; fi; '
+        % (GATEWAY_ENV_PATH, GATEWAY_ENV_PATH)
+        + "export PATH=" + HOMEBREW_PATH + "; "
         "ANVIL_COLO_ARGS=" + posix_quote(json.dumps(payload, separators=(",", ":"))) + " "
         "python3 -"
     )

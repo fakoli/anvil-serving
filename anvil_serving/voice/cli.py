@@ -45,6 +45,8 @@ import urllib.error
 import urllib.request
 from typing import Any, Callable, Dict, Optional
 
+from anvil_serving.mcp import ToolError, _resolve_benchmark_artifact_path
+
 from . import benchmark as voice_benchmark
 from . import bridge as voice_bridge
 from . import config as voice_config
@@ -54,6 +56,11 @@ from .serves import native as native_serve
 from .serves import stt as stt_serve
 from .serves import tts as tts_serve
 from .serves._common import ServeNotConfigured
+
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3.11
+    tomllib = None
 
 DEFAULT_MANIFEST = voice_config.DEFAULT_CONFIG
 #: Preflight reachability-probe timeout for `run`'s "fail loudly, don't
@@ -106,6 +113,92 @@ def _load(config_path, profile=None):
         return voice_config.load_manifest(config_path, profile=profile), None
     except voice_config.ConfigError as exc:
         return None, str(exc)
+
+
+def _load_candidate_overlay(path: Optional[str]) -> Optional[dict]:
+    if not path:
+        return None
+    if tomllib is None:  # pragma: no cover - guarded by requires-python >=3.11
+        raise voice_config.ConfigError("tomllib unavailable (need Python >= 3.11)")
+    try:
+        with open(path, "rb") as f:
+            return tomllib.load(f)
+    except FileNotFoundError:
+        raise voice_config.ConfigError("candidate overlay not found: %s" % path)
+    except tomllib.TOMLDecodeError as exc:
+        raise voice_config.ConfigError("cannot parse candidate overlay %s: %s" % (path, exc))
+
+
+def _candidate_name(args) -> Optional[str]:
+    candidate = getattr(args, "candidate", None)
+    overlay_path = getattr(args, "candidate_overlay", None)
+    if candidate or not overlay_path:
+        return candidate
+    stem = os.path.splitext(os.path.basename(overlay_path))[0]
+    return stem or None
+
+
+def _load_benchmark_config(args):
+    """Resolve benchmark config with profile/candidate overlays and preserve identity."""
+    return _load_resolved_config(args)
+
+
+def _load_resolved_config(args):
+    """Resolve a voice config with profile/candidate overlays and preserve identity."""
+    try:
+        candidate_overlay = _load_candidate_overlay(getattr(args, "candidate_overlay", None))
+        return (
+            voice_config.resolve_manifest(
+                args.config,
+                profile=getattr(args, "profile", None),
+                candidate_overlay=candidate_overlay,
+                candidate=_candidate_name(args),
+            ),
+            None,
+        )
+    except voice_config.ConfigError as exc:
+        return None, str(exc)
+
+
+def _identity_summary(resolved: voice_config.ResolvedVoiceConfig) -> str:
+    identity = resolved.identity()
+    return (
+        "profile=%s candidate=%s llm_model=%s llm_base_url=%s "
+        "stt_model=%s stt_base_url=%s tts_model=%s tts_base_url=%s"
+        % (
+            identity.get("profile") or "-",
+            identity.get("candidate") or "-",
+            identity.get("llm_model") or "-",
+            identity.get("llm_base_url") or "-",
+            identity.get("stt_model") or "-",
+            identity.get("stt_base_url") or "-",
+            identity.get("tts_model") or "-",
+            identity.get("tts_base_url") or "-",
+        )
+    )
+
+
+def _resolve_evidence_output_path(path: Optional[str]) -> Optional[str]:
+    if not path:
+        return None
+    try:
+        target, _roots = _resolve_benchmark_artifact_path(path)
+    except ToolError as exc:
+        raise voice_config.ConfigError(exc.message)
+    return target
+
+
+def _write_benchmark_evidence(path: str, evidence: dict) -> str:
+    target = _resolve_evidence_output_path(path)
+    if target is None:
+        raise voice_config.ConfigError("evidence output path is required")
+    parent = os.path.dirname(target)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(target, "w", encoding="utf-8") as f:
+        f.write(json.dumps(evidence, indent=2, sort_keys=True))
+        f.write("\n")
+    return target
 
 
 def cmd_up(args):
@@ -316,13 +409,15 @@ def _wait_forever_default() -> None:
 
 
 def cmd_run(args):
-    data, err = _load(args.config, getattr(args, "profile", None))
+    resolved, err = _load_resolved_config(args)
     if err:
         print("voice run: %s" % err, file=sys.stderr)
         return 2
+    assert resolved is not None
+    data = resolved.data
     voice = data.get("voice", {})
-    profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
-    print("voice run: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
+    summary = _identity_summary(resolved)
+    print("voice run: manifest OK -- %s -- %s" % (summary, voice_config.describe(data)))
 
     problem = _check_required_endpoints_reachable(voice)
     if problem:
@@ -359,21 +454,39 @@ def cmd_run(args):
 
 
 def cmd_benchmark(args):
-    data, err = _load(args.config, getattr(args, "profile", None))
+    resolved, err = _load_benchmark_config(args)
     if err:
         print("voice benchmark: %s" % err, file=sys.stderr)
         return 2
-    profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
-    print("voice benchmark: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
+    assert resolved is not None
+    summary = _identity_summary(resolved)
     try:
-        result = voice_benchmark.run_benchmark_from_manifest(data)
+        evidence_target = _resolve_evidence_output_path(getattr(args, "evidence_out", None))
+    except voice_config.ConfigError as exc:
+        print("voice benchmark: %s" % exc, file=sys.stderr)
+        return 2
+    print("voice benchmark: manifest OK -- %s -- %s" % (summary, voice_config.describe(resolved.data)))
+    try:
+        result = voice_benchmark.run_benchmark_from_manifest(
+            resolved.data,
+            profile=resolved.profile,
+            candidate=resolved.candidate,
+        )
     except Exception as exc:  # noqa: BLE001 - the configured serves may simply not be up yet
         print(
             "voice benchmark: could not reach the configured STT/LLM/TTS serves (%s); "
-            "bring them up with `anvil-serving voice up` first. Nothing was measured." % exc
+            "bring them up with `anvil-serving voice up` first. Nothing was measured. "
+            "Active config: %s" % (exc, summary)
         )
         return 0
-    print(json.dumps(result, indent=2))
+    if evidence_target:
+        evidence = result.get("evidence") if isinstance(result, dict) else None
+        if not isinstance(evidence, dict):
+            print("voice benchmark: benchmark result did not include structured evidence", file=sys.stderr)
+            return 1
+        _write_benchmark_evidence(evidence_target, evidence)
+        print("voice benchmark: evidence written %s" % evidence_target)
+    print(voice_benchmark.to_json(result))
     return 0
 
 
@@ -549,10 +662,30 @@ def build_parser():
     sp = sub.add_parser("run", help="run the realtime server in the foreground")
     add_config(sp)
     add_profile(sp)
+    sp.add_argument(
+        "--candidate",
+        help="candidate label recorded in run logs; defaults to overlay file stem",
+    )
+    sp.add_argument(
+        "--candidate-overlay",
+        help="candidate TOML overlay applied after the selected profile for this run",
+    )
 
     sp = sub.add_parser("benchmark", help="replay a recorded session end-to-end and report latency")
     add_config(sp)
     add_profile(sp)
+    sp.add_argument(
+        "--candidate",
+        help="candidate label recorded in benchmark evidence; defaults to overlay file stem",
+    )
+    sp.add_argument(
+        "--candidate-overlay",
+        help="candidate TOML overlay applied after the selected profile for this benchmark run",
+    )
+    sp.add_argument(
+        "--evidence-out",
+        help="write structured benchmark evidence JSON under the workspace or configured evidence root",
+    )
 
     sp = sub.add_parser("profiles", help="list profiles or validate one resolved profile")
     add_config(sp)

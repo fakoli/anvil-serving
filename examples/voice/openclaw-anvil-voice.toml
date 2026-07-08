@@ -11,6 +11,15 @@
 # Use --profile to switch the active audio topology without copying this file:
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
+#
+# For live LLM A/B tests, keep the audio topology in --profile and compose the
+# candidate LLM with --candidate-overlay:
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml
+# Static candidate-* profiles below are retained as LLM-only shortcuts for
+# Mini-local audio. Use --candidate-overlay when combining a candidate with
+# dark-audio or a Mini-local proxy to Dark.
 
 [voice]
 name = "anvil-voice-openclaw"
@@ -88,8 +97,55 @@ response_format = "pcm"
 source_sample_rate = 24000
 target_sample_rate = 16000
 
+[voice.profiles.mini-dark-audio-proxy.stt]
+base_url = "http://127.0.0.1:30110/v1"
+model = "tdt_ctc-110m"
+stream = false
+response_format = "json"
+timeout = 120.0
+lifecycle = "external"
+
+[voice.profiles.mini-dark-audio-proxy.tts]
+base_url = "http://127.0.0.1:30111/v1"
+model = "kokoro"
+timeout = 120.0
+lifecycle = "external"
+response_format = "pcm"
+source_sample_rate = 24000
+target_sample_rate = 16000
+
 [voice.profiles.mini-validation.llm]
 system_prompt = "For this Mini validation profile, answer every message with exactly: I understand."
 temperature = 0.0
 max_tokens = 8
 history_max_turns = 0
+
+[voice.profiles.candidate-qwen3-32b.llm]
+base_url = "http://100.87.34.66:39000/v1"
+model = "qwen3-32b-nvfp4"
+api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
+speech_chunk_max_chars = 56
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "direct-vllm"
+expected_route_model = "qwen3-32b-nvfp4"
+expected_route_tier = "candidate"
+
+[voice.profiles.candidate-gemma4-12b.llm]
+base_url = "http://100.87.34.66:39001/v1"
+model = "gemma4-12b-it"
+api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
+speech_chunk_max_chars = 56
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "direct-vllm"
+expected_route_model = "gemma4-12b-it"
+expected_route_tier = "candidate"
+
+[voice.profiles.candidate-gemma4-e4b.llm]
+base_url = "http://100.87.34.66:39002/v1"
+model = "gemma4-e4b-it"
+api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
+speech_chunk_max_chars = 56
+expected_endpoint_host = "100.87.34.66"
+expected_route_provider = "direct-vllm"
+expected_route_model = "gemma4-e4b-it"
+expected_route_tier = "candidate"

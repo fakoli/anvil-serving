@@ -39,7 +39,9 @@ Realtime server and cascade itself.
 Manifest-backed commands take `--config <voice.toml>`. If omitted, the shipped
 example manifest is used when present. `up`, `down`, `run`, and `benchmark`
 also accept `--profile <name>` to apply `[voice.profiles.<name>]` before
-validation.
+validation. `run` and `benchmark` also accept `--candidate-overlay <toml>` and
+`--candidate <label>` so live A/B tests can compose one audio topology with one
+LLM candidate without copying manifests.
 
 ## Why These Commands Exist
 
@@ -176,7 +178,9 @@ Common layouts:
   is being run on the audio host itself through local CLI or a controller.
 - Audio host exposing loopback-only STT/TTS to a private network: run
   `anvil-serving voice bridge` on the audio host, then point the voice host's
-  profile at the bridge ports.
+  profile at the bridge ports. If the proxy runs on the voice host itself,
+  point the profile at that host's `127.0.0.1` proxy listener rather than at
+  the remote host address.
 
 `lifecycle = "native"` is intentionally same-host. It starts the manifest
 command on the host where `anvil-serving voice up` runs; it is not a remote
@@ -266,8 +270,23 @@ current-information lookups.
 - `mini-audio`: Mini-local MLX Audio STT/TTS, with conversational LLM prompt.
 - `dark-audio`: Dark-host STT/TTS reached through private bridge ports
   `30110` and `30111`.
+- `mini-dark-audio-proxy`: Mini-local proxy ports `30110` and `30111` that
+  forward to Dark-host STT/TTS. Use this only after that Mini-side proxy is
+  actually listening.
 - `mini-validation`: Mini-local audio plus the intentional
   `I understand.` validation prompt.
+- `candidate-qwen3-32b`, `candidate-gemma4-12b`, and
+  `candidate-gemma4-e4b`: LLM-only A/B profiles for the checked-in Dark
+  experiment serves. They preserve the base Mini STT/TTS path and point the
+  LLM stage at direct candidate ports `39000` through `39002`. For live Talk
+  A/B runs, prefer the reusable overlays in `examples/voice/candidates/` so
+  the audio topology and LLM candidate remain independent.
+
+The `mini-audio` profile lowers `voice.llm.speech_chunk_max_chars` to `56` for
+the Mini-local Kokoro TTS path. In live Talk measurements this reduced first
+audio latency versus the `72` character cross-topology default, while a more
+aggressive `48` character split produced Kokoro stream errors on some sentence
+fragments.
 
 The `mini-audio` profile lowers `voice.llm.speech_chunk_max_chars` to `56` for
 the Mini-local Kokoro TTS path. In live Talk measurements this reduced first
@@ -282,6 +301,26 @@ anvil-serving voice profiles --config examples/voice/openclaw-anvil-voice.toml
 anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --dry-run
 anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
 anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+```
+
+For a candidate LLM A/B, start the matching opt-in serve through the managed
+serves surface. Leave `VOICE_CANDIDATE_PUBLISH` unset for same-host benchmark
+runs; set it to the Dark host's private/tailnet address only when Mini must
+reach the direct candidate endpoint:
+
+```bash
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
+anvil-serving voice run \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile mini-audio \
+  --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
+  --candidate qwen3-32b-nvfp4
+anvil-serving voice benchmark \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile mini-audio \
+  --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
+  --candidate qwen3-32b-nvfp4 \
+  --evidence-out voice-evidence/qwen3-32b.json
 ```
 
 To keep OpenClaw and Realtime on Mini while using STT/TTS on Fakoli Dark, first
@@ -316,6 +355,16 @@ Then run the Mini Realtime server with the Dark audio profile:
 ```bash
 anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 ```
+
+If a Mini-side proxy is the operational boundary instead, start or verify that
+proxy first and use the Mini-local proxy profile:
+
+```bash
+anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
+```
+
+When testing a candidate LLM against Dark audio, compose the same candidate
+overlay with either `dark-audio` or `mini-dark-audio-proxy`.
 
 Then render or apply the matching OpenClaw config. The `--voice` flag adds the
 Talk realtime block next to the normal anvil model provider config:
