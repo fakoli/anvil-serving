@@ -208,7 +208,7 @@ def _toml_str(value):
     return json.dumps(str(value))
 
 
-def render_serve_entry(name, container, port, served_name, up, health="/health"):
+def render_serve_entry(name, container, port, served_name, up, health="/health", engine="sglang"):
     """A `[[serve]]` TOML block for the `anvil-serving serves` manifest —
     container/port/model MUST agree with the compose just rendered (T009 AC)."""
     return (
@@ -217,17 +217,20 @@ def render_serve_entry(name, container, port, served_name, up, health="/health")
         f'container = {_toml_str(container)}\n'
         f'port = {port}\n'
         f'model = {_toml_str(served_name)}\n'
+        f'engine = {_toml_str(engine)}\n'
         f'health = {_toml_str(health)}\n'
         f'up = {_toml_str(up)}\n'
     )
 
 
-def append_serve_entry(manifest_path, name, container, port, served_name, up, health="/health"):
+def append_serve_entry(
+    manifest_path, name, container, port, served_name, up, health="/health", engine="sglang"
+):
     """Append a `[[serve]]` block to `manifest_path`, creating it (with a
     header comment) if absent. A repeated `deploy` for the same `name` does
     NOT duplicate the block — it prints a note and leaves the manifest alone
     (edit it by hand to update an existing entry)."""
-    entry = render_serve_entry(name, container, port, served_name, up, health)
+    entry = render_serve_entry(name, container, port, served_name, up, health, engine)
     if os.path.isfile(manifest_path):
         try:
             existing = _serves.load_manifest(manifest_path)
@@ -382,7 +385,9 @@ def main(argv):
     # backslash as an escape char) — a raw Windows path would corrupt both.
     compose_path = a.out.replace(os.sep, "/")
     up = f"docker compose -f {compose_path} up -d {service}"
-    if append_serve_entry(a.manifest_out, tier_id, container, a.port, a.served_name, up):
+    if append_serve_entry(
+        a.manifest_out, tier_id, container, a.port, a.served_name, up, engine=engine
+    ):
         print(f"appended [[serve]] {tier_id!r} to {a.manifest_out}")
 
     print(

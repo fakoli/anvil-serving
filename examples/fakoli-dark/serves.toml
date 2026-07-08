@@ -19,6 +19,7 @@ name = "heavy"                 # heavy planning tier — gpt-oss-120b @ reasonin
 container = "vllm-gptoss120"
 port = 30002
 model = "gpt-oss-120b"         # served-model-name (used by `anvil-serving eval`)
+engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
 
@@ -27,6 +28,7 @@ name = "fast"                  # fast tier — Qwen3.6-27B-NVFP4 on the RTX 5090
 container = "vllm-qwen36"
 port = 30003
 model = "qwen36-27b"           # served-model-name (used by `anvil-serving eval`)
+engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"
 
@@ -45,6 +47,7 @@ name = "voice-qwen3-32b"
 container = "vllm-voice-qwen3-32b"
 port = 39000
 model = "qwen3-32b-nvfp4"
+engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-qwen3-32b"
 
@@ -53,6 +56,7 @@ name = "voice-gemma4-12b"
 container = "vllm-voice-gemma4-12b"
 port = 39001
 model = "gemma4-12b-it"
+engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-12b"
 
@@ -61,5 +65,80 @@ name = "voice-gemma4-e4b"
 container = "vllm-voice-gemma4-e4b"
 port = 39002
 model = "gemma4-e4b-it"
+engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-e4b"
+
+# Fast-tier LLM bakeoff candidates. These are source-backed experiment serves
+# from fast-tier-llm-bakeoff-2026-07. They default to the RTX 5090 path and
+# must be dry-run / started through `anvil-serving serves`, never as raw docker
+# commands:
+#
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml --dry-run up fast-qwen36-35b-a3b
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-devstral-small2-llamacpp
+#
+# Leave FAST_CANDIDATE_PUBLISH unset for same-host benchmark loops. Set it to a
+# controlled tailnet/private address only when Mini needs to reach Dark directly.
+
+[[serve]]
+name = "fast-qwen36-35b-a3b"
+container = "vllm-fast-qwen36-35b-a3b"
+port = 39010
+model = "qwen36-35b-a3b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-qwen36-35b-a3b"
+
+[[serve]]
+name = "fast-gemma4-31b"
+container = "vllm-fast-gemma4-31b"
+port = 39011
+model = "gemma4-31b-it-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-gemma4-31b"
+
+[[serve]]
+name = "fast-glm47-flash-sglang"
+container = "sglang-fast-glm47-flash"
+port = 39012
+model = "glm-4.7-flash"
+engine = "sglang"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-glm47-flash-sglang"
+
+[[serve]]
+name = "fast-glm47-flash-llamacpp"
+container = "llamacpp-fast-glm47-flash"
+port = 39013
+model = "glm-4.7-flash-gguf"
+engine = "llamacpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-glm47-flash-llamacpp"
+
+[[serve]]
+name = "fast-devstral-small2"
+container = "vllm-fast-devstral-small2"
+port = 39014
+model = "devstral-small-2-24b"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-devstral-small2"
+
+[[serve]]
+name = "fast-devstral-small2-llamacpp"
+container = "llamacpp-fast-devstral-small2"
+port = 39015
+model = "devstral-small-2-24b-gguf"
+engine = "llamacpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-devstral-small2-llamacpp"
+
+[[serve]]
+name = "fast-qwen3-30b-a3b"
+container = "vllm-fast-qwen3-30b-a3b"
+port = 39016
+model = "qwen3-30b-a3b-instruct"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-qwen3-30b-a3b"

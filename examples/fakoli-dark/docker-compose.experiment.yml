@@ -4,7 +4,7 @@
 # in. This is the "add a model to the Blackwell lab notebook" path; the permanent tiers live in
 # docker-compose.yml. See docs/adr/0002-serves-are-compose-defined.md.
 #
-# Usage — MODEL and GPU_UUID are required; SERVED_NAME / PORT / EXTRA_ARGS have defaults:
+# Usage — MODEL, GPU_UUID, SERVED_NAME, PORT, and EXTRA_ARGS can be overridden:
 #
 #   MODEL=RedHatAI/Qwen3-32B-NVFP4 \
 #   GPU_UUID=GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 \
@@ -47,16 +47,44 @@ x-voice-candidate-common: &voice-candidate-common
     - "vllm-hfcache:/root/.cache/huggingface"
   entrypoint: ["vllm"]
 
+x-fast-candidate-env: &fast-candidate-env
+  CUDA_DEVICE_ORDER: PCI_BUS_ID
+  VLLM_USE_V2_MODEL_RUNNER: "0"
+  FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+  HF_TOKEN: ${HF_TOKEN:-}
+
+x-fast-vllm-common: &fast-vllm-common
+  restart: "no"
+  ipc: host
+  image: ${FAST_VLLM_IMAGE:-vllm/vllm-openai:nightly}
+  volumes:
+    - "vllm-hfcache:/root/.cache/huggingface"
+  entrypoint: ["vllm"]
+
+x-fast-sglang-common: &fast-sglang-common
+  restart: "no"
+  ipc: host
+  image: ${FAST_SGLANG_IMAGE:-lmsysorg/sglang:latest}
+  volumes:
+    - "vllm-hfcache:/root/.cache/huggingface"
+
+x-fast-llamacpp-common: &fast-llamacpp-common
+  restart: "no"
+  ipc: host
+  image: ${FAST_LLAMA_CPP_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
+  volumes:
+    - "llamacpp-cache:/root/.cache/llama.cpp"
+
 services:
   experiment:
     image: vllm/vllm-openai:latest
-    container_name: vllm-experiment-${PORT:-30002}
+    container_name: vllm-experiment-${PORT:-39099}
     restart: "no"
     ipc: host
     ports:
       # Loopback-only publish: the experiment vLLM endpoint is unauthenticated and must not
       # be LAN-exposed (127.0.0.1-only repo, CLAUDE.md gotcha #1 / SECURITY.md).
-      - "127.0.0.1:${PORT:-30002}:${PORT:-30002}"
+      - "127.0.0.1:${PORT:-39099}:${PORT:-39099}"
     volumes:
       # Native-speed weights cache (backed by D: ext4). vLLM downloads a new MODEL here once,
       # then reloads it in ~15s. Deliberately NOT a C:/ bind-mount (9P ~15 MB/s cold-load tax).
@@ -66,14 +94,14 @@ services:
       # Docker-Desktop/WSL2 does NOT honor Compose `device_ids` GPU isolation (gotcha #13),
       # so also select the target card via CUDA_VISIBLE_DEVICES=<UUID>. Belt-and-suspenders
       # with the device_ids reservation below.
-      CUDA_VISIBLE_DEVICES: ${GPU_UUID}
+      CUDA_VISIBLE_DEVICES: ${GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
       VLLM_USE_V2_MODEL_RUNNER: "0"
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${GPU_UUID:?set GPU_UUID to the target card UUID (e.g. the 5090 GPU-04d3b6e7-...)}"]
+              device_ids: ["${GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
               capabilities: [gpu]
     # Pin the entrypoint: upstream flipped the image default from `vllm` to `vllm serve`,
     # which made the leading `serve` below double up and break arg parsing (hit live
@@ -81,10 +109,10 @@ services:
     # is stable against either image vintage.
     entrypoint: ["vllm"]
     command: >
-      serve ${MODEL:?set MODEL to a HF repo-id (e.g. RedHatAI/Qwen3-32B-NVFP4)}
+      serve ${MODEL:-nvidia/Qwen3.6-27B-NVFP4}
       --served-model-name ${SERVED_NAME:-experiment}
       --gpu-memory-utilization 0.90
-      --host 0.0.0.0 --port ${PORT:-30002}
+      --host 0.0.0.0 --port ${PORT:-39099}
       ${EXTRA_ARGS:-}
 
   # Managed voice-latency candidates. These are opt-in A/B serves, not production tiers.
@@ -101,13 +129,13 @@ services:
       - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39000:39000"
     environment:
       <<: *voice-candidate-env
-      CUDA_VISIBLE_DEVICES: ${VOICE_QWEN3_32B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${VOICE_QWEN3_32B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${VOICE_QWEN3_32B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${VOICE_QWEN3_32B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
               capabilities: [gpu]
     command: >
       serve nvidia/Qwen3-32B-NVFP4
@@ -131,13 +159,13 @@ services:
       - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39001:39001"
     environment:
       <<: *voice-candidate-env
-      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_12B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_12B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${VOICE_GEMMA4_12B_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              device_ids: ["${VOICE_GEMMA4_12B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
               capabilities: [gpu]
     command: >
       serve google/gemma-4-12B-it
@@ -176,8 +204,190 @@ services:
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39002
 
+  # Fast-tier LLM bakeoff candidates. These are source-backed experiment
+  # services only: no restart policy, no production tier replacement, and no
+  # Heavy-card default. `FAST_CANDIDATE_GPU_UUID` defaults to the RTX 5090.
+  fast-qwen36-35b-a3b:
+    <<: *fast-vllm-common
+    container_name: vllm-fast-qwen36-35b-a3b
+    ports:
+      - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39010:39010"
+    environment:
+      <<: *fast-candidate-env
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      serve nvidia/Qwen3.6-35B-A3B-NVFP4
+      --served-model-name qwen36-35b-a3b-nvfp4
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --trust-remote-code
+      --max-model-len 32768
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.85
+      --host 0.0.0.0 --port 39010
+
+  fast-gemma4-31b:
+    <<: *fast-vllm-common
+    image: ${FAST_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
+    container_name: vllm-fast-gemma4-31b
+    ports:
+      - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39011:39011"
+    environment:
+      <<: *fast-candidate-env
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      serve nvidia/Gemma-4-31B-IT-NVFP4
+      --served-model-name gemma4-31b-it-nvfp4
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8
+      --enable-auto-tool-choice
+      --trust-remote-code
+      --max-model-len 32768
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.88
+      --host 0.0.0.0 --port 39011
+
+  fast-glm47-flash-sglang:
+    <<: *fast-sglang-common
+    container_name: sglang-fast-glm47-flash
+    ports:
+      - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39012:39012"
+    environment:
+      <<: *fast-candidate-env
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      python3 -m sglang.launch_server
+      --model-path zai-org/GLM-4.7-Flash
+      --served-model-name glm-4.7-flash
+      --context-length 32768
+      --max-running-requests 2
+      --mem-fraction-static 0.85
+      --trust-remote-code
+      --host 0.0.0.0 --port 39012
+
+  fast-glm47-flash-llamacpp:
+    <<: *fast-llamacpp-common
+    container_name: llamacpp-fast-glm47-flash
+    ports:
+      - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39013:39013"
+    environment:
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      -hf ${FAST_GLM47_FLASH_GGUF:-zai-org/GLM-4.7-Flash-GGUF}
+      --alias glm-4.7-flash-gguf
+      --host 0.0.0.0 --port 39013
+      -c 32768
+      -ngl 999
+
+  fast-devstral-small2:
+    <<: *fast-vllm-common
+    container_name: vllm-fast-devstral-small2
+    ports:
+      - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39014:39014"
+    environment:
+      <<: *fast-candidate-env
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      serve mistralai/Devstral-Small-2-24B-Instruct-2512
+      --served-model-name devstral-small-2-24b
+      --enable-auto-tool-choice
+      --trust-remote-code
+      --max-model-len 32768
+      --max-num-seqs 4
+      --gpu-memory-utilization 0.85
+      --host 0.0.0.0 --port 39014
+
+  fast-devstral-small2-llamacpp:
+    <<: *fast-llamacpp-common
+    container_name: llamacpp-fast-devstral-small2
+    ports:
+      - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39015:39015"
+    environment:
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      -hf ${FAST_DEVSTRAL_SMALL2_GGUF:-bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF}
+      --alias devstral-small-2-24b-gguf
+      --host 0.0.0.0 --port 39015
+      -c 32768
+      -ngl 999
+
+  fast-qwen3-30b-a3b:
+    <<: *fast-vllm-common
+    container_name: vllm-fast-qwen3-30b-a3b
+    ports:
+      - "${FAST_CANDIDATE_PUBLISH:-127.0.0.1}:39016:39016"
+    environment:
+      <<: *fast-candidate-env
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      serve Qwen/Qwen3-30B-A3B-Instruct-2507
+      --served-model-name qwen3-30b-a3b-instruct
+      --kv-cache-dtype fp8
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --trust-remote-code
+      --max-model-len 32768
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.85
+      --host 0.0.0.0 --port 39016
+
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache
 volumes:
   vllm-hfcache:
+    external: true
+  llamacpp-cache:
     external: true
