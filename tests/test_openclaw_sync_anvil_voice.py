@@ -271,5 +271,18 @@ def test_openclaw_anvil_voice_example_manifest_is_valid_and_hygienic():
     assert data["voice"]["llm"]["base_url"] == "http://100.87.34.66:8000/v1"
     assert data["voice"]["llm"]["model"] == "fast-local"
     assert data["voice"]["llm"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
-    assert data["voice"]["stt"]["lifecycle"] == "native"
+    assert data["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
+    assert data["voice"]["stt"]["model"] == "tdt_ctc-110m"
+    assert data["voice"]["stt"]["lifecycle"] == "external"
+    assert data["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
+    assert data["voice"]["tts"]["model"] == "kokoro"
+    assert data["voice"]["tts"]["lifecycle"] == "external"
     assert data["voice"]["tts"]["response_format"] == "pcm"
+
+    mini = voice_config.load_manifest(str(path), profile="mini-audio")
+    assert mini["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
+    assert mini["voice"]["stt"]["lifecycle"] == "native"
+    assert mini["voice"]["stt"]["start_command"]
+    assert mini["voice"]["tts"]["base_url"] == "http://127.0.0.1:30011/v1"
+    assert mini["voice"]["tts"]["lifecycle"] == "native"
+    assert mini["voice"]["tts"]["start_command"]
