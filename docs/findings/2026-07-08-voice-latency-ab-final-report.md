@@ -14,6 +14,14 @@ Candidate model A/B testing is incomplete. The successful measurement is the
 current baseline only. I should not treat the retained candidate failure rows as
 proof that the candidate models were tested.
 
+Topology correction after follow-up review: `mini-audio` is a supported
+Mini-local audio mode, but it is not the intended topology for the candidate
+benchmark workflow. Fakoli Mini should be treated as the OpenClaw Gateway /
+Anvil Voice host for this workflow, not as the normal STT/TTS model host. The
+intended candidate benchmark needs remote or proxied audio, such as
+`dark-audio` or `mini-dark-audio-proxy`, after the matching bridge/proxy is
+verified.
+
 The current OpenClaw Talk path is functionally healthy: spoken turns reach the
 main chat session, session context is retained, tool calls work, hidden control
 text is absent from visible user prompts, and the duplicate-message spam did
@@ -27,9 +35,9 @@ failed before STT because they were executed from a non-gateway checkout whose
 guardrail, not candidate model speed or quality.
 
 Final recommendation: keep the current production fast Talk model in place and
-rerun the actual candidate tests from Fakoli Mini with `--candidate-overlay`.
-Only reconsider promotion after comparable candidate timing and live Talk
-validation both pass.
+rerun the intended-topology baseline and actual candidate tests from Fakoli
+Mini with the correct audio profile plus `--candidate-overlay`. Only reconsider
+promotion after comparable candidate timing and live Talk validation both pass.
 
 ## What Was Tested
 
@@ -37,7 +45,7 @@ The evidence set covered these phases:
 
 | Phase | Evidence | Result |
 |---|---|---|
-| Baseline | `mini-audio` using `baseline-qwen36-27b` through Fakoli Dark router | Successful timing row captured |
+| Baseline | `mini-audio` using `baseline-qwen36-27b` through Fakoli Dark router | Successful supported-mode timing row captured; not the intended remote-audio benchmark baseline |
 | Shortlist | Qwen3 dense NVFP4 and Gemma 4 dense candidates | Candidate set defined; no promotion implied |
 | Matrix | Baseline plus candidate profiles and tool-relevant weather turn | Baseline measured; candidate rows failed before STT from wrong host context, so candidate models were not benchmarked |
 | Live Talk validation | Fakoli Mini gateway and voice runtime with Dark router | Functional Talk path passed with warning-only COLO smoke |
@@ -49,8 +57,8 @@ The interpretation depends on where a command is executed:
 
 | Host | Owns |
 |---|---|
-| Fakoli Mini | OpenClaw Gateway, Anvil Voice Realtime server, `mini-audio` STT/TTS loopback endpoints at `127.0.0.1:30010` and `127.0.0.1:30011` |
-| Fakoli Dark | Anvil router at `http://100.87.34.66:8000/v1`, candidate LLM serves, optional Dark audio bridge ports |
+| Fakoli Mini | OpenClaw Gateway and Anvil Voice Realtime server. It may support the optional `mini-audio` local-audio mode, but that is not the intended candidate benchmark topology. |
+| Fakoli Dark | Anvil router at `http://100.87.34.66:8000/v1`, candidate LLM serves, and the intended STT/TTS model hosting or bridge boundary for candidate testing. |
 | Mini proxy profile | `mini-dark-audio-proxy` loopback endpoints on Mini at `127.0.0.1:30110` and `127.0.0.1:30111`, only valid after Mini-side proxy listeners are up |
 
 A Windows/operator checkout cannot validate Mini-local audio by calling its own
@@ -59,7 +67,9 @@ host are topology negative controls.
 
 ## Timing Results
 
-The successful measured timing row is the rerun Mini baseline:
+The successful measured timing row is the rerun `mini-audio` baseline. Treat it
+as a supported-mode measurement, not as the intended remote-audio candidate
+benchmark baseline:
 
 | Profile | Candidate | Status | TTFA ms | Turn ms | STT ms | LLM ms | TTS ms |
 |---|---|---|---:|---:|---:|---:|---:|
@@ -73,8 +83,9 @@ Stage share of total turn latency:
 | LLM | 356.82 | 45.2% |
 | TTS | 325.95 | 41.3% |
 
-Determination from this row: the LLM and TTS stages are co-dominant. STT is not
-the current bottleneck in the successful baseline measurement.
+Determination from this row: the LLM and TTS stages are co-dominant for the
+`mini-audio` mode. This does not establish the latency split for the intended
+remote/proxied-audio candidate benchmark topology.
 
 ## Candidate Matrix Outcome
 
@@ -136,10 +147,12 @@ from the correct host/topology and did not reach candidate LLM timing.
 
 Latency work should continue on two tracks:
 
-1. Re-run model candidates from Fakoli Mini using the same `mini-audio` profile
-   and only changing the LLM via `--candidate-overlay`.
-2. Investigate TTS latency/chunking alongside LLM latency, because the baseline
-   shows TTS is nearly as large as the LLM stage.
+1. Re-run the baseline and model candidates from Fakoli Mini using the intended
+   audio profile, likely `dark-audio` or `mini-dark-audio-proxy`, after
+   verifying the bridge/proxy endpoints.
+2. Keep audio topology fixed and change only the LLM via `--candidate-overlay`.
+3. Investigate TTS latency/chunking alongside LLM latency, because the
+   supported-mode baseline shows TTS can be nearly as large as the LLM stage.
 
 ## Required Next Evidence Before Promotion
 
@@ -147,7 +160,7 @@ Before any production model or routing profile change, capture:
 
 | Required evidence | Acceptance condition |
 |---|---|
-| Fresh Mini baseline JSON | Same host, profile, prompt shape, and evidence output path as candidate runs |
+| Fresh intended-topology baseline JSON | Same command host, audio profile, prompt shape, and evidence output path as candidate runs |
 | At least one successful candidate overlay JSON | Candidate differs only by LLM overlay; STT/TTS profile remains comparable |
 | Tool-relevant live Talk turn | Weather/location or equivalent tool call succeeds after candidate selection |
 | Session transcript check | Spoken user and assistant turns land in the main session without hidden control text |
