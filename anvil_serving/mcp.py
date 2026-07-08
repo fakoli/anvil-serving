@@ -1666,7 +1666,7 @@ def tool_openclaw_sync(args: dict) -> dict:
         "voice_realtime_url",
         harness.DEFAULT_ANVIL_VOICE_REALTIME_URL,
     )
-    voice_model = _str_arg(args, "voice_model", "fast-local")
+    voice_model = _str_arg(args, "voice_model", "")
     voice_consult_model = _str_arg(args, "voice_consult_model", "")
     voice_consult_thinking_level = _str_arg(args, "voice_consult_thinking_level", "off")
     voice_consult_bootstrap_context_mode = _str_arg(
@@ -1725,7 +1725,7 @@ def tool_openclaw_sync(args: dict) -> dict:
             skill_dir=skill_dir or None,
             voice=voice,
             voice_realtime_url=voice_realtime_url,
-            voice_model=voice_model,
+            voice_model=voice_model or None,
             voice_consult_model=voice_consult_model,
             voice_consult_thinking_level=voice_consult_thinking_level,
             voice_consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,
@@ -1746,7 +1746,7 @@ def tool_openclaw_sync(args: dict) -> dict:
         "skill_dir": skill_dir or None,
         "voice": voice,
         "voice_realtime_url": voice_realtime_url if voice else None,
-        "voice_model": voice_model if voice else None,
+        "voice_model": preview.get("voice_model") if voice else None,
         "voice_consult_model": voice_consult_model if voice and voice_consult_model else None,
         "voice_consult_thinking_level": voice_consult_thinking_level if voice else None,
         "voice_consult_bootstrap_context_mode": (
@@ -1774,7 +1774,7 @@ def tool_openclaw_sync(args: dict) -> dict:
         skill_dir=skill_dir or None,
         voice=voice,
         voice_realtime_url=voice_realtime_url,
-        voice_model=voice_model,
+        voice_model=voice_model or None,
         voice_consult_model=voice_consult_model,
         voice_consult_thinking_level=voice_consult_thinking_level,
         voice_consult_bootstrap_context_mode=voice_consult_bootstrap_context_mode,

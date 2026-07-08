@@ -386,7 +386,7 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
                 "stream": True,
                 "timeout": 33.0,
                 "expected_route_provider": "fast-local",
-                "expected_route_model": "qwen36-27b",
+                "expected_route_model": "qwen36-35b-a3b-nvfp4",
                 "expected_route_tier": "local",
             },
             "tts": {
@@ -443,7 +443,7 @@ def test_run_benchmark_from_manifest_builds_stage_configs_from_tables():
     assert identity["stt"]["model"] == "parakeet"
     assert identity["tts"]["model"] == "kokoro-82m"
     assert identity["route"]["provider"] == "fast-local"
-    assert identity["route"]["model"] == "qwen36-27b"
+    assert identity["route"]["model"] == "qwen36-35b-a3b-nvfp4"
     assert identity["route"]["tier"] == "local"
 
 
@@ -518,7 +518,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
         route_identity={
             "endpoint_host": "100.87.34.66",
             "provider": "fast-local",
-            "model": "qwen36-27b",
+            "model": "qwen36-35b-a3b-nvfp4",
             "tier": "local",
             "work_class": "chat-fast",
         },
@@ -543,7 +543,7 @@ def test_build_evidence_record_has_stable_json_schema_fields():
         "route": {
             "endpoint_host": "100.87.34.66",
             "provider": "fast-local",
-            "model": "qwen36-27b",
+            "model": "qwen36-35b-a3b-nvfp4",
             "tier": "local",
             "work_class": "chat-fast",
         },

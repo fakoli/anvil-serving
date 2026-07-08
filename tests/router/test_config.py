@@ -1007,11 +1007,11 @@ def test_fakoli_agentic_is_byte_identical_to_live():
 
 
 def test_fakoli_agentic_config_loads():
-    """The agentic mode config parses (it is the live SGLang two-tier deploy)."""
+    """The agentic mode config parses (it is the live two-tier deploy)."""
     cfg = load(str(FAKOLI_AGENTIC))
     assert isinstance(cfg, RouterConfig)
     assert {t.id for t in cfg.tiers} == {"fast-local", "heavy-local"}
-    assert cfg.profile_path is None
+    assert cfg.profile_path == "/etc/anvil/profile.json"
     assert cfg.presets == {
         "chat": ("heavy-local", "fast-local"),
         "chat-fast": ("fast-local", "heavy-local"),
@@ -1025,7 +1025,7 @@ def test_fakoli_agentic_config_loads():
         assert t.engine is None and t.quantization is None
     fast = cfg.tier("fast-local")
     heavy = cfg.tier("heavy-local")
-    assert fast.model == "qwen36-27b"
+    assert fast.model == "qwen36-35b-a3b-nvfp4"
     assert fast.base_url == "http://host.docker.internal:30003/v1"
     assert fast.context_limit == 32768
     assert dict(fast.extra_body or {}) == {"chat_template_kwargs": {"enable_thinking": False}}

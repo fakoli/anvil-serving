@@ -119,6 +119,35 @@ def test_provider_shape_and_token_by_reference():
     assert "config" not in entry
 
 
+def test_openclaw_voice_sync_defaults_to_chat_fast_preset():
+    preview = harness.openclaw_sync_preview(
+        "r.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        voice=True,
+        _load=lambda _p: _cfg(),
+    )
+
+    assert preview["voice"] is True
+    assert preview["voice_model"] == "chat-fast"
+    assert preview["voice_consult_model"] == "anvil/chat-fast"
+
+
+def test_openclaw_voice_sync_falls_back_to_chat_model_without_chat_fast():
+    cfg = _Config(
+        presets={"chat": ("fast", "heavy")},
+        tiers={"fast": _Tier(32768), "heavy": _Tier(131072)},
+    )
+    preview = harness.openclaw_sync_preview(
+        "r.toml",
+        base_url="http://100.87.34.66:8000/v1",
+        voice=True,
+        _load=lambda _p: cfg,
+    )
+
+    assert preview["voice_model"] == "chat"
+    assert preview["voice_consult_model"] == "anvil/chat"
+
+
 # ---- cmd_sync_openclaw -------------------------------------------------------
 
 def test_sync_emits_valid_json_to_stdout(capsys):

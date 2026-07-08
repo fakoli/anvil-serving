@@ -255,7 +255,7 @@ Gateway relay:
       providers: {
         anvil: {
           realtimeUrl: "ws://127.0.0.1:8765/v1/realtime",
-          model: "fast-local",
+          model: "chat-fast",
           silenceDurationMs: 200
         }
       }
@@ -286,9 +286,10 @@ anvil-serving voice run \
 
 `harness sync openclaw --voice` renders this Talk block together with the
 normal anvil model provider config. When the router config includes
-`chat-fast`, the rendered `talk.consultModel` defaults to `anvil/chat-fast` so
-forced Talk agent consults use the fast preset without persisting a session
-model change:
+`chat-fast`, the rendered Talk provider model defaults to `chat-fast`, and
+`talk.consultModel` defaults to `anvil/chat-fast`, so spoken turns and forced
+Talk agent consults use the fast preset without persisting a session model
+change:
 
 ```bash
 anvil-serving harness sync openclaw \

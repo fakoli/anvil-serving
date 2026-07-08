@@ -419,8 +419,8 @@ evidence from intent.
   "targets": {
     "router_config": "./router.toml",
     "serves_manifest": "./serves.toml",
-    "endpoint": "http://127.0.0.1:30001/v1",
-    "model": "fast-local"
+    "endpoint": "http://127.0.0.1:30003/v1",
+    "model": "qwen36-35b-a3b-nvfp4"
   },
   "tools_used": [
     {
