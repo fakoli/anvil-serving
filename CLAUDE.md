@@ -293,21 +293,28 @@ actions. Keep that boundary intact unless a tool explicitly supports crossing it
 For OpenClaw Talk / Anvil Voice work, name the command host before interpreting any loopback URL.
 The reference topology is:
 
-- **Fakoli Mini:** OpenClaw Gateway, Anvil Voice Realtime server, and `mini-audio`
-  STT/TTS loopback endpoints at `127.0.0.1:30010` and `127.0.0.1:30011`.
-- **Fakoli Dark:** router at `http://100.87.34.66:8000/v1`, candidate LLM serves
-  on direct candidate ports, and optional Dark-owned STT/TTS bridge ports.
+- **Fakoli Mini:** OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude Code,
+  and Codex. Its 16 GB RAM is reserved for those runtimes; do not run STT, TTS,
+  or LLM model serves on Mini for reference testing.
+- **Fakoli Dark:** router at `http://100.87.34.66:8000/v1`, candidate LLM
+  serves on direct candidate ports, and STT/TTS model endpoints or Dark-owned
+  bridge ports.
 - **`dark-audio`:** Mini reaches Dark audio through Dark's private bridge ports
   such as `100.87.34.66:30110` and `100.87.34.66:30111`, after the bridge is
   actually listening on Dark.
 - **`mini-dark-audio-proxy`:** Mini reaches `127.0.0.1:30110` and
   `127.0.0.1:30111` on Mini, where those Mini-local proxy listeners forward to
-  Dark audio. Those URLs are not valid from a Windows/operator checkout.
+  Dark audio. Those URLs are not valid from a Windows/operator checkout and do
+  not imply Mini is hosting models.
+- **`mini-audio`:** optional same-host/local-audio mode only. Do not use it for
+  normal OpenClaw Talk validation, latency candidate A/B, or reference evidence
+  unless the task explicitly tests Mini-local audio.
 
-A non-gateway checkout failing to reach `127.0.0.1:30010`, `30011`, `30110`, or
-`30111` is a topology negative control, not proof that Mini or Dark audio is
-down. Run Mini-local profiles on Mini or through a Mini controller/agent; use
-private/tailnet addresses only for cross-device endpoints.
+A non-gateway checkout failing to reach `127.0.0.1:30110` or `30111` is a
+topology negative control for the Mini-side proxy path, not proof that Mini or
+Dark audio is down. A probe of `127.0.0.1:30010` or `30011` is same-host native
+audio only and is not part of the reference Mini topology. Use private/tailnet
+addresses for cross-device endpoints.
 
 Controller auth is required by default even on `127.0.0.1`; use
 `--allow-unauthenticated-loopback` only for explicit local development tests.

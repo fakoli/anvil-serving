@@ -31,6 +31,8 @@ benchmarks as `advisory_priors` only and keep `promoted=false`.
 
 For voice latency benchmarks, keep audio topology and LLM candidate selection
 separate: `--profile` selects Mini/Dark audio, `--candidate-overlay` selects the
-candidate LLM. Run `mini-audio` and `mini-dark-audio-proxy` from Fakoli Mini or
-through a Mini controller/agent. A benchmark from another checkout against its
-own `127.0.0.1` is a topology negative control, not candidate performance.
+candidate LLM. For reference OpenClaw Talk and candidate A/B, keep Fakoli Mini
+model-free and use `dark-audio` or `mini-dark-audio-proxy`; use `mini-audio`
+only when the task explicitly validates optional same-host/local-audio mode. A
+benchmark from another checkout against its own `127.0.0.1` is a topology
+negative control, not candidate performance.

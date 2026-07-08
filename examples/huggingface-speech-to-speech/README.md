@@ -151,9 +151,12 @@ anvil-serving voice-sidecar validate \
 
 ## 5. Validate 16 GB shared-memory targets
 
-On a Mac Mini or Fakoli Mini PC with 16 GB shared memory, validate the audio sidecar before moving any
-LLM weights onto the same machine. The default path should keep the LLM call routed through
-anvil-serving, so the sidecar only has to hold VAD, STT, and TTS locally.
+On a generic Mac Mini or small PC with 16 GB shared memory, validate the audio sidecar before
+moving any LLM weights onto the same machine. For the current Fakoli Mini OpenClaw topology, do
+not run STT, TTS, or LLM model serves on Mini during normal validation; its memory is reserved for
+OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude Code, and Codex. The default OpenClaw path
+should keep audio models on a non-Mini host or behind a Mini proxy, and route the LLM call through
+anvil-serving.
 
 Suggested first pass:
 
@@ -161,9 +164,10 @@ Suggested first pass:
 - LLM: `--model_name chat` through anvil-serving.
 - TTS: the smallest Qwen3-TTS variant that passes the live voice demo.
 
-Fully local STT plus TTS plus a small GGUF LLM on the 16 GB box is experimental until measured. If
-you try it, record the model names, quantization, and whether the sidecar still meets voice-latency
-expectations.
+Fully local STT plus TTS plus a small GGUF LLM on a 16 GB box is experimental until measured. Do
+not treat that experiment as approval to place models on the Fakoli Mini reference gateway. If you
+try it on another host, record the model names, quantization, and whether the sidecar still meets
+voice-latency expectations.
 
 Record this checklist for each run:
 

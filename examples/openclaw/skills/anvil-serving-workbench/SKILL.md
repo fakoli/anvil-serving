@@ -27,13 +27,14 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   gap.
 - Use `127.0.0.1` for local URLs. Do not use `localhost`.
 - For OpenClaw Talk / Anvil Voice work, record the command host before
-  interpreting loopback. Reference deployment: OpenClaw Gateway and Anvil Voice
-  run on Fakoli Mini; `mini-audio` STT/TTS is Mini loopback
-  `127.0.0.1:30010/30011`; Fakoli Dark owns the router and candidate serves;
-  `dark-audio` uses Dark private bridge ports; `mini-dark-audio-proxy` uses
-  Mini loopback proxy ports `127.0.0.1:30110/30111` forwarding to Dark. A
-  non-gateway checkout failing to reach those ports is topology evidence, not
-  proof the live Mini/Dark path is down.
+  interpreting loopback. Reference deployment: Fakoli Mini runs OpenClaw
+  Gateway plus Anvil Voice Realtime/proxy and reserves its 16 GB RAM for
+  OpenClaw, Claude Code, and Codex. Do not run STT/TTS/LLM model serves on Mini
+  for reference testing. Fakoli Dark owns the router, candidate serves, and
+  STT/TTS model endpoints. Prefer `dark-audio` or `mini-dark-audio-proxy` for
+  OpenClaw Talk; `mini-audio` is an explicit optional same-host/local-audio
+  mode only. A non-gateway checkout failing to reach Mini proxy loopback is
+  topology evidence, not proof the live Mini/Dark path is down.
 - Pass credentials by environment variable name only.
 - Stop for a human gate before profile promotion, router policy changes,
   metered cloud enablement, destructive cache/host repair, Docker/WSL restart,
@@ -58,9 +59,10 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   benchmark.
 - Voice lifecycle: preview with `voice_manage`; live native or managed STT/TTS
   start/stop on the owning host requires `confirm=true` plus `dry_run=false`.
-  Profile selection is topology selection: run Mini-local profiles on Mini or
-  through a Mini controller/agent; use private/tailnet addresses for
-  cross-device audio/router endpoints.
+  Profile selection is topology selection: for reference OpenClaw Talk and
+  candidate benchmarks, keep Mini model-free and select Dark-host audio or a
+  Mini-side proxy to Dark. Use `mini-audio` only when explicitly testing the
+  optional same-host/local-audio mode.
 - Harness sync: preview OpenClaw provider, skill, and agent config with
   `openclaw_sync`; apply only to an explicit `out` or `gateway_host` target.
 - Promotion evidence: assemble status, decision summaries, route probes,

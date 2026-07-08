@@ -22,6 +22,12 @@ Interpretation: Mini-local loopback and Mini-local proxy loopback are valid
 runtime targets only when the command runs on Mini. A non-gateway checkout
 cannot benchmark either path by calling its own `127.0.0.1`.
 
+Post-validation correction: this run proved the optional Mini-local audio path,
+not the reference path for ongoing Talk validation. Fakoli Mini's 16 GB RAM is
+reserved for OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude Code, and
+Codex. Future reference validation should keep Mini model-free and use
+Dark-host audio or a Mini proxy to Dark.
+
 ## Validation Commands
 
 ```bash
@@ -104,5 +110,7 @@ T006 also corrected the operational path for future A/B runs:
 - `voice run` now accepts `--candidate-overlay`, matching `voice benchmark`.
 - Audio topology stays in `--profile`.
 - Candidate LLM choice stays in `--candidate-overlay`.
+- Reference A/B keeps Mini model-free and uses `dark-audio` or
+  `mini-dark-audio-proxy`; `mini-audio` is optional local-audio validation only.
 - `mini-dark-audio-proxy` is available only for a verified Mini-side proxy on
   `127.0.0.1:30110` and `127.0.0.1:30111`.

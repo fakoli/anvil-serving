@@ -1,10 +1,11 @@
 """Native same-host audio serve lifecycle for small edge hosts.
 
 `managed` voice serves delegate to :mod:`anvil_serving.serves` and Docker.
-Fakoli Mini runs STT/TTS as native MLX Audio processes instead, so this module
-provides the narrow process lifecycle used by ``anvil-serving voice up/down``:
-start a trusted manifest command in the background, write a PID file, probe the
-OpenAI-compatible ``/models`` endpoint, and stop the PID it started.
+Some hosts intentionally own STT/TTS as native processes instead, so this
+module provides the narrow process lifecycle used by
+``anvil-serving voice up/down``: start a trusted manifest command in the
+background, write a PID file, probe the OpenAI-compatible ``/models`` endpoint,
+and stop the PID it started.
 
 No shell is used. Commands are parsed with ``shlex`` and treated as trusted
 operator manifest content, like ``serves.toml``'s ``up`` command.

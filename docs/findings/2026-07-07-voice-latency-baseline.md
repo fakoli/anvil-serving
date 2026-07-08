@@ -5,6 +5,13 @@
 > on Fakoli Mini, and routes the LLM turn to the Fakoli Dark router as
 > `fast-local` / `qwen36-27b`.
 
+> **Topology addendum (2026-07-08).** This remains historical evidence for the
+> optional Mini-local audio mode. It is no longer the reference OpenClaw Talk or
+> candidate benchmark topology. Fakoli Mini's 16 GB RAM is reserved for
+> OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude Code, and Codex during
+> normal validation; use Dark-host or Mini-proxied audio for future candidate
+> A/B.
+
 This note records the current baseline before candidate LLM A/B testing. It is
 not a promotion recommendation and does not change production routing.
 
@@ -194,7 +201,9 @@ also includes complete TTS output generation.
 
 ## Follow-Up
 
-- Use this as the `qwen36-27b` baseline for candidate LLM A/B.
-- Add candidate profiles or serve recipes without overwriting `mini-audio`.
+- Use this as optional Mini-local audio context only, not as the reference
+  `qwen36-27b` baseline for candidate LLM A/B.
+- Run future candidate A/B with Mini model-free and audio fixed to `dark-audio`
+  or `mini-dark-audio-proxy`.
 - For model promotion, require live Talk validation with memory, tool calls,
   session transcript delivery, and no duplicate-message spam.

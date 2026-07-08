@@ -37,3 +37,9 @@ tools_used, artifacts, advisory_priors, recommendation, human_gate_required, and
 promoted=false unless a separate human-approved promotion command actually ran.
 Each tools_used entry must include source_class, ok, dry_run, confirmed, target,
 and error. Use 127.0.0.1 in URLs, never localhost.
+
+For OpenClaw voice probes, 127.0.0.1 is valid only on the host that owns the
+endpoint. In reference OpenClaw Talk, Fakoli Mini hosts Gateway and Anvil Voice
+Realtime/proxy, not STT/TTS/LLM model serves. Use Dark private/tailnet
+addresses for Dark bridge endpoints, or probe Mini-side proxy loopback only on
+Mini. Use mini-audio only for explicit optional same-host audio tests.

@@ -1,4 +1,4 @@
-# Live 16GB Fakoli Mini voice manifest for T016.
+# Optional Mini-local audio validation manifest.
 #
 # STT and TTS are native MLX Audio servers bound to loopback on the Mini.
 # `anvil-serving voice up/down --config examples/voice/fakoli-mini.toml`
@@ -6,9 +6,10 @@
 # The LLM remains routed to fakoli-dark over the tailnet. Secrets are env var
 # names only; never paste token values here.
 #
-# This is a live reference manifest, not a portable template. For another
-# laptop or router host, copy it and replace the LLM base_url/expected host,
-# route/model expectations, MLX Audio workdir, ports, and lifecycle fields.
+# This is not the reference OpenClaw Talk or candidate benchmark topology.
+# Fakoli Mini's 16 GB RAM is reserved for OpenClaw Gateway, Anvil Voice
+# Realtime/proxy, Claude Code, and Codex during normal validation. Use this
+# manifest only when explicitly testing optional same-host/local-audio mode.
 
 [voice]
 name = "anvil-voice-fakoli-mini"

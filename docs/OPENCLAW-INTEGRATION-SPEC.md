@@ -264,14 +264,13 @@ Gateway relay:
 ```
 
 The matching anvil-serving side is `examples/voice/openclaw-anvil-voice.toml`.
-Its default profile keeps the Realtime server, STT, and TTS endpoints
-Mini-local, while `[voice.llm]` routes to the Fakoli Dark router. The same
-manifest also declares `dark-audio` for using Dark-host STT/TTS through
-`anvil-serving voice bridge`; select it with `anvil-serving voice run --profile
-dark-audio` instead of maintaining a separate port-forwarding script. If the
-operational boundary is a Mini-side proxy that forwards local ports to Dark
-audio, select `mini-dark-audio-proxy` after verifying the Mini-local proxy
-ports are listening.
+In the reference topology, Fakoli Mini runs OpenClaw Gateway plus Anvil Voice
+Realtime/proxy only; its 16 GB RAM is reserved for OpenClaw, Claude Code, and
+Codex. STT/TTS/LLM model serves live off Mini. Use `dark-audio` for Dark-host
+STT/TTS through `anvil-serving voice bridge`, or select
+`mini-dark-audio-proxy` after verifying the Mini-local proxy ports forward to
+Dark audio. `mini-audio` remains an explicit optional same-host/local-audio
+mode, not the normal Talk or benchmark path.
 
 For candidate LLM A/B, keep audio selection in `--profile` and apply a
 candidate overlay to `voice run` or `voice benchmark`:
@@ -279,7 +278,7 @@ candidate overlay to `voice run` or `voice benchmark`:
 ```bash
 anvil-serving voice run \
   --config examples/voice/openclaw-anvil-voice.toml \
-  --profile mini-audio \
+  --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
   --candidate qwen3-32b-nvfp4
 ```

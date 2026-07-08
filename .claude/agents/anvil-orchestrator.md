@@ -34,6 +34,9 @@ local URLs, never `localhost`.
 
 For OpenClaw Talk / Anvil Voice work, require every sidecar report to name the
 command host and resource-owning host. In the reference deployment, OpenClaw
-Gateway and Anvil Voice run on Fakoli Mini, while Fakoli Dark owns the router,
-candidate serves, and optional Dark audio bridge. Treat non-gateway loopback
-failures as topology evidence, not live Mini/Dark service failure.
+Gateway and Anvil Voice Realtime/proxy run on Fakoli Mini, while Fakoli Dark
+owns the router, candidate LLM serves, and STT/TTS model endpoints or bridge
+ports. Mini's 16 GB RAM is reserved for OpenClaw, Claude Code, and Codex; do
+not schedule STT/TTS/LLM model serves there unless the task explicitly tests
+optional Mini-local audio. Treat non-gateway loopback failures as topology
+evidence, not live Mini/Dark service failure.

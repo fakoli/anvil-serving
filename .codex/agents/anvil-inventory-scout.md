@@ -33,3 +33,8 @@ Small model OK. Do not change routing policy or promote profiles. Return an
 operator-workflow/v1 packet with schema_version, request, gate_state, targets,
 tools_used, artifacts, advisory_priors, recommendation, human_gate_required, and
 promoted=false. Use 127.0.0.1 in URLs, never localhost.
+
+For OpenClaw voice inventory, report host ownership explicitly: command host,
+Gateway/Realtime host, STT host, TTS host, router host, and lifecycle owner. In
+the reference topology, Fakoli Mini owns Gateway and Anvil Voice Realtime/proxy
+only; Fakoli Dark or another non-Mini host owns STT/TTS/LLM model serves.

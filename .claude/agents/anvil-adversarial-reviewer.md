@@ -36,8 +36,8 @@ remains false unless a human gate is proven. Return findings in an
 `targets`, `tools_used`, `artifacts`, `advisory_priors`, `recommendation`,
 `human_gate_required`, and `promoted=false`.
 
-For OpenClaw voice reviews, check that docs and evidence do not confuse
-operator-machine loopback with Fakoli Mini loopback. Findings should flag any
-claim that `127.0.0.1:30010/30011` or `30110/30111` proves Mini/Dark service
-health unless the command actually ran on Mini or through a Mini-owned
-controller/agent.
+For OpenClaw voice reviews, check that docs and evidence keep Fakoli Mini
+model-free in the reference topology. Findings should flag any claim that Mini
+should host STT/TTS/LLM models for normal Talk validation, or that
+`127.0.0.1:30010/30011` or `30110/30111` proves Mini/Dark service health unless
+the command ran on the host that owns that loopback or through its controller.

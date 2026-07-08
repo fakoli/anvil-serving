@@ -8,7 +8,7 @@
     "repo": "anvil-serving",
     "branch": "agent/voice-latency-model-ab-t005-run-candidate-benchmark-matrix-and-captu",
     "git_commit": "b579dab957dc098339f1d175eabad5417bca4982",
-    "notes": "Revision used for bounded non-gateway profile probes before this report fixture was committed. T006 corrected the interpretation: loopback audio endpoints are gateway-local to Fakoli Mini."
+    "notes": "Revision used for bounded non-gateway profile probes before this report fixture was committed. Later topology correction made Mini-local audio optional only: reference OpenClaw Talk keeps Fakoli Mini model-free and uses Dark-host or Mini-proxied audio."
   },
   "prompt_sets": [
     {
@@ -326,6 +326,6 @@
     "failed_candidates_retained": true,
     "tool_relevant_turn_included": true,
     "promotion_recommendation": "do_not_promote",
-    "next_gate": "Run T006 live OpenClaw Talk validation from Fakoli Mini. Use Mini-local audio from Mini, or select dark-audio / mini-dark-audio-proxy only after the matching Dark bridge or Mini proxy is reachable; compose LLM candidates with --candidate-overlay."
+    "next_gate": "Run live OpenClaw Talk validation with Fakoli Mini as gateway/realtime/proxy only. Use dark-audio or mini-dark-audio-proxy after the matching Dark bridge or Mini proxy is reachable; compose LLM candidates with --candidate-overlay. Use mini-audio only for explicit optional Mini-local audio validation."
   }
 }

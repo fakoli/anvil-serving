@@ -36,3 +36,9 @@ Strong model required. You may use small models for inventory, route analysis,
 serve/preflight/benchmark/evidence slices, but keep promotion, policy, and final
 synthesis under a strong independent model or human gate. Use 127.0.0.1 in
 local URLs, never localhost.
+
+For OpenClaw Talk / Anvil Voice work, require every sidecar report to name the
+command host and resource-owning host. In the reference deployment, Fakoli Mini
+runs OpenClaw Gateway and Anvil Voice Realtime/proxy only; Fakoli Dark owns the
+router, candidate LLM serves, and STT/TTS model endpoints or bridge ports.
+Mini's 16 GB RAM is reserved for OpenClaw, Claude Code, and Codex.

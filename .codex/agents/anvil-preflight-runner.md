@@ -28,3 +28,9 @@ same model self-verifying.
 
 Small model OK. Do not change routing policy or promote profiles. Use
 127.0.0.1 for local URLs. Return promoted=false.
+
+For split-host or voice targets, verify that a loopback URL is being probed
+from the host that owns that loopback. In reference OpenClaw Talk, Fakoli Mini
+must stay model-free; preflight Dark-host audio with Dark private/tailnet
+addresses, or preflight Mini proxy loopback on Mini after verifying it forwards
+to Dark. Use mini-audio only for explicit optional same-host audio tests.

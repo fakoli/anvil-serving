@@ -34,3 +34,9 @@ remains false unless a human gate is proven.
 Return findings in an operator-workflow/v1 packet with schema_version, request,
 gate_state, targets, tools_used, artifacts, advisory_priors, recommendation,
 human_gate_required, promoted=false, and a findings summary in artifacts.
+
+For OpenClaw voice reviews, check that docs and evidence keep Fakoli Mini
+model-free in the reference topology. Findings should flag any claim that Mini
+should host STT/TTS/LLM models for normal Talk validation, or that loopback
+probes prove Mini/Dark service health unless they ran on the host that owns
+that loopback or through its controller.

@@ -78,14 +78,15 @@ MCP invocation rules:
 - For `voice_manage`, use the same preview-first pattern. It starts/stops only
   the STT/TTS lifecycle declared by the voice manifest on the host where the
   tool runs: Docker-backed managed audio serves, or same-host native processes
-  such as MLX Audio endpoints with PID/log files. Pass `profile` when the
-  operator wants a declared Mini/Dark/laptop topology rather than the manifest
-  default.
+  with PID/log files. In the reference OpenClaw topology, do not start STT/TTS
+  models on Fakoli Mini; Mini's 16 GB RAM is reserved for OpenClaw Gateway,
+  Anvil Voice Realtime/proxy, Claude Code, and Codex.
 - For OpenClaw Talk voice profiles, remember that loopback is host-relative.
-  `mini-audio` means Mini loopback STT/TTS; `dark-audio` means Mini reaches
-  Dark private bridge ports; `mini-dark-audio-proxy` means Mini loopback proxy
-  ports forwarding to Dark. A Windows or other non-gateway checkout cannot
-  validate Mini-local loopback by calling its own `127.0.0.1`.
+  `dark-audio` means Mini reaches Dark private bridge ports;
+  `mini-dark-audio-proxy` means Mini loopback proxy ports forwarding to Dark.
+  `mini-audio` is an explicit optional same-host/local-audio mode only, not the
+  normal Talk or benchmark topology. A Windows or other non-gateway checkout
+  cannot validate Mini-local loopback by calling its own `127.0.0.1`.
 - For `router_manage`, use the same preview-first pattern. A live router
   lifecycle change requires both `confirm:true` and `dry_run:false`.
 - For `router_promote`, preview validates the candidate profile/config and
@@ -332,8 +333,9 @@ an MCP wrapper actually exists.
 Use this when operating `anvil-serving voice` on a gateway, Mini, laptop, or
 other trusted voice host. The voice command surface has three layers: STT/TTS
 lifecycle (`up`/`down`), optional private audio bridging (`bridge`),
-foreground Realtime serving (`run`), and evidence (`benchmark` or
-`scripts/voice/mini_validation.py`).
+foreground Realtime serving (`run`), and evidence (`benchmark` or a
+topology-specific validation harness). For reference OpenClaw Talk, Fakoli
+Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
 
 1. Identify the voice topology and manifest.
 
@@ -344,22 +346,24 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    `voice up`, so use `external` for remote STT/TTS unless operating that
    remote host through local CLI or a controller.
 
-   The checked-in Mini manifest is one reference topology:
+   The checked-in Mini-local manifest is an optional same-host audio topology:
 
    ```bash
    examples/voice/fakoli-mini.toml
    ```
 
-   It runs STT and TTS as native MLX Audio processes on `127.0.0.1:30010` and
+   It runs STT and TTS as native processes on `127.0.0.1:30010` and
    `127.0.0.1:30011`, while the LLM goes to the Fakoli Dark router over the
-   tailnet. Additional laptops can use the same manifest shape with device
-   names, `base_url` values, and lifecycle fields changed for the new topology.
+   tailnet. Do not use it for normal OpenClaw Talk validation on the 16 GB
+   Mini; it exists for explicit same-host/local-audio testing.
    For OpenClaw Talk, `examples/voice/openclaw-anvil-voice.toml` declares
    `mini-audio`, `dark-audio`, `mini-dark-audio-proxy`, `mini-validation`,
    and opt-in `candidate-*` LLM profiles. Use `--profile` for the audio
-   topology. Use `--candidate-overlay` for live LLM A/B so a candidate model
-   can be tested against Mini-local audio, Dark-direct bridge ports, or a
-   Mini-local proxy without copying manifests.
+   topology. For normal Talk and LLM A/B, use `dark-audio` or
+   `mini-dark-audio-proxy`; use `mini-audio` only for explicit Mini-local audio
+   tests. Use `--candidate-overlay` for live LLM A/B so a candidate model can
+   be tested against the same non-Mini audio topology without copying
+   manifests.
 
    ```bash
    anvil-serving voice profiles --config examples/voice/openclaw-anvil-voice.toml
@@ -368,7 +372,7 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
 2. Preview STT/TTS lifecycle before mutation.
 
    ```bash
-   anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio --dry-run
+   anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --dry-run
    ```
 
    Prefer `voice_manage` through MCP/controller when available:
@@ -377,17 +381,20 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    {
      "action": "up",
      "config": "examples/voice/openclaw-anvil-voice.toml",
-     "profile": "mini-audio"
+     "profile": "dark-audio"
    }
    ```
 
-   The preview should show each audio endpoint's lifecycle. `native` endpoints
-   show the parsed start command, PID file, log file, and readiness timeout.
+   The preview should show each audio endpoint's lifecycle. In the reference
+   OpenClaw topology, the audio lifecycle is `external` because Dark or another
+   non-Mini audio host owns the models. `native` endpoints show the parsed
+   start command, PID file, log file, and readiness timeout only for explicit
+   same-host/local-audio tests.
 
 3. Start the audio endpoints only after the target manifest is exact.
 
    ```bash
-   anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+   anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
    ```
 
    Through MCP/controller, the live call requires:
@@ -396,7 +403,7 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    {
      "action": "up",
      "config": "examples/voice/openclaw-anvil-voice.toml",
-     "profile": "mini-audio",
+     "profile": "dark-audio",
      "confirm": true,
      "dry_run": false
    }
@@ -436,7 +443,7 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    firewall or tailnet ACL scoping is proven.
 
    On Fakoli Mini, select that topology in the Realtime and benchmark commands
-   by using `--profile dark-audio` instead of `--profile mini-audio`. If the
+   by using `--profile dark-audio`. If the
    operator runs a proxy on Mini that forwards local ports `30110` and `30111`
    to Dark audio, use `--profile mini-dark-audio-proxy`; first verify those
    Mini-local proxy ports are listening.
@@ -455,17 +462,18 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    ```bash
    anvil-serving voice run \
      --config examples/voice/openclaw-anvil-voice.toml \
-     --profile mini-audio \
+     --profile dark-audio \
      --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
      --candidate qwen3-32b-nvfp4
    ```
 
-5. Start the Realtime server in the foreground. Use `mini-audio` for Mini-local
-   STT/TTS, `dark-audio` after the Dark-host bridge above is listening, or
-   `mini-dark-audio-proxy` after a Mini-local proxy to Dark is listening.
+5. Start the Realtime server in the foreground. Use `dark-audio` after the
+   Dark-host bridge above is listening, or `mini-dark-audio-proxy` after a
+   Mini-local proxy to Dark is listening. Use `mini-audio` only for explicit
+   same-host/local-audio tests.
 
    ```bash
-   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
    ```
 
    This command probes the LLM, STT, and TTS endpoints before binding the
@@ -500,7 +508,7 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    For a quick smoke measurement:
 
    ```bash
-   anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+   anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
    ```
 
    For a candidate LLM measurement, keep the audio topology in `--profile` and
@@ -509,7 +517,7 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    ```bash
    anvil-serving voice benchmark \
      --config examples/voice/openclaw-anvil-voice.toml \
-     --profile mini-audio \
+     --profile dark-audio \
      --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
      --candidate qwen3-32b-nvfp4
    ```
@@ -529,9 +537,10 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
      another model.
 
    Current T005/T006 evidence says not to promote a voice LLM candidate yet.
-   The successful Mini baseline has LLM and TTS as co-dominant stages; the
-   candidate rows failed before STT from a non-gateway loopback path. Treat the
-   next step as more comparable Mini-run data, not production promotion.
+   The successful Mini-local baseline is now historical optional-mode evidence;
+   the candidate rows failed before STT from a wrong-host loopback path. Treat
+   the next step as comparable runs with Dark-host or Mini-proxied audio, not
+   production promotion.
 
    For Mini acceptance evidence:
 
@@ -540,12 +549,13 @@ foreground Realtime serving (`run`), and evidence (`benchmark` or
    ```
 
    The Mini validation report adds host identity, memory, endpoint model ids,
-   router auth proof, and post-benchmark STT/TTS process memory.
+   router auth proof, and post-benchmark STT/TTS process memory. Use it only
+   when explicitly validating the optional Mini-local audio mode.
 
 8. Stop audio endpoints when done.
 
    ```bash
-   anvil-serving voice down --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
+   anvil-serving voice down --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
    ```
 
    `voice down` does not stop the router and does not stop an already-running

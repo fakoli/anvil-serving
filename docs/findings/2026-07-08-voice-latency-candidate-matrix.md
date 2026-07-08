@@ -10,13 +10,15 @@ The matrix uses `examples/voice/openclaw-anvil-voice.toml` and the opt-in
 candidate profiles added in `voice-latency-model-ab:T004`.
 
 T006 correction: the failed non-gateway rows below are topology negative
-controls. `127.0.0.1:30010` and `127.0.0.1:30011` are loopback addresses on
-the OpenClaw/Anvil Voice host, which is Fakoli Mini in the reference
-deployment. A non-gateway checkout cannot measure that Mini-local audio path
-through its own loopback. For live candidate A/B, run from Mini and compose the
-chosen audio profile with a candidate overlay, or use `dark-audio` /
-`mini-dark-audio-proxy` only after the matching Dark bridge or Mini proxy is
-listening.
+controls. Later topology review made the correction stricter: Fakoli Mini's
+16 GB RAM is reserved for OpenClaw Gateway, Anvil Voice Realtime/proxy, Claude
+Code, and Codex. Reference OpenClaw Talk and candidate A/B must not run STT,
+TTS, or LLM model serves on Mini. A non-gateway checkout cannot measure
+Mini-local audio through its own loopback; `mini-audio` is optional
+same-host/local-audio evidence only. For live candidate A/B, run Mini as the
+gateway/realtime/proxy host and compose `dark-audio` or
+`mini-dark-audio-proxy` with a candidate overlay after the matching Dark bridge
+or Mini proxy is listening.
 
 Durable machine-readable evidence lives in:
 
@@ -43,9 +45,10 @@ b579dab957dc098339f1d175eabad5417bca4982
 
 ## Interpretation
 
-The measured Mini rerun remains the only successful timing row in this matrix:
-median TTFA `611.29 ms`, median turn latency `789.06 ms`, median LLM stage
-`356.82 ms`.
+The measured optional Mini-local rerun remains the only successful timing row
+in this matrix: median TTFA `611.29 ms`, median turn latency `789.06 ms`,
+median LLM stage `356.82 ms`. It is not the reference candidate benchmark
+baseline.
 
 The non-gateway required verification command exited `0`, but it could not
 measure latency because `127.0.0.1:30010` is gateway-local to Fakoli Mini, not
@@ -57,10 +60,10 @@ WinError 10061
 ```
 
 The same endpoint failure occurred for the three direct candidate profiles
-because those profiles were LLM-only shortcuts and inherited the Mini-local
-audio path. Those failed candidates are intentionally retained in the fixture
-with their profile, candidate identity, route identity, source revision, turn
-shape, timing fields, and error messages.
+because those profiles were LLM-only shortcuts and inherited the old
+Mini-local audio path in that revision. Those failed candidates are
+intentionally retained in the fixture with their profile, candidate identity,
+route identity, source revision, turn shape, timing fields, and error messages.
 
 ## Tool-Relevant Turn
 
@@ -79,8 +82,8 @@ memory, and chat transcript behavior.
 
 Do not promote any candidate from this matrix alone.
 
-Next gate: run `voice-latency-model-ab:T006` from the correct OpenClaw/Mini
-topology. If the run uses Mini-local audio, execute from Mini. If it uses Dark
-audio, first verify the Dark bridge or Mini-side proxy and select `dark-audio`
-or `mini-dark-audio-proxy`. Compose selected LLM candidates with
-`--candidate-overlay`.
+Next gate: run the candidate benchmark with Fakoli Mini as gateway/realtime/
+proxy only. First verify the Dark bridge or Mini-side proxy and select
+`dark-audio` or `mini-dark-audio-proxy`. Compose selected LLM candidates with
+`--candidate-overlay`. Use `mini-audio` only for an explicit optional
+same-host/local-audio validation task.
