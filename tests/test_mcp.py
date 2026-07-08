@@ -576,7 +576,7 @@ def test_openclaw_sync_preview_can_include_voice(tmp_path):
     assert preview["voice"] is True
     assert preview["voice_provider"] == "anvil"
     assert preview["voice_realtime_url"] == "ws://127.0.0.1:8765/v1/realtime"
-    assert preview["voice_model"] == "fast-local"
+    assert preview["voice_model"] == "chat-fast"
     assert preview["voice_consult_model"] == "anvil/chat-fast"
     assert preview["voice_consult_thinking_level"] == "off"
     assert preview["voice_consult_bootstrap_context_mode"] == "lightweight"
