@@ -44,14 +44,16 @@ anvil-serving serve (--config PATH | --mode agentic|flexibility) [--host HOST] [
 ```
 
 Starts the protocol-standard front door bound to the tiers in a router config
-(config -> per-tier backends -> front door). Exactly one config selector is required — bare
-`serve` is a usage error (the router never silently boots a default).
+(config -> per-tier backends -> front door). A config selector is required — `--config`, `--mode`,
+or the `ANVIL_MODE`/`ANVIL_MODES_CONFIG` environment variables; bare `serve` with none of them
+set is a usage error (the router never silently boots a default). See the
+[Configuration reference](CONFIGURATION.md) for the precedence chain.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--config PATH` | — | Load this exact router TOML; bypasses the mode resolver. |
 | `--mode {agentic,flexibility}` | — | Resolve the global mode to its config (ADR-0011). Precedence: `--mode` > `ANVIL_MODE` > `[modes].active_mode` > default; a mode maps to a file via `ANVIL_CONFIG_<MODE>` > a `[modes]` manifest (`ANVIL_MODES_CONFIG`) > built-in default. |
-| `--host` | `127.0.0.1` | Bind host. A non-loopback bind exposes the front door with no authentication — see `SECURITY.md`. |
+| `--host` | `127.0.0.1` | Bind host. Configure `[server].auth_env` before any non-loopback bind — see `SECURITY.md`. |
 | `--port` | `8000` | Bind port. |
 
 ```bash

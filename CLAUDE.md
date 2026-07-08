@@ -51,8 +51,9 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 anvil_serving/
   cli.py               dispatch: profile | models | deploy | serves | serve | preflight |
                                  benchmark | eval | multiplexer | cache-prune | score |
-                                 init (alias onboard) | doctor | voice | router | harness |
-                                 host | mcp | controller | external-bench | calibrate
+                                 init (alias onboard) | doctor | voice | voice-sidecar |
+                                 router | harness | host | mcp | controller |
+                                 external-bench | calibrate
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
   models.py            `sync`: scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py);
