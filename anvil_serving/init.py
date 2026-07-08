@@ -143,7 +143,7 @@ def run(model=None, gpu="0", catalog_dir="./model-library", out_dir=".",
     # forward-slash: spliced into a TOML string then shlex-split (T009 note).
     compose_rel = compose_out.replace(os.sep, "/")
     up = f"docker compose -f {compose_rel} up -d {service}"
-    _deploy.append_serve_entry(manifest_out, tid, container, port, served, up)
+    _deploy.append_serve_entry(manifest_out, tid, container, port, served, up, engine=eng)
 
     router_text = render_router_config(
         tid, served, port, context_limit=context, disable_thinking=disable_th)

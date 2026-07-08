@@ -1,0 +1,84 @@
+{
+  "identity": {
+    "candidate": "baseline-fast-direct",
+    "llm": {
+      "base_url": "http://127.0.0.1:30003/v1",
+      "model": "qwen36-27b"
+    },
+    "profile": "dark-audio",
+    "route": {
+      "endpoint_host": "100.87.34.66",
+      "model": "qwen36-27b",
+      "provider": "fast-local",
+      "tier": "local",
+      "work_class": null
+    },
+    "stt": {
+      "base_url": "http://100.87.34.66:30110/v1",
+      "model": "tdt_ctc-110m"
+    },
+    "tts": {
+      "base_url": "http://100.87.34.66:30111/v1",
+      "model": "kokoro"
+    }
+  },
+  "runs": [
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0966
+      },
+      "id": "run-001",
+      "latency": {
+        "llm_ms": 814.83,
+        "llm_stage_latency_ms": 814.83,
+        "stt_ms": 89.35,
+        "total_turn_latency_ms": 1130.21,
+        "ttfa_ms": 1027.15,
+        "tts_ms": 226.03,
+        "turn_latency_ms": 1130.21
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Hello! How can I help you today?",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 2.3396,
+        "output_bytes": 112300,
+        "request_count": 2,
+        "source_sample_rate": 24000
+      }
+    }
+  ],
+  "schema_version": "voice-benchmark-evidence/v1",
+  "topology": {
+    "endpoints": {
+      "llm_base_url": "http://127.0.0.1:30003/v1",
+      "stt_base_url": "http://100.87.34.66:30110/v1",
+      "tts_base_url": "http://100.87.34.66:30111/v1"
+    },
+    "mini_model_free_assertion": {
+      "checked": true,
+      "method": "profile_and_endpoint_config",
+      "mini_hosts_models": false,
+      "mini_local_audio_profile": false,
+      "mini_local_model_endpoint_stages": [],
+      "passed": true,
+      "reference_model_free_profiles": [
+        "dark-audio",
+        "mini-dark-audio-proxy"
+      ],
+      "reference_test": true
+    },
+    "mode": "reference-model-free",
+    "profile": "dark-audio"
+  }
+}

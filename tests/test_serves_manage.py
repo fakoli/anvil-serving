@@ -233,6 +233,8 @@ def test_main_rm_dispatches(tmp_path, monkeypatch):
         name = "heavy"
         container = "sglang"
         port = 30000
+        model = "heavy-local"
+        engine = "sglang"
     """)
     seen = {}
 
@@ -252,6 +254,8 @@ def test_main_adopt_dispatches(tmp_path, monkeypatch):
         name = "heavy"
         container = "sglang"
         port = 30000
+        model = "heavy-local"
+        engine = "sglang"
     """)
     seen = {}
 
@@ -328,6 +332,8 @@ def test_serves_logs_dispatched_from_main(tmp_path, monkeypatch):
         name = "heavy"
         container = "vllm-heavy"
         port = 30002
+        model = "heavy-local"
+        engine = "vllm"
         base_url = "http://127.0.0.1:30002/v1"
     """)
     seen = {}

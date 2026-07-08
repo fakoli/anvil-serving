@@ -31,6 +31,7 @@ def _manifest(tmp_path, *, up=False):
         port = 30001
         health = "/health"
         model = "fast-model"
+        engine = "vllm"
     """
     if up:
         body += '        up = "docker compose -f {dir}/docker-compose.yml up -d"\n'

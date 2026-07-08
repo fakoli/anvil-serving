@@ -111,6 +111,7 @@ def manifest_with_tts(tmp_path):
     p = tmp_path / "serves.toml"
     p.write_text(
         '[[serve]]\nname = "tts"\ncontainer = "anvil-tts"\nport = 8091\n'
+        'model = "kokoro-82m"\nengine = "vllm"\n'
         'up = "echo bring-up-tts"\n',
         encoding="utf-8",
     )
@@ -140,7 +141,11 @@ def test_bring_up_raises_serve_not_configured_when_manifest_missing(tmp_path):
 
 def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
     p = tmp_path / "serves.toml"
-    p.write_text('[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nport = 8090\n', encoding="utf-8")
+    p.write_text(
+        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nport = 8090\n'
+        'model = "parakeet"\nengine = "vllm"\n',
+        encoding="utf-8",
+    )
     serve = TTSServe(TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
                                      manifest_path=str(p)))
     with pytest.raises(ServeNotConfigured):

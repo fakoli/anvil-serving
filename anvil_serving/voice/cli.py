@@ -132,10 +132,37 @@ def _load_candidate_overlay(path: Optional[str]) -> Optional[dict]:
 def _candidate_name(args) -> Optional[str]:
     candidate = getattr(args, "candidate", None)
     overlay_path = getattr(args, "candidate_overlay", None)
+    candidate_model = getattr(args, "candidate_model", None)
     if candidate or not overlay_path:
-        return candidate
+        return candidate or candidate_model
     stem = os.path.splitext(os.path.basename(overlay_path))[0]
     return stem or None
+
+
+def _loaded_candidate_overlay_from_args(args) -> Optional[dict]:
+    base_url = getattr(args, "candidate_base_url", None)
+    model = getattr(args, "candidate_model", None)
+    api_key_env = getattr(args, "candidate_api_key_env", None)
+    if not any((base_url, model, api_key_env)):
+        return None
+    if getattr(args, "candidate_overlay", None):
+        raise voice_config.ConfigError(
+            "--candidate-overlay cannot be combined with --candidate-base-url/--candidate-model"
+        )
+    if not base_url or not model:
+        raise voice_config.ConfigError(
+            "--candidate-base-url and --candidate-model must be provided together"
+        )
+    llm = {"base_url": base_url, "model": model}
+    if api_key_env:
+        llm["api_key_env"] = api_key_env
+    return {"voice": {"llm": llm}}
+
+
+def _candidate_overlay_from_args(args) -> Optional[dict]:
+    overlay = _load_candidate_overlay(getattr(args, "candidate_overlay", None))
+    loaded_overlay = _loaded_candidate_overlay_from_args(args)
+    return loaded_overlay if loaded_overlay is not None else overlay
 
 
 def _load_benchmark_config(args):
@@ -146,7 +173,7 @@ def _load_benchmark_config(args):
 def _load_resolved_config(args):
     """Resolve a voice config with profile/candidate overlays and preserve identity."""
     try:
-        candidate_overlay = _load_candidate_overlay(getattr(args, "candidate_overlay", None))
+        candidate_overlay = _candidate_overlay_from_args(args)
         return (
             voice_config.resolve_manifest(
                 args.config,
@@ -681,6 +708,19 @@ def build_parser():
     sp.add_argument(
         "--candidate-overlay",
         help="candidate TOML overlay applied after the selected profile for this benchmark run",
+    )
+    sp.add_argument(
+        "--candidate-base-url",
+        help="OpenAI-compatible /v1 base URL for an already-loaded Fast candidate "
+             "used only for this benchmark run",
+    )
+    sp.add_argument(
+        "--candidate-model",
+        help="model id served by --candidate-base-url; defaults the candidate label when --candidate is omitted",
+    )
+    sp.add_argument(
+        "--candidate-api-key-env",
+        help="optional ENV_VAR_NAME holding the bearer token for --candidate-base-url",
     )
     sp.add_argument(
         "--evidence-out",

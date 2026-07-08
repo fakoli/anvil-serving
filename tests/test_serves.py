@@ -48,6 +48,8 @@ def test_load_manifest_parses_up_into_argv_list(tmp_path):
         name = "fast"
         container = "vllm-gptoss"
         port = 30001
+        model = "fast-local"
+        engine = "vllm"
         up = "bash {dir}/serve.sh"
     """)
     (s,) = serves.load_manifest(path)
@@ -62,22 +64,59 @@ def test_load_manifest_up_keeps_spaced_dir_as_one_token(tmp_path):
     d.mkdir()
     path = str(d / "serves.toml")
     with open(path, "w", encoding="utf-8") as f:
-        f.write('[[serve]]\nname="x"\ncontainer="x"\nport=1\nup="bash {dir}/s.sh"\n')
+        f.write(
+            '[[serve]]\nname="x"\ncontainer="x"\nport=1\nmodel="x"\n'
+            'engine="vllm"\nup="bash {dir}/s.sh"\n'
+        )
     (s,) = serves.load_manifest(path)
     assert s["up"] == ["bash", os.path.dirname(os.path.abspath(path)) + "/s.sh"]
     assert len(s["up"]) == 2  # the space in {dir} did NOT split the path token
 
 
 def test_load_manifest_rejects_missing_required_fields(tmp_path):
-    path = _manifest(tmp_path, '[[serve]]\nname = "x"\n')  # no container/port
-    with pytest.raises(ValueError):
+    path = _manifest(tmp_path, '[[serve]]\nname = "x"\n')  # missing most required fields
+    with pytest.raises(ValueError) as exc:
         serves.load_manifest(path)
+    msg = str(exc.value)
+    assert "container" in msg and "port" in msg and "model/served_name" in msg
+    assert "engine" in msg
+
+
+def test_load_manifest_normalizes_llamacpp_alias_and_served_name(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "gguf"
+        container = "llamacpp"
+        port = 39015
+        served_name = "devstral-gguf"
+        engine = "llama.cpp"
+    """)
+    (s,) = serves.load_manifest(path)
+    assert s["model"] == "devstral-gguf"
+    assert s["engine"] == "llamacpp"
 
 
 def test_shipped_fakoli_manifest_is_valid():
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     names = {s["name"] for s in serves_list}
-    assert {"heavy", "fast"} <= names
+    assert {"heavy", "fast", "fast-devstral-small2-llamacpp"} <= names
+    by_name = {s["name"]: s for s in serves_list}
+    assert by_name["fast-qwen36-35b-a3b"]["engine"] == "vllm"
+    assert by_name["fast-glm47-flash-sglang"]["engine"] == "sglang"
+    assert by_name["fast-devstral-small2-llamacpp"]["engine"] == "llamacpp"
+
+
+def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):
+    serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
+    run = _inspect_returning("absent")
+    rc = serves.cmd_up(
+        serves_list, ["fast-devstral-small2-llamacpp"], dry_run=True, _run=run
+    )
+    assert rc == 0
+    assert not any(c[:2] == ["docker", "compose"] for c in run.calls)
+    out = capsys.readouterr().out
+    assert "docker compose" in out
+    assert "fast-devstral-small2-llamacpp" in out
 
 
 # ---- default manifest / missing manifest (genericity:T012) ---------------------
