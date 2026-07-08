@@ -27,3 +27,8 @@ same model self-verifying.
 
 Small model OK. Do not change routing policy or promote profiles. Use
 `127.0.0.1` for local URLs. Return `promoted=false`.
+
+For split-host or voice targets, verify that a loopback URL is being probed
+from the host that owns that loopback. Mini-local audio and Mini-local proxy
+profiles must be preflighted on Fakoli Mini or through a Mini controller/agent;
+direct Dark audio bridge probes use Dark's private/tailnet address.

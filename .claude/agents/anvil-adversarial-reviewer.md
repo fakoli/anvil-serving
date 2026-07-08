@@ -35,3 +35,9 @@ remains false unless a human gate is proven. Return findings in an
 `operator-workflow/v1` packet with `schema_version`, `request`, `gate_state`,
 `targets`, `tools_used`, `artifacts`, `advisory_priors`, `recommendation`,
 `human_gate_required`, and `promoted=false`.
+
+For OpenClaw voice reviews, check that docs and evidence do not confuse
+operator-machine loopback with Fakoli Mini loopback. Findings should flag any
+claim that `127.0.0.1:30010/30011` or `30110/30111` proves Mini/Dark service
+health unless the command actually ran on Mini or through a Mini-owned
+controller/agent.

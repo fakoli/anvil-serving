@@ -24,6 +24,14 @@ residency-aware routing. The canonical product description is `README.md`; do no
 
 - **Stdlib-only** in `anvil_serving/` — no new runtime dependencies without explicit sign-off.
 - **`127.0.0.1`, never `localhost`** in any URL (config, test fixture, example, docstring).
+- **Loopback is host-relative.** In the reference OpenClaw voice topology,
+  OpenClaw Gateway and Anvil Voice run on Fakoli Mini; `mini-audio` uses Mini
+  loopback STT/TTS at `127.0.0.1:30010` and `127.0.0.1:30011`. Fakoli Dark owns
+  the router at `http://100.87.34.66:8000/v1` and any Dark audio bridge or
+  candidate LLM serves. `mini-dark-audio-proxy` means Mini-local proxy ports
+  `127.0.0.1:30110` and `127.0.0.1:30111` forwarding to Dark, not the operator
+  machine. A non-gateway checkout failing to reach those loopback ports is a
+  topology negative control, not proof that the live Mini/Dark path is down.
 - **Operational utilities live in anvil-serving.** If a utility manages lifecycle,
   ports, host operations, harness config, voice/audio routing, router/serve state,
   or any repeatable operator action, integrate it as an `anvil-serving` CLI verb

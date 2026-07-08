@@ -26,6 +26,14 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   the command preview as evidence and name the missing MCP wrapper as a product
   gap.
 - Use `127.0.0.1` for local URLs. Do not use `localhost`.
+- For OpenClaw Talk / Anvil Voice work, record the command host before
+  interpreting loopback. Reference deployment: OpenClaw Gateway and Anvil Voice
+  run on Fakoli Mini; `mini-audio` STT/TTS is Mini loopback
+  `127.0.0.1:30010/30011`; Fakoli Dark owns the router and candidate serves;
+  `dark-audio` uses Dark private bridge ports; `mini-dark-audio-proxy` uses
+  Mini loopback proxy ports `127.0.0.1:30110/30111` forwarding to Dark. A
+  non-gateway checkout failing to reach those ports is topology evidence, not
+  proof the live Mini/Dark path is down.
 - Pass credentials by environment variable name only.
 - Stop for a human gate before profile promotion, router policy changes,
   metered cloud enablement, destructive cache/host repair, Docker/WSL restart,
@@ -50,6 +58,9 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   benchmark.
 - Voice lifecycle: preview with `voice_manage`; live native or managed STT/TTS
   start/stop on the owning host requires `confirm=true` plus `dry_run=false`.
+  Profile selection is topology selection: run Mini-local profiles on Mini or
+  through a Mini controller/agent; use private/tailnet addresses for
+  cross-device audio/router endpoints.
 - Harness sync: preview OpenClaw provider, skill, and agent config with
   `openclaw_sync`; apply only to an explicit `out` or `gateway_host` target.
 - Promotion evidence: assemble status, decision summaries, route probes,

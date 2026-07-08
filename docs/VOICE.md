@@ -288,12 +288,6 @@ audio latency versus the `72` character cross-topology default, while a more
 aggressive `48` character split produced Kokoro stream errors on some sentence
 fragments.
 
-The `mini-audio` profile lowers `voice.llm.speech_chunk_max_chars` to `56` for
-the Mini-local Kokoro TTS path. In live Talk measurements this reduced first
-audio latency versus the `72` character cross-topology default, while a more
-aggressive `48` character split produced Kokoro stream errors on some sentence
-fragments.
-
 Start the voice side first:
 
 ```bash
@@ -448,15 +442,59 @@ Non-loopback binds require a bearer token env var in the manifest.
 
 ## Benchmark And Validation
 
-Use `voice benchmark` for a quick configured end-to-end sample:
+Use `voice benchmark` for a quick configured end-to-end sample. Run Mini-local
+profiles on Fakoli Mini or through a Mini-owned controller/agent; running
+`mini-audio` from a non-gateway checkout only tests that checkout's loopback
+and is a topology negative control.
 
 ```bash
-anvil-serving voice benchmark --config examples/voice/fakoli-mini.toml
+anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio
 ```
+
+For candidate LLM A/B, keep audio topology in `--profile` and compose the LLM
+candidate with an overlay:
+
+```bash
+anvil-serving voice benchmark \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile mini-audio \
+  --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
+  --candidate qwen3-32b-nvfp4 \
+  --evidence-out .anvil/evidence/voice-qwen3-32b-mini-audio.json
+```
+
+Use `--profile dark-audio` only after Dark-host bridge ports are listening.
+Use `--profile mini-dark-audio-proxy` only after Mini-local proxy ports
+`127.0.0.1:30110` and `127.0.0.1:30111` are listening on Mini and forwarding
+to Dark audio.
 
 The JSON output includes first-audio latency, total turn latency, STT/LLM/TTS
 stage durations, STT WER, TTS RTF, output byte counts, and the observed
 STT/LLM text. This is a smoke measurement, not a promotion gate.
+
+Interpret stage timing before swapping models:
+
+- Treat a stage as dominant when its p50 elapsed time is at least half of total
+  turn latency, or at least twice the next-largest stage across comparable
+  successful runs.
+- Work on the LLM/model path when LLM p50 is the dominant stage, or when LLM
+  first-output is above about `300 ms` while STT and TTS first-output are below
+  their thresholds.
+- Work on STT when STT p50 exceeds about `200 ms`, WER is unacceptable, or STT
+  errors are present.
+- Work on TTS/chunking when TTS p50 exceeds about `350 ms`, TTS first-output
+  exceeds about `250 ms`, or the TTS stream errors on normal spoken chunks.
+- If no stage dominates, prefer cheaper prompt/chunk/profile tuning before
+  loading a new model.
+
+The current T005/T006 evidence does **not** justify promoting a candidate LLM.
+The only successful voice timing row is the Mini baseline (`ttfa_ms 611.29`,
+`turn_latency_ms 789.06`, `stt_ms 106.28`, `llm_ms 356.82`, `tts_ms 325.95`),
+where LLM and TTS are co-dominant rather than a clear model-only bottleneck.
+Candidate rows were retained as topology negative controls because they failed
+before STT from a non-gateway loopback path. Gather comparable successful
+Mini-run candidate data before any production promotion, and keep promotion
+behind the normal human `router_promote` gate.
 
 For live Realtime Talk sessions, `voice run` also emits redacted
 `voice_stage_timing` log lines for the core `stt`, `llm`, and `tts` stages.

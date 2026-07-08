@@ -33,3 +33,9 @@ Small model OK. Do not change routing policy or promote profiles. Return an
 `targets`, `tools_used`, `artifacts`, `advisory_priors`, `recommendation`,
 `human_gate_required`, and `promoted=false`. Use `127.0.0.1` in URLs, never
 `localhost`.
+
+For OpenClaw voice inventory, report host ownership explicitly: command host,
+Gateway/Realtime host, STT host, TTS host, router host, and lifecycle owner.
+`mini-audio` loopback belongs to Fakoli Mini; `mini-dark-audio-proxy` loopback
+also belongs to Mini and forwards to Dark. Do not report a non-gateway
+`127.0.0.1` connection refusal as Mini audio down.
