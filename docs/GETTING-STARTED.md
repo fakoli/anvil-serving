@@ -116,5 +116,5 @@ Do not put cloud API keys, router tokens, or other secrets directly in config fi
 - Read [Device topologies](DEVICE-TOPOLOGIES.md) before spreading gateway, voice, router, or serve roles across more devices.
 - Read [Model settings](MODEL-SETTINGS-EXAMPLE.md) before serving thinking-by-default models.
 - Read [Serves & eval](SERVES-AND-EVAL.md) to manage Docker Compose model serves.
-- Read [Voice pipeline](VOICE.md) to run STT/TTS lifecycle, the Realtime voice server, and Mini validation.
+- Read [Voice pipeline](VOICE.md) to run STT/TTS lifecycle, the Realtime voice server, and model-free Mini gateway validation.
 - Read [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) for the reference gateway setup.
