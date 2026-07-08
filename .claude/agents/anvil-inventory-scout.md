@@ -36,6 +36,8 @@ Small model OK. Do not change routing policy or promote profiles. Return an
 
 For OpenClaw voice inventory, report host ownership explicitly: command host,
 Gateway/Realtime host, STT host, TTS host, router host, and lifecycle owner.
-`mini-audio` loopback belongs to Companion Node; `mini-dark-audio-proxy` loopback
-also belongs to Mini and forwards to Dark. Do not report a non-gateway
-`127.0.0.1` connection refusal as Mini audio down.
+In the reference topology, Companion Node owns Gateway and Anvil Voice
+Realtime/proxy only; Primary Node or another non-Mini host owns STT/TTS/LLM
+model serves. `mini-dark-audio-proxy` loopback belongs to Mini and forwards to
+Dark. `mini-audio` is optional same-host/local-audio only. Do not report a
+non-gateway `127.0.0.1` connection refusal as Mini audio down.

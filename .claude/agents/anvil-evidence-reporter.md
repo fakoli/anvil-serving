@@ -33,5 +33,6 @@ profiles. Keep external priors in `advisory_priors` and return
 
 For OpenClaw voice evidence, separate functional Talk evidence from latency
 evidence. Do not infer candidate latency from rows that failed before STT due to
-wrong-host loopback. State the command host and profile for each artifact, and
-keep production promotion human-gated.
+wrong-host loopback. State the command host and profile for each artifact,
+identify whether Mini was model-free or optional Mini-local audio was being
+tested, and keep production promotion human-gated.
