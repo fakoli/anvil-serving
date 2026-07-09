@@ -542,6 +542,10 @@ def client_handshake(
     if " 101 " not in (" " + status_line):
         raise WebSocketError("handshake failed: %s" % status_line)
     headers = _parse_header_lines(response[1:])
+    if not _header_contains_token(headers.get("upgrade"), "websocket"):
+        raise WebSocketError("handshake failed: missing Upgrade: websocket")
+    if not _header_contains_token(headers.get("connection"), "upgrade"):
+        raise WebSocketError("handshake failed: missing Connection: Upgrade")
     expected = compute_accept_key(key)
     if headers.get("sec-websocket-accept") != expected:
         raise WebSocketError("Sec-WebSocket-Accept mismatch (got %r, want %r)"

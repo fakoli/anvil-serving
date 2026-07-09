@@ -125,7 +125,7 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert gepard["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
     assert gepard["voice"]["tts"]["base_url"] == "http://100.87.34.66:39111"
     assert gepard["voice"]["tts"]["model"] == "gepard-1.0"
-    assert gepard["voice"]["tts"]["protocol"] == "cartesia"
+    assert gepard["voice"]["tts"]["protocol"] == "gepard"
     assert gepard["voice"]["tts"]["source_sample_rate"] == 22050
     assert gepard["voice"]["tts"]["target_sample_rate"] == 16000
     assert gepard["voice"]["tts"]["lifecycle"] == "external"
@@ -558,12 +558,12 @@ def test_rejects_tts_container_response_format():
         voice_config.validate_manifest(data)
 
 
-def test_accepts_cartesia_tts_protocol_metadata():
+def test_accepts_gepard_tts_protocol_metadata():
     data = _valid_manifest()
     data["voice"]["tts"].update({
         "base_url": "http://127.0.0.1:39111",
         "model": "gepard-1.0",
-        "protocol": "cartesia",
+        "protocol": "gepard",
         "response_format": "pcm",
         "source_sample_rate": 22050,
         "target_sample_rate": 16000,
@@ -573,6 +573,12 @@ def test_accepts_cartesia_tts_protocol_metadata():
         "language": "en",
     })
 
+    voice_config.validate_manifest(data)
+
+
+def test_accepts_cartesia_tts_protocol_alias():
+    data = _valid_manifest()
+    data["voice"]["tts"]["protocol"] = "cartesia"
     voice_config.validate_manifest(data)
 
 

@@ -53,7 +53,7 @@ _SECRET_VALUE_RE = re.compile(r"\b(sk-(?:proj-)?[A-Za-z0-9_-]{8,}|hf[_-][A-Za-z0
 _LIFECYCLES = {"managed", "external", "native"}
 _STT_RESPONSE_FORMATS = {"json"}
 _TTS_RESPONSE_FORMATS = {"pcm"}
-_TTS_PROTOCOLS = {"openai", "cartesia"}
+_TTS_PROTOCOLS = {"openai", "cartesia", "gepard"}
 _NATIVE_COMMAND_KEYS = ("start_command", "stop_command")
 _NATIVE_PATH_KEYS = ("workdir", "pid_file", "log_file")
 
