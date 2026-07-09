@@ -66,7 +66,8 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `models_inventory`, and configured endpoint status.
 - Model catalog: read or sync model inventory and use `external_bench_sources`,
   `external_bench_list`, `external_bench_report`, or `external_bench_compare`
-  for benchmark priors. Keep those priors advisory-only.
+  for benchmark priors. Apply the model benchmark source-freshness rules below.
+  Keep those priors advisory-only.
 - Serve swap: preview with `serves_manage`, inspect `serves_logs`, require exact
   target plus `confirm=true` and `dry_run=false`, then run preflight before
   benchmark.
@@ -96,6 +97,39 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   checks and plans. Report host repair, Docker/WSL restart, WSL config edits,
   and cache deletion as `blocked` or `human_required` unless the human approves
   the existing CLI gate; MCP cache pruning is plan-only.
+
+## Model Benchmark Source Freshness
+
+When researching Fast or Heavy tier candidates, include dates in the evidence.
+Treat model-serving posts, Reddit recipes, benchmark tables, and issue threads
+as time-sensitive.
+
+- Classify each external source by age using the current date:
+  - `current`: 0-60 days old.
+  - `aging`: 61-120 days old.
+  - `stale`: older than 120 days, undated, or about a materially older engine,
+    driver, CUDA, quantization, or checkpoint generation.
+- Prefer current official sources first: Hugging Face model cards and
+  discussions, vendor release notes/blogs, vLLM recipes/docs/issues, SGLang
+  recipes/docs/issues, llama.cpp releases/PRs, NVIDIA ModelOpt/TensorRT-LLM/NIM
+  notes, and model-family docs from OpenAI, Qwen, Mistral, NVIDIA, Z.ai,
+  MiniMax, DeepSeek, Google/Gemma, Meta/Llama, or the model owner.
+- Use community sources as recipe discovery, not promotion evidence: Reddit
+  (`r/LocalLLaMA` first), Hugging Face discussions, GitHub issues/PRs,
+  Millstone inference benchmarks, local-inference-lab/rtx6kpro,
+  0xsero/blackwell-gpu-wiki, community LLM inference benchmark snapshots, and
+  other hardware-matched writeups.
+- Search recent community sources before broad web results. If the best
+  hardware-matched post is aging or stale, label it as a historical prior and
+  require either an official current source or a local benchmark before it can
+  influence a recommendation.
+- Record source quality in the report or packet: candidate, URL, published or
+  observed date, age class, evidence type (`official`, `benchmark`,
+  `community-recipe`, `issue`, `local-result`), hardware/engine relevance, and
+  how it affected the decision.
+- Do not let stale Reddit/forum evidence justify a shortlist, serve swap, or
+  promotion by itself. Local preflight, local benchmarks, and independent
+  quality evals remain the decision gates.
 
 ## Sub-Agents
 
