@@ -45,6 +45,7 @@ requires `bash` on PATH (Git Bash / WSL on Windows); a stopped container is just
 """
 import argparse
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -72,6 +73,50 @@ _ENGINE_ALIASES = {
     "llama_cpp": "llamacpp",
 }
 _ENGINES = {"vllm", "sglang", "llamacpp"}
+_ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_SERVE_MANIFEST_DIRS = {}
+
+
+def _read_dotenv(path):
+    """Read a simple KEY=VALUE .env file without logging values.
+
+    Shell environment wins later; this only fills missing vars for lifecycle
+    commands launched from a manifest directory.
+    """
+    values = {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        return values
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        name = name.strip()
+        if not _ENV_NAME_RE.match(name):
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        else:
+            value = value.split(" #", 1)[0].rstrip()
+        values[name] = value
+    return values
+
+
+def _serve_env(s):
+    env = os.environ.copy()
+    shell_names = set(env)
+    for name, value in _read_dotenv(os.path.join(os.path.expanduser("~"), ".env")).items():
+        env.setdefault(name, value)
+    manifest_dir = s.get("_manifest_dir") or _SERVE_MANIFEST_DIRS.get(id(s))
+    if manifest_dir:
+        for name, value in _read_dotenv(os.path.join(manifest_dir, ".env")).items():
+            if name not in shell_names:
+                env[name] = value
+    return env
 
 
 def load_manifest(path):
@@ -115,6 +160,7 @@ def load_manifest(path):
             # split the TEMPLATE (forward-slash, no backslashes) then substitute,
             # so a backslashed/spaced {dir} never re-splits.
             s["up"] = [tok.replace("{dir}", mdir) for tok in shlex.split(s["up"])]
+        _SERVE_MANIFEST_DIRS[id(s)] = mdir
         serves.append(s)
     return serves
 
@@ -395,8 +441,9 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
         print("  " + desc)
         if dry_run:
             continue
+        env = _serve_env(s)
         for step in steps:
-            r = _run(step, capture_output=True, text=True)
+            r = _run(step, capture_output=True, text=True, env=env)
             if r.returncode != 0:
                 print("  FAILED: %s" % (r.stderr or r.stdout or "").strip())
                 rc = 1

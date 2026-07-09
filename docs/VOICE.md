@@ -327,7 +327,17 @@ anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --prof
 
 To try Gepard as the Fast TTS path, start it on Fakoli Dark through the
 managed serves surface. The service requires `HF_TOKEN` for first-run model
-access and `GEPARD_DATABASE_URL` for its Postgres voice store.
+access. Keep that token in the shell, in `~/.env`, or in a gitignored
+`examples/fakoli-dark/.env` copied from `examples/fakoli-dark/.env.example`;
+never commit it. `anvil-serving serves` fills missing command environment
+variables from `~/.env` first and then from the manifest-adjacent `.env`.
+Gepard also requires a Postgres voice store, and the Dark experiment compose
+starts an internal `gepard-postgres` container with the required `voices`
+table initialized. Set `GEPARD_DATABASE_URL` only when you want to use an
+external Postgres instead of the managed local store. The checked-in Gepard
+defaults (`TTS_GPU_MEMORY_UTILIZATION=0.12`, `TTS_MAX_NUM_SEQS=4`) are a
+co-residency profile for trying TTS beside the Fast LLM; raise them via env
+vars only when the 5090 has enough free VRAM.
 
 On Fakoli Dark, leave `VOICE_TTS_CANDIDATE_PUBLISH` unset for Dark-local
 benchmark loops:
