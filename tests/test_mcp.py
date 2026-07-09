@@ -2680,6 +2680,35 @@ def test_mcp_proxy_main_requires_env_token(monkeypatch, capsys):
     assert "auth env var is unset" in capsys.readouterr().err
 
 
+def test_mcp_help_documents_modes(capsys):
+    try:
+        mcp.main(["--help"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    else:  # pragma: no cover - argparse should exit for help
+        raise AssertionError("mcp --help did not exit")
+    out = capsys.readouterr().out
+    assert "anvil-serving mcp" in out
+    assert "--list-tools" in out
+    assert "--controller-url" in out
+    assert "--auth-env" in out
+
+
+def test_mcp_parse_errors_return_usage_code(capsys):
+    rc = mcp.main(["--controller-url"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "usage: anvil-serving mcp" in err
+
+
+def test_mcp_list_tools_positional_alias_still_works(capsys):
+    rc = mcp.main(["list-tools"])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "tools" in payload
+    assert any(tool["name"] == "router_status" for tool in payload["tools"])
+
+
 def test_cli_dispatches_mcp(monkeypatch):
     seen = {}
 

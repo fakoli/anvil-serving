@@ -134,7 +134,7 @@ profile, and the control plane. Full flags and examples: [CLI reference](docs/CL
 | Command | Purpose |
 |---------|---------|
 | `anvil-serving serves` | Manage local model serves through Docker Compose. |
-| `anvil-serving models sync` / `models pull` | Catalog cached models and serving facts; pull Hugging Face repos into a named Docker volume. |
+| `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and inspect recorded serve recipes (`recipe`). |
 | `anvil-serving deploy` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
 | `anvil-serving init` (alias `onboard`) | Generate a consistent local bring-up from scratch. |
 | `anvil-serving preflight` | Correctness-check a model endpoint before trusting it. |
@@ -159,10 +159,10 @@ profile, and the control plane. Full flags and examples: [CLI reference](docs/CL
 | Command | Purpose |
 |---------|---------|
 | `anvil-serving harness sync openclaw` | Render OpenClaw model config from live router presets. |
-| `anvil-serving mcp` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
+| `anvil-serving mcp` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools; `--list-tools` prints the catalog. |
 | `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |
-| `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, and benchmark voice turns. |
-| `anvil-serving voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
+| `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, benchmark voice turns, and delegate nested `voice sidecar` operations. |
+| `anvil-serving voice sidecar` / `voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
 
 ## Cost And Security Defaults
 

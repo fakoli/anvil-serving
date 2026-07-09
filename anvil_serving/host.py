@@ -443,22 +443,31 @@ def cmd_reset_wsl(force=False, _run=subprocess.run, _input=input):
     return rc
 
 
-def main(argv=None):
-    argv = list(sys.argv[1:] if argv is None else argv)
+def _build_parser():
     p = argparse.ArgumentParser(
         prog="anvil-serving host",
         description="Own the host (WSL / Docker Desktop) config, with backup/revert + safe caps.")
-    p.add_argument("action", choices=["doctor", "wsl-config", "restart-docker", "reset-wsl"],
-                   help="doctor: inspect + recommend safe WSL memory; wsl-config: edit .wslconfig "
-                        "memory/swap (backup+safe-cap+--revert); restart-docker: apply via a Docker "
-                        "Desktop restart; reset-wsl: un-wedge a hung WSL subsystem.")
-    p.add_argument("--memory", type=int, help="wsl-config: WSL memory cap in GB.")
-    p.add_argument("--swap", type=int, help="wsl-config: WSL swap in GB.")
-    p.add_argument("--revert", action="store_true", help="wsl-config: restore the newest anvil backup.")
-    p.add_argument("--force", action="store_true",
-                   help="skip the safe-cap refusal (wsl-config) / the confirm prompt "
-                        "(restart-docker, reset-wsl).")
-    p.add_argument("--dry-run", action="store_true", help="wsl-config: show the change, write nothing.")
+    sub = p.add_subparsers(dest="action", required=True)
+    sub.add_parser("doctor", help="inspect + recommend safe WSL memory")
+
+    wsl = sub.add_parser("wsl-config", help="edit .wslconfig memory/swap settings")
+    wsl.add_argument("--memory", type=int, help="WSL memory cap in GB.")
+    wsl.add_argument("--swap", type=int, help="WSL swap in GB.")
+    wsl.add_argument("--revert", action="store_true", help="restore the newest anvil backup.")
+    wsl.add_argument("--force", action="store_true", help="skip the safe-cap refusal.")
+    wsl.add_argument("--dry-run", action="store_true", help="show the change, write nothing.")
+
+    restart = sub.add_parser("restart-docker", help="restart Docker Desktop to apply host changes")
+    restart.add_argument("--force", action="store_true", help="skip the confirm prompt.")
+
+    reset = sub.add_parser("reset-wsl", help="reset a wedged WSL subsystem")
+    reset.add_argument("--force", action="store_true", help="skip the confirm prompt.")
+    return p
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    p = _build_parser()
     a = p.parse_args(argv)
 
     if a.action == "doctor":
