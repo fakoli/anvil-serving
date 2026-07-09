@@ -576,7 +576,7 @@ def test_cmd_up_uses_manifest_declared_audio_serve_name(tmp_path, monkeypatch):
                 '[voice.tts]\n'
                 'base_url = "http://127.0.0.1:39111"\n'
                 'model = "gepard-1.0"\n'
-                'protocol = "cartesia"\n'
+                'protocol = "gepard"\n'
                 'lifecycle = "managed"\n'
                 'serve_name = "tts-gepard-fast"\n'
                 'manifest_path = "%s"'

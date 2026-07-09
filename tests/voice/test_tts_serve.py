@@ -241,7 +241,7 @@ def test_build_cartesia_speech_request_body_shape():
         "context_id": "ctx-1",
         "model_id": "gepard-1.0",
         "transcript": "hello there",
-        "continue": True,
+        "continue": False,
         "output_format": {
             "container": "raw",
             "encoding": "pcm_s16le",
@@ -336,9 +336,7 @@ def test_stream_speech_cartesia_websocket_streams_base64_pcm(monkeypatch):
 
     def on_connect(conn, path):
         first = conn.recv_text()
-        second = conn.recv_text()
         payloads.append(json.loads(first))
-        payloads.append(json.loads(second))
         conn.send_json({"type": "chunk", "data": base64.b64encode(audio[:4]).decode("ascii")})
         conn.send_json({"type": "chunk", "data": base64.b64encode(audio[4:]).decode("ascii")})
         conn.send_json({"type": "done"})
@@ -356,7 +354,7 @@ def test_stream_speech_cartesia_websocket_streams_base64_pcm(monkeypatch):
         config = TTSStageConfig(
             base_url="http://%s:%d" % (host, port),
             model="gepard-1.0",
-            protocol="cartesia",
+            protocol="gepard",
             api_key_env="ANVIL_TEST_CARTESIA_TOKEN",
             source_sample_rate=22050,
         )
@@ -371,13 +369,11 @@ def test_stream_speech_cartesia_websocket_streams_base64_pcm(monkeypatch):
     assert payloads[0]["transcript"] == "hi there"
     assert payloads[0]["model_id"] == "gepard-1.0"
     assert payloads[0]["output_format"]["sample_rate"] == 22050
-    assert payloads[0]["continue"] is True
-    assert payloads[1] == {"context_id": payloads[0]["context_id"], "continue": False}
+    assert payloads[0]["continue"] is False
 
 
 def test_stream_speech_cartesia_rejects_malformed_chunk():
     def on_connect(conn, path):
-        conn.recv_text()
         conn.recv_text()
         conn.send_json({"type": "chunk", "data": "*** not base64 ***"})
 
