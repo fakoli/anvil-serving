@@ -61,8 +61,9 @@ or hand-edit remote configs. Use `127.0.0.1` in local URLs.
 For host-level deployments, keep live operator files in `~/.anvil-serving`:
 `serves.toml`, `docker-compose.yml`, optional experiment compose files,
 `voice.toml`, and a gitignored `.env`. CLI and MCP/controller operations use
-that directory when explicit paths are omitted, while still preferring
-current-directory files for local development checkouts.
+that directory when explicit paths are omitted. Commands with project-local
+discovery, such as `serves`, still prefer the current checkout's local file
+before falling back to the operator home.
 
 MCP invocation rules:
 
