@@ -69,7 +69,8 @@ DEFAULT_BASE_URL = "http://127.0.0.1:8091/v1"
 DEFAULT_MODEL = "tts"
 OPENAI_TTS_PROTOCOL = "openai"
 CARTESIA_TTS_PROTOCOL = "cartesia"
-_TTS_PROTOCOLS = {OPENAI_TTS_PROTOCOL, CARTESIA_TTS_PROTOCOL}
+GEPARD_TTS_PROTOCOL = "gepard"
+_TTS_PROTOCOLS = {OPENAI_TTS_PROTOCOL, CARTESIA_TTS_PROTOCOL, GEPARD_TTS_PROTOCOL}
 _PRE_AUDIO_STREAM_RETRY_ATTEMPTS = 1
 _TTS_FALLBACK_SEPARATOR_RE = re.compile(r"[-/\\]+")
 
@@ -110,7 +111,7 @@ def build_cartesia_speech_request_body(
     config: TTSStageConfig,
     *,
     context_id: str,
-    continue_: bool = True,
+    continue_: bool = False,
 ) -> Dict[str, Any]:
     """Build one Cartesia-compatible Gepard WebSocket synthesis message."""
     body: Dict[str, Any] = {
@@ -234,7 +235,7 @@ def stream_speech(
     body as if it were PCM audio -- the happy (2xx, or status-unknown) path
     streams exactly as before.
     """
-    if config.protocol == CARTESIA_TTS_PROTOCOL:
+    if config.protocol in (CARTESIA_TTS_PROTOCOL, GEPARD_TTS_PROTOCOL):
         if transport is not None:
             raise TTSClientError("TTS stage: transport injection is only supported for openai protocol")
         yield from stream_cartesia_speech(text, config)
@@ -331,8 +332,9 @@ def stream_cartesia_speech(text: str, config: TTSStageConfig) -> Iterator[bytes]
             path=path,
             headers=_bearer_headers(config.api_key_env),
         )
-        conn.send_json(build_cartesia_speech_request_body(text, config, context_id=context_id))
-        conn.send_json({"context_id": context_id, "continue": False})
+        conn.send_json(
+            build_cartesia_speech_request_body(text, config, context_id=context_id, continue_=False)
+        )
         while True:
             payload = conn.recv_text()
             if payload is None:

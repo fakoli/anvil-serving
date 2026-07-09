@@ -35,7 +35,7 @@ lifecycle = "external"
 [voice.profiles.gepard-fast-tts.tts]
 base_url = "http://127.0.0.1:39111"
 model = "gepard-1.0"
-protocol = "cartesia"
+protocol = "gepard"
 timeout = 120.0
 lifecycle = "managed"
 serve_name = "tts-gepard-fast"
