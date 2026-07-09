@@ -39,6 +39,12 @@ residency-aware routing. The canonical product description is `README.md`; do no
   or any repeatable operator action, integrate it as an `anvil-serving` CLI verb
   and, where appropriate, an MCP/controller tool. Do not create random one-off
   scripts as the operational path.
+- **Benchmark research must be date-aware.** When choosing or comparing Fast/Heavy
+  model candidates, prefer current official sources and recent hardware-matched
+  community data. Record the source URL, published/observed date, age class, evidence
+  type, hardware/engine relevance, and decision impact. Treat old Reddit/forum posts
+  as historical recipe leads only unless local benchmarks or current official sources
+  corroborate them.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
   output. Correctness gates (`verify.py`, `preflight.py`, `eval.py`) are independent.
