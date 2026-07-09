@@ -507,6 +507,15 @@ def test_defaults_match_deployed_compose():
     assert "fakoli-dark" in rm.DEFAULT_COMPOSE
 
 
+def test_resolve_compose_prefers_config_home(tmp_path, monkeypatch):
+    config_home = tmp_path / "anvil-serving"
+    config_home.mkdir()
+    compose = config_home / "docker-compose.yml"
+    compose.write_text("services: {}\n", encoding="utf-8")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+    assert rm.resolve_compose_path() == str(compose)
+
+
 # ---- logs -------------------------------------------------------------------
 
 def test_logs_builds_argv_and_prints_both_streams(capsys):
@@ -584,13 +593,18 @@ def test_up_omits_env_file_when_none():
     assert "--env-file" not in up
 
 
-def test_default_env_file_prefers_anvil_env(tmp_path, monkeypatch):
+def test_default_env_file_prefers_config_home_then_legacy(tmp_path, monkeypatch):
     monkeypatch.setattr(rm.os.path, "expanduser", lambda p: str(tmp_path) if p == "~" else p)
     assert rm._default_env_file() is None                       # neither exists
     (tmp_path / ".env").write_text("X=1", encoding="utf-8")
     assert rm._default_env_file().endswith(".env")
     (tmp_path / ".anvil_env").write_text("X=1", encoding="utf-8")
     assert rm._default_env_file().endswith(".anvil_env")        # ~/.anvil_env preferred over ~/.env
+    config_home = tmp_path / "anvil-serving"
+    config_home.mkdir()
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+    (config_home / ".env").write_text("X=1", encoding="utf-8")
+    assert rm._default_env_file() == str(config_home / ".env")
 
 
 def test_up_main_threads_env_file(monkeypatch):

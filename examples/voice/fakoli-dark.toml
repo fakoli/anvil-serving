@@ -31,3 +31,15 @@ lifecycle = "external"
 base_url = "http://127.0.0.1:30011/v1"
 model = "kokoro"
 lifecycle = "external"
+
+[voice.profiles.gepard-fast-tts.tts]
+base_url = "http://127.0.0.1:39111"
+model = "gepard-1.0"
+protocol = "gepard"
+timeout = 120.0
+lifecycle = "managed"
+serve_name = "tts-gepard-fast"
+manifest_path = "examples/fakoli-dark/serves.toml"
+response_format = "pcm"
+source_sample_rate = 22050
+target_sample_rate = 16000

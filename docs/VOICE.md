@@ -36,10 +36,14 @@ Realtime server and cascade itself.
 | `anvil-serving voice profiles` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
 | `anvil-serving voice bridge` | Forwards STT/TTS TCP ports from a private interface to local audio endpoints. | Does not add auth, inspect audio traffic, or replace endpoint/router tokens. |
 
-Manifest-backed commands take `--config <voice.toml>`. If omitted, the shipped
-example manifest is used when present. `up`, `down`, `run`, and `benchmark`
-also accept `--profile <name>` to apply `[voice.profiles.<name>]` before
-validation. `run` and `benchmark` also accept `--candidate-overlay <toml>` and
+Manifest-backed commands take `--config <voice.toml>`. If omitted,
+`~/.anvil-serving/voice.toml` is used when present; otherwise the shipped
+example manifest is used. `up`, `down`, `run`, and `benchmark` also accept
+`--profile <name>` to apply `[voice.profiles.<name>]` before validation.
+Relative managed `manifest_path` values inside the voice manifest resolve
+against the voice manifest's own directory, so a host-level
+`~/.anvil-serving/voice.toml` can refer to `manifest_path = "serves.toml"`.
+`run` and `benchmark` also accept `--candidate-overlay <toml>` and
 `--candidate <label>` so live A/B tests can compose one audio topology with one
 LLM candidate without copying manifests.
 `benchmark` additionally accepts `--candidate-base-url`,
@@ -97,6 +101,7 @@ base_url = "http://127.0.0.1:30011/v1"
 model = "kokoro"
 lifecycle = "managed"
 response_format = "pcm"
+protocol = "openai"
 
 [voice.profiles.dark-audio.stt]
 base_url = "http://100.87.34.66:30110/v1"
@@ -132,6 +137,13 @@ Manifest hygiene follows the rest of the repo:
   is sent to TTS. Sentence punctuation still wins, but long first sentences
   are split on word boundaries so first audio does not wait for a large clause;
   the default is `72`.
+- `voice.tts.protocol` defaults to `openai`, which calls
+  `{base_url}/audio/speech` and consumes raw signed 16-bit PCM. Set it to
+  `gepard` for Gepard's Cartesia-wire streaming TTS, where Anvil Voice connects
+  to `{base_url}/tts/websocket` and consumes `chunk` messages carrying base64
+  PCM. Keep `response_format = "pcm"` because the pipeline still emits raw PCM
+  internally. The older `cartesia` spelling is accepted as a local wire-protocol
+  alias; it is not a full Cartesia cloud integration.
 - `voice.llm.model` remains the manifest-owned Anvil router preset. Realtime
   clients may send `session.model`, but Anvil Voice does not let that field
   override local routing.
@@ -283,6 +295,9 @@ current-information lookups.
 
 - `dark-audio`: Dark-host STT/TTS reached through private bridge ports
   `30110` and `30111`.
+- `gepard-fast-tts`: Dark-host STT plus the experimental Gepard Fast TTS
+  candidate on Dark port `39111`. Gepard is Cartesia-compatible, so the TTS
+  profile uses `protocol = "gepard"` and a base URL without `/v1`.
 - `mini-dark-audio-proxy`: Mini-local proxy ports `30110` and `30111` that
   forward to Dark-host STT/TTS. Use this only after that Mini-side proxy is
   actually listening.
@@ -313,6 +328,59 @@ anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profi
 anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 ```
+
+To try Gepard as the Fast TTS path, start it on Fakoli Dark through the
+managed serves surface. The service requires `HF_TOKEN` for first-run model
+access. Keep that token in the shell, in `~/.env`, or in a gitignored
+`examples/fakoli-dark/.env` copied from `examples/fakoli-dark/.env.example`;
+never commit it. `anvil-serving serves` fills missing command environment
+variables from `~/.env`, then `~/.anvil-serving/.env`, then the
+manifest-adjacent `.env`; shell environment variables still win.
+Gepard also requires a Postgres voice store, and the Dark experiment compose
+starts an internal `gepard-postgres` container with the required `voices`
+table initialized. Set `GEPARD_DATABASE_URL` only when you want to use an
+external Postgres instead of the managed local store. The checked-in Gepard
+defaults (`TTS_GPU_MEMORY_UTILIZATION=0.12`, `TTS_MAX_NUM_SEQS=4`) are a
+co-residency profile for trying TTS beside the Fast LLM; raise them via env
+vars only when the 5090 has enough free VRAM.
+
+On Fakoli Dark, leave `VOICE_TTS_CANDIDATE_PUBLISH` unset for Dark-local
+benchmark loops:
+
+```bash
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml up tts-gepard-fast
+anvil-serving voice run --config examples/voice/fakoli-dark.toml --profile gepard-fast-tts
+anvil-serving voice benchmark \
+  --config examples/voice/fakoli-dark.toml \
+  --profile gepard-fast-tts \
+  --evidence-out .anvil/evidence/voice-gepard-fast-tts.json
+```
+
+If the live Dark files are installed under `~/.anvil-serving`, the same flow is
+shorter and checkout-independent:
+
+```bash
+anvil-serving serves up tts-gepard-fast
+anvil-serving voice run --profile gepard-fast-tts
+```
+
+That `fakoli-dark.toml` profile marks Gepard as `managed` and names the
+`tts-gepard-fast` serve. If Mini must reach this candidate directly, start the
+Dark service with `VOICE_TTS_CANDIDATE_PUBLISH=100.87.34.66`.
+
+From the Mini gateway, use the OpenClaw profile only after the Dark service is
+up and reachable on Dark's private address:
+
+```bash
+anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile gepard-fast-tts
+anvil-serving voice benchmark \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile gepard-fast-tts \
+  --evidence-out .anvil/evidence/voice-gepard-fast-tts.json
+```
+
+The OpenClaw/Mini profile marks Gepard as `external` because Mini must not host
+or manage the model process.
 
 For a candidate LLM A/B, start the matching opt-in serve through the managed
 serves surface. Leave `VOICE_CANDIDATE_PUBLISH` unset for same-host benchmark

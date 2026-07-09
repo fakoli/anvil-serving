@@ -13,6 +13,7 @@ import sys
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 COMPOSE_PATH = REPO_ROOT / "examples" / "fakoli-dark" / "docker-compose.yml"
+EXPERIMENT_COMPOSE_PATH = REPO_ROOT / "examples" / "fakoli-dark" / "docker-compose.experiment.yml"
 DOCKER_CONFIG_PATH = REPO_ROOT / "configs" / "example-docker.toml"
 
 
@@ -63,6 +64,24 @@ def _port_host_binds(block: str) -> list[str]:
 
 def test_compose_file_exists():
     assert COMPOSE_PATH.is_file()
+
+
+def test_experiment_compose_optional_candidates_do_not_block_file_parse():
+    text = EXPERIMENT_COMPOSE_PATH.read_text(encoding="utf-8")
+    assert "${HF_TOKEN:?" not in text
+    assert "${GEPARD_DATABASE_URL:?" not in text
+
+
+def test_experiment_gepard_uses_internal_postgres_by_default():
+    services = _service_blocks(EXPERIMENT_COMPOSE_PATH.read_text(encoding="utf-8"))
+    assert "gepard-postgres" in services
+    postgres = services["gepard-postgres"]
+    gepard = services["tts-gepard-fast"]
+    assert "ports:" not in postgres
+    assert "gepard-postgres-init.sql" in postgres
+    assert "depends_on:" in gepard
+    assert "gepard-postgres:" in gepard
+    assert "postgresql://gepard@gepard-postgres:5432/gepard" in gepard
 
 
 def test_router_service_present():

@@ -41,7 +41,7 @@ import socket
 import struct
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 #: RFC 6455 s1.3 magic GUID appended to the client's Sec-WebSocket-Key before
 #: SHA-1 + base64 to compute Sec-WebSocket-Accept.
@@ -498,7 +498,21 @@ class WebSocketConnection:
 # --------------------------------------------------------------------------- #
 
 
-def client_handshake(sock: socket.socket, *, host: str, port: int, path: str) -> WebSocketConnection:
+def _validate_client_header(name: str, value: str) -> None:
+    if not name or any(ch in name for ch in "\r\n:"):
+        raise WebSocketError("invalid WebSocket client header name %r" % name)
+    if any(ch in value for ch in "\r\n"):
+        raise WebSocketError("invalid WebSocket client header value for %s" % name)
+
+
+def client_handshake(
+    sock: socket.socket,
+    *,
+    host: str,
+    port: int,
+    path: str,
+    headers: Optional[Mapping[str, str]] = None,
+) -> WebSocketConnection:
     """Perform the CLIENT side of the RFC 6455 handshake over an already-
     connected ``sock``; return a :class:`WebSocketConnection` on success.
 
@@ -506,6 +520,10 @@ def client_handshake(sock: socket.socket, *, host: str, port: int, path: str) ->
     ``101 Switching Protocols`` with a matching ``Sec-WebSocket-Accept``.
     """
     key = base64.b64encode(os.urandom(16)).decode("ascii")
+    extra_headers = ""
+    for name, value in (headers or {}).items():
+        _validate_client_header(str(name), str(value))
+        extra_headers += "%s: %s\r\n" % (name, value)
     request = (
         "GET %s HTTP/1.1\r\n"
         "Host: %s:%d\r\n"
@@ -513,7 +531,8 @@ def client_handshake(sock: socket.socket, *, host: str, port: int, path: str) ->
         "Connection: Upgrade\r\n"
         "Sec-WebSocket-Key: %s\r\n"
         "Sec-WebSocket-Version: 13\r\n"
-        "\r\n" % (path, host, port, key)
+        "%s"
+        "\r\n" % (path, host, port, key, extra_headers)
     ).encode("ascii")
     sock.sendall(request)
 
@@ -523,6 +542,10 @@ def client_handshake(sock: socket.socket, *, host: str, port: int, path: str) ->
     if " 101 " not in (" " + status_line):
         raise WebSocketError("handshake failed: %s" % status_line)
     headers = _parse_header_lines(response[1:])
+    if not _header_contains_token(headers.get("upgrade"), "websocket"):
+        raise WebSocketError("handshake failed: missing Upgrade: websocket")
+    if not _header_contains_token(headers.get("connection"), "upgrade"):
+        raise WebSocketError("handshake failed: missing Connection: Upgrade")
     expected = compute_accept_key(key)
     if headers.get("sec-websocket-accept") != expected:
         raise WebSocketError("Sec-WebSocket-Accept mismatch (got %r, want %r)"

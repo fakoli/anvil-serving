@@ -204,6 +204,63 @@ services:
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39002
 
+  # Experimental Fast voice TTS candidate. Gepard exposes Cartesia-compatible
+  # `/tts/websocket` streaming TTS on container port 8000. It needs HF_TOKEN
+  # for first-run model access and Postgres for cloned voice prefixes. The
+  # database below stays internal to this Compose project; override
+  # GEPARD_DATABASE_URL only when using an external Postgres.
+  gepard-postgres:
+    image: ${GEPARD_POSTGRES_IMAGE:-postgres:16-alpine}
+    container_name: gepard-fast-tts-postgres
+    restart: "no"
+    environment:
+      POSTGRES_DB: gepard
+      POSTGRES_USER: gepard
+      # Internal experiment-only store; no host port is published. For a
+      # passworded/external DB, set GEPARD_DATABASE_URL for tts-gepard-fast.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - "gepard-postgres-data:/var/lib/postgresql/data"
+      - "./gepard-postgres-init.sql:/docker-entrypoint-initdb.d/001-gepard-voices.sql:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gepard -d gepard"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  tts-gepard-fast:
+    image: ${GEPARD_TTS_IMAGE:-ylankgz/gepard-vllm:latest}
+    container_name: gepard-fast-tts
+    restart: "no"
+    ipc: host
+    depends_on:
+      gepard-postgres:
+        condition: service_healthy
+    ports:
+      - "${VOICE_TTS_CANDIDATE_PUBLISH:-127.0.0.1}:39111:8000"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # Docker pins the host GPU by UUID below. Inside this Gepard/vLLM image,
+      # expose the selected device as integer 0 because its vLLM build attempts
+      # to parse CUDA_VISIBLE_DEVICES as an int during architecture inspection.
+      CUDA_VISIBLE_DEVICES: ${GEPARD_TTS_CUDA_VISIBLE_DEVICES:-0}
+      HF_TOKEN: ${HF_TOKEN:-}
+      DATABASE_URL: ${GEPARD_DATABASE_URL:-postgresql://gepard@gepard-postgres:5432/gepard}
+      TTS_MODEL_PATH: ${GEPARD_TTS_MODEL_PATH:-nineninesix/gepard-1.0}
+      TTS_GPU_MEMORY_UTILIZATION: ${GEPARD_TTS_GPU_MEMORY_UTILIZATION:-0.12}
+      TTS_MAX_NUM_SEQS: ${GEPARD_TTS_MAX_NUM_SEQS:-4}
+      TTS_CODEC_MAX_DECODE_BATCH: ${GEPARD_TTS_CODEC_MAX_DECODE_BATCH:-4}
+      TTS_FIRST_CHUNK_FRAMES: ${GEPARD_TTS_FIRST_CHUNK_FRAMES:-10}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${GEPARD_TTS_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+
   # Fast-tier LLM bakeoff candidates. These are source-backed experiment
   # services only: no restart policy, no production tier replacement, and no
   # Heavy-card default. `FAST_CANDIDATE_GPU_UUID` defaults to the RTX 5090.
@@ -405,3 +462,4 @@ volumes:
     external: true
   llamacpp-cache:
     external: true
+  gepard-postgres-data:

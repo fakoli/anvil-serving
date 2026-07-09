@@ -69,6 +69,19 @@ engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-e4b"
 
+# Experimental Fast voice TTS candidate. Gepard exposes a Cartesia-compatible
+# streaming TTS API, not OpenAI `/v1/audio/speech`; select it through the
+# `gepard-fast-tts` voice profile rather than replacing the default Kokoro
+# bridge ports.
+[[serve]]
+name = "tts-gepard-fast"
+container = "gepard-fast-tts"
+port = 39111
+model = "gepard-1.0"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d tts-gepard-fast"
+
 # Fast-tier LLM bakeoff candidates. These are source-backed experiment serves
 # from fast-tier-llm-bakeoff-2026-07. They default to the RTX 5090 path and
 # must be dry-run / started through `anvil-serving serves`, never as raw docker
