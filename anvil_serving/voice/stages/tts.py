@@ -41,15 +41,21 @@ STATEFUL resampler carrying the fractional phase (and the trailing
 input sample, for interpolating across the boundary) across chunks for one
 utterance -- follow-up work, not implemented here.
 
-Stdlib-only: ``array``, ``json``, ``os``, ``urllib.request``/``urllib.error``.
+Stdlib-only: ``array``, ``base64``, ``json``, ``os``, ``socket``, ``ssl``,
+``urllib.request``/``urllib.error``.
 """
 from __future__ import annotations
 
 import array
+import base64
 import http.client
 import json
 import os
 import re
+import socket
+import ssl
+import uuid
+import urllib.parse
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -61,6 +67,9 @@ from .base import BaseStage
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8091/v1"
 DEFAULT_MODEL = "tts"
+OPENAI_TTS_PROTOCOL = "openai"
+CARTESIA_TTS_PROTOCOL = "cartesia"
+_TTS_PROTOCOLS = {OPENAI_TTS_PROTOCOL, CARTESIA_TTS_PROTOCOL}
 _PRE_AUDIO_STREAM_RETRY_ATTEMPTS = 1
 _TTS_FALLBACK_SEPARATOR_RE = re.compile(r"[-/\\]+")
 
@@ -71,12 +80,15 @@ class TTSStageConfig:
 
     base_url: str = DEFAULT_BASE_URL
     model: str = DEFAULT_MODEL
+    protocol: str = OPENAI_TTS_PROTOCOL
     api_key_env: Optional[str] = None
     timeout: float = 20.0
     response_format: str = "pcm"       # raw signed16-LE samples, no container
     source_sample_rate: int = 24000    # the TTS engine's native output rate
     target_sample_rate: int = 16000    # normalized rate emitted on AudioOut
     chunk_bytes: int = 4096            # incremental read granularity
+    voice_id: Optional[str] = None      # Cartesia/Gepard cloned voice uuid, if used
+    language: Optional[str] = None      # Cartesia-compatible optional language code
 
 
 class TTSClientError(Exception):
@@ -91,6 +103,35 @@ def build_speech_request_body(text: str, config: TTSStageConfig) -> Dict[str, An
         "response_format": config.response_format,
         "stream": True,
     }
+
+
+def build_cartesia_speech_request_body(
+    text: str,
+    config: TTSStageConfig,
+    *,
+    context_id: str,
+    continue_: bool = True,
+) -> Dict[str, Any]:
+    """Build one Cartesia-compatible Gepard WebSocket synthesis message."""
+    body: Dict[str, Any] = {
+        "context_id": context_id,
+        "model_id": config.model,
+        "transcript": text,
+        "continue": continue_,
+        "output_format": {
+            "container": "raw",
+            "encoding": "pcm_s16le",
+            "sample_rate": config.source_sample_rate,
+        },
+    }
+    if config.voice_id:
+        if config.voice_id == "default":
+            body["voice"] = "default"
+        else:
+            body["voice"] = {"mode": "id", "id": config.voice_id}
+    if config.language:
+        body["language"] = config.language
+    return body
 
 
 def resample_int16(pcm: bytes, in_rate: int, out_rate: int) -> bytes:
@@ -147,6 +188,13 @@ def _default_transport(url: str, *, data: bytes, headers: Mapping[str, str], tim
         raise TTSClientError("TTS stage: request to %s failed: %s" % (url, exc)) from exc
 
 
+def _bearer_headers(api_key_env: Optional[str]) -> Dict[str, str]:
+    if not api_key_env:
+        return {}
+    token = (os.environ.get(api_key_env) or "").strip()
+    return {"Authorization": "Bearer %s" % token} if token else {}
+
+
 def _response_status(resp: Any) -> Optional[int]:
     """Best-effort HTTP status extraction across response shapes.
 
@@ -186,13 +234,21 @@ def stream_speech(
     body as if it were PCM audio -- the happy (2xx, or status-unknown) path
     streams exactly as before.
     """
+    if config.protocol == CARTESIA_TTS_PROTOCOL:
+        if transport is not None:
+            raise TTSClientError("TTS stage: transport injection is only supported for openai protocol")
+        yield from stream_cartesia_speech(text, config)
+        return
+    if config.protocol != OPENAI_TTS_PROTOCOL:
+        raise TTSClientError(
+            "TTS stage: unsupported protocol %r (expected one of %s)"
+            % (config.protocol, ", ".join(sorted(_TTS_PROTOCOLS)))
+        )
+
     url = config.base_url.rstrip("/") + "/audio/speech"
     body = json.dumps(build_speech_request_body(text, config)).encode("utf-8")
     headers = {"Content-Type": "application/json", "Accept": "application/octet-stream"}
-    if config.api_key_env:
-        token = (os.environ.get(config.api_key_env) or "").strip()
-        if token:
-            headers["Authorization"] = "Bearer %s" % token
+    headers.update(_bearer_headers(config.api_key_env))
 
     resp = (transport or _default_transport)(url, data=body, headers=headers, timeout=config.timeout)
     try:
@@ -217,6 +273,97 @@ def stream_speech(
             resp.close()
         except Exception:  # noqa: BLE001 - best-effort cleanup
             pass
+
+
+def _cartesia_ws_target(base_url: str) -> tuple[str, str, int, str]:
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme not in ("http", "https", "ws", "wss") or not parsed.hostname:
+        raise TTSClientError("TTS stage: Cartesia base_url must be an http(s) URL")
+    scheme = {"http": "ws", "https": "wss"}.get(parsed.scheme, parsed.scheme)
+    default_port = 443 if scheme == "wss" else 80
+    port = parsed.port or default_port
+    path = parsed.path.rstrip("/")
+    if path in ("", "/"):
+        path = "/tts/websocket"
+    elif not path.endswith("/tts/websocket"):
+        path = path + "/tts/websocket"
+    return scheme, parsed.hostname, port, path
+
+
+def _decode_cartesia_chunk(message: Mapping[str, Any]) -> bytes:
+    data = message.get("data")
+    if data is None or data == "":
+        return b""
+    if not isinstance(data, str):
+        raise TTSClientError("TTS stage: Cartesia chunk data must be base64 text")
+    try:
+        return base64.b64decode(data, validate=True)
+    except ValueError as exc:
+        raise TTSClientError("TTS stage: Cartesia chunk data was not valid base64") from exc
+
+
+def _cartesia_error_detail(message: Mapping[str, Any]) -> str:
+    for key in ("error", "message", "detail"):
+        value = message.get(key)
+        if value:
+            return str(value)
+    return json.dumps(dict(message), sort_keys=True)
+
+
+def stream_cartesia_speech(text: str, config: TTSStageConfig) -> Iterator[bytes]:
+    """Yield raw PCM chunks from Gepard's Cartesia-compatible WebSocket API."""
+    from ..realtime.ws import WebSocketError, client_handshake
+
+    scheme, host, port, path = _cartesia_ws_target(config.base_url)
+    context_id = "anvil-%s" % uuid.uuid4().hex
+    raw_sock: Optional[socket.socket] = None
+    conn = None
+    try:
+        raw_sock = socket.create_connection((host, port), timeout=config.timeout)
+        raw_sock.settimeout(config.timeout)
+        if scheme == "wss":
+            raw_sock = ssl.create_default_context().wrap_socket(raw_sock, server_hostname=host)
+            raw_sock.settimeout(config.timeout)
+        conn = client_handshake(
+            raw_sock,
+            host=host,
+            port=port,
+            path=path,
+            headers=_bearer_headers(config.api_key_env),
+        )
+        conn.send_json(build_cartesia_speech_request_body(text, config, context_id=context_id))
+        conn.send_json({"context_id": context_id, "continue": False})
+        while True:
+            payload = conn.recv_text()
+            if payload is None:
+                raise TTSClientError("TTS stage: Cartesia websocket closed before done")
+            try:
+                message = json.loads(payload)
+            except json.JSONDecodeError as exc:
+                raise TTSClientError("TTS stage: Cartesia websocket returned non-JSON text") from exc
+            if not isinstance(message, dict):
+                raise TTSClientError("TTS stage: Cartesia websocket message must be a JSON object")
+            msg_type = message.get("type")
+            if msg_type == "chunk":
+                chunk = _decode_cartesia_chunk(message)
+                if chunk:
+                    yield chunk
+                continue
+            if msg_type == "done":
+                return
+            if msg_type == "error":
+                raise TTSClientError("TTS stage: Cartesia websocket error: %s" % _cartesia_error_detail(message))
+            raise TTSClientError("TTS stage: unexpected Cartesia websocket message type %r" % msg_type)
+    except (OSError, WebSocketError) as exc:
+        raise TTSClientError("TTS stage: Cartesia websocket request failed: %s" % exc) from exc
+    finally:
+        if conn is not None:
+            conn.close()
+        if raw_sock is not None:
+            try:
+                raw_sock.close()
+            except OSError:
+                pass
 
 
 StreamFn = Callable[[str, TTSStageConfig], Iterator[bytes]]

@@ -13,6 +13,7 @@
 #
 # Use --profile to switch the active audio topology without copying this file:
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile gepard-fast-tts
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
 #   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio  # optional local-audio test only
 #
@@ -116,6 +117,24 @@ timeout = 120.0
 lifecycle = "external"
 response_format = "pcm"
 source_sample_rate = 24000
+target_sample_rate = 16000
+
+[voice.profiles.gepard-fast-tts.stt]
+base_url = "http://100.87.34.66:30110/v1"
+model = "tdt_ctc-110m"
+stream = false
+response_format = "json"
+timeout = 120.0
+lifecycle = "external"
+
+[voice.profiles.gepard-fast-tts.tts]
+base_url = "http://100.87.34.66:39111"
+model = "gepard-1.0"
+protocol = "cartesia"
+timeout = 120.0
+lifecycle = "external"
+response_format = "pcm"
+source_sample_rate = 22050
 target_sample_rate = 16000
 
 [voice.profiles.mini-dark-audio-proxy.stt]

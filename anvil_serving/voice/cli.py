@@ -84,7 +84,16 @@ def _audio_serves(voice: dict):
     for kind, config_cls, serve_cls in _AUDIO_SERVES:
         table = voice.get(kind, {})
         lifecycle = table.get("lifecycle", "managed")
-        config = config_cls(base_url=table.get("base_url", ""), model=table.get("model", ""))
+        config_kwargs = {
+            "base_url": table.get("base_url", ""),
+            "model": table.get("model", ""),
+        }
+        if table.get("serve_name"):
+            config_kwargs["serve_name"] = table["serve_name"]
+        manifest_path = table.get("manifest_path") or table.get("serves_manifest")
+        if manifest_path:
+            config_kwargs["manifest_path"] = manifest_path
+        config = config_cls(**config_kwargs)
         yield kind, lifecycle, table, serve_cls(config)
 
 
