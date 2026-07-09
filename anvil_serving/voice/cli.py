@@ -771,11 +771,16 @@ def build_parser():
         help="allow 0.0.0.0/:: listen hosts after separate firewall/private-network scoping",
     )
 
+    sub.add_parser("sidecar", help="validate or render the Hugging Face speech-to-speech sidecar")
+
     return p
 
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "sidecar":
+        from anvil_serving import voice_sidecar
+        return voice_sidecar.main(argv[1:], prog="anvil-serving voice sidecar")
     args = build_parser().parse_args(argv)
     handlers = {
         "up": cmd_up,

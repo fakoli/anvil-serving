@@ -310,9 +310,9 @@ def _load_for_cli(path: str | None) -> tuple[dict, str]:
         raise ConfigError("cannot parse %s: %s" % (config_path, exc))
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(prog: str = "anvil-serving voice-sidecar") -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="anvil-serving voice-sidecar",
+        prog=prog,
         description=(
             "Validate and render the Hugging Face speech-to-speech sidecar command "
             "that uses anvil as a Chat Completions backend."
@@ -351,8 +351,8 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv=None) -> int:
-    args = build_parser().parse_args(list(sys.argv[1:] if argv is None else argv))
+def main(argv=None, *, prog: str = "anvil-serving voice-sidecar") -> int:
+    args = build_parser(prog=prog).parse_args(list(sys.argv[1:] if argv is None else argv))
     try:
         data, config_path = _load_for_cli(args.config)
         if args.action == "validate":

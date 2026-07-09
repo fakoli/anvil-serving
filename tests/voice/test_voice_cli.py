@@ -56,12 +56,12 @@ def runnable_manifest_path(tmp_path):
     return str(p)
 
 
-def test_help_lists_all_four_subcommands(capsys):
+def test_help_lists_subcommands(capsys):
     with pytest.raises(SystemExit) as exc:
         voice_cli.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for sub in ("up", "start", "down", "stop", "run", "benchmark", "profiles", "bridge"):
+    for sub in ("up", "start", "down", "stop", "run", "benchmark", "profiles", "bridge", "sidecar"):
         assert sub in out
 
 
@@ -1230,6 +1230,15 @@ def test_dispatched_via_top_level_cli(capsys):
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "up" in out and "benchmark" in out
+
+
+def test_voice_sidecar_nested_help_dispatches(capsys):
+    with pytest.raises(SystemExit) as exc:
+        anvil_cli.main(["voice", "sidecar", "validate", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "anvil-serving voice sidecar validate" in out
+    assert "--config" in out
 
 
 def test_top_level_help_mentions_voice(capsys):

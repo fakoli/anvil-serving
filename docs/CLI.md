@@ -3,8 +3,10 @@
 `anvil-serving` is a single stdlib-only CLI (Python >= 3.11) that fronts every product surface:
 the quality-gated router, the local GPU serve lifecycle, the model catalog, the quality loop, the
 MCP/controller control plane, and the voice pipeline. This page is the complete verb reference for
-v0.11.0. Run `anvil-serving --help` for the live list, and `anvil-serving <verb> --help` for any
-verb's full flag set. Use `127.0.0.1` in local URLs, never `localhost`.
+v0.11.0. Run `anvil-serving --help` for the grouped live list, examples, and typo suggestions.
+Run `anvil-serving <verb> --help`, or parser-backed focused action help such as
+`anvil-serving router logs --help`, for the relevant flag set. Use `127.0.0.1` in local URLs,
+never `localhost`.
 
 ## Command index
 
@@ -404,7 +406,7 @@ anvil-serving score --json > mixture.json
 ### `mcp`
 
 ```
-anvil-serving mcp [--list-tools] [--controller-url URL --auth-env ENV]
+anvil-serving mcp [--list-tools|list-tools] [--controller-url URL --auth-env ENV]
 ```
 
 Stdio MCP server exposing the operational tool surface to agents — status
@@ -414,9 +416,10 @@ Stdio MCP server exposing the operational tool surface to agents — status
 (`preflight_probe`, `benchmark_probe`, `benchmark_artifact`), OpenClaw integration
 (`openclaw_sync`, `openclaw_gateway_restart`), and external-bench readers. Mutating or expensive
 tools stay dry-run unless `confirm=true`; probe tools accept tokens only by env-var name and
-restrict target URLs to loopback/private/tailnet hosts. `--list-tools` prints the tool catalog as
-JSON and exits. With `--controller-url` + `--auth-env` (both or neither), operational calls are
-forwarded to a remote `controller serve` instead of executing locally — the split-host bridge.
+restrict target URLs to loopback/private/tailnet hosts. `--list-tools` or positional `list-tools`
+prints the tool catalog as JSON and exits. With `--controller-url` + `--auth-env` (both or
+neither), operational calls are forwarded to a remote `controller serve` instead of executing
+locally — the split-host bridge.
 Playbooks and per-tool contracts: [Operator playbooks](OPERATOR-PLAYBOOKS.md).
 
 ```bash
@@ -490,19 +493,22 @@ validation flows: [Voice pipeline](VOICE.md).
 anvil-serving voice up --profile dark-audio --dry-run
 ```
 
-### `voice-sidecar`
+### `voice sidecar` / `voice-sidecar`
 
 ```
+anvil-serving voice sidecar {validate|command|compose} [--config TOML] [flags]
 anvil-serving voice-sidecar {validate|command|compose} [--config TOML] [flags]
 ```
 
 Validates and renders the Hugging Face speech-to-speech sidecar that uses anvil as a Chat
-Completions backend: `validate` checks the sidecar manifest (`--json`), `command` renders the host
-speech-to-speech command (`--with-auth` includes the router-token argument by env-var reference,
-`--json` emits argv), `compose` renders a Docker Compose service skeleton (`--service-name`).
+Completions backend. Prefer the nested `voice sidecar` form when working inside the voice command
+family; `voice-sidecar` remains a compatibility alias. `validate` checks the sidecar manifest
+(`--json`), `command` renders the host speech-to-speech command (`--with-auth` includes the
+router-token argument by env-var reference, `--json` emits argv), `compose` renders a Docker
+Compose service skeleton (`--service-name`).
 
 ```bash
-anvil-serving voice-sidecar command --with-auth
+anvil-serving voice sidecar command --with-auth
 ```
 
 ---

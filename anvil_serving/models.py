@@ -379,32 +379,40 @@ def _recipe_main(argv):
     return 2
 
 
+def _sync_main(args):
+    os.makedirs(os.path.join(args.out, "cards"), exist_ok=True)
+    roots = os.pathsep.join(config.hf_cache_roots(args.hf_roots.split(os.pathsep) if args.hf_roots else None))
+    env = dict(os.environ, ANVIL_MODELS_OUT=args.out)
+    if roots:
+        env["ANVIL_HF_ROOTS"] = roots
+    if args.model_dirs:
+        env["ANVIL_MODEL_DIRS"] = args.model_dirs
+    return subprocess.call([sys.executable, os.path.join(HERE, "_sync.py")], env=env)
+
+
 def main(argv):
     argv = list(argv)
-    # `pull` has a wholly different arg surface than `sync`; branch it out before
-    # the `sync` argparser (which owns the `action` positional) ever sees it.
+    ap = argparse.ArgumentParser(
+        prog="anvil-serving models",
+        description="Model catalog, Hugging Face volume pulls, and recorded serve recipes.",
+    )
+    sub = ap.add_subparsers(dest="action", required=True)
+
+    sync = sub.add_parser("sync", help="scan HF caches and build the model catalog")
+    sync.add_argument("--out", default=os.path.join(os.getcwd(), DEFAULT_CATALOG_DIR),
+                      help="output dir for cards/ + INDEX.md")
+    sync.add_argument("--hf-roots", default="", help="extra HF cache roots (os.pathsep-separated)")
+    sync.add_argument("--model-dirs", default="", help="extra plain model dirs (os.pathsep-separated)")
+
+    sub.add_parser("pull", help="download a Hugging Face repo into a named Docker volume")
+    sub.add_parser("recipe", help="list or show recorded serve recipes")
+
     if argv and argv[0] == "pull":
         return pull_main(argv[1:])
     if argv and argv[0] == "recipe":
         return _recipe_main(argv[1:])
 
-    ap = argparse.ArgumentParser(
-        prog="anvil-serving models",
-        description="Model catalog + fetch. `pull` is a separate sub-action with its "
-                    "own flags — run `anvil-serving models pull --help`.",
-    )
-    ap.add_argument("action", choices=["sync"],
-                    help="sync = scan HF caches + build the catalog. "
-                         "(For downloads use `models pull <repo-id>`.)")
-    ap.add_argument("--out", default=os.path.join(os.getcwd(), DEFAULT_CATALOG_DIR),
-                    help="output dir for cards/ + INDEX.md")
-    ap.add_argument("--hf-roots", default="", help="extra HF cache roots (os.pathsep-separated)")
-    ap.add_argument("--model-dirs", default="", help="extra plain model dirs (os.pathsep-separated)")
-    a = ap.parse_args(argv)
-    # Only "sync" reaches here — "pull" was dispatched above.
-    os.makedirs(os.path.join(a.out, "cards"), exist_ok=True)
-    roots = os.pathsep.join(config.hf_cache_roots(a.hf_roots.split(os.pathsep) if a.hf_roots else None))
-    env = dict(os.environ, ANVIL_MODELS_OUT=a.out)
-    if roots: env["ANVIL_HF_ROOTS"] = roots
-    if a.model_dirs: env["ANVIL_MODEL_DIRS"] = a.model_dirs
-    return subprocess.call([sys.executable, os.path.join(HERE, "_sync.py")], env=env)
+    args = ap.parse_args(argv)
+    if args.action == "sync":
+        return _sync_main(args)
+    return 2
