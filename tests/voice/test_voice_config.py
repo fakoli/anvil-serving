@@ -85,6 +85,7 @@ def test_openclaw_voice_manifest_profiles_are_valid():
         "candidate-gemma4-e4b",
         "candidate-qwen3-32b",
         "dark-audio",
+        "gepard-fast-tts",
         "mini-audio",
         "mini-dark-audio-proxy",
         "mini-validation",
@@ -116,6 +117,18 @@ def test_openclaw_voice_manifest_profiles_are_valid():
     assert dark["voice"]["stt"]["lifecycle"] == "external"
     assert "start_command" not in dark["voice"]["stt"]
     assert "pid_file" not in dark["voice"]["tts"]
+
+    gepard = voice_config.load_manifest(
+        "examples/voice/openclaw-anvil-voice.toml",
+        profile="gepard-fast-tts",
+    )
+    assert gepard["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
+    assert gepard["voice"]["tts"]["base_url"] == "http://100.87.34.66:39111"
+    assert gepard["voice"]["tts"]["model"] == "gepard-1.0"
+    assert gepard["voice"]["tts"]["protocol"] == "cartesia"
+    assert gepard["voice"]["tts"]["source_sample_rate"] == 22050
+    assert gepard["voice"]["tts"]["target_sample_rate"] == 16000
+    assert gepard["voice"]["tts"]["lifecycle"] == "external"
 
     proxy = voice_config.load_manifest(
         "examples/voice/openclaw-anvil-voice.toml",
@@ -542,6 +555,31 @@ def test_rejects_tts_container_response_format():
     data = _valid_manifest()
     data["voice"]["tts"]["response_format"] = "wav"
     with pytest.raises(voice_config.ConfigError, match="response_format"):
+        voice_config.validate_manifest(data)
+
+
+def test_accepts_cartesia_tts_protocol_metadata():
+    data = _valid_manifest()
+    data["voice"]["tts"].update({
+        "base_url": "http://127.0.0.1:39111",
+        "model": "gepard-1.0",
+        "protocol": "cartesia",
+        "response_format": "pcm",
+        "source_sample_rate": 22050,
+        "target_sample_rate": 16000,
+        "serve_name": "tts-gepard-fast",
+        "manifest_path": "examples/fakoli-dark/serves.toml",
+        "voice_id": "default",
+        "language": "en",
+    })
+
+    voice_config.validate_manifest(data)
+
+
+def test_rejects_unknown_tts_protocol():
+    data = _valid_manifest()
+    data["voice"]["tts"]["protocol"] = "bespoke"
+    with pytest.raises(voice_config.ConfigError, match="protocol"):
         voice_config.validate_manifest(data)
 
 
