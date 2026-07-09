@@ -895,6 +895,79 @@ def cmd_sync_openclaw(config_path, *, out=None, base_url, api_key_env, skills=Fa
     return 0
 
 
+def _build_parser():
+    p = argparse.ArgumentParser(
+        prog="anvil-serving harness",
+        description="Own the harness-side config: render a harness's model/provider config FROM "
+                    "the live router config so the two never drift. v1: OpenClaw models.")
+    actions = p.add_subparsers(dest="action", required=True)
+    sync_action = actions.add_parser("sync", help="render the harness config from the router config")
+    sync_targets = sync_action.add_subparsers(dest="harness", required=True)
+    sync = sync_targets.add_parser("openclaw", help="render or apply OpenClaw provider/model config")
+    sync.add_argument("--config",
+                      help="router config TOML to render the harness models from (its presets + tier context limits). Required for sync.")
+    sync.add_argument("--out", help="write the harness config here (default: stdout).")
+    sync.add_argument("--base-url", default="http://127.0.0.1:8000/v1",
+                      help="the router front door the harness dials (default: %(default)s; use the router's reachable host when the gateway is REMOTE).")
+    sync.add_argument("--api-key-env", default="ANVIL_ROUTER_TOKEN",
+                      help="env var name holding the router bearer token (default: %(default)s); the emitted config references it by name, never the secret.")
+    sync.add_argument("--gateway-host",
+                      help="push the config to a REMOTE OpenClaw gateway over ssh (e.g. fakoli-mini); MERGES the anvil provider into the remote config by default.")
+    sync.add_argument("--gateway-user", help="ssh user for --gateway-host (default: your ssh config).")
+    sync.add_argument("--gateway-path", default=_DEFAULT_OPENCLAW_CONFIG_PATH,
+                      help="remote OpenClaw config path for --gateway-host (default: %(default)s).")
+    sync.add_argument("--overwrite", action="store_true",
+                      help="OVERWRITE the target config instead of merging Anvil-owned keys (backup taken first).")
+    sync.add_argument("--restart", action="store_true",
+                      help="restart the OpenClaw gateway so it picks up the new config.")
+    sync.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                      help="bound each ssh/scp/openclaw subprocess call (default: %(default)s).")
+    sync.add_argument("--skills", action="store_true",
+                      help="also render/apply OpenClaw-visible workbench skill and Anvil sub-agent config.")
+    sync.add_argument("--skill-dir",
+                      help="with --skills: add this OpenClaw-gateway-visible directory to skills.load.extraDirs.")
+    sync.add_argument("--voice", action="store_true",
+                      help="also render/apply OpenClaw Talk realtime config for the Anvil Voice provider.")
+    sync.add_argument("--voice-realtime-url", default=DEFAULT_ANVIL_VOICE_REALTIME_URL,
+                      help="with --voice: Anvil Voice WebSocket URL (default: %(default)s).")
+    sync.add_argument("--voice-model",
+                      help="with --voice: model sent to the Anvil Voice realtime session (default: chat-fast when configured, else chat).")
+    sync.add_argument("--voice-consult-model", default=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
+                      help="with --voice: OpenClaw model used for forced agent consults (default: anvil/chat-fast when configured, else anvil/chat).")
+    sync.add_argument("--voice-consult-thinking-level", default=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
+                      help="with --voice: OpenClaw thinking level for forced agent consults (default: %(default)s for lower latency).")
+    sync.add_argument("--voice-consult-bootstrap-context-mode",
+                      default=_DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE,
+                      help="with --voice: OpenClaw bootstrap context mode for forced agent consults (default: %(default)s to skip workspace bootstrap files).")
+    sync.add_argument("--voice-api-key-env",
+                      help="with --voice: env var name for the Anvil Voice bearer token; omitted for loopback.")
+
+    restart_action = actions.add_parser("restart", help="restart the gateway so it picks up config changes")
+    restart_targets = restart_action.add_subparsers(dest="harness", required=True)
+    restart = restart_targets.add_parser("openclaw", help="restart the OpenClaw gateway locally or over SSH")
+    restart.add_argument("--gateway-host", help="OpenClaw gateway host for SSH restart.")
+    restart.add_argument("--gateway-user", help="ssh user for --gateway-host.")
+    restart.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                         help="bound each subprocess call (default: %(default)s).")
+    for flag in (
+        "--api-key-env",
+        "--base-url",
+        "--config",
+        "--out",
+        "--skill-dir",
+        "--voice-api-key-env",
+        "--voice-consult-bootstrap-context-mode",
+        "--voice-consult-model",
+        "--voice-consult-thinking-level",
+        "--voice-model",
+        "--voice-realtime-url",
+    ):
+        restart.add_argument(flag, help=argparse.SUPPRESS)
+    for flag in ("--overwrite", "--skills", "--voice"):
+        restart.add_argument(flag, action="store_true", help=argparse.SUPPRESS)
+    return p
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     provided_options = {
@@ -902,62 +975,7 @@ def main(argv=None):
         for arg in argv
         if isinstance(arg, str) and arg.startswith("--")
     }
-    p = argparse.ArgumentParser(
-        prog="anvil-serving harness",
-        description="Own the harness-side config: render a harness's model/provider config FROM "
-                    "the live router config so the two never drift. v1: OpenClaw models.")
-    p.add_argument("action", choices=["sync", "restart"],
-                   help="sync: render the harness config from the router config; restart: restart "
-                        "the gateway so it picks up config changes.")
-    p.add_argument("harness", choices=["openclaw"], help="target harness (v1: openclaw).")
-    p.add_argument("--config",
-                   help="sync: router config TOML to render the harness models from (its presets + "
-                        "tier context limits). Required for `sync`.")
-    p.add_argument("--out", help="write the harness config here (default: stdout).")
-    p.add_argument("--base-url", default="http://127.0.0.1:8000/v1",
-                   help="the router front door the harness dials (default: %(default)s; use the "
-                        "router's reachable host when the gateway is REMOTE).")
-    p.add_argument("--api-key-env", default="ANVIL_ROUTER_TOKEN",
-                   help="env var name holding the router bearer token (default: %(default)s); the "
-                        "emitted config references it by name, never the secret.")
-    p.add_argument("--gateway-host",
-                   help="push the config to a REMOTE OpenClaw gateway over ssh (e.g. fakoli-mini); "
-                        "MERGES the anvil provider into the remote config by default (backup taken).")
-    p.add_argument("--gateway-user", help="ssh user for --gateway-host (default: your ssh config).")
-    p.add_argument("--gateway-path", default=_DEFAULT_OPENCLAW_CONFIG_PATH,
-                   help="remote OpenClaw config path for --gateway-host (default: %(default)s).")
-    p.add_argument("--overwrite", action="store_true",
-                   help="OVERWRITE the target config instead of merging Anvil-owned keys "
-                        "(an existing local/remote target is backed up first).")
-    p.add_argument("--restart", action="store_true",
-                   help="after `sync`: restart the OpenClaw gateway so it picks up the new config "
-                        "(over ssh when --gateway-host is set). Also the `restart` action on its own.")
-    p.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
-                   help="bound each ssh/scp/openclaw subprocess call (default: %(default)s).")
-    p.add_argument("--skills", action="store_true",
-                   help="also render/apply OpenClaw-visible workbench skill and Anvil sub-agent config.")
-    p.add_argument("--skill-dir",
-                   help="with --skills: add this OpenClaw-gateway-visible directory to "
-                        "skills.load.extraDirs. Omit when the workbench skill is workspace-installed.")
-    p.add_argument("--voice", action="store_true",
-                   help="also render/apply OpenClaw Talk realtime config for the Anvil Voice provider.")
-    p.add_argument("--voice-realtime-url", default=DEFAULT_ANVIL_VOICE_REALTIME_URL,
-                   help="with --voice: Anvil Voice WebSocket URL (default: %(default)s).")
-    p.add_argument("--voice-model",
-                   help="with --voice: model sent to the Anvil Voice realtime session "
-                        "(default: chat-fast when configured, else chat).")
-    p.add_argument("--voice-consult-model", default=_DEFAULT_ANVIL_VOICE_CONSULT_MODEL,
-                   help="with --voice: OpenClaw model used for forced agent consults "
-                        "(default: anvil/chat-fast when configured, else anvil/chat).")
-    p.add_argument("--voice-consult-thinking-level", default=_DEFAULT_ANVIL_VOICE_CONSULT_THINKING_LEVEL,
-                   help="with --voice: OpenClaw thinking level for forced agent consults "
-                        "(default: %(default)s for lower latency).")
-    p.add_argument("--voice-consult-bootstrap-context-mode",
-                   default=_DEFAULT_ANVIL_VOICE_CONSULT_BOOTSTRAP_CONTEXT_MODE,
-                   help="with --voice: OpenClaw bootstrap context mode for forced agent consults "
-                        "(default: %(default)s to skip workspace bootstrap files).")
-    p.add_argument("--voice-api-key-env",
-                   help="with --voice: env var name for the Anvil Voice bearer token; omitted for loopback.")
+    p = _build_parser()
     a = p.parse_args(argv)
 
     if a.action == "restart" and a.harness == "openclaw":

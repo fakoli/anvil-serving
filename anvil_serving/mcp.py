@@ -12,6 +12,7 @@ paths available.
 from __future__ import annotations
 
 import contextlib
+import argparse
 import io
 import json
 import os
@@ -2564,43 +2565,45 @@ def serve_stdio(
     return 0
 
 
+def _build_main_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="anvil-serving mcp",
+        description=(
+            "Run the stdio MCP control plane locally, list available tools, "
+            "or proxy MCP tool calls to a token-authenticated controller."
+        ),
+    )
+    parser.add_argument(
+        "action",
+        nargs="?",
+        choices=["list-tools"],
+        help="compatibility alias for --list-tools",
+    )
+    parser.add_argument("--list-tools", action="store_true", help="print the MCP tool catalog as JSON and exit")
+    parser.add_argument("--controller-url", metavar="URL", help="remote controller URL for split-host proxy mode")
+    parser.add_argument("--auth-env", metavar="ENV", help="environment variable containing the controller token")
+    return parser
+
+
 def _parse_main_args(argv: list[str]) -> tuple[str, str, bool]:
-    controller_url = ""
-    auth_env = ""
-    list_tools_requested = False
-    i = 0
-    while i < len(argv):
-        arg = argv[i]
-        if arg == "--list-tools" or arg == "list-tools":
-            list_tools_requested = True
-            i += 1
-        elif arg == "--controller-url":
-            if i + 1 >= len(argv):
-                raise ToolError("bad_usage", "--controller-url requires a value")
-            controller_url = argv[i + 1]
-            i += 2
-        elif arg == "--auth-env":
-            if i + 1 >= len(argv):
-                raise ToolError("bad_usage", "--auth-env requires a value")
-            auth_env = argv[i + 1]
-            i += 2
-        else:
-            raise ToolError("bad_usage", "unknown argument %r" % arg)
-    if list_tools_requested and (controller_url or auth_env):
-        raise ToolError("bad_usage", "--list-tools cannot be combined with proxy mode")
-    if bool(controller_url) != bool(auth_env):
-        raise ToolError("bad_usage", "--controller-url and --auth-env must be provided together")
-    return controller_url, auth_env, list_tools_requested
+    parser = _build_main_parser()
+    args = parser.parse_args(argv)
+    list_tools_requested = bool(args.list_tools or args.action == "list-tools")
+    if list_tools_requested and (args.controller_url or args.auth_env):
+        parser.error("--list-tools cannot be combined with proxy mode")
+    if bool(args.controller_url) != bool(args.auth_env):
+        parser.error("--controller-url and --auth-env must be provided together")
+    return args.controller_url or "", args.auth_env or "", list_tools_requested
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     try:
         controller_url, auth_env, list_tools_requested = _parse_main_args(argv)
-    except ToolError as exc:
-        print("usage: anvil-serving mcp [--list-tools] [--controller-url URL --auth-env ENV]", file=sys.stderr)
-        print(exc.message, file=sys.stderr)
-        return 2
+    except SystemExit as exc:
+        if exc.code == 0:
+            raise
+        return int(exc.code or 2)
     if list_tools_requested:
         print(json.dumps({"tools": list_tools()}, indent=2, sort_keys=True))
         return 0
@@ -2609,13 +2612,9 @@ def main(argv: Optional[list[str]] = None) -> int:
             controller_url = _safe_controller_url(controller_url)
             token = resolve_controller_token(auth_env)
         except ToolError as exc:
-            print("usage: anvil-serving mcp [--list-tools] [--controller-url URL --auth-env ENV]", file=sys.stderr)
             print(exc.message, file=sys.stderr)
             return 2
         return serve_stdio(controller_url=controller_url, controller_token=token)
-    if argv:
-        print("usage: anvil-serving mcp [--list-tools] [--controller-url URL --auth-env ENV]", file=sys.stderr)
-        return 2
     return serve_stdio()
 
 

@@ -202,6 +202,26 @@ def test_pull_token_env_set_but_missing_is_clean_error(capsys):
 # CLI dispatch + help
 # --------------------------------------------------------------------------- #
 
+def test_models_parent_help_lists_subcommands(capsys):
+    with pytest.raises(SystemExit) as exc:
+        models.main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "sync" in out
+    assert "pull" in out
+    assert "recipe" in out
+
+
+def test_models_sync_help_documents_sync_flags(capsys):
+    with pytest.raises(SystemExit) as exc:
+        models.main(["sync", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "--out" in out
+    assert "--hf-roots" in out
+    assert "--model-dirs" in out
+
+
 def test_pull_dispatches_through_top_level_cli(monkeypatch, capsys):
     rc = cli.main(["models", "pull", "openai/gpt-oss-120b", "--dry-run"])
     assert rc == 0

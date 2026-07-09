@@ -597,48 +597,86 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     return r.returncode
 
 
-def main(argv=None):
-    argv = list(sys.argv[1:] if argv is None else argv)
+_ACTIONS = ("status", "up", "down", "rm", "adopt", "logs")
+
+
+def _build_parser():
     p = argparse.ArgumentParser(
         prog="anvil-serving serves",
-        description="Stop/start/inspect the local GPU model serves (declared in a "
-                    "serves manifest). The router connects to these; this manages them.")
-    p.add_argument("action", choices=["status", "up", "down", "rm", "adopt", "logs"],
-                   help="status: show docker + health; logs: docker logs for ONE serve "
-                        "(--tail/--since/--follow); up: start (restart if stopped, "
-                        "unpause if paused, else run the manifest `up`; with --compose, "
-                        "run an ad-hoc compose file NOT in the manifest); down: docker "
-                        "stop the serves; rm: `docker rm -f` container(s) — works for a "
-                        "container NOT in the manifest (an experiment squatting a port); "
-                        "adopt: bring an externally-started manifest serve under compose "
-                        "management (recreate via its `up`).")
-    p.add_argument("names", nargs="*",
-                   help="serve names/containers to act on (default: all in the manifest). "
-                        "For `rm`, an unrecognised name is treated literally as a container. "
-                        "With `up --compose`, these are compose SERVICE names.")
+        description="Stop/start/inspect the local GPU model serves declared in a serves manifest.")
+    p.add_argument("action", choices=_ACTIONS)
+    return p
+
+
+def _build_action_parser(action):
+    descriptions = {
+        "status": "Show docker and health state for manifest serves.",
+        "up": "Start manifest serves, or bring up services from an ad-hoc compose file.",
+        "down": "Stop manifest serves.",
+        "rm": "Remove serve containers.",
+        "adopt": "Bring externally-started manifest serves under compose management.",
+        "logs": "Show docker logs for one serve.",
+    }
+    p = argparse.ArgumentParser(
+        prog="anvil-serving serves %s" % action,
+        description=descriptions[action],
+    )
+    if action == "logs":
+        p.add_argument("names", nargs=1, metavar="NAME",
+                       help="serve name/container to read logs from.")
+    else:
+        p.add_argument("names", nargs="*",
+                       help="serve names/containers to act on (default: all in the manifest).")
     p.add_argument("--manifest",
-                   help="path to the serves manifest TOML (default: ./serves.toml "
-                        "if present, then ~/.anvil-serving/serves.toml).")
-    p.add_argument("--dry-run", action="store_true",
-                   help="print what would run without touching any container "
-                        "(for up / down / rm / adopt).")
-    p.add_argument("--recreate", action="store_true",
-                   help="for `up`: force `docker rm -f` + a fresh `up` for an existing "
-                        "container instead of `docker start`.")
-    p.add_argument("--compose", metavar="FILE",
-                   help="for `up`: bring up an ad-hoc/experiment serve from this compose "
-                        "file (NOT in the manifest); `names` are compose service names.")
-    p.add_argument("--tail", default="200",
-                   help="for `logs`: trailing lines to show (default: %(default)s; 'all').")
-    p.add_argument("--since",
-                   help="for `logs`: only logs since a timestamp or relative time (e.g. 10m, 1h).")
-    p.add_argument("--follow", action="store_true",
-                   help="for `logs`: stream new output (Ctrl-C to stop).")
+                   help="path to the serves manifest TOML (default: ./serves.toml if present, then ~/.anvil-serving/serves.toml).")
+    if action in {"up", "down", "rm", "adopt"}:
+        p.add_argument("--dry-run", action="store_true",
+                       help="print what would run without touching any container.")
+    else:
+        p.set_defaults(dry_run=False)
+    if action == "up":
+        p.add_argument("--compose", metavar="FILE",
+                       help="bring up an ad-hoc/experiment serve from this compose file; names are compose service names.")
+        p.add_argument("--recreate", action="store_true",
+                       help="force `docker rm -f` + a fresh `up` for an existing container instead of `docker start`.")
+    else:
+        p.set_defaults(compose=None, recreate=False)
+    if action == "logs":
+        p.add_argument("--tail", default="200",
+                       help="trailing lines to show (default: %(default)s; 'all').")
+        p.add_argument("--since",
+                       help="only logs since a timestamp or relative time (e.g. 10m, 1h).")
+        p.add_argument("--follow", action="store_true",
+                       help="stream new output (Ctrl-C to stop).")
+    else:
+        p.set_defaults(tail="200", since=None, follow=False)
+    return p
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if not argv or argv[0] in ("-h", "--help"):
+        _build_parser().parse_args(argv)
+        return 0
+    action = argv[0]
+    if action not in _ACTIONS:
+        _build_parser().parse_args([action])
+        return 2
     # parse_intermixed_args (not parse_args): on py3.11 a `nargs="*"` positional that
     # follows an option-with-value (e.g. `up --compose FILE svc-a svc-b`) is dropped as
     # "unrecognized arguments" — py3.12 fixed plain parse_args, but intermixed is the
     # documented cross-version fix. No REMAINDER/subparsers here, so it's safe.
-    a = p.parse_intermixed_args(argv)
+    p = _build_action_parser(action)
+    if action != "up" and any(arg == "--compose" or arg.startswith("--compose=") for arg in argv[1:]):
+        print("serves --compose is only valid with `up`.", file=sys.stderr)
+        return 2
+    try:
+        a = p.parse_intermixed_args(argv[1:])
+    except SystemExit as exc:
+        if exc.code == 0:
+            raise
+        return int(exc.code or 2)
+    a.action = action
 
     # `up --compose <file>`: ad-hoc/experiment serve from a compose file that is NOT in the
     # manifest — independent of serves.toml, so we neither require nor load a manifest here.

@@ -9,6 +9,10 @@ import pytest
 
 from anvil_serving import calibrate as calibrate_mod
 from anvil_serving import cli
+from anvil_serving import harness
+from anvil_serving import host
+from anvil_serving import router_manage
+from anvil_serving import serves
 
 
 def test_python_version_guard_blocks_old_interpreter():
@@ -34,6 +38,106 @@ def test_python_version_guard_blocks_main_under_simulated_old_interpreter(monkey
     captured = capsys.readouterr()
     assert rc == 1
     assert "anvil-serving needs Python >=3.11; you have 3.9" in captured.err
+
+
+def test_top_level_help_groups_commands_and_shows_examples(capsys):
+    rc = cli.main(["--help"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    for token in (
+        "Data plane:",
+        "Local serving tools:",
+        "Quality loop:",
+        "Control plane & integrations:",
+        "Voice:",
+        "anvil-serving serves status",
+        "http://127.0.0.1:30000/v1",
+        "Docs: docs/CLI.md",
+    ):
+        assert token in out
+
+
+def test_unknown_top_level_command_suggests_close_match(capsys):
+    rc = cli.main(["routr"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "unknown command: routr" in err
+    assert "Did you mean 'router'?" in err
+    assert "anvil-serving --help" in err
+
+
+def test_init_and_onboard_dispatch_to_same_module(monkeypatch):
+    from anvil_serving import init as init_mod
+
+    calls = []
+    monkeypatch.setattr(init_mod, "main", lambda argv: calls.append(list(argv)) or 0)
+
+    assert cli.main(["init", "--dry-run"]) == 0
+    assert cli.main(["onboard", "--detect-only"]) == 0
+    assert calls == [["--dry-run"], ["--detect-only"]]
+
+
+def test_focused_action_help_for_operational_verbs(capsys):
+    with pytest.raises(SystemExit) as exc:
+        router_manage.main(["logs", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving router logs" in out
+    assert "--tail" in out
+
+    with pytest.raises(SystemExit) as exc:
+        serves.main(["logs", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving serves logs" in out
+    assert "--follow" in out
+
+    with pytest.raises(SystemExit) as exc:
+        host.main(["wsl-config", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving host wsl-config" in out
+    assert "--memory" in out
+
+    with pytest.raises(SystemExit) as exc:
+        harness.main(["restart", "openclaw", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving harness restart openclaw" in out
+    assert "--timeout-seconds" in out
+
+
+def test_focused_action_help_includes_action_specific_flags(capsys):
+    with pytest.raises(SystemExit) as exc:
+        router_manage.main(["promote", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    for token in ("--profile", "--config", "--container", "--cfg-volume", "--image",
+                  "--profile-dest", "--config-dest", "--no-reload"):
+        assert token in out
+
+    with pytest.raises(SystemExit) as exc:
+        harness.main(["sync", "openclaw", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    for token in ("--config", "--out", "--base-url", "--api-key-env",
+                  "--gateway-host", "--gateway-path", "--overwrite", "--restart",
+                  "--skills", "--skill-dir", "--voice", "--voice-consult-model",
+                  "--voice-consult-thinking-level"):
+        assert token in out
+
+    with pytest.raises(SystemExit) as exc:
+        serves.main(["up", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    for token in ("--manifest", "--dry-run", "--recreate", "--compose"):
+        assert token in out
+
+
+def test_top_level_command_registry_is_dispatch_registry():
+    assert sorted(cli.COMMAND_BY_NAME) == sorted(item["name"] for item in cli.COMMANDS)
+    for item in cli.COMMANDS:
+        assert callable(item["handler"])
 
 
 # --------------------------------------------------------------------------- #

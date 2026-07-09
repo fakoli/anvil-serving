@@ -698,51 +698,119 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
 # CLI
 # --------------------------------------------------------------------------- #
 
-def main(argv=None):
-    argv = list(sys.argv[1:] if argv is None else argv)
+def _normalize_leading_options(argv, actions, option_arity):
+    """Allow legacy `router --container X status` while using action subparsers."""
+    action_index = None
+    for i, arg in enumerate(argv):
+        if arg in actions:
+            action_index = i
+            break
+    if not action_index:
+        return argv
+    leading = argv[:action_index]
+    rest = argv[action_index:]
+    normalized = [rest[0]]
+    i = 0
+    while i < len(leading):
+        arg = leading[i]
+        normalized.append(arg)
+        if arg.startswith("--") and "=" not in arg:
+            arity = option_arity.get(arg, 0)
+            for _ in range(arity):
+                i += 1
+                if i < len(leading):
+                    normalized.append(leading[i])
+        i += 1
+    normalized.extend(rest[1:])
+    return normalized
+
+
+def _build_parser():
     p = argparse.ArgumentParser(
         prog="anvil-serving router",
         description="Manage the DEPLOYED (containerized, ADR-0004) anvil-router: "
                     "lifecycle, token, status, and the promote write-back path.")
-    p.add_argument("action",
-                   choices=["up", "down", "restart", "reload", "status", "logs", "token", "promote"],
-                   help="up/down/restart/reload lifecycle; status; logs (docker logs); token "
-                        "(print the bearer token); promote (validate + write a new profile/config).")
-    p.add_argument("--container", default=DEFAULT_CONTAINER,
-                   help="router container name (default: %(default)s).")
-    p.add_argument("--compose",
-                   help="docker-compose.yml for up/down (default: ~/.anvil-serving/"
-                        "docker-compose.yml if present, else the fakoli-dark example).")
-    p.add_argument("--service", default=DEFAULT_SERVICE,
-                   help="compose service name for the router (default: %(default)s).")
-    p.add_argument("--env-file", default=None,
-                   help="env file for `up` (docker compose --env-file), so ANVIL_ROUTER_TOKEN / "
-                        "ROUTER_PUBLISH persist across deploys. Default: ~/.anvil_env or ~/.env if "
-                        "present (pass '' to disable).")
-    p.add_argument("--dry-run", action="store_true",
-                   help="print what would run without executing any docker command.")
-    # logs-only options
-    p.add_argument("--tail", default="200",
-                   help="logs: number of trailing lines to show (default: %(default)s; 'all').")
-    p.add_argument("--since",
-                   help="logs: only show logs since a timestamp or relative time (e.g. 10m, 1h).")
-    p.add_argument("--follow", action="store_true",
-                   help="logs: stream new log output (Ctrl-C to stop).")
-    # promote-only options
-    p.add_argument("--profile", help="promote: path to the profile.json to promote.")
-    p.add_argument("--config", help="promote: optional config.toml to write alongside it.")
-    p.add_argument("--cfg-volume", default=DEFAULT_CFG_VOLUME,
-                   help="promote: router config docker volume (default: %(default)s).")
-    p.add_argument("--image", default=DEFAULT_IMAGE,
-                   help="promote: deployed router image used to validate + write "
-                        "(default: %(default)s).")
-    p.add_argument("--profile-dest", default=DEFAULT_PROFILE_DEST,
-                   help="promote: router-visible profile path (default: %(default)s).")
-    p.add_argument("--config-dest", default=DEFAULT_CONFIG_DEST,
-                   help="promote: router-visible config path (default: %(default)s).")
-    p.add_argument("--no-reload", action="store_true",
-                   help="promote: write the profile but don't restart the router.")
-    a = p.parse_args(argv)
+    sub = p.add_subparsers(dest="action", required=True)
+
+    def add_container(sp):
+        sp.add_argument("--container", default=DEFAULT_CONTAINER,
+                        help="router container name (default: %(default)s).")
+
+    def add_dry_run(sp):
+        sp.add_argument("--dry-run", action="store_true",
+                        help="print what would run without executing any docker command.")
+
+    for action, help_text in (
+        ("up", "Bring up the deployed router through docker compose."),
+        ("down", "Stop the deployed router compose service."),
+    ):
+        sp = sub.add_parser(action, help=help_text, description=help_text)
+        sp.add_argument("--compose",
+                        help="docker-compose.yml (default: ~/.anvil-serving/docker-compose.yml if present, else the fakoli-dark example).")
+        sp.add_argument("--service", default=DEFAULT_SERVICE,
+                        help="compose service name for the router (default: %(default)s).")
+        add_dry_run(sp)
+        if action == "up":
+            sp.add_argument("--env-file", default=None,
+                            help="env file for docker compose --env-file; default: ~/.anvil_env or ~/.env if present (pass '' to disable).")
+
+    for action, help_text in (
+        ("restart", "Restart the deployed router container."),
+        ("reload", "Restart the deployed router so it reloads startup-read config."),
+    ):
+        sp = sub.add_parser(action, help=help_text, description=help_text)
+        add_container(sp)
+        add_dry_run(sp)
+
+    sp = sub.add_parser("status", help="Show deployed router container and health status.")
+    add_container(sp)
+
+    sp = sub.add_parser("logs", help="Show docker logs for the deployed router container.")
+    add_container(sp)
+    sp.add_argument("--tail", default="200", help="number of trailing lines to show (default: %(default)s; 'all').")
+    sp.add_argument("--since", help="only show logs since a timestamp or relative time (e.g. 10m, 1h).")
+    sp.add_argument("--follow", action="store_true", help="stream new log output (Ctrl-C to stop).")
+
+    sp = sub.add_parser("token", help="Print the deployed router bearer token.")
+    add_container(sp)
+
+    sp = sub.add_parser("promote", help="Validate and write a reviewed profile/config into the deployed router config volume.")
+    add_container(sp)
+    add_dry_run(sp)
+    sp.add_argument("--profile", required=True, help="path to the profile.json to promote.")
+    sp.add_argument("--config", help="optional config.toml to write alongside it.")
+    sp.add_argument("--cfg-volume", default=DEFAULT_CFG_VOLUME,
+                    help="router config docker volume (default: %(default)s).")
+    sp.add_argument("--image", default=DEFAULT_IMAGE,
+                    help="deployed router image used to validate + write (default: %(default)s).")
+    sp.add_argument("--profile-dest", default=DEFAULT_PROFILE_DEST,
+                    help="router-visible profile path (default: %(default)s).")
+    sp.add_argument("--config-dest", default=DEFAULT_CONFIG_DEST,
+                    help="router-visible config path (default: %(default)s).")
+    sp.add_argument("--no-reload", action="store_true",
+                    help="write the profile but don't restart the router.")
+    return p
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    argv = _normalize_leading_options(
+        argv,
+        {"up", "down", "restart", "reload", "status", "logs", "token", "promote"},
+        {
+            "--container": 1, "--compose": 1, "--service": 1, "--env-file": 1,
+            "--tail": 1, "--since": 1, "--profile": 1, "--config": 1,
+            "--cfg-volume": 1, "--image": 1, "--profile-dest": 1,
+            "--config-dest": 1,
+        },
+    )
+    p = _build_parser()
+    try:
+        a = p.parse_args(argv)
+    except SystemExit as exc:
+        if exc.code == 0:
+            raise
+        return int(exc.code or 2)
 
     if a.action == "up":
         # explicit --env-file wins; unset -> auto-detect conventional env files; '' -> disable.
@@ -761,9 +829,6 @@ def main(argv=None):
     if a.action == "token":
         return cmd_token(a.container)
     if a.action == "promote":
-        if not a.profile:
-            print("promote requires --profile <profile.json>", file=sys.stderr)
-            return 2
         return cmd_promote(
             a.profile, config_path=a.config, container=a.container,
             cfg_volume=a.cfg_volume, image=a.image, profile_dest=a.profile_dest,
