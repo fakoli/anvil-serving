@@ -42,12 +42,14 @@ except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3
 
 # Reuse the tested container-state probe from the serves verb (distinguishes
 # running / absent / error) instead of re-deriving it here.
+from .paths import config_path
 from .serves import docker_state
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 
 DEFAULT_COMPOSE = os.path.join(REPO, "examples", "fakoli-dark", "docker-compose.yml")
+CONFIG_HOME_COMPOSE = "~/.anvil-serving/docker-compose.yml"
 DEFAULT_CONTAINER = "anvil-router"
 DEFAULT_SERVICE = "router"
 DEFAULT_CFG_VOLUME = "anvil-router-cfg"
@@ -70,6 +72,19 @@ _SIDE_MOUNT = "/cfg"
 # Dest paths are interpolated into a root `sh -c`, so restrict them to safe characters
 # (no shell metacharacters, no `..`) BEFORE building any command string.
 _SAFE_DEST = re.compile(r"^[A-Za-z0-9._/-]+$")
+
+
+def default_compose_candidates():
+    return [config_path("docker-compose.yml"), DEFAULT_COMPOSE]
+
+
+def resolve_compose_path(path=None):
+    if path:
+        return path
+    for candidate in default_compose_candidates():
+        if os.path.isfile(os.path.expanduser(candidate)):
+            return candidate
+    return DEFAULT_COMPOSE
 
 
 def _volume_path(dest):
@@ -289,12 +304,18 @@ def _run_argv(argv, _run, desc=None, dry_run=False, **kw):
 
 
 def _default_env_file():
-    """First existing conventional deploy env-file — `~/.anvil_env` preferred, then `~/.env` — so
-    `router up` picks up ANVIL_ROUTER_TOKEN / ROUTER_PUBLISH without the operator re-exporting them
-    each deploy (the router fail-closes without its token, and reverts to loopback without the
-    publish). None if neither exists."""
-    for name in (".anvil_env", ".env"):
-        p = os.path.join(os.path.expanduser("~"), name)
+    """First existing conventional deploy env-file.
+
+    Prefer the anvil-serving operator home, then the legacy `~/.anvil_env`, then
+    `~/.env`, so `router up` picks up ANVIL_ROUTER_TOKEN / ROUTER_PUBLISH without
+    the operator re-exporting them each deploy.
+    """
+    candidates = [
+        config_path(".env"),
+        os.path.join(os.path.expanduser("~"), ".anvil_env"),
+        os.path.join(os.path.expanduser("~"), ".env"),
+    ]
+    for p in candidates:
         if os.path.isfile(p):
             return p
     return None
@@ -689,8 +710,9 @@ def main(argv=None):
                         "(print the bearer token); promote (validate + write a new profile/config).")
     p.add_argument("--container", default=DEFAULT_CONTAINER,
                    help="router container name (default: %(default)s).")
-    p.add_argument("--compose", default=DEFAULT_COMPOSE,
-                   help="docker-compose.yml for up/down (default: the fakoli-dark example).")
+    p.add_argument("--compose",
+                   help="docker-compose.yml for up/down (default: ~/.anvil-serving/"
+                        "docker-compose.yml if present, else the fakoli-dark example).")
     p.add_argument("--service", default=DEFAULT_SERVICE,
                    help="compose service name for the router (default: %(default)s).")
     p.add_argument("--env-file", default=None,
@@ -723,11 +745,11 @@ def main(argv=None):
     a = p.parse_args(argv)
 
     if a.action == "up":
-        # explicit --env-file wins; unset -> auto-detect ~/.anvil_env/~/.env; '' -> disable.
+        # explicit --env-file wins; unset -> auto-detect conventional env files; '' -> disable.
         env_file = _default_env_file() if a.env_file is None else (a.env_file or None)
-        return cmd_up(a.compose, a.service, env_file=env_file, dry_run=a.dry_run)
+        return cmd_up(resolve_compose_path(a.compose), a.service, env_file=env_file, dry_run=a.dry_run)
     if a.action == "down":
-        return cmd_down(a.compose, a.service, dry_run=a.dry_run)
+        return cmd_down(resolve_compose_path(a.compose), a.service, dry_run=a.dry_run)
     if a.action == "restart":
         return cmd_restart(a.container, dry_run=a.dry_run)
     if a.action == "reload":

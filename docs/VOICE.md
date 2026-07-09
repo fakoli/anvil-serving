@@ -36,10 +36,14 @@ Realtime server and cascade itself.
 | `anvil-serving voice profiles` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
 | `anvil-serving voice bridge` | Forwards STT/TTS TCP ports from a private interface to local audio endpoints. | Does not add auth, inspect audio traffic, or replace endpoint/router tokens. |
 
-Manifest-backed commands take `--config <voice.toml>`. If omitted, the shipped
-example manifest is used when present. `up`, `down`, `run`, and `benchmark`
-also accept `--profile <name>` to apply `[voice.profiles.<name>]` before
-validation. `run` and `benchmark` also accept `--candidate-overlay <toml>` and
+Manifest-backed commands take `--config <voice.toml>`. If omitted,
+`~/.anvil-serving/voice.toml` is used when present; otherwise the shipped
+example manifest is used. `up`, `down`, `run`, and `benchmark` also accept
+`--profile <name>` to apply `[voice.profiles.<name>]` before validation.
+Relative managed `manifest_path` values inside the voice manifest resolve
+against the voice manifest's own directory, so a host-level
+`~/.anvil-serving/voice.toml` can refer to `manifest_path = "serves.toml"`.
+`run` and `benchmark` also accept `--candidate-overlay <toml>` and
 `--candidate <label>` so live A/B tests can compose one audio topology with one
 LLM candidate without copying manifests.
 `benchmark` additionally accepts `--candidate-base-url`,
@@ -330,7 +334,8 @@ managed serves surface. The service requires `HF_TOKEN` for first-run model
 access. Keep that token in the shell, in `~/.env`, or in a gitignored
 `examples/fakoli-dark/.env` copied from `examples/fakoli-dark/.env.example`;
 never commit it. `anvil-serving serves` fills missing command environment
-variables from `~/.env` first and then from the manifest-adjacent `.env`.
+variables from `~/.env`, then `~/.anvil-serving/.env`, then the
+manifest-adjacent `.env`; shell environment variables still win.
 Gepard also requires a Postgres voice store, and the Dark experiment compose
 starts an internal `gepard-postgres` container with the required `voices`
 table initialized. Set `GEPARD_DATABASE_URL` only when you want to use an
@@ -349,6 +354,14 @@ anvil-serving voice benchmark \
   --config examples/voice/fakoli-dark.toml \
   --profile gepard-fast-tts \
   --evidence-out .anvil/evidence/voice-gepard-fast-tts.json
+```
+
+If the live Dark files are installed under `~/.anvil-serving`, the same flow is
+shorter and checkout-independent:
+
+```bash
+anvil-serving serves up tts-gepard-fast
+anvil-serving voice run --profile gepard-fast-tts
 ```
 
 That `fakoli-dark.toml` profile marks Gepard as `managed` and names the

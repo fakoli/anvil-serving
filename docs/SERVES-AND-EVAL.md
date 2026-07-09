@@ -8,9 +8,11 @@ invocation styles with no single entry point.
 
 The router (`anvil-serving serve`) talks to the GPU model serves as backends but
 never starts or stops them. `serves` does, driven by a declarative manifest
-(default [`examples/fakoli-dark/serves.toml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/serves.toml))
 that is the single source of truth for *which container runs on which port as
-which model*.
+which model*. When `--manifest` is omitted, `serves` checks `./serves.toml`
+first and then `~/.anvil-serving/serves.toml`; the checked-in
+[`examples/fakoli-dark/serves.toml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/serves.toml)
+is the source-controlled reference template for the Fakoli Dark topology.
 
 > **Operational prerequisite:** `serves` (and `deploy`) drive **Docker** and
 > **Docker Compose v2** (`docker compose …`) to run the GPU model containers. These
@@ -29,6 +31,20 @@ anvil-serving serves up               # start them (see below)
 anvil-serving serves up --dry-run     # print what would run, start nothing
 anvil-serving serves --manifest X.toml status   # use a different topology
 ```
+
+For a host-level deployment, keep the live copies in `~/.anvil-serving` so
+daily operations do not depend on the current checkout:
+
+```bash
+mkdir -p ~/.anvil-serving
+cp examples/fakoli-dark/serves.toml ~/.anvil-serving/serves.toml
+cp examples/fakoli-dark/docker-compose.yml ~/.anvil-serving/docker-compose.yml
+cp examples/fakoli-dark/docker-compose.experiment.yml ~/.anvil-serving/docker-compose.experiment.yml
+```
+
+`serves` fills missing command environment from `~/.env`, then
+`~/.anvil-serving/.env`, then a manifest-adjacent `.env`; shell environment
+variables still win. Keep real tokens in env files or the shell, not in TOML.
 
 `up` is mechanism-aware by container state: **running** → left alone; **stopped**
 (exited/created) → restarted with `docker start` (fast, no reload); **paused** →

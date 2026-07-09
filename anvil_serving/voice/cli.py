@@ -62,7 +62,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3.11
     tomllib = None
 
-DEFAULT_MANIFEST = voice_config.DEFAULT_CONFIG
+DEFAULT_MANIFEST = voice_config.CONFIG_HOME_CONFIG
 #: Preflight reachability-probe timeout for `run`'s "fail loudly, don't
 #: pretend" endpoint check (see `_probe_endpoint`).
 ENDPOINT_PROBE_TIMEOUT_S = 3.0
@@ -80,7 +80,18 @@ _AUDIO_SERVES = (
 )
 
 
-def _audio_serves(voice: dict):
+def _resolve_manifest_reference(path: str, manifest_dir: str | None) -> str:
+    expanded = os.path.expanduser(path)
+    if not path or os.path.isabs(expanded):
+        return expanded
+    if manifest_dir:
+        return os.path.join(manifest_dir, path)
+    return path
+
+
+def _audio_serves(data: dict):
+    voice = data.get("voice", {})
+    manifest_dir = data.get("_manifest_dir")
     for kind, config_cls, serve_cls in _AUDIO_SERVES:
         table = voice.get(kind, {})
         lifecycle = table.get("lifecycle", "managed")
@@ -92,7 +103,9 @@ def _audio_serves(voice: dict):
             config_kwargs["serve_name"] = table["serve_name"]
         manifest_path = table.get("manifest_path") or table.get("serves_manifest")
         if manifest_path:
-            config_kwargs["manifest_path"] = manifest_path
+            config_kwargs["manifest_path"] = _resolve_manifest_reference(
+                manifest_path, manifest_dir
+            )
         config = config_cls(**config_kwargs)
         yield kind, lifecycle, table, serve_cls(config)
 
@@ -244,9 +257,8 @@ def cmd_up(args):
         return 2
     profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
     print("voice up: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
-    voice = data.get("voice", {})
     exit_code = 0
-    for kind, lifecycle, table, serve in _audio_serves(voice):
+    for kind, lifecycle, table, serve in _audio_serves(data):
         if lifecycle == "external":
             print("voice up: %s serve lifecycle is external; skipping managed bring-up" % kind)
             continue
@@ -282,9 +294,8 @@ def cmd_down(args):
         return 2
     profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
     print("voice down: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
-    voice = data.get("voice", {})
     exit_code = 0
-    for kind, lifecycle, table, serve in _audio_serves(voice):
+    for kind, lifecycle, table, serve in _audio_serves(data):
         if lifecycle == "external":
             print("voice down: %s serve lifecycle is external; skipping managed tear-down" % kind)
             continue
@@ -665,8 +676,8 @@ def build_parser():
     def add_config(sp):
         sp.add_argument(
             "--config",
-            help="voice manifest TOML; defaults to the shipped example when present (%s)"
-            % DEFAULT_MANIFEST,
+            help="voice manifest TOML; defaults to ~/.anvil-serving/voice.toml "
+                 "when present, else the shipped example",
         )
 
     def add_profile(sp):

@@ -67,7 +67,10 @@ anvil-serving router {up|down|restart|reload|status|logs|token|promote} [flags]
 ```
 
 Manages the deployed, containerized router (ADR-0004): lifecycle, bearer token, logs, and the
-guarded profile-promotion write-back path.
+guarded profile-promotion write-back path. For `up`/`down`, omitted `--compose`
+uses `~/.anvil-serving/docker-compose.yml` when present, else the checked-in
+Fakoli Dark example. `router up` also auto-detects `~/.anvil-serving/.env`,
+then legacy `~/.anvil_env`, then `~/.env` unless `--env-file` is provided.
 
 | Action | What it does |
 |--------|--------------|
@@ -94,8 +97,9 @@ anvil-serving router promote --profile ./candidate-profile.json --dry-run
 anvil-serving serves {status|up|down|rm|adopt|logs} [NAME ...] [flags]
 ```
 
-Stop/start/inspect the local GPU model serves declared in a serves manifest
-(default `./serves.toml`). The router connects to these; this verb manages them.
+Stop/start/inspect the local GPU model serves declared in a serves manifest.
+When `--manifest` is omitted, discovery checks `./serves.toml` first, then
+`~/.anvil-serving/serves.toml`. The router connects to these; this verb manages them.
 See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 
 | Action | What it does |
@@ -107,7 +111,7 @@ See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 | `adopt` | Bring an externally-started manifest serve under compose management. |
 | `logs` | `docker logs` for one serve (`--tail`, `--since`, `--follow`). |
 
-Common flags: `--manifest` (default `./serves.toml`), `--dry-run`.
+Common flags: `--manifest`, `--dry-run`.
 
 ```bash
 anvil-serving serves up heavy --manifest ./serves.toml --dry-run
@@ -474,7 +478,8 @@ anvil-serving voice {up|start|down|stop|run|benchmark|profiles|bridge} [flags]
 ```
 
 Local realtime voice pipeline (VAD -> STT -> LLM -> TTS): `up`/`down` manage the STT/TTS serves
-from a voice manifest (`--config`, `--profile`, `--dry-run`), `run` starts the realtime server in
+from a voice manifest (`--config`, `--profile`, `--dry-run`; default
+`~/.anvil-serving/voice.toml` when present), `run` starts the realtime server in
 the foreground, `benchmark` replays a recorded session end-to-end and reports latency
 (`--candidate`, `--candidate-overlay`, `--evidence-out`), `profiles` lists/validates profile
 overlays, and `bridge` forwards STT/TTS TCP ports to local audio endpoints (loopback by default;

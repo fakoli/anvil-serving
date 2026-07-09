@@ -38,17 +38,17 @@ resource and keep the same gate semantics.
 |---|---|---|
 | Controller readiness | Health endpoint on the controller's private address | `GET /health` on `http://anvil-gpu.tailnet.example:8766` |
 | Model inventory | `models_inventory` | `anvil-serving models sync --out ./model-library` |
-| Environment and tier health | `doctor_summary`, `serves_status`, `router_status` | `anvil-serving doctor --config ./router.toml`; `anvil-serving serves --manifest ./serves.toml status`; `anvil-serving router status` |
+| Environment and tier health | `doctor_summary`, `serves_status`, `router_status` | `anvil-serving doctor --config ./router.toml`; `anvil-serving serves status`; `anvil-serving router status` |
 | Router lifecycle and logs | `router_manage`, `router_logs` | `anvil-serving router reload`; `anvil-serving router logs --tail 200` |
 | Recent routing decisions | `decision_summary` | `GET /v1/decisions` on the router front door |
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
-| Start or restore compose-defined serves | `serves_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves --manifest ./serves.toml up <name>` |
+| Start or restore compose-defined serves | `serves_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves up <name>` |
 | Start an experiment serve | `serves_manage` with `compose` preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves up --compose <compose.yml> <service>` |
-| Start or stop voice STT/TTS serves | `voice_manage` with preview, optional `profile`, then `confirm:true` and `dry_run:false` | `anvil-serving voice up --config <voice.toml> --profile <name>`; `anvil-serving voice down --config <voice.toml> --profile <name>` |
-| Switch or inspect voice profiles | `voice_manage` plan with `profile`; no separate mutation required | `anvil-serving voice profiles --config <voice.toml>`; `anvil-serving voice run --config <voice.toml> --profile <name>` |
+| Start or stop voice STT/TTS serves | `voice_manage` with preview, optional `profile`, then `confirm:true` and `dry_run:false` | `anvil-serving voice up --profile <name>`; `anvil-serving voice down --profile <name>` |
+| Switch or inspect voice profiles | `voice_manage` plan with `profile`; no separate mutation required | `anvil-serving voice profiles`; `anvil-serving voice run --profile <name>` |
 | Expose private STT/TTS bridge ports | Human-gated CLI on the audio host | `anvil-serving voice bridge --listen-host <private-tailnet-address> ... --i-understand-this-exposes-voice-audio` |
 | Probe a multiplexer endpoint | Not exposed yet | `GET /healthz`; `GET /v1/models` on the multiplexer base URL |
-| Serve logs | `serves_logs` with bounded `tail`; no follow mode | `anvil-serving serves --manifest ./serves.toml logs <name> --tail 200` |
+| Serve logs | `serves_logs` with bounded `tail`; no follow mode | `anvil-serving serves logs <name> --tail 200` |
 | Correctness gate | `preflight_probe` | `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
 | Throughput run | `benchmark_probe` for a bounded probe; `benchmark_artifact` when `--json-out` evidence is required | `anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
 | OpenClaw config sync | `openclaw_sync`, `openclaw_gateway_restart` | `anvil-serving harness sync openclaw --config <router.toml> ...`; `anvil-serving harness restart openclaw ...` |
@@ -57,6 +57,12 @@ resource and keep the same gate semantics.
 
 Treat missing MCP tools as a product gap, not a reason to scrape Docker output
 or hand-edit remote configs. Use `127.0.0.1` in local URLs.
+
+For host-level deployments, keep live operator files in `~/.anvil-serving`:
+`serves.toml`, `docker-compose.yml`, optional experiment compose files,
+`voice.toml`, and a gitignored `.env`. CLI and MCP/controller operations use
+that directory when explicit paths are omitted, while still preferring
+current-directory files for local development checkouts.
 
 MCP invocation rules:
 

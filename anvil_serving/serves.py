@@ -20,8 +20,9 @@ Three companion verbs handle the messier day-to-day around experiments:
     [service...]`) — independent of serves.toml; with `--compose`, `names` are compose
     SERVICE names.
 
-It reads a manifest (default `./serves.toml` — what `deploy`/`init` write; the shipped
-reference is `examples/fakoli-dark/serves.toml`) that declares
+It reads a manifest (default search: `./serves.toml`, then
+`~/.anvil-serving/serves.toml`; `deploy`/`init` write the current-directory file
+and the shipped reference is `examples/fakoli-dark/serves.toml`) that declares
 each serve's container name, port, health path, declared `model` (served-model-name),
 and an optional `up` command. Bringing a serve up is drift-safe: when `up` is a
 `docker compose up -d`, that command IS the (re)start and is run UNCONDITIONALLY — even
@@ -51,6 +52,8 @@ import subprocess
 import sys
 import urllib.request
 
+from .paths import config_path
+
 try:
     import tomllib  # Python 3.11+
 except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3.11
@@ -63,6 +66,7 @@ REPO = os.path.dirname(HERE)
 # example. EXAMPLE_MANIFEST keeps a name for the shipped reference topology
 # (tests, docs) now that DEFAULT_MANIFEST no longer points at it.
 DEFAULT_MANIFEST = "./serves.toml"
+CONFIG_HOME_MANIFEST = "~/.anvil-serving/serves.toml"
 EXAMPLE_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
 
 # States meaning the container exists but is already stopped (nothing to free).
@@ -75,6 +79,20 @@ _ENGINE_ALIASES = {
 _ENGINES = {"vllm", "sglang", "llamacpp"}
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SERVE_MANIFEST_DIRS = {}
+
+
+def default_manifest_candidates():
+    """Manifest search path for operator commands when --manifest is omitted."""
+    return [DEFAULT_MANIFEST, config_path("serves.toml")]
+
+
+def resolve_manifest_path(path=None):
+    if path:
+        return path
+    for candidate in default_manifest_candidates():
+        if os.path.isfile(os.path.expanduser(candidate)):
+            return candidate
+    return DEFAULT_MANIFEST
 
 
 def _read_dotenv(path):
@@ -111,6 +129,9 @@ def _serve_env(s):
     shell_names = set(env)
     for name, value in _read_dotenv(os.path.join(os.path.expanduser("~"), ".env")).items():
         env.setdefault(name, value)
+    for name, value in _read_dotenv(config_path(".env")).items():
+        if name not in shell_names:
+            env[name] = value
     manifest_dir = s.get("_manifest_dir") or _SERVE_MANIFEST_DIRS.get(id(s))
     if manifest_dir:
         for name, value in _read_dotenv(os.path.join(manifest_dir, ".env")).items():
@@ -595,8 +616,9 @@ def main(argv=None):
                    help="serve names/containers to act on (default: all in the manifest). "
                         "For `rm`, an unrecognised name is treated literally as a container. "
                         "With `up --compose`, these are compose SERVICE names.")
-    p.add_argument("--manifest", default=DEFAULT_MANIFEST,
-                   help="path to the serves manifest TOML (default: %(default)s).")
+    p.add_argument("--manifest",
+                   help="path to the serves manifest TOML (default: ./serves.toml "
+                        "if present, then ~/.anvil-serving/serves.toml).")
     p.add_argument("--dry-run", action="store_true",
                    help="print what would run without touching any container "
                         "(for up / down / rm / adopt).")
@@ -630,17 +652,24 @@ def main(argv=None):
         print("--compose is only valid with `up`", file=sys.stderr)
         return 2
 
+    manifest_path = resolve_manifest_path(a.manifest)
     try:
-        serves = load_manifest(a.manifest)
+        serves = load_manifest(manifest_path)
     except FileNotFoundError:
+        search_hint = (
+            a.manifest
+            if a.manifest
+            else ", ".join(default_manifest_candidates())
+        )
         print(
             "manifest not found: %s (run `anvil-serving init` to generate one, "
-            "or pass --manifest to point at an existing serves.toml)" % a.manifest,
+            "place one at ~/.anvil-serving/serves.toml, or pass --manifest to "
+            "point at an existing serves.toml)" % search_hint,
             file=sys.stderr,
         )
         return 2
     except Exception as e:  # malformed manifest
-        print("bad manifest %s: %s" % (a.manifest, e), file=sys.stderr)
+        print("bad manifest %s: %s" % (manifest_path, e), file=sys.stderr)
         return 2
 
     if a.action == "status":

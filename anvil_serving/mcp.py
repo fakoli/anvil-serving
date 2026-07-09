@@ -858,7 +858,8 @@ def tool_router_manage(args: dict) -> dict:
     if action not in {"up", "down", "restart", "reload"}:
         raise ToolError("bad_action", "action must be one of: up, down, restart, reload", {"action": action})
     container = _str_arg(args, "container", router_manage.DEFAULT_CONTAINER)
-    compose = _str_arg(args, "compose", router_manage.DEFAULT_COMPOSE)
+    compose_arg = _str_arg(args, "compose", "")
+    compose = router_manage.resolve_compose_path(compose_arg or None)
     service = _str_arg(args, "service", router_manage.DEFAULT_SERVICE)
     env_file = _str_arg(args, "env_file", "")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
@@ -1070,7 +1071,8 @@ def tool_router_promote(args: dict) -> dict:
 def tool_serves_status(args: dict) -> dict:
     from . import serves as serves_mod
 
-    manifest = _str_arg(args, "manifest", serves_mod.DEFAULT_MANIFEST)
+    manifest_arg = _str_arg(args, "manifest", "")
+    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
     names = args.get("names", [])
     if names is None:
         names = []
@@ -1309,7 +1311,8 @@ def tool_serves_manage(args: dict) -> dict:
     action = _str_arg(args, "action", required=True)
     if action not in {"up", "down", "rm", "adopt"}:
         raise ToolError("bad_action", "action must be one of: up, down, rm, adopt", {"action": action})
-    manifest = _str_arg(args, "manifest", serves_mod.DEFAULT_MANIFEST)
+    manifest_arg = _str_arg(args, "manifest", "")
+    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
     names = _str_list_arg(args, "names")
     compose = _str_arg(args, "compose", "")
     recreate = _arg_bool(args.get("recreate"), False, name="recreate")
@@ -1357,7 +1360,8 @@ def tool_serves_manage(args: dict) -> dict:
 def tool_serves_logs(args: dict) -> dict:
     from . import serves as serves_mod
 
-    manifest = _str_arg(args, "manifest", serves_mod.DEFAULT_MANIFEST)
+    manifest_arg = _str_arg(args, "manifest", "")
+    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
     names = _str_list_arg(args, "names")
     if len(names) != 1:
         raise ToolError("bad_argument", "serves_logs requires exactly one serve name", {"names": names})
@@ -1448,7 +1452,8 @@ def tool_voice_manage(args: dict) -> dict:
     if action not in {"up", "down", "start", "stop"}:
         raise ToolError("bad_action", "action must be one of: up, down, start, stop", {"action": action})
     normalized = {"start": "up", "stop": "down"}.get(action, action)
-    config = _str_arg(args, "config", voice_config.DEFAULT_CONFIG)
+    config_arg = _str_arg(args, "config", "")
+    config = voice_config.resolve_config_path(config_arg or None)
     profile = _str_arg(args, "profile", "")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")

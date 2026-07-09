@@ -179,15 +179,64 @@ def test_cmd_up_loads_home_dotenv_as_fallback(tmp_path, monkeypatch):
     assert captured_env["HF_TOKEN"] == "home-token"
 
 
+def test_cmd_up_prefers_config_home_dotenv_over_home_fallback(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    config_home = tmp_path / "anvil-serving"
+    manifest_dir = tmp_path / "manifest"
+    home.mkdir()
+    config_home.mkdir()
+    manifest_dir.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    (home / ".env").write_text("HF_TOKEN=home-token\n", encoding="utf-8")
+    (config_home / ".env").write_text("HF_TOKEN=config-token\n", encoding="utf-8")
+    path = _manifest(manifest_dir, """
+        [[serve]]
+        name = "gepard"
+        container = "gepard-fast-tts"
+        port = 39111
+        model = "gepard-1.0"
+        engine = "vllm"
+        up = "docker compose -f {dir}/docker-compose.experiment.yml up -d tts-gepard-fast"
+    """)
+    (serve,) = serves.load_manifest(path)
+    captured_env = {}
+
+    def run(argv, **kwargs):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(1, "", "Error: No such object")
+        captured_env.update(kwargs.get("env") or {})
+        return proc(0, "", "")
+
+    assert serves.cmd_up([serve], [], _run=run) == 0
+    assert captured_env["HF_TOKEN"] == "config-token"
+
+
 # ---- default manifest / missing manifest (genericity:T012) ---------------------
 
-def test_default_manifest_is_cwd_serves_toml():
+def test_default_manifest_searches_cwd_then_config_home():
     assert serves.DEFAULT_MANIFEST == "./serves.toml"
+    candidates = serves.default_manifest_candidates()
+    assert candidates[0] == "./serves.toml"
+    assert candidates[1].endswith(os.path.join(".anvil-serving", "serves.toml"))
     assert serves.EXAMPLE_MANIFEST.endswith(os.path.join("examples", "fakoli-dark", "serves.toml"))
+
+
+def test_resolve_manifest_path_uses_config_home_when_cwd_missing(tmp_path, monkeypatch):
+    config_home = tmp_path / "anvil-serving"
+    config_home.mkdir()
+    manifest = config_home / "serves.toml"
+    manifest.write_text("[[serve]]\nname='x'\ncontainer='x'\nport=1\nmodel='x'\nengine='vllm'\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+    assert serves.resolve_manifest_path() == str(manifest)
 
 
 def test_missing_manifest_errors_pointing_to_init(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "missing-home"))
     rc = serves.main(["status"])
     assert rc == 2
     err = capsys.readouterr().err
