@@ -72,6 +72,18 @@ def test_experiment_compose_optional_candidates_do_not_block_file_parse():
     assert "${GEPARD_DATABASE_URL:?" not in text
 
 
+def test_experiment_gepard_uses_internal_postgres_by_default():
+    services = _service_blocks(EXPERIMENT_COMPOSE_PATH.read_text(encoding="utf-8"))
+    assert "gepard-postgres" in services
+    postgres = services["gepard-postgres"]
+    gepard = services["tts-gepard-fast"]
+    assert "ports:" not in postgres
+    assert "gepard-postgres-init.sql" in postgres
+    assert "depends_on:" in gepard
+    assert "gepard-postgres:" in gepard
+    assert "postgresql://gepard@gepard-postgres:5432/gepard" in gepard
+
+
 def test_router_service_present():
     services = _service_blocks(_compose_text())
     assert "router" in services, f"expected a `router` service, got: {sorted(services)}"

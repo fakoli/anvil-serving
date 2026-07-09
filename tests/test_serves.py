@@ -119,6 +119,66 @@ def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):
     assert "fast-devstral-small2-llamacpp" in out
 
 
+def test_cmd_up_loads_manifest_adjacent_dotenv_without_overriding_shell(tmp_path, monkeypatch):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "gepard"
+        container = "gepard-fast-tts"
+        port = 39111
+        model = "gepard-1.0"
+        engine = "vllm"
+        up = "docker compose -f {dir}/docker-compose.experiment.yml up -d tts-gepard-fast"
+    """)
+    (serve,) = serves.load_manifest(path)
+    (tmp_path / ".env").write_text(
+        "HF_TOKEN=file-token\nGEPARD_DATABASE_URL=postgresql://example\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HF_TOKEN", "shell-token")
+    captured_env = {}
+
+    def run(argv, **kwargs):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(1, "", "Error: No such object")
+        captured_env.update(kwargs.get("env") or {})
+        return proc(0, "", "")
+
+    assert serves.cmd_up([serve], [], _run=run) == 0
+    assert captured_env["HF_TOKEN"] == "shell-token"
+    assert captured_env["GEPARD_DATABASE_URL"] == "postgresql://example"
+
+
+def test_cmd_up_loads_home_dotenv_as_fallback(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    manifest_dir = tmp_path / "manifest"
+    home.mkdir()
+    manifest_dir.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    (home / ".env").write_text("HF_TOKEN=home-token\n", encoding="utf-8")
+    path = _manifest(manifest_dir, """
+        [[serve]]
+        name = "gepard"
+        container = "gepard-fast-tts"
+        port = 39111
+        model = "gepard-1.0"
+        engine = "vllm"
+        up = "docker compose -f {dir}/docker-compose.experiment.yml up -d tts-gepard-fast"
+    """)
+    (serve,) = serves.load_manifest(path)
+    captured_env = {}
+
+    def run(argv, **kwargs):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(1, "", "Error: No such object")
+        captured_env.update(kwargs.get("env") or {})
+        return proc(0, "", "")
+
+    assert serves.cmd_up([serve], [], _run=run) == 0
+    assert captured_env["HF_TOKEN"] == "home-token"
+
+
 # ---- default manifest / missing manifest (genericity:T012) ---------------------
 
 def test_default_manifest_is_cwd_serves_toml():
