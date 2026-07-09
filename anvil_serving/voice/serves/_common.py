@@ -77,8 +77,8 @@ class ServeLifecycle:
     :mod:`anvil_serving.serves` -- this class never invokes `docker` itself.
 
     ``serve_name`` selects the entry (by `name` or `container`) in the serves
-    manifest (default ``./serves.toml``, same file `anvil-serving serves`
-    reads) that fronts this serve.
+    manifest (same discovery path `anvil-serving serves` reads) that fronts
+    this serve.
     """
 
     def __init__(
@@ -90,7 +90,7 @@ class ServeLifecycle:
         _open: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.serve_name = serve_name
-        self.manifest_path = manifest_path or generic_serves.DEFAULT_MANIFEST
+        self.manifest_path = generic_serves.resolve_manifest_path(manifest_path)
         # None -> let anvil_serving.serves fall back to its own subprocess.run default.
         self._run = _run
         self._open = _open or urllib.request.urlopen

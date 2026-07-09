@@ -563,6 +563,85 @@ def test_cmd_up_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys):
     assert "tts serve lifecycle is external" in out
 
 
+def test_cmd_up_uses_manifest_declared_audio_serve_name(tmp_path, monkeypatch):
+    manifest = tmp_path / "voice_gepard.toml"
+    serves_manifest = tmp_path / "serves.toml"
+    manifest.write_text(
+        VALID_MANIFEST.replace(
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"',
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"\nlifecycle = "external"',
+        ).replace(
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"',
+            (
+                '[voice.tts]\n'
+                'base_url = "http://127.0.0.1:39111"\n'
+                'model = "gepard-1.0"\n'
+                'protocol = "gepard"\n'
+                'lifecycle = "managed"\n'
+                'serve_name = "tts-gepard-fast"\n'
+                'manifest_path = "%s"'
+            ) % str(serves_manifest).replace("\\", "\\\\"),
+        ),
+        encoding="utf-8",
+    )
+    seen = {}
+
+    from anvil_serving.voice.serves import tts as tts_serve
+
+    def fake_bring_up(self, **kwargs):
+        seen["serve_name"] = self.config.serve_name
+        seen["manifest_path"] = self.config.manifest_path
+        return 0
+
+    monkeypatch.setattr(tts_serve.TTSServe, "bring_up", fake_bring_up)
+
+    rc = voice_cli.main(["up", "--config", str(manifest)])
+
+    assert rc == 0
+    assert seen == {
+        "serve_name": "tts-gepard-fast",
+        "manifest_path": str(serves_manifest),
+    }
+
+
+def test_cmd_up_resolves_relative_serves_manifest_from_voice_manifest_dir(tmp_path, monkeypatch):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    manifest = config_dir / "voice.toml"
+    manifest.write_text(
+        VALID_MANIFEST.replace(
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"',
+            '[voice.stt]\nbase_url = "http://127.0.0.1:8090/v1"\nmodel = "parakeet-tdt-0.6b-v3"\nlifecycle = "external"',
+        ).replace(
+            '[voice.tts]\nbase_url = "http://127.0.0.1:8091/v1"\nmodel = "kokoro-82m"',
+            (
+                '[voice.tts]\n'
+                'base_url = "http://127.0.0.1:39111"\n'
+                'model = "gepard-1.0"\n'
+                'protocol = "gepard"\n'
+                'lifecycle = "managed"\n'
+                'serve_name = "tts-gepard-fast"\n'
+                'manifest_path = "serves.toml"'
+            ),
+        ),
+        encoding="utf-8",
+    )
+    seen = {}
+
+    from anvil_serving.voice.serves import tts as tts_serve
+
+    def fake_bring_up(self, **kwargs):
+        seen["manifest_path"] = self.config.manifest_path
+        return 0
+
+    monkeypatch.setattr(tts_serve.TTSServe, "bring_up", fake_bring_up)
+
+    rc = voice_cli.main(["up", "--config", str(manifest)])
+
+    assert rc == 0
+    assert seen["manifest_path"] == str(config_dir / "serves.toml")
+
+
 def test_cmd_down_returns_nonzero_when_a_serve_tear_down_fails(manifest_path, monkeypatch, capsys):
     from anvil_serving.voice.serves import stt as stt_serve
     from anvil_serving.voice.serves import tts as tts_serve
