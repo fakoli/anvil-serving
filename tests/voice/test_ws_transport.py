@@ -264,6 +264,58 @@ def test_handshake_and_text_binary_frames_over_real_socket():
     assert (OP_BINARY, b"\x00\x01\x02binary") in received
 
 
+def _send_handshake_response_with_headers(sock: socket.socket, header_lines: list[str]) -> None:
+    request = bytearray()
+    while b"\r\n\r\n" not in request:
+        chunk = sock.recv(1)
+        if not chunk:
+            return
+        request.extend(chunk)
+    headers = {}
+    for line in request.decode("iso-8859-1").split("\r\n"):
+        if ":" not in line:
+            continue
+        name, _, value = line.partition(":")
+        headers[name.strip().lower()] = value.strip()
+    accept = compute_accept_key(headers["sec-websocket-key"])
+    response = (
+        "HTTP/1.1 101 Switching Protocols\r\n"
+        + "\r\n".join(line.format(accept=accept) for line in header_lines)
+        + "\r\n\r\n"
+    ).encode("ascii")
+    sock.sendall(response)
+
+
+@pytest.mark.parametrize(
+    ("header_lines", "match"),
+    [
+        (
+            ["Connection: Upgrade", "Sec-WebSocket-Accept: {accept}"],
+            "Upgrade",
+        ),
+        (
+            ["Upgrade: websocket", "Sec-WebSocket-Accept: {accept}"],
+            "Connection",
+        ),
+    ],
+)
+def test_client_handshake_requires_upgrade_response_headers(header_lines, match):
+    server_sock, client_sock = socket.socketpair()
+    thread = threading.Thread(
+        target=_send_handshake_response_with_headers,
+        args=(server_sock, header_lines),
+        daemon=True,
+    )
+    thread.start()
+    try:
+        with pytest.raises(WebSocketError, match=match):
+            client_handshake(client_sock, host="127.0.0.1", port=8765, path="/v1/realtime")
+    finally:
+        server_sock.close()
+        client_sock.close()
+        thread.join(timeout=5)
+
+
 def test_handshake_upgrade_does_not_drop_a_pipelined_client_frame():
     """Regression test: a client that sends its first WS frame in the SAME
     write as the Upgrade request (never waiting for the 101 response) must
