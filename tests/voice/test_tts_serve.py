@@ -10,6 +10,7 @@ no network.
 from __future__ import annotations
 
 import array
+import base64
 import http.client
 import json
 from types import SimpleNamespace
@@ -20,10 +21,12 @@ from anvil_serving.voice.cancel_scope import CancelScope
 from anvil_serving.voice.messages import AudioOut, EndOfResponse, TTSInput
 from anvil_serving.voice.serves._common import ServeNotConfigured
 from anvil_serving.voice.serves.tts import TTSServe, TTSServeConfig
+from anvil_serving.voice.realtime.ws import make_ws_server, serve_forever_in_background
 from anvil_serving.voice.stages.tts import (
     TTSClientError,
     TTSStage,
     TTSStageConfig,
+    build_cartesia_speech_request_body,
     build_speech_request_body,
     resample_int16,
     stream_speech,
@@ -227,6 +230,28 @@ def test_build_speech_request_body_shape():
     }
 
 
+def test_build_cartesia_speech_request_body_shape():
+    body = build_cartesia_speech_request_body(
+        "hello there",
+        TTSStageConfig(model="gepard-1.0", source_sample_rate=22050, voice_id="voice-123", language="en"),
+        context_id="ctx-1",
+    )
+
+    assert body == {
+        "context_id": "ctx-1",
+        "model_id": "gepard-1.0",
+        "transcript": "hello there",
+        "continue": True,
+        "output_format": {
+            "container": "raw",
+            "encoding": "pcm_s16le",
+            "sample_rate": 22050,
+        },
+        "voice": {"mode": "id", "id": "voice-123"},
+        "language": "en",
+    }
+
+
 def test_resample_int16_is_noop_when_rates_match():
     pcm = _int16_bytes([1, 2, 3, 4])
     assert resample_int16(pcm, 16000, 16000) == pcm
@@ -302,6 +327,75 @@ def test_stream_speech_no_token_when_env_unset(monkeypatch):
     config = TTSStageConfig(api_key_env="ANVIL_TEST_TTS_TOKEN_UNSET")
     list(stream_speech("hi", config, transport=transport))
     assert "Authorization" not in transport.calls[0]["headers"]
+
+
+def test_stream_speech_cartesia_websocket_streams_base64_pcm(monkeypatch):
+    monkeypatch.setenv("ANVIL_TEST_CARTESIA_TOKEN", "cartesia-token")
+    audio = _int16_bytes([1, 2, 3, 4])
+    payloads = []
+
+    def on_connect(conn, path):
+        first = conn.recv_text()
+        second = conn.recv_text()
+        payloads.append(json.loads(first))
+        payloads.append(json.loads(second))
+        conn.send_json({"type": "chunk", "data": base64.b64encode(audio[:4]).decode("ascii")})
+        conn.send_json({"type": "chunk", "data": base64.b64encode(audio[4:]).decode("ascii")})
+        conn.send_json({"type": "done"})
+
+    server = make_ws_server(
+        "127.0.0.1",
+        0,
+        on_connect,
+        ws_path="/tts/websocket",
+        token_env="ANVIL_TEST_CARTESIA_TOKEN",
+    )
+    thread = serve_forever_in_background(server)
+    try:
+        host, port = server.server_address[:2]
+        config = TTSStageConfig(
+            base_url="http://%s:%d" % (host, port),
+            model="gepard-1.0",
+            protocol="cartesia",
+            api_key_env="ANVIL_TEST_CARTESIA_TOKEN",
+            source_sample_rate=22050,
+        )
+
+        chunks = list(stream_speech("hi there", config))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert b"".join(chunks) == audio
+    assert payloads[0]["transcript"] == "hi there"
+    assert payloads[0]["model_id"] == "gepard-1.0"
+    assert payloads[0]["output_format"]["sample_rate"] == 22050
+    assert payloads[0]["continue"] is True
+    assert payloads[1] == {"context_id": payloads[0]["context_id"], "continue": False}
+
+
+def test_stream_speech_cartesia_rejects_malformed_chunk():
+    def on_connect(conn, path):
+        conn.recv_text()
+        conn.recv_text()
+        conn.send_json({"type": "chunk", "data": "*** not base64 ***"})
+
+    server = make_ws_server("127.0.0.1", 0, on_connect, ws_path="/tts/websocket")
+    thread = serve_forever_in_background(server)
+    try:
+        host, port = server.server_address[:2]
+        config = TTSStageConfig(
+            base_url="http://%s:%d" % (host, port),
+            model="gepard-1.0",
+            protocol="cartesia",
+        )
+        with pytest.raises(TTSClientError, match="base64"):
+            list(stream_speech("hi there", config))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 
 # --------------------------------------------------------------------------- #
