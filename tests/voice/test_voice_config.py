@@ -296,10 +296,45 @@ model = "tts"
         voice_config.load_manifest(str(manifest), profile="missing")
 
 
-def test_shipped_example_default_path_used_when_none_given():
-    # load_manifest(None) should fall back to DEFAULT_CONFIG and succeed.
+def test_shipped_example_default_path_used_when_no_operator_config(tmp_path, monkeypatch):
+    # load_manifest(None) should fall back to DEFAULT_CONFIG when the operator
+    # home has no voice.toml.
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "missing-home"))
     data = voice_config.load_manifest(None)
     assert "voice" in data
+
+
+def test_operator_voice_config_is_default_when_present(tmp_path, monkeypatch):
+    config_home = tmp_path / "anvil-serving"
+    config_home.mkdir()
+    manifest = config_home / "voice.toml"
+    manifest.write_text(
+        """
+[voice]
+name = "operator-voice"
+realtime_host = "127.0.0.1"
+realtime_port = 8765
+
+[voice.llm]
+base_url = "http://127.0.0.1:8000/v1"
+model = "chat"
+
+[voice.stt]
+base_url = "http://127.0.0.1:30010/v1"
+model = "stt"
+
+[voice.tts]
+base_url = "http://127.0.0.1:30011/v1"
+model = "tts"
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+
+    data = voice_config.load_manifest(None)
+
+    assert data["voice"]["name"] == "operator-voice"
+    assert data["_manifest_dir"] == str(config_home)
 
 
 def test_valid_manifest_passes():

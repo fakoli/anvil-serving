@@ -34,6 +34,8 @@ import shlex
 import urllib.parse
 from dataclasses import dataclass
 
+from anvil_serving.paths import config_path
+
 try:
     import tomllib  # Python 3.11+
 except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3.11
@@ -41,6 +43,7 @@ except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_CONFIG = os.path.join(REPO_ROOT, "examples", "voice", "voice.example.toml")
+CONFIG_HOME_CONFIG = "~/.anvil-serving/voice.toml"
 
 _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 # Q2 hardening: `realtime_token` is listed explicitly (not just `token`) --
@@ -92,11 +95,19 @@ class ResolvedVoiceConfig:
 def _resolve_config_path(path: str | None) -> str:
     if path:
         return path
+    operator_config = config_path("voice.toml")
+    if os.path.isfile(operator_config):
+        return operator_config
     if os.path.isfile(DEFAULT_CONFIG):
         return DEFAULT_CONFIG
     raise ConfigError(
-        "no default voice manifest is available in this installation; pass an explicit path"
+        "no default voice manifest is available in ~/.anvil-serving/voice.toml "
+        "or this installation; pass an explicit path"
     )
+
+
+def resolve_config_path(path: str | None = None) -> str:
+    return _resolve_config_path(path)
 
 
 def load_raw_manifest(path: str | None = None) -> dict:
@@ -106,11 +117,15 @@ def load_raw_manifest(path: str | None = None) -> dict:
     config_path = _resolve_config_path(path)
     try:
         with open(config_path, "rb") as f:
-            return tomllib.load(f)
+            data = tomllib.load(f)
     except FileNotFoundError:
         raise ConfigError("config not found: %s" % config_path)
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError("cannot parse %s: %s" % (config_path, exc))
+    if isinstance(data, dict):
+        data["_manifest_path"] = os.path.abspath(config_path)
+        data["_manifest_dir"] = os.path.dirname(os.path.abspath(config_path))
+    return data
 
 
 def load_manifest(
@@ -255,6 +270,11 @@ def _apply_voice_overlay(
     voice = data.get("voice")
     if not isinstance(voice, dict):
         raise ConfigError("missing [voice] section")
+    overlay = {
+        key: value
+        for key, value in overlay.items()
+        if not str(key).startswith("_")
+    }
     if "voice" in overlay:
         if len(overlay) != 1 or not isinstance(overlay["voice"], dict):
             raise ConfigError("%s must contain either voice keys or a single [voice] table" % label)
