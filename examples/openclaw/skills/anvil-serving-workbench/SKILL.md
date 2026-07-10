@@ -21,7 +21,7 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   `workflow_packet_validate` before treating a packet as promotion evidence.
 - Use documented `anvil-serving` CLI verbs only when a structured tool is
   missing. Safe fallbacks are read-only or preview-first verbs such as
-  `profile`, `models sync`, `models recipe`, `score`,
+  `profile`, `models sync`, `models recipe`, `models score`,
   `harness sync openclaw --out -`, and other render/inspect commands. Return
   the command preview as evidence and name the missing MCP wrapper as a product
   gap.

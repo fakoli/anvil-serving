@@ -18,7 +18,7 @@ router for the LLM turn. STT and TTS stay as replaceable out-of-process serves;
 the LLM request still goes through the quality-gated router, so voice turns can
 use the same local-first, verified, opt-in-cloud policy as text agents.
 
-The voice pipeline is different from `voice-sidecar`. `voice-sidecar` renders
+The voice pipeline is different from `voice sidecar`. `voice sidecar` renders
 commands or compose manifests for Hugging Face's `speech-to-speech` project,
 where that project owns the Realtime server. `anvil-serving voice` owns the
 Realtime server and cascade itself.

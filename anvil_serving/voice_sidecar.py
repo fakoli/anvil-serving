@@ -310,7 +310,7 @@ def _load_for_cli(path: str | None) -> tuple[dict, str]:
         raise ConfigError("cannot parse %s: %s" % (config_path, exc))
 
 
-def build_parser(prog: str = "anvil-serving voice-sidecar") -> argparse.ArgumentParser:
+def build_parser(prog: str = "anvil-serving voice sidecar") -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog=prog,
         description=(
@@ -351,7 +351,7 @@ def build_parser(prog: str = "anvil-serving voice-sidecar") -> argparse.Argument
     return p
 
 
-def main(argv=None, *, prog: str = "anvil-serving voice-sidecar") -> int:
+def main(argv=None, *, prog: str = "anvil-serving voice sidecar") -> int:
     args = build_parser(prog=prog).parse_args(list(sys.argv[1:] if argv is None else argv))
     try:
         data, config_path = _load_for_cli(args.config)
@@ -375,7 +375,7 @@ def main(argv=None, *, prog: str = "anvil-serving voice-sidecar") -> int:
             )
             return 0
     except ConfigError as exc:
-        print("voice-sidecar: %s" % exc, file=sys.stderr)
+        print("%s: %s" % (prog, exc), file=sys.stderr)
         return 2
     return 2
 

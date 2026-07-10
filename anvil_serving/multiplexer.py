@@ -1007,7 +1007,7 @@ def _self_check():
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        prog="python -m anvil_serving.multiplexer",
+        prog="anvil-serving multiplexer",
         description="On-demand OpenAI-compatible model multiplexer (single-resident, "
                     "RAM-guarded swap).")
     ap.add_argument("--registry", default=None, help="JSON registry table to override the default")

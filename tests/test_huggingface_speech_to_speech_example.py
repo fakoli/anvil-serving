@@ -24,9 +24,9 @@ def test_example_uses_chat_completions_backend_and_anvil_router():
     assert '--responses_api_base_url "http://127.0.0.1:8000/v1"' in text
     assert "--model_name chat" in text
     assert 'base_url = "http://127.0.0.1:8000/v1"' in text
-    assert "anvil-serving voice-sidecar command" in text
-    assert "anvil-serving voice-sidecar validate" in text
-    assert "anvil-serving voice-sidecar compose" in text
+    assert "anvil-serving voice sidecar command" in text
+    assert "anvil-serving voice sidecar validate" in text
+    assert "anvil-serving voice sidecar compose" in text
 
 
 def test_example_keeps_realtime_sidecar_outside_router():

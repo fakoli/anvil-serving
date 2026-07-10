@@ -5,6 +5,9 @@ import shutil
 import sqlite3
 from pathlib import Path
 
+import pytest
+
+from anvil_serving import benchmark
 from anvil_serving import cli as top_cli
 from anvil_serving.external_benchmarks import cli, schema, store
 from anvil_serving.external_benchmarks.compare import compare_local_to_external
@@ -431,4 +434,32 @@ def test_compare_reports_nearest_external_rows_when_no_exact_match(capsys):
 def test_top_level_cli_help_includes_external_bench(capsys):
     assert top_cli.main(["--help"]) == 0
     out = capsys.readouterr().out
-    assert "external-bench" in out
+    assert "external-bench" not in out
+    assert "benchmark" in out
+
+
+def test_benchmark_external_help_uses_canonical_usage(capsys):
+    with pytest.raises(SystemExit) as exc:
+        benchmark.main(["external", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving benchmark external" in out
+    assert "compare" in out
+
+
+def test_benchmark_external_dispatch_matches_root_external_bench(capsys):
+    db1 = _scratch("benchmark-external-root") / "benchmarks.sqlite"
+    db2 = _scratch("benchmark-external-nested") / "benchmarks.sqlite"
+    fixture = FIXTURES / "millstone_sample.json"
+    local = FIXTURES / "local_benchmark_sample.json"
+
+    assert top_cli.main(["external-bench", "import", "--source", "millstone", "--file", str(fixture), "--db", str(db1)]) == 0
+    capsys.readouterr()
+    assert top_cli.main(["benchmark", "external", "import", "--source", "millstone", "--file", str(fixture), "--db", str(db2)]) == 0
+    capsys.readouterr()
+
+    assert top_cli.main(["external-bench", "compare", "--local", str(local), "--gpu", "RTX PRO 6000", "--db", str(db1)]) == 0
+    root_out = capsys.readouterr().out
+    assert top_cli.main(["benchmark", "external", "compare", "--local", str(local), "--gpu", "RTX PRO 6000", "--db", str(db2)]) == 0
+    nested_out = capsys.readouterr().out
+    assert nested_out == root_out
