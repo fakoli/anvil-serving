@@ -40,6 +40,8 @@ EXPECTED_TABLES = (
     "external_benchmark_rows",
     "serve_fingerprints",
     "benchmark_comparisons",
+    "bakeoff_runs",
+    "bakeoff_verdicts",
 )
 
 DDL = """
@@ -137,6 +139,45 @@ CREATE TABLE IF NOT EXISTS benchmark_comparisons (
     FOREIGN KEY(serve_fingerprint_id) REFERENCES serve_fingerprints(id),
     FOREIGN KEY(external_row_id) REFERENCES external_benchmark_rows(id)
 );
+
+CREATE TABLE IF NOT EXISTS bakeoff_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    candidate_id TEXT NOT NULL,
+    config_id TEXT NOT NULL,
+    task TEXT NOT NULL,
+    hardware TEXT NOT NULL,
+    model TEXT,
+    serve_fingerprint_id INTEGER,
+    started_at TEXT,
+    ttft_p50_ms REAL,
+    e2e_p50_ms REAL,
+    voice_latency_ms REAL,
+    usable_context_tokens INTEGER,
+    tool_call_passed INTEGER,
+    session_recall_passed INTEGER,
+    intelligence_pass_rate REAL,
+    thinking_mode TEXT,
+    failures_json TEXT NOT NULL DEFAULT '[]',
+    evidence_json TEXT,
+    evidence_path TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(serve_fingerprint_id) REFERENCES serve_fingerprints(id)
+);
+
+CREATE TABLE IF NOT EXISTS bakeoff_verdicts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    baseline_run_id TEXT,
+    rubric_json TEXT NOT NULL,
+    total_score REAL,
+    verdict TEXT NOT NULL,
+    reason TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_bakeoff_runs_key
+    ON bakeoff_runs(candidate_id, config_id, task, hardware, started_at);
 
 CREATE INDEX IF NOT EXISTS idx_external_rows_gpu
     ON external_benchmark_rows(gpu_model);
