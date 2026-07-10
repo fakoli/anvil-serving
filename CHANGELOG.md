@@ -6,19 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-### Changed (BREAKING for non-interactive callers)
-
-- **`serves rm` / `serves adopt` now require consent**: interactive `[y/N]`
-  on a TTY, `--yes` everywhere else. A non-interactive call without `--yes`
-  (cron, CI, pipelines) now aborts with rc 1 and removes NOTHING — fail-closed
-  by design. Update automation to pass `--yes`. The MCP `serves_manage` tool
-  passes it automatically once its own confirm gate is satisfied.
-- **`router restart` / `reload` block ~11s longer** verifying the router
-  stays up (crash-loop detection); `--no-verify` restores the old fire-and-
-  forget behavior.
-
 ### Added
 
+- **Bakeoff notebook** — the persistent, comparable record the fast-tier
+  bakeoff report was assembled by hand from. `anvil-serving benchmark
+  --bakeoff … --notebook DB --notebook-task T --notebook-hardware H` appends
+  each run into `bakeoff_runs` (schema: two additive tables `bakeoff_runs`
+  + `bakeoff_verdicts`); `anvil-serving benchmark external notebook
+  add|list|render` records/lists/renders. `render` emits the repeatable form
+  of the #181 report — the candidate matrix, a 100-point rubric (encoded as
+  data in `external_benchmarks/notebook.py`), and a per-candidate
+  win/lose/hold **verdict with a recorded reason** (hard gates: tool/session
+  pass + no failures). Append-only history; the notebook view is
+  latest-per-(candidate, config, task, hardware).
 - **Shared host-mutation guard (`anvil_serving/guard.py`)** — the
   compute → gate → apply → verify → rollback pattern proven separately in
   `host` (confirm + numbered backups + refusal floors), `cache-prune`
@@ -44,6 +44,18 @@ All notable changes to this project are documented here. The format is based on
 - **`init` config backups** — regenerating `docker-compose.yml`/`router.toml`
   over operator-edited files now writes numbered `.anvil.bak.N` siblings
   first (the same convention as `host wsl-config`).
+
+### Changed (BREAKING for non-interactive callers)
+
+- **`serves rm` / `serves adopt` now require consent**: interactive `[y/N]`
+  on a TTY, `--yes` everywhere else. A non-interactive call without `--yes`
+  (cron, CI, pipelines) now aborts with rc 1 and removes NOTHING — fail-closed
+  by design. Update automation to pass `--yes`. The MCP `serves_manage` tool
+  passes it automatically once its own confirm gate is satisfied.
+- **`router restart` / `reload` block ~11s longer** verifying the router
+  stays up (crash-loop detection); `--no-verify` restores the old fire-and-
+  forget behavior.
+
 
 ## [0.11.0] - 2026-07-06
 

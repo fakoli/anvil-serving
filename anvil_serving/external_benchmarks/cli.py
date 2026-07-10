@@ -7,7 +7,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-from . import compare, store
+from . import compare, notebook, store
 from .sources import ADAPTERS
 
 
@@ -167,6 +167,29 @@ def main(argv=None, *, prog: str = "anvil-serving benchmark external") -> int:
     p_compare.add_argument("--gpu")
     p_compare.add_argument("--db", default=store.DEFAULT_DB)
 
+    p_nb = sub.add_parser(
+        "notebook",
+        help="record/list/render bakeoff candidate runs (the model-bakeoff notebook)",
+    )
+    nb_sub = p_nb.add_subparsers(dest="nb_cmd", required=True)
+    nb_add = nb_sub.add_parser("add", help="record a fast-tier-bakeoff/v1 evidence JSON")
+    nb_add.add_argument("--evidence", required=True, help="path to a bakeoff evidence JSON")
+    nb_add.add_argument("--task", required=True)
+    nb_add.add_argument("--hardware", required=True)
+    nb_add.add_argument("--db", default=store.DEFAULT_DB)
+    nb_list = nb_sub.add_parser("list", help="list recorded runs (latest per candidate)")
+    nb_list.add_argument("--task")
+    nb_list.add_argument("--hardware")
+    nb_list.add_argument("--all", action="store_true", help="show full append history")
+    nb_list.add_argument("--format", choices=["table", "json"], default="table")
+    nb_list.add_argument("--db", default=store.DEFAULT_DB)
+    nb_render = nb_sub.add_parser("render", help="render the comparison matrix + verdicts")
+    nb_render.add_argument("--task")
+    nb_render.add_argument("--hardware")
+    nb_render.add_argument("--baseline", help="candidate_id to compare others against")
+    nb_render.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    nb_render.add_argument("--db", default=store.DEFAULT_DB)
+
     args = ap.parse_args(argv)
     if args.cmd == "init":
         result = store.init_db(args.db)
@@ -225,4 +248,42 @@ def main(argv=None, *, prog: str = "anvil-serving benchmark external") -> int:
         result = compare.compare_local_to_external(args.db, args.local, gpu=args.gpu)
         print(compare.render_comparison(result))
         return 0
+    if args.cmd == "notebook":
+        if args.nb_cmd == "add":
+            with open(args.evidence, encoding="utf-8") as f:
+                evidence = json.load(f)
+            row_id = store.record_bakeoff_run(
+                args.db, evidence, task=args.task, hardware=args.hardware,
+                evidence_path=args.evidence,
+            )
+            print("recorded bakeoff run %s (row %d)" % (evidence.get("run_id"), row_id))
+            return 0
+        if args.nb_cmd == "list":
+            rows = store.list_bakeoff_runs(
+                args.db, task=args.task, hardware=args.hardware,
+                latest_per_candidate=not args.all,
+            )
+            if args.format == "json":
+                print(json.dumps(rows, indent=2, sort_keys=True))
+            else:
+                for r in rows:
+                    print("%s	%s	task=%s	hw=%s	ttft=%s	e2e=%s" % (
+                        r.get("candidate_id"), r.get("config_id"), r.get("task"),
+                        r.get("hardware"), r.get("ttft_p50_ms"), r.get("e2e_p50_ms")))
+            return 0
+        if args.nb_cmd == "render":
+            rows = store.list_bakeoff_runs(
+                args.db, task=args.task, hardware=args.hardware,
+                latest_per_candidate=True,
+            )
+            if args.format == "json":
+                out = [{"run": r, "rubric": notebook.score_run(r),
+                        "verdict": notebook.verdict(r)} for r in rows]
+                print(json.dumps(out, indent=2, sort_keys=True, default=str))
+            else:
+                print(notebook.render_markdown(
+                    rows, task=args.task, hardware=args.hardware,
+                    baseline_candidate=args.baseline), end="")
+            return 0
+        return 2
     return 2
