@@ -42,6 +42,14 @@ device topologies.
 5. [`examples/fakoli-dark/`](https://github.com/fakoli/anvil-serving/tree/main/examples/fakoli-dark/)
    — a fully worked two-GPU reference instance.
 
+**Comparing measured model results?**
+
+1. [Benchmark results](BENCHMARKS.md) — the current public summary, tested configurations, and
+   recommendation status.
+2. [Findings](findings/README.md) — dated reports and machine-readable evidence behind each result.
+3. [External benchmarks](EXTERNAL-BENCHMARKS.md) — advisory external throughput priors and how to
+   compare them with a local run.
+
 **Contributing?**
 
 1. [CONTRIBUTING](https://github.com/fakoli/anvil-serving/blob/main/CONTRIBUTING.md) — setup, the
@@ -87,6 +95,7 @@ device topologies.
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Tune thinking/sampling behavior for a served model. |
 | [Serves & eval](SERVES-AND-EVAL.md) | Manage model serves and run evals. |
 | [Voice pipeline](VOICE.md) | Run native voice commands, profile switches, private audio bridges, multi-device audio/LLM topology, Realtime server, and benchmarks. |
+| [Benchmark results](BENCHMARKS.md) | Compare current measured model and end-to-end results with their exact configurations and caveats. |
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |
 | [OpenClaw integration](OPENCLAW-INTEGRATION-SPEC.md) | Use the reference gateway integration. |
 | [Hugging Face speech-to-speech](https://github.com/fakoli/anvil-serving/tree/main/examples/huggingface-speech-to-speech/) | Run Realtime audio with anvil-routed LLM turns. |
