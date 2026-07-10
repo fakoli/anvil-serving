@@ -641,7 +641,7 @@ voice latency; see the
 for the full recipe. For true token-by-token voice latency, use a voice-specific router config with
 `[router].verify_local_min = false` after the local chat tier has passed preflight; the default keeps
 the minimal local-output safety check on. Use
-`anvil-serving voice-sidecar validate|command|compose --config
+`anvil-serving voice sidecar validate|command|compose --config
 examples/huggingface-speech-to-speech/openclaw-gateway.example.toml` to check the manifest, render
 the host command, or emit a compose service skeleton without adding a router-owned Realtime API.
 

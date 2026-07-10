@@ -406,11 +406,28 @@ def main(argv):
 
     sub.add_parser("pull", help="download a Hugging Face repo into a named Docker volume")
     sub.add_parser("recipe", help="list or show recorded serve recipes")
+    sub.add_parser("cache", help="model cache inspection and cleanup helpers")
+    sub.add_parser("score", help="rank models for roles from benchmark evidence")
 
     if argv and argv[0] == "pull":
         return pull_main(argv[1:])
     if argv and argv[0] == "recipe":
         return _recipe_main(argv[1:])
+    if argv and argv[0] == "cache":
+        if len(argv) > 1 and argv[1] == "prune":
+            from . import cache_prune
+            return cache_prune.main(
+                argv[2:],
+                prog="anvil-serving models cache prune",
+            )
+        cache_ap = argparse.ArgumentParser(prog="anvil-serving models cache")
+        cache_sub = cache_ap.add_subparsers(dest="cache_action", required=True)
+        cache_sub.add_parser("prune", help="plan and gate Hugging Face cache cleanup")
+        cache_ap.parse_args(argv[1:])
+        return 2
+    if argv and argv[0] == "score":
+        from . import score
+        return score.main(argv[1:], prog="anvil-serving models score")
 
     args = ap.parse_args(argv)
     if args.action == "sync":

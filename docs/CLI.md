@@ -15,25 +15,27 @@ never `localhost`.
 | `serve` | Start the quality-gated router front door on `127.0.0.1:8000`. | Data plane |
 | `router` | Manage the deployed (containerized) router: lifecycle, token, promote. | Data plane |
 | `serves` | Stop/start/inspect the local GPU model serves from a serves manifest. | Local serving tools |
+| `serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU + model. | Local serving tools |
 | `models` | Model catalog (`sync`), HF downloads into a docker volume (`pull`), serve recipes (`recipe`). | Local serving tools |
+| `models cache` | Cache maintenance (`prune`); local HF cache safety and retention planning. | Local serving tools |
+| `models score` | Role-suitability scorer over benchmark evidence; recommends a mixture. | Quality loop |
 | `profile` | Turn Claude Code logs into a usage baseline + sizing inputs. | Local serving tools |
 | `preflight` | Correctness gate against any OpenAI-compatible endpoint. | Local serving tools |
 | `benchmark` | Replay the measured request distribution (TTFT, throughput, prefix cache). | Local serving tools |
-| `external-bench` | Ingest, store, report, and compare external inference benchmarks. | Local serving tools |
+| `benchmark external` | Ingest, store, report, and compare external inference benchmarks. | Local serving tools |
 | `multiplexer` | Single-resident model swap server on one GPU (RAM-guarded). | Local serving tools |
-| `cache-prune` | Plan (and optionally execute) pruning of local HF model caches. | Local serving tools |
-| `deploy` | Render a tuned SGLang/vLLM docker-compose for a GPU + model. | Local serving tools |
 | `init` (alias `onboard`) | Detect GPUs + a model; write compose + serves.toml + router.toml. | Local serving tools |
 | `doctor` | Environment preflight for a router deploy (Python, docker, GPU, tier health). | Local serving tools |
 | `host` | Own the WSL / Docker Desktop host config (inspect, cap, restart, reset). | Local serving tools |
 | `eval` | Unified eval harness: preflight / benchmark / planning / bootstrap. | Quality loop |
 | `calibrate` | Guarded write-back batch: measure local tiers, judge, write a candidate profile. | Quality loop |
-| `score` | Role-suitability scorer over real benchmarks; recommends a mixture. | Quality loop |
 | `mcp` | Stdio MCP server (and remote-controller proxy) for operational tools. | Control plane & integrations |
 | `controller` | Token-authenticated HTTP controller for split-host MCP forwarding. | Control plane & integrations |
 | `harness` | Render/apply harness-side config (OpenClaw) from the live router config. | Control plane & integrations |
 | `voice` | Voice pipeline: STT/TTS serve lifecycle, realtime server, benchmark, bridge. | Voice |
-| `voice-sidecar` | Validate/render the HF speech-to-speech sidecar command and compose. | Voice |
+| `voice sidecar` | Validate/render the HF speech-to-speech sidecar command and compose. | Voice |
+
+Legacy aliases are documented in the compatibility section at the end of this file.
 
 ---
 
@@ -186,23 +188,22 @@ latency, throughput, and a prefix-cache hit signal.
 | `--ctx-tokens` / `--max-tokens` | `0` / `64` | Fixed context (0 samples the measured distribution) / generation length. |
 | `--max-model-len` / `--margin` | `0` (auto) / `1024` | Clamp sampled ctx under the serve's window. |
 | `--api-key-env` / `--no-thinking` | — / off | Bearer token env-var name / disable hidden reasoning for thinking-by-default models. |
-| `--json-out` | — | Machine-readable summary for `external-bench compare`. |
+| `--json-out` | — | Machine-readable summary for `benchmark external compare`. |
 | `--recipe-out`, `--recipe-from-container`, `--recipe-intent`, `--recipe-mode`, `--recipe-status`, `--recipe-model` | — | Record a reproducible `[[recipe]]` block for the live serve (read back with `models recipe`). |
 
 ```bash
 anvil-serving benchmark --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking
 ```
 
-> **Standalone scripts.** `preflight` and `benchmark` are dispatched by the CLI as plain scripts
-> (`cli.py` runs `python anvil_serving/preflight.py ...` in a subprocess), and both are
-> deliberately self-contained: `python anvil_serving/preflight.py --base-url ... --model ...`
-> works from a checkout without installing the package. Every other verb imports its module and
-> needs the package importable (`pip install -e .`).
+> **Importable entrypoints.** `preflight` and `benchmark` are dispatched through their module
+> `main()` functions like the rest of the CLI. They remain deliberately self-contained enough for
+> direct script-style checks from a checkout, but the supported operator path is the
+> `anvil-serving preflight` / `anvil-serving benchmark` command surface after `pip install -e .`.
 
-### `external-bench`
+### `benchmark external`
 
 ```
-anvil-serving external-bench {init|sources|fetch|import|list|report|export|compare} [flags]
+anvil-serving benchmark external {init|sources|fetch|import|list|report|export|compare} [flags]
 ```
 
 Ingest, store, report, and compare external LLM inference benchmarks in a SQLite store
@@ -212,7 +213,7 @@ JSON/CSV/Markdown/HTML file; `list`/`report` filter by `--gpu`/`--model`/`--sour
 See [External benchmarks](EXTERNAL-BENCHMARKS.md).
 
 ```bash
-anvil-serving external-bench compare --local bench-fast.json --gpu "RTX 5090"
+anvil-serving benchmark external compare --local bench-fast.json --gpu "RTX 5090"
 ```
 
 ### `multiplexer`
@@ -231,11 +232,32 @@ unauthenticated — keep the default loopback bind. `--self-check` runs the mock
 anvil-serving multiplexer --port 8000 --ram-cap-gb 48
 ```
 
-### `cache-prune`
+### `serves render`
 
 ```
-anvil-serving cache-prune [--mixture CSV] [--json] [--execute --yes] [--dry-run]
-                          [--include-servable] [--allow-empty-mixture] [--self-check]
+anvil-serving serves render --model PATH [--gpu IDX|UUID] [--context N] [--served-name NAME]
+                           [--port N] [--out FILE] [--engine sglang|vllm] [flags]
+```
+
+One-shot compose render path for model onboarding: tuned SGLang/vLLM docker-compose for a
+GPU + model, plus appends a `[[serve]]` entry to the serves manifest (`--manifest-out`, default
+`./serves.toml`; `--no-manifest` skips), and prints a router-tier stub to paste into your config.
+Key flags: `--gpu` (index or GPU-UUID, default `0`), `--context` (default `131072`), `--served-name`/
+`--port`/`--out` (defaults `local-specialist` / `30000` / `docker-compose.yml`), `--engine
+sglang|vllm` (default inferred from the model’s `config.json`), `--gpu-mem-util` (vLLM only, default
+`0.90`), `--disable-thinking` + `--model-facts` (auto-disable a thinking-by-default model from a
+`models sync` card), `--tier-id`, and `--bind`/`--expose-lan` (default `127.0.0.1`; `--expose-lan` = `0.0.0.0`,
+see `SECURITY.md`).
+
+```bash
+anvil-serving serves render --model /models/qwen3-32b-nvfp4 --gpu 1 --context 131072 --served-name heavy
+```
+
+### `models cache prune`
+
+```
+anvil-serving models cache prune [--mixture CSV] [--json] [--execute --yes] [--dry-run]
+                              [--include-servable] [--allow-empty-mixture] [--self-check]
 ```
 
 Plans (and only with explicit gates, executes) pruning of local HF model caches. Default is a safe
@@ -244,28 +266,21 @@ candidates unless `--include-servable`, and refuses a broad wipe with an empty `
 `--allow-empty-mixture`. `--mixture` lists model ids to protect.
 
 ```bash
-anvil-serving cache-prune --mixture openai/gpt-oss-120b,Qwen/Qwen3-32B --json
+anvil-serving models cache prune --mixture openai/gpt-oss-120b,Qwen/Qwen3-32B --json
 ```
 
-### `deploy`
+### `models score`
 
 ```
-anvil-serving deploy --model PATH [--gpu IDX|UUID] [--context N] [--served-name NAME]
-                     [--port N] [--out FILE] [--engine sglang|vllm] [flags]
+anvil-serving models score [--json] [--no-local] [--self-check]
 ```
 
-Renders a tuned SGLang/vLLM docker-compose for a GPU + model, appends a `[[serve]]` entry to the
-serves manifest (`--manifest-out`, default `./serves.toml`; `--no-manifest` skips), and prints a
-router-tier stub to paste into your config. Key flags: `--gpu` (index or GPU-UUID, default `0`),
-`--context` (default `131072`), `--served-name`/`--port`/`--out` (defaults `local-specialist` /
-`30000` / `docker-compose.yml`), `--engine sglang|vllm` (default: inferred from the model's
-`config.json` weight format, else sglang), `--gpu-mem-util` (vLLM only, default `0.90`),
-`--disable-thinking` + `--model-facts` (auto-disable a thinking-by-default model from a
-`models sync` card), `--tier-id`, and `--bind`/`--expose-lan` (default `127.0.0.1`; `--expose-lan`
-= `0.0.0.0` — see `SECURITY.md`).
+Role-suitability scorer: derives coding/research/writing scores from real benchmarks (with
+provenance) and recommends a model mixture per tier/role; it never fabricates a score. `--no-local`
+skips local-catalog discovery (offline/fast), `--json` emits JSON instead of markdown.
 
 ```bash
-anvil-serving deploy --model /models/qwen3-32b-nvfp4 --gpu 1 --context 131072 --served-name heavy
+anvil-serving models score --json > mixture.json
 ```
 
 ### `init` (alias `onboard`)
@@ -385,20 +400,6 @@ anvil-serving calibrate --config configs/example.toml --out candidate-profile.js
   --i-understand-this-calls-real-tiers
 ```
 
-### `score`
-
-```
-anvil-serving score [--json] [--no-local] [--self-check]
-```
-
-Role-suitability scorer: derives coding/research/writing scores from real benchmarks (with
-provenance) and recommends a model mixture per tier/role; it never fabricates a score. `--no-local`
-skips local-catalog discovery (offline/fast), `--json` emits JSON instead of markdown.
-
-```bash
-anvil-serving score --json > mixture.json
-```
-
 ---
 
 ## Control plane & integrations
@@ -414,7 +415,7 @@ Stdio MCP server exposing the operational tool surface to agents — status
 `decision_summary`, `route_decision`), guarded lifecycle (`router_manage`, `router_promote`,
 `serves_manage`, `serves_logs`, `router_logs`, `voice_manage`, `cache_prune_plan`), probes
 (`preflight_probe`, `benchmark_probe`, `benchmark_artifact`), OpenClaw integration
-(`openclaw_sync`, `openclaw_gateway_restart`), and external-bench readers. Mutating or expensive
+(`openclaw_sync`, `openclaw_gateway_restart`), and external benchmark readers. Mutating or expensive
 tools stay dry-run unless `confirm=true`; probe tools accept tokens only by env-var name and
 restrict target URLs to loopback/private/tailnet hosts. `--list-tools` or positional `list-tools`
 prints the tool catalog as JSON and exits. With `--controller-url` + `--auth-env` (both or
@@ -493,23 +494,36 @@ validation flows: [Voice pipeline](VOICE.md).
 anvil-serving voice up --profile dark-audio --dry-run
 ```
 
-### `voice sidecar` / `voice-sidecar`
+### `voice sidecar`
 
 ```
 anvil-serving voice sidecar {validate|command|compose} [--config TOML] [flags]
-anvil-serving voice-sidecar {validate|command|compose} [--config TOML] [flags]
 ```
 
 Validates and renders the Hugging Face speech-to-speech sidecar that uses anvil as a Chat
-Completions backend. Prefer the nested `voice sidecar` form when working inside the voice command
-family; `voice-sidecar` remains a compatibility alias. `validate` checks the sidecar manifest
-(`--json`), `command` renders the host speech-to-speech command (`--with-auth` includes the
-router-token argument by env-var reference, `--json` emits argv), `compose` renders a Docker
-Compose service skeleton (`--service-name`).
+Completions backend. `validate` checks the sidecar manifest (`--json`), `command` renders the
+host speech-to-speech command (`--with-auth` includes the router-token argument by env-var
+reference, `--json` emits argv), and `compose` renders a Docker Compose service skeleton
+(`--service-name`).
 
 ```bash
 anvil-serving voice sidecar command --with-auth
 ```
+
+## Legacy compatibility aliases
+
+These legacy forms are intentionally kept for compatibility and tooling transitions:
+
+- `anvil-serving deploy` → `anvil-serving serves render`
+- `anvil-serving external-bench` → `anvil-serving benchmark external`
+- `anvil-serving cache-prune` → `anvil-serving models cache prune`
+- `anvil-serving score` → `anvil-serving models score`
+- `anvil-serving onboard` → `anvil-serving init`
+- `anvil-serving voice-sidecar` → `anvil-serving voice sidecar`
+
+`multiplexer` remains a root-level verb by design: it is a long-running shared-process endpoint
+that is not just a formatting variant of `serve`/`benchmark`; keeping it at root keeps the control
+surface explicit and avoids namespace collision with per-root-subcommand verbs in automation.
 
 ---
 

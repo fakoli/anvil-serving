@@ -11,6 +11,7 @@ from anvil_serving import calibrate as calibrate_mod
 from anvil_serving import cli
 from anvil_serving import harness
 from anvil_serving import host
+from anvil_serving import benchmark, multiplexer, preflight
 from anvil_serving import router_manage
 from anvil_serving import serves
 
@@ -57,6 +58,21 @@ def test_top_level_help_groups_commands_and_shows_examples(capsys):
         assert token in out
 
 
+def test_top_level_help_hides_compatibility_aliases(capsys):
+    rc = cli.main(["--help"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    command_lines = [
+        line.strip().split(None, 1)[0]
+        for line in out.splitlines()
+        if line.startswith("  ") and line.strip() and not line.strip().startswith("anvil-serving")
+    ]
+    for hidden in ("onboard", "voice-sidecar", "cache-prune", "score", "deploy", "external-bench"):
+        assert hidden not in command_lines
+    for visible in ("init", "voice", "models", "serves", "benchmark", "multiplexer"):
+        assert visible in command_lines
+
+
 def test_unknown_top_level_command_suggests_close_match(capsys):
     rc = cli.main(["routr"])
     assert rc == 2
@@ -64,6 +80,21 @@ def test_unknown_top_level_command_suggests_close_match(capsys):
     assert "unknown command: routr" in err
     assert "Did you mean 'router'?" in err
     assert "anvil-serving --help" in err
+
+
+def test_unknown_command_suggests_canonical_replacement_for_hidden_alias(capsys):
+    rc = cli.main(["deply"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "Did you mean 'serves render'?" in err
+
+
+def test_unknown_command_suggests_init_for_onboard_typo(capsys):
+    rc = cli.main(["onboar"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "Did you mean 'init'?" in err
+    assert "Did you mean 'onboard'?" not in err
 
 
 def test_init_and_onboard_dispatch_to_same_module(monkeypatch):
@@ -75,6 +106,33 @@ def test_init_and_onboard_dispatch_to_same_module(monkeypatch):
     assert cli.main(["init", "--dry-run"]) == 0
     assert cli.main(["onboard", "--detect-only"]) == 0
     assert calls == [["--dry-run"], ["--detect-only"]]
+
+
+def test_onboard_alias_is_quiet(capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["onboard", "--help"])
+    assert exc.value.code == 0
+    assert "compatibility alias" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("argv", "replacement", "usage"),
+    [
+        (["voice-sidecar", "--help"], "voice sidecar", "usage: anvil-serving voice sidecar"),
+        (["cache-prune", "--help"], "models cache prune", "usage: anvil-serving models cache prune"),
+        (["score", "--help"], "models score", "usage: anvil-serving models score"),
+        (["deploy", "--help"], "serves render", "usage: anvil-serving serves render"),
+        (["external-bench", "--help"], "benchmark external", "usage: anvil-serving benchmark external"),
+    ],
+)
+def test_deprecated_root_aliases_emit_canonical_guidance(argv, replacement, usage, capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(argv)
+    assert exc.value.code == 0
+    captured = capsys.readouterr()
+    assert "compatibility alias" in captured.err
+    assert replacement in captured.err
+    assert usage in captured.out
 
 
 def test_focused_action_help_for_operational_verbs(capsys):
@@ -100,11 +158,33 @@ def test_focused_action_help_for_operational_verbs(capsys):
     assert "--memory" in out
 
     with pytest.raises(SystemExit) as exc:
+        preflight.main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving preflight" in out
+    assert "--base-url" in out
+
+    with pytest.raises(SystemExit) as exc:
+        multiplexer.main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving multiplexer" in out
+    assert "--ram-cap-gb" in out
+
+    with pytest.raises(SystemExit) as exc:
         harness.main(["restart", "openclaw", "--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "usage: anvil-serving harness restart openclaw" in out
     assert "--timeout-seconds" in out
+
+    with pytest.raises(SystemExit) as exc:
+        benchmark.main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving benchmark" in out
+    assert "--base-url" in out
+    assert "external" in out
 
 
 def test_focused_action_help_includes_action_specific_flags(capsys):

@@ -120,9 +120,9 @@ def _import_bytes(
     return 0
 
 
-def main(argv=None) -> int:
+def main(argv=None, *, prog: str = "anvil-serving benchmark external") -> int:
     ap = argparse.ArgumentParser(
-        prog="anvil-serving external-bench",
+        prog=prog,
         description="Ingest, store, report, and compare external LLM inference benchmarks.",
     )
     sub = ap.add_subparsers(dest="cmd", required=True)

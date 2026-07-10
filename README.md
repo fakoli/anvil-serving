@@ -135,13 +135,13 @@ profile, and the control plane. Full flags and examples: [CLI reference](docs/CL
 |---------|---------|
 | `anvil-serving serves` | Manage local model serves through Docker Compose. |
 | `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and inspect recorded serve recipes (`recipe`). |
-| `anvil-serving deploy` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
+| `anvil-serving serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
 | `anvil-serving init` (alias `onboard`) | Generate a consistent local bring-up from scratch. |
 | `anvil-serving preflight` | Correctness-check a model endpoint before trusting it. |
 | `anvil-serving benchmark` | Replay representative traffic and measure capacity. |
-| `anvil-serving external-bench` | Import and compare external inference benchmark priors. |
+| `anvil-serving benchmark external` | Import and compare external inference benchmark priors. |
 | `anvil-serving multiplexer` | Swap a single resident model on one GPU (SGLang and vLLM backends). |
-| `anvil-serving cache-prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |
+| `anvil-serving models cache prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |
 | `anvil-serving doctor` | Preflight the environment a router deploy depends on (Python, Docker, Compose, GPU runtime). |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings (memory caps, mmap gotchas). |
 
@@ -152,7 +152,7 @@ profile, and the control plane. Full flags and examples: [CLI reference](docs/CL
 | `anvil-serving profile` | Measure real coding-agent usage to right-size local tiers. |
 | `anvil-serving eval` | Run the shadow-eval harness; bootstrap a quality profile from it. |
 | `anvil-serving calibrate` | Grade confirmed local traffic with an independent judge and write a candidate profile (never auto-promotes). |
-| `anvil-serving score` | Rank models for a role from a transcribed benchmark table. |
+| `anvil-serving models score` | Rank models for a role from a transcribed benchmark table. |
 
 **Control plane and integrations:**
 
@@ -162,7 +162,21 @@ profile, and the control plane. Full flags and examples: [CLI reference](docs/CL
 | `anvil-serving mcp` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools; `--list-tools` prints the catalog. |
 | `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |
 | `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, benchmark voice turns, and delegate nested `voice sidecar` operations. |
-| `anvil-serving voice sidecar` / `voice-sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
+| `anvil-serving voice sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
+
+### CLI Compatibility Notes
+
+Canonical command changes:
+
+- `anvil-serving deploy` → `anvil-serving serves render`
+- `anvil-serving external-bench` → `anvil-serving benchmark external`
+- `anvil-serving cache-prune` → `anvil-serving models cache prune`
+- `anvil-serving score` → `anvil-serving models score`
+
+Compatibility mentions that intentionally remain for migration and implementation compatibility checks:
+
+- `anvil-serving onboard` remains an alias of `anvil-serving init`.
+- `anvil-serving voice-sidecar` remains a compatibility form of `anvil-serving voice sidecar`.
 
 ## Cost And Security Defaults
 

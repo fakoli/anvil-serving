@@ -61,8 +61,10 @@ def test_help_lists_subcommands(capsys):
         voice_cli.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for sub in ("up", "start", "down", "stop", "run", "benchmark", "profiles", "bridge", "sidecar"):
+    for sub in ("up", "down", "run", "benchmark", "profiles", "bridge", "sidecar"):
         assert sub in out
+    assert "start" not in out
+    assert "stop" not in out
 
 
 def test_no_subcommand_errors(capsys):
