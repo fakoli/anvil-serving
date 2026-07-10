@@ -54,6 +54,8 @@ import itertools
 import json
 import os
 import queue
+import threading
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -102,6 +104,121 @@ DEFAULT_FLUSH_SILENCE_FRAMES = 12
 #: ``DEFAULT_FRAME_BYTES`` * 500 == 10s of buffered 20ms audio at 16kHz mono
 #: 16-bit), comfortably above real-time commit bursts.
 DEFAULT_MAX_AUDIO_IN_QUEUE = int(os.environ.get("ANVIL_VOICE_MAX_AUDIO_IN_QUEUE", "500"))
+MINI_OWNER = "mini"
+DEFAULT_STOP_TIMEOUT_SECONDS = 5.0
+
+
+@dataclass(frozen=True)
+class RealtimeProxyState:
+    """Typed state for the Mini-owned Realtime listener."""
+
+    owner: str
+    running: bool
+    host: str
+    port: int
+    started_at: Optional[float]
+    stopping: bool = False
+
+
+@dataclass(frozen=True)
+class RealtimeProxyLogs:
+    """Typed empty output snapshot for the in-process proxy lifecycle."""
+
+    lines: tuple[str, ...] = ()
+
+
+class RealtimeProxyService:
+    """Bounded lifecycle owner for an already-constructed Realtime server.
+
+    The caller supplies the server factory so this module remains a protocol
+    lifecycle seam.  It does not construct STT/TTS serves, import their
+    lifecycle modules, or invoke their handlers.
+    """
+
+    def __init__(
+        self,
+        server_factory: Callable[[], Any],
+        *,
+        host: str = "127.0.0.1",
+        port: int = 8765,
+        owner: str = MINI_OWNER,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        if owner != MINI_OWNER:
+            raise ValueError("realtime proxy owner must be %r" % MINI_OWNER)
+        if host != "127.0.0.1":
+            raise ValueError("Mini realtime proxy must bind 127.0.0.1")
+        if not isinstance(port, int) or isinstance(port, bool) or not 0 < port < 65536:
+            raise ValueError("port must be an integer from 1 through 65535")
+        self._server_factory = server_factory
+        self._host = host
+        self._port = port
+        self._owner = owner
+        self._clock = clock
+        self._lock = threading.Lock()
+        self._server: Any = None
+        self._thread: Optional[threading.Thread] = None
+        self._started_at: Optional[float] = None
+        self._stopping = False
+
+    def _state_locked(self) -> RealtimeProxyState:
+        alive = self._thread is not None and self._thread.is_alive()
+        return RealtimeProxyState(self._owner, alive, self._host, self._port, self._started_at, self._stopping)
+
+    def run(self) -> RealtimeProxyState:
+        """Serve in the calling thread until the server is shut down."""
+        with self._lock:
+            if self._server is not None:
+                raise RuntimeError("realtime proxy is already running")
+            self._server = self._server_factory()
+            self._started_at = self._clock()
+            self._stopping = False
+            server = self._server
+        try:
+            server.serve_forever()
+        finally:
+            close = getattr(server, "server_close", None)
+            if callable(close):
+                close()
+            with self._lock:
+                self._server = None
+                self._started_at = None
+                self._stopping = False
+        return self.status()
+
+    def start(self) -> RealtimeProxyState:
+        with self._lock:
+            if self._thread is not None and self._thread.is_alive():
+                return self._state_locked()
+            thread = threading.Thread(target=self.run, name="anvil-voice-realtime", daemon=True)
+            self._thread = thread
+            thread.start()
+            return self._state_locked()
+
+    def stop(self, *, timeout: float = DEFAULT_STOP_TIMEOUT_SECONDS) -> RealtimeProxyState:
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        with self._lock:
+            server, thread = self._server, self._thread
+            self._stopping = server is not None
+        shutdown = getattr(server, "shutdown", None)
+        if callable(shutdown):
+            shutdown()
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=timeout)
+        return self.status()
+
+    def restart(self, *, timeout: float = DEFAULT_STOP_TIMEOUT_SECONDS) -> RealtimeProxyState:
+        self.stop(timeout=timeout)
+        return self.start()
+
+    def status(self) -> RealtimeProxyState:
+        with self._lock:
+            return self._state_locked()
+
+    def logs(self) -> RealtimeProxyLogs:
+        """Lifecycle has no subprocess output; expose a typed empty snapshot."""
+        return RealtimeProxyLogs()
 
 
 @dataclass

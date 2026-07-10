@@ -7,12 +7,16 @@ from __future__ import annotations
 import base64
 import json
 import queue
+import threading
 from types import SimpleNamespace
+
+import pytest
 
 from anvil_serving.voice.cancel_scope import CancelScope
 from anvil_serving.voice.messages import AudioOut, LLMToolCall
 from anvil_serving.voice.pipeline import VoicePipeline
 from anvil_serving.voice.realtime.service import RealtimeService
+from anvil_serving.voice.realtime.service import RealtimeProxyLogs, RealtimeProxyService
 from anvil_serving.voice.stages.vad import VADConfig
 
 
@@ -30,6 +34,44 @@ def _make_service():
     sent = []
     service = RealtimeService(pipeline=pipeline, send_event=sent.append, session_id="s1")
     return pipeline, service, sent
+
+
+class _BlockingServer:
+    def __init__(self):
+        self.started = threading.Event()
+        self.stopped = threading.Event()
+        self.closed = False
+
+    def serve_forever(self):
+        self.started.set()
+        self.stopped.wait(2)
+
+    def shutdown(self):
+        self.stopped.set()
+
+    def server_close(self):
+        self.closed = True
+
+
+def test_realtime_proxy_lifecycle_is_mini_owned_and_bounded():
+    server = _BlockingServer()
+    proxy = RealtimeProxyService(lambda: server, port=8765)
+
+    started = proxy.start()
+    assert started.owner == "mini"
+    assert started.running is True
+    assert server.started.wait(1)
+    assert proxy.status().host == "127.0.0.1"
+    assert proxy.stop(timeout=1).running is False
+    assert server.closed is True
+    assert proxy.logs() == RealtimeProxyLogs()
+
+
+def test_realtime_proxy_rejects_non_mini_ownership_or_non_loopback_bind():
+    with pytest.raises(ValueError, match="owner"):
+        RealtimeProxyService(lambda: _BlockingServer(), owner="dark")
+    with pytest.raises(ValueError, match="127.0.0.1"):
+        RealtimeProxyService(lambda: _BlockingServer(), host="100.87.34.66")
 
 
 def test_session_update_merges_config_and_echoes():

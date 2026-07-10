@@ -12,6 +12,8 @@ import threading
 
 import pytest
 
+from anvil_serving.voice.bridge import ForwardingBridgeService, TCPBridgeRoute
+
 from anvil_serving.voice.realtime.ws import (
     OP_BINARY,
     OP_CONTINUATION,
@@ -25,6 +27,36 @@ from anvil_serving.voice.realtime.ws import (
     make_ws_server,
     parse_frame,
 )
+
+
+def test_forwarding_bridge_lifecycle_is_mini_owned_and_keeps_bounded_logs():
+    started = threading.Event()
+
+    def serve(routes, stop_event, *, log):
+        assert tuple(routes)[0].name == "stt"
+        log("x" * 64)
+        started.set()
+        stop_event.wait(2)
+
+    bridge = ForwardingBridgeService(
+        [TCPBridgeRoute("stt", "127.0.0.1", 30110, "100.87.34.66", 30110)],
+        max_log_bytes=16,
+        serve=serve,
+    )
+    assert bridge.start().owner == "mini"
+    assert started.wait(1)
+    assert bridge.stop(timeout=1).running is False
+    logs = bridge.logs()
+    assert logs.truncated is True
+    assert sum(len(line.encode("utf-8")) for line in logs.lines) <= logs.max_bytes
+
+
+def test_forwarding_bridge_rejects_non_mini_owner():
+    with pytest.raises(ValueError, match="owner"):
+        ForwardingBridgeService(
+            [TCPBridgeRoute("tts", "127.0.0.1", 30111, "100.87.34.66", 30111)],
+            owner="dark",
+        )
 
 
 class _BufReader:
