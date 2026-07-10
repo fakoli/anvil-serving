@@ -35,11 +35,23 @@ RUBRIC = {
 DEFAULT_TARGETS = {
     "voice_budget_ms": 1200.0,   # <= budget scores full voice points
     "context_target_tokens": 65536,
+    "pass_score": 70.0,          # win line for a no-baseline verdict (overridable)
 }
 
 
 def _clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
+
+
+def _num(value: Any) -> float | None:
+    """Coerce to float, or None if not numeric — keeps score_run total: a
+    stringly-typed or malformed metric scores 0 for its category, never raises."""
+    if value is None or isinstance(value, bool):
+        return None if value is None else float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def score_run(run: Mapping[str, Any], *, targets: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -49,29 +61,29 @@ def score_run(run: Mapping[str, Any], *, targets: Mapping[str, Any] | None = Non
     not get free points) — never raises."""
     t = {**DEFAULT_TARGETS, **(dict(targets) if targets else {})}
 
-    # Voice: full points at/under budget, linear to 0 at 2x budget.
-    voice_ms = run.get("voice_latency_ms")
-    if voice_ms is None:
+    # Voice: full points at/under budget, linear to 0 at 2x budget. A
+    # non-positive budget is meaningless — score 0 rather than divide by it.
+    voice_ms = _num(run.get("voice_latency_ms"))
+    budget = _num(t.get("voice_budget_ms")) or 0.0
+    if voice_ms is None or budget <= 0:
         voice = 0.0
     else:
-        budget = float(t["voice_budget_ms"])
-        frac = _clamp((2 * budget - float(voice_ms)) / budget, 0.0, 1.0)
+        frac = _clamp((2 * budget - voice_ms) / budget, 0.0, 1.0)
         voice = RUBRIC["voice"] * frac
 
     # Intelligence (0-1 rate -> 20 pts) + tool pass (10 pts).
-    ipr = run.get("intelligence_pass_rate")
-    intel = (float(ipr) * 20.0) if ipr is not None else 0.0
+    ipr = _num(run.get("intelligence_pass_rate"))
+    intel = (ipr * 20.0) if ipr is not None else 0.0
     tool = 10.0 if run.get("tool_call_passed") else 0.0
     intelligence_tool = intel + tool
 
     # Context: usable tokens vs target, capped at full points.
-    uct = run.get("usable_context_tokens")
-    if uct is None:
+    uct = _num(run.get("usable_context_tokens"))
+    ctx_target = _num(t.get("context_target_tokens")) or 0.0
+    if uct is None or ctx_target <= 0:
         context = 0.0
     else:
-        context = RUBRIC["context"] * _clamp(
-            float(uct) / float(t["context_target_tokens"]), 0.0, 1.0
-        )
+        context = RUBRIC["context"] * _clamp(uct / ctx_target, 0.0, 1.0)
 
     agent = 15.0 if run.get("session_recall_passed") else 0.0
 
@@ -120,8 +132,9 @@ def verdict(
     """win | lose | hold for a candidate, optionally vs a baseline run.
 
     - A candidate that fails any HARD GATE is ``lose`` (with the gate named).
-    - With no baseline: ``win`` if all gates pass and total >= 70 (the report's
-      pass line), else ``hold``.
+    - With no baseline: ``win`` if all gates pass and total >= the
+      ``pass_score`` target (default 70, the report's pass line; overridable
+      via ``targets``), else ``hold``.
     - With a baseline: ``win`` if gates pass AND total beats the baseline's;
       ``lose`` if it fails a gate or scores below baseline; ``hold`` on a tie.
     The REASON string is the recorded "why it won/lost".
@@ -136,13 +149,14 @@ def verdict(
             "rubric": c,
         }
 
+    pass_score = float({**DEFAULT_TARGETS, **(dict(targets) if targets else {})}["pass_score"])
     if baseline is None:
-        if c["total"] >= 70:
+        if c["total"] >= pass_score:
             return {"result": "win", "total": c["total"],
-                    "reason": f"all gates pass; score {c['total']} >= 70 pass line",
+                    "reason": f"all gates pass; score {c['total']} >= {pass_score} pass line",
                     "rubric": c}
         return {"result": "hold", "total": c["total"],
-                "reason": f"gates pass but score {c['total']} < 70 pass line",
+                "reason": f"gates pass but score {c['total']} < {pass_score} pass line",
                 "rubric": c}
 
     b = score_run(baseline, targets=targets)
