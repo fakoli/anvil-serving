@@ -22,18 +22,24 @@ def _manifest(tmp_path, body):
     return str(p)
 
 
-def _inspect_returning(state, stop_rc=0, stop_err=""):
-    """A fake _run: `docker inspect` -> `state`, anything else -> proc(stop_rc)."""
+def _inspect_returning(state, stop_rc=0, stop_err="", state_after_stop="exited"):
+    """A fake _run: `docker inspect` -> `state` (or `state_after_stop` once a
+    successful `docker stop` has run — cmd_down re-checks state to verify the
+    stop STUCK), anything else -> proc(stop_rc)."""
     calls = []
+    stopped = []
 
     def run(argv, **k):
         calls.append(argv)
         if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
-            if state == "absent":
+            st = state_after_stop if stopped else state
+            if st == "absent":
                 return proc(1, "", "Error: No such object")
-            if state == "error":
+            if st == "error":
                 return proc(1, "", "Cannot connect to the Docker daemon")
-            return proc(0, state + "\n")
+            return proc(0, st + "\n")
+        if isinstance(argv, list) and argv[:2] == ["docker", "stop"] and stop_rc == 0:
+            stopped.append(argv)
         return proc(stop_rc, "", stop_err)
 
     run.calls = calls
@@ -311,6 +317,14 @@ def test_cmd_down_error_state_is_not_false_success():
     run = _inspect_returning("error")
     assert serves.cmd_down(serv, [], _run=run) == 1
     assert not any(c[:2] == ["docker", "stop"] for c in run.calls)
+
+
+def test_cmd_down_detects_restart_policy_revival():
+    # `docker stop` succeeded but a `restart: always` policy revived the
+    # container — the GPU was NOT freed, and down must not claim success.
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running", state_after_stop="running")
+    assert serves.cmd_down(serv, [], _run=run) == 1
 
 
 def test_cmd_down_reports_stop_failure():

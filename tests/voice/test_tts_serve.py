@@ -172,10 +172,21 @@ def test_bring_up_starts_via_up_command_when_absent(manifest_with_tts):
 
 
 def test_tear_down_stops_a_running_container(manifest_with_tts):
-    fake_run = FakeRun([
-        (["docker", "inspect"], 0, "running\n", ""),
-        (["docker", "stop", "anvil-tts"], 0, "anvil-tts\n", ""),
-    ])
+    # cmd_down now re-inspects after the stop to verify it STUCK, so the
+    # fake must flip to 'exited' once the stop has run (a fixed 'running'
+    # answer reads as a restart-policy revival and rightly fails the stop).
+    stopped = []
+
+    def fake_run(argv, **kwargs):
+        fake_run.calls.append(list(argv))
+        if argv[:2] == ["docker", "inspect"]:
+            state = "exited" if stopped else "running"
+            return SimpleNamespace(returncode=0, stdout=state + "\n", stderr="")
+        if argv[:2] == ["docker", "stop"]:
+            stopped.append(argv)
+            return SimpleNamespace(returncode=0, stdout="anvil-tts\n", stderr="")
+        return SimpleNamespace(returncode=1, stdout="", stderr="no matcher")
+    fake_run.calls = []
     serve = TTSServe(
         TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
                         manifest_path=manifest_with_tts),
