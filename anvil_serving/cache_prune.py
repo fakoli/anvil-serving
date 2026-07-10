@@ -267,8 +267,8 @@ def _render(plan, mixture):
     return "\n".join(lines)
 
 
-def main(argv=None, scan=_default_scan):
-    ap = argparse.ArgumentParser(prog="anvil_serving.cache_prune",
+def main(argv=None, scan=_default_scan, *, prog="anvil-serving models cache prune"):
+    ap = argparse.ArgumentParser(prog=prog,
                                  description="Plan (and optionally execute) pruning of local HF model caches.")
     ap.add_argument("--mixture", default="",
                     help="comma-separated model ids to PROTECT (never removed). "

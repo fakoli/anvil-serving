@@ -295,14 +295,13 @@ def test_main_incomplete_run_skips_verified_recipe(monkeypatch, tmp_path, capsys
     recipe_path = tmp_path / "serve-recipes.toml"
     monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
 
-    with pytest.raises(SystemExit) as exc:
-        bm.main([
-            "--base-url", "http://127.0.0.1:30002/v1", "--model", "local-heavy",
-            "--requests", "2", "--concurrency", "1", "--max-model-len", "131072",
-            "--recipe-out", str(recipe_path),
-        ])
+    rc = bm.main([
+        "--base-url", "http://127.0.0.1:30002/v1", "--model", "local-heavy",
+        "--requests", "2", "--concurrency", "1", "--max-model-len", "131072",
+        "--recipe-out", str(recipe_path),
+    ])
 
-    assert exc.value.code == 1
+    assert rc == 1
     assert not recipe_path.exists()
     captured = capsys.readouterr()
     assert "skipping serve recipe" in captured.err

@@ -17,9 +17,9 @@ loop, and running bounded voice benchmarks.
    `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md` before changing behavior or
    reporting voice results as product evidence.
 2. Prefer the existing CLI verbs before proposing a new tool:
-   `anvil-serving voice-sidecar validate`,
-   `anvil-serving voice-sidecar command`,
-   `anvil-serving voice-sidecar compose`, `anvil-serving voice up`,
+   `anvil-serving voice sidecar validate`,
+   `anvil-serving voice sidecar command`,
+   `anvil-serving voice sidecar compose`, `anvil-serving voice up`,
    `anvil-serving voice down`, `anvil-serving voice profiles`,
    `anvil-serving voice bridge`, `anvil-serving voice run`, and
    `anvil-serving voice benchmark`.
@@ -48,7 +48,7 @@ realtime token, exposing non-loopback STT/TTS bridge ports, changing
 cloud/STT/TTS spend, installing or updating external speech-to-speech packages,
 or starting long-running foreground services on a shared host.
 
-`voice-sidecar command --with-auth` and `voice-sidecar compose --with-auth`
+`voice sidecar command --with-auth` and `voice sidecar compose --with-auth`
 render environment variable references for authenticated router calls. The
 command path returns argv, so explicitly warn that the env-var reference appears
 in process argv. The compose path includes an auth exposure comment in the
@@ -65,12 +65,12 @@ review, and human approval.
 ## Playbooks
 
 - Sidecar manifest validation:
-  `anvil-serving voice-sidecar validate --config <manifest>`.
+  `anvil-serving voice sidecar validate --config <manifest>`.
 - Host command rendering:
-  `anvil-serving voice-sidecar command --config <manifest> --json`; add
+  `anvil-serving voice sidecar command --config <manifest> --json`; add
   `--with-auth` only when the operator accepts the argv exposure warning.
 - Compose rendering:
-  `anvil-serving voice-sidecar compose --config <manifest>`; inspect loopback
+  `anvil-serving voice sidecar compose --config <manifest>`; inspect loopback
   ports, `host.docker.internal` routing, image name, and auth comments.
 - Managed audio serves:
   `anvil-serving voice up --config <manifest>` and
@@ -107,6 +107,6 @@ external voice-specific priors are explicitly identified as advisory-only. Keep
 router promotion, public binds, cloud enablement, or long-running service
 starts.
 
-If the existing `voice` and `voice-sidecar` verbs cannot cover the request,
+If the existing `voice` and `voice sidecar` verbs cannot cover the request,
 report the missing wrapper as a product gap after showing the closest safe
 existing command and why it is insufficient.

@@ -158,6 +158,12 @@ def test_cli_dispatches_voice_sidecar_validate(capsys):
     assert "OK:" in capsys.readouterr().out
 
 
+def test_cli_dispatches_nested_voice_sidecar_validate(capsys):
+    rc = cli.main(["voice", "sidecar", "validate", "--config", str(EXAMPLE)])
+    assert rc == 0
+    assert "OK:" in capsys.readouterr().out
+
+
 def test_cli_uses_source_checkout_default_config(capsys):
     rc = cli.main(["voice-sidecar", "validate"])
     assert rc == 0
@@ -183,6 +189,14 @@ def test_cli_dispatches_voice_sidecar_command_json(capsys):
     assert payload["argv"][0] == "speech-to-speech"
     assert "--llm_backend" in payload["argv"]
     assert "--responses_api_api_key" not in payload["argv"]
+
+
+def test_nested_voice_sidecar_help_uses_canonical_usage(capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["voice", "sidecar", "command", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving voice sidecar command" in out
 
 
 def test_cli_dispatches_voice_sidecar_command_json_with_auth(capsys):
@@ -212,9 +226,9 @@ def test_manifest_validation_is_pure():
 def test_voice_ops_skill_uses_existing_verbs_and_scopes_evidence():
     text = VOICE_OPS_SKILL.read_text(encoding="utf-8")
     for command in [
-        "anvil-serving voice-sidecar validate",
-        "anvil-serving voice-sidecar command",
-        "anvil-serving voice-sidecar compose",
+        "anvil-serving voice sidecar validate",
+        "anvil-serving voice sidecar command",
+        "anvil-serving voice sidecar compose",
         "anvil-serving voice up",
         "anvil-serving voice down",
         "anvil-serving voice run",

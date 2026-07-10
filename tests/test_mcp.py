@@ -797,7 +797,14 @@ def test_cache_prune_plan_returns_json_plan_and_dry_run_report(monkeypatch):
     assert data["mixture"] == ["keep/me"]
     assert data["plan"] == plan
     assert data["report"]["would_delete"] == ["fp8/moe"]
-    assert data["command"][:4] == [sys.executable, "-m", "anvil_serving.cli", "cache-prune"]
+    assert data["command"][:6] == [
+        sys.executable,
+        "-m",
+        "anvil_serving.cli",
+        "models",
+        "cache",
+        "prune",
+    ]
     assert "--json" in data["command"]
     assert data["command"][data["command"].index("--mixture") + 1] == "keep/me"
     assert "--include-servable" in data["command"]
