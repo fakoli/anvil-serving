@@ -76,14 +76,19 @@ def next_backup(path):
 def backup_file(path):
     """Copy ``path`` to its next numbered backup before an overwrite. Returns
     the backup path, or None when ``path`` does not exist (nothing to save).
-    Opens the backup with mode "x" semantics via copy-to-fresh-name: the name
-    comes from :func:`next_backup`, which never reuses a suffix."""
+
+    The backup is opened with mode "x" (exclusive create): if a concurrent
+    process computed the same suffix between our listdir and the write, this
+    raises FileExistsError instead of silently truncating their backup — the
+    same fail-loud invariant host.py's inline backup always had. mtime is
+    preserved so "which backup predates the incident" stays answerable from a
+    directory listing."""
     if not os.path.exists(path):
         return None
     dest = next_backup(path)
-    # copy2 preserves mtime so "which backup is the one from before the
-    # incident" stays answerable from a directory listing.
-    shutil.copy2(path, dest)
+    with open(path, "rb") as src, open(dest, "xb") as out:
+        shutil.copyfileobj(src, out)
+    shutil.copystat(path, dest)
     return dest
 
 
@@ -102,9 +107,17 @@ def await_stable(check, *, settle=3.0, checks=4, delay=2.0, _sleep=time.sleep):
 
     A single post-apply read almost always misses a crash-loop: a fail-fast
     service exits within seconds and a restart policy bounces it back to
-    'running' before a naive check runs (see router_manage._await_running,
-    which this generalizes). ``check`` may return any truthy/falsy value; the
-    last value is returned alongside the verdict as ``(ok, last)``."""
+    'running' before a naive check runs (router_manage._await_running wraps
+    this with its RestartCount refinement). ``check`` may return any
+    truthy/falsy value; the last value is returned alongside the verdict as
+    ``(ok, last)``.
+
+    ``checks`` must be >= 1: a zero-sample "verification" would return the
+    exact false positive (declared healthy without ever sampling) this
+    function exists to prevent, so it fails loud instead."""
+    if checks < 1:
+        raise ValueError("await_stable requires checks >= 1 (got %r) — a "
+                         "zero-sample verify would be a vacuous pass" % checks)
     _sleep(settle)
     last = None
     for _ in range(checks):
@@ -118,15 +131,21 @@ def await_stable(check, *, settle=3.0, checks=4, delay=2.0, _sleep=time.sleep):
 # --------------------------------------------------------------------------- #
 # one-attempt destructive escalation
 # --------------------------------------------------------------------------- #
-def terminate_then_kill(proc, *, grace=10, kill_grace=10):
+def terminate_then_kill(proc, *, grace=10):
     """The canonical bounded escalation for stopping a local process: one
-    ``terminate()``, wait up to ``grace`` seconds, then one ``kill()``, wait up
-    to ``kill_grace``. Never loops. Returns True when the process is reaped,
-    False when it survived both steps (caller should diagnose, not retry).
+    ``terminate()``, wait up to ``grace`` seconds, then one ``kill()``, wait
+    the same grace again. Never loops. Returns True when the process is
+    reaped, False when it survived both steps (caller should diagnose, not
+    retry).
 
     This ladder (lifted from multiplexer.Backend._cleanup) is the ONLY
     sanctioned escalation shape for destructive ops — anything stronger than
-    kill is a host-level action that belongs behind host.py's confirm gates."""
+    kill is a host-level action that belongs behind host.py's confirm gates.
+
+    Known deliberately-separate variants (Popen-handle shape doesn't fit):
+    host.py's ``_kill_process`` (PowerShell by-name, locale-independent) and
+    voice/serves/native.py's pid-file + process-group ladder. Keep their
+    one-attempt discipline aligned with this one when touching either."""
     try:
         proc.terminate()
         try:
@@ -135,7 +154,7 @@ def terminate_then_kill(proc, *, grace=10, kill_grace=10):
         except Exception:
             proc.kill()
             try:
-                proc.wait(timeout=kill_grace)
+                proc.wait(timeout=grace)
                 return True
             except Exception:
                 return False

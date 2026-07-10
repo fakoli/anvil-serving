@@ -294,11 +294,10 @@ def cmd_wsl_config(memory_gb=None, swap_gb=None, revert=False, force=False, dry_
     path = _wslconfig_path()
 
     if revert:
-        baks = _backups(path)
-        if not baks:
+        newest = guard.latest_backup(path)
+        if not newest:
             print("no anvil backup of %s to revert to." % path, file=sys.stderr)
             return 1
-        newest = baks[-1]
         with open(newest, encoding="utf-8") as f:
             restored = f.read()
         if dry_run:

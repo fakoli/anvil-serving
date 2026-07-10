@@ -1113,6 +1113,13 @@ def _serves_cli_argv(action: str, manifest: str, names: list[str], *, dry_run: b
         argv += ["--tail", str(tail)]
     if since:
         argv += ["--since", since]
+    if action in ("rm", "adopt") and not dry_run:
+        # The CLI now gates these irreversible actions behind an interactive
+        # [y/N] prompt. This subprocess has no TTY (stdin is the JSON-RPC
+        # pipe), and the MCP triple gate (confirm=true, dry_run=false) IS the
+        # operator's consent — pass it through, or the child EOFs to "No" and
+        # every confirmed rm/adopt silently aborts.
+        argv.append("--yes")
     if not compose:
         argv += ["--manifest", manifest]
     argv += names

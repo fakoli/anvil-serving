@@ -303,11 +303,13 @@ def cmd_down(serves, names, dry_run=False, _run=subprocess.run):
         if r.returncode == 0:
             # Verify the stop STUCK: a `restart: always` policy revives the
             # container immediately, silently un-freeing the GPU we just freed.
+            # 'restarting' is the same revival caught mid-backoff — it will be
+            # 'running' moments later, so it is NOT a clean stop either.
             st_after = docker_state(s["container"], _run=_run)
-            if st_after == "running":
-                print("  WARNING: %s is running again after stop (restart policy?) — "
+            if st_after in ("running", "restarting"):
+                print("  WARNING: %s is %s again after stop (restart policy?) - "
                       "the GPU was NOT freed; `serves rm %s` removes it, or fix the "
-                      "container's restart policy" % (s["container"], s["container"]))
+                      "container's restart policy" % (s["container"], st_after, s["container"]))
                 rc = 1
             else:
                 print("  stopped %s" % s["container"])
