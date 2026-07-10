@@ -26,6 +26,7 @@ import os
 import shutil
 import subprocess
 import sys
+from . import guard
 
 # Leave AT LEAST this much for Windows (hard floor: refuse a WSL memory that leaves less, unless --force).
 MIN_WINDOWS_RESERVE_GB = 10
@@ -240,19 +241,15 @@ def set_wslconfig_values(content, memory_gb=None, swap_gb=None):
     return "\n".join(out) + ("\n" if content.endswith("\n") else ""), changes
 
 
+# Backup naming/numbering now lives in the shared guard module (guard.py) so
+# every config-writing verb uses the same .anvil.bak.N convention; these thin
+# aliases keep host.py's internal call sites and tests stable.
 def _backups(path):
-    """Existing anvil backups for `path`, newest last (sorted by the numeric suffix)."""
-    d, base = os.path.dirname(path) or ".", os.path.basename(path)
-    pref = base + ".anvil.bak."
-    got = [f for f in os.listdir(d) if f.startswith(pref) and f[len(pref):].isdigit()]
-    return [os.path.join(d, f) for f in sorted(got, key=lambda f: int(f[len(pref) + 0:].split(".")[-1]))]
+    return guard.backups(path)
 
 
 def _next_backup(path):
-    """Next backup name, numbered from the MAX existing suffix + 1 (never the count) so a gap from a
-    deleted/pruned backup can't collide with - and silently overwrite - an existing one."""
-    nums = [int(os.path.basename(b).rsplit(".", 1)[-1]) for b in _backups(path)]
-    return path + ".anvil.bak.%d" % ((max(nums) + 1) if nums else 1)
+    return guard.next_backup(path)
 
 
 # --------------------------------------------------------------------------- #
@@ -284,12 +281,8 @@ def cmd_doctor(_run=subprocess.run):
 
 
 def _confirm(prompt, force, _input):
-    if force:
-        return True
-    try:
-        return (_input(prompt + " [y/N] ") or "").strip().lower() in ("y", "yes")
-    except EOFError:
-        return False
+    # Delegates to the shared gate (guard.confirm) — same [y/N] + EOF->No contract.
+    return guard.confirm(prompt, force=force, _input=_input)
 
 
 def cmd_wsl_config(memory_gb=None, swap_gb=None, revert=False, force=False, dry_run=False,
@@ -301,11 +294,10 @@ def cmd_wsl_config(memory_gb=None, swap_gb=None, revert=False, force=False, dry_
     path = _wslconfig_path()
 
     if revert:
-        baks = _backups(path)
-        if not baks:
+        newest = guard.latest_backup(path)
+        if not newest:
             print("no anvil backup of %s to revert to." % path, file=sys.stderr)
             return 1
-        newest = baks[-1]
         with open(newest, encoding="utf-8") as f:
             restored = f.read()
         if dry_run:

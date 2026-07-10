@@ -84,17 +84,25 @@ def test_down_delegates_to_compose_stop():
 
 
 def test_restart_uses_docker_restart_on_container():
-    run = FakeRun()
-    rc = rm.cmd_restart("anvil-router", _run=run)
+    run = FakeRun()  # default state 'running' -> stability verify passes
+    rc = rm.cmd_restart("anvil-router", _run=run, _sleep=lambda s: None)
     assert rc == 0
-    assert run.calls == [["docker", "restart", "anvil-router"]]
+    assert ["docker", "restart", "anvil-router"] in run.calls
+
+
+def test_restart_detects_crash_loop():
+    # restart succeeds but the router exits and the policy bounces it: the
+    # stay-up verify (same as promote's) must fail the command, not report ok.
+    run = FakeRun(state_seq=["running", "exited"])
+    rc = rm.cmd_restart("anvil-router", _run=run, _sleep=lambda s: None)
+    assert rc == 1
 
 
 def test_reload_is_a_restart_with_a_note(capsys):
     run = FakeRun()
-    rc = rm.cmd_reload("anvil-router", _run=run)
+    rc = rm.cmd_reload("anvil-router", _run=run, _sleep=lambda s: None)
     assert rc == 0
-    assert run.calls == [["docker", "restart", "anvil-router"]]
+    assert ["docker", "restart", "anvil-router"] in run.calls
     out = capsys.readouterr().out
     assert "STARTUP" in out and "restart" in out.lower()
 

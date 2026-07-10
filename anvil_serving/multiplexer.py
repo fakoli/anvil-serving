@@ -26,6 +26,7 @@ Usage:
 Exit 0 = --help or --self-check pass; 1 = self-check failure.
 """
 import argparse
+from . import guard
 import io
 import json
 import os
@@ -338,16 +339,9 @@ class SubprocessBackend:
                 rm_failed = f"docker rm -f {c} raised {type(e).__name__}: {e}"
         if self._proc is not None:
             # Reap the docker-run client so a swap-heavy server doesn't
-            # accumulate zombies; escalate terminate -> kill on a hang.
-            try:
-                self._proc.terminate()
-                try:
-                    self._proc.wait(timeout=10)
-                except Exception:
-                    self._proc.kill()
-                    self._proc.wait(timeout=10)
-            except Exception:
-                pass
+            # accumulate zombies. guard.terminate_then_kill is the canonical
+            # one-attempt escalation (terminate -> kill, bounded, never loops).
+            guard.terminate_then_kill(self._proc)
             self._proc = None
         if rm_failed and not best_effort:
             # Do NOT clear `current`: the old container may still hold the GPU.
