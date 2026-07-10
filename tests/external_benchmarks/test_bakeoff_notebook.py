@@ -100,6 +100,52 @@ def test_verdict_hard_gate_beats_score():
     assert v["result"] == "lose" and "tool_call_passed" in v["reason"]
 
 
+def test_score_run_is_total_on_bad_input():
+    # zero/negative budgets and stringly-typed metrics must score 0, not raise
+    row = {"candidate_id": "x", "config_id": "c", "task": "t", "hardware": "h",
+           "voice_latency_ms": "high", "intelligence_pass_rate": None,
+           "usable_context_tokens": "lots", "failures_json": "not-json"}
+    s = notebook.score_run(row, targets={"voice_budget_ms": 0, "context_target_tokens": 0})
+    assert s["voice"] == 0.0 and s["context"] == 0.0 and s["intelligence_tool"] == 0.0
+    # and a valid metric with a zero budget also just scores 0 (no ZeroDivision)
+    ok = {**row, "voice_latency_ms": 500.0, "usable_context_tokens": 40000}
+    s2 = notebook.score_run(ok, targets={"voice_budget_ms": 0, "context_target_tokens": 0})
+    assert s2["voice"] == 0.0 and s2["context"] == 0.0
+
+
+def test_pass_score_is_overridable():
+    # a gates-passing candidate at 75 wins by default but holds if pass_score=90
+    row = {"candidate_id": "x", "config_id": "c", "task": "t", "hardware": "h",
+           "voice_latency_ms": 900.0, "intelligence_pass_rate": 0.9,
+           "tool_call_passed": True, "session_recall_passed": True,
+           "usable_context_tokens": 65536, "failures_json": "[]"}
+    assert notebook.verdict(row)["result"] == "win"
+    assert notebook.verdict(row, targets={"pass_score": 99.0})["result"] == "hold"
+
+
+def test_latest_keys_on_recording_order_not_started_at():
+    # a run recorded LATER but with an EARLIER/absent started_at is still latest
+    db = _scratch("recency") / "nb.sqlite"
+    early = _evidence("a", run_id="r-old")
+    early["identity"]["started_at"] = "2026-01-01T00:00:00Z"
+    store.record_bakeoff_run(db, early, task="fast", hardware="h")
+    newer = _evidence("a", run_id="r-new")
+    newer["identity"].pop("started_at")  # no started_at, but recorded second
+    store.record_bakeoff_run(db, newer, task="fast", hardware="h")
+    latest = store.list_bakeoff_runs(db, task="fast", hardware="h")
+    assert len(latest) == 1 and latest[0]["run_id"] == "r-new"
+
+
+def test_no_fingerprint_pollution():
+    db = _scratch("nofp") / "nb.sqlite"
+    store.record_bakeoff_run(db, _evidence("a", run_id="r1"), task="fast", hardware="h")
+    import sqlite3
+    with sqlite3.connect(db) as conn:
+        n_fp = conn.execute("SELECT COUNT(*) FROM serve_fingerprints").fetchone()[0]
+        fp_id = conn.execute("SELECT serve_fingerprint_id FROM bakeoff_runs").fetchone()[0]
+    assert n_fp == 0 and fp_id is None
+
+
 def test_verdict_vs_baseline():
     strong = {"candidate_id": "s", "config_id": "c", "task": "t", "hardware": "h",
               "voice_latency_ms": 700.0, "intelligence_pass_rate": 1.0,

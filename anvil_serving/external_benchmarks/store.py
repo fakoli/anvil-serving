@@ -425,26 +425,13 @@ def record_bakeoff_run(
     scores = dict(evidence.get("score_inputs") or {})
     failures = evidence.get("failures") or []
 
-    fp_id: int | None = None
-    fp_fields = {
-        "model_id": identity.get("model"),
-        "served_model_name": identity.get("candidate_id"),
-        "serve_flags_json": json.dumps(evidence.get("source_recipe") or {}, sort_keys=True),
-    }
-    if any(fp_fields.values()):
-        fp_fields["fingerprint_sha256"] = hashlib.sha256(
-            json.dumps(
-                {
-                    "candidate": identity.get("candidate_id"),
-                    "config": identity.get("config_id"),
-                    "task": task,
-                    "hardware": hardware,
-                },
-                sort_keys=True,
-            ).encode("utf-8")
-        ).hexdigest()
-        fp_id = upsert_serve_fingerprint(db_path, fp_fields)
-
+    # Note: a serve_fingerprint is intentionally NOT written here. The notebook
+    # keys comparisons on the (candidate_id, config_id, task, hardware) columns
+    # directly and never reads serve_fingerprint_id; upserting a fingerprint
+    # would (a) pollute serve_fingerprints — a table for model/engine/gpu
+    # identity — with NULL-identity rows, and (b) go stale on rerun (ON
+    # CONFLICT DO NOTHING keeps the first run's recipe). The column stays for
+    # forward compatibility but is left NULL.
     row = {
         "run_id": evidence.get("run_id"),
         "candidate_id": identity.get("candidate_id"),
@@ -452,7 +439,7 @@ def record_bakeoff_run(
         "task": task,
         "hardware": hardware,
         "model": identity.get("model"),
-        "serve_fingerprint_id": fp_id,
+        "serve_fingerprint_id": None,
         "started_at": identity.get("started_at"),
         "ttft_p50_ms": scores.get("ttft_p50_ms"),
         "e2e_p50_ms": scores.get("e2e_p50_ms"),
@@ -513,8 +500,12 @@ def list_bakeoff_runs(
         params.append(hardware)
     clause = (" WHERE " + " AND ".join(where)) if where else ""
     with connect(db_path) as conn:
+        # Order by created_at (the append timestamp) so "latest" means most
+        # recently RECORDED — started_at is a nullable identity field and would
+        # rank a run that has it above a later run that doesn't. id DESC breaks
+        # exact ties (same-second inserts).
         rows = conn.execute(
-            "SELECT * FROM bakeoff_runs" + clause + " ORDER BY started_at DESC, id DESC",
+            "SELECT * FROM bakeoff_runs" + clause + " ORDER BY created_at DESC, id DESC",
             params,
         ).fetchall()
     out = [dict(r) for r in rows]
