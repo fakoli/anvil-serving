@@ -23,6 +23,7 @@ import sys
 import time
 
 from . import deploy as _deploy
+from . import guard
 from .router import intent as _intent
 
 
@@ -131,6 +132,15 @@ def run(model=None, gpu="0", catalog_dir="./model-library", out_dir=".",
     compose_out = os.path.join(out_dir, "docker-compose.yml")
     manifest_out = os.path.join(out_dir, "serves.toml")
     router_out = os.path.join(out_dir, "router.toml")
+
+    # Guard: these are operator-editable configs — never clobber hand edits
+    # without a numbered .anvil.bak.N sibling to revert to (same convention as
+    # `host wsl-config`).
+    for existing in (compose_out, router_out):
+        bak = guard.backup_file(existing)
+        if bak:
+            print(f"[anvil-serving] backed up existing {os.path.basename(existing)} "
+                  f"-> {os.path.basename(bak)}")
 
     compose_text = _deploy.render(
         model_path, gpu, context, served, port=port, bind=bind, engine=eng,

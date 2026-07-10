@@ -347,17 +347,35 @@ def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
                      dry_run=dry_run)
 
 
-def cmd_restart(container, dry_run=False, _run=subprocess.run):
+def cmd_restart(container, dry_run=False, _run=subprocess.run, _sleep=time.sleep):
+    # Baseline BEFORE the restart so the crash-loop check can tell "the policy
+    # bounced it since our restart" from historical restarts.
+    baseline = None if dry_run else _restart_count(container, _run)
     argv = ["docker", "restart", container]
-    return _run_argv(argv, _run, desc="restart %s" % container, dry_run=dry_run)
+    rc = _run_argv(argv, _run, desc="restart %s" % container, dry_run=dry_run)
+    if rc != 0 or dry_run:
+        return rc
+    # Verify it STAYED up — the same crash-loop check promote uses. A router
+    # that fail-fasts on a bad config is bounced back to 'running' by
+    # `restart: unless-stopped` before a naive single read, so restart used to
+    # report success while the router crash-looped.
+    ok, state = _await_running(container, _run, _sleep, baseline_restarts=baseline)
+    if not ok:
+        print("  FAILED: %s is not staying up after restart (last state: %s) — "
+              "check `router logs`; if a recent profile/config change caused "
+              "this, `router promote` rollback or a config revert is the fix"
+              % (container, state))
+        return 1
+    print("  %s: running (stable)" % container)
+    return 0
 
 
-def cmd_reload(container, dry_run=False, _run=subprocess.run):
+def cmd_reload(container, dry_run=False, _run=subprocess.run, _sleep=time.sleep):
     # The router reads its config + profile ONCE at startup; there is no in-process
     # reload signal. So a reload IS a restart — say so, then restart.
     print("  note: the router loads config/profile at STARTUP; there is no live "
           "reload, so `reload` restarts the container to pick up changes.")
-    return cmd_restart(container, dry_run=dry_run, _run=_run)
+    return cmd_restart(container, dry_run=dry_run, _run=_run, _sleep=_sleep)
 
 
 def cmd_logs(container, tail="200", since=None, follow=False, _run=subprocess.run):
