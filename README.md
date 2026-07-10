@@ -244,6 +244,7 @@ Start with the path that matches you:
 | [Model settings](docs/MODEL-SETTINGS-EXAMPLE.md) | Thinking/sampling settings and model-specific serve flags. |
 | [Serves & eval](docs/SERVES-AND-EVAL.md) | Local serve lifecycle and eval entry points. |
 | [Voice pipeline](docs/VOICE.md) | Native voice runtime commands, multi-device audio/LLM topology, Realtime server, and benchmarks. |
+| [Benchmark results](docs/BENCHMARKS.md) | Current measured model and end-to-end results, their tested configurations, and caveats. |
 | [External benchmarks](docs/EXTERNAL-BENCHMARKS.md) | Import, report, export, and compare advisory benchmark data. |
 | [OpenClaw integration](docs/OPENCLAW-INTEGRATION-SPEC.md) | Reference integration contract and current caveats. |
 | [Hugging Face speech-to-speech](examples/huggingface-speech-to-speech/) | Voice sidecar recipe for Realtime audio with anvil-routed LLM turns. |
