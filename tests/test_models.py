@@ -210,6 +210,8 @@ def test_models_parent_help_lists_subcommands(capsys):
     assert "sync" in out
     assert "pull" in out
     assert "recipe" in out
+    assert "cache" in out
+    assert "score" in out
 
 
 def test_models_sync_help_documents_sync_flags(capsys):
@@ -220,6 +222,34 @@ def test_models_sync_help_documents_sync_flags(capsys):
     assert "--out" in out
     assert "--hf-roots" in out
     assert "--model-dirs" in out
+
+
+def test_models_cache_prune_help_uses_canonical_usage(capsys):
+    with pytest.raises(SystemExit) as exc:
+        models.main(["cache", "prune", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving models cache prune" in out
+    assert "--mixture" in out
+    assert "--dry-run" in out
+
+
+def test_models_score_help_uses_canonical_usage(capsys):
+    with pytest.raises(SystemExit) as exc:
+        models.main(["score", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving models score" in out
+    assert "--json" in out
+    assert "--no-local" in out
+
+
+def test_models_score_dispatch_matches_root_score_no_local(capsys):
+    assert models.main(["score", "--json", "--no-local"]) == 0
+    nested = json.loads(capsys.readouterr().out)
+    assert cli.main(["score", "--json", "--no-local"]) == 0
+    legacy = json.loads(capsys.readouterr().out)
+    assert nested == legacy
 
 
 def test_pull_dispatches_through_top_level_cli(monkeypatch, capsys):

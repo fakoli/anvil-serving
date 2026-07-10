@@ -1546,7 +1546,7 @@ def tool_models_inventory(args: dict) -> dict:
 
 
 def _cache_prune_plan_argv(mixture: list[str], *, include_servable: bool) -> list[str]:
-    argv = [sys.executable, "-m", "anvil_serving.cli", "cache-prune", "--json"]
+    argv = [sys.executable, "-m", "anvil_serving.cli", "models", "cache", "prune", "--json"]
     if mixture:
         argv += ["--mixture", ",".join(mixture)]
     if include_servable:
@@ -1961,7 +1961,7 @@ def _external_bench_existing_db_path(db_path: str, *, required: bool = True) -> 
     if required:
         raise ToolError(
             "external_bench_db_not_found",
-            "external benchmark DB not found; run external-bench init/import first",
+            "external benchmark DB not found; run benchmark external init/import first",
             {"db": db},
         )
     return db, False
@@ -2274,7 +2274,7 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_models_inventory,
     },
     "cache_prune_plan": {
-        "description": "Return a JSON cache-prune plan and dry-run report; deletion is not available through MCP.",
+        "description": "Return a JSON model-cache prune plan and dry-run report; deletion is not available through MCP.",
         "inputSchema": _schema({
             "mixture": {"type": "array", "items": {"type": "string"}},
             "include_servable": {"type": "boolean"},

@@ -147,7 +147,7 @@ flowchart LR
 - `anvil-serving eval` runs the shadow-eval harness; `eval bootstrap` seeds a profile from it.
 - `anvil-serving calibrate` grades confirmed local-tier traffic with an independent judge and
   writes a **candidate** profile — it never auto-promotes.
-- `anvil-serving score` ranks models for a role from a transcribed benchmark table.
+- `anvil-serving models score` ranks models for a role from a transcribed benchmark table.
 - `anvil-serving router promote` (or the guarded MCP `router_promote` tool) is the supported
   operator path for making a reviewed profile live; the underlying mechanism is
   `[router].profile_path` plus a router reload.

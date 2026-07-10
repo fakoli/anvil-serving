@@ -14,7 +14,7 @@ first and then `~/.anvil-serving/serves.toml`; the checked-in
 [`examples/fakoli-dark/serves.toml`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/serves.toml)
 is the source-controlled reference template for the Fakoli Dark topology.
 
-> **Operational prerequisite:** `serves` (and `deploy`) drive **Docker** and
+> **Operational prerequisite:** `serves` and `serves render` drive **Docker** and
 > **Docker Compose v2** (`docker compose …`) to run the GPU model containers. These
 > are *ops* requirements for standing up the serving substrate — **not** Python
 > runtime dependencies. The router and the whole `anvil-serving` package stay

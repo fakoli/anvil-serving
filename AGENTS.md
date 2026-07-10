@@ -7,7 +7,7 @@
 ## What you're working in
 
 A quality-gated local-model router (`anvil_serving/router/`) plus a serving substrate
-(`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`, plus the
+(`profile`, `models sync`, `serves render`, `preflight`, `benchmark`, `multiplexer`, plus the
 v0.5.0 onboarding trio `init`/`doctor`/`gpus`). The router is shipped (v0.7.x): token-authed
 containerized service, cross-dialect tool translation, true upstream SSE streaming,
 residency-aware routing. The canonical product description is `README.md`; do not contradict it.
