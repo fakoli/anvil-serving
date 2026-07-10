@@ -49,6 +49,7 @@ import os
 import re
 import shlex
 import subprocess
+from . import guard
 import sys
 import urllib.request
 
@@ -300,7 +301,16 @@ def cmd_down(serves, names, dry_run=False, _run=subprocess.run):
             continue
         r = _run(["docker", "stop", s["container"]], capture_output=True, text=True)
         if r.returncode == 0:
-            print("  stopped %s" % s["container"])
+            # Verify the stop STUCK: a `restart: always` policy revives the
+            # container immediately, silently un-freeing the GPU we just freed.
+            st_after = docker_state(s["container"], _run=_run)
+            if st_after == "running":
+                print("  WARNING: %s is running again after stop (restart policy?) — "
+                      "the GPU was NOT freed; `serves rm %s` removes it, or fix the "
+                      "container's restart policy" % (s["container"], s["container"]))
+                rc = 1
+            else:
+                print("  stopped %s" % s["container"])
         else:
             print("  FAILED to stop %s: %s" % (s["container"], (r.stderr or "").strip()))
             rc = 1
@@ -472,7 +482,8 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
     return rc
 
 
-def cmd_rm(serves, names, dry_run=False, _run=subprocess.run):
+def cmd_rm(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,
+           _input=input):
     """Force-remove serve container(s) — `docker rm -f <container>`.
 
     THE key case: this works for a container that is NOT in the manifest — an experiment
@@ -499,6 +510,16 @@ def cmd_rm(serves, names, dry_run=False, _run=subprocess.run):
         c = matched[0]["container"] if matched else tok
         if c not in containers:
             containers.append(c)
+    # Gate: `docker rm -f` is irreversible (container + its logs are gone), so
+    # it requires an explicit yes — --yes for automation, [y/N] interactively.
+    # One prompt for the whole batch (the list is printed), not one per
+    # container; --dry-run previews without prompting.
+    if containers and not dry_run:
+        if not guard.confirm("force-remove %d container(s): %s?"
+                             % (len(containers), ", ".join(containers)),
+                             assume_yes=assume_yes, _input=_input):
+            print("aborted (nothing removed); pass --yes to skip this prompt")
+            return 1
     for container in containers:
         st = docker_state(container, _run=_run)
         if st == "error":
@@ -521,7 +542,8 @@ def cmd_rm(serves, names, dry_run=False, _run=subprocess.run):
     return rc
 
 
-def cmd_adopt(serves, names, dry_run=False, _run=subprocess.run):
+def cmd_adopt(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,
+              _input=input):
     """Bring externally-started (non-compose-managed) manifest serve(s) under compose
     management by recreating them via their manifest `up` — i.e. the `cmd_up` recreate
     path (`docker rm -f` + `up`). Use when a serve was started by hand / outside compose
@@ -534,6 +556,14 @@ def cmd_adopt(serves, names, dry_run=False, _run=subprocess.run):
     for s in targets:
         print("  adopting %s under compose management "
               "(recreate via manifest `up`)" % s["name"])
+    # Gate: adoption destroys the hand-started container (`docker rm -f`) before
+    # recreating — same irreversibility as `rm`, same explicit-yes requirement.
+    if not dry_run:
+        if not guard.confirm("recreate %d serve(s) (docker rm -f + up): %s?"
+                             % (len(targets), ", ".join(s["name"] for s in targets)),
+                             assume_yes=assume_yes, _input=_input):
+            print("aborted (nothing adopted); pass --yes to skip this prompt")
+            return 1
     # reuse the recreate path: `docker rm -f` the hand-started container + fresh `up`.
     return cmd_up(serves, names, dry_run=dry_run, recreate=True, _run=_run)
 
@@ -634,6 +664,11 @@ def _build_action_parser(action):
                        help="print what would run without touching any container.")
     else:
         p.set_defaults(dry_run=False)
+    if action in {"rm", "adopt"}:
+        p.add_argument("--yes", action="store_true",
+                       help="skip the confirmation prompt (these actions docker rm -f containers).")
+    else:
+        p.set_defaults(yes=False)
     if action == "up":
         p.add_argument("--compose", metavar="FILE",
                        help="bring up an ad-hoc/experiment serve from this compose file; names are compose service names.")
@@ -719,9 +754,9 @@ def main(argv=None):
     if a.action == "up":
         return cmd_up(serves, a.names, dry_run=a.dry_run, recreate=a.recreate)
     if a.action == "rm":
-        return cmd_rm(serves, a.names, dry_run=a.dry_run)
+        return cmd_rm(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)
     if a.action == "adopt":
-        return cmd_adopt(serves, a.names, dry_run=a.dry_run)
+        return cmd_adopt(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)
     return 2
 
 
