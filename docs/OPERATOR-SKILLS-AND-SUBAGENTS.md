@@ -146,16 +146,16 @@ agent workflow.
 | Router lifecycle | `router status/logs/up/down/restart/reload/promote/token` | MCP for status, bounded logs, guarded lifecycle, decision summary, and promotion preview/apply gate; token remains CLI-only | Promotion apply requires `confirm:true`, `dry_run:false`, and `human_approved:true`; token values are not exposed through MCP. |
 | Serve lifecycle | `serves status/up/down/rm/adopt/logs` | MCP for status, bounded logs, and guarded up/down/rm/adopt; live mutation requires `confirm:true` and `dry_run:false` after preview | Serve start/stop is normal operation and should not require raw Docker. |
 | Model inventory | `models sync`, `models pull`, `models recipe` | MCP for catalog inventory with sync preview/confirm; skill/CLI for pull and recipe read | Inventory is read-heavy. Pull is long-running, network/disk-heavy, and explicitly gated. |
-| Bring-up generation | `init`, `doctor`, `deploy` | MCP preview/render plus CLI apply | Generated artifacts should be inspectable before write. |
+| Bring-up generation | `init`, `doctor`, `serves render` | MCP preview/render plus CLI apply | Generated artifacts should be inspectable before write. |
 | Environment repair | `host doctor`, `host wsl-config`, `host restart-docker`, `host reset-wsl` | `host_summary` for read-only MCP summary; human-confirmed CLI for disruptive repair | Restarting Docker/WSL and editing host config are high-disruption. |
 | Correctness and capacity | `preflight`, `benchmark`, `eval preflight`, `eval benchmark` | MCP probes and artifact capture plus skill sequencing | Preflight must precede benchmark. Benchmark artifacts need explicit output paths validated under the workspace or server-configured evidence directory. |
 | Quality profile | `eval bootstrap`, `calibrate`, `router promote` | MCP preview/status; skill evidence packet; human promotion gate | These change routing trust. Small models can collect evidence, but not promote. |
-| External priors | `external-bench init/sources/import/list/report/export/compare` | MCP read/report/compare; skill marks advisory-only | External results are useful priors, not quality evidence. |
+| External priors | `benchmark external init/sources/import/list/report/export/compare` | MCP read/report/compare; skill marks advisory-only | External results are useful priors, not quality evidence. |
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
 | Controller transport | `controller serve`, `mcp --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
 | Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
-| Voice | `voice up/down/start/stop/run/benchmark/profiles/bridge`, `voice-sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle and profile-aware previews; skill/CLI for foreground realtime server, private audio bridge, and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`; reference OpenClaw Talk keeps Mini model-free and reaches Dark-host audio directly or through a Mini proxy. Private STT/TTS port exposure uses `voice bridge`, not one-off proxy scripts. |
-| Local analytics | `profile`, `score`, `cache-prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `score` are offline analysis. `cache-prune` deletion stays CLI-only and human-gated. |
+| Voice | `voice up/down/run/benchmark/profiles/bridge`, `voice sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle and profile-aware previews; skill/CLI for foreground realtime server, private audio bridge, and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`; reference OpenClaw Talk keeps Mini model-free and reaches Dark-host audio directly or through a Mini proxy. Private STT/TTS port exposure uses `voice bridge`, not one-off proxy scripts. |
+| Local analytics | `profile`, `models score`, `models cache prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `models score` are offline analysis. `models cache prune` deletion stays CLI-only and human-gated. |
 
 ## Recommended Skills
 
@@ -178,8 +178,8 @@ tool-backed, not a new policy engine.
 `skills/anvil-serving-voice-ops/SKILL.md` is the specialized voice operations
 skill source. Install or copy it into the active harness skill store when the
 operator wants a dedicated voice playbook. It intentionally uses the existing
-`anvil-serving voice-sidecar validate`, `voice-sidecar command`,
-`voice-sidecar compose`, `voice up`, `voice down`, `voice profiles`,
+`anvil-serving voice sidecar validate`, `voice sidecar command`,
+`voice sidecar compose`, `voice up`, `voice down`, `voice profiles`,
 `voice bridge`, `voice run`, and `voice benchmark` verbs before proposing new
 MCP tools or fallback scripts.
 

@@ -207,7 +207,7 @@ preset names allowed to route cloud-side — the harness-side counterpart of `me
 All live in
 [`configs/`](https://github.com/fakoli/anvil-serving/tree/main/configs). The top-level keys some of
 them carry (`claude_logs`, `hf_extra_roots`, `model_dirs`, `gpu_index`, `served_model_name`)
-configure the *local serving tools* (`profile`, `models sync`, `deploy`) that share the file; the
+configure the *local serving tools* (`profile`, `models sync`, `serves render`) that share the file; the
 router reads only `[server]` and `[router]`.
 
 ### `example.toml` — local-only baseline
@@ -246,8 +246,8 @@ The `[modes]` manifest template described above. Copy it, point `ANVIL_MODES_CON
 ### `serve-recipes.toml` — serve recipe registry
 
 Not router config: a repeatable record of how each model is served on your hardware (engine, image,
-flags, env, measured throughput/VRAM, `verified`/`unverified` status). Consumed by the serve/
-external-bench tooling as the reproducible "pull this model out again" reference.
+flags, env, measured throughput/VRAM, `verified`/`unverified` status). Consumed by the
+`serves`/`benchmark external` tooling as the reproducible "pull this model out again" reference.
 
 ## Secrets policy
 

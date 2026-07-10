@@ -4,7 +4,9 @@ GPU, no docker, and no network.
 """
 
 
-from anvil_serving import deploy
+import pytest
+
+from anvil_serving import deploy, serves
 
 CSV = (
     "0, GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1, NVIDIA GeForce RTX 5090\n"
@@ -53,6 +55,45 @@ def test_deploy_cli_writes_compose(tmp_path, monkeypatch):
     deploy.main(["--model", "/w/model", "--gpu", "0", "--out", str(out_path), "--no-manifest"])
     assert out_path.exists()
     assert "sglang.launch_server" in out_path.read_text(encoding="utf-8")
+
+
+def test_serves_render_help_uses_canonical_usage(capsys):
+    with pytest.raises(SystemExit) as exc:
+        serves.main(["render", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "usage: anvil-serving serves render" in out
+    assert "--model" in out
+    assert "--manifest-out" in out
+
+
+def test_serves_render_matches_deploy_cli_output(tmp_path, monkeypatch, capsys):
+    deploy_out = tmp_path / "deploy-compose.yml"
+    render_out = tmp_path / "render-compose.yml"
+    deploy_manifest = tmp_path / "deploy-serves.toml"
+    render_manifest = tmp_path / "render-serves.toml"
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+
+    deploy.main([
+        "--model", "/w/model",
+        "--out", str(deploy_out),
+        "--manifest-out", str(deploy_manifest),
+        "--served-name", "local-test",
+    ])
+    capsys.readouterr()
+    serves.main([
+        "render",
+        "--model", "/w/model",
+        "--out", str(render_out),
+        "--manifest-out", str(render_manifest),
+        "--served-name", "local-test",
+    ])
+    capsys.readouterr()
+
+    assert deploy_out.read_text(encoding="utf-8") == render_out.read_text(encoding="utf-8")
+    deploy_text = deploy_manifest.read_text(encoding="utf-8").replace(str(deploy_out).replace("\\", "/"), "<compose>")
+    render_text = render_manifest.read_text(encoding="utf-8").replace(str(render_out).replace("\\", "/"), "<compose>")
+    assert deploy_text == render_text
 
 
 # ---- loopback default / --expose-lan (genericity:T008) -------------------------

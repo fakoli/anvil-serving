@@ -52,14 +52,14 @@ speech-to-speech \
 You can render the same command from the checked-in sidecar manifest:
 
 ```bash
-anvil-serving voice-sidecar command \
+anvil-serving voice sidecar command \
   --config examples/huggingface-speech-to-speech/openclaw-gateway.example.toml
 ```
 
 If the anvil router is token-authenticated:
 
 ```bash
-anvil-serving voice-sidecar command \
+anvil-serving voice sidecar command \
   --config examples/huggingface-speech-to-speech/openclaw-gateway.example.toml \
   --with-auth
 ```
@@ -89,7 +89,7 @@ For a containerized sidecar, render a Docker Compose service skeleton and replac
 `speech-to-speech:local` with the image you build or publish for the Hugging Face runtime:
 
 ```bash
-anvil-serving voice-sidecar compose \
+anvil-serving voice sidecar compose \
   --config examples/huggingface-speech-to-speech/openclaw-gateway.example.toml
 ```
 
@@ -99,7 +99,7 @@ The generated compose service keeps the Realtime port loopback-published. Host c
 host router instead of its own loopback interface. Replace that value with a Docker service DNS name
 or private/tailnet host if your router runs elsewhere.
 
-Add `--with-auth` to `voice-sidecar compose` only when the sidecar container must call an
+Add `--with-auth` to `voice sidecar compose` only when the sidecar container must call an
 authenticated router. The generated compose file then passes `ANVIL_ROUTER_TOKEN` into the container
 and expands it into the `speech-to-speech` process argv, with the same metadata-exposure caveat as
 the host command.
@@ -145,7 +145,7 @@ topology and secret handling are the intended contract.
 Validate the sketch before adapting it:
 
 ```bash
-anvil-serving voice-sidecar validate \
+anvil-serving voice sidecar validate \
   --config examples/huggingface-speech-to-speech/openclaw-gateway.example.toml
 ```
 

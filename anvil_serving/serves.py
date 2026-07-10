@@ -62,7 +62,7 @@ except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 # genericity:T012 — the default manifest is the CWD's own serves.toml (what
-# `anvil-serving deploy`/`init` write there), not the shipped fakoli-dark
+# `anvil-serving serves render`/`init` write there), not the shipped fakoli-dark
 # example. EXAMPLE_MANIFEST keeps a name for the shipped reference topology
 # (tests, docs) now that DEFAULT_MANIFEST no longer points at it.
 DEFAULT_MANIFEST = "./serves.toml"
@@ -597,7 +597,7 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     return r.returncode
 
 
-_ACTIONS = ("status", "up", "down", "rm", "adopt", "logs")
+_ACTIONS = ("status", "up", "down", "rm", "adopt", "logs", "render")
 
 
 def _build_parser():
@@ -616,6 +616,7 @@ def _build_action_parser(action):
         "rm": "Remove serve containers.",
         "adopt": "Bring externally-started manifest serves under compose management.",
         "logs": "Show docker logs for one serve.",
+        "render": "Render a tuned compose file, serves manifest entry, and router-tier stub.",
     }
     p = argparse.ArgumentParser(
         prog="anvil-serving serves %s" % action,
@@ -662,6 +663,9 @@ def main(argv=None):
     if action not in _ACTIONS:
         _build_parser().parse_args([action])
         return 2
+    if action == "render":
+        from . import deploy
+        return deploy.main(argv[1:], prog="anvil-serving serves render")
     # parse_intermixed_args (not parse_args): on py3.11 a `nargs="*"` positional that
     # follows an option-with-value (e.g. `up --compose FILE svc-a svc-b`) is dropped as
     # "unrecognized arguments" — py3.12 fixed plain parse_args, but intermixed is the

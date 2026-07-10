@@ -635,8 +635,7 @@ def run_bakeoff(a, api_key):
     return 0
 
 def _serve_recipes():
-    """Import the shared serve-recipe helpers, working whether benchmark.py is imported
-    as `anvil_serving.benchmark` (package) or run as a bare script (via cli._run_script)."""
+    """Import the shared serve-recipe helpers for package or direct script execution."""
     try:
         from . import serve_recipes as sr  # package import
     except ImportError:
@@ -723,8 +722,16 @@ def emit_recipe(a, summary, *, capture=None, hardware=None, append=None):
         print("recorded serve recipe for %s -> %s" % (recipe["model"], a.recipe_out))
     return recipe
 
-def main(argv=None):
-    ap = argparse.ArgumentParser()
+def main(argv=None, *, prog="anvil-serving benchmark"):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "external":
+        from .external_benchmarks import cli as external_bench
+        return external_bench.main(argv[1:], prog="%s external" % prog)
+
+    ap = argparse.ArgumentParser(
+        prog=prog,
+        epilog="Subcommands: external (import, report, and compare external benchmark priors).",
+    )
     ap.add_argument("--base-url", required=True); ap.add_argument("--model", required=True)
     ap.add_argument("--api-key-env", default=None,
                     help="read the bearer token from this environment variable")
@@ -752,7 +759,7 @@ def main(argv=None):
                          "enabled maps to {'enable_thinking': True}; unsupported records that "
                          "the serve has no supported thinking control.")
     ap.add_argument("--json-out", default=None,
-                    help="write a machine-readable JSON summary for external-bench compare")
+                    help="write a machine-readable JSON summary for benchmark external compare")
     # --- GENERATE a serve recipe as a side effect of benchmarking a live serve ------
     # (READ them back with `anvil-serving models recipe list|show`.) All optional.
     ap.add_argument("--recipe-out", default=None,
@@ -884,10 +891,11 @@ def main(argv=None):
                 "skipping serve recipe: benchmark completed %d/%d requests" % (len(results), n),
                 file=sys.stderr,
             )
-        raise SystemExit(1)
+        return 1
     # Benchmarking a serve ALSO records its reproducible recipe when asked.
     if a.recipe_out:
         emit_recipe(a, summary)
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

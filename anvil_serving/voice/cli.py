@@ -671,7 +671,11 @@ def build_parser():
                     "orchestrator + realtime server (see "
                     "docs/findings/2026-07-04-hf-speech-to-speech-review.md).",
     )
-    sub = p.add_subparsers(dest="action", required=True)
+    sub = p.add_subparsers(
+        dest="action",
+        required=True,
+        metavar="{up,down,run,benchmark,profiles,bridge,sidecar}",
+    )
 
     def add_config(sp):
         sp.add_argument(
@@ -691,17 +695,7 @@ def build_parser():
     add_profile(sp)
     add_dry_run(sp)
 
-    sp = sub.add_parser("start", help="alias for up")
-    add_config(sp)
-    add_profile(sp)
-    add_dry_run(sp)
-
     sp = sub.add_parser("down", help="tear down the STT/TTS serves")
-    add_config(sp)
-    add_profile(sp)
-    add_dry_run(sp)
-
-    sp = sub.add_parser("stop", help="alias for down")
     add_config(sp)
     add_profile(sp)
     add_dry_run(sp)
@@ -781,12 +775,14 @@ def main(argv=None):
     if argv and argv[0] == "sidecar":
         from anvil_serving import voice_sidecar
         return voice_sidecar.main(argv[1:], prog="anvil-serving voice sidecar")
+    if argv and argv[0] == "start":
+        argv[0] = "up"
+    elif argv and argv[0] == "stop":
+        argv[0] = "down"
     args = build_parser().parse_args(argv)
     handlers = {
         "up": cmd_up,
-        "start": cmd_up,
         "down": cmd_down,
-        "stop": cmd_down,
         "run": cmd_run,
         "benchmark": cmd_benchmark,
         "profiles": cmd_profiles,

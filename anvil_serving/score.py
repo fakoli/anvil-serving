@@ -578,11 +578,11 @@ def _selfcheck():
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-def main(argv=None):
+def main(argv=None, *, prog="anvil-serving score"):
     import argparse
     import json as _json
     p = argparse.ArgumentParser(
-        prog="anvil-serving score",
+        prog=prog,
         description="Role-suitability scorer: derive coding/research/writing "
                     "scores from real benchmarks (with provenance) and recommend "
                     "a mixture per tier/role. Never fabricates a score.")

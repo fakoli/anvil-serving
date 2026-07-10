@@ -6,7 +6,7 @@ package -- it delegates ALL container lifecycle to
 :mod:`anvil_serving.serves` (the existing declarative serve-manifest
 lifecycle behind `anvil-serving serves status/up/down`: `docker_state`,
 `cmd_up`, `cmd_down`, container health). That manifest (default
-`./serves.toml`, what `anvil-serving deploy`/`init` write) declares each
+`./serves.toml`, what `anvil-serving serves render`/`init` write) declares each
 serve's container name, port, and `up` command -- the actual STT/TTS engine
 binary/container choice is configured there, NEVER in this Python file. This
 module only adds:
