@@ -79,7 +79,7 @@ then legacy `~/.anvil_env`, then `~/.env` unless `--env-file` is provided.
 | Action | What it does |
 |--------|--------------|
 | `up` / `down` | `docker compose` bring-up/tear-down (`--compose`, `--service`, `--env-file`). |
-| `restart` / `reload` / `status` | Restart the container / signal a config reload / show container + health status. |
+| `restart` / `reload` / `status` | Restart the container / restart to reload startup-read config / show container + health status. `restart`/`reload` verify the router STAYS up (~11s settle + consecutive samples, the same crash-loop check `promote` uses); `--no-verify` skips it for rapid iteration. |
 | `logs` / `token` | `docker logs` (`--tail`, `--since`, `--follow`) / print the router bearer token. |
 | `promote` | Validate + write a new profile (and optionally config) into the router's config volume; requires `--profile`; `--no-reload` skips the restart. |
 
@@ -110,12 +110,12 @@ See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 |--------|--------------|
 | `status` | Docker + `/health` state for every manifest serve. |
 | `up` | Start (restart/unpause/run the manifest `up`); `--recreate` forces a fresh `up`; `up --compose FILE` brings up an ad-hoc compose serve not in the manifest. |
-| `down` | `docker stop` the serves. |
-| `rm` | `docker rm -f`; an unrecognised name is treated literally as a container (evict an experiment squatting a port). |
-| `adopt` | Bring an externally-started manifest serve under compose management. |
+| `down` | `docker stop` the serves, then re-checks state: a container revived by its restart policy (GPU not actually freed) is a loud warning and exit 1. |
+| `rm` | `docker rm -f`; an unrecognised name is treated literally as a container (evict an experiment squatting a port). **Irreversible, so it prompts `[y/N]` — pass `--yes` in scripts/automation** (no TTY answers No and nothing is removed). |
+| `adopt` | Bring an externally-started manifest serve under compose management (recreates via `docker rm -f` + `up`, so it prompts like `rm`; `--yes` skips). |
 | `logs` | `docker logs` for one serve (`--tail`, `--since`, `--follow`). |
 
-Common flags: `--manifest`, `--dry-run`.
+Common flags: `--manifest`, `--dry-run`; `rm`/`adopt` also take `--yes`.
 
 ```bash
 anvil-serving serves up heavy --manifest ./serves.toml --dry-run

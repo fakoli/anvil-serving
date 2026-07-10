@@ -43,7 +43,7 @@ def test_cmd_rm_removes_manifest_serve_by_name():
     # a token matching a manifest serve's name resolves to that serve's container.
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running")
-    assert serves.cmd_rm(serv, ["heavy"], _run=run) == 0
+    assert serves.cmd_rm(serv, ["heavy"], assume_yes=True, _run=run) == 0
     assert ["docker", "rm", "-f", "sglang"] in run.calls
 
 
@@ -52,14 +52,14 @@ def test_cmd_rm_removes_literal_non_manifest_container():
     # removed by its literal name — no manifest entry required.
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running")
-    assert serves.cmd_rm(serv, ["vllm-experiment"], _run=run) == 0
+    assert serves.cmd_rm(serv, ["vllm-experiment"], assume_yes=True, _run=run) == 0
     assert ["docker", "rm", "-f", "vllm-experiment"] in run.calls
 
 
 def test_cmd_rm_absent_container_is_noop_success(capsys):
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("absent")
-    assert serves.cmd_rm(serv, ["ghost"], _run=run) == 0
+    assert serves.cmd_rm(serv, ["ghost"], assume_yes=True, _run=run) == 0
     assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)  # nothing removed
     assert "nothing to remove" in capsys.readouterr().out
 
@@ -68,26 +68,26 @@ def test_cmd_rm_error_state_is_not_false_success():
     # docker daemon unreachable -> cannot remove, must NOT claim rc 0.
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("error")
-    assert serves.cmd_rm(serv, ["sglang"], _run=run) == 1
+    assert serves.cmd_rm(serv, ["sglang"], assume_yes=True, _run=run) == 1
     assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)
 
 
 def test_cmd_rm_reports_remove_failure():
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running", op_rc=1, op_err="boom")
-    assert serves.cmd_rm(serv, ["sglang"], _run=run) == 1
+    assert serves.cmd_rm(serv, ["sglang"], assume_yes=True, _run=run) == 1
 
 
 def test_cmd_rm_dry_run_removes_nothing(capsys):
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running")
-    assert serves.cmd_rm(serv, ["sglang"], dry_run=True, _run=run) == 0
+    assert serves.cmd_rm(serv, ["sglang"], dry_run=True, assume_yes=True, _run=run) == 0
     assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)
     assert "rm -f sglang" in capsys.readouterr().out  # printed the plan
 
 
 def test_cmd_rm_no_names_errors():
-    assert serves.cmd_rm([], [], _run=_inspect_returning("running")) == 1
+    assert serves.cmd_rm([], [], assume_yes=True, _run=_inspect_returning("running")) == 1
 
 
 def test_cmd_rm_ambiguous_token_refuses(capsys):
@@ -96,7 +96,7 @@ def test_cmd_rm_ambiguous_token_refuses(capsys):
     serv = [{"name": "shared", "container": "cont-a", "port": 1, "health": "/health"},
             {"name": "b", "container": "shared", "port": 2, "health": "/health"}]
     run = _inspect_returning("running")
-    assert serves.cmd_rm(serv, ["shared"], _run=run) == 1
+    assert serves.cmd_rm(serv, ["shared"], assume_yes=True, _run=run) == 1
     assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)  # removed nothing
     assert "ambiguous" in capsys.readouterr().out
 
@@ -109,7 +109,7 @@ def test_cmd_adopt_recreates_manifest_serve_under_compose(capsys):
              "model": "qwen35-awq-local",
              "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
     run = _inspect_returning("running")
-    assert serves.cmd_adopt(serv, ["heavy"], _run=run) == 0
+    assert serves.cmd_adopt(serv, ["heavy"], assume_yes=True, _run=run) == 0
     # ORDER matters: `docker rm -f` MUST precede `up` (the whole point of recreate — a
     # reordered/up-before-rm regression would leave the stale container or name-clash).
     i_rm = run.calls.index(["docker", "rm", "-f", "sglang"])
@@ -122,7 +122,7 @@ def test_cmd_adopt_recreates_manifest_serve_under_compose(capsys):
 def test_cmd_adopt_no_match_errors():
     serv = [{"name": "heavy", "container": "sglang", "port": 1, "health": "/health"}]
     run = _inspect_returning("running")
-    assert serves.cmd_adopt(serv, ["nope"], _run=run) == 1
+    assert serves.cmd_adopt(serv, ["nope"], assume_yes=True, _run=run) == 1
 
 
 def test_cmd_adopt_dry_run_touches_nothing(capsys):
@@ -130,7 +130,7 @@ def test_cmd_adopt_dry_run_touches_nothing(capsys):
              "model": "qwen35-awq-local",
              "up": ["docker", "compose", "-f", "/x/docker-compose.yml", "up", "-d"]}]
     run = _inspect_returning("running")
-    assert serves.cmd_adopt(serv, ["heavy"], dry_run=True, _run=run) == 0
+    assert serves.cmd_adopt(serv, ["heavy"], dry_run=True, assume_yes=True, _run=run) == 0
     assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)
     assert not any(c[:2] == ["docker", "compose"] for c in run.calls)
     assert "adopting heavy" in capsys.readouterr().out
@@ -238,14 +238,15 @@ def test_main_rm_dispatches(tmp_path, monkeypatch):
     """)
     seen = {}
 
-    def fake(serves_list, names, dry_run=False):
+    def fake(serves_list, names, dry_run=False, assume_yes=False):
         seen["names"], seen["dry_run"] = names, dry_run
+        seen["assume_yes"] = assume_yes
         return 0
 
     monkeypatch.setattr(serves, "cmd_rm", fake)
-    rc = serves.main(["rm", "port-squatter", "--dry-run", "--manifest", path])
+    rc = serves.main(["rm", "port-squatter", "--dry-run", "--yes", "--manifest", path])
     assert rc == 0
-    assert seen == {"names": ["port-squatter"], "dry_run": True}
+    assert seen == {"names": ["port-squatter"], "dry_run": True, "assume_yes": True}
 
 
 def test_main_adopt_dispatches(tmp_path, monkeypatch):
@@ -259,14 +260,15 @@ def test_main_adopt_dispatches(tmp_path, monkeypatch):
     """)
     seen = {}
 
-    def fake(serves_list, names, dry_run=False):
+    def fake(serves_list, names, dry_run=False, assume_yes=False):
         seen["names"], seen["dry_run"] = names, dry_run
+        seen["assume_yes"] = assume_yes
         return 0
 
     monkeypatch.setattr(serves, "cmd_adopt", fake)
     rc = serves.main(["adopt", "heavy", "--manifest", path])
     assert rc == 0
-    assert seen == {"names": ["heavy"], "dry_run": False}
+    assert seen == {"names": ["heavy"], "dry_run": False, "assume_yes": False}
 
 
 # ---- logs -------------------------------------------------------------------
@@ -341,3 +343,43 @@ def test_serves_logs_dispatched_from_main(tmp_path, monkeypatch):
                         lambda s, names, **k: seen.update(names=names, **k) or 0)
     rc = serves.main(["logs", "heavy", "--tail", "3", "--manifest", path])
     assert rc == 0 and seen["names"] == ["heavy"] and seen["tail"] == "3"
+
+
+# ---- confirm gate (guard.confirm) -------------------------------------------
+
+def test_cmd_rm_prompt_declined_removes_nothing(capsys):
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running")
+    rc = serves.cmd_rm(serv, ["sglang"], _run=run, _input=lambda p: "n")
+    assert rc == 1
+    assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)
+    assert "aborted" in capsys.readouterr().out
+
+
+def test_cmd_rm_no_tty_answers_no():
+    # EOF (piped/automation without --yes) must fail-safe to No.
+    def eof(_prompt):
+        raise EOFError
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running")
+    assert serves.cmd_rm(serv, ["sglang"], _run=run, _input=eof) == 1
+    assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)
+
+
+def test_cmd_rm_dry_run_needs_no_confirmation():
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health"}]
+    run = _inspect_returning("running")
+    def explode(_prompt):
+        raise AssertionError("dry-run must not prompt")
+    assert serves.cmd_rm(serv, ["sglang"], dry_run=True, _run=run, _input=explode) == 0
+    assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)
+
+
+def test_cmd_adopt_prompt_declined_recreates_nothing(capsys):
+    serv = [{"name": "h", "container": "sglang", "port": 1, "health": "/health",
+             "up": ["docker", "compose", "-f", "x.yml", "up", "-d", "sglang"]}]
+    run = _inspect_returning("running")
+    rc = serves.cmd_adopt(serv, ["h"], _run=run, _input=lambda p: "")
+    assert rc == 1
+    assert not any(c[:3] == ["docker", "rm", "-f"] for c in run.calls)
+    assert "aborted" in capsys.readouterr().out
