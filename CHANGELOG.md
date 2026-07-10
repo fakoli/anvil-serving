@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Bakeoff notebook** — the persistent, comparable record the fast-tier
+  bakeoff report was assembled by hand from. `anvil-serving benchmark
+  --bakeoff … --notebook DB --notebook-task T --notebook-hardware H` appends
+  each run into `bakeoff_runs` (schema: two additive tables `bakeoff_runs`
+  + `bakeoff_verdicts`); `anvil-serving benchmark external notebook
+  add|list|render` records/lists/renders. `render` emits the repeatable form
+  of the #181 report — the candidate matrix, a 100-point rubric (encoded as
+  data in `external_benchmarks/notebook.py`), and a per-candidate
+  win/lose/hold **verdict with a recorded reason** (hard gates: tool/session
+  pass + no failures). Append-only history; the notebook view is
+  latest-per-(candidate, config, task, hardware).
+
+
 ### Changed (BREAKING for non-interactive callers)
 
 - **`serves rm` / `serves adopt` now require consent**: interactive `[y/N]`
