@@ -374,3 +374,190 @@ def insert_comparison(
             ),
         )
         return int(cur.lastrowid)
+
+
+# --------------------------------------------------------------------------- #
+# Bakeoff notebook — persist local candidate runs so a fast-tier comparison is
+# repeatable, not re-typed by hand each cycle (the model-bakeoff-notebook gap).
+# --------------------------------------------------------------------------- #
+
+_BAKEOFF_COLS = (
+    "run_id",
+    "candidate_id",
+    "config_id",
+    "task",
+    "hardware",
+    "model",
+    "serve_fingerprint_id",
+    "started_at",
+    "ttft_p50_ms",
+    "e2e_p50_ms",
+    "voice_latency_ms",
+    "usable_context_tokens",
+    "tool_call_passed",
+    "session_recall_passed",
+    "intelligence_pass_rate",
+    "thinking_mode",
+    "failures_json",
+    "evidence_json",
+    "evidence_path",
+    "created_at",
+)
+
+
+def record_bakeoff_run(
+    db_path: str | os.PathLike[str],
+    evidence: Mapping[str, Any],
+    *,
+    task: str,
+    hardware: str,
+    evidence_path: str | None = None,
+) -> int:
+    """Append one ``fast-tier-bakeoff/v1`` evidence dict as a bakeoff_runs row.
+
+    APPEND-only (history is kept; the notebook view takes latest-per-key). The
+    comparability key is (candidate_id, config_id, task, hardware). Pulls the
+    verdict inputs straight from ``evidence['score_inputs']`` so this never
+    re-derives what the bakeoff already computed. A serve fingerprint is
+    upserted from identity+recipe when enough fields are present.
+    """
+    identity = dict(evidence.get("identity") or {})
+    scores = dict(evidence.get("score_inputs") or {})
+    failures = evidence.get("failures") or []
+
+    fp_id: int | None = None
+    fp_fields = {
+        "model_id": identity.get("model"),
+        "served_model_name": identity.get("candidate_id"),
+        "serve_flags_json": json.dumps(evidence.get("source_recipe") or {}, sort_keys=True),
+    }
+    if any(fp_fields.values()):
+        fp_fields["fingerprint_sha256"] = hashlib.sha256(
+            json.dumps(
+                {
+                    "candidate": identity.get("candidate_id"),
+                    "config": identity.get("config_id"),
+                    "task": task,
+                    "hardware": hardware,
+                },
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        fp_id = upsert_serve_fingerprint(db_path, fp_fields)
+
+    row = {
+        "run_id": evidence.get("run_id"),
+        "candidate_id": identity.get("candidate_id"),
+        "config_id": identity.get("config_id"),
+        "task": task,
+        "hardware": hardware,
+        "model": identity.get("model"),
+        "serve_fingerprint_id": fp_id,
+        "started_at": identity.get("started_at"),
+        "ttft_p50_ms": scores.get("ttft_p50_ms"),
+        "e2e_p50_ms": scores.get("e2e_p50_ms"),
+        "voice_latency_ms": scores.get("voice_latency_ms"),
+        "usable_context_tokens": scores.get("usable_context_tokens"),
+        "tool_call_passed": _as_int_bool(scores.get("tool_call_passed")),
+        "session_recall_passed": _as_int_bool(scores.get("session_recall_passed")),
+        "intelligence_pass_rate": scores.get("intelligence_pass_rate"),
+        "thinking_mode": scores.get("thinking_mode"),
+        "failures_json": json.dumps(failures, sort_keys=True),
+        "evidence_json": json.dumps(dict(evidence), sort_keys=True),
+        "evidence_path": evidence_path,
+        "created_at": utc_now(),
+    }
+    if not row["candidate_id"] or not row["config_id"] or not row["run_id"]:
+        raise ValueError(
+            "bakeoff evidence missing identity.candidate_id/config_id or run_id; "
+            "cannot record a notebook row"
+        )
+
+    init_db(db_path)
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            "INSERT INTO bakeoff_runs(%s) VALUES (%s)"
+            % (",".join(_BAKEOFF_COLS), ",".join("?" for _ in _BAKEOFF_COLS)),
+            [row.get(c) for c in _BAKEOFF_COLS],
+        )
+        return int(cur.lastrowid)
+
+
+def _as_int_bool(value: Any) -> int | None:
+    if value is None:
+        return None
+    return 1 if value else 0
+
+
+def list_bakeoff_runs(
+    db_path: str | os.PathLike[str] = DEFAULT_DB,
+    *,
+    task: str | None = None,
+    hardware: str | None = None,
+    latest_per_candidate: bool = True,
+    initialize: bool = True,
+) -> list[dict[str, Any]]:
+    """Bakeoff rows, optionally filtered by task/hardware. With
+    ``latest_per_candidate`` (default) the newest row per
+    (candidate_id, config_id, task, hardware) is returned — the notebook view;
+    otherwise the full append history."""
+    if initialize:
+        init_db(db_path)
+    where = []
+    params: list[Any] = []
+    if task is not None:
+        where.append("task = ?")
+        params.append(task)
+    if hardware is not None:
+        where.append("hardware = ?")
+        params.append(hardware)
+    clause = (" WHERE " + " AND ".join(where)) if where else ""
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM bakeoff_runs" + clause + " ORDER BY started_at DESC, id DESC",
+            params,
+        ).fetchall()
+    out = [dict(r) for r in rows]
+    if not latest_per_candidate:
+        return out
+    seen: set[tuple] = set()
+    latest: list[dict[str, Any]] = []
+    for r in out:
+        key = (r["candidate_id"], r["config_id"], r["task"], r["hardware"])
+        if key in seen:
+            continue
+        seen.add(key)
+        latest.append(r)
+    return latest
+
+
+def record_verdict(
+    db_path: str | os.PathLike[str],
+    *,
+    run_id: str,
+    rubric: Mapping[str, Any],
+    total_score: float | None,
+    verdict: str,
+    reason: str | None = None,
+    baseline_run_id: str | None = None,
+) -> int:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO bakeoff_verdicts
+                (run_id, baseline_run_id, rubric_json, total_score, verdict,
+                 reason, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                baseline_run_id,
+                json.dumps(dict(rubric), sort_keys=True),
+                total_score,
+                verdict,
+                reason,
+                utc_now(),
+            ),
+        )
+        return int(cur.lastrowid)

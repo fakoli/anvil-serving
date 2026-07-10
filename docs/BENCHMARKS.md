@@ -23,6 +23,23 @@ The reference Fast tier on Fakoli Dark's RTX 5090 is **`nvidia/Qwen3.6-35B-A3B-N
 | GLM-4.7-Flash, llama.cpp `UD-Q4_K_XL`, 32K | 2376.21 ms / 961.49 ms | 6196.05 ms / 7417.46 ms | 157.20 tok/s | Tool and session checks passed, but it was not competitive for the Fast voice role. |
 | Gemma-4-31B, vLLM NVFP4, 32K then 8K | — | — | — | Rejected for this RTX 5090 recipe; no viable loaded endpoint. |
 
+### Bakeoff notebook (repeatable comparison)
+
+The hand-assembled fast-tier report above is now repeatable. Record each
+candidate run and render the comparison:
+
+```bash
+# append a bakeoff run (alongside --evidence-out)
+anvil-serving benchmark --bakeoff --candidate-id C --config-id CFG \n  --notebook .anvil/benchmarks.sqlite --notebook-task fast-tier --notebook-hardware rtx4090
+
+# render the candidate matrix + rubric + win/lose/hold determination
+anvil-serving benchmark external notebook render --task fast-tier --hardware rtx4090 --baseline current
+```
+
+The rubric weights and hard gates live in
+`anvil_serving/external_benchmarks/notebook.py` (pure, self-checked). Runs
+are append-only; the view is latest-per-(candidate, config, task, hardware).
+
 These rows are from the [Fast-tier LLM bakeoff](findings/2026-07-08-fast-tier-llm-bakeoff.md) and its [human-gated promotion record](findings/2026-07-08-fast-tier-promotion.md). The voice artifacts in that bakeoff measure STT, LLM, and TTS stage timing, but their STT hypothesis is empty with WER `1.0`; they are **not** semantic speech-recognition accuracy results. The displayed decode rate is derived from the recorded evidence as `output_tokens * 1000 / (e2e_ms - ttft_ms)`.
 
 ## OpenClaw interaction and voice evidence
