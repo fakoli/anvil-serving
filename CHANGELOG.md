@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed (BREAKING for non-interactive callers)
+
+- **`serves rm` / `serves adopt` now require consent**: interactive `[y/N]`
+  on a TTY, `--yes` everywhere else. A non-interactive call without `--yes`
+  (cron, CI, pipelines) now aborts with rc 1 and removes NOTHING — fail-closed
+  by design. Update automation to pass `--yes`. The MCP `serves_manage` tool
+  passes it automatically once its own confirm gate is satisfied.
+- **`router restart` / `reload` block ~11s longer** verifying the router
+  stays up (crash-loop detection); `--no-verify` restores the old fire-and-
+  forget behavior.
+
 ### Added
 
 - **Shared host-mutation guard (`anvil_serving/guard.py`)** — the
