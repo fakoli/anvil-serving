@@ -55,6 +55,27 @@ def test_backup_file_missing_source_is_none(tmp_path):
     assert guard.backup_file(str(tmp_path / "nope.toml")) is None
 
 
+def test_backup_file_never_clobbers_a_colliding_backup(tmp_path, monkeypatch):
+    # Exclusive create: if a concurrent process wrote our computed name between
+    # the listdir and the copy (TOCTOU), fail loud — never truncate their backup.
+    f = tmp_path / "conf.toml"
+    f.write_text("mine", encoding="utf-8")
+    dest = str(f) + ".anvil.bak.1"
+    monkeypatch.setattr(guard, "next_backup", lambda p: dest)
+    open(dest, "w", encoding="utf-8").write("theirs")
+    with pytest.raises(FileExistsError):
+        guard.backup_file(str(f))
+    assert open(dest, encoding="utf-8").read() == "theirs"  # untouched
+
+
+def test_backup_file_preserves_mtime(tmp_path):
+    f = tmp_path / "conf.toml"
+    f.write_text("v", encoding="utf-8")
+    os.utime(f, (1000000000, 1000000000))
+    bak = guard.backup_file(str(f))
+    assert int(os.path.getmtime(bak)) == 1000000000
+
+
 def test_backups_sorted_and_latest(tmp_path):
     f = tmp_path / "c.txt"
     f.write_text("x", encoding="utf-8")
@@ -89,6 +110,13 @@ def test_await_stable_sleeps_settle_then_delays():
     guard.await_stable(lambda: True, settle=3.0, checks=2, delay=2.0,
                        _sleep=slept.append)
     assert slept == [3.0, 2.0, 2.0]
+
+
+def test_await_stable_refuses_zero_samples():
+    # checks=0 would be a vacuous pass — the exact false positive the
+    # primitive exists to prevent. It must fail loud, not return (True, None).
+    with pytest.raises(ValueError):
+        guard.await_stable(lambda: True, checks=0, _sleep=lambda s: None)
 
 
 # ---- terminate_then_kill --------------------------------------------------------

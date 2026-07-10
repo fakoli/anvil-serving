@@ -33,6 +33,8 @@ import re
 import subprocess
 import sys
 import time
+
+from . import guard
 import urllib.request
 
 try:
@@ -347,21 +349,23 @@ def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
                      dry_run=dry_run)
 
 
-def cmd_restart(container, dry_run=False, _run=subprocess.run, _sleep=time.sleep):
+def cmd_restart(container, dry_run=False, verify=True, _run=subprocess.run,
+                _sleep=time.sleep):
     # Baseline BEFORE the restart so the crash-loop check can tell "the policy
     # bounced it since our restart" from historical restarts.
-    baseline = None if dry_run else _restart_count(container, _run)
+    baseline = None if (dry_run or not verify) else _restart_count(container, _run)
     argv = ["docker", "restart", container]
     rc = _run_argv(argv, _run, desc="restart %s" % container, dry_run=dry_run)
-    if rc != 0 or dry_run:
+    if rc != 0 or dry_run or not verify:
         return rc
-    # Verify it STAYED up — the same crash-loop check promote uses. A router
-    # that fail-fasts on a bad config is bounced back to 'running' by
-    # `restart: unless-stopped` before a naive single read, so restart used to
-    # report success while the router crash-looped.
+    # Verify it STAYED up (~11s: settle + consecutive samples) — the same
+    # crash-loop check promote uses. A router that fail-fasts on a bad config
+    # is bounced back to 'running' by `restart: unless-stopped` before a naive
+    # single read, so restart used to report success while it crash-looped.
+    # --no-verify opts out for latency-sensitive iteration loops.
     ok, state = _await_running(container, _run, _sleep, baseline_restarts=baseline)
     if not ok:
-        print("  FAILED: %s is not staying up after restart (last state: %s) — "
+        print("  FAILED: %s is not staying up after restart (last state: %s) - "
               "check `router logs`; if a recent profile/config change caused "
               "this, `router promote` rollback or a config revert is the fix"
               % (container, state))
@@ -370,12 +374,14 @@ def cmd_restart(container, dry_run=False, _run=subprocess.run, _sleep=time.sleep
     return 0
 
 
-def cmd_reload(container, dry_run=False, _run=subprocess.run, _sleep=time.sleep):
+def cmd_reload(container, dry_run=False, verify=True, _run=subprocess.run,
+               _sleep=time.sleep):
     # The router reads its config + profile ONCE at startup; there is no in-process
     # reload signal. So a reload IS a restart — say so, then restart.
     print("  note: the router loads config/profile at STARTUP; there is no live "
           "reload, so `reload` restarts the container to pick up changes.")
-    return cmd_restart(container, dry_run=dry_run, _run=_run, _sleep=_sleep)
+    return cmd_restart(container, dry_run=dry_run, verify=verify, _run=_run,
+                       _sleep=_sleep)
 
 
 def cmd_logs(container, tail="200", since=None, follow=False, _run=subprocess.run):
@@ -509,18 +515,28 @@ def _await_running(container, _run, _sleep, baseline_restarts=None,
     first-'running' check almost always MISSES a crash-loop and the rollback never fires.
     So we (1) sleep `settle` seconds first, then (2) require `checks` CONSECUTIVE 'running'
     samples, treating any non-running sample OR a RestartCount that grew past
-    `baseline_restarts` (the policy bounced it) as a crash. Returns (ok, last_state)."""
-    _sleep(settle)
-    st = None
-    for _ in range(checks):
+    `baseline_restarts` (the policy bounced it) as a crash. Returns (ok, last_state).
+
+    The settle+consecutive-samples discipline itself lives in guard.await_stable
+    (the shared verify primitive); this wraps it with the docker-specific state
+    read and the RestartCount refinement."""
+    last_state = {"st": None}
+
+    def _sample():
         st = docker_state(container, _run=_run)
+        last_state["st"] = st
         if st != "running":
-            return False, st  # exited / restarting / created -> crashed
+            return None  # falsy -> crashed (exited / restarting / created)
         rc = _restart_count(container, _run)
         if baseline_restarts is not None and rc is not None and rc > baseline_restarts:
-            return False, "restarting"  # policy re-launched it since our restart -> crash-loop
-        _sleep(delay)
-    return True, st
+            # policy re-launched it since our restart -> report as a crash-loop
+            last_state["st"] = "restarting"
+            return None
+        return st
+
+    ok, _ = guard.await_stable(_sample, settle=settle, checks=checks,
+                               delay=delay, _sleep=_sleep)
+    return ok, last_state["st"]
 
 
 def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
@@ -779,6 +795,10 @@ def _build_parser():
         sp = sub.add_parser(action, help=help_text, description=help_text)
         add_container(sp)
         add_dry_run(sp)
+        sp.add_argument("--no-verify", action="store_true",
+                        help="skip the ~11s stay-up verification (settle + consecutive "
+                             "running samples) after the restart; use for rapid "
+                             "iteration loops where you check health yourself.")
 
     sp = sub.add_parser("status", help="Show deployed router container and health status.")
     add_container(sp)
@@ -837,9 +857,9 @@ def main(argv=None):
     if a.action == "down":
         return cmd_down(resolve_compose_path(a.compose), a.service, dry_run=a.dry_run)
     if a.action == "restart":
-        return cmd_restart(a.container, dry_run=a.dry_run)
+        return cmd_restart(a.container, dry_run=a.dry_run, verify=not a.no_verify)
     if a.action == "reload":
-        return cmd_reload(a.container, dry_run=a.dry_run)
+        return cmd_reload(a.container, dry_run=a.dry_run, verify=not a.no_verify)
     if a.action == "status":
         return cmd_status(a.container)
     if a.action == "logs":

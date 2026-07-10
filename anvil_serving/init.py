@@ -135,9 +135,17 @@ def run(model=None, gpu="0", catalog_dir="./model-library", out_dir=".",
 
     # Guard: these are operator-editable configs — never clobber hand edits
     # without a numbered .anvil.bak.N sibling to revert to (same convention as
-    # `host wsl-config`).
+    # `host wsl-config`). Fail CLOSED but clean: if the backup cannot be
+    # written, refuse to overwrite rather than proceeding without a revert
+    # path (or dying with a raw traceback).
     for existing in (compose_out, router_out):
-        bak = guard.backup_file(existing)
+        try:
+            bak = guard.backup_file(existing)
+        except OSError as e:
+            raise InitError(
+                f"could not back up existing {os.path.basename(existing)} before "
+                f"rewriting it ({e}); fix or remove the file and re-run — refusing "
+                f"to overwrite without a backup")
         if bak:
             print(f"[anvil-serving] backed up existing {os.path.basename(existing)} "
                   f"-> {os.path.basename(bak)}")
