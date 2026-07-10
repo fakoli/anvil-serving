@@ -81,7 +81,7 @@ the tier routing policy.
 
 **Where do these serves come from?** anvil-serving manages local model serves as Docker Compose
 services: declare them in a manifest, then run `anvil-serving serves up` (see
-[Serves & eval](SERVES-AND-EVAL.md)). `anvil-serving deploy` renders a tuned compose file for a
+[Serves & eval](SERVES-AND-EVAL.md)). `anvil-serving serves render` renders a tuned compose file for a
 given GPU and model, and `configs/serve-recipes.toml` in the repository carries known-good serve
 recipes. The model names below (`gpt-oss-20b`, `qwen35-awq-local`) are not magic — they are the
 `model` values the two tiers in `configs/example.toml` declare; if your serves run different

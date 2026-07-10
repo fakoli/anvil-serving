@@ -14,8 +14,8 @@ tailnet transport. v0.7.x added wire fidelity (tools/tool-history forwarding, re
 sampling params), production hardening, and heavy-tier speculative decoding (ADR-0008). v0.6.0 made
 the router a containerized, token-authed service (ADR-0004); v0.5.0 shipped generic onboarding
 (ADR-0003); v0.4.x shipped advise-and-defer and Docker-Compose-defined serves. The local serving
-tools (`profile`, `models sync`, `deploy`, `preflight`, `benchmark`, `multiplexer`) ship and
-right-size the local tiers the router routes across.
+tools (`profile`, `models sync`, `serves render` (legacy `deploy`), `preflight`, `benchmark`, `multiplexer`)
+ship and right-size the local tiers the router routes across.
 
 Source of truth for product framing: **`README.md`**.
 
@@ -49,11 +49,12 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 
 ```
 anvil_serving/
-  cli.py               dispatch: profile | models | deploy | serves | serve | preflight |
-                                 benchmark | eval | multiplexer | cache-prune | score |
-                                 init (alias onboard) | doctor | voice | voice-sidecar |
+  cli.py               dispatch: profile | models | serves | serve | preflight |
+                                 benchmark | eval | multiplexer | init (alias onboard) |
+                                 doctor | voice | voice sidecar |
                                  router | harness | host | mcp | controller |
-                                 external-bench | calibrate
+                                 benchmark external | calibrate |
+                                 models cache prune | models score
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
   models.py            `sync`: scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py);
@@ -134,7 +135,7 @@ anvil-serving --help           # all verbs
 # Local serving tools:
 anvil-serving profile --out-dir .
 anvil-serving models sync --out ./model-library
-anvil-serving deploy --model /path/to/model --gpu 1 --context 131072 --served-name local
+anvil-serving serves render --model /path/to/model --gpu 1 --context 131072 --served-name local
 anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model local
 anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model local --burst 20
 

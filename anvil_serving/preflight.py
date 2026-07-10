@@ -143,8 +143,8 @@ def resolve_api_key(api_key_env=None):
         return os.environ.get(api_key_env)
     return None
 
-def main():
-    ap = argparse.ArgumentParser()
+def main(argv=None, *, prog="anvil-serving preflight"):
+    ap = argparse.ArgumentParser(prog=prog)
     ap.add_argument("--base-url", required=True)
     ap.add_argument("--model", required=True)
     ap.add_argument("--api-key-env", default=None,
@@ -158,7 +158,7 @@ def main():
                          "content. NOTE: gpt-oss-style models IGNORE this kwarg (they gate "
                          "reasoning via 'reasoning effort', not the chat template) -> they just "
                          "need adequate max_tokens; the correctness tests already use >=256.")
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
     api_key = resolve_api_key(a.api_key_env)
     ctk = {"enable_thinking": False} if a.no_thinking else None
     tests = [
@@ -175,7 +175,7 @@ def main():
         allok &= ok
         print(f"[{'PASS' if ok else 'FAIL'}] {name:38} {detail}")
     print("-"*60); print("RESULT:", "ALL PASS" if allok else "FAILURES PRESENT")
-    raise SystemExit(0 if allok else 1)
+    return 0 if allok else 1
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
