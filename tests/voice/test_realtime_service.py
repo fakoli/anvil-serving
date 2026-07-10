@@ -2,6 +2,7 @@
 (``anvil_serving.voice.realtime.service``). Dependency-light: a fake LLM
 ``stream_fn``, no real HTTP/socket/audio hardware.
 """
+
 from __future__ import annotations
 
 import base64
@@ -16,7 +17,11 @@ from anvil_serving.voice.cancel_scope import CancelScope
 from anvil_serving.voice.messages import AudioOut, LLMToolCall
 from anvil_serving.voice.pipeline import VoicePipeline
 from anvil_serving.voice.realtime.service import RealtimeService
-from anvil_serving.voice.realtime.service import RealtimeProxyLogs, RealtimeProxyService
+from anvil_serving.voice.realtime.service import (
+    RealtimeProxyLogs,
+    RealtimeProxyService,
+    RealtimeProxyStopTimeoutError,
+)
 from anvil_serving.voice.stages.vad import VADConfig
 
 
@@ -74,10 +79,69 @@ def test_realtime_proxy_rejects_non_mini_ownership_or_non_loopback_bind():
         RealtimeProxyService(lambda: _BlockingServer(), host="100.87.34.66")
 
 
+def test_realtime_proxy_foreground_run_reports_running_and_can_be_stopped():
+    server = _BlockingServer()
+    proxy = RealtimeProxyService(lambda: server)
+    runner = threading.Thread(target=proxy.run)
+
+    runner.start()
+    assert server.started.wait(1)
+    assert proxy.status().running is True
+    assert proxy.stop(timeout=1).running is False
+    runner.join(timeout=1)
+    assert not runner.is_alive()
+
+
+def test_realtime_proxy_restart_fails_if_old_runner_times_out():
+    release = threading.Event()
+    factory_calls = []
+
+    class HungServer(_BlockingServer):
+        def serve_forever(self):
+            self.started.set()
+            release.wait(2)
+
+        def shutdown(self):
+            pass
+
+    server = HungServer()
+
+    def factory():
+        factory_calls.append(1)
+        return server
+
+    proxy = RealtimeProxyService(factory)
+    proxy.start()
+    assert server.started.wait(1)
+    with pytest.raises(RealtimeProxyStopTimeoutError):
+        proxy.stop(timeout=0.01)
+    with pytest.raises(RealtimeProxyStopTimeoutError):
+        proxy.restart(timeout=0.01)
+    assert len(factory_calls) == 1
+    release.set()
+    assert server.stopped.wait(0.01) is False
+    for _ in range(100):
+        if not proxy.status().running:
+            break
+        threading.Event().wait(0.01)
+    assert proxy.status().running is False
+
+
+def test_realtime_proxy_immediate_start_stop_has_initialized_server():
+    server = _BlockingServer()
+    proxy = RealtimeProxyService(lambda: server)
+
+    proxy.start()
+    assert proxy.stop(timeout=1).running is False
+    assert server.closed is True
+
+
 def test_session_update_merges_config_and_echoes():
     pipeline, service, sent = _make_service()
     try:
-        service.handle_client_message(json.dumps({"type": "session.update", "session": {"voice": "alloy"}}))
+        service.handle_client_message(
+            json.dumps({"type": "session.update", "session": {"voice": "alloy"}})
+        )
         assert service.state.session_config == {"voice": "alloy"}
         assert sent[-1]["type"] == "session.updated"
         assert sent[-1]["session"] == {"voice": "alloy"}
@@ -88,22 +152,29 @@ def test_session_update_merges_config_and_echoes():
 def test_session_update_configures_llm_instructions_and_tools_without_model_override():
     pipeline, service, sent = _make_service()
     try:
-        service.handle_client_message(json.dumps({
-            "type": "session.update",
-            "session": {
-                "model": "gpt-realtime",
-                "instructions": "Use OpenClaw session context.",
-                "tools": [
-                    {
-                        "type": "function",
-                        "name": "openclaw_agent_consult",
-                        "description": "Ask OpenClaw.",
-                        "parameters": {"type": "object", "properties": {"question": {"type": "string"}}},
-                    }
-                ],
-                "tool_choice": "auto",
-            },
-        }))
+        service.handle_client_message(
+            json.dumps(
+                {
+                    "type": "session.update",
+                    "session": {
+                        "model": "gpt-realtime",
+                        "instructions": "Use OpenClaw session context.",
+                        "tools": [
+                            {
+                                "type": "function",
+                                "name": "openclaw_agent_consult",
+                                "description": "Ask OpenClaw.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"question": {"type": "string"}},
+                                },
+                            }
+                        ],
+                        "tool_choice": "auto",
+                    },
+                }
+            )
+        )
         assert sent[-1]["type"] == "session.updated"
         assert pipeline.llm.config.model == "chat-fast"
         assert pipeline.llm.config.system_prompt == "Use OpenClaw session context."
@@ -113,7 +184,10 @@ def test_session_update_configures_llm_instructions_and_tools_without_model_over
                 "function": {
                     "name": "openclaw_agent_consult",
                     "description": "Ask OpenClaw.",
-                    "parameters": {"type": "object", "properties": {"question": {"type": "string"}}},
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"question": {"type": "string"}},
+                    },
                 },
             }
         ]
@@ -125,21 +199,35 @@ def test_session_update_configures_llm_instructions_and_tools_without_model_over
 def test_response_create_applies_response_scoped_instructions_and_tools_without_model_override():
     pipeline, service, sent = _make_service()
     try:
-        service.handle_client_message(json.dumps({
-            "type": "session.update",
-            "session": {"instructions": "Session prompt.", "model": "gpt-realtime"},
-        }))
-        item = {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "weather"}]}
-        service.handle_client_message(json.dumps({"type": "conversation.item.create", "item": item}))
-        service.handle_client_message(json.dumps({
-            "type": "response.create",
-            "response": {
-                "model": "another-realtime-model",
-                "instructions": "Response prompt.",
-                "tools": [{"type": "function", "name": "openclaw_agent_consult"}],
-                "tool_choice": "auto",
-            },
-        }))
+        service.handle_client_message(
+            json.dumps(
+                {
+                    "type": "session.update",
+                    "session": {"instructions": "Session prompt.", "model": "gpt-realtime"},
+                }
+            )
+        )
+        item = {
+            "type": "message",
+            "role": "user",
+            "content": [{"type": "input_text", "text": "weather"}],
+        }
+        service.handle_client_message(
+            json.dumps({"type": "conversation.item.create", "item": item})
+        )
+        service.handle_client_message(
+            json.dumps(
+                {
+                    "type": "response.create",
+                    "response": {
+                        "model": "another-realtime-model",
+                        "instructions": "Response prompt.",
+                        "tools": [{"type": "function", "name": "openclaw_agent_consult"}],
+                        "tool_choice": "auto",
+                    },
+                }
+            )
+        )
 
         assert sent[-1]["type"] == "response.created"
         assert pipeline.llm.config.model == "chat-fast"
@@ -175,8 +263,14 @@ def test_invalid_json_yields_error_event_not_a_crash():
 def test_text_conversation_item_bridges_straight_to_generate_request():
     pipeline, service, sent = _make_service()
     try:
-        item = {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "hello there"}]}
-        service.handle_client_message(json.dumps({"type": "conversation.item.create", "item": item}))
+        item = {
+            "type": "message",
+            "role": "user",
+            "content": [{"type": "input_text", "text": "hello there"}],
+        }
+        service.handle_client_message(
+            json.dumps({"type": "conversation.item.create", "item": item})
+        )
         assert sent[-1]["type"] == "conversation.item.created"
         assert service.state.pending_text == ["hello there"]
 
@@ -226,15 +320,19 @@ def test_function_call_output_is_submitted_to_llm_stage():
     fake_pipeline = SimpleNamespace(audio_in=queue.Queue(), llm=llm)
     service = RealtimeService(pipeline=fake_pipeline, send_event=lambda _e: None, session_id="s1")
 
-    service.handle_client_message(json.dumps({
-        "type": "conversation.item.create",
-        "item": {
-            "type": "function_call_output",
-            "call_id": "call_1",
-            "output": {"text": "Sunny."},
-            "will_continue": True,
-        },
-    }))
+    service.handle_client_message(
+        json.dumps(
+            {
+                "type": "conversation.item.create",
+                "item": {
+                    "type": "function_call_output",
+                    "call_id": "call_1",
+                    "output": {"text": "Sunny."},
+                    "will_continue": True,
+                },
+            }
+        )
+    )
 
     assert calls == [
         ("call_1", '{"text":"Sunny."}', {"will_continue": True, "suppress_response": False})
@@ -247,14 +345,18 @@ def test_function_call_output_rejects_unmatched_call_id():
     sent = []
     service = RealtimeService(pipeline=fake_pipeline, send_event=sent.append, session_id="s1")
 
-    service.handle_client_message(json.dumps({
-        "type": "conversation.item.create",
-        "item": {
-            "type": "function_call_output",
-            "call_id": "stale_call",
-            "output": {"text": "Too late."},
-        },
-    }))
+    service.handle_client_message(
+        json.dumps(
+            {
+                "type": "conversation.item.create",
+                "item": {
+                    "type": "function_call_output",
+                    "call_id": "stale_call",
+                    "output": {"text": "Too late."},
+                },
+            }
+        )
+    )
 
     assert sent[-1]["type"] == "error"
     assert sent[-1]["error"]["type"] == "invalid_request"
@@ -273,7 +375,9 @@ def test_audio_buffer_append_commit_drives_the_pipeline_end_to_end():
     pipeline, service, sent = _make_service()
     try:
         speech = base64.b64encode(b"\x01\x02\x03\x04" * 40).decode("ascii")  # non-zero -> "speech"
-        service.handle_client_message(json.dumps({"type": "input_audio_buffer.append", "audio": speech}))
+        service.handle_client_message(
+            json.dumps({"type": "input_audio_buffer.append", "audio": speech})
+        )
         service.handle_client_message(json.dumps({"type": "input_audio_buffer.commit"}))
 
         events = []
@@ -319,7 +423,9 @@ def test_audio_turn_emits_the_full_input_side_lifecycle_in_order():
     pipeline, service, sent = _make_service()
     try:
         speech = base64.b64encode(b"\x01\x02\x03\x04" * 40).decode("ascii")
-        service.handle_client_message(json.dumps({"type": "input_audio_buffer.append", "audio": speech}))
+        service.handle_client_message(
+            json.dumps({"type": "input_audio_buffer.append", "audio": speech})
+        )
         service.handle_client_message(json.dumps({"type": "input_audio_buffer.commit"}))
 
         events = _drain_until_done(service)
@@ -367,9 +473,16 @@ def test_audio_turn_emits_the_full_input_side_lifecycle_in_order():
 def test_response_ids_are_unique_across_two_sequential_text_turns():
     pipeline, service, sent = _make_service()
     try:
+
         def one_turn(text):
-            item = {"type": "message", "role": "user", "content": [{"type": "input_text", "text": text}]}
-            service.handle_client_message(json.dumps({"type": "conversation.item.create", "item": item}))
+            item = {
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": text}],
+            }
+            service.handle_client_message(
+                json.dumps({"type": "conversation.item.create", "item": item})
+            )
             service.handle_client_message(json.dumps({"type": "response.create"}))
             created = sent[-1]
             assert created["type"] == "response.created"
@@ -406,7 +519,9 @@ def test_clear_discards_buffered_audio_before_it_reaches_the_pipeline():
     pipeline, service, sent = _make_service()
     try:
         audio = base64.b64encode(b"\x01\x02\x03\x04").decode("ascii")
-        service.handle_client_message(json.dumps({"type": "input_audio_buffer.append", "audio": audio}))
+        service.handle_client_message(
+            json.dumps({"type": "input_audio_buffer.append", "audio": audio})
+        )
         assert service._audio_buffer  # buffered locally, not yet pushed
         service.handle_client_message(json.dumps({"type": "input_audio_buffer.clear"}))
         assert service._audio_buffer == bytearray()
@@ -426,8 +541,14 @@ def test_event_ids_are_unique_across_direct_and_dispatched_events():
     event_id for one connection from ONE shared per-connection source."""
     pipeline, service, sent = _make_service()
     try:
-        item = {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "hello there"}]}
-        service.handle_client_message(json.dumps({"type": "conversation.item.create", "item": item}))
+        item = {
+            "type": "message",
+            "role": "user",
+            "content": [{"type": "input_text", "text": "hello there"}],
+        }
+        service.handle_client_message(
+            json.dumps({"type": "conversation.item.create", "item": item})
+        )
         service.handle_client_message(json.dumps({"type": "response.create"}))
 
         events = []
@@ -442,7 +563,9 @@ def test_event_ids_are_unique_across_direct_and_dispatched_events():
 
         assert events, "expected at least one dispatched event to compare against"
         all_ids = [e["event_id"] for e in sent] + [e["event_id"] for e in events]
-        assert len(all_ids) == len(set(all_ids)), "duplicate event_id across direct+dispatched events: %r" % all_ids
+        assert len(all_ids) == len(set(all_ids)), (
+            "duplicate event_id across direct+dispatched events: %r" % all_ids
+        )
     finally:
         pipeline.shutdown_gracefully(join_timeout=1.0)
 
@@ -459,8 +582,12 @@ def test_audio_commit_bounds_audio_in_via_drop_oldest():
     fake_pipeline = SimpleNamespace(audio_in=queue.Queue())
     cap = 5
     service = RealtimeService(
-        pipeline=fake_pipeline, send_event=lambda e: None, session_id="s1",
-        frame_bytes=4, flush_silence_frames=0, max_audio_in_queue=cap,
+        pipeline=fake_pipeline,
+        send_event=lambda e: None,
+        session_id="s1",
+        frame_bytes=4,
+        flush_silence_frames=0,
+        max_audio_in_queue=cap,
     )
     # 40 bytes / 4 bytes-per-frame == 10 frames -- double the cap.
     audio = base64.b64encode(b"\x01\x02\x03\x04" * 10).decode("ascii")
@@ -476,8 +603,12 @@ def test_audio_commit_drop_oldest_keeps_the_newest_frames():
     fake_pipeline = SimpleNamespace(audio_in=queue.Queue())
     cap = 2
     service = RealtimeService(
-        pipeline=fake_pipeline, send_event=lambda e: None, session_id="s1",
-        frame_bytes=1, flush_silence_frames=0, max_audio_in_queue=cap,
+        pipeline=fake_pipeline,
+        send_event=lambda e: None,
+        session_id="s1",
+        frame_bytes=1,
+        flush_silence_frames=0,
+        max_audio_in_queue=cap,
     )
     audio = base64.b64encode(bytes([1, 2, 3, 4, 5])).decode("ascii")
     service.handle_client_message(json.dumps({"type": "input_audio_buffer.append", "audio": audio}))
@@ -523,8 +654,14 @@ def test_barge_in_drops_stale_audio_and_emits_exactly_one_terminal_done():
     """
     pipeline, service, sent = _make_service()
     try:
-        item = {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "hello"}]}
-        service.handle_client_message(json.dumps({"type": "conversation.item.create", "item": item}))
+        item = {
+            "type": "message",
+            "role": "user",
+            "content": [{"type": "input_text", "text": "hello"}],
+        }
+        service.handle_client_message(
+            json.dumps({"type": "conversation.item.create", "item": item})
+        )
         service.handle_client_message(json.dumps({"type": "response.create"}))
         turn_id = service.state.current_turn_id
         assert turn_id is not None
@@ -535,7 +672,9 @@ def test_barge_in_drops_stale_audio_and_emits_exactly_one_terminal_done():
         # An AudioOut synthesized under the pre-cancel generation, already
         # queued before the barge-in lands.
         pipeline.audio_out.put(
-            AudioOut(turn_id=turn_id, turn_revision=0, generation=generation, pcm=b"pre-cancel-tail")
+            AudioOut(
+                turn_id=turn_id, turn_revision=0, generation=generation, pcm=b"pre-cancel-tail"
+            )
         )
 
         service.handle_client_message(json.dumps({"type": "response.cancel"}))
@@ -546,16 +685,22 @@ def test_barge_in_drops_stale_audio_and_emits_exactly_one_terminal_done():
         # A second, doubly-stale item landing on the queue AFTER the cancel
         # (e.g. a slow TTS stage still finishing the superseded turn).
         pipeline.audio_out.put(
-            AudioOut(turn_id=turn_id, turn_revision=0, generation=generation, pcm=b"post-cancel-tail")
+            AudioOut(
+                turn_id=turn_id, turn_revision=0, generation=generation, pcm=b"post-cancel-tail"
+            )
         )
 
         drained = service.drain_pipeline_events()
         audio_deltas = [e for e in drained if e["type"] == "response.output_audio.delta"]
-        assert audio_deltas == [], "stale-generation audio must be dropped, got: %r" % (audio_deltas,)
+        assert audio_deltas == [], "stale-generation audio must be dropped, got: %r" % (
+            audio_deltas,
+        )
 
         all_events = sent + drained
         done_events = [e for e in all_events if e["type"] == "response.done"]
-        assert len(done_events) == 1, "expected exactly one terminal response.done, got: %r" % (done_events,)
+        assert len(done_events) == 1, "expected exactly one terminal response.done, got: %r" % (
+            done_events,
+        )
         assert done_events[0]["response"]["status"] == "cancelled"
         assert done_events[0]["response"]["turn_id"] == turn_id
         assert done_events[0]["response"]["id"] == response_id
@@ -635,5 +780,5 @@ def test_drain_pipeline_events_emits_standard_and_compat_function_call_events():
                 "arguments": '{"question":"weather"}',
                 "status": "completed",
             },
-        }
+        },
     ]

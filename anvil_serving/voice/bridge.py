@@ -5,6 +5,7 @@ audio exposure is an Anvil Serving operation, not an operator-owned ad hoc
 script. It is transport-only: it forwards TCP bytes and does not inspect,
 authenticate, or transform OpenAI-compatible HTTP traffic.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -47,6 +48,10 @@ class BridgeLogs:
     lines: tuple[str, ...]
     max_bytes: int
     truncated: bool
+
+
+class BridgeStopTimeoutError(TimeoutError):
+    """Raised when a forwarding bridge runner does not stop in time."""
 
 
 def describe_route(route: TCPBridgeRoute) -> str:
@@ -209,6 +214,8 @@ class ForwardingBridgeService:
         self._lock = threading.Lock()
         self._stop_event: Optional[threading.Event] = None
         self._thread: Optional[threading.Thread] = None
+        self._runner: Optional[threading.Thread] = None
+        self._running = False
         self._started_at: Optional[float] = None
         self._logs: deque[str] = deque()
         self._log_bytes = 0
@@ -224,8 +231,11 @@ class ForwardingBridgeService:
                 self._truncated = True
             if size > self._max_log_bytes:
                 encoded = line.encode("utf-8", errors="replace")[-self._max_log_bytes :]
-                line = encoded.decode("utf-8", errors="replace")
-                size = len(encoded)
+                # The byte suffix may start in the middle of a multibyte code
+                # point. Ignore only that incomplete prefix; replacement decode
+                # could expand it to a three-byte U+FFFD and exceed the cap.
+                line = encoded.decode("utf-8", errors="ignore")
+                size = len(line.encode("utf-8"))
                 self._logs.clear()
                 self._log_bytes = 0
                 self._truncated = True
@@ -233,31 +243,51 @@ class ForwardingBridgeService:
             self._log_bytes += size
 
     def _state_locked(self) -> BridgeState:
-        alive = self._thread is not None and self._thread.is_alive()
-        stopping = alive and self._stop_event is not None and self._stop_event.is_set()
-        return BridgeState(self._owner, alive, self._routes, self._started_at, stopping)
+        stopping = self._running and self._stop_event is not None and self._stop_event.is_set()
+        return BridgeState(self._owner, self._running, self._routes, self._started_at, stopping)
 
-    def run(self) -> BridgeState:
-        """Run in the calling thread until :meth:`stop` is requested."""
-        with self._lock:
-            if self._stop_event is not None and not self._stop_event.is_set():
-                raise RuntimeError("forwarding bridge is already running")
-            stop_event = threading.Event()
-            self._stop_event = stop_event
-            self._started_at = self._clock()
+    def _run_registered(self, stop_event: threading.Event) -> BridgeState:
+        runner = threading.current_thread()
         try:
             self._serve(self._routes, stop_event, log=self._append_log)
         finally:
             with self._lock:
-                self._started_at = None
+                if self._runner is runner:
+                    self._running = False
+                    self._runner = None
+                    self._thread = None
+                    self._stop_event = None
+                    self._started_at = None
         return self.status()
+
+    def run(self) -> BridgeState:
+        """Run in the calling thread until :meth:`stop` is requested."""
+        with self._lock:
+            if self._running:
+                raise RuntimeError("forwarding bridge is already running")
+            stop_event = threading.Event()
+            self._stop_event = stop_event
+            self._runner = threading.current_thread()
+            self._running = True
+            self._started_at = self._clock()
+        return self._run_registered(stop_event)
 
     def start(self) -> BridgeState:
         with self._lock:
-            if self._thread is not None and self._thread.is_alive():
+            if self._running:
                 return self._state_locked()
-            thread = threading.Thread(target=self.run, name="anvil-voice-bridge", daemon=True)
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=self._run_registered,
+                args=(stop_event,),
+                name="anvil-voice-bridge",
+                daemon=True,
+            )
+            self._stop_event = stop_event
             self._thread = thread
+            self._runner = thread
+            self._running = True
+            self._started_at = self._clock()
             thread.start()
             return self._state_locked()
 
@@ -265,11 +295,15 @@ class ForwardingBridgeService:
         if timeout <= 0:
             raise ValueError("timeout must be positive")
         with self._lock:
-            event, thread = self._stop_event, self._thread
+            event, runner = self._stop_event, self._runner
             if event is not None:
                 event.set()
-        if thread is not None and thread is not threading.current_thread():
-            thread.join(timeout=timeout)
+        if runner is not None and runner is not threading.current_thread():
+            runner.join(timeout=timeout)
+            if runner.is_alive():
+                raise BridgeStopTimeoutError(
+                    "forwarding bridge did not stop within %.3f seconds" % timeout
+                )
         return self.status()
 
     def restart(self, *, timeout: float = DEFAULT_STOP_TIMEOUT_SECONDS) -> BridgeState:

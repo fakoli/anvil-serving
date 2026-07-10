@@ -47,6 +47,7 @@ HONESTY NOTE / known simplifications (flagged, not hidden):
    server-VAD turn (see :meth:`drain_pipeline_events`'s ``Transcription``
    handling).
 """
+
 from __future__ import annotations
 
 import base64
@@ -127,6 +128,10 @@ class RealtimeProxyLogs:
     lines: tuple[str, ...] = ()
 
 
+class RealtimeProxyStopTimeoutError(TimeoutError):
+    """Raised when a Realtime proxy runner does not stop in time."""
+
+
 class RealtimeProxyService:
     """Bounded lifecycle owner for an already-constructed Realtime server.
 
@@ -158,22 +163,23 @@ class RealtimeProxyService:
         self._lock = threading.Lock()
         self._server: Any = None
         self._thread: Optional[threading.Thread] = None
+        self._runner: Optional[threading.Thread] = None
         self._started_at: Optional[float] = None
+        self._running = False
         self._stopping = False
 
     def _state_locked(self) -> RealtimeProxyState:
-        alive = self._thread is not None and self._thread.is_alive()
-        return RealtimeProxyState(self._owner, alive, self._host, self._port, self._started_at, self._stopping)
+        return RealtimeProxyState(
+            self._owner,
+            self._running,
+            self._host,
+            self._port,
+            self._started_at,
+            self._stopping,
+        )
 
-    def run(self) -> RealtimeProxyState:
-        """Serve in the calling thread until the server is shut down."""
-        with self._lock:
-            if self._server is not None:
-                raise RuntimeError("realtime proxy is already running")
-            self._server = self._server_factory()
-            self._started_at = self._clock()
-            self._stopping = False
-            server = self._server
+    def _serve_registered(self, server: Any) -> RealtimeProxyState:
+        runner = threading.current_thread()
         try:
             server.serve_forever()
         finally:
@@ -181,17 +187,45 @@ class RealtimeProxyService:
             if callable(close):
                 close()
             with self._lock:
-                self._server = None
-                self._started_at = None
-                self._stopping = False
+                if self._runner is runner:
+                    self._server = None
+                    self._thread = None
+                    self._runner = None
+                    self._started_at = None
+                    self._running = False
+                    self._stopping = False
         return self.status()
+
+    def run(self) -> RealtimeProxyState:
+        """Serve in the calling thread until the server is shut down."""
+        with self._lock:
+            if self._running:
+                raise RuntimeError("realtime proxy is already running")
+            server = self._server_factory()
+            self._server = server
+            self._runner = threading.current_thread()
+            self._started_at = self._clock()
+            self._running = True
+            self._stopping = False
+        return self._serve_registered(server)
 
     def start(self) -> RealtimeProxyState:
         with self._lock:
-            if self._thread is not None and self._thread.is_alive():
+            if self._running:
                 return self._state_locked()
-            thread = threading.Thread(target=self.run, name="anvil-voice-realtime", daemon=True)
+            server = self._server_factory()
+            thread = threading.Thread(
+                target=self._serve_registered,
+                args=(server,),
+                name="anvil-voice-realtime",
+                daemon=True,
+            )
+            self._server = server
             self._thread = thread
+            self._runner = thread
+            self._started_at = self._clock()
+            self._running = True
+            self._stopping = False
             thread.start()
             return self._state_locked()
 
@@ -199,13 +233,17 @@ class RealtimeProxyService:
         if timeout <= 0:
             raise ValueError("timeout must be positive")
         with self._lock:
-            server, thread = self._server, self._thread
-            self._stopping = server is not None
+            server, runner = self._server, self._runner
+            self._stopping = self._running
         shutdown = getattr(server, "shutdown", None)
         if callable(shutdown):
             shutdown()
-        if thread is not None and thread is not threading.current_thread():
-            thread.join(timeout=timeout)
+        if runner is not None and runner is not threading.current_thread():
+            runner.join(timeout=timeout)
+            if runner.is_alive():
+                raise RealtimeProxyStopTimeoutError(
+                    "realtime proxy did not stop within %.3f seconds" % timeout
+                )
         return self.status()
 
     def restart(self, *, timeout: float = DEFAULT_STOP_TIMEOUT_SECONDS) -> RealtimeProxyState:
@@ -351,7 +389,9 @@ class RealtimeService:
         return "evt_%d" % next(self._evt_counter)
 
     def _send_error(self, etype: str, message: str) -> None:
-        self.send_event(server_event_to_dict(make_error_event(etype, message, id_source=self._evt_id)))
+        self.send_event(
+            server_event_to_dict(make_error_event(etype, message, id_source=self._evt_id))
+        )
 
     def _begin_response(self, turn_id: str) -> Dict[str, Any]:
         """Mint a fresh, unique ``response.id`` and build the ``response.created``
@@ -390,14 +430,20 @@ class RealtimeService:
         if callable(configure):
             configure(self.state.session_config)
         self.send_event(
-            {"type": "session.updated", "event_id": self._evt_id(), "session": dict(self.state.session_config)}
+            {
+                "type": "session.updated",
+                "event_id": self._evt_id(),
+                "session": dict(self.state.session_config),
+            }
         )
 
     def _on_audio_append(self, event: InputAudioBufferAppend) -> None:
         try:
             self._audio_buffer += base64.b64decode(event.audio, validate=True)
         except Exception as exc:  # noqa: BLE001 - any malformed base64 is a client error, not a crash
-            self._send_error("invalid_request", "input_audio_buffer.append: bad base64 audio: %s" % exc)
+            self._send_error(
+                "invalid_request", "input_audio_buffer.append: bad base64 audio: %s" % exc
+            )
 
     def _on_audio_clear(self, event: InputAudioBufferClear) -> None:
         # Buffered-but-uncommitted audio never reached the pipeline (see class
@@ -439,7 +485,9 @@ class RealtimeService:
         if item.get("type") == "function_call_output":
             submitted = self._submit_tool_output(item)
             if not submitted:
-                self._send_error("invalid_request", "conversation.item.create: malformed function_call_output")
+                self._send_error(
+                    "invalid_request", "conversation.item.create: malformed function_call_output"
+                )
                 return
         else:
             text = _extract_text(item)
@@ -466,25 +514,34 @@ class RealtimeService:
         submit = getattr(getattr(self.pipeline, "llm", None), "submit_tool_result", None)
         if not callable(submit):
             return False
-        return bool(submit(
-            call_id,
-            text,
-            will_continue=item.get("will_continue") is True,
-            suppress_response=item.get("suppress_response") is True,
-        ))
+        return bool(
+            submit(
+                call_id,
+                text,
+                will_continue=item.get("will_continue") is True,
+                suppress_response=item.get("suppress_response") is True,
+            )
+        )
 
     def _on_response_create(self, event: ResponseCreate) -> None:
         if not self.state.pending_text:
             self._send_error("invalid_request", "response.create: no pending input to respond to")
             return
-        configure = getattr(getattr(self.pipeline, "llm", None), "configure_realtime_response", None)
+        configure = getattr(
+            getattr(self.pipeline, "llm", None), "configure_realtime_response", None
+        )
         if callable(configure):
-            configure(self.state.session_config, event.response if isinstance(event.response, dict) else {})
+            configure(
+                self.state.session_config,
+                event.response if isinstance(event.response, dict) else {},
+            )
         text = "\n".join(self.state.pending_text)
         self.state.pending_text = []
         turn_id = "rt-turn-%d" % next(self.state.turn_counter)
         generation = self.pipeline.cancel_scope.begin_new_generation()
-        request = GenerateRequest(turn_id=turn_id, turn_revision=0, generation=generation, text=text)
+        request = GenerateRequest(
+            turn_id=turn_id, turn_revision=0, generation=generation, text=text
+        )
         # Bridges the client-supplied (already-final) transcript straight
         # into the LLM stage's own input queue -- skipping VAD/STT entirely,
         # exactly mirroring what ``pipeline.py``'s TranscriptionToGenerate
@@ -537,7 +594,11 @@ class RealtimeService:
         queued completed terminal may then be pruned. The transport owner calls
         this after it actually writes a terminal ``response.done``.
         """
-        if response_id and self.state.current_response_id and response_id != self.state.current_response_id:
+        if (
+            response_id
+            and self.state.current_response_id
+            and response_id != self.state.current_response_id
+        ):
             return
         self.state.current_turn_id = None
         self.state.current_response_id = None
@@ -596,7 +657,11 @@ class RealtimeService:
         """
         out: List[Dict[str, Any]] = []
         count = 0
-        for q in (self.pipeline.vad_events, self.pipeline.transcript_events, self.pipeline.audio_out):
+        for q in (
+            self.pipeline.vad_events,
+            self.pipeline.transcript_events,
+            self.pipeline.audio_out,
+        ):
             while max_items is None or count < max_items:
                 try:
                     item = q.get_nowait()

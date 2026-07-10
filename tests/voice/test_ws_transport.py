@@ -3,6 +3,7 @@ client (``ws.py``'s own :func:`client_handshake`) -- no ``websockets``
 library, no third-party dependency anywhere in this test. Dependency-light:
 stdlib ``socket``/``threading`` only.
 """
+
 from __future__ import annotations
 
 import base64
@@ -12,7 +13,11 @@ import threading
 
 import pytest
 
-from anvil_serving.voice.bridge import ForwardingBridgeService, TCPBridgeRoute
+from anvil_serving.voice.bridge import (
+    BridgeStopTimeoutError,
+    ForwardingBridgeService,
+    TCPBridgeRoute,
+)
 
 from anvil_serving.voice.realtime.ws import (
     OP_BINARY,
@@ -57,6 +62,79 @@ def test_forwarding_bridge_rejects_non_mini_owner():
             [TCPBridgeRoute("tts", "127.0.0.1", 30111, "100.87.34.66", 30111)],
             owner="dark",
         )
+
+
+def _bridge(serve, *, max_log_bytes=64 * 1024):
+    return ForwardingBridgeService(
+        [TCPBridgeRoute("stt", "127.0.0.1", 30110, "100.87.34.66", 30110)],
+        max_log_bytes=max_log_bytes,
+        serve=serve,
+    )
+
+
+def test_forwarding_bridge_multibyte_log_never_exceeds_byte_cap():
+    def serve(_routes, stop_event, *, log):
+        log("ééé")
+        stop_event.wait(1)
+
+    bridge = _bridge(serve, max_log_bytes=5)
+    bridge.start()
+    bridge.stop(timeout=1)
+    logs = bridge.logs()
+    assert logs.truncated is True
+    assert sum(len(line.encode("utf-8")) for line in logs.lines) <= 5
+
+
+def test_forwarding_bridge_foreground_run_reports_running_and_can_be_stopped():
+    started = threading.Event()
+
+    def serve(_routes, stop_event, *, log):
+        started.set()
+        stop_event.wait(1)
+
+    bridge = _bridge(serve)
+    runner = threading.Thread(target=bridge.run)
+    runner.start()
+    assert started.wait(1)
+    assert bridge.status().running is True
+    assert bridge.stop(timeout=1).running is False
+    runner.join(timeout=1)
+    assert not runner.is_alive()
+
+
+def test_forwarding_bridge_restart_fails_if_old_runner_times_out():
+    started = threading.Event()
+    release = threading.Event()
+    serve_calls = []
+
+    def serve(_routes, _stop_event, *, log):
+        serve_calls.append(1)
+        started.set()
+        release.wait(2)
+
+    bridge = _bridge(serve)
+    bridge.start()
+    assert started.wait(1)
+    with pytest.raises(BridgeStopTimeoutError):
+        bridge.stop(timeout=0.01)
+    with pytest.raises(BridgeStopTimeoutError):
+        bridge.restart(timeout=0.01)
+    assert len(serve_calls) == 1
+    release.set()
+    for _ in range(100):
+        if not bridge.status().running:
+            break
+        threading.Event().wait(0.01)
+    assert bridge.status().running is False
+
+
+def test_forwarding_bridge_immediate_start_stop_has_initialized_event():
+    def serve(_routes, stop_event, *, log):
+        stop_event.wait(1)
+
+    bridge = _bridge(serve)
+    bridge.start()
+    assert bridge.stop(timeout=1).running is False
 
 
 class _BufReader:
@@ -134,9 +212,9 @@ def test_is_websocket_upgrade_rejects_wrong_version():
     [
         b"",
         b"hello",
-        b"x" * 125,          # boundary: last length that fits the 7-bit form
-        b"x" * 126,          # boundary: first length needing the 16-bit form
-        b"y" * 70000,        # boundary: needs the 64-bit extended-length form
+        b"x" * 125,  # boundary: last length that fits the 7-bit form
+        b"x" * 126,  # boundary: first length needing the 16-bit form
+        b"y" * 70000,  # boundary: needs the 64-bit extended-length form
     ],
     ids=["empty", "short", "len125", "len126", "len70000"],
 )
@@ -591,7 +669,10 @@ def test_non_loopback_bind_with_token_gates_the_upgrade_on_a_valid_bearer_token(
     """
     monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", "s3cr3t-realtime-token")
     server = make_ws_server(
-        "0.0.0.0", 0, lambda conn, path: conn.close(), token_env="ANVIL_TEST_WS_TOKEN",
+        "0.0.0.0",
+        0,
+        lambda conn, path: conn.close(),
+        token_env="ANVIL_TEST_WS_TOKEN",
     )
     server.timeout = 5
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -608,7 +689,9 @@ def test_non_loopback_bind_with_token_gates_the_upgrade_on_a_valid_bearer_token(
         # Wrong token -> 401.
         sock = socket.create_connection(("127.0.0.1", port), timeout=5)
         sock.settimeout(5)
-        sock.sendall(_raw_upgrade_request(port, extra_headers="Authorization: Bearer wrong-token\r\n"))
+        sock.sendall(
+            _raw_upgrade_request(port, extra_headers="Authorization: Bearer wrong-token\r\n")
+        )
         assert sock.recv(4096).startswith(b"HTTP/1.1 401")
         sock.close()
 
@@ -632,7 +715,10 @@ def test_make_ws_server_raises_when_token_env_is_unset(monkeypatch):
     monkeypatch.delenv("ANVIL_TEST_WS_TOKEN_UNSET", raising=False)
     with pytest.raises(ValueError):
         make_ws_server(
-            "127.0.0.1", 0, lambda conn, path: conn.close(), token_env="ANVIL_TEST_WS_TOKEN_UNSET",
+            "127.0.0.1",
+            0,
+            lambda conn, path: conn.close(),
+            token_env="ANVIL_TEST_WS_TOKEN_UNSET",
         )
 
 
@@ -691,7 +777,9 @@ def test_idle_connection_is_closed_by_make_ws_server_idle_timeout():
 
 def test_introspection_route_served_as_json():
     server = make_ws_server(
-        "127.0.0.1", 0, lambda conn, path: conn.close(),
+        "127.0.0.1",
+        0,
+        lambda conn, path: conn.close(),
         extra_routes={"/usage": lambda: {"claims_total": 3}},
     )
     server.timeout = 5
