@@ -6,6 +6,45 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed (BREAKING for non-interactive callers)
+
+- **`serves rm` / `serves adopt` now require consent**: interactive `[y/N]`
+  on a TTY, `--yes` everywhere else. A non-interactive call without `--yes`
+  (cron, CI, pipelines) now aborts with rc 1 and removes NOTHING — fail-closed
+  by design. Update automation to pass `--yes`. The MCP `serves_manage` tool
+  passes it automatically once its own confirm gate is satisfied.
+- **`router restart` / `reload` block ~11s longer** verifying the router
+  stays up (crash-loop detection); `--no-verify` restores the old fire-and-
+  forget behavior.
+
+### Added
+
+- **Shared host-mutation guard (`anvil_serving/guard.py`)** — the
+  compute → gate → apply → verify → rollback pattern proven separately in
+  `host` (confirm + numbered backups + refusal floors), `cache-prune`
+  (plan/gate/apply), `router promote` (crash-loop verify + rollback), and the
+  MCP triple gate, consolidated into one importable module: `confirm` ([y/N],
+  EOF→No, `--yes`/`--force` short-circuit), numbered `.anvil.bak.N`
+  backup/restore, `await_stable` (settle + N consecutive good samples), and
+  `terminate_then_kill` (the canonical one-attempt destructive escalation —
+  never a retry loop; a `wsl --shutdown` retry loop is what wedged the host).
+  `host.py` and `multiplexer.py` now delegate to it.
+- **`serves rm` / `serves adopt` confirmation gate** — both are irreversible
+  (`docker rm -f`); they now prompt `[y/N]` with the full container list, and
+  `--yes` skips the prompt for automation. `--dry-run` previews without
+  prompting; a declined or EOF (no-TTY) answer removes nothing and exits 1.
+- **`serves down` stop verification** — after a successful `docker stop`, the
+  container state is re-checked; a container revived by a `restart: always`
+  policy (GPU silently NOT freed) is now a loud warning and rc 1 instead of a
+  false "stopped".
+- **`router restart`/`reload` stay-up verification** — the same crash-loop
+  check `router promote` uses (settle + consecutive running samples +
+  RestartCount delta): a router that fail-fasts on a bad config no longer
+  reports a successful restart while it crash-loops.
+- **`init` config backups** — regenerating `docker-compose.yml`/`router.toml`
+  over operator-edited files now writes numbered `.anvil.bak.N` siblings
+  first (the same convention as `host wsl-config`).
+
 ## [0.11.0] - 2026-07-06
 
 ### Added
