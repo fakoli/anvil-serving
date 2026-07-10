@@ -127,6 +127,43 @@ def test_realtime_proxy_restart_fails_if_old_runner_times_out():
     assert proxy.status().running is False
 
 
+def test_realtime_proxy_stop_times_out_when_shutdown_blocks():
+    release_shutdown = threading.Event()
+    stop_finished = threading.Event()
+    stop_errors = queue.Queue()
+
+    class BlockingShutdownServer(_BlockingServer):
+        def shutdown(self):
+            release_shutdown.wait()
+            super().shutdown()
+
+    server = BlockingShutdownServer()
+    proxy = RealtimeProxyService(lambda: server)
+    proxy.start()
+    assert server.started.wait(1)
+
+    def stop_proxy():
+        try:
+            proxy.stop(timeout=0.01)
+        except BaseException as exc:
+            stop_errors.put(exc)
+        finally:
+            stop_finished.set()
+
+    stopper = threading.Thread(target=stop_proxy)
+    try:
+        stopper.start()
+        assert stop_finished.wait(1), "stop() remained blocked in server.shutdown()"
+        error = stop_errors.get_nowait()
+        assert isinstance(error, RealtimeProxyStopTimeoutError)
+        assert proxy.status().running is True
+        assert proxy.status().stopping is True
+    finally:
+        release_shutdown.set()
+        stopper.join(timeout=1)
+        server.stopped.wait(1)
+
+
 def test_realtime_proxy_immediate_start_stop_has_initialized_server():
     server = _BlockingServer()
     proxy = RealtimeProxyService(lambda: server)

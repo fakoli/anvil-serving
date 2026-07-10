@@ -132,6 +132,14 @@ class RealtimeProxyStopTimeoutError(TimeoutError):
     """Raised when a Realtime proxy runner does not stop in time."""
 
 
+@dataclass
+class _ShutdownRequest:
+    """One shutdown attempt shared by concurrent stop callers."""
+
+    done: threading.Event = field(default_factory=threading.Event)
+    error: Optional[BaseException] = None
+
+
 class RealtimeProxyService:
     """Bounded lifecycle owner for an already-constructed Realtime server.
 
@@ -167,6 +175,8 @@ class RealtimeProxyService:
         self._started_at: Optional[float] = None
         self._running = False
         self._stopping = False
+        self._shutdown_runner: Optional[threading.Thread] = None
+        self._shutdown_request: Optional[_ShutdownRequest] = None
 
     def _state_locked(self) -> RealtimeProxyState:
         return RealtimeProxyState(
@@ -194,6 +204,8 @@ class RealtimeProxyService:
                     self._started_at = None
                     self._running = False
                     self._stopping = False
+                    self._shutdown_runner = None
+                    self._shutdown_request = None
         return self.status()
 
     def run(self) -> RealtimeProxyState:
@@ -232,14 +244,40 @@ class RealtimeProxyService:
     def stop(self, *, timeout: float = DEFAULT_STOP_TIMEOUT_SECONDS) -> RealtimeProxyState:
         if timeout <= 0:
             raise ValueError("timeout must be positive")
+        deadline = time.monotonic() + timeout
         with self._lock:
             server, runner = self._server, self._runner
             self._stopping = self._running
-        shutdown = getattr(server, "shutdown", None)
-        if callable(shutdown):
-            shutdown()
+            request = self._shutdown_request if self._shutdown_runner is runner else None
+            shutdown = getattr(server, "shutdown", None)
+            if request is None and callable(shutdown):
+                request = _ShutdownRequest()
+
+                def request_shutdown() -> None:
+                    try:
+                        shutdown()
+                    except BaseException as exc:
+                        request.error = exc
+                    finally:
+                        request.done.set()
+
+                self._shutdown_runner = runner
+                self._shutdown_request = request
+                threading.Thread(
+                    target=request_shutdown,
+                    name="anvil-voice-realtime-shutdown",
+                    daemon=True,
+                ).start()
+        if request is not None:
+            request.done.wait(timeout=max(0.0, deadline - time.monotonic()))
+            if not request.done.is_set():
+                raise RealtimeProxyStopTimeoutError(
+                    "realtime proxy did not stop within %.3f seconds" % timeout
+                )
+            if request.error is not None:
+                raise request.error
         if runner is not None and runner is not threading.current_thread():
-            runner.join(timeout=timeout)
+            runner.join(timeout=max(0.0, deadline - time.monotonic()))
             if runner.is_alive():
                 raise RealtimeProxyStopTimeoutError(
                     "realtime proxy did not stop within %.3f seconds" % timeout
