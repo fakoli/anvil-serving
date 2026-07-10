@@ -632,6 +632,24 @@ def run_bakeoff(a, api_key):
         print("wrote bakeoff evidence: " + a.evidence_out)
     else:
         print(json.dumps(evidence, indent=2, sort_keys=True))
+
+    # Persist into the bakeoff notebook (in ADDITION to --evidence-out, so the
+    # existing behavior never regresses). Requires --notebook-task/-hardware to
+    # key the comparison; missing them is a loud error, not a silent skip.
+    if getattr(a, "notebook", None):
+        if not a.notebook_task or not a.notebook_hardware:
+            print("error: --notebook requires --notebook-task and --notebook-hardware",
+                  file=sys.stderr)
+            return 2
+        from .external_benchmarks import store as _nb_store
+
+        row_id = _nb_store.record_bakeoff_run(
+            a.notebook, evidence,
+            task=a.notebook_task, hardware=a.notebook_hardware,
+            evidence_path=a.evidence_out,
+        )
+        print("recorded bakeoff run %s into notebook %s (row %d)"
+              % (evidence["run_id"], a.notebook, row_id))
     return 0
 
 def _serve_recipes():
@@ -792,6 +810,13 @@ def main(argv=None, *, prog="anvil-serving benchmark"):
                          "Known suites: chat, context, tool, session, intelligence, voice")
     ap.add_argument("--evidence-out", default=None,
                     help="write --bakeoff structured evidence JSON to this path")
+    ap.add_argument("--notebook", default=None,
+                    help="also record this --bakeoff run into the bakeoff notebook "
+                         "SQLite DB at this path (append; keeps history)")
+    ap.add_argument("--notebook-task", default=None,
+                    help="task key for the notebook row (required with --notebook)")
+    ap.add_argument("--notebook-hardware", default=None,
+                    help="hardware key for the notebook row (required with --notebook)")
     ap.add_argument("--source-recipe", default=None,
                     help="recipe/config source reference recorded in --bakeoff evidence")
     ap.add_argument("--serve-command", default=None,
