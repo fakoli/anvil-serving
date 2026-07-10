@@ -777,6 +777,9 @@ deterministic capability cases, and optional generation performance.
    finish reasons, latency p50/p95, TTFT p50/p95, exact output tokens, exact
    tokens/sec p50/p95, warnings, and caveats. The live `2026-07-07` example is
    [`docs/findings/2026-07-07-openclaw-colo-interaction-benchmark.md`](findings/2026-07-07-openclaw-colo-interaction-benchmark.md).
+   Update [Benchmark results](BENCHMARKS.md) in the same change whenever the run changes a
+   current recommendation, reference deployment, or reader-facing comparison; do not imply a
+   promotion unless the separate human gate was completed.
 
 6. Interpret the artifact by stories and proofs. A useful report should name
    the failing or warning proof ids, the affected stories, the observed router

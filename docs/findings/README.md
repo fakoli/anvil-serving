@@ -4,7 +4,8 @@ Dated evidence snapshots — benchmarks, live validations, and lab notebooks —
 decisions recorded in `docs/adr/` and the PRD task history. Each file is a **point-in-time
 record**, accurate as of its date and not maintained afterwards; treat the ADRs and the main
 docs as the current source of truth. `.json` files are the machine-readable raw evidence
-backing a companion `.md` narrative. Newest first.
+backing a companion `.md` narrative. For the current user-facing conclusions and comparable
+configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|

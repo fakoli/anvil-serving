@@ -123,6 +123,12 @@ silently change direction and never delete an ADR — supersede it.
 - Doc snippets follow the same hard rules as code: `127.0.0.1` in URLs, env-var names for secrets.
 - Dated evidence snapshots go in `docs/findings/` (and its index); durable reference content goes
   in the named docs.
+- A user-relevant model benchmark is a documentation change as well as an artifact: add a dated
+  findings narrative with the raw artifact link, tested configuration, gate outcomes, metrics,
+  failures, and caveats; update `docs/findings/README.md`; and update
+  `docs/BENCHMARKS.md` when the result changes the current recommendation, reference deployment,
+  or a reader-facing comparison. Clearly distinguish local measurements from external advisory
+  priors. Publishing results never authorizes a routing or production-model promotion.
 
 ## Workflow
 

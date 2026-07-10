@@ -45,6 +45,13 @@ residency-aware routing. The canonical product description is `README.md`; do no
   type, hardware/engine relevance, and decision impact. Treat old Reddit/forum posts
   as historical recipe leads only unless local benchmarks or current official sources
   corroborate them.
+- **Publish user-relevant benchmark outcomes.** In the same change that records a model
+  benchmark, add a dated narrative and raw artifact links under `docs/findings/`, update its
+  index, and update `docs/BENCHMARKS.md` when the current recommendation, reference
+  deployment, or comparison table changes. State the model/served name, host and topology,
+  hardware, engine/quant/context/concurrency, gate status, metrics, failures, and caveats.
+  Link evidence rather than copying raw JSON; label external priors and incomplete or failed
+  runs accurately. Publishing evidence never bypasses the human gate for promotion.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
   output. Correctness gates (`verify.py`, `preflight.py`, `eval.py`) are independent.

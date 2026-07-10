@@ -38,8 +38,11 @@ nav:
       - Serves & eval: SERVES-AND-EVAL.md
       - Model settings: MODEL-SETTINGS-EXAMPLE.md
       - Device topologies: DEVICE-TOPOLOGIES.md
-      - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
+  - Benchmarks & findings:
+      - Benchmark results: BENCHMARKS.md
+      - External benchmarks: EXTERNAL-BENCHMARKS.md
+      - Findings index: findings/README.md
   - Integrations:
       - OpenClaw integration spec: OPENCLAW-INTEGRATION-SPEC.md
       - Voice pipeline: VOICE.md
@@ -61,7 +64,6 @@ nav:
       - 'ADR-0014: Tailnet controller transport': adr/0014-tailnet-controller-transport.md
       - 'ADR-0015: Operator skills and sub-agent workflows': adr/0015-operator-skills-and-subagent-workflows.md
       - ADR template: adr/template.md
-      - Findings index: findings/README.md
   - Changelog: changelog.md
 
 markdown_extensions:
