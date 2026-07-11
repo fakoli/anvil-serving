@@ -131,6 +131,8 @@ def test_fakoli_reference_topology_validates_offline_and_assigns_models_to_dark(
     mini_resources = [resource for resource in topology.resources if resource.host == "fakoli-mini"]
     dark_resources = [resource for resource in topology.resources if resource.host == "fakoli-dark"]
     assert topology.host("fakoli-mini").capacity_policy == "mini-model-free"
+    assert topology.host("fakoli-mini").os == "macos"
+    assert topology.host("fakoli-dark").os == "windows"
     assert not any(resource.workload in {"model", "llm", "stt", "tts"} for resource in mini_resources)
     assert not [role for role in topology.gpu_roles if role.host == "fakoli-mini"]
     assert {resource.workload for resource in dark_resources} >= {"llm", "stt", "tts"}
@@ -146,6 +148,11 @@ def test_fakoli_reference_topology_validates_offline_and_assigns_models_to_dark(
     assert recovery.allowed_operations == ("controller-bootstrap", "controller-recovery")
     assert recovery.host_key_fingerprint == "SHA256:REPLACE-WITH-VERIFIED-HOST-KEY"
     assert recovery.known_hosts_path == "~/.ssh/known_hosts"
+    assert topology.transport("mini-controller").runtime == "mini-native"
+    assert topology.transport("dark-host-controller").runtime == "dark-native"
+    assert {
+        resource.host for resource in topology.resources if resource.role == "host"
+    } == {"fakoli-mini", "fakoli-dark"}
 
 
 def test_valid_topology_parses_into_typed_models_and_preserves_stable_gpu_identity():
@@ -157,6 +164,43 @@ def test_valid_topology_parses_into_typed_models_and_preserves_stable_gpu_identi
     assert topology.gpu_role("fast").uuid == "GPU-01234567-89ab-cdef-0123-456789abcdef"
     assert topology.resource("model-serve").workload == "model"
     assert topology.transport("serve-controller").auth_env == "ANVIL_CONTROLLER_TOKEN"
+
+
+def test_host_os_is_typed_and_invalid_values_are_rejected():
+    data = _topology()
+    data["hosts"][0]["os"] = "linux"
+    assert parse_topology(data).host("operator").os == "linux"
+    data["hosts"][0]["os"] = "wsl"
+    result = validate_topology(data)
+    assert any(error.path == "hosts[0].os" and error.code == "value" for error in result.errors)
+
+
+def test_partial_overlay_merges_records_by_id(tmp_path):
+    source = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
+    overlay = tmp_path / "deployment.toml"
+    overlay.write_text(
+        'command_host = "host:fakoli-dark"\n'
+        'command_runtime = "runtime:dark-native"\n'
+        '[[hosts]]\nid = "fakoli-dark"\naddress = "100.87.34.66"\n',
+        encoding="utf-8",
+    )
+    topology = topology_module.load_topology(str(source), str(overlay))
+    assert topology.command_host == "fakoli-dark"
+    assert topology.command_runtime == "dark-native"
+    assert topology.host("fakoli-dark").address == "100.87.34.66"
+    assert topology.host("fakoli-dark").os == "windows"
+
+
+def test_overlay_depth_is_bounded_before_recursive_merge(tmp_path):
+    source = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
+    overlay = tmp_path / "deep-overlay.toml"
+    overlay.write_text(
+        "[" + ".".join(f"level{i}" for i in range(70)) + "]\nvalue = 1\n",
+        encoding="utf-8",
+    )
+    result = load_topology_result(source, overlay)
+    assert result.ok is False
+    assert any(error.code == "depth" for error in result.errors)
 
 
 @pytest.mark.parametrize(

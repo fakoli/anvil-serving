@@ -15,7 +15,10 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import pytest
+
 from anvil_serving import cli, mcp
+from anvil_serving.command_tree import manifest_data
 
 
 def proc(rc=0, out="", err=""):
@@ -157,6 +160,8 @@ def test_tools_list_has_json_schemas():
         "voice_manage",
         "doctor_summary",
         "host_summary",
+        "host_manage",
+        "gpu_inventory",
         "models_inventory",
         "cache_prune_plan",
         "route_decision",
@@ -170,12 +175,15 @@ def test_tools_list_has_json_schemas():
         "external_bench_list",
         "external_bench_report",
         "external_bench_compare",
+        "operation_contracts",
     ]:
         assert name in tools
         schema = tools[name]["inputSchema"]
         assert schema["type"] == "object"
         assert schema["additionalProperties"] is False
         assert "properties" in schema
+        assert schema["maxProperties"] == len(schema["properties"])
+        assert tools[name]["_meta"]["anvil/targetContextSchema"] == mcp.TARGET_CONTEXT_SCHEMA
     for name in ("preflight_probe", "benchmark_probe"):
         props = tools[name]["inputSchema"]["properties"]
         assert "api_key" not in props
@@ -206,7 +214,57 @@ def test_tools_list_has_json_schemas():
     assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
     assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
     assert tools["host_summary"]["inputSchema"]["properties"] == {}
+    assert tools["host_manage"]["inputSchema"]["required"] == ["action"]
     assert "execute" not in tools["cache_prune_plan"]["inputSchema"]["properties"]
+
+
+def test_operation_contracts_enumerate_every_remote_capable_command():
+    expected = {
+        record["path"].replace(" ", "-")
+        for record in manifest_data()["commands"]
+        if record["visible"]
+        and record["tombstone"] is None
+        and record["handler"] is not None
+        and "controller" in record["transports"]
+    }
+    declarations = mcp.operation_declarations()
+
+    assert {declaration["name"] for declaration in declarations} == expected
+    assert all("controller" in declaration["transports"] for declaration in declarations)
+    assert all(declaration["resource_role"] for declaration in declarations)
+    assert all(
+        declaration["tool"] in mcp.TOOLS
+        for declaration in declarations
+        if declaration["mode"] == "tool"
+    )
+    envelope = mcp.call_tool("operation_contracts")
+    assert envelope == {"ok": True, "data": {"operations": declarations}}
+
+
+def test_mcp_rejects_raw_commands_secrets_and_unbounded_arguments(monkeypatch):
+    monkeypatch.setenv("ANVIL_CONTROLLER_TOKEN", "controller-secret-token")
+    raw_command = mcp.call_tool("router_status", {"command": ["cmd", "/c", "whoami"]})
+    raw_secret = mcp.call_tool("router_status", {"token": "controller-secret-token"})
+    oversized = mcp.call_tool("router_status", {"container": "x" * (mcp._MAX_SCHEMA_STRING + 1)})
+
+    assert raw_command["error"]["code"] == "raw_command_not_allowed"
+    assert raw_secret["error"]["code"] == "bad_argument"
+    assert "controller-secret-token" not in json.dumps(raw_secret)
+    assert oversized["error"]["code"] == "bad_argument"
+
+    monkeypatch.setitem(
+        mcp.TOOLS,
+        "operation_contracts",
+        {
+            **mcp.TOOLS["operation_contracts"],
+            "handler": lambda _args: (_ for _ in ()).throw(
+                RuntimeError("controller-secret-token")
+            ),
+        },
+    )
+    failed = mcp.call_tool("operation_contracts")
+    assert "controller-secret-token" not in json.dumps(failed)
+    assert "<redacted>" in json.dumps(failed)
 
 
 def test_stdio_tools_list_and_call(tmp_path):
@@ -235,6 +293,62 @@ def test_stdio_tools_list_and_call(tmp_path):
     assert envelope["ok"] is True
     assert envelope["data"]["would_run"] is True
     assert isinstance(envelope["data"]["command"], list)
+
+
+def test_stdio_tool_result_carries_fixed_redacted_target_context_metadata():
+    context = {
+        "command": "Bearer context-secret-token",
+        "topology": "fakoli-reference",
+        "execution_host": "dark",
+        "execution_runtime": "dark-native",
+        "resource_host": "dark",
+        "transport": "controller",
+        "controller_endpoint": "http://100.87.34.66:8765",
+    }
+    request = {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "tools/call",
+        "params": {"name": "operation_contracts", "arguments": {}, "context": context},
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio([json.dumps(request) + "\n"], stdout) == 0
+    response = json.loads(stdout.getvalue())
+    metadata = response["result"]["_meta"]["anvil/context"]
+    assert tuple(metadata) == mcp.CONTEXT_FIELDS
+    assert metadata["topology"] == "fakoli-reference"
+    assert metadata["execution_host"] == "dark"
+    assert metadata["command"] == "Bearer <redacted>"
+    assert "context-secret-token" not in stdout.getvalue()
+
+
+def test_stdio_rejects_unbounded_or_unknown_target_context_before_dispatch(monkeypatch):
+    monkeypatch.setitem(
+        mcp.TOOLS,
+        "operation_contracts",
+        {
+            **mcp.TOOLS["operation_contracts"],
+            "handler": lambda _args: pytest.fail("unsafe context reached handler"),
+        },
+    )
+    request = {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "tools/call",
+        "params": {
+            "name": "operation_contracts",
+            "arguments": {},
+            "context": {"authorization": "Bearer context-secret-token"},
+        },
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio([json.dumps(request) + "\n"], stdout) == 0
+    response = json.loads(stdout.getvalue())
+    assert response["error"]["code"] == -32602
+    assert response["error"]["data"]["code"] == "bad_context"
+    assert "context-secret-token" not in stdout.getvalue()
 
 
 def test_serves_status_is_structured(tmp_path):
@@ -344,11 +458,13 @@ def test_router_manage_preview_and_confirmed_reload(monkeypatch):
         "container": "anvil-router",
         "confirm": True,
         "dry_run": False,
+        "no_verify": True,
         "timeout_seconds": 9,
     })
     assert confirmed["ok"] is True
     assert confirmed["data"]["applied"] is True
     assert "--dry-run" not in seen["argv"]
+    assert "--no-verify" in seen["argv"]
     assert seen["argv"][3:5] == ["router", "reload"]
     assert seen["timeout"] == 9
 
@@ -538,6 +654,41 @@ def test_openclaw_sync_preview_uses_harness_logic_and_env_ref(tmp_path):
     assert preview["model_ids"] == ["chat", "chat-fast", "review"]
     # Secret hygiene: config references the env var by name; no literal secret is resolved.
     assert preview["api_key"] == "${ANVIL_ROUTER_TOKEN}"
+
+
+def test_openclaw_gateway_status_is_bounded_and_structured(monkeypatch):
+    from anvil_serving import harness
+
+    seen = {}
+    monkeypatch.setattr(
+        harness,
+        "openclaw_gateway_status",
+        lambda **kwargs: seen.update(kwargs) or {
+            "ok": True,
+            "returncode": 0,
+            "status": {"status": "running"},
+        },
+    )
+    env = mcp.call_tool("openclaw_gateway_status", {
+        "timeout_seconds": 9,
+        "max_output_bytes": 4096,
+    })
+    assert env["ok"] is True
+    assert env["data"]["status"] == {"status": "running"}
+    assert seen == {"timeout_seconds": 9, "max_output_bytes": 4096}
+
+
+def test_openclaw_gateway_status_failure_is_classified(monkeypatch):
+    from anvil_serving import harness
+
+    monkeypatch.setattr(
+        harness,
+        "openclaw_gateway_status",
+        lambda **_kwargs: {"ok": False, "returncode": 1, "stderr": "not running"},
+    )
+    env = mcp.call_tool("openclaw_gateway_status", {})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "command_failed"
 
 
 def test_openclaw_sync_preview_can_include_skills(tmp_path):
@@ -738,6 +889,47 @@ def test_host_summary_tool_is_structured_and_read_only(monkeypatch):
 
 def test_host_summary_rejects_arguments():
     env = mcp.call_tool("host_summary", {"confirm": True})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_host_manage_previews_without_calling_host(monkeypatch):
+    from anvil_serving import host
+
+    monkeypatch.setattr(
+        host,
+        "cmd_wsl_config",
+        lambda **_kwargs: pytest.fail("host preview applied a repair"),
+    )
+    env = mcp.call_tool("host_manage", {
+        "action": "wsl-config", "memory": 80, "confirm": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    assert env["data"]["target"]["memory"] == 80
+
+
+def test_host_manage_confirmed_restart_uses_noninteractive_gate(monkeypatch):
+    from anvil_serving import host
+
+    seen = {}
+    monkeypatch.setattr(
+        host,
+        "cmd_restart_docker",
+        lambda **kwargs: seen.update(kwargs) or 0,
+    )
+    env = mcp.call_tool("host_manage", {
+        "action": "restart-docker", "confirm": True, "dry_run": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is True
+    assert seen == {"force": True}
+
+
+def test_host_manage_rejects_wsl_arguments_for_restart():
+    env = mcp.call_tool("host_manage", {
+        "action": "restart-docker", "memory": 80, "confirm": True, "dry_run": False,
+    })
     assert env["ok"] is False
     assert env["error"]["code"] == "bad_argument"
 
@@ -1360,6 +1552,24 @@ def test_voice_manage_bad_action_and_bad_config(tmp_path):
     assert missing["error"]["code"] == "bad_config"
 
 
+def test_host_manage_rejects_action_specific_arguments_in_preview():
+    env = mcp.call_tool(
+        "host_manage",
+        {"action": "restart-docker", "memory": 80, "dry_run": True},
+    )
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_capture_is_bounded_without_holding_output_in_memory():
+    rc, stdout, stderr = mcp._capture(
+        lambda: (print("x" * (mcp._MAX_CAPTURE_CHARS + 100)), 0)[1]
+    )
+    assert rc == 0
+    assert len(stdout) == mcp._MAX_CAPTURE_CHARS
+    assert stderr == ""
+
+
 def test_voice_manage_schema_exposes_action_enum():
     tool = next(item for item in mcp.list_tools() if item["name"] == "voice_manage")
     assert tool["inputSchema"]["properties"]["action"]["enum"] == ["up", "down", "start", "stop"]
@@ -1461,7 +1671,8 @@ def test_gateway_restart_is_gated_and_uses_argv_preview():
     assert env["ok"] is True
     assert env["data"]["restarted"] is False
     assert env["data"]["command"] == [
-        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=60",
+        "ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+        "-o", "ConnectTimeout=60",
         "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
         "--", "sd@mini", 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"',
     ]
@@ -2514,7 +2725,11 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
     def fake_remote(controller_url, request, token, **kwargs):
         seen.append((controller_url, token, request))
         if request["method"] == "tools/list":
-            return {"jsonrpc": "2.0", "id": request["id"], "result": {"tools": []}}
+            return {
+                "jsonrpc": "2.0",
+                "id": request["id"],
+                "result": {"tools": mcp.list_tools()},
+            }
         return {
             "jsonrpc": "2.0",
             "id": request["id"],
@@ -2533,7 +2748,14 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/call",
-            "params": {"name": "preflight_probe", "arguments": {"confirm": False}},
+            "params": {
+                "name": "preflight_probe",
+                "arguments": {
+                    "base_url": "http://127.0.0.1:30000/v1",
+                    "model": "local",
+                    "confirm": False,
+                },
+            },
         },
     ]
     stdout = io.StringIO()
@@ -2545,10 +2767,119 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
     ) == 0
     lines = [json.loads(ln) for ln in stdout.getvalue().splitlines()]
     assert lines[0]["result"]["serverInfo"]["name"] == "anvil-serving"
-    assert lines[1]["result"]["tools"] == []
+    assert lines[1]["result"]["tools"] == mcp.list_tools()
     assert lines[2]["result"]["structuredContent"]["data"]["proxied"] is True
     assert [item[2]["method"] for item in seen] == ["tools/list", "tools/call"]
     assert all(item[0] == "http://127.0.0.1:8765" and item[1] == "secret" for item in seen)
+
+
+def test_stdio_proxy_rejects_catalog_drift_and_unsafe_calls_before_forwarding(monkeypatch):
+    seen = []
+
+    def fake_remote(controller_url, request, token, **kwargs):
+        seen.append(request)
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {
+                "tools": [
+                    {
+                        **mcp.list_tools()[0],
+                        "description": "drifted remote contract",
+                    }
+                ]
+            },
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    requests = [
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+                "name": "router_status",
+                "arguments": {"argv": ["cmd", "/c", "whoami"]},
+            },
+        },
+    ]
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps(request) + "\n" for request in requests],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
+    assert responses[0]["error"]["data"]["code"] == "operation_contract_mismatch"
+    assert responses[1]["error"]["data"]["code"] == "raw_command_not_allowed"
+    assert seen == [requests[0]]
+
+
+def test_stdio_proxy_accepts_an_allowlisted_catalog_subset(monkeypatch):
+    subset = [next(tool for tool in mcp.list_tools() if tool["name"] == "host_summary")]
+
+    def fake_remote(controller_url, request, token, **kwargs):
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"tools": subset},
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}) + "\n"],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    assert json.loads(stdout.getvalue())["result"]["tools"] == subset
+
+
+def test_stdio_proxy_preserves_safe_target_context_as_result_metadata(monkeypatch):
+    def fake_remote(controller_url, request, token, **kwargs):
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {
+                "content": [],
+                "structuredContent": {"ok": True, "data": {}},
+                "isError": False,
+            },
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    request = {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+            "name": "operation_contracts",
+            "arguments": {},
+            "context": {
+                "topology": "fakoli-reference",
+                "execution_host": "dark",
+                "execution_runtime": "dark-native",
+                "transport": "controller",
+            },
+        },
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps(request) + "\n"],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    context = json.loads(stdout.getvalue())["result"]["_meta"]["anvil/context"]
+    assert context["topology"] == "fakoli-reference"
+    assert context["execution_host"] == "dark"
+    assert context["transport"] == "controller"
 
 
 def test_stdio_proxy_does_not_forward_notifications_or_null_ids(monkeypatch):

@@ -17,17 +17,24 @@ allow_model_workloads = true
 id = "fakoli-mini"
 roles = ["gateway", "operator", "proxy"]
 address = "192.0.2.10"
+os = "macos"
 capacity_policy = "mini-model-free"
 
 [[hosts]]
 id = "fakoli-dark"
 roles = ["router", "serve", "audio"]
 address = "192.0.2.20"
+os = "windows"
 capacity_policy = "dark-model-capable"
 
 [[runtimes]]
 id = "mini-native"
 host = "fakoli-mini"
+role = "native"
+
+[[runtimes]]
+id = "dark-native"
+host = "fakoli-dark"
 role = "native"
 
 [[runtimes]]
@@ -48,6 +55,20 @@ runtime = "dark-docker"
 uuid = "GPU-00000000-0000-0000-0000-000000000002"
 
 # Mini runs gateway and proxy services only. It has no GPU role or model workload.
+[[resources]]
+id = "mini-host"
+role = "host"
+host = "fakoli-mini"
+runtime = "mini-native"
+workload = "service"
+
+[[resources]]
+id = "dark-host"
+role = "host"
+host = "fakoli-dark"
+runtime = "dark-native"
+workload = "service"
+
 [[resources]]
 id = "openclaw-gateway"
 role = "gateway"
@@ -118,6 +139,24 @@ runtime = "dark-docker"
 endpoint = "http://127.0.0.1:30111/v1"
 endpoint_kind = "host-relative-loopback"
 workload = "tts"
+
+[[transports]]
+id = "mini-controller"
+kind = "controller"
+host = "fakoli-mini"
+runtime = "mini-native"
+endpoint = "http://192.0.2.10:8766"
+auth_env = "ANVIL_CONTROLLER_TOKEN"
+allowed_operations = ["harness-sync-openclaw", "harness-restart-openclaw", "harness-status-openclaw", "host-status", "host-doctor", "host-restart-docker"]
+
+[[transports]]
+id = "dark-host-controller"
+kind = "controller"
+host = "fakoli-dark"
+runtime = "dark-native"
+endpoint = "http://192.0.2.20:8766"
+auth_env = "ANVIL_CONTROLLER_TOKEN"
+allowed_operations = ["host-status", "host-gpus", "host-doctor", "host-wsl-config", "host-restart-docker", "host-reset-wsl", "doctor"]
 
 [[transports]]
 id = "dark-controller"
