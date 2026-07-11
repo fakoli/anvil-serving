@@ -298,7 +298,8 @@ def test_doctor_reports_and_recommends(monkeypatch, capsys):
 # ---- wsl_meminfo / cmd_memory / cmd_reclaim (page-cache watchdog) -------------
 
 def _meminfo_text(total_gb=64, avail_gb=8, cached_gb=50):
-    kb = lambda gb: int(gb * 1024 ** 2)
+    def kb(gb):
+        return int(gb * 1024 ** 2)
     return ("MemTotal:       %d kB\nMemFree:        %d kB\nMemAvailable:   %d kB\n"
             "Buffers:        1000 kB\nCached:         %d kB\n"
             % (kb(total_gb), kb(1), kb(avail_gb), kb(cached_gb)))
