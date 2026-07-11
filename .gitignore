@@ -33,3 +33,6 @@ docs/findings/captures/
 
 # MkDocs build output
 site/
+
+# Unsloth/torch.compile scratch dir emitted when running local model experiments
+unsloth_compiled_cache/
