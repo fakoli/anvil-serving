@@ -515,8 +515,11 @@ def test_ssh_recovery_uses_verified_host_and_argument_array(tmp_path):
     assert not transports.Path(seen[0][2]).exists()
     assert "BatchMode=yes" in seen[0][0]
     assert "StrictHostKeyChecking=yes" in seen[0][0]
-    assert seen[0][0][1:3] == ["-F", transports.os.devnull]
-    assert "GlobalKnownHostsFile=" + transports.os.devnull in seen[0][0]
+    # Literal on purpose, not transports._SSH_DEVNULL: the wire value must be
+    # "/dev/null" on every platform (MSYS ssh rejects "nul"), and comparing
+    # against the module's own constant would make this assertion tautological.
+    assert seen[0][0][1:3] == ["-F", "/dev/null"]
+    assert "GlobalKnownHostsFile=/dev/null" in seen[0][0]
     assert "ProxyCommand=none" in seen[0][0]
     assert "ProxyJump=none" in seen[0][0]
     assert "IdentityAgent=none" in seen[0][0]
