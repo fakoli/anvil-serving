@@ -1,6 +1,6 @@
 # Illustrative overlay values for a private deployment.
-# This file is deliberately partial: merge these keys into a copy of
-# operator-topology.toml before validating or passing it to an operator command.
+# This file is deliberately partial: pass a private copy with
+# --topology-overlay so records merge into operator-topology.toml by stable id.
 # Keep credentials in environment variables; do not put tokens in an overlay.
 
 command_host = "host:fakoli-mini"

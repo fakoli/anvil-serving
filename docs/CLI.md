@@ -13,6 +13,7 @@ never `localhost`.
 ```
 anvil-serving --help
 anvil-serving --version
+anvil-serving --command-manifest
 anvil-serving <command> --help
 ```
 
@@ -20,15 +21,18 @@ anvil-serving <command> --help
 installed package version as `anvil-serving X.Y.Z`. Root help also names the canonical nested
 workflows that are easiest to miss: `serves render`, `models cache prune`, `models score`,
 `benchmark external`, and `voice sidecar`.
+`--command-manifest` prints the deterministic JSON command contract and rejects command arguments.
 
 Topology-aware resource commands accept `--topology PATH`, `--command-host`, `--command-runtime`,
-`--target`, and `--transport`. A model-free host rejects model workloads before handler launch.
+`--target`, `--transport`, and `--allow-ssh-fallback`. A model-free host rejects model workloads before handler launch.
 The narrow exception requires both an `experimental-model` resource permitted by the topology's
 capacity policy and the per-invocation `--experimental-model-workload` flag. Successful overrides
 emit a warning and capacity audit fields; the flag alone never upgrades an ordinary model resource.
-The M1 dispatcher executes only plans that resolve to `local`; a controller or SSH plan fails closed
-before handler import. Use `mcp serve --controller-url` for supported remote operations until the
-M2 CLI transport adapter lands.
+Remote-capable commands execute through the authenticated controller declared for the resource
+owner. `auto` never selects SSH. A recovery-capable command may use `--transport ssh` or
+`--allow-ssh-fallback`; fallback is limited to a proven pre-dispatch controller connection failure
+and requires a pinned host identity plus the private-key path in `ANVIL_SSH_IDENTITY_FILE`.
+Ambiguous controller outcomes are reconciled by idempotency status and never replayed over SSH.
 
 The dispatcher uses exit status `0` for success, `1` for execution failure, `2` for invalid usage,
 `3` for a refused safety gate, `4` for transport failure, and `5` for partial completion. Leaf
@@ -61,6 +65,7 @@ confirmation or acknowledgement flags in focused `--help`.
 | `mcp` | Stdio MCP server (and remote-controller proxy) for operational tools. | Control plane & integrations |
 | `controller` | Token-authenticated HTTP controller for split-host MCP forwarding. | Control plane & integrations |
 | `harness` | Render/apply harness-side config (OpenClaw) from the live router config. | Control plane & integrations |
+| `topology` | Validate and resolve host/resource ownership without execution. | Control plane & integrations |
 | `voice` | Voice pipeline: STT/TTS serve lifecycle, realtime server, benchmark, bridge. | Voice |
 | `voice sidecar` | Validate/render the HF speech-to-speech sidecar command and compose. | Voice |
 
@@ -214,29 +219,34 @@ anvil-serving models cache prune --mixture openai/gpt-oss-120b,Qwen/Qwen3-32B --
 ### `eval preflight`
 
 ```
-anvil-serving eval preflight --base-url URL --model ID [--api-key-env ENV]
-                        [--needle-ctx N] [--tool-batch N] [--no-thinking]
+anvil-serving eval preflight (--base-url URL --model ID | --tier NAME [--manifest PATH])
+                        --confirm [--api-key-env ENV] [--needle-ctx N]
+                        [--tool-batch N] [--no-thinking]
 ```
 
 Correctness gate against any OpenAI-compatible endpoint, before trusting throughput: short coding
 smoke, structured JSON, long-context needle retrieval (`--needle-ctx`, default 128000), and a
 shared-prefix tool-calling batch (`--tool-batch`, default 20). `--no-thinking` injects
 `chat_template_kwargs={"enable_thinking": false}` so thinking-by-default models (Qwen3.x, GLM)
-don't false-fail with empty content. Exit code 0 = all pass, 1 = any fail.
+don't false-fail with empty content. `--tier` fills the endpoint and model from a serves manifest;
+without `--manifest`, it uses the bundled reference manifest. The CLI requires `--confirm` because
+the gate sends a live workload. Controller execution accepts direct endpoint inputs only, so an
+operator-local manifest path is never interpreted on another host. Exit code 0 = all pass, 1 = any fail.
 
 ```bash
-anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --no-thinking
+anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --no-thinking --confirm
 ```
 
 ### `eval benchmark`
 
 ```
-anvil-serving eval benchmark run --base-url URL --model ID [flags]
+anvil-serving eval benchmark run (--base-url URL --model ID | --tier NAME [--manifest PATH]) --confirm [flags]
 anvil-serving eval benchmark external {init|sources|fetch|import|list|report|export|compare} [flags]
 ```
 
 Replays the measured Claude Code subagent request distribution and reports TTFT, end-to-end
-latency, throughput, and a prefix-cache hit signal.
+latency, throughput, and a prefix-cache hit signal. Like preflight, the CLI requires `--confirm`
+before sending the live workload, and controller execution accepts direct endpoint inputs only.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -245,11 +255,12 @@ latency, throughput, and a prefix-cache hit signal.
 | `--ctx-tokens` / `--max-tokens` | `0` / `64` | Fixed context (0 samples the measured distribution) / generation length. |
 | `--max-model-len` / `--margin` | `0` (auto) / `1024` | Clamp sampled ctx under the serve's window. |
 | `--api-key-env` / `--no-thinking` | — / off | Bearer token env-var name / disable hidden reasoning for thinking-by-default models. |
+| `--timeout` / `--timeout-seconds` | `900` | Equivalent request-timeout spellings; the typed controller contract uses `--timeout-seconds`. |
 | `--json-out` | — | Machine-readable summary for `eval benchmark external compare`. |
 | `--recipe-out`, `--recipe-from-container`, `--recipe-intent`, `--recipe-mode`, `--recipe-status`, `--recipe-model` | — | Record a reproducible `[[recipe]]` block for the live serve (read back with `models recipe`). |
 
 ```bash
-anvil-serving eval benchmark run --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking
+anvil-serving eval benchmark run --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking --confirm
 ```
 
 > **Importable entrypoints.** `preflight` and `benchmark` are dispatched through their module
@@ -299,11 +310,19 @@ anvil-serving init [--model PATH] [--catalog-dir DIR] [--gpu IDX|UUID] [--served
 
 Generic onboarding (ADR-0003): detects GPUs and a local model (default: the biggest loadable entry
 from the `models sync` catalog in `--catalog-dir`, default `./model-library`), and writes a
-consistent `docker-compose.yml` + `serves.toml` + `router.toml` bring-up, then prints the
-remaining manual steps (`serves up`, `serves status`, `serve --config`).
+consistent `docker-compose.yml` + `serves.toml` + `router.toml` + `operator-topology.toml`
+bring-up, then prints the remaining manual steps (`serves up`, `serves status`, `router run`).
+
+The generated topology is an offline-valid generic base. It uses stable `local-*` identifiers and
+`127.0.0.1`, and does not inspect or record the machine hostname, operating system, network,
+GPU UUIDs, credentials, or ambient command identity. Keep machine-specific addresses, host OS,
+GPU roles, and authenticated controllers in a separate deployment overlay. Consequently,
+OS-specific repairs and GPU-bound topology execution remain unavailable until those facts are
+declared explicitly.
 
 ```bash
 anvil-serving init --catalog-dir ./model-library --gpu 0
+anvil-serving topology validate --topology ./operator-topology.toml
 ```
 
 ### `doctor`
@@ -345,20 +364,46 @@ anvil-serving doctor --config configs/example.toml
 ### `host`
 
 ```
-anvil-serving host {doctor|wsl-config|restart-docker|reset-wsl} [flags]
+anvil-serving host {status|gpus|doctor|wsl-config|restart-docker|reset-wsl} [flags]
 ```
 
 Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
 
 | Action | What it does |
 |--------|--------------|
+| `status` | Return structured host RAM, Docker/WSL memory, and GPU status. |
+| `gpus` | List observed NVIDIA indexes, names, and stable UUIDs. |
 | `doctor` | Inspect the host + recommend a safe WSL memory cap. |
-| `wsl-config` | Edit `.wslconfig` memory/swap (`--memory GB`, `--swap GB`); backup + safe-cap refusal (`--force` to override), `--revert` restores the newest anvil backup, `--dry-run` shows the change. |
-| `restart-docker` | Apply via a Docker Desktop restart (confirm prompt; `--force` skips). |
-| `reset-wsl` | Un-wedge a hung WSL subsystem (confirm prompt; `--force` skips). |
+| `wsl-config` | Windows-native only. Edit `.wslconfig` memory/swap (`--memory GB`, `--swap GB`); backup + safe-cap refusal (`--force` overrides only that cap), `--revert` restores the newest anvil backup, and `--dry-run` shows the change. |
+| `restart-docker` | Windows/macOS native only. Apply via a Docker Desktop restart; requires `--confirm`, while `--dry-run` performs no restart. |
+| `reset-wsl` | Windows-native only. Un-wedge a hung WSL subsystem; requires `--confirm`, while `--dry-run` performs no reset. |
 
 ```bash
 anvil-serving host wsl-config --memory 64 --dry-run
+```
+
+With `--topology`, host actions resolve a declared `host` resource. Use `--target host:ID` when a
+topology contains more than one host resource. OS/runtime compatibility is checked before local or
+controller dispatch, so a Windows-only action cannot execute on Fakoli Mini/macOS.
+
+### `topology`
+
+```
+anvil-serving topology show --topology PATH [--topology-overlay PATH]
+anvil-serving topology validate --topology PATH [--topology-overlay PATH]
+anvil-serving topology resolve --topology PATH --command "host status" [target options]
+```
+
+`show` and `validate` are offline and do not require command identity. A partial deployment overlay
+merges tables by stable `id` before validation. `resolve` performs the same owner, target, host OS,
+runtime, capacity, and transport selection used by operational commands, but executes nothing. Its
+human and JSON output includes command, execution, and resource hosts/runtimes, transport and
+controller/resource endpoints, topology/overlay identity, and GPU role/UUID when applicable.
+
+```bash
+anvil-serving topology resolve \
+  --topology examples/fakoli-dark/operator-topology.toml \
+  --command "host status" --target host:fakoli-mini
 ```
 
 ---
@@ -403,12 +448,12 @@ Unified shadow-eval harness. See [Serves & eval](SERVES-AND-EVAL.md).
 
 | Subcommand | What it does |
 |------------|--------------|
-| `preflight` / `benchmark` | Run the correctness gate / throughput replay against a manifest tier: `--tier heavy` fills `--base-url`/`--model` from the serves manifest (or override them directly); unknown flags pass through to the underlying script. |
+| `preflight` / `benchmark` | Run the correctness gate / throughput replay against a manifest tier: `--tier heavy` fills `--base-url`/`--model` from the serves manifest (or override them directly). Both live workloads require `--confirm`. |
 | `planning` | Planning-capability bake-off; offline re-grade of committed eval-data by default, `--live` also runs generation against live serves; `--dir` selects the eval-data dir. |
 | `bootstrap` | Replay committed eval fixtures into a quality profile (`--eval-data`, `--out`; the offline, CI-safe alternative to `calibrate`). |
 
 ```bash
-anvil-serving eval preflight --tier fast --no-thinking
+anvil-serving eval preflight --tier fast --no-thinking --confirm
 ```
 
 ### `eval calibrate`
@@ -484,12 +529,14 @@ anvil-serving controller serve --host 100.64.0.10 --auth-token-env ANVIL_CONTROL
 ### `harness`
 
 ```
-anvil-serving harness {sync|restart} openclaw [flags]
+anvil-serving harness {sync|restart|status} openclaw [flags]
 ```
 
 Owns the harness-side config: renders a harness's model/provider config **from** the live router
 config so the two never drift (v1 target: OpenClaw). `sync` requires `--config <router.toml>`;
-`restart` reloads the gateway (locally or over ssh) and takes only `--gateway-host`/`--gateway-user`.
+`restart` reloads the gateway, and `status` returns bounded gateway status. With topology options,
+all three target the declared gateway owner and use its controller. Restart alone is marked for
+explicit verified SSH recovery; normal `auto` execution never invokes SSH.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -499,12 +546,15 @@ config so the two never drift (v1 target: OpenClaw). `sync` requires `--config <
 | `--api-key-env` | `ANVIL_ROUTER_TOKEN` | Token env-var name (referenced by name, never the secret). |
 | `--gateway-host` / `--gateway-user` / `--gateway-path` | — | Push to a remote OpenClaw gateway over ssh (merge by default, backup taken); `--overwrite` replaces instead of merging. |
 | `--restart` | off | After `sync`: restart the gateway (requires an applied target, not stdout). |
+| `--dry-run` | off | Validate/render sync or show the fixed restart command without applying it. |
 | `--skills` / `--skill-dir` | off | Also render/apply the workbench skill + sub-agent config. |
 | `--voice`, `--voice-realtime-url`, `--voice-model`, `--voice-consult-*`, `--voice-api-key-env` | off | Also render/apply OpenClaw Talk realtime config for Anvil Voice. |
-| `--timeout-seconds` | bounded | Cap each ssh/scp/openclaw subprocess call. |
+| `--timeout-seconds` | bounded | Cap each controller-side or local OpenClaw subprocess call. |
+| `--max-output-bytes` | `65536` | For `status`, bound each captured output stream. |
 
 ```bash
 anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --restart
+anvil-serving harness status openclaw --topology examples/fakoli-dark/operator-topology.toml
 ```
 
 ---

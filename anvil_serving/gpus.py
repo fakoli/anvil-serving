@@ -23,13 +23,14 @@ _UUID_PREFIX = "GPU-"
 _GPU_UUID_RE = re.compile(
     r"^GPU-[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
 )
+DEFAULT_QUERY_TIMEOUT_SECONDS = 15
 
 
 class GpuRoleResolutionError(ValueError):
     """A configured GPU role cannot be matched safely to observed hardware."""
 
 
-def list_gpus(_run=subprocess.check_output):
+def list_gpus(_run=subprocess.check_output, timeout=DEFAULT_QUERY_TIMEOUT_SECONDS):
     """[{"index": int, "uuid": str, "name": str}, ...] via `nvidia-smi`.
 
     Returns `[]` if `nvidia-smi` is absent, not on PATH, or errors (no GPU
@@ -38,7 +39,7 @@ def list_gpus(_run=subprocess.check_output):
     try:
         out = _run(
             ["nvidia-smi", "--query-gpu=index,uuid,name", "--format=csv,noheader"],
-            stderr=subprocess.DEVNULL, encoding="utf-8")
+            stderr=subprocess.DEVNULL, encoding="utf-8", timeout=timeout)
     except Exception:
         return []
     gpus = []

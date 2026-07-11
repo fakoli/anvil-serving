@@ -203,6 +203,37 @@ def test_ambiguous_resource_owner_refuses_with_safety_exit_metadata():
     assert excinfo.value.metadata == {"exit_class": "safety", "exit_code": 3}
 
 
+def test_explicit_target_disambiguates_same_role_across_hosts():
+    topology = parse_topology(_topology_data())
+    duplicate = replace(
+        topology.resource("router"),
+        id="mini-router-status",
+        host="mini",
+        runtime="mini-native",
+        endpoint="http://127.0.0.1:8000/v1",
+    )
+    multi_host = replace(topology, resources=topology.resources + (duplicate,))
+    plan = resolve_execution_plan(
+        multi_host,
+        _spec("router-status", "router"),
+        target="host:mini",
+        command_host="host:mini",
+        command_runtime="runtime:mini-native",
+    )
+    assert plan.resource is duplicate
+    assert plan.transport == "local"
+
+
+def test_command_host_os_restriction_fails_before_transport_selection():
+    topology = parse_topology(_topology_data())
+    hosts = tuple(replace(item, os="linux") if item.id == "dark" else item for item in topology.hosts)
+    topology = replace(topology, hosts=hosts)
+    spec = replace(_spec("host-wsl-config", "router"), execution_host_os=("windows",))
+    with pytest.raises(TargetResolutionError, match="does not support host OS") as excinfo:
+        resolve_execution_plan(topology, spec, target="host:dark")
+    assert excinfo.value.exit_code == 3
+
+
 def test_missing_resource_owner_refuses_with_safety_exit_metadata():
     with pytest.raises(TargetResolutionError) as excinfo:
         resolve_execution_plan(parse_topology(_topology_data()), _spec("missing-status", "missing"))
