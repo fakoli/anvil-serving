@@ -1,0 +1,16 @@
+{
+  "schema": "anvil-serving.mtp-ab-probe/v1",
+  "candidate_id": "nemotron3-puzzle-75b",
+  "model": "nvidia/NVIDIA-Nemotron-Labs-3-Puzzle-75B-A9B-NVFP4",
+  "engine": "vllm/vllm-openai:nightly (v0.23.1rc1)",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q (sm_120)",
+  "method": "3 identical requests per config: fixed technical prompt, max_tokens 1024 (all runs emitted exactly 1024), temperature 0.0, enable_thinking false; wall-clock tok/s from usage.completion_tokens. Standard 10-request short-completion benchmark was inadequate for MTP comparison (completions EOS at ~10-31 tokens; speculative overhead cannot amortize) - see the short-probe JSONs for that negative methodology result.",
+  "mtp_off": {"runs_tok_s": [90.1, 91.8, 92.2], "mean_tok_s": 91.4, "config": "docker-compose.mtp-off.yml override (no --speculative-config)"},
+  "mtp_on":  {"runs_tok_s": [132.0, 147.8, 131.2], "mean_tok_s": 137.0, "config": "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":3}'"},
+  "speedup": 1.50,
+  "external_reference": "community-reported ~1.53x at n=3 on GB10-class Blackwell (NVIDIA forums) - consistent",
+  "notes": [
+    "Prefix caching auto-disabled by the engine for the Mamba+MTP combination (matches upstream #39809 guidance).",
+    "num_speculative_tokens=3 per the model card; >3 carries known sm_120 crash/OOM reports (rtx6kpro wiki, Super-120B discussion #9)."
+  ]
+}
