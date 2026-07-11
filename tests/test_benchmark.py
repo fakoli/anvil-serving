@@ -61,11 +61,51 @@ def test_make_prompt_truncates_to_keep_real_tokens_under_cap():
     assert cap is not None and bm.est_tokens(prompt) < 16384
 
 
-def test_make_prompt_unclamped_behavior_preserved():
-    # No cap -> no truncation, keeps the trailing instruction (legacy behavior).
+def test_make_prompt_unclamped_still_sizes_to_target():
+    # No cap known -> still sized to the TARGET (BUG 3: an uncapped prompt used to
+    # balloon ~2x past the target and 400 on serves that don't advertise max_model_len,
+    # e.g. the recorded llama.cpp context-row failure). Trailing instruction survives.
     prompt = bm.make_prompt("shared prefix", ctx_tokens=4000, uniq=7)
     assert prompt.endswith("summarize the above in one line.")
     assert "request 7" in prompt
+    assert abs(bm.est_tokens(prompt) - 4000) <= 400
+
+
+def test_make_prompt_sub_window_targets_scale_with_target():
+    """BUG 3: with a 262144 window, --context-targets 131072,262144 sent IDENTICAL
+    ~window-sized prompts (candidate-qwen36-27b-mtp-vllm-nvfp4-262k.bakeoff.json
+    records usage.prompt_tokens=261949 on BOTH rows) because filler was sized by a
+    word heuristic that under-counts ~2x and then truncated at the WINDOW cap, not
+    the per-target size. Each target must now produce its own prompt size."""
+    cap = bm.ctx_cap(262144, 64, bm.DEFAULT_CTX_MARGIN)
+    shared = (bm.FILLER % (0, 0)) * max(1, int(8000 * 0.75) // 6)
+    prompts = {}
+    for target in (131072, 262144):
+        clamped = bm.clamp_ctx(target, cap)
+        prompt = bm.make_prompt(shared, clamped, target, max_prompt_tokens=cap)
+        # estimated size lands within 10% of the clamped per-target budget
+        assert abs(bm.est_tokens(prompt) - clamped) <= 0.10 * clamped
+        # the shared prefix must survive verbatim at the START (prefix-cache contract)
+        assert prompt.startswith(shared)
+        prompts[target] = prompt
+    assert len(prompts[131072]) < 0.6 * len(prompts[262144])
+
+
+def test_make_prompt_tiny_target_never_returns_whole_prefix():
+    # A target smaller than the tail line must not flip the truncation slice index
+    # negative (s[:-k] keeps everything BUT k chars — i.e. ~the whole 68k prefix).
+    shared = (bm.FILLER % (0, 0)) * 1000
+    prompt = bm.make_prompt(shared, 5, 0)
+    assert len(prompt) < 100
+
+
+def test_make_prompt_calibrated_chars_per_token_resizes():
+    # A calibrated (larger) chars/token rate must grow the char budget so the REAL
+    # token count lands on target instead of ~15% under the conservative default.
+    default = bm.make_prompt("x", 4000, 0)
+    calibrated = bm.make_prompt("x", 4000, 0, chars_per_token=3.5)
+    assert len(default) == pytest.approx(4000 * 3.0, abs=100)
+    assert len(calibrated) == pytest.approx(4000 * 3.5, abs=100)
 
 
 def test_default_16384_serve_does_not_overflow_window():
@@ -359,6 +399,43 @@ def test_bakeoff_evidence_records_identity_context_score_and_failures(monkeypatc
         "target_tokens": 2048,
         "error": "second context failed",
     }]
+
+
+def test_bakeoff_context_rows_calibrate_from_usage_and_hit_targets(monkeypatch, tmp_path):
+    """The first context row's usage.prompt_tokens calibrates chars/token (here the
+    fake serve tokenizes at 3.5 chars/token), so the SECOND row is sized with the
+    real rate and its recorded prompt tokens land within 10% of its target —
+    instead of both rows sending the same window-sized prompt (BUG 3)."""
+    def fake_stream_chat(base, model, prompt, key, max_tokens, timeout=900,
+                         chat_template_kwargs=None):
+        return dict(ttft=0.05, e2e=0.2, out_toks=8,
+                    usage={"prompt_tokens": int(len(prompt) / 3.5)})
+
+    monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
+    out = tmp_path / "calibration.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39010/v1",
+        "--model", "qwen36-27b",
+        "--candidate-id", "qwen36-27b",
+        "--config-id", "vllm-nvfp4-262k",
+        "--context-targets", "32768,65536",
+        "--suite", "context",
+        "--max-model-len", "262144",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    rows = json.loads(out.read_text(encoding="utf-8"))["context"]["targets"]
+    assert rows[0]["chars_per_token"] == 3.0  # conservative default, first row
+    assert rows[1]["chars_per_token"] == pytest.approx(3.5, abs=0.05)  # calibrated
+    # two targets -> meaningfully different prompts; calibrated row hits its target
+    assert rows[0]["usage"]["prompt_tokens"] < 0.6 * rows[1]["usage"]["prompt_tokens"]
+    assert rows[1]["usage"]["prompt_tokens"] == pytest.approx(65536, rel=0.10)
+    # the recorded estimate uses the SAME calibrated rate the prompt was sized with —
+    # it is the failure diagnostic, so it must not drift once calibration advances
+    # (estimating with the fixed 3.0 constant would report ~76k here, 17% over).
+    assert rows[1]["estimated_prompt_tokens"] == pytest.approx(65536, rel=0.10)
 
 
 def test_bakeoff_tool_suite_records_tool_call(monkeypatch, tmp_path):

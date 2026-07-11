@@ -49,24 +49,35 @@ def clamp_ctx(ctx, cap):
     """Clamp a sampled/fixed ctx-token target down to the serve's usable budget."""
     return ctx if cap is None else min(ctx, cap)
 
-def make_prompt(shared_prefix, ctx_tokens, uniq, max_prompt_tokens=None):
-    # shared_prefix is identical across requests (prefix-cache hit); tail varies to reach ctx_tokens
-    approx_words = int(ctx_tokens * 0.75)
+def make_prompt(shared_prefix, ctx_tokens, uniq, max_prompt_tokens=None,
+                chars_per_token=CHARS_PER_TOKEN):
+    """Build a prompt sized to ~ctx_tokens tokens, never past max_prompt_tokens.
+
+    Sized by ONE char budget from the per-target token count — the old word-count
+    heuristic under-counted (the filler tokenizes at ~2.7 tok/word, the heuristic
+    assumed 1.33) and the old truncation cut at the WINDOW cap, so every sub-window
+    target ballooned to the window (both bakeoff context probes sent identical
+    ~262k prompts; see docs/findings/2026-07-10-...-evidence/failures.md §7).
+    The default chars_per_token is conservative (real tokens land UNDER budget);
+    pass a value calibrated from usage.prompt_tokens to land ON the target.
+    """
+    # shared_prefix is identical across requests (prefix-cache hit); filler varies
+    budget = ctx_tokens if max_prompt_tokens is None else min(ctx_tokens, max_prompt_tokens)
+    tail = f"\n# request {uniq}: summarize the above in one line."
+    char_budget = int(budget * chars_per_token) - len(shared_prefix) - len(tail) - 1
+    if char_budget <= 0:
+        # shared prefix ALONE exceeds the budget (tiny window / big --shared-prefix-tokens):
+        # front-truncate it — keeps its head for prefix-cache hits, never overflows.
+        # max(0, ...) because a NEGATIVE slice index would keep almost the whole prefix.
+        return shared_prefix[: max(0, int(budget * chars_per_token) - len(tail))] + tail
     lines = []
-    w = len(shared_prefix.split())
+    filled = 0
     i = 0
-    while w < approx_words:
+    while filled < char_budget:
         s = FILLER % (uniq + i, i)
-        lines.append(s); w += len(s.split()); i += 1
-    prompt = shared_prefix + "\n" + "".join(lines) + f"\n# request {uniq}: summarize the above in one line."
-    # The word->token heuristic UNDER-estimates real tokens (code tokenizes to >1.33
-    # tok/word), so an unclamped prompt can blow past a small serve's max_model_len and
-    # 400. When a cap is known, truncate to a conservative char budget that keeps the
-    # REAL token count under the cap (front-truncation preserves the shared prefix for
-    # prefix-cache hits).
-    if max_prompt_tokens is not None and est_tokens(prompt) > max_prompt_tokens:
-        prompt = prompt[: int(max_prompt_tokens * CHARS_PER_TOKEN)]
-    return prompt
+        lines.append(s); filled += len(s); i += 1
+    filler = "".join(lines)[:max(0, char_budget)]
+    return shared_prefix + "\n" + filler + tail
 
 def build_body(model, prompt, max_tokens, chat_template_kwargs=None):
     body = {"model": model, "messages": [{"role": "user", "content": prompt}],
@@ -397,16 +408,22 @@ def run_bakeoff(a, api_key):
     should_run_context = "chat" in suites or "context" in suites
     if should_run_context:
         shared = (FILLER % (0, 0)) * max(1, int(a.shared_prefix_tokens * 0.75) // 6)
+        chars_per_token = CHARS_PER_TOKEN
         for target in context_targets:
             clamped = clamp_ctx(target, cap)
             prompt = make_prompt(
-                shared, clamped, target, max_prompt_tokens=cap
+                shared, clamped, target, max_prompt_tokens=cap,
+                chars_per_token=chars_per_token,
             )
             row = {
                 "target_tokens": target,
                 "clamped_tokens": clamped,
                 "attempted_context_tokens": clamped,
-                "estimated_prompt_tokens": est_tokens(prompt),
+                # estimate with the SAME rate the prompt was sized with — this field is
+                # the operator's diagnostic when a row fails (no usage comes back), so
+                # it must not drift from the fixed constant once calibration advances.
+                "estimated_prompt_tokens": int(len(prompt) / chars_per_token),
+                "chars_per_token": round(chars_per_token, 3),
                 "status": "pending",
             }
             try:
@@ -422,6 +439,13 @@ def run_bakeoff(a, api_key):
                     "usage": result.get("usage"),
                 })
                 chat_results.append(result)
+                # Calibrate sizing from the serve's REAL tokenizer count so later
+                # targets land ON target instead of ~15% under the conservative default.
+                usage = result.get("usage") or {}
+                if usage.get("prompt_tokens"):
+                    measured = len(prompt) / usage["prompt_tokens"]
+                    if 1.0 <= measured <= 10.0:  # ignore bogus usage
+                        chars_per_token = measured
             except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
                 row.update({"status": "failed", "error": str(exc)})
                 failures.append({
