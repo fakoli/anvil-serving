@@ -369,6 +369,7 @@ before sending the live workload, and controller execution accepts direct endpoi
 | `--timeout` / `--timeout-seconds` | `900` | Equivalent request-timeout spellings; the typed controller contract uses `--timeout-seconds`. |
 | `--json-out` | — | Machine-readable summary for `eval benchmark external compare`. |
 | `--recipe-out`, `--recipe-from-container`, `--recipe-intent`, `--recipe-mode`, `--recipe-status`, `--recipe-model` | — | Record a reproducible `[[recipe]]` block for the live serve (read back with `models recipes`). |
+| `--suite-file SPECS_JSON` | — | With `--bakeoff`: also run an externally-authored eval suite (e.g. a session-evals `suite.json`) through the deterministic check engine; results land in the evidence JSON under `suites.<suite name>`. See [Benchmark results](BENCHMARKS.md). |
 
 ```bash
 anvil-serving eval benchmark run --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking --confirm

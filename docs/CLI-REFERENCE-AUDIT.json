@@ -26,7 +26,7 @@
       },
       "canonical_counts": {
         "eval-benchmark-external": 19,
-        "eval-benchmark-run": 16,
+        "eval-benchmark-run": 17,
         "eval-calibrate": 8,
         "eval-preflight": 17,
         "eval-usage": 5,
@@ -98,7 +98,7 @@
       },
       "canonical_counts": {
         "eval-benchmark-external": 30,
-        "eval-benchmark-run": 22,
+        "eval-benchmark-run": 23,
         "eval-calibrate": 18,
         "eval-preflight": 24,
         "eval-usage": 8,
