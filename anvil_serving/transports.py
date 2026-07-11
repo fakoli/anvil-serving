@@ -35,6 +35,11 @@ MAX_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024
 MAX_RESPONSE_BYTES = 1024 * 1024
 
+# Null config path for the ssh CLI. Literal "/dev/null", not os.devnull: on Windows
+# os.devnull is "nul", which MSYS ssh (Git for Windows) rejects, while both MSYS ssh
+# and native Win32-OpenSSH accept "/dev/null" (the latter maps it to NUL internally).
+_SSH_DEVNULL = "/dev/null"
+
 _OPERATION_RE = re.compile(r"^[a-z][a-z0-9_-]{0,79}$")
 _TRANSPORT_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,127}$")
 _ENV_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
@@ -617,7 +622,7 @@ class SSHRecoveryTransport:
                 argv = [
                     "ssh",
                     "-F",
-                    os.devnull,
+                    _SSH_DEVNULL,
                     "-o",
                     "BatchMode=yes",
                     "-o",
@@ -625,7 +630,7 @@ class SSHRecoveryTransport:
                     "-o",
                     "UserKnownHostsFile=" + verified_hosts_path,
                     "-o",
-                    "GlobalKnownHostsFile=" + os.devnull,
+                    "GlobalKnownHostsFile=" + _SSH_DEVNULL,
                     "-o",
                     "ProxyCommand=none",
                     "-o",

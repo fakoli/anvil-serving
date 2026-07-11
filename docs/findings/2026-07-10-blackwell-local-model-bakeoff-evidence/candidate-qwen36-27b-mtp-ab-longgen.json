@@ -1,16 +1,32 @@
 {
-  "schema": "anvil-serving.mtp-ab-probe/v1",
-  "candidate_id": "qwen36-27b-nvfp4-mtp",
-  "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
-  "engine": "vllm/vllm-openai:nightly (v0.23.1rc1)",
-  "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q (sm_120)",
-  "method": "3 identical requests per config: fixed technical prompt, max_tokens 1024, temperature 0.0, enable_thinking false; wall-clock tok/s from usage.completion_tokens. Config per checkpoint README: method qwen3_5_mtp n=3, --language-model-only, prefix caching off (upstream #43559/#38182/#40756).",
-  "mtp_off": {"runs_tok_s": [70.0, 70.0, 69.6], "mean_tok_s": 69.9, "config": "docker-compose.mtp-off.yml override (no --speculative-config)"},
-  "mtp_on":  {"runs_tok_s": [94.7, 94.5, 95.7], "mean_tok_s": 95.0, "config": "--speculative-config '{\"method\":\"qwen3_5_mtp\",\"num_speculative_tokens\":3}'"},
-  "speedup": 1.36,
-  "external_reference": "checkpoint README reports 1.74x on the same GPU class at 256k config; our 1.36x at 262k/2-seq is lower but same direction. Author-reported numbers were not used as measurements.",
-  "notes": [
-    "Bakeoff sweep for this candidate: preflight ALL PASS, context verified at BOTH 131,072 and 262,144 tokens (largest verified window of the exercise), tools 20/20, session pass, intelligence 2/2.",
-    "Community checkpoint (ModelOpt NVFP4 with bf16 MTP head preserved); provenance caveat applies as with all community artifacts."
-  ]
+ "schema": "anvil-serving.mtp-ab-probe/v1",
+ "candidate_id": "qwen36-27b-nvfp4-mtp",
+ "model": "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
+ "engine": "vllm/vllm-openai:nightly (v0.23.1rc1)",
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q (sm_120)",
+ "method": "3 identical requests per config: fixed technical prompt, max_tokens 1024, temperature 0.0, enable_thinking false; wall-clock tok/s from usage.completion_tokens. Config per checkpoint README: method qwen3_5_mtp n=3, --language-model-only, prefix caching off (upstream #43559/#38182/#40756).",
+ "mtp_off": {
+  "runs_tok_s": [
+   70.0,
+   70.0,
+   69.6
+  ],
+  "mean_tok_s": 69.9,
+  "config": "docker-compose.mtp-off.yml override (no --speculative-config) NOTE: the off-leg also reverts prefix caching to the engine default (the base config pins it off for MTP) - biases the comparison conservatively."
+ },
+ "mtp_on": {
+  "runs_tok_s": [
+   94.7,
+   94.5,
+   95.7
+  ],
+  "mean_tok_s": 95.0,
+  "config": "--speculative-config '{\"method\":\"qwen3_5_mtp\",\"num_speculative_tokens\":3}'"
+ },
+ "speedup": 1.36,
+ "external_reference": "checkpoint README reports 1.74x on the same GPU class at 256k config; our 1.36x at 262k/2-seq is lower but same direction. Author-reported numbers were not used as measurements.",
+ "notes": [
+  "Bakeoff sweep for this candidate: preflight ALL PASS, context verified at BOTH 131,072 and 262,144 tokens (largest verified window of the exercise), tools 20/20, session pass, intelligence 2/2.",
+  "Community checkpoint (ModelOpt NVFP4 with bf16 MTP head preserved); provenance caveat applies as with all community artifacts."
+ ]
 }

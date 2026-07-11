@@ -2,7 +2,7 @@
 
 - **Date:** 2026-07-10 → 2026-07-11
 - **Host:** fakoli-dark (Windows 11 + WSL2 + Docker Desktop; RTX 5090 32 GB + RTX PRO 6000 Blackwell Max-Q 96 GB, both sm_120)
-- **Repository revision:** branch `bench/2026-07-10-blackwell-model-bakeoff` from `0e11df6` (origin/main)
+- **Repository revision:** base round from `0e11df6`; 2026-07-11 extension measured on `bench/2026-07-11-bakeoff-extension` from `a5ab196` (post-#198 main)
 - **Benchmark purpose:** measure six community-shortlisted candidates against the current production fast/heavy tiers, on this hardware, with anvil-serving's own correctness gates — to produce public serving evidence, not to change production.
 
 ## Executive Summary
@@ -14,7 +14,7 @@ documented failures. **No production tier changed.**
   measured heavy-role candidate: the only candidate to sweep every suite
   including both intelligence checks, at 97.2 tok/s single-stream with 86 ms
   warm TTFT — but it is a community checkpoint with no 131k headroom on 96 GB.
-  **Best measured candidate for the heavy role; not promoted.**
+  **Best measured candidate for the heavy role at base-round close; superseded by Nemotron-Labs-3-Puzzle-75B in the 2026-07-11 extension below. Not promoted.**
 - **Ornith-1.0-35B FP8** verified the full 131,072-token window with the
   fastest measured 131k full-prefill TTFT (13.1 s) and clean tool-calling;
   single-stream decode is modest (29 tok/s). **Retain as specialist
@@ -276,9 +276,10 @@ release and an operator decision.
 
 ### sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP — verdict: **262k big-KV experiment validated; community checkpoint; not promoted**
 The community-favorite Qwen3.6-27B dense, as a text-only NVFP4 conversion with
-the bf16 MTP head preserved. Preflight ALL PASS; context verified at 131,072
-AND **262,144 tokens** (largest verified window of the exercise; quarter-million
--token prefill TTFT ~124 s); intelligence 2/2; tools 20/20. MTP
+the bf16 MTP head preserved. Preflight ALL PASS; the **262,144-token window verified** (usage 261,949 prompt
+tokens; TTFT ~124 s - largest verified window of the exercise). The 131k-target
+probe also ran at the full window due to a harness prompt-sizing bug (see the
+ops notes); intelligence 2/2; tools 20/20. MTP
 (`qwen3_5_mtp` n=3): 69.9 -> **95.0 tok/s (1.36x)**; the author-reported 1.74x
 did not reproduce at this config. Requires `--language-model-only` and prefix
 caching off with MTP (three upstream issues; see the recipe).
@@ -286,7 +287,7 @@ caching off with MTP (three upstream issues; see the recipe).
 ### unsloth/Qwen3.5-35B-A3B-GGUF Q4_K_M (llama.cpp) — verdict: **strongest fast-tier candidate measured; not promoted**
 RTX 5090, 64k window (GDN hybrid makes KV nearly free), unsloth non-thinking
 sampling defaults. Intelligence 2/2 — the only fast-track candidate to match
-the heavy baseline — tools 20/20, session pass, 64k full-prefill 8.1 s,
+the heavy baseline — tools 20/20, session pass, 64k-window prefill 8.1 s (warm: 17.5k of 59k tokens prefix-cached),
 ~147 tok/s decode at 178 ms warm TTFT. Below the 214 tok/s community 5090
 reference (newer llama.cpp build there; build freshness measurably matters on
 this arch). llama.cpp MTP (`--spec-type draft-mtp`) untested — the obvious
@@ -310,7 +311,9 @@ E-class Gemma on llama.cpp specifically.
   (operator error, ~20 GB re-download exposure only; measurements were
   complete). Rule: never rotate a card while a container-layer salvage is live.
 - `docker-compose.mtp-off.yml` mirrors the candidate commands minus
-  speculation; the mirrors must be edited in lockstep (one drift, one failed
+  speculation (and, for the Qwen candidate, without `--no-enable-prefix-caching`
+  - prefix caching reverts to the engine default in the off-leg, which biases
+  the A/B conservatively); the mirrors must be edited in lockstep (one drift, one failed
   start, fixed).
 
 ## Comparison Scorecard

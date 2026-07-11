@@ -51,7 +51,7 @@ and raw evidence: [Blackwell local model bakeoff](findings/2026-07-10-blackwell-
 
 | Candidate / tested configuration | Hardware | Context | Preflight | Tool calls | Decode rate | Long-context | Role verdict |
 |---|---|---:|---|---|---:|---|---|
-| MiniMax-M2.7-REAP-139B-A10B, vLLM NGC 26.04 NVFP4, 64K | PRO 6000 | 65,536 | pass (thinking disabled) | pass | 97.2 tok/s | 64K pass (TTFT 14.3 s); no 131K headroom | **Best measured candidate for the heavy role; not promoted** (community REAP checkpoint) |
+| MiniMax-M2.7-REAP-139B-A10B, vLLM NGC 26.04 NVFP4, 64K | PRO 6000 | 65,536 | pass (thinking disabled) | pass | 97.2 tok/s | 64K pass (TTFT 14.3 s); no 131K headroom | Best measured heavy candidate of the base round - superseded by Puzzle-75B (extension table below); not promoted (community REAP checkpoint) |
 | Ornith-1.0-35B, vLLM NGC 26.04 FP8, 131K | PRO 6000 | 131,072 | pass (thinking disabled) | pass 20/20 | 29.2 tok/s | 131K pass — needle 11.9 s, fastest 131k full-prefill measured (13.1 s) | Retain as agentic/long-context specialist; not promoted |
 | Nemotron-3-Nano-30B-A3B, vLLM NGC 26.04 NVFP4 + PIECEWISE graphs + nano_v3 parser, 131K | RTX 5090 | 131,072 | ALL PASS | pass | 15.0 tok/s | 131K pass (FULL graphs hang — upstream bug workaround required) | Keep experimental |
 | Nemotron-3-Nano-Omni-30B, vLLM **nightly v0.23** NVFP4, 64K | RTX 5090 | 65,536 | pass in window | pass 20/20 | 27.3 tok/s | 64K pass (TTFT 3.1 s) | Keep experimental; unsupported on vLLM ≤0.19 — watch for stable release |
