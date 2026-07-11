@@ -7,7 +7,9 @@ import contextlib
 import http.client
 import io
 import json
+import os
 import socket
+import tempfile
 import threading
 import time
 
@@ -27,16 +29,18 @@ CONTEXT = {
 @contextlib.contextmanager
 def running_controller(**kwargs):
     kwargs.setdefault("allow_unauthenticated_loopback", True)
-    httpd = controller.make_server("127.0.0.1", 0, **kwargs)
-    host, port = httpd.server_address[:2]
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    try:
-        yield host, port
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-        thread.join(timeout=5)
+    with tempfile.TemporaryDirectory(prefix="anvil-controller-test-") as temp_dir:
+        kwargs.setdefault("idempotency_db_path", os.path.join(temp_dir, "operations.sqlite3"))
+        httpd = controller.make_server("127.0.0.1", 0, **kwargs)
+        host, port = httpd.server_address[:2]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield host, port
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=5)
 
 
 def _request(host, port, method, path, body=None, headers=None, content_type="application/json"):

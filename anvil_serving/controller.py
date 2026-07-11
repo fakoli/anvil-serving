@@ -1148,7 +1148,10 @@ def make_handler(
                     self.send_header(name, value)
             self.end_headers()
             if self.command != "HEAD":
-                self.wfile.write(payload)
+                try:
+                    self.wfile.write(payload)
+                except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+                    self.close_connection = True
 
         def _send_no_content(self, *, request_id: str) -> None:
             self.send_response(204)
