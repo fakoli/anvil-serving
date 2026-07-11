@@ -1,0 +1,160 @@
+# System Observability Dashboard Execution Milestones
+
+This document is the execution layer for the approved
+`system-observability-dashboard` PRD. The PRD and its Anvil tasks remain the
+requirements and evidence ledger. These milestones provide the larger,
+outcome-oriented context used to execute that work without treating each small
+task as an isolated product objective.
+
+The dashboard remains required scope for v0.11.0. This plan does not authorize
+packaging, release, deployment, or live topology changes. Those actions remain
+human-gated after implementation, verification, and operator testing.
+
+## Execution contract
+
+- Start each implementation pass from the milestone outcome, not from one task
+  title. Load the full PRD decisions and every member task into working context.
+- Treat member tasks as evidence-bearing subcontracts. Claim, verify, and submit
+  evidence for each task through Anvil even when implementation crosses task
+  boundaries inside one coherent milestone.
+- Do not declare a milestone complete merely because its member unit tests pass.
+  The milestone exit gate must demonstrate the integrated operator outcome.
+- Preserve task-level provenance: evidence must identify the task, verification
+  command, artifact, and relevant milestone gate.
+- Do not begin the next milestone until every member task is accepted and the
+  current milestone exit gate passes.
+- Keep ordinary inference fail-open when observability is unavailable or
+  degraded. Never turn a telemetry failure into a routing or serving outage.
+
+## Milestone 1 — Trustworthy local telemetry
+
+**Outcome:** Fakoli Dark can produce one normalized, read-only view of its
+Windows host, WSL/Docker boundary, NVIDIA GPUs, shared and dedicated GPU memory,
+and containers without administrator privileges or third-party Python runtime
+dependencies.
+
+**Anvil tasks:** T001, T009, T002, T003, T004, T005, T006
+
+**Execution order:**
+
+1. T001 defines the common sample and capability contract.
+2. T009 establishes degraded-state handling and redaction used by every output.
+3. T002, T004, and T006 implement Windows, NVIDIA, and Docker collection.
+4. T003 separates WSL/Docker pressure from Windows host pressure.
+5. T005 adds Windows shared-GPU-memory evidence without conflating it with VRAM.
+
+**Exit gate:**
+
+- One fixture-driven integrated snapshot contains Windows CPU, memory, paging,
+  disk, and network; WSL/Docker boundary usage; GPU utilization and
+  dedicated/shared memory; and per-container resources.
+- Unsupported, permission-denied, stale, ambiguous, and failed signals remain
+  distinguishable from healthy zero values.
+- The snapshot and logs contain no credentials or tokens.
+- All member task verification commands pass together.
+
+## Milestone 2 — Whole-topology telemetry service
+
+**Outcome:** Fakoli Dark exposes one structured, authenticated telemetry API
+that combines local data with non-elevated macOS telemetry from Fakoli Mini,
+service and port health, and explicitly configured optional adapter
+capabilities.
+
+**Anvil tasks:** T020, T007, T008, T019, T010
+
+**Execution order:**
+
+1. T020 implements the generic macOS host probe while preserving Mini's
+   model-free reference role.
+2. T007 adds configured service, endpoint, port, owner, and served-identity
+   health.
+3. T008 carries Mini samples over the authenticated Anvil controller contract.
+4. T019 validates and inspects optional collector endpoints without managing
+   their service lifecycle.
+5. T010 integrates all completed probes behind the structured API.
+
+**Exit gate:**
+
+- A single API response distinguishes Fakoli Dark, its WSL/Docker boundary,
+  both Dark GPUs, managed containers, and Fakoli Mini/macOS.
+- Remote collection uses the authenticated controller; no raw SSH or
+  unauthenticated public metrics path exists.
+- The API binds to `127.0.0.1` by default and requires explicit authenticated
+  configuration for private/tailnet exposure.
+- Mini remains useful when optional adapters are absent and remains model-free
+  in the reference topology.
+- All member task verification commands pass together.
+
+## Milestone 3 — Live operator dashboard
+
+**Outcome:** One supported Anvil CLI command serves the read-only dashboard that
+replaces routine Task Manager, Docker Desktop, GPU-monitor, and Mini shell
+inspection for current state and recent trends.
+
+**Anvil tasks:** T011, T013, T012, T015
+
+**Execution order:**
+
+1. T011 supplies the supported dashboard serve command and one-page shell.
+2. T013 implements tiered sampling and bounded retention.
+3. T012 renders the retained core signals as time-series curves with real gaps.
+4. T015 adds pressure, health, ownership, freshness, and model-loading
+   interpretation.
+
+**Exit gate:**
+
+- `anvil-serving dashboard serve` starts the page on `127.0.0.1` by default.
+- The page contains no state-changing control.
+- A rendered-page verification shows Dark, Mini, GPU, container, service, and
+  model-loading information on one screen with explicit degraded states.
+- Retention holds one hour at full resolution, 15-second aggregates for 24
+  hours, and one-minute aggregates for seven days, with a 250 MiB ordinary
+  history cap.
+- Ordinary history writes stop during benchmark capture.
+- All member task verification commands pass together.
+
+## Milestone 4 — Benchmark evidence and v0.11 acceptance
+
+**Outcome:** Anvil benchmarks can capture synchronized system context, retain
+privacy-safe evidence, compare a capture with current/history data, and prove
+that observability does not materially distort the measured workload.
+
+**Anvil tasks:** T016, T017, T014, T018
+
+**Execution order:**
+
+1. T016 integrates the adaptive capture lifecycle with the retention buffer.
+2. T017 writes compressed private raw evidence plus sanitized repository
+   manifests and findings.
+3. T014 compares current and retained series against benchmark sessions while
+   preserving sampling gaps.
+4. T018 runs last against the complete collector and dashboard path and applies
+   the strict overhead gate.
+
+**Exit gate:**
+
+- A capture contains five minutes of pre-history, the complete benchmark
+  lifecycle, at least five minutes of post-history, and stabilization extension
+  up to the 15-minute hard limit.
+- Raw telemetry stays outside Git by default. A sanitized dated finding and
+  manifest record checksum, size, capture quality, summary, and artifact
+  locator without secrets.
+- The dashboard compares current/history signals with the retained benchmark
+  session and shows gaps explicitly.
+- Normal mode stays at or below 100 MiB RSS and 1 percent average host CPU.
+  Benchmark mode stays at or below 150 MiB RSS and 2 percent average host CPU,
+  allocates no GPU memory, and performs no continuous disk writes during
+  capture.
+- Controlled collection-on/off runs show no more than a 1 percent change in
+  benchmark throughput and latency.
+- All member task verification commands and the full relevant test suite pass.
+
+## Evidence handoff
+
+For each milestone, the executing model should begin with this document, the
+approved PRD, and all member Anvil work packets. Task evidence is submitted as
+each packet is satisfied. The last task in the milestone also records or links
+the integrated exit-gate evidence. A later milestone may consume accepted
+artifacts from an earlier milestone, but it must not silently reinterpret or
+replace them.
+
