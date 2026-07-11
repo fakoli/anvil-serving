@@ -2,7 +2,7 @@
 """RUN ON fakoli-dark -- official OpenAI SDK client proof for anvil Realtime.
 
 Connects the official ``openai`` Python SDK's Realtime WebSocket client to
-anvil's package-owned Realtime server wiring (``anvil-serving voice run`` uses
+anvil's package-owned Realtime server wiring (``anvil-serving voice proxy run`` uses
 the same ``anvil_serving.voice.realtime.app`` builder). This is anvil task
 T014's live proof harness: SDK connects, sends audio input, prints transcript
 events, interrupts the first assistant response with ``response.cancel``, then

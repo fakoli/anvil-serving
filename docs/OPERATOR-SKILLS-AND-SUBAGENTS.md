@@ -110,6 +110,7 @@ require editing a skill, plugin, or benchmark prompt.
 | Guarded serve lifecycle | `serves_manage` | Implemented |
 | Bounded serve logs | `serves_logs` | Implemented |
 | Guarded voice STT/TTS lifecycle | `voice_manage` | Implemented; applies to managed Docker audio serves and same-host native processes on the host that actually owns audio models, with optional manifest `profile` selection. Reference OpenClaw Talk keeps Fakoli Mini model-free and uses Dark-host audio or a Mini proxy to Dark. |
+| Guarded persistent Realtime proxy lifecycle | `voice_proxy_manage` | Implemented for Mini-owned `up`, `down`, `restart`, `status`, and `logs`; mutations are preview/confirm gated and reads are bounded. |
 | Environment and configured tier checks | `doctor_summary` | Implemented |
 | Host WSL/Docker/GPU summary | `host_summary` | Implemented; read-only and non-mutating |
 | Model inventory | `models_inventory` | Implemented |
@@ -143,20 +144,20 @@ agent workflow.
 
 | Area | Verbs | Best enablement | Rationale |
 |---|---|---|---|
-| Front door | `serve` | Skill-only runbook | Long-running process; agents inspect it through `router_status`, `/healthz`, and `/v1/models`. |
+| Front door | `router run` | Skill-only runbook | Long-running process; agents inspect it through `router_status`, `/healthz`, and `/v1/models`. |
 | Router lifecycle | `router status/logs/up/down/restart/reload/promote/token` | MCP for status, bounded logs, guarded lifecycle, decision summary, and promotion preview/apply gate; token remains CLI-only | Promotion apply requires `confirm:true`, `dry_run:false`, and `human_approved:true`; token values are not exposed through MCP. |
 | Serve lifecycle | `serves status/up/down/rm/adopt/logs` | MCP for status, bounded logs, and guarded up/down/rm/adopt; live mutation requires `confirm:true` and `dry_run:false` after preview | Serve start/stop is normal operation and should not require raw Docker. |
-| Model inventory | `models sync`, `models pull`, `models recipe` | MCP for catalog inventory with sync preview/confirm; skill/CLI for pull and recipe read | Inventory is read-heavy. Pull is long-running, network/disk-heavy, and explicitly gated. |
+| Model inventory | `models sync`, `models pull`, `models recipes` | MCP for catalog inventory with sync preview/confirm; skill/CLI for pull and recipe read | Inventory is read-heavy. Pull is long-running, network/disk-heavy, and explicitly gated. |
 | Bring-up generation | `init`, `doctor`, `serves render` | MCP preview/render plus CLI apply | Generated artifacts should be inspectable before write. |
 | Environment repair | `host doctor`, `host memory`, `host wsl-config`, `host restart-docker`, `host reset-wsl`, `host reclaim` | `host_summary` for read-only MCP summary; human-confirmed CLI for disruptive repair | Restarting Docker/WSL and editing host config are high-disruption. |
-| Correctness and capacity | `preflight`, `benchmark`, `eval preflight`, `eval benchmark` | MCP probes and artifact capture plus skill sequencing | Preflight must precede benchmark. Benchmark artifacts need explicit output paths validated under the workspace or server-configured evidence directory. |
-| Quality profile | `eval bootstrap`, `calibrate`, `router promote` | MCP preview/status; skill evidence packet; human promotion gate | These change routing trust. Small models can collect evidence, but not promote. |
-| External priors | `benchmark external init/sources/import/list/report/export/compare` | MCP read/report/compare; skill marks advisory-only | External results are useful priors, not quality evidence. |
+| Correctness and capacity | `eval preflight`, `eval benchmark run` | MCP probes and artifact capture plus skill sequencing | Preflight must precede benchmark. Benchmark artifacts need explicit output paths validated under the workspace or server-configured evidence directory. |
+| Quality profile | `eval bootstrap`, `eval calibrate`, `router promote` | MCP preview/status; skill evidence packet; human promotion gate | These change routing trust. Small models can collect evidence, but not promote. |
+| External priors | `eval benchmark external init/sources/import/list/report/export/compare` | MCP read/report/compare; skill marks advisory-only | External results are useful priors, not quality evidence. |
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
 | Controller transport | `controller serve`, `mcp serve --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
-| Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
+| Multiplexer | `serves multiplex` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
 | Voice | `voice audio up/down/status/logs`, `voice proxy run/up/down/restart/status/logs/bridge`, `voice benchmark/profiles`, `voice sidecar validate/command/compose` | `voice_manage` for Dark STT/TTS; `voice_proxy_manage` for the persistent Mini Realtime process; skill/CLI for foreground proxy, loopback bridge, and benchmark sequencing | Every operational path resolves topology first. Reference OpenClaw Talk keeps Mini model-free, Dark owns models, and the Mini bridge remains loopback-only. Mutations require preview plus confirmation; status/logs are bounded reads. |
-| Local analytics | `profile`, `models score`, `models cache prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `models score` are offline analysis. `models cache prune` deletion stays CLI-only and human-gated. |
+| Local analytics | `eval usage`, `models score`, `models cache prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `eval usage` and `models score` are offline analysis. `models cache prune` deletion stays CLI-only and human-gated. |
 
 ## Recommended Skills
 

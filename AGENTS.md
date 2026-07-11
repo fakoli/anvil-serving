@@ -65,7 +65,7 @@ residency-aware routing. The canonical product description is `README.md`; do no
 ```bash
 pip install -e ".[dev]"
 python -m pytest tests/ -x -q          # full suite; 993 tests expected green
-anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <name>  # live gate
+anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model <name> --confirm  # live gate
 ```
 
 For router changes, the unit tests in `tests/router/` are the primary gate. Integration

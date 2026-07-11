@@ -12,7 +12,7 @@
 #
 #   GPU_UUID=GPU-d0f446cf-... PORT=30004 \
 #     docker compose -f examples/fakoli-dark/docker-compose.flexibility.yml up -d
-#   anvil-serving preflight --base-url http://127.0.0.1:30004/v1 --model qwen35-122b --no-thinking --needle-ctx 14000
+#   anvil-serving eval preflight --base-url http://127.0.0.1:30004/v1 --model qwen35-122b --no-thinking --needle-ctx 14000 --confirm
 name: fakoli-flexibility
 services:
   qwen35-122b:
