@@ -318,8 +318,9 @@ def load_suite_spec(path):
             _validate_spec_check(where, check)
         expect = item.get("expect_tool")
         if expect is not None:
-            if not isinstance(expect, dict) or not expect.get("name"):
-                raise ValueError("%s: expect_tool needs a 'name'" % where)
+            if not isinstance(expect, dict) or not isinstance(expect.get("name"), str) \
+                    or not expect["name"]:
+                raise ValueError("%s: expect_tool needs a string 'name'" % where)
             required_args = expect.get("required_args")
             if required_args is not None and not isinstance(required_args, dict):
                 raise ValueError("%s: expect_tool.required_args must be an object" % where)
