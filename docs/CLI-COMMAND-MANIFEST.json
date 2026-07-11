@@ -582,6 +582,13 @@
       "path": "router up",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [
+          "compose",
+          "service",
+          "env_file",
+          "dry_run"
+        ],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
@@ -745,6 +752,12 @@
       "path": "router down",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [
+          "compose",
+          "service",
+          "dry_run"
+        ],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
@@ -908,6 +921,12 @@
       "path": "router restart",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [
+          "container",
+          "dry_run",
+          "no_verify"
+        ],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "restart"
         },
@@ -1071,6 +1090,12 @@
       "path": "router reload",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [
+          "container",
+          "dry_run",
+          "no_verify"
+        ],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "reload"
         },
@@ -1234,6 +1259,20 @@
       "path": "router promote",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [
+          "container",
+          "dry_run",
+          "profile",
+          "config",
+          "cfg_volume",
+          "image",
+          "profile_dest",
+          "config_dest",
+          "no_reload"
+        ],
+        "confirmed_arguments": {
+          "human_approved": true
+        },
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -1375,6 +1414,10 @@
       "path": "router status",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [
+          "container"
+        ],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -1526,6 +1569,13 @@
       "path": "router logs",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [
+          "container",
+          "tail",
+          "since",
+          "follow"
+        ],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -2147,6 +2197,8 @@
       "path": "serves up",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
@@ -2322,6 +2374,8 @@
       "path": "serves down",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
@@ -2507,6 +2561,8 @@
       "path": "serves rm",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "rm"
         },
@@ -2692,6 +2748,8 @@
       "path": "serves adopt",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "adopt"
         },
@@ -2847,6 +2905,8 @@
       "path": "serves status",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [
@@ -3030,6 +3090,8 @@
       "path": "serves logs",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [
@@ -5222,6 +5284,8 @@
       "path": "eval preflight",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -5918,6 +5982,8 @@
       "path": "eval benchmark run",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -6334,6 +6400,8 @@
       "path": "eval benchmark external sources",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -6765,6 +6833,8 @@
       "path": "eval benchmark external list",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -6906,6 +6976,8 @@
       "path": "eval benchmark external report",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -7182,6 +7254,8 @@
       "path": "eval benchmark external compare",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -8138,6 +8212,8 @@
       "path": "voice audio up",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
         },
@@ -8301,6 +8377,8 @@
       "path": "voice audio down",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
         },
@@ -11022,6 +11100,8 @@
       "path": "harness sync openclaw",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -11313,6 +11393,8 @@
       "path": "harness restart openclaw",
       "recovery_capable": true,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -11614,6 +11696,8 @@
       "path": "mcp serve",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "mcp-bridge",
         "positional_arguments": [],
@@ -11768,6 +11852,8 @@
       "path": "mcp tools",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "mcp-bridge",
         "positional_arguments": [],
@@ -12333,6 +12419,8 @@
       "path": "controller status",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "controller-status",
         "positional_arguments": [],
@@ -12739,6 +12827,8 @@
       "path": "host doctor",
       "recovery_capable": false,
       "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],

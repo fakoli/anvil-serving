@@ -455,11 +455,13 @@ def test_router_manage_preview_and_confirmed_reload(monkeypatch):
         "container": "anvil-router",
         "confirm": True,
         "dry_run": False,
+        "no_verify": True,
         "timeout_seconds": 9,
     })
     assert confirmed["ok"] is True
     assert confirmed["data"]["applied"] is True
     assert "--dry-run" not in seen["argv"]
+    assert "--no-verify" in seen["argv"]
     assert seen["argv"][3:5] == ["router", "reload"]
     assert seen["timeout"] == 9
 

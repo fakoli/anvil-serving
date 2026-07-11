@@ -843,7 +843,7 @@ def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
                      service: str = "", env_file: str = "", dry_run: bool = False,
                      profile: str = "", config: str = "", cfg_volume: str = "",
                      image: str = "", profile_dest: str = "", config_dest: str = "",
-                     no_reload: bool = False) -> list[str]:
+                     no_reload: bool = False, no_verify: bool = False) -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "router", action]
     if container:
         argv += ["--container", container]
@@ -869,6 +869,8 @@ def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
         argv += ["--config-dest", config_dest]
     if no_reload:
         argv.append("--no-reload")
+    if no_verify:
+        argv.append("--no-verify")
     return argv
 
 
@@ -922,6 +924,7 @@ def tool_router_manage(args: dict) -> dict:
     env_file = _str_arg(args, "env_file", "")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    no_verify = _arg_bool(args.get("no_verify"), False, name="no_verify")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
     preview = dry_run or not confirm
     argv = _router_cli_argv(
@@ -931,6 +934,7 @@ def tool_router_manage(args: dict) -> dict:
         service=service if action in {"up", "down"} else "",
         env_file=env_file if action == "up" else "",
         dry_run=preview,
+        no_verify=no_verify if action in {"restart", "reload"} else False,
     )
     target = {
         "action": action,
@@ -939,6 +943,7 @@ def tool_router_manage(args: dict) -> dict:
         "service": service if action in {"up", "down"} else None,
         "env_file": env_file or None,
         "timeout_seconds": timeout_seconds,
+        "no_verify": no_verify if action in {"restart", "reload"} else False,
     }
     if preview:
         return _ok({"applied": False, "dry_run": True, "target": target, "command": argv})
@@ -2242,6 +2247,8 @@ def _operation_records(
                 "mode": remote.mode,
                 "tool": remote.tool,
                 "fixed_arguments": dict(remote.fixed_arguments),
+                "confirmed_arguments": dict(remote.confirmed_arguments),
+                "allowed_arguments": list(remote.allowed_arguments),
                 "positional_arguments": list(remote.positional_arguments),
                 "resource_role": node.resource_role,
                 "transports": list(node.transports),
@@ -2409,6 +2416,15 @@ def _validate_tool_arguments(name: str, arguments: Mapping[str, Any]) -> dict[st
     return dict(arguments)
 
 
+def validate_tool_arguments(name: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate one typed tool call without dispatching it."""
+    if name not in TOOLS:
+        raise ToolError("unknown_tool", "unknown tool %r" % name)
+    if not isinstance(arguments, Mapping):
+        raise ToolError("bad_arguments", "tool arguments must be an object")
+    return _validate_tool_arguments(name, arguments)
+
+
 def _target_context(value: Any) -> dict[str, Any]:
     if value is None:
         return {}
@@ -2465,6 +2481,7 @@ TOOLS: Dict[str, dict] = {
             "compose": {"type": "string"},
             "service": {"type": "string"},
             "env_file": {"type": "string"},
+            "no_verify": {"type": "boolean"},
             "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},
             "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
@@ -2758,7 +2775,7 @@ def call_tool(name: str, arguments: Optional[dict] = None) -> dict:
     if not isinstance(arguments, dict):
         return _fail("bad_arguments", "tool arguments must be an object")
     try:
-        validated = _validate_tool_arguments(name, arguments)
+        validated = validate_tool_arguments(name, arguments)
         return TOOLS[name]["handler"](validated)
     except ToolError as exc:
         return _fail(exc.code, exc.message, exc.details)

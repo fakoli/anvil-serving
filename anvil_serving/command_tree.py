@@ -84,10 +84,14 @@ class RemoteOperation:
     mode: str = "tool"
     tool: str | None = None
     fixed_arguments: tuple[tuple[str, object], ...] = field(default_factory=tuple)
+    confirmed_arguments: tuple[tuple[str, object], ...] = field(default_factory=tuple)
+    allowed_arguments: tuple[str, ...] = field(default_factory=tuple)
     positional_arguments: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "fixed_arguments", tuple(self.fixed_arguments))
+        object.__setattr__(self, "confirmed_arguments", tuple(self.confirmed_arguments))
+        object.__setattr__(self, "allowed_arguments", tuple(self.allowed_arguments))
         object.__setattr__(self, "positional_arguments", tuple(self.positional_arguments))
 
 
@@ -184,12 +188,16 @@ def _remote(
     *,
     mode: str = "tool",
     fixed: Iterable[tuple[str, object]] = (),
+    confirmed: Iterable[tuple[str, object]] = (),
+    allowed: Iterable[str] = (),
     positionals: Iterable[str] = (),
 ) -> RemoteOperation:
     return RemoteOperation(
         mode=mode,
         tool=tool,
         fixed_arguments=tuple(fixed),
+        confirmed_arguments=tuple(confirmed),
+        allowed_arguments=tuple(allowed),
         positional_arguments=tuple(positionals),
     )
 
@@ -331,7 +339,15 @@ def build_command_tree() -> CommandTree:
                     mutation="mutate",
                     options=confirm_options,
                     remote_operation=_remote(
-                        "router_manage", fixed=(("action", action),)
+                        "router_manage",
+                        fixed=(("action", action),),
+                        allowed=(
+                            ("compose", "service", "env_file", "dry_run")
+                            if action == "up"
+                            else ("compose", "service", "dry_run")
+                            if action == "down"
+                            else ("container", "dry_run", "no_verify")
+                        ),
                     ),
                 )
                 for action, summary in (
@@ -346,10 +362,17 @@ def build_command_tree() -> CommandTree:
                 role="router",
                 mutation="mutate",
                 options=confirm_options,
-                remote_operation=_remote("router_promote"),
+                remote_operation=_remote(
+                    "router_promote",
+                    confirmed=(("human_approved", True),),
+                    allowed=(
+                        "container", "dry_run", "profile", "config", "cfg_volume",
+                        "image", "profile_dest", "config_dest", "no_reload",
+                    ),
+                ),
             ),
-            _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router", remote_operation=_remote("router_status")),
-            _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),), remote_operation=_remote("router_logs")),
+            _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router", remote_operation=_remote("router_status", allowed=("container",))),
+            _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),), remote_operation=_remote("router_logs", allowed=("container", "tail", "since", "follow"))),
             _resource_node("token", "Inspect the router token state.", "anvil_serving.router_manage", role="router", options=(_option("--reveal", summary="Reveal the local token after confirmation.", requires_confirmation=True), _option("--confirm", summary="Confirm token reveal."))),
         ),
         docs_anchor="docs/CLI.md#router",
@@ -620,8 +643,17 @@ def _validate_policy(node: CommandNode, label: str) -> None:
     if remote.mode != "tool" and remote.tool is not None:
         raise CommandTreeError(f"command {label!r} special remote mode cannot declare a tool")
     fixed_names = [name for name, _value in remote.fixed_arguments]
+    confirmed_names = [name for name, _value in remote.confirmed_arguments]
     if len(fixed_names) != len(set(fixed_names)) or any(not name for name in fixed_names):
         raise CommandTreeError(f"command {label!r} has invalid fixed remote arguments")
+    if (
+        len(confirmed_names) != len(set(confirmed_names))
+        or any(not name for name in confirmed_names)
+        or set(fixed_names) & set(confirmed_names)
+    ):
+        raise CommandTreeError(f"command {label!r} has invalid confirmed remote arguments")
+    if len(remote.allowed_arguments) != len(set(remote.allowed_arguments)):
+        raise CommandTreeError(f"command {label!r} has duplicate allowed remote arguments")
     if len(remote.positional_arguments) != len(set(remote.positional_arguments)):
         raise CommandTreeError(f"command {label!r} has duplicate remote positional arguments")
 
@@ -676,6 +708,8 @@ def _remote_operation_data(remote: RemoteOperation | None) -> dict[str, object] 
         "mode": remote.mode,
         "tool": remote.tool,
         "fixed_arguments": dict(remote.fixed_arguments),
+        "confirmed_arguments": dict(remote.confirmed_arguments),
+        "allowed_arguments": list(remote.allowed_arguments),
         "positional_arguments": list(remote.positional_arguments),
     }
 

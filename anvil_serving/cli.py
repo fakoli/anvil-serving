@@ -5,8 +5,9 @@ import contextlib
 import difflib
 import io
 import sys
+import uuid
 from importlib import metadata as importlib_metadata
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from . import __version__
@@ -29,6 +30,13 @@ from .operator_output import (
 )
 from .targets import CommandSpec, ExecutionPlan, TargetResolutionError, resolve_execution_plan
 from .topology import TopologyValidationError, load_topology
+from .transports import (
+    ControllerTransport,
+    Operation,
+    TransportError as AdapterTransportError,
+    TransportResult,
+    execute_plan,
+)
 
 
 MIN_PYTHON = (3, 11)
@@ -449,6 +457,212 @@ def command_policy(path: Sequence[CommandNode], argv: Sequence[str]):
     )
 
 
+def _remote_scalar(flag: str, value: str, schema: Mapping[str, object]) -> object:
+    schema_type = schema.get("type")
+    types = schema_type if isinstance(schema_type, list) else [schema_type]
+    try:
+        if "integer" in types:
+            return int(value)
+        if "number" in types:
+            return float(value)
+    except ValueError:
+        raise UsageError(f"{flag} requires a numeric value") from None
+    return value
+
+
+def _remote_arguments(
+    node: CommandNode,
+    rest: Sequence[str],
+    *,
+    confirmed: bool,
+) -> dict[str, object]:
+    """Parse CLI arguments through the declared MCP schema without dispatch."""
+    remote = node.remote_operation
+    if remote is None or remote.mode != "tool" or remote.tool is None:
+        raise UsageError("command has no typed controller operation")
+    from . import mcp
+
+    tool = mcp.TOOLS.get(remote.tool)
+    if tool is None:
+        raise UsageError(f"declared controller tool {remote.tool!r} is unavailable")
+    schema = tool["inputSchema"]
+    properties = schema.get("properties", {})
+    arguments = dict(remote.fixed_arguments)
+    positional: list[str] = []
+    index = 0
+    after_separator = False
+    while index < len(rest):
+        token = rest[index]
+        if token == "--":
+            after_separator = True
+            index += 1
+            continue
+        if after_separator or not token.startswith("-"):
+            positional.append(token)
+            index += 1
+            continue
+        flag, separator, inline = token.partition("=")
+        field = flag[2:].replace("-", "_") if flag.startswith("--") else ""
+        field_schema = properties.get(field)
+        if (
+            not field
+            or not isinstance(field_schema, Mapping)
+            or (remote.allowed_arguments and field not in remote.allowed_arguments)
+        ):
+            raise UsageError(
+                f"{flag} is not supported for remote {node.name}; use focused help"
+            )
+        if field in arguments:
+            raise UsageError(f"{flag} is fixed by the canonical command path")
+        schema_type = field_schema.get("type")
+        types = schema_type if isinstance(schema_type, list) else [schema_type]
+        if "boolean" in types:
+            if separator:
+                raise UsageError(f"{flag} does not accept a value")
+            arguments[field] = True
+            index += 1
+            continue
+        if separator:
+            raw_value = inline
+        else:
+            index += 1
+            if index >= len(rest) or rest[index].startswith("-"):
+                raise UsageError(f"{flag} requires a value")
+            raw_value = rest[index]
+        if not raw_value:
+            raise UsageError(f"{flag} requires a value")
+        if "array" in types:
+            item_schema = field_schema.get("items", {"type": "string"})
+            if not isinstance(item_schema, Mapping):
+                raise UsageError(f"{flag} has an invalid remote schema")
+            values = arguments.setdefault(field, [])
+            assert isinstance(values, list)
+            values.append(_remote_scalar(flag, raw_value, item_schema))
+        else:
+            arguments[field] = _remote_scalar(flag, raw_value, field_schema)
+        index += 1
+
+    if positional:
+        fields = remote.positional_arguments
+        if not fields:
+            raise UsageError("remote command does not accept positional arguments")
+        if len(fields) == 1:
+            field = fields[0]
+            field_schema = properties.get(field, {})
+            types = field_schema.get("type")
+            types = types if isinstance(types, list) else [types]
+            if "array" in types:
+                arguments[field] = positional
+            elif len(positional) == 1:
+                arguments[field] = positional[0]
+            else:
+                raise UsageError(f"remote command accepts one positional {field}")
+        elif len(positional) == len(fields):
+            arguments.update(zip(fields, positional, strict=True))
+        else:
+            raise UsageError("remote command positional arguments are incomplete")
+    if confirmed:
+        arguments.update(remote.confirmed_arguments)
+        if "confirm" in properties and "confirm" not in arguments:
+            arguments["confirm"] = True
+        if "dry_run" in properties and "dry_run" not in arguments:
+            arguments["dry_run"] = False
+    return mcp.validate_tool_arguments(remote.tool, arguments)
+
+
+def _reconcile_remote_mutation(
+    controller: ControllerTransport,
+    key: str,
+    original: AdapterTransportError,
+) -> TransportResult:
+    try:
+        status_result = controller.operation_status(key)
+    except AdapterTransportError as status_error:
+        raise PartialResultError(
+            "remote mutation outcome is ambiguous and status reconciliation failed",
+            code="remote_mutation_ambiguous",
+            details={
+                "idempotency_key": key,
+                "dispatch_error": original.as_dict(),
+                "status_error": status_error.as_dict(),
+            },
+        ) from None
+    status = status_result.data.get("status")
+    if status == "succeeded":
+        return status_result
+    if status == "failed":
+        raise OperatorError(
+            "remote mutation failed after dispatch",
+            code="remote_mutation_failed",
+            details={"idempotency_key": key, "status": dict(status_result.data)},
+        )
+    raise PartialResultError(
+        "remote mutation outcome requires operator reconciliation",
+        code="remote_mutation_pending",
+        details={
+            "idempotency_key": key,
+            "status": dict(status_result.data),
+            "dispatch_error": original.as_dict(),
+        },
+    )
+
+
+def _dispatch_remote_tool(
+    path: Sequence[CommandNode],
+    rest: Sequence[str],
+    plan: ExecutionPlan,
+    *,
+    confirmed: bool,
+    output_options: OutputOptions,
+    execution_meta: dict[str, object] | None,
+) -> int:
+    node = path[-1]
+    remote = node.remote_operation
+    assert remote is not None and remote.mode == "tool" and remote.tool is not None
+    if not plan.transport_endpoint or not plan.transport_auth_env:
+        raise TransportError(
+            "resolved controller transport is missing endpoint or token configuration",
+            code="controller_transport_incomplete",
+        )
+    arguments = _remote_arguments(node, rest, confirmed=confirmed)
+    controller = ControllerTransport(
+        plan.transport_endpoint,
+        auth_env=plan.transport_auth_env,
+        allowed_operations=plan.transport_allowed_operations,
+    )
+    operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
+    idempotency_key = (
+        "cli-" + uuid.uuid4().hex
+        if confirmed and node.mutation_class == "mutate"
+        else None
+    )
+    try:
+        result = execute_plan(
+            plan,
+            operation,
+            controller=controller,
+            idempotency_key=idempotency_key,
+        )
+    except AdapterTransportError as exc:
+        if idempotency_key is not None and exc.may_have_executed:
+            result = _reconcile_remote_mutation(controller, idempotency_key, exc)
+        else:
+            raise TransportError(str(exc), code=exc.code, details=exc.as_dict()) from None
+    data = result.as_dict()
+    if execution_meta is not None:
+        execution_meta["data"] = data
+    if not output_options.json_mode:
+        rendered = render_human(
+            success_envelope(_command_name(path), plan, data, warnings=plan.warnings),
+            options=output_options,
+        )
+        if rendered.stdout:
+            print(rendered.stdout, end="")
+        if rendered.stderr:
+            print(rendered.stderr, end="", file=sys.stderr)
+    return 0
+
+
 def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> bool:
     mutation_gate = node.mutation_class == "mutate" and any(
         "--confirm" in option.flags for option in node.options
@@ -567,6 +781,20 @@ def _dispatch(
             rest = (*rest, "--url", endpoint)
             if plan.transport_auth_env:
                 rest = (*rest, "--auth-token-env", plan.transport_auth_env)
+        elif (
+            plan is not None
+            and plan.transport == "controller"
+            and node.remote_operation is not None
+            and node.remote_operation.mode == "tool"
+        ):
+            return _dispatch_remote_tool(
+                path,
+                rest,
+                plan,
+                confirmed=confirmed,
+                output_options=output_options,
+                execution_meta=execution_meta,
+            )
         elif plan is not None and plan.transport != "local":
             raise TransportError(
                 "remote CLI dispatch is not implemented; use the MCP/controller "
@@ -592,7 +820,7 @@ def _dispatch(
         if not output_options.json_mode:
             for warning in plan.warnings:
                 print(warning, file=sys.stderr)
-            if plan.transport != "local":
+            if controller_probe:
                 rendered = render_human(
                     success_envelope(_command_name(path), plan, None),
                     options=output_options,
@@ -679,7 +907,8 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     warnings = list(execution_meta.get("warnings", ()))
     warnings.extend(line for line in stderr.getvalue().splitlines() if line)
     if rc == 0:
-        envelope = success_envelope(command, context, stdout.getvalue(), warnings=warnings)
+        data = execution_meta.get("data", stdout.getvalue())
+        envelope = success_envelope(command, context, data, warnings=warnings)
     else:
         error = execution_meta.get("error")
         if not isinstance(error, OperatorError):

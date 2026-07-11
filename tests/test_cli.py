@@ -455,6 +455,229 @@ allowed_operations = ["controller-status"]
     return topology
 
 
+def _write_remote_router_topology(tmp_path: Path, operation: str) -> Path:
+    topology = tmp_path / f"router-{operation}.toml"
+    topology.write_text(
+        f"""\
+schema_version = 1
+id = "synthetic-router-cli"
+command_host = "host:operator"
+command_runtime = "runtime:operator-native"
+
+[[hosts]]
+id = "operator"
+roles = ["operator"]
+address = "127.0.0.1"
+
+[[hosts]]
+id = "dark"
+roles = ["router"]
+address = "100.87.34.66"
+
+[[runtimes]]
+id = "operator-native"
+host = "operator"
+role = "native"
+
+[[runtimes]]
+id = "dark-native"
+host = "dark"
+role = "native"
+
+[[resources]]
+id = "router-service"
+role = "router"
+host = "dark"
+runtime = "dark-native"
+endpoint = "http://127.0.0.1:8000"
+endpoint_kind = "http"
+
+[[transports]]
+id = "dark-controller"
+kind = "controller"
+host = "dark"
+runtime = "dark-native"
+endpoint = "http://100.87.34.66:8765"
+auth_env = "ANVIL_CONTROLLER_TOKEN"
+allowed_operations = ["{operation}"]
+""",
+        encoding="utf-8",
+    )
+    return topology
+
+
+def test_cli_remote_router_restart_dispatches_typed_operation(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_remote_router_topology(tmp_path, "router-restart")
+    seen = {}
+
+    class FakeController:
+        def __init__(self, endpoint, **kwargs):
+            seen["controller"] = (endpoint, kwargs)
+
+    def fake_execute(plan, operation, **kwargs):
+        seen["plan"] = plan
+        seen["operation"] = operation
+        seen["execute_kwargs"] = kwargs
+        return cli.TransportResult(operation.name, "controller", {"ok": True})
+
+    monkeypatch.setattr(cli, "ControllerTransport", FakeController)
+    monkeypatch.setattr(cli, "execute_plan", fake_execute)
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail("remote router dispatch imported the local handler"),
+    )
+
+    assert cli.main([
+        "router",
+        "restart",
+        "--topology",
+        str(topology),
+        "--confirm",
+        "--container",
+        "router-prod",
+        "--no-verify",
+    ]) == 0
+    operation = seen["operation"]
+    assert operation.name == "router-restart"
+    assert operation.tool_name == "router_manage"
+    assert dict(operation.arguments) == {
+        "action": "restart",
+        "container": "router-prod",
+        "no_verify": True,
+        "confirm": True,
+        "dry_run": False,
+    }
+    assert seen["controller"] == (
+        "http://100.87.34.66:8765",
+        {
+            "auth_env": "ANVIL_CONTROLLER_TOKEN",
+            "allowed_operations": ("router-restart",),
+        },
+    )
+    assert seen["execute_kwargs"]["idempotency_key"].startswith("cli-")
+    assert "transport=controller" in capsys.readouterr().out
+
+
+def test_cli_remote_router_rejects_untyped_arguments_before_transport(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_remote_router_topology(tmp_path, "router-status")
+    monkeypatch.setattr(
+        cli,
+        "execute_plan",
+        lambda *_args, **_kwargs: pytest.fail("invalid arguments reached transport"),
+    )
+
+    assert cli.main([
+        "router",
+        "status",
+        "--topology",
+        str(topology),
+        "--shell",
+        "whoami",
+    ]) == 2
+    assert "not supported for remote status" in capsys.readouterr().err
+
+
+def test_cli_remote_router_dry_run_never_generates_mutation_idempotency(
+    tmp_path, monkeypatch
+):
+    topology = _write_remote_router_topology(tmp_path, "router-restart")
+    seen = {}
+
+    def fake_execute(plan, operation, **kwargs):
+        seen["arguments"] = dict(operation.arguments)
+        seen["idempotency_key"] = kwargs["idempotency_key"]
+        return cli.TransportResult(operation.name, "controller", {"ok": True})
+
+    monkeypatch.setattr(cli, "execute_plan", fake_execute)
+
+    assert cli.main([
+        "router",
+        "restart",
+        "--topology",
+        str(topology),
+        "--dry-run",
+    ]) == 0
+    assert seen == {
+        "arguments": {"action": "restart", "dry_run": True},
+        "idempotency_key": None,
+    }
+
+
+def test_cli_remote_router_reconciles_ambiguous_confirmed_mutation(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_remote_router_topology(tmp_path, "router-restart")
+    seen = {}
+
+    class FakeController:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def operation_status(self, key):
+            seen["status_key"] = key
+            return cli.TransportResult(
+                "operation-status",
+                "controller",
+                {"status": "succeeded", "response": {"ok": True}},
+            )
+
+    def ambiguous(*_args, **kwargs):
+        seen["dispatch_key"] = kwargs["idempotency_key"]
+        raise cli.AdapterTransportError(
+            "controller_timeout",
+            "response was lost after dispatch",
+            execution_state="partial_result",
+        )
+
+    monkeypatch.setattr(cli, "ControllerTransport", FakeController)
+    monkeypatch.setattr(cli, "execute_plan", ambiguous)
+
+    assert cli.main([
+        "router",
+        "restart",
+        "--topology",
+        str(topology),
+        "--confirm",
+    ]) == 0
+    assert seen["dispatch_key"] == seen["status_key"]
+    assert seen["status_key"].startswith("cli-")
+    assert "operation-status" in capsys.readouterr().out
+
+
+def test_cli_remote_router_json_preserves_structured_result_and_context(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_remote_router_topology(tmp_path, "router-status")
+
+    monkeypatch.setattr(
+        cli,
+        "execute_plan",
+        lambda plan, operation, **_kwargs: cli.TransportResult(
+            operation.name,
+            "controller",
+            {"ok": True, "data": {"running": True}},
+        ),
+    )
+
+    assert cli.main([
+        "--json",
+        "router",
+        "status",
+        "--topology",
+        str(topology),
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["context"]["execution_host"] == "dark"
+    assert payload["context"]["transport"] == "controller"
+    assert payload["data"]["operation"] == "router-status"
+    assert payload["data"]["data"]["data"]["running"] is True
+
+
 @pytest.mark.parametrize("experimental_flag", [False, True])
 def test_cli_rejects_mini_model_workload_without_topology_permission_before_launch(
     tmp_path, monkeypatch, capsys, experimental_flag
