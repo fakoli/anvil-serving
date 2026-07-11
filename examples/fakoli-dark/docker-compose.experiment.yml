@@ -76,6 +76,57 @@ x-fast-llamacpp-common: &fast-llamacpp-common
     - "llamacpp-cache:/root/.cache/llama.cpp"
 
 services:
+  # Heavy-tier CANDIDATE (evaluation, NOT production): Qwen3.5-122B-A10B-NVFP4 on the RTX PRO 6000
+  # (:39017, loopback-only). Managed via `anvil-serving serves up/down heavy-qwen35-122b`. It does
+  # NOT replace the GPT-OSS heavy tier and shares the same PRO 6000 card, so bring GPT-OSS heavy
+  # DOWN before starting this candidate (see serves.toml + the bake-off runbook).
+  heavy-qwen35-122b:
+    image: nvcr.io/nvidia/vllm:26.04-py3
+    container_name: vllm-heavy-qwen35-122b
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39017:39017"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # WSL2 ignores compose device_ids isolation (gotcha #13) -> container sees BOTH GPUs, so we
+      # still pin the PRO 6000 via CUDA_VISIBLE_DEVICES. FALLBACK vs the UUID convention: the NGC
+      # vllm:26.04 image's device_id_to_physical_device_id does int(<visible>), which ValueErrors on
+      # a UUID string. Pin by PCI_BUS_ID index instead — verified GPU0=RTX 5090, GPU1=PRO 6000.
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids:
+                - "${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/Qwen3.5-122B-A10B-NVFP4
+      --served-model-name qwen35-122b-a10b-nvfp4
+      --trust-remote-code
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8
+      --tensor-parallel-size 1
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --max-model-len 131072
+      --max-num-seqs 1
+      --gpu-memory-utilization 0.95
+      --language-model-only
+      --enable-prefix-caching
+      --host 0.0.0.0
+      --port 39017
+
   experiment:
     image: vllm/vllm-openai:latest
     container_name: vllm-experiment-${PORT:-39099}
