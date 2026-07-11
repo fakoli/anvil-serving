@@ -1,0 +1,189 @@
+{
+  "context": {
+    "cap_tokens": 64448,
+    "max_model_len": 65536,
+    "targets": [
+      {
+        "attempted_context_tokens": 32768,
+        "clamped_tokens": 32768,
+        "e2e_ms": 6849.32017326355,
+        "estimated_prompt_tokens": 64448,
+        "output_tokens": 0,
+        "status": "passed",
+        "target_tokens": 32768,
+        "ttft_ms": 6849.3194580078125,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 59057,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 59121
+        }
+      },
+      {
+        "attempted_context_tokens": 64448,
+        "clamped_tokens": 64448,
+        "e2e_ms": 6392.306327819824,
+        "estimated_prompt_tokens": 64448,
+        "output_tokens": 0,
+        "status": "passed",
+        "target_tokens": 65536,
+        "ttft_ms": 6392.306089401245,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 59057,
+          "prompt_tokens_details": {
+            "cached_tokens": 7
+          },
+          "total_tokens": 59121
+        }
+      }
+    ]
+  },
+  "failures": [
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "parallel_timeout_triage",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39029/v1",
+    "candidate_id": "gemma4-e4b-q4",
+    "config_id": "llamacpp-udq4kxl-64k",
+    "model": "gemma4-e4b-q4-gguf",
+    "started_at": "2026-07-11T07:47:56Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 258.96596908569336,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": true
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 1205.859899520874,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": false
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": false
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260711T074756Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 6392.306327819824,
+    "intelligence_pass_rate": 0.5,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "default",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 6392.306089401245,
+    "usable_context_tokens": 65536,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768,
+      65536
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "RIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 111.35673522949219,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 6392.306327819824,
+      "e2e_p95_ms": 6849.32017326355,
+      "output_tokens": 0,
+      "ttft_p50_ms": 6392.306089401245,
+      "ttft_p95_ms": 6849.3194580078125
+    },
+    "wall_ms": 15468.50299835205
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 646.1939811706543,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
