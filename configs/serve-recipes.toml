@@ -711,7 +711,7 @@ active_params_b = 3
   ttft_warm_p50_ms = 1681
   context_validation = "131072 pass (needle retrieved)"
   tool_calls = "PASS (preflight 20/20)"
-  intelligence_checks = "1/2 (clean re-measure; 0/2 under concurrent host load — environmental)"
+  intelligence_checks = "1/2 (idle-host re-measure; 0/2 on the pre-fix concurrent-load run)"
   preflight = "ALL PASS"
   caveats = "single-request TTFT was erratic (17-41 s) on WSL 2.6.2; resolved by WSL 2.7.10 — treat WSL >= 2.7 as part of the recipe"
 
@@ -722,8 +722,8 @@ active_params_b = 3
 
 [[recipe]]
 model = "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
-status = "verified"
-source = "measured on fakoli-dark 2026-07-11 — vLLM nightly v0.23.1rc1 ONLY (unsupported on <=0.19/NGC 26.04)"
+status = "unverified"
+source = "measured on fakoli-dark 2026-07-11 — vLLM nightly v0.23.1rc1 ONLY (unsupported on <=0.19/NGC 26.04). Kept unverified pending a fully-passing preflight on a PINNED stable >=0.23 release (the nightly needle probe 400s beyond the 64k claim; see preflight-transcripts.md)"
 family = "nemotron3-omni"
 total_params_b = 30
 active_params_b = 3
@@ -780,8 +780,8 @@ active_params_b = 3
   note = "qwen3_5_moe arch (Gated-DeltaNet hybrid): fla/ops shape warning at load, no instability observed. qwen3 reasoning + qwen3_coder tool parsers. Default thinking EMPTIES small-budget responses — tier config must disable thinking or budget >=4096."
 
   [recipe.measured]
-  throughput_single_tok_s = 29.0
-  context_validation = "131072 pass — needle 11.9 s; full-prefill TTFT 13.1 s (faster than both production baselines)"
+  throughput_single_tok_s = 29.2
+  context_validation = "131072 pass — needle 11.9 s; full-prefill TTFT 13.1 s (fastest measured 131k full-prefill; heavy baseline 25.2 s). See preflight-transcripts.md"
   tool_calls = "PASS (20/20)"
   intelligence_checks = "1/2"
   caveats = "vendor-reported SOTA claims not verified and not used"
@@ -820,7 +820,7 @@ active_params_b = 10
   context_validation = "65536 pass (TTFT 14.3 s full prefill)"
   tool_calls = "PASS"
   intelligence_checks = "2/2 — only candidate matching the heavy baseline"
-  vram_used_gb = 94.3
+  vram_used_gb = 94.3   # operator nvidia-smi capture (94,332 MiB); see preflight-transcripts.md
   caveats = "community expert-pruned (REAP) checkpoint of MiniMax-M2.7 — not an official release; long-tail quality unaudited; decode ~half the gpt-oss-120b production baseline"
 
   [recipe.intent]

@@ -103,7 +103,7 @@ context, and hardware configuration tested.
   weights loading proceeded but pathologically slowly (~80 s per shard × 46
   shards ≈ 60+ min projected, vs ~2 min for the 70 GB MiniMax checkpoint from
   the same volume). Possible aggravators: concurrent Omni compile on the other
-  GPU, and an operator page-cache drop mid-load. At shard 18/46 (~36 min) the
+  GPU, and an operator page-cache drop mid-load. At shard 18/46 (~36 min wall-clock, including engine init and IO stalls) the
   operator aborted the run to end host memory/IO pressure that risked
   contaminating the concurrent Nemotron Omni measurements.
 - The container refused normal stop (zombie loader PID under WSL2 — a known

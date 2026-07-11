@@ -222,6 +222,6 @@ name = "cand-gemma4-31b-llamacpp"
 container = "llamacpp-cand-gemma4-31b"
 port = 39025
 model = "gemma4-31b-it-q4-gguf"
-engine = "llama.cpp"
+engine = "llamacpp"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-gemma4-31b-llamacpp"

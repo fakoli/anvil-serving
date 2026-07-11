@@ -16,7 +16,7 @@ documented failures. **No production tier changed.**
   warm TTFT — but it is a community checkpoint with no 131k headroom on 96 GB.
   **Best measured candidate for the heavy role; not promoted.**
 - **Ornith-1.0-35B FP8** verified the full 131,072-token window with the
-  fastest full-prefill TTFT of the set (13.1 s) and clean tool-calling;
+  fastest measured 131k full-prefill TTFT (13.1 s) and clean tool-calling;
   single-stream decode is modest (29 tok/s). **Retain as specialist
   (agentic / long-context); not promoted.**
 - **Nemotron-3-Nano-30B-A3B NVFP4** works at 131k only with a PIECEWISE
@@ -100,6 +100,10 @@ shared-prefix batch, and a session-memory recall probe.
 
 ## Tool-Calling Results
 
+Two instruments: each bakeoff JSON's `tool` suite is a single structured
+smoke check; the "20/20" figures are preflight's 20-request shared-prefix
+batch, archived verbatim in `…-evidence/preflight-transcripts.md`.
+
 - **Pass (20/20 clean):** Ornith FP8, MiniMax REAP (thinking disabled),
   Nemotron Omni (nightly + `qwen3_coder` parser), Nemotron text
   (with the `nano_v3` reasoning-parser plugin; without it, think-text leaks
@@ -121,7 +125,7 @@ baseline and on Ornith/MiniMax preflights.
 
 | Candidate | Claimed ctx | Needle/context result |
 |---|---|---|
-| Ornith FP8 | 131,072 | pass — needle at ~128k in 11.9 s; full-prefill TTFT 13.1 s (fastest of the set, beats both baselines) |
+| Ornith FP8 | 131,072 | pass — needle at ~128k in 11.9 s; full-prefill TTFT 13.1 s (fastest 131k full-prefill of the set; see preflight-transcripts.md) |
 | Nemotron text | 131,072 | pass — needle retrieved; PIECEWISE workaround required (see Failed Runs) |
 | MiniMax REAP | 65,536 | pass — TTFT 14.3 s at 64k; **no VRAM headroom for 131k** (94.3 GB used) |
 | Nemotron Omni | 65,536 | pass — TTFT 3.1 s at 64k (post-WSL-fix) |
@@ -149,7 +153,7 @@ Single-stream, 8k ctx, 256 out, thinking disabled, measured warm:
 | Candidate | tok/s | TTFT p50 (warm) |
 |---|---|---|
 | MiniMax REAP 139B NVFP4 | **97.2** | 86 ms |
-| Ornith 35B FP8 | 29.0 | ~900 ms E2E p50 |
+| Ornith 35B FP8 | 29.2 | 772 ms |
 | Nemotron Omni 30B NVFP4 (nightly) | 27.3 | 675 ms |
 | Nemotron text 30B NVFP4 | 15.0 | 1.68 s |
 
@@ -195,7 +199,8 @@ Machine-readable versions in the evidence JSONs.)
 
 ### nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4 — verdict: **keep experimental**
 Compose `cand-nemotron3-nano-30b` (:39020), NGC vLLM 0.19/26.04, RTX 5090,
-`modelopt_fp4`, fp8 KV (Mamba cache float16), 131,072 ctx, 2 seqs. Requires:
+`modelopt_fp4`, fp8 KV auto-selected by the ModelOpt checkpoint (Mamba cache
+float16), 131,072 ctx, 2 seqs. Requires:
 PIECEWISE cudagraph mode (else init hang at 131k), `nano_v3` reasoning-parser
 plugin (else think-leak breaks JSON/tools), thinking disabled for small
 budgets. Clean re-measure (WSL 2.7.10, idle host): preflight ALL PASS,
@@ -224,8 +229,8 @@ encoder-stripped community NVFP4.
 Compose `cand-ornith-35b-fp8` (:39022), NGC vLLM 0.19, RTX PRO 6000,
 compressed-tensors FP8 (no `--quantization` flag), fp8 KV, 131,072 ctx,
 qwen3/qwen3_coder parsers. Thinking-disabled bakeoff: 131k needle 11.9 s,
-full-prefill TTFT 13.1 s (best of set incl. baselines), tools 20/20, session
-pass, intelligence 1/2, 29.0 tok/s. Default-thinking empties small budgets
+full-prefill TTFT 13.1 s (fastest 131k full-prefill measured; heavy baseline
+25.2 s), tools 20/20, session pass, intelligence 1/2, 29.2 tok/s. Default-thinking empties small budgets
 (tier config must disable or budget generously). The `fla/ops` GDN warning
 appeared at load; no instability followed. Vendor SOTA claims remain
 unverified and played no part in this verdict.
@@ -285,4 +290,5 @@ All under `docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/`:
 - `candidate-gemma4-31b-*` — none (all six configs died pre-serve; ladder in `failures.md`)
 - `candidate-ornith-35b-*` — 131k bakeoff, throughput
 - `candidate-minimax-m27-reap-*` — 64k bakeoff, throughput
+- `preflight-transcripts.md` — verbatim preflight console captures (needle timings, 20/20 tool batches) + operator nvidia-smi observations
 - `scorecard.csv`, `recommendations.json`, `failures.md`, `reproduction.md`, `runtime-restoration.md`, `checksums.sha256`
