@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Operator CLI v2 voice lifecycle (M3)** — adds canonical
+  `voice audio up|down|status|logs` and
+  `voice proxy run|up|down|restart|status|logs|bridge` surfaces. Audio remains
+  Dark-owned, the persistent Realtime proxy and loopback forwarding bridge
+  remain Mini-owned, and all operational paths resolve topology before local
+  work. MCP/controller parity includes bounded reads, preview/confirm mutation
+  gates, persistent PID/log ownership, per-host command identity checks, and
+  bounded subprocess/process/connection behavior. Legacy module-level voice
+  paths remain removed tombstones.
 - **`host memory` + `host reclaim` — the WSL page-cache watchdog** — promotes the ad-hoc
   remediation from the 2026-07-10/11 Blackwell bakeoff (repeated 60–90 GB weight streams
   ballooned the WSL2 VM's page cache to 50–54 GB of 64 GB, starving Windows;

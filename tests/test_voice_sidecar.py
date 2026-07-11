@@ -228,12 +228,16 @@ def test_voice_ops_skill_uses_existing_verbs_and_scopes_evidence():
         "anvil-serving voice sidecar validate",
         "anvil-serving voice sidecar command",
         "anvil-serving voice sidecar compose",
-        "anvil-serving voice up",
-        "anvil-serving voice down",
-        "anvil-serving voice run",
+        "anvil-serving voice audio up",
+        "voice audio down",
+        "voice audio status",
+        "voice proxy up",
+        "voice proxy run",
+        "voice proxy bridge",
         "anvil-serving voice benchmark",
     ]:
         assert command in text
+    assert "--topology <topology>" in text
     assert "voice-pipeline evidence" in text
     assert "not router work-class promotion evidence" in text
     assert "promotion_quality_evidence: false" in text

@@ -43,7 +43,7 @@ from anvil_serving.targets import (
     finalize_execution_plan,
     preflight_execution_plan,
 )
-from anvil_serving.topology import CommandIdentity, Topology
+from anvil_serving.topology import CommandIdentity, Resource, Topology
 
 try:
     import tomllib  # Python 3.11+
@@ -146,6 +146,101 @@ class ResolvedAudioTargets:
     @property
     def warnings(self) -> tuple[str, ...]:
         return self.stt.plan.warnings + self.tts.plan.warnings
+
+
+@dataclass(frozen=True)
+class ResolvedProxyTargets:
+    """Mini-owned Realtime proxy plus its host-relative audio forwarders."""
+
+    proxy: ExecutionPlan
+    stt_proxy: Resource
+    tts_proxy: Resource
+    stt_model: Resource
+    tts_model: Resource
+    stt_target_host: str | None
+    tts_target_host: str | None
+
+    @property
+    def endpoint(self) -> str:
+        endpoint = self.proxy.resource_endpoint
+        if endpoint is None:
+            raise ConfigError("topology realtime proxy resource has no endpoint")
+        return endpoint
+
+    def as_dict(self) -> dict[str, object]:
+        context = self.proxy.as_dict()
+        context["proxy_endpoint"] = self.endpoint
+        context["audio_proxy_endpoints"] = {
+            "stt": self.stt_proxy.endpoint,
+            "tts": self.tts_proxy.endpoint,
+        }
+        context["audio_model_owners"] = {
+            "stt": self.stt_model.host,
+            "tts": self.tts_model.host,
+        }
+        return context
+
+
+def resolve_proxy_targets(
+    topology: Topology,
+    *,
+    operation: str,
+    target: str | None = None,
+    transport: str = "auto",
+    command_identity: CommandIdentity | None = None,
+    command_host: str | None = None,
+    command_runtime: str | None = None,
+    environment: Mapping[str, str] | None = None,
+    overlay: str | None = None,
+) -> ResolvedProxyTargets:
+    """Resolve the Mini proxy owner without classifying forwarders as models."""
+    preflight = preflight_execution_plan(
+        topology,
+        CommandSpec(
+            name=operation,
+            resource_role="realtime-proxy",
+            supported_transports=("local", "controller"),
+            execution_runtime_roles=("native",),
+            mutation_class="service",
+            recovery_capable=False,
+            gpu_role_required=False,
+        ),
+        target=target,
+        command_identity=command_identity,
+        command_host=command_host,
+        command_runtime=command_runtime,
+        environment=environment,
+        overlay=overlay,
+    )
+    plan = finalize_execution_plan(topology, preflight, transport=transport)
+    proxies = {
+        kind: topology.resource_owner("%s-proxy" % kind)
+        for kind in ("stt", "tts")
+    }
+    for kind, resource in proxies.items():
+        if resource.host != plan.resource_host.id or resource.runtime != plan.resource_runtime.id:
+            raise ConfigError(
+                "%s proxy must be co-owned with realtime proxy on %s/%s"
+                % (kind, plan.resource_host.id, plan.resource_runtime.id)
+            )
+        if resource.endpoint is None or resource.endpoint_kind != "host-relative-loopback":
+            raise ConfigError("%s proxy must declare a host-relative loopback endpoint" % kind)
+    models = {
+        kind: topology.resource_owner("%s-serve" % kind)
+        for kind in ("stt", "tts")
+    }
+    for kind, resource in models.items():
+        if resource.endpoint is None:
+            raise ConfigError("%s model resource must declare an endpoint" % kind)
+    return ResolvedProxyTargets(
+        plan,
+        proxies["stt"],
+        proxies["tts"],
+        models["stt"],
+        models["tts"],
+        topology.host(models["stt"].host).address,
+        topology.host(models["tts"].host).address,
+    )
 
 
 def resolve_audio_targets(

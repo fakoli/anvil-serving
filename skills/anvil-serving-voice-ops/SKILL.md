@@ -1,15 +1,14 @@
 ---
 name: anvil-serving-voice-ops
-description: Validate and operate anvil-serving voice manifests, profile switches, private audio bridges, Hugging Face speech-to-speech sidecars, realtime run commands, and bounded voice benchmarks without treating voice evidence as router promotion evidence.
+description: Operate topology-owned anvil-serving voice audio and Realtime proxy lifecycle, Mini-to-Dark loopback forwarding, profiles, sidecars, and bounded voice benchmarks. Use for voice status, logs, start/stop/restart, OpenClaw Talk topology checks, and voice evidence that must remain separate from router promotion evidence.
 ---
 
 # Anvil Serving Voice Ops
 
 Use this skill for voice-pipeline operations: validating sidecar manifests,
-rendering speech-to-speech commands, previewing compose snippets, bringing
-manifest-owned managed/native STT/TTS lifecycle up or down, selecting declared
-voice profiles, running private STT/TTS bridge ports, running the realtime voice
-loop, and running bounded voice benchmarks.
+rendering speech-to-speech commands, managing Dark-owned STT/TTS, managing the
+persistent Mini Realtime proxy, selecting profiles, running the Mini-local
+forwarding bridge, and collecting bounded voice benchmarks.
 
 ## Start Here
 
@@ -19,9 +18,10 @@ loop, and running bounded voice benchmarks.
 2. Prefer the existing CLI verbs before proposing a new tool:
    `anvil-serving voice sidecar validate`,
    `anvil-serving voice sidecar command`,
-   `anvil-serving voice sidecar compose`, `anvil-serving voice up`,
-   `anvil-serving voice down`, `anvil-serving voice profiles`,
-   `anvil-serving voice bridge`, `anvil-serving voice run`, and
+   `anvil-serving voice sidecar compose`,
+   `anvil-serving voice audio {up|down|status|logs}`,
+   `anvil-serving voice profiles {list|validate}`,
+   `anvil-serving voice proxy {run|up|down|restart|status|logs|bridge}`, and
    `anvil-serving voice benchmark`.
 3. Use `127.0.0.1` for local URLs. Do not introduce `localhost`.
 4. Pass secrets by environment variable name only. Do not put literal API keys
@@ -43,8 +43,8 @@ loop, and running bounded voice benchmarks.
 
 ## Gates
 
-Stop for a human gate before public or non-loopback realtime binds, exposing a
-realtime token, exposing non-loopback STT/TTS bridge ports, changing
+Stop for a human gate before public or non-loopback Realtime binds, exposing a
+Realtime token, changing
 cloud/STT/TTS spend, installing or updating external speech-to-speech packages,
 or starting long-running foreground services on a shared host.
 
@@ -73,28 +73,32 @@ review, and human approval.
   `anvil-serving voice sidecar compose --config <manifest>`; inspect loopback
   ports, `host.docker.internal` routing, image name, and auth comments.
 - Managed audio serves:
-  `anvil-serving voice up --config <manifest>` and
-  `anvil-serving voice down --config <manifest>`; external lifecycle serves
+  `anvil-serving voice audio up --topology <topology> --config <manifest>` and
+  `voice audio down`; preview mutations first and require `--confirm` for live
+  controller execution. Use `anvil-serving voice audio status` and bounded
+  `anvil-serving voice audio logs` for reads.
+  External lifecycle serves
   should be reported as skipped rather than forced into local Docker control.
 - Profile selection:
-  `anvil-serving voice profiles --config <manifest>` to list profiles, then add
-  `--profile <name>` to `voice up`, `voice down`, `voice run`, or
+  `anvil-serving voice profiles list --config <manifest>` to list profiles,
+  then add `--profile <name>` to audio, proxy, or
   `voice benchmark` when switching audio topology. For reference OpenClaw Talk
   and candidate benchmarks, keep Mini model-free and select Dark-host audio or
   a Mini-side proxy to Dark. Use `mini-audio` only when explicitly testing the
   optional same-host/local-audio mode.
-- Private audio bridge:
-  `anvil-serving voice bridge --dry-run` first. A non-loopback live bind must
-  be private/tailnet-scoped and include
-  `--i-understand-this-exposes-voice-audio`. Prefer a concrete private or
-  tailnet listen address; wildcard binds require `--allow-wildcard-listen` and
-  prior firewall or tailnet ACL proof.
-- Realtime loop:
-  `anvil-serving voice run --config <manifest>` after endpoint reachability is
-  understood. Treat unreachable STT/TTS/router endpoints as blockers.
+- Mini-to-Dark audio bridge:
+  `anvil-serving voice proxy bridge --topology <topology> --config <manifest>
+  --profile mini-dark-audio-proxy --dry-run` first. Run it on Mini. Require
+  topology-derived Dark targets and reject every non-loopback Mini listener.
+- Realtime proxy:
+  use `anvil-serving voice proxy up` for the persistent Mini process and
+  `anvil-serving voice proxy run` for a foreground diagnostic. Use
+  `down`/`restart` only after preview and explicit
+  confirmation; use bounded `status`/`logs` for inspection. Treat unreachable
+  STT/TTS/router endpoints as blockers. Never start audio lifecycle implicitly.
 - Bounded benchmark:
-  `anvil-serving voice benchmark --config <manifest>` and capture the JSON as
-  `voice-pipeline` evidence with `promoted=false`.
+  `anvil-serving voice benchmark --topology <topology> --config <manifest>` and
+  capture JSON as `voice-pipeline` evidence with `promoted=false`.
 
 ## Result Packet
 
