@@ -14,8 +14,8 @@ All notable changes to this project are documented here. The format is based on
   `autoMemoryReclaim=gradual` lags load bursts). `host memory` shows host RAM, the WSL VM's
   used/page-cache/available (`/proc/meminfo` via `wsl`), and GPU VRAM. `host reclaim` runs
   `sync && echo 3 > /proc/sys/vm/drop_caches` as root inside the distro — confirm-gated
-  (`--confirm`/`--force`), refusing while a checkpoint is actively streaming (page cache
-  growing > 0.25 GB/s) unless `--force`; `--watch --threshold-gb N [--interval S]` is the
+  per the CLI safety policy (`--confirm`), refusing while a checkpoint is actively streaming
+  (page cache growing > 0.25 GB/s) unless `--force`; `--watch --threshold-gb N [--interval S]` is the
   foreground watchdog form. Windows/WSL2-guarded with a clear message elsewhere.
 - **Production-polish reconciliation inventory** — records the 49 pre-existing CLI
   polish hunks, their retain/adapt disposition, their v2 task ownership, and the

@@ -380,13 +380,22 @@ def test_reclaim_refuses_while_a_load_is_streaming(monkeypatch, capsys):
     assert box.drops == []                          # drop_caches NOT run
 
 
-def test_reclaim_force_overrides_streaming_and_prompt(monkeypatch, capsys):
+def test_reclaim_force_overrides_streaming_and_prompt(monkeypatch):
+    # The SAME growing fixture that makes the un-forced path refuse (test above): if --force ever
+    # stops bypassing the streaming check, this samples 50 -> 52 (1 GB/s), refuses, and fails here.
     monkeypatch.setattr(host.sys, "platform", "win32")
-    box = _WslBox([50, 5])                          # before, after
+    box = _WslBox([50, 50, 52])
     rc = host.cmd_reclaim(force=True, _run=box, _input=lambda p: "n", _sleep=lambda s: None)
     assert rc == 0 and len(box.drops) == 1
     j = " ".join(box.drops[0])
     assert "-u root" in j and "drop_caches" in j and "sync" in j
+
+
+def test_reclaim_reports_before_and_after_cache(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50, 5])                          # before, after
+    rc = host.cmd_reclaim(force=True, _run=box, _input=lambda p: "n", _sleep=lambda s: None)
+    assert rc == 0
     assert "50.0 GB -> 5.0 GB" in capsys.readouterr().out
 
 
@@ -419,6 +428,39 @@ def test_reclaim_watch_requires_threshold(monkeypatch, capsys):
     assert "--threshold-gb" in capsys.readouterr().err
 
 
+def test_reclaim_rejects_nonpositive_watch_values(monkeypatch, capsys):
+    # interval <= 0 reaches time.sleep -> ValueError (or a busy loop); threshold <= 0 drops every
+    # interval. Both must be usage errors, not crashes.
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50])
+    assert host.cmd_reclaim(watch=True, threshold_gb=40, interval_s=-5, force=True, _run=box) == 2
+    assert "--interval" in capsys.readouterr().err
+    assert host.cmd_reclaim(watch=True, threshold_gb=0, force=True, _run=box) == 2
+    assert "--threshold-gb" in capsys.readouterr().err
+    assert box.drops == []
+
+
+def test_reclaim_rejects_watch_flags_without_watch(monkeypatch, capsys):
+    # `reclaim --threshold-gb 40` (forgot --watch) must NOT silently do a one-shot drop.
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50])
+    assert host.cmd_reclaim(threshold_gb=40, force=True, _run=box) == 2
+    assert "--watch" in capsys.readouterr().err
+    assert box.drops == []
+
+
+def test_reclaim_ctrl_c_at_prompt_or_sample_aborts_cleanly(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    def ctrl_c(prompt):
+        raise KeyboardInterrupt
+    rc = host.cmd_reclaim(_run=_WslBox([50]), _input=ctrl_c, _sleep=lambda s: None)
+    assert rc == 1 and "aborted" in capsys.readouterr().out          # prompt Ctrl-C
+    def ctrl_c_sleep(seconds):
+        raise KeyboardInterrupt
+    rc = host.cmd_reclaim(_run=_WslBox([50, 50]), _input=lambda p: "y", _sleep=ctrl_c_sleep)
+    assert rc == 1 and "aborted" in capsys.readouterr().out          # growth-sample Ctrl-C
+
+
 def test_reclaim_watch_drops_over_threshold_then_stops_on_interrupt(monkeypatch, capsys):
     monkeypatch.setattr(host.sys, "platform", "win32")
     box = _WslBox([50, 5])                          # 50 >= 40 -> drop; 5 = post-drop read
@@ -428,6 +470,55 @@ def test_reclaim_watch_drops_over_threshold_then_stops_on_interrupt(monkeypatch,
     assert rc == 0 and len(box.drops) == 1
     out = capsys.readouterr().out
     assert "dropped: 50.0 GB" in out and "watchdog stopped" in out
+
+
+def test_reclaim_watch_fails_closed_when_growth_sample_unreadable(monkeypatch, capsys):
+    # Unattended watchdog + unreadable growth sample (likeliest DURING a disk-saturating load):
+    # must skip the tick, NOT drop (guard.py: fail closed when safety state can't be read).
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    class FlakyBox(_WslBox):
+        meminfo_calls = 0
+        def __call__(self, argv, **k):
+            if "/proc/meminfo" in " ".join(argv):
+                self.meminfo_calls += 1
+                if self.meminfo_calls > 1:               # threshold read ok, then samples fail
+                    return proc(1, "", "wsl timed out")
+            return super().__call__(argv, **k)
+    box = FlakyBox([50])
+    def sleep(seconds):
+        if seconds != host._STREAM_SAMPLE_SECONDS:       # the interval sleep -> stop the loop
+            raise KeyboardInterrupt
+    rc = host.cmd_reclaim(watch=True, threshold_gb=40, _run=box, _input=lambda p: "y", _sleep=sleep)
+    assert rc == 0 and box.drops == []                   # tick skipped, nothing dropped
+    assert "streaming check unavailable" in capsys.readouterr().out
+
+
+def test_reclaim_one_shot_warns_when_growth_sample_unreadable(monkeypatch, capsys):
+    # One-shot stays fail-open (human at the prompt) but must SAY the guard didn't run.
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    class FlakyBox(_WslBox):
+        def __call__(self, argv, **k):
+            j = " ".join(argv)
+            if "/proc/meminfo" in j and len(self.cached) < 3 and "drop" not in j:
+                if not self.drops:                       # growth samples fail; before-read succeeded
+                    return proc(1, "", "wsl timed out")
+            return super().__call__(argv, **k)
+    box = FlakyBox([50, 50, 5])                          # before ok, samples fail, after ok
+    rc = host.cmd_reclaim(_run=box, _input=lambda p: "y", _sleep=lambda s: None)
+    assert rc == 0 and len(box.drops) == 1               # proceeded (fail-open)...
+    assert "streaming check unavailable" in capsys.readouterr().err   # ...but never silently
+
+
+def test_reclaim_yes_skips_prompt_but_keeps_streaming_refusal(monkeypatch, capsys):
+    # guard.py's --yes/--force split: --yes = don't prompt; only --force disarms the safety check.
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50, 50, 52])                          # growing -> streaming
+    rc = host.cmd_reclaim(yes=True, _run=box, _input=lambda p: "n", _sleep=lambda s: None)
+    assert rc == 2 and box.drops == []                   # refusal NOT bypassed by --yes
+    assert "REFUSING" in capsys.readouterr().err
+    box2 = _WslBox([50, 50, 50, 5])                      # stable -> passes the check
+    rc = host.cmd_reclaim(yes=True, _run=box2, _input=lambda p: "n", _sleep=lambda s: None)
+    assert rc == 0 and len(box2.drops) == 1              # prompt skipped without --force
 
 
 def test_reclaim_watch_waits_out_a_streaming_load(monkeypatch, capsys):

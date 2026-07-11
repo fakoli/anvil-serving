@@ -356,8 +356,8 @@ Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
 | `wsl-config` | Edit `.wslconfig` memory/swap (`--memory GB`, `--swap GB`); backup + safe-cap refusal (`--force` to override), `--revert` restores the newest anvil backup, `--dry-run` shows the change. |
 | `restart-docker` | Apply via a Docker Desktop restart (confirm prompt; `--force` skips). |
 | `reset-wsl` | Un-wedge a hung WSL subsystem (confirm prompt; `--force` skips). |
-| `memory` | Show host RAM, the WSL VM's used / **page cache** / available (from `/proc/meminfo` inside the distro), and GPU VRAM. `--distro NAME` targets a specific distro. |
-| `reclaim` | Drop the WSL VM's page cache (`sync && echo 3 > /proc/sys/vm/drop_caches` as root). Confirm-gated (`--confirm`/`--force`); **refuses while a model load is actively streaming** (page cache growing fast) unless `--force`. `--watch --threshold-gb N [--interval S]` runs a foreground watchdog that drops whenever the cache exceeds the threshold; `--dry-run` shows the command. |
+| `memory` | Show host RAM, the WSL VM's used / **page cache** / available (from `/proc/meminfo` inside the distro), and GPU VRAM. `--distro NAME` targets a specific distro. Note: querying `/proc/meminfo` starts the (default) distro if it is stopped — a cold boot can take longer than the 15 s probe timeout. |
+| `reclaim` | Drop the WSL VM's page cache (`sync && echo 3 > /proc/sys/vm/drop_caches` as root). Confirm-gated per the CLI safety policy (`--confirm`); **refuses while a model load is actively streaming** (page cache growing fast) unless `--force` (which overrides only that refusal, not the confirmation gate). `--watch --threshold-gb N [--interval S]` runs a foreground watchdog that drops whenever the cache exceeds the threshold; `--dry-run` shows the command. |
 
 ```bash
 anvil-serving host wsl-config --memory 64 --dry-run

@@ -13271,6 +13271,16 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--watch"
+          ],
+          "output_policy": "follow",
+          "requires_confirmation": false,
+          "summary": "Foreground reclaim watchdog loop.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",

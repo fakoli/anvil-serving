@@ -318,6 +318,7 @@ def test_declarative_command_policy_classifies_active_follow_option():
         (["mcp", "serve", "--json"], "protocol"),
         (["router", "logs", "--follow", "--json"], "follow"),
         (["serves", "logs", "--json", "--follow"], "follow"),
+        (["host", "reclaim", "--json", "--confirm", "--watch", "--threshold-gb", "40"], "follow"),
     ],
 )
 def test_real_unbounded_commands_refuse_json_before_handler_resolution(
