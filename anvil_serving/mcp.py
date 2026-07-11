@@ -313,6 +313,27 @@ def _bounded_int_arg(args: dict, name: str, default: int, *, min_value: int, max
     return value
 
 
+def _bounded_float_arg(
+    args: dict,
+    name: str,
+    default: float,
+    *,
+    min_value: float,
+    max_value: float,
+) -> float:
+    value = args.get(name, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ToolError("bad_argument", "%r must be a number" % name)
+    result = float(value)
+    if not math.isfinite(result) or result < min_value or result > max_value:
+        raise ToolError(
+            "bad_argument",
+            "%r must be between %s and %s" % (name, min_value, max_value),
+            {"value": value},
+        )
+    return result
+
+
 def _is_tailscale_v4(addr: str) -> bool:
     # ipaddress treats 100.64.0.0/10 as special rather than private on some
     # Python versions. Keep the controller/probe tailnet allowance explicit.
@@ -1460,12 +1481,35 @@ def tool_serves_logs(args: dict) -> dict:
     })
 
 
-def _voice_cli_argv(action: str, config: str, *, dry_run: bool = False, profile: str = "") -> list[str]:
-    argv = [sys.executable, "-m", "anvil_serving.cli", "voice", action, "--config", config]
+def _voice_cli_argv(
+    action: str,
+    config: str,
+    *,
+    topology: str,
+    dry_run: bool = False,
+    profile: str = "",
+    ready_timeout: float = 3.0,
+    tail: int = 200,
+) -> list[str]:
+    argv = [
+        sys.executable,
+        "-m",
+        "anvil_serving.cli",
+        "voice",
+        "audio",
+        action,
+        "--config",
+        config,
+    ]
     if profile:
         argv += ["--profile", profile]
+    argv += ["--topology", topology]
     if dry_run:
         argv.append("--dry-run")
+    if action == "status":
+        argv += ["--ready-timeout", str(ready_timeout)]
+    elif action == "logs":
+        argv += ["--tail", str(tail)]
     return argv
 
 
@@ -1521,32 +1565,209 @@ def _voice_manage_plan(config: str, *, profile: str = "") -> dict:
 
 
 def tool_voice_manage(args: dict) -> dict:
+    """Manage Dark-owned STT/TTS only after local topology authorization."""
+    from .topology import load_topology
     from .voice import config as voice_config
+    from .voice import cli as voice_cli
 
     action = _str_arg(args, "action", required=True)
-    if action not in {"up", "down", "start", "stop"}:
-        raise ToolError("bad_action", "action must be one of: up, down, start, stop", {"action": action})
-    normalized = {"start": "up", "stop": "down"}.get(action, action)
+    if action not in {"up", "down", "status", "logs"}:
+        raise ToolError(
+            "bad_action",
+            "action must be one of: up, down, status, logs",
+            {"action": action},
+        )
     config_arg = _str_arg(args, "config", "")
     config = voice_config.resolve_config_path(config_arg or None)
     profile = _str_arg(args, "profile", "")
+    topology_path = _str_arg(args, "topology", "") or os.environ.get(
+        "ANVIL_VOICE_TOPOLOGY", ""
+    ).strip()
+    if not topology_path:
+        raise ToolError(
+            "missing_topology",
+            "set ANVIL_VOICE_TOPOLOGY on the Dark controller or pass topology",
+        )
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
+    ready_timeout = _bounded_float_arg(
+        args, "ready_timeout", 3.0, min_value=0.1, max_value=60.0
+    )
+    tail = _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000)
     plan = _voice_manage_plan(config, profile=profile)
-    preview = dry_run or not confirm
-    argv = _voice_cli_argv(normalized, config, dry_run=preview, profile=profile)
+    try:
+        topology = load_topology(topology_path)
+        owners = tuple(topology.resource_owner("%s-serve" % kind) for kind in ("stt", "tts"))
+        if owners[0].host != owners[1].host or owners[0].runtime != owners[1].runtime:
+            raise voice_config.ConfigError(
+                "STT and TTS must be co-owned by one host/runtime for audio lifecycle"
+            )
+        cli_args = argparse.Namespace(
+            config=config,
+            profile=profile or None,
+            topology=topology_path,
+            topology_overlay=None,
+            command_host=None,
+            command_runtime=None,
+            target=None,
+            transport="local",
+            experimental_model_workload=False,
+            ready_timeout=ready_timeout,
+            tail=tail,
+            operation_timeout=float(timeout_seconds),
+        )
+        data, targets, error, error_code = voice_cli._resolve_audio_operation(cli_args)
+        if error:
+            raise ToolError(
+                "audio_target_refused",
+                error,
+                {"topology": topology_path, "exit_code": error_code},
+            )
+    except ToolError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise ToolError(
+            "bad_audio_config",
+            "could not resolve Dark audio ownership",
+            {"config": config, "topology": topology_path, "error": str(exc)},
+        )
+    assert data is not None and targets is not None
+    cli_args._resolved_audio = (data, targets)
+    preview = action in {"up", "down"} and (dry_run or not confirm)
+    argv = _voice_cli_argv(
+        action,
+        config,
+        topology=topology_path,
+        dry_run=preview,
+        profile=profile,
+        ready_timeout=ready_timeout,
+        tail=tail,
+    )
     target = {
-        "action": normalized,
+        "action": action,
         "config": config,
         "profile": profile or None,
+        "topology": topology_path,
+        "owners": targets.as_dict(),
         "timeout_seconds": timeout_seconds,
     }
+    if action in {"status", "logs"}:
+        handler = voice_cli.cmd_audio_status if action == "status" else voice_cli.cmd_audio_logs
+        returncode, stdout, stderr = _capture(lambda: handler(cli_args))
+        if returncode != 0:
+            raise ToolError(
+                "command_failed",
+                "voice audio %s failed" % action,
+                {"command": argv, "returncode": returncode, "stderr": stderr},
+            )
+        return _ok({
+            "applied": False,
+            "target": target,
+            "command": argv,
+            "plan": plan,
+            "output": stdout,
+            "stderr": stderr,
+        })
     if preview:
         return _ok({"applied": False, "dry_run": True, "target": target, "command": argv, "plan": plan})
-    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    result = voice_cli.execute_audio_lifecycle(
+        data, action, targets=targets, timeout_seconds=float(timeout_seconds)
+    )
+    if result["returncode"] != 0:
+        raise ToolError(
+            "command_failed",
+            "voice audio lifecycle failed",
+            {"command": argv, "lifecycle": result},
+        )
     applied = any(item.get("lifecycle") != "external" for item in plan.get("audio_serves", []))
-    return _ok({"applied": applied, "dry_run": False, "target": target, "plan": plan, **result})
+    return _ok({
+        "applied": applied,
+        "dry_run": False,
+        "target": target,
+        "command": argv,
+        "plan": plan,
+        "lifecycle": result,
+    })
+
+
+def tool_voice_proxy_manage(args: dict) -> dict:
+    """Manage the persistent Mini proxy process without touching model serves."""
+    from .topology import load_topology
+    from .voice import config as voice_config
+    from .voice.realtime_service import ProxyProcessConfig, RealtimeProxyProcessService
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"up", "down", "restart", "status", "logs"}:
+        raise ToolError(
+            "bad_action",
+            "action must be one of: up, down, restart, status, logs",
+            {"action": action},
+        )
+    config = voice_config.resolve_config_path(_str_arg(args, "config", "") or None)
+    profile = _str_arg(args, "profile", "")
+    topology_path = _str_arg(args, "topology", "") or os.environ.get(
+        "ANVIL_VOICE_TOPOLOGY", ""
+    ).strip()
+    if not topology_path:
+        raise ToolError(
+            "missing_topology",
+            "set ANVIL_VOICE_TOPOLOGY on the Mini controller or pass topology",
+        )
+    try:
+        data = voice_config.load_manifest(config, profile=profile or None)
+        topology = load_topology(topology_path)
+        targets = voice_config.resolve_proxy_targets(
+            topology,
+            operation="voice-proxy-%s" % action,
+            transport="local",
+        )
+    except (OSError, ValueError) as exc:
+        raise ToolError(
+            "bad_proxy_config",
+            "could not resolve Mini proxy configuration",
+            {"config": config, "topology": topology_path, "error": str(exc)},
+        )
+    voice = data["voice"]
+    process = RealtimeProxyProcessService(ProxyProcessConfig(
+        config_path=config,
+        topology_path=topology_path,
+        profile=profile or None,
+        host=voice.get("realtime_host", "127.0.0.1"),
+        port=int(voice.get("realtime_port", 8765)),
+        owner=targets.proxy.resource_host.id,
+        pid_file=_str_arg(args, "pid_file", "") or os.path.join(
+            "~/.anvil-serving/run", "voice-proxy.pid"
+        ),
+        log_file=_str_arg(args, "log_file", "") or os.path.join(
+            "~/.anvil-serving/run", "voice-proxy.log"
+        ),
+        ready_timeout=float(_bounded_int_arg(
+            args, "timeout_seconds", 15, min_value=1, max_value=300
+        )),
+    ))
+    if action == "status":
+        return _ok(process.status())
+    if action == "logs":
+        tail = _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000)
+        return _ok(process.logs(tail=tail))
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    preview = dry_run or not confirm
+    result = getattr(process, action)(dry_run=preview)
+    result["dry_run"] = preview
+    if preview:
+        result["applied"] = False
+    elif action == "restart":
+        result["applied"] = any(
+            isinstance(step, dict) and bool(step.get("applied"))
+            for step in (result.get("down"), result.get("up"))
+        )
+    else:
+        result["applied"] = bool(
+            result.get("applied", result.get("returncode") == 0)
+        )
+    return _ok(result)
 
 
 def tool_doctor_summary(args: dict) -> dict:
@@ -2637,14 +2858,33 @@ TOOLS: Dict[str, dict] = {
     "voice_manage": {
         "description": "Preview or run guarded voice STT/TTS lifecycle actions with optional voice profile selection.",
         "inputSchema": _schema({
-            "action": {"type": "string", "enum": ["up", "down", "start", "stop"]},
+            "action": {"type": "string", "enum": ["up", "down", "status", "logs"]},
             "config": {"type": "string"},
             "profile": {"type": "string"},
+            "topology": {"type": "string"},
+            "ready_timeout": {"type": "number", "minimum": 0.1, "maximum": 60.0, "default": 3.0},
+            "tail": _bounded_integer_schema(1, 5000, 200),
             "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},
             "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
         }, required=["action"]),
         "handler": tool_voice_manage,
+    },
+    "voice_proxy_manage": {
+        "description": "Manage the persistent Mini-owned Realtime proxy process.",
+        "inputSchema": _schema({
+            "action": {"type": "string", "enum": ["up", "down", "restart", "status", "logs"]},
+            "config": {"type": "string"},
+            "profile": {"type": "string"},
+            "topology": {"type": "string"},
+            "pid_file": {"type": "string"},
+            "log_file": {"type": "string"},
+            "tail": _bounded_integer_schema(1, 5000, 200),
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 300, 15),
+        }, required=["action"]),
+        "handler": tool_voice_proxy_manage,
     },
     "doctor_summary": {
         "description": "Run anvil-serving environment checks and return structured results.",

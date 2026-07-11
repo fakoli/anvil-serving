@@ -1,7 +1,8 @@
 # Optional Mini-local audio validation manifest.
 #
 # STT and TTS are native MLX Audio servers bound to loopback on the Mini.
-# `anvil-serving voice up/down --config examples/voice/fakoli-mini.toml`
+# Use `voice audio up/down` only with an explicit non-production topology that
+# declares Mini as the audio owner and permits experimental model workloads.
 # starts/stops those processes with PID/log files under /tmp/anvil-voice-mini.
 # The LLM remains routed to fakoli-dark over the tailnet. Secrets are env var
 # names only; never paste token values here.

@@ -34,6 +34,7 @@ class HandlerRef:
     module: str
     attribute: str = "main"
     argv_prefix: tuple[str, ...] | None = None
+    forward_resolution_options: bool = False
 
     def __post_init__(self) -> None:
         if self.argv_prefix is not None:
@@ -106,6 +107,7 @@ class CommandNode:
     options: tuple[CommandOption, ...] = field(default_factory=tuple)
     handler: HandlerRef | None = None
     resource_role: str | None = None
+    coowned_resource_roles: tuple[str, ...] = field(default_factory=tuple)
     transports: tuple[str, ...] = field(default_factory=tuple)
     execution_runtime_roles: tuple[str, ...] = field(default_factory=tuple)
     execution_host_os: tuple[str, ...] = field(default_factory=tuple)
@@ -123,6 +125,7 @@ class CommandNode:
     def __post_init__(self) -> None:
         object.__setattr__(self, "children", tuple(self.children))
         object.__setattr__(self, "options", tuple(self.options))
+        object.__setattr__(self, "coowned_resource_roles", tuple(self.coowned_resource_roles))
         object.__setattr__(self, "transports", tuple(self.transports))
         object.__setattr__(self, "execution_runtime_roles", tuple(self.execution_runtime_roles))
         object.__setattr__(self, "execution_host_os", tuple(self.execution_host_os))
@@ -174,11 +177,13 @@ def _handler(
     *,
     attribute: str = "main",
     argv_prefix: Iterable[str] | None = None,
+    forward_resolution_options: bool = False,
 ) -> HandlerRef:
     return HandlerRef(
         module,
         attribute=attribute,
         argv_prefix=None if argv_prefix is None else tuple(argv_prefix),
+        forward_resolution_options=forward_resolution_options,
     )
 
 
@@ -213,6 +218,7 @@ def _node(
     options: Iterable[CommandOption] = (),
     handler: HandlerRef | None = None,
     resource_role: str | None = None,
+    coowned_resource_roles: Iterable[str] = (),
     transports: tuple[str, ...] = (),
     execution_runtime_roles: tuple[str, ...] = (),
     execution_host_os: tuple[str, ...] = (),
@@ -234,6 +240,7 @@ def _node(
         options=tuple(options),
         handler=handler,
         resource_role=resource_role,
+        coowned_resource_roles=tuple(coowned_resource_roles),
         transports=transports,
         execution_runtime_roles=execution_runtime_roles,
         execution_host_os=execution_host_os,
@@ -256,12 +263,14 @@ def _resource_node(
     module: str | None,
     *,
     role: str,
+    coowned_roles: Iterable[str] = (),
     mutation: str = "read",
     recovery: bool = False,
     gpu: bool = False,
     options: Iterable[CommandOption] = (),
     argv_prefix: Iterable[str] | None = None,
     handler_attribute: str = "main",
+    forward_resolution_options: bool = False,
     output_policy: str = "bounded",
     docs_anchor: str = "docs/CLI.md",
     remote_operation: RemoteOperation | None = None,
@@ -276,8 +285,10 @@ def _resource_node(
             module,
             attribute=handler_attribute,
             argv_prefix=argv_prefix,
+            forward_resolution_options=forward_resolution_options,
         ) if module else _future_handler(),
         resource_role=role,
+        coowned_resource_roles=coowned_roles,
         transports=(
             ("local", "controller", "ssh")
             if recovery and remote_operation is not None
@@ -491,20 +502,48 @@ def build_command_tree() -> CommandTree:
         "voice", "Manage audio and realtime proxy operations.",
         children=(
             _node("audio", "Manage Dark-owned STT/TTS lifecycle.", children=(
-                _resource_node("up", "Start audio serves.", "anvil_serving.voice.cli", role="audio", mutation="mutate", options=confirm_options, argv_prefix=("up",), remote_operation=_remote("voice_manage", fixed=(("action", "up"),))),
-                _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="audio", mutation="mutate", options=confirm_options, argv_prefix=("down",), remote_operation=_remote("voice_manage", fixed=(("action", "down"),))),
+                _resource_node("up", "Start audio serves.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), mutation="mutate", options=confirm_options, argv_prefix=("audio", "up"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "up"),))),
+                _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), mutation="mutate", options=confirm_options, argv_prefix=("audio", "down"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "down"),))),
+                _resource_node("status", "Show bounded audio serve status.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), argv_prefix=("audio", "status"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "status"),), allowed=("config", "profile", "ready_timeout", "timeout_seconds"))),
+                _resource_node("logs", "Show bounded audio serve logs.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), argv_prefix=("audio", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "tail", "timeout_seconds"))),
             ), docs_anchor="docs/VOICE.md#audio-lifecycle"),
             _node("proxy", "Manage the realtime proxy process.", children=(
-                _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="proxy", mutation="process", argv_prefix=("run",), output_policy="foreground"),
-                _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="proxy", mutation="mutate", options=confirm_options, argv_prefix=("bridge",), output_policy="foreground"),
+                _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "run"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
+                *(
+                    _resource_node(
+                        action,
+                        summary,
+                        "anvil_serving.voice.cli",
+                        role="realtime-proxy",
+                        coowned_roles=("stt-proxy", "tts-proxy"),
+                        mutation="mutate",
+                        options=confirm_options,
+                        argv_prefix=("proxy", action),
+                        forward_resolution_options=True,
+                        remote_operation=_remote(
+                            "voice_proxy_manage",
+                            fixed=(("action", action),),
+                            allowed=("config", "profile", "pid_file", "log_file", "dry_run", "timeout_seconds"),
+                        ),
+                        execution_runtime_roles=("native",),
+                    )
+                    for action, summary in (
+                        ("up", "Start the realtime proxy."),
+                        ("down", "Stop the realtime proxy."),
+                        ("restart", "Restart the realtime proxy."),
+                    )
+                ),
+                _resource_node("status", "Show realtime proxy status.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "status"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "status"),), allowed=("config", "profile", "pid_file", "log_file", "timeout_seconds")), execution_runtime_roles=("native",)),
+                _resource_node("logs", "Show bounded realtime proxy logs.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "pid_file", "log_file", "tail", "timeout_seconds")), execution_runtime_roles=("native",)),
+                _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "bridge"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
             ), docs_anchor="docs/VOICE.md#realtime-proxy"),
-            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="audio", argv_prefix=("benchmark",)),
+            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("benchmark",), execution_runtime_roles=("native",)),
             _node("profiles", "Inspect voice profiles.", children=(
-                _resource_node("list", "List voice profiles.", "anvil_serving.voice.cli", role="audio", handler_attribute="main_profiles_list", argv_prefix=()),
-                _resource_node("validate", "Validate the profile selected by --profile.", "anvil_serving.voice.cli", role="audio", handler_attribute="main_profiles_validate", argv_prefix=()),
+                _node("list", "List voice profiles.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_list", argv_prefix=())),
+                _node("validate", "Validate the profile selected by --profile.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_validate", argv_prefix=())),
             ), docs_anchor="docs/VOICE.md#profiles"),
             _node("sidecar", "Manage the speech-to-speech sidecar.", children=tuple(
-                _resource_node(action, summary, "anvil_serving.voice_sidecar", role="audio", mutation="mutate" if action == "compose" else "read", options=action_options if action == "compose" else (), argv_prefix=(action,))
+                _node(action, summary, handler=_handler("anvil_serving.voice_sidecar", argv_prefix=(action,)))
                 for action, summary in (("validate", "Validate a sidecar manifest."), ("command", "Render a sidecar command."), ("compose", "Render sidecar compose configuration."))
             ), docs_anchor="docs/VOICE.md#speech-to-speech-sidecar"),
             *(_node(name, "Removed voice command.", tombstone=removed(replacement), visible=False) for name, replacement in (
@@ -706,11 +745,17 @@ def _validate_policy(node: CommandNode, label: str) -> None:
     if len(transports) != len(node.transports) or not transports <= _TRANSPORTS:
         raise CommandTreeError(f"command {label!r} has invalid transports")
     if node.execution_policy == "offline":
-        if node.resource_role or node.transports or node.execution_runtime_roles or node.execution_host_os or node.recovery_capable or node.gpu_role_required or node.remote_operation:
+        if node.resource_role or node.coowned_resource_roles or node.transports or node.execution_runtime_roles or node.execution_host_os or node.recovery_capable or node.gpu_role_required or node.remote_operation:
             raise CommandTreeError(f"offline command {label!r} must not declare execution metadata")
         return
     if not node.resource_role or not node.transports or not node.execution_runtime_roles:
         raise CommandTreeError(f"resource-owner command {label!r} requires resource, transport, and runtime metadata")
+    if (
+        len(set(node.coowned_resource_roles)) != len(node.coowned_resource_roles)
+        or node.resource_role in node.coowned_resource_roles
+        or any(not role for role in node.coowned_resource_roles)
+    ):
+        raise CommandTreeError(f"command {label!r} has invalid co-owned resource roles")
     if len(set(node.execution_host_os)) != len(node.execution_host_os) or not set(node.execution_host_os) <= _HOST_OSES:
         raise CommandTreeError(f"command {label!r} has invalid execution host OS metadata")
     if node.recovery_capable and "ssh" not in transports:
@@ -764,6 +809,7 @@ def _manifest_records(nodes: tuple[CommandNode, ...], parent: tuple[str, ...], i
             "execution_policy": node.execution_policy,
             "output_policy": node.output_policy,
             "resource_role": node.resource_role,
+            "coowned_resource_roles": list(node.coowned_resource_roles),
             "transports": list(node.transports),
             "execution_runtime_roles": list(node.execution_runtime_roles),
             "execution_host_os": list(node.execution_host_os),

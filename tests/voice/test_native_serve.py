@@ -4,7 +4,11 @@ import signal
 import json
 from types import SimpleNamespace
 
-from anvil_serving.voice.serves.native import NativeServe, NativeServeConfig
+from anvil_serving.voice.serves.native import (
+    MAX_PID_RECORD_BYTES,
+    NativeServe,
+    NativeServeConfig,
+)
 
 
 class _Resp:
@@ -144,6 +148,21 @@ def test_native_tear_down_refuses_unowned_legacy_pid_file(tmp_path):
     assert result["reason"] == "ready_but_unmanaged"
     assert kill_calls == [(12345, 0)]
     assert pid_file.exists()
+
+
+def test_native_status_rejects_oversized_pid_record_without_parsing(tmp_path):
+    pid_file = tmp_path / "stt.pid"
+    pid_file.write_bytes(b"9" * (MAX_PID_RECORD_BYTES + 1))
+    serve = NativeServe(
+        _cfg(tmp_path),
+        _open=lambda url, timeout: (_ for _ in ()).throw(OSError("down")),
+    )
+
+    result = serve.status()
+
+    assert result["pid"] is None
+    assert result["pid_owner_valid"] is False
+    assert result["pid_file_reason"] == "pid_file_too_large"
 
 
 def test_native_tear_down_is_noop_when_endpoint_is_down_even_with_stop_command(tmp_path):

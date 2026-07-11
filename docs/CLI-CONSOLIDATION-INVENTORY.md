@@ -1,9 +1,14 @@
 # CLI Consolidation Inventory (T006/T011/T012)
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 Scope: documentation alignment and inventory for the CLI taxonomy migration (`deploy`, `external-bench`,
 `cache-prune`, `score`, `voice-sidecar`, `voice start`/`voice stop`, `onboard`).
+
+This document preserves the dated pre-implementation audit below. Current
+production behavior is stricter: legacy paths are tombstones, canonical voice
+operations are split under `voice audio` and `voice proxy`, and every
+operational voice path resolves an explicit topology before execution.
 
 ## Read-only shared-source evidence (operator-cli-v2:T002)
 
@@ -78,7 +83,7 @@ callable alias or weaken its current migration guidance.
 | `cache-prune` | `models cache prune` | `anvil-serving models cache prune` | `models` command now exposes cache maintenance as subcommand path. |
 | `score` | `models score` | `anvil-serving models score` | `models` command now groups scoring and cache operations. |
 | `voice-sidecar` | `voice sidecar` | `anvil-serving voice sidecar` | Nested under `voice` family. |
-| `voice start` / `voice stop` | `voice up` / `voice down` | `anvil-serving voice up` / `anvil-serving voice down` | Hidden lifecycle compatibility forms; warn on use. |
+| `voice start` / `voice stop` | `voice audio up` / `voice audio down` | `anvil-serving voice audio up` / `anvil-serving voice audio down` | Removed tombstones; exit `2` with replacement guidance. |
 | `onboard` | `init` | `anvil-serving init` | Alias only. |
 
 `multiplexer` is intentionally **root-level**: it is a long-running, stateful swap service (data-plane process) and
@@ -92,8 +97,8 @@ different if nested.
 - `anvil-serving cache-prune` -> `anvil-serving models cache prune`
 - `anvil-serving score` -> `anvil-serving models score`
 - `anvil-serving voice-sidecar` -> `anvil-serving voice sidecar`
-- `anvil-serving voice start` -> `anvil-serving voice up`
-- `anvil-serving voice stop` -> `anvil-serving voice down`
+- `anvil-serving voice start` -> `anvil-serving voice audio up`
+- `anvil-serving voice stop` -> `anvil-serving voice audio down`
 - `anvil-serving onboard` -> `anvil-serving init` (explicit alias)
 
 ## Changed-verb coverage checklist

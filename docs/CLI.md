@@ -573,24 +573,29 @@ anvil-serving harness status openclaw --topology examples/fakoli-dark/operator-t
 ### `voice`
 
 ```
-anvil-serving voice audio {up|down} [flags]
-anvil-serving voice proxy {run|bridge} [flags]
+anvil-serving voice audio {up|down|status|logs} [flags]
+anvil-serving voice proxy {run|up|down|restart|status|logs|bridge} [flags]
 anvil-serving voice benchmark [flags]
 anvil-serving voice profiles {list|validate} [flags]
 anvil-serving voice sidecar {validate|command|compose} [flags]
 ```
 
-Local realtime voice pipeline (VAD -> STT -> LLM -> TTS): `audio up`/`audio down` manage the STT/TTS serves
-from a voice manifest (`--config`, `--profile`, `--dry-run`; default
-`~/.anvil-serving/voice.toml` when present), `proxy run` starts the realtime server in
-the foreground, `benchmark` replays a recorded session end-to-end and reports latency
+Topology-owned realtime voice pipeline (VAD -> STT -> LLM -> TTS): `audio`
+manages and inspects Dark-owned STT/TTS serves, while `proxy` manages the
+Mini-owned Realtime process and its local audio forwarding bridge. `proxy run`
+is foreground; `proxy up` starts the durable background service. `benchmark`
+replays a recorded session end-to-end and reports latency
 (`--candidate`, `--candidate-overlay`, `--evidence-out`), `profiles` lists/validates profile
-overlays, and `proxy bridge` forwards STT/TTS TCP ports to local audio endpoints (loopback by default;
-non-loopback binds require explicit acknowledgement flags). Full flag reference, topologies, and
-validation flows: [Voice pipeline](VOICE.md).
+overlays, and `proxy bridge` binds only Mini loopback ports and derives its Dark
+targets from topology. Operational audio/proxy commands require `--topology`;
+controller tools may instead use `ANVIL_VOICE_TOPOLOGY` on the owning host.
+Full flag reference, topologies, and validation flows: [Voice pipeline](VOICE.md).
 
 ```bash
-anvil-serving voice audio up --profile dark-audio --dry-run
+anvil-serving voice audio up \
+  --topology ~/.anvil-serving/operator-topology.toml \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile dark-audio --dry-run
 ```
 
 ### `voice sidecar`

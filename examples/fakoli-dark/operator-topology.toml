@@ -79,6 +79,15 @@ endpoint_kind = "host-relative-loopback"
 workload = "service"
 
 [[resources]]
+id = "mini-realtime-proxy"
+role = "realtime-proxy"
+host = "fakoli-mini"
+runtime = "mini-native"
+endpoint = "http://127.0.0.1:8765/usage"
+endpoint_kind = "host-relative-loopback"
+workload = "service"
+
+[[resources]]
 id = "mini-dark-stt-proxy"
 role = "stt-proxy"
 host = "fakoli-mini"
@@ -147,7 +156,7 @@ host = "fakoli-mini"
 runtime = "mini-native"
 endpoint = "http://192.0.2.10:8766"
 auth_env = "ANVIL_CONTROLLER_TOKEN"
-allowed_operations = ["harness-sync-openclaw", "harness-restart-openclaw", "harness-status-openclaw", "host-status", "host-doctor", "host-restart-docker"]
+allowed_operations = ["harness-sync-openclaw", "harness-restart-openclaw", "harness-status-openclaw", "voice-proxy-up", "voice-proxy-down", "voice-proxy-restart", "voice-proxy-status", "voice-proxy-logs", "host-status", "host-doctor", "host-restart-docker"]
 
 [[transports]]
 id = "dark-host-controller"
@@ -165,7 +174,7 @@ host = "fakoli-dark"
 runtime = "dark-docker"
 endpoint = "http://192.0.2.20:8766"
 auth_env = "ANVIL_CONTROLLER_TOKEN"
-allowed_operations = ["router-status", "serves-status", "voice-status"]
+allowed_operations = ["router-status", "serves-status", "voice-status", "voice-audio-up", "voice-audio-down", "voice-audio-status", "voice-audio-logs"]
 # The controller is the durable Tailscale path. SSH is only a credential-free
 # bootstrap/recovery transport; verify its placeholder host key before use.
 [[transports]]

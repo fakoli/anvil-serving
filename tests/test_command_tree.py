@@ -31,8 +31,17 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     records = {record["path"]: record for record in manifest_data()["commands"]}
 
     assert "eval benchmark external compare" in records
-    assert records["voice audio up"]["resource_role"] == "audio"
+    assert records["voice audio up"]["resource_role"] == "stt-serve"
+    assert records["voice audio up"]["coowned_resource_roles"] == ["tts-serve"]
+    assert records["voice audio status"]["remote_operation"]["tool"] == "voice_manage"
+    assert records["voice audio logs"]["output_policy"] == "bounded"
     assert records["voice proxy run"]["mutation_class"] == "process"
+    assert records["voice proxy run"]["resource_role"] == "realtime-proxy"
+    assert records["voice proxy run"]["coowned_resource_roles"] == [
+        "stt-proxy", "tts-proxy"
+    ]
+    assert records["voice proxy up"]["remote_operation"]["tool"] == "voice_proxy_manage"
+    assert records["voice proxy logs"]["output_policy"] == "bounded"
     assert records["serves render"]["gpu_role_required"] is True
     assert records["serve"]["tombstone"]["replacement"] == "router run"
     assert records["mcp"]["handler"] is None
