@@ -657,11 +657,16 @@ def test_suite_file_runs_external_evals_into_evidence(monkeypatch, tmp_path):
     assert section["checks"][1]["tool_call"]["valid"] is True
     assert section["checks"][1]["tool_call"]["arguments"] == {"zip": "98101"}
     assert evidence["failures"] == []
+    # per-eval validator labels reflect what actually graded the eval
+    assert section["checks"][0]["validator"] == "deterministic_text_checks"
+    assert section["checks"][1]["validator"] == "tool_call"
     # built-in tool suite ran too (--suite tool) and the external evals forwarded
-    # their own max_tokens / tools / messages verbatim.
+    # their own max_tokens / tools / messages verbatim (external evals run LAST,
+    # after the selected built-in suites).
     assert evidence["tool"]["status"] == "passed"
-    external = [call for call in seen if call["max_tokens"] in (64, 256)]
+    external = seen[-2:]
     assert external[0]["max_tokens"] == 64
+    assert external[1]["max_tokens"] == 256  # spec default
     assert external[1]["messages"] == [{"role": "user", "content": "Record zip 98101."}]
     assert external[1]["tools"][0]["function"]["name"] == "record_weather_zip"
 
@@ -711,18 +716,135 @@ def test_suite_file_requires_bakeoff(tmp_path):
     assert exc.value.code == 2
 
 
+_OK_CHECKS = [{"name": "c", "contains": "x"}]  # valid filler so each case isolates ONE defect
+
+
+def _one_eval(**over):
+    base = {"id": "x", "prompt": "p", "checks": _OK_CHECKS}
+    base.update(over)
+    return {"suite": "s", "evals": [base]}
+
+
 @pytest.mark.parametrize("spec", [
     [],                                                       # not an object
-    {"evals": [{"id": "x", "prompt": "p", "checks": [{}]}]},  # missing suite name
+    {"evals": [{"id": "x", "prompt": "p", "checks": _OK_CHECKS}]},  # missing suite name
     {"suite": "s", "evals": []},                              # empty evals
-    {"suite": "s", "evals": [{"prompt": "p", "checks": [{}]}]},          # missing id
-    {"suite": "s", "evals": [{"id": "x", "checks": [{}]}]},              # no prompt/messages
-    {"suite": "s", "evals": [{"id": "x", "prompt": "p"}]},               # asserts nothing
-    {"suite": "s", "evals": [{"id": "x", "prompt": "p", "expect_tool": {}}]},  # tool w/o name
+    {"suite": "s", "evals": [{"prompt": "p", "checks": _OK_CHECKS}]},  # missing id
+    {"suite": "s", "evals": _one_eval()["evals"] * 2},        # duplicate eval ids
+    _one_eval(prompt=None),                                   # no prompt/messages
+    _one_eval(prompt=""),                                     # empty prompt
+    _one_eval(prompt=None, messages=[]),                      # empty messages, no prompt
+    _one_eval(messages=["hi"]),                               # messages entries not objects
+    _one_eval(max_tokens="64"),                               # max_tokens wrong type
+    _one_eval(max_tokens=0),                                  # max_tokens not positive
+    _one_eval(max_tokens=True),                               # bool is not an int here
+    _one_eval(tools={"type": "function"}),                    # tools not a list
+    _one_eval(checks=None),                                   # asserts nothing
+    _one_eval(checks="contains"),                             # checks not a list
+    _one_eval(expect_tool={}, checks=[]),                     # tool w/o name
+    _one_eval(expect_tool={"name": "f", "required_args": ["zip"]}),   # args not an object
+    _one_eval(expect_tool={"name": "f", "required_args": {"zip": 98101}}),  # non-string value
 ])
 def test_suite_file_rejects_malformed_specs(tmp_path, spec):
     with pytest.raises(ValueError):
         bm.load_suite_spec(_write_spec(tmp_path, spec))
+
+
+@pytest.mark.parametrize("check", [
+    "diff_shape",                                    # not an object
+    {},                                              # no name, no assertion
+    {"name": "diff_shape"},                          # name only -> would ALWAYS pass
+    {"name": "diff_shape", "contain_all": ["---"]},  # typo'd key -> would ALWAYS pass
+    {"name": "diff_shape", "contains": ""},          # empty needle -> would ALWAYS pass
+    {"name": "diff_shape", "contains": ["---"]},     # wrong type for contains
+    {"name": "diff_shape", "contains_all": []},      # empty list -> would ALWAYS pass
+    {"name": "diff_shape", "contains_all": "---"},   # wrong type (str iterates by char)
+    {"name": "diff_shape", "contains_all": ["---", 7]},          # non-string element
+    {"name": "diff_shape", "contains": "x", "contains_any": ["y"]},  # two assertion keys
+    {"name": "", "contains": "x"},                   # empty name
+])
+def test_suite_file_rejects_vacuous_or_broken_checks(tmp_path, check):
+    """evaluate_text_checks defaults ok=True for unknown keys — safe for the trusted
+    in-repo prompts, a false-pass hole for external specs (a typo'd 'contain_all'
+    check would report passed on EMPTY model output and sail through the notebook's
+    no_failures hard gate). The loader must reject every such shape up front."""
+    with pytest.raises(ValueError):
+        bm.load_suite_spec(_write_spec(tmp_path, _one_eval(checks=[check])))
+
+
+def test_suite_file_without_suite_flag_runs_only_the_external_suite(monkeypatch, tmp_path):
+    """--suite-file alone must not fire the default chat/context probe: an unrelated
+    probe failure would pollute the external-suite evidence and trip the notebook
+    no_failures hard gate."""
+    def boom_stream_chat(*args, **kwargs):
+        raise AssertionError("built-in chat/context probe must not run")
+
+    def fake_post_chat(*args, **kwargs):
+        return {"latency_s": 0.1,
+                "response": {"choices": [{"message": {"content": "+timeout = 45 --- +++"}}]}}
+
+    monkeypatch.setattr(bm, "stream_chat", boom_stream_chat)
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    spec = dict(_SUITE_SPEC, evals=[_SUITE_SPEC["evals"][0]])
+    out = tmp_path / "only-external.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite-file", _write_spec(tmp_path, spec),
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["suites"]["planning-regression"]["status"] == "passed"
+    assert evidence["context"]["targets"] == []
+    assert evidence["tool"]["status"] == "not_run"
+    assert evidence["session"]["status"] == "not_run"
+    assert evidence["intelligence"]["status"] == "not_run"
+
+
+def test_suite_file_fixture_matches_session_evals_plugin_shape(monkeypatch, tmp_path):
+    """Pin compatibility with the session-evals plugin's documented suite.json shape
+    (fakoli-plugins plugins/session-evals scripts/eval_emit.py docstring): kebab-case
+    suite, all three check kinds, expect_tool with a null required_arg (null =
+    'present, non-empty string'), messages-based and prompt-based evals."""
+    fixture = str(
+        __import__("pathlib").Path(__file__).parent / "fixtures" / "session_evals" / "suite.json"
+    )
+    spec = bm.load_suite_spec(fixture)
+    assert spec["suite"] == "merge-safety"
+
+    def fake_post_chat(base, model, key, messages, max_tokens=128, timeout=120,
+                       tools=None, chat_template_kwargs=None):
+        if tools:
+            message = {"tool_calls": [{
+                "id": "call_1", "type": "function",
+                "function": {"name": "record_weather_zip", "arguments": '{"zip": "10001"}'},
+            }]}
+        else:
+            message = {"content": "Run git fetch then rebase. --- +++ @@"}
+        return {"latency_s": 0.1, "response": {"choices": [{"message": message}]}}
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "fixture-evidence.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite-file", fixture,
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    section = json.loads(out.read_text(encoding="utf-8"))["suites"]["merge-safety"]
+    assert section["status"] == "passed"
+    assert [c["id"] for c in section["checks"]] == ["fetch_before_merge", "diff_review", "zip_tool"]
+    assert section["checks"][2]["tool_call"]["valid"] is True
 
 
 def test_suite_file_malformed_spec_exits_before_any_request(monkeypatch, tmp_path):
@@ -762,3 +884,5 @@ def test_bakeoff_voice_suite_records_supplied_metrics(tmp_path):
         "total_turn_latency_ms": 1234.0,
     }
     assert evidence["score_inputs"]["voice_latency_ms"] == 1234.0
+    # schema-presence guard: the external-suites key exists even without --suite-file
+    assert evidence["suites"] == {}

@@ -53,6 +53,10 @@ The spec shape is `{suite, date, work_class, evals: [{id, prompt|messages, max_t
 tools?, expect_tool?, checks?}]}`; `checks` use the deterministic text-check semantics and
 `expect_tool` the tool-call validator. Per-eval results land in the evidence JSON under
 `suites.<suite name>`, with failed checks recorded in the top-level `failures` list.
+`--suite-file` alone runs only the external suite; add `--suite chat,tool,...` to run
+built-in suites in the same evidence artifact. Malformed specs — including vacuous
+checks that could never fail (typo'd assertion keys, empty needles) — are rejected
+before any request is sent.
 
 These rows are from the [Fast-tier LLM bakeoff](findings/2026-07-08-fast-tier-llm-bakeoff.md) and its [human-gated promotion record](findings/2026-07-08-fast-tier-promotion.md). The voice artifacts in that bakeoff measure STT, LLM, and TTS stage timing, but their STT hypothesis is empty with WER `1.0`; they are **not** semantic speech-recognition accuracy results. The displayed decode rate is derived from the recorded evidence as `output_tokens * 1000 / (e2e_ms - ttft_ms)`.
 
