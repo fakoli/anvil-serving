@@ -1,5 +1,6 @@
 # Docs-only dependencies (not runtime deps).
 # mkdocs-material has been replaced by the built-in readthedocs theme (no extra package needed).
+Markdown>=3.6
 mkdocs>=1.6
 pymdown-extensions>=10.0
 mkdocs-mermaid2-plugin>=1.1

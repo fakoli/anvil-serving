@@ -14,6 +14,7 @@ cd anvil-serving
 python -m pip install -e ".[dev]"
 python -m pytest tests/ -q
 python scripts/audit_cli_references.py --check --scope full
+python scripts/check_markdown_links.py --root .
 ```
 
 The full suite is hermetic and should pass offline on Linux, macOS, and Windows.
@@ -134,6 +135,8 @@ silently change direction and never delete an ADR — supersede it.
 
 - The docs site builds with MkDocs: `pip install -r requirements-docs.txt && mkdocs build`
   (treat warnings as failures — they usually mean a broken link).
+- Run `python scripts/check_markdown_links.py --root .` to validate relative
+  links across every Git-tracked Markdown file without contacting external URLs.
 - A new page under `docs/` needs a `nav:` entry in `mkdocs.yml`.
 - Doc snippets follow the same hard rules as code: `127.0.0.1` in URLs, env-var names for secrets.
 - Dated evidence snapshots go in `docs/findings/` (and its index); durable reference content goes
@@ -150,7 +153,8 @@ silently change direction and never delete an ADR — supersede it.
 1. Branch off `main` (e.g. `fix/...`, `feat/...`, `docs/...`).
 2. Make the change; add or update tests alongside it.
 3. Run `python -m pytest tests/ -q`, `python -m ruff check .`,
-   `python scripts/audit_cli_references.py --check --scope full`, and
+   `python scripts/audit_cli_references.py --check --scope full`,
+   `python scripts/check_markdown_links.py --root .`, and
    `python -m mkdocs build --strict` locally and make sure they are green.
 4. Open a PR. CI runs the suite across `{ubuntu, windows}` x `{3.11, 3.12, 3.13}`, builds the
    wheel, and smoke-tests a clean install on both operating systems - it must be green before
