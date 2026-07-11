@@ -272,6 +272,22 @@ def test_controller_allowlist_filters_catalog_and_dispatch():
     assert calls == []
 
 
+def test_controller_allowlist_maps_canonical_commands_to_shared_tools():
+    tools = [
+        {"name": "router_manage", "inputSchema": {"type": "object"}},
+        {"name": "host_summary", "inputSchema": {"type": "object"}},
+    ]
+
+    with running_controller(
+        list_tools_func=lambda: tools,
+        allowed_operations=("router-up", "controller-status"),
+    ) as (host, port):
+        status, _, body, _ = _request(host, port, "GET", "/tools/list")
+
+    assert status == 200
+    assert [tool["name"] for tool in body["tools"]] == ["router_manage"]
+
+
 def test_controller_serve_restores_python_unauthenticated_loopback_parameter():
     seen = {}
 

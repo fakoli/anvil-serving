@@ -123,6 +123,7 @@
       "output_policy": "bounded",
       "path": "init",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Generate a local bring-up from detected facts.",
       "tombstone": null,
@@ -252,6 +253,7 @@
       "output_policy": "bounded",
       "path": "router",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage the deployed router and its lifecycle.",
       "tombstone": null,
@@ -424,12 +426,12 @@
       "output_policy": "foreground",
       "path": "router run",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "router",
       "summary": "Run the router in the foreground.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -579,6 +581,14 @@
       "output_policy": "bounded",
       "path": "router up",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "up"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_manage"
+      },
       "resource_role": "router",
       "summary": "Start the deployed router.",
       "tombstone": null,
@@ -734,6 +744,14 @@
       "output_policy": "bounded",
       "path": "router down",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "down"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_manage"
+      },
       "resource_role": "router",
       "summary": "Stop the deployed router.",
       "tombstone": null,
@@ -889,6 +907,14 @@
       "output_policy": "bounded",
       "path": "router restart",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "restart"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_manage"
+      },
       "resource_role": "router",
       "summary": "Restart the deployed router.",
       "tombstone": null,
@@ -1044,6 +1070,14 @@
       "output_policy": "bounded",
       "path": "router reload",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "reload"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_manage"
+      },
       "resource_role": "router",
       "summary": "Reload router configuration.",
       "tombstone": null,
@@ -1199,6 +1233,12 @@
       "output_policy": "bounded",
       "path": "router promote",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_promote"
+      },
       "resource_role": "router",
       "summary": "Promote a reviewed router configuration.",
       "tombstone": null,
@@ -1334,6 +1374,12 @@
       "output_policy": "bounded",
       "path": "router status",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_status"
+      },
       "resource_role": "router",
       "summary": "Show router status.",
       "tombstone": null,
@@ -1479,6 +1525,12 @@
       "output_policy": "bounded",
       "path": "router logs",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_logs"
+      },
       "resource_role": "router",
       "summary": "Read bounded router logs.",
       "tombstone": null,
@@ -1634,12 +1686,12 @@
       "output_policy": "bounded",
       "path": "router token",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "router",
       "summary": "Inspect the router token state.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -1766,6 +1818,7 @@
       "output_policy": "bounded",
       "path": "serves",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage local model serve lifecycle.",
       "tombstone": null,
@@ -1908,12 +1961,12 @@
       "output_policy": "bounded",
       "path": "serves render",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-serve",
       "summary": "Render a model serve definition.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -2093,6 +2146,16 @@
       "output_policy": "bounded",
       "path": "serves up",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "up"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_manage"
+      },
       "resource_role": "model-serve",
       "summary": "Start manifest-owned model serves.",
       "tombstone": null,
@@ -2258,6 +2321,16 @@
       "output_policy": "bounded",
       "path": "serves down",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "down"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_manage"
+      },
       "resource_role": "model-serve",
       "summary": "Stop manifest-owned model serves.",
       "tombstone": null,
@@ -2433,6 +2506,16 @@
       "output_policy": "bounded",
       "path": "serves rm",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "rm"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_manage"
+      },
       "resource_role": "model-serve",
       "summary": "Remove a model serve.",
       "tombstone": null,
@@ -2608,6 +2691,16 @@
       "output_policy": "bounded",
       "path": "serves adopt",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "adopt"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_manage"
+      },
       "resource_role": "model-serve",
       "summary": "Adopt an existing model serve.",
       "tombstone": null,
@@ -2753,6 +2846,14 @@
       "output_policy": "bounded",
       "path": "serves status",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_status"
+      },
       "resource_role": "model-serve",
       "summary": "Show model serve status.",
       "tombstone": null,
@@ -2928,6 +3029,14 @@
       "output_policy": "bounded",
       "path": "serves logs",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_logs"
+      },
       "resource_role": "model-serve",
       "summary": "Read bounded model serve logs.",
       "tombstone": null,
@@ -3063,12 +3172,12 @@
       "output_policy": "foreground",
       "path": "serves multiplex",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-serve",
       "summary": "Run the single-resident model multiplexer.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -3195,6 +3304,7 @@
       "output_policy": "bounded",
       "path": "models",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage model catalog, artifacts, and recipes.",
       "tombstone": null,
@@ -3337,12 +3447,12 @@
       "output_policy": "bounded",
       "path": "models sync",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Sync the model catalog.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -3492,12 +3602,12 @@
       "output_policy": "bounded",
       "path": "models pull",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Pull a model artifact.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -3627,12 +3737,12 @@
       "output_policy": "bounded",
       "path": "models score",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Rank models from benchmark evidence.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -3759,6 +3869,7 @@
       "output_policy": "bounded",
       "path": "models recipes",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Inspect recorded serve recipes.",
       "tombstone": null,
@@ -3891,12 +4002,12 @@
       "output_policy": "bounded",
       "path": "models recipes list",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "List recorded serve recipes.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -4026,12 +4137,12 @@
       "output_policy": "bounded",
       "path": "models recipes show",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Show one recorded serve recipe.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -4158,6 +4269,7 @@
       "output_policy": "bounded",
       "path": "models cache",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage model cache storage.",
       "tombstone": null,
@@ -4310,12 +4422,12 @@
       "output_policy": "bounded",
       "path": "models cache prune",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Plan or prune the model cache.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -4442,6 +4554,7 @@
       "output_policy": "bounded",
       "path": "models recipe",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed singular recipe spelling.",
       "tombstone": {
@@ -4574,6 +4687,7 @@
       "output_policy": "bounded",
       "path": "models recipe list",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed singular recipe list path.",
       "tombstone": {
@@ -4706,6 +4820,7 @@
       "output_policy": "bounded",
       "path": "models recipe show",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed singular recipe show path.",
       "tombstone": {
@@ -4838,6 +4953,7 @@
       "output_policy": "bounded",
       "path": "eval",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Run quality evaluation workflows.",
       "tombstone": null,
@@ -4970,12 +5086,12 @@
       "output_policy": "bounded",
       "path": "eval usage",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Analyze recorded usage.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -5105,6 +5221,12 @@
       "output_policy": "bounded",
       "path": "eval preflight",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "preflight_probe"
+      },
       "resource_role": "evaluation",
       "summary": "Preflight an endpoint.",
       "tombstone": null,
@@ -5240,12 +5362,12 @@
       "output_policy": "bounded",
       "path": "eval planning",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Run planning evaluation.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -5385,12 +5507,12 @@
       "output_policy": "bounded",
       "path": "eval bootstrap",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Bootstrap a quality profile.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -5530,12 +5652,12 @@
       "output_policy": "bounded",
       "path": "eval calibrate",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Calibrate a reviewable quality profile.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -5662,6 +5784,7 @@
       "output_policy": "bounded",
       "path": "eval benchmark",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Run or import benchmark evidence.",
       "tombstone": null,
@@ -5794,6 +5917,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark run",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_probe"
+      },
       "resource_role": "evaluation",
       "summary": "Run an endpoint benchmark.",
       "tombstone": null,
@@ -5926,6 +6055,7 @@
       "output_policy": "bounded",
       "path": "eval benchmark external",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage external benchmark evidence.",
       "tombstone": null,
@@ -6068,12 +6198,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external init",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Initialize benchmark evidence storage.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -6203,6 +6333,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external sources",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "external_bench_sources"
+      },
       "resource_role": "evaluation",
       "summary": "List benchmark sources.",
       "tombstone": null,
@@ -6348,12 +6484,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external fetch",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Fetch and import benchmark evidence.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -6493,12 +6629,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external import",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Import saved benchmark evidence.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -6628,6 +6764,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external list",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "external_bench_list"
+      },
       "resource_role": "evaluation",
       "summary": "List normalized benchmark evidence.",
       "tombstone": null,
@@ -6763,6 +6905,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external report",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "external_bench_report"
+      },
       "resource_role": "evaluation",
       "summary": "Render a benchmark report.",
       "tombstone": null,
@@ -6898,12 +7046,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external export",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Export benchmark evidence.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -7033,6 +7181,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external compare",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "external_bench_compare"
+      },
       "resource_role": "evaluation",
       "summary": "Compare local benchmark evidence.",
       "tombstone": null,
@@ -7165,6 +7319,7 @@
       "output_policy": "bounded",
       "path": "eval benchmark external notebook",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Record, list, or render model-bakeoff notebook runs.",
       "tombstone": null,
@@ -7297,12 +7452,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external notebook add",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Record a bakeoff evidence run.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -7432,12 +7587,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external notebook list",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "List recorded bakeoff runs.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -7567,12 +7722,12 @@
       "output_policy": "bounded",
       "path": "eval benchmark external notebook render",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Render the bakeoff comparison.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -7699,6 +7854,7 @@
       "output_policy": "bounded",
       "path": "voice",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage audio and realtime proxy operations.",
       "tombstone": null,
@@ -7828,6 +7984,7 @@
       "output_policy": "bounded",
       "path": "voice audio",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage Dark-owned STT/TTS lifecycle.",
       "tombstone": null,
@@ -7980,6 +8137,14 @@
       "output_policy": "bounded",
       "path": "voice audio up",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "up"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "voice_manage"
+      },
       "resource_role": "audio",
       "summary": "Start audio serves.",
       "tombstone": null,
@@ -8135,6 +8300,14 @@
       "output_policy": "bounded",
       "path": "voice audio down",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {
+          "action": "down"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "voice_manage"
+      },
       "resource_role": "audio",
       "summary": "Stop audio serves.",
       "tombstone": null,
@@ -8267,6 +8440,7 @@
       "output_policy": "bounded",
       "path": "voice proxy",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage the realtime proxy process.",
       "tombstone": null,
@@ -8399,12 +8573,12 @@
       "output_policy": "foreground",
       "path": "voice proxy run",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "proxy",
       "summary": "Run the realtime proxy.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -8554,12 +8728,12 @@
       "output_policy": "foreground",
       "path": "voice proxy bridge",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "proxy",
       "summary": "Run the Mini-to-Dark audio bridge.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -8689,12 +8863,12 @@
       "output_policy": "bounded",
       "path": "voice benchmark",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Benchmark an end-to-end voice session.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -8821,6 +8995,7 @@
       "output_policy": "bounded",
       "path": "voice profiles",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Inspect voice profiles.",
       "tombstone": null,
@@ -8953,12 +9128,12 @@
       "output_policy": "bounded",
       "path": "voice profiles list",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "List voice profiles.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -9088,12 +9263,12 @@
       "output_policy": "bounded",
       "path": "voice profiles validate",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Validate the profile selected by --profile.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -9220,6 +9395,7 @@
       "output_policy": "bounded",
       "path": "voice sidecar",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage the speech-to-speech sidecar.",
       "tombstone": null,
@@ -9352,12 +9528,12 @@
       "output_policy": "bounded",
       "path": "voice sidecar validate",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Validate a sidecar manifest.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -9487,12 +9663,12 @@
       "output_policy": "bounded",
       "path": "voice sidecar command",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Render a sidecar command.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -9632,12 +9808,12 @@
       "output_policy": "bounded",
       "path": "voice sidecar compose",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Render sidecar compose configuration.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -9764,6 +9940,7 @@
       "output_policy": "bounded",
       "path": "voice up",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -9896,6 +10073,7 @@
       "output_policy": "bounded",
       "path": "voice down",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10028,6 +10206,7 @@
       "output_policy": "bounded",
       "path": "voice run",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10160,6 +10339,7 @@
       "output_policy": "bounded",
       "path": "voice bridge",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10292,6 +10472,7 @@
       "output_policy": "bounded",
       "path": "voice start",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10424,6 +10605,7 @@
       "output_policy": "bounded",
       "path": "voice stop",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10556,6 +10738,7 @@
       "output_policy": "bounded",
       "path": "harness",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage harness integration.",
       "tombstone": null,
@@ -10685,6 +10868,7 @@
       "output_policy": "bounded",
       "path": "harness sync",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Synchronize harness configuration",
       "tombstone": null,
@@ -10837,6 +11021,12 @@
       "output_policy": "bounded",
       "path": "harness sync openclaw",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "openclaw_sync"
+      },
       "resource_role": "gateway",
       "summary": "Synchronize harness configuration for OpenClaw.",
       "tombstone": null,
@@ -10969,6 +11159,7 @@
       "output_policy": "bounded",
       "path": "harness restart",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Restart the harness",
       "tombstone": null,
@@ -11121,6 +11312,12 @@
       "output_policy": "bounded",
       "path": "harness restart openclaw",
       "recovery_capable": true,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "openclaw_gateway_restart"
+      },
       "resource_role": "gateway",
       "summary": "Restart the harness for OpenClaw.",
       "tombstone": null,
@@ -11267,6 +11464,7 @@
       "output_policy": "bounded",
       "path": "mcp",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Expose bounded MCP management tools.",
       "tombstone": {
@@ -11415,6 +11613,12 @@
       "output_policy": "protocol",
       "path": "mcp serve",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "mcp-bridge",
+        "positional_arguments": [],
+        "tool": null
+      },
       "resource_role": "operator",
       "summary": "Run the MCP management server.",
       "tombstone": null,
@@ -11563,6 +11767,12 @@
       "output_policy": "bounded",
       "path": "mcp tools",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "mcp-bridge",
+        "positional_arguments": [],
+        "tool": null
+      },
       "resource_role": "operator",
       "summary": "List bounded MCP tools.",
       "tombstone": null,
@@ -11708,6 +11918,7 @@
       "output_policy": "bounded",
       "path": "mcp list-tools",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed MCP tool-listing command.",
       "tombstone": {
@@ -11840,6 +12051,7 @@
       "output_policy": "bounded",
       "path": "controller",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage the private controller service.",
       "tombstone": null,
@@ -11985,12 +12197,12 @@
       "output_policy": "foreground",
       "path": "controller serve",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "controller",
       "summary": "Run the private controller.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -12120,6 +12332,12 @@
       "output_policy": "bounded",
       "path": "controller status",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "controller-status",
+        "positional_arguments": [],
+        "tool": null
+      },
       "resource_role": "controller",
       "summary": "Probe controller health.",
       "tombstone": null,
@@ -12252,6 +12470,7 @@
       "output_policy": "bounded",
       "path": "host",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Inspect and repair declared host operations.",
       "tombstone": null,
@@ -12384,12 +12603,12 @@
       "output_policy": "bounded",
       "path": "host gpus",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "host",
       "summary": "Show GPU inventory.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -12519,6 +12738,12 @@
       "output_policy": "bounded",
       "path": "host doctor",
       "recovery_capable": false,
+      "remote_operation": {
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "doctor_summary"
+      },
       "resource_role": "host",
       "summary": "Diagnose host configuration.",
       "tombstone": null,
@@ -12674,12 +12899,12 @@
       "output_policy": "bounded",
       "path": "host wsl-config",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "host",
       "summary": "Render or update WSL configuration.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
@@ -12829,12 +13054,12 @@
       "output_policy": "bounded",
       "path": "host restart-docker",
       "recovery_capable": true,
+      "remote_operation": null,
       "resource_role": "host",
       "summary": "Restart Docker Desktop.",
       "tombstone": null,
       "transports": [
         "local",
-        "controller",
         "ssh"
       ],
       "visible": true
@@ -12985,12 +13210,12 @@
       "output_policy": "bounded",
       "path": "host reset-wsl",
       "recovery_capable": true,
+      "remote_operation": null,
       "resource_role": "host",
       "summary": "Reset WSL.",
       "tombstone": null,
       "transports": [
         "local",
-        "controller",
         "ssh"
       ],
       "visible": true
@@ -13118,6 +13343,7 @@
       "output_policy": "bounded",
       "path": "doctor",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Check local dependencies and configured health.",
       "tombstone": null,
@@ -13247,6 +13473,7 @@
       "output_policy": "bounded",
       "path": "serve",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13379,6 +13606,7 @@
       "output_policy": "bounded",
       "path": "deploy",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13511,6 +13739,7 @@
       "output_policy": "bounded",
       "path": "multiplexer",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13643,6 +13872,7 @@
       "output_policy": "bounded",
       "path": "cache-prune",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13775,6 +14005,7 @@
       "output_policy": "bounded",
       "path": "score",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13907,6 +14138,7 @@
       "output_policy": "bounded",
       "path": "profile",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14039,6 +14271,7 @@
       "output_policy": "bounded",
       "path": "preflight",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14171,6 +14404,7 @@
       "output_policy": "bounded",
       "path": "benchmark",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14303,6 +14537,7 @@
       "output_policy": "bounded",
       "path": "external-bench",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14435,6 +14670,7 @@
       "output_policy": "bounded",
       "path": "calibrate",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14567,6 +14803,7 @@
       "output_policy": "bounded",
       "path": "gpus",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14699,6 +14936,7 @@
       "output_policy": "bounded",
       "path": "voice-sidecar",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14831,6 +15069,7 @@
       "output_policy": "bounded",
       "path": "onboard",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14841,5 +15080,5 @@
       "visible": false
     }
   ],
-  "schema_version": 1
+  "schema_version": 2
 }

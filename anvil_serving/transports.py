@@ -179,12 +179,17 @@ class Operation:
 
     name: str
     arguments: Mapping[str, object]
+    tool_name: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not _OPERATION_RE.fullmatch(self.name):
             raise ValueError("operation name must be a declared identifier")
         if not isinstance(self.arguments, Mapping):
             raise ValueError("operation arguments must be an object")
+        if self.tool_name is not None and (
+            not isinstance(self.tool_name, str) or not _OPERATION_RE.fullmatch(self.tool_name)
+        ):
+            raise ValueError("operation tool name must be a declared identifier")
         arguments = dict(self.arguments)
         _validate_arguments(arguments)
         object.__setattr__(self, "arguments", MappingProxyType(arguments))
@@ -258,7 +263,7 @@ class LocalTransport:
         self.max_response_bytes = _bounded_response_bytes(max_response_bytes)
 
     def execute(self, operation: Operation) -> TransportResult:
-        handler = self._handlers.get(_mcp_operation_name(operation.name))
+        handler = self._handlers.get(operation.tool_name or _mcp_operation_name(operation.name))
         if handler is None:
             # Keep injected, non-MCP handlers compatible with their declared
             # operation names while preferring the MCP catalog spelling.
@@ -371,7 +376,7 @@ class ControllerTransport:
             else _bounded_response_bytes(max_response_bytes)
         )
         payload: dict[str, object] = {
-            "name": _mcp_operation_name(operation.name),
+            "name": operation.tool_name or _mcp_operation_name(operation.name),
             "arguments": dict(operation.arguments),
         }
         if idempotency_key is not None:

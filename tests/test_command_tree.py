@@ -24,7 +24,7 @@ def test_manifest_is_checked_in_and_matches_deterministic_regeneration():
 
 def test_manifest_is_byte_stable():
     assert render_manifest() == render_manifest()
-    assert manifest_data()["schema_version"] == 1
+    assert manifest_data()["schema_version"] == 2
 
 
 def test_manifest_records_recursive_paths_metadata_and_tombstones():
@@ -38,6 +38,9 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["mcp"]["handler"] is None
     assert records["mcp"]["tombstone"]["replacement"] == "mcp serve"
     assert records["mcp serve"]["handler"] == "anvil_serving.mcp:main"
+    assert records["router status"]["remote_operation"]["tool"] == "router_status"
+    assert records["router run"]["remote_operation"] is None
+    assert records["controller status"]["remote_operation"]["mode"] == "controller-status"
     global_flags = {
         flag
         for option in records["controller status"]["options"]

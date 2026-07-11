@@ -999,8 +999,25 @@ def _validated_tool_catalog(
                 details={"tools": sorted((existing, name))},
             )
     if allowed_operations is not None:
-        allowed = {_mcp_tool_name(name) for name in allowed_operations}
-        unknown = sorted(allowed - set(normalized))
+        remote_by_name = {
+            declaration["name"]: declaration
+            for declaration in mcp.operation_declarations()
+        }
+        allowed: set[str] = set()
+        unknown: list[str] = []
+        for name in allowed_operations:
+            normalized_name = _mcp_tool_name(name)
+            declaration = remote_by_name.get(normalized_name.replace("_", "-"))
+            if declaration is not None:
+                tool = declaration.get("tool")
+                if declaration.get("mode") == "tool" and isinstance(tool, str):
+                    allowed.add(_mcp_tool_name(tool))
+                continue
+            if normalized_name in normalized:
+                allowed.add(normalized_name)
+            else:
+                unknown.append(normalized_name)
+        unknown.sort()
         if unknown:
             raise ControllerError(
                 "unknown_allowed_operation",

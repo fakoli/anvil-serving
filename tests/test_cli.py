@@ -337,6 +337,26 @@ def test_real_unbounded_commands_refuse_json_before_handler_resolution(
     assert classification in payload["error"]["message"]
 
 
+def test_mcp_serve_json_refusal_happens_before_protocol_handler_startup(
+    monkeypatch, capsys
+):
+    from anvil_serving import mcp
+
+    monkeypatch.setattr(
+        mcp,
+        "main",
+        lambda _argv: pytest.fail("mcp protocol handler started for --json"),
+    )
+
+    assert cli.main(["mcp", "serve", "--json"]) == 2
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert captured.err == ""
+    assert payload["command"] == "mcp serve"
+    assert payload["error"]["class"] == "usage"
+    assert "protocol command output" in payload["error"]["message"]
+
+
 def test_bounded_logs_json_still_dispatches(monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(

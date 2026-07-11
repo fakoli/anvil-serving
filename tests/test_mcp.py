@@ -15,7 +15,10 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import pytest
+
 from anvil_serving import cli, mcp
+from anvil_serving.command_tree import manifest_data
 
 
 def proc(rc=0, out="", err=""):
@@ -170,12 +173,15 @@ def test_tools_list_has_json_schemas():
         "external_bench_list",
         "external_bench_report",
         "external_bench_compare",
+        "operation_contracts",
     ]:
         assert name in tools
         schema = tools[name]["inputSchema"]
         assert schema["type"] == "object"
         assert schema["additionalProperties"] is False
         assert "properties" in schema
+        assert schema["maxProperties"] == len(schema["properties"])
+        assert tools[name]["_meta"]["anvil/targetContextSchema"] == mcp.TARGET_CONTEXT_SCHEMA
     for name in ("preflight_probe", "benchmark_probe"):
         props = tools[name]["inputSchema"]["properties"]
         assert "api_key" not in props
@@ -209,6 +215,55 @@ def test_tools_list_has_json_schemas():
     assert "execute" not in tools["cache_prune_plan"]["inputSchema"]["properties"]
 
 
+def test_operation_contracts_enumerate_every_remote_capable_command():
+    expected = {
+        record["path"].replace(" ", "-")
+        for record in manifest_data()["commands"]
+        if record["visible"]
+        and record["tombstone"] is None
+        and record["handler"] is not None
+        and "controller" in record["transports"]
+    }
+    declarations = mcp.operation_declarations()
+
+    assert {declaration["name"] for declaration in declarations} == expected
+    assert all("controller" in declaration["transports"] for declaration in declarations)
+    assert all(declaration["resource_role"] for declaration in declarations)
+    assert all(
+        declaration["tool"] in mcp.TOOLS
+        for declaration in declarations
+        if declaration["mode"] == "tool"
+    )
+    envelope = mcp.call_tool("operation_contracts")
+    assert envelope == {"ok": True, "data": {"operations": declarations}}
+
+
+def test_mcp_rejects_raw_commands_secrets_and_unbounded_arguments(monkeypatch):
+    monkeypatch.setenv("ANVIL_CONTROLLER_TOKEN", "controller-secret-token")
+    raw_command = mcp.call_tool("router_status", {"command": ["cmd", "/c", "whoami"]})
+    raw_secret = mcp.call_tool("router_status", {"token": "controller-secret-token"})
+    oversized = mcp.call_tool("router_status", {"container": "x" * (mcp._MAX_SCHEMA_STRING + 1)})
+
+    assert raw_command["error"]["code"] == "raw_command_not_allowed"
+    assert raw_secret["error"]["code"] == "bad_argument"
+    assert "controller-secret-token" not in json.dumps(raw_secret)
+    assert oversized["error"]["code"] == "bad_argument"
+
+    monkeypatch.setitem(
+        mcp.TOOLS,
+        "operation_contracts",
+        {
+            **mcp.TOOLS["operation_contracts"],
+            "handler": lambda _args: (_ for _ in ()).throw(
+                RuntimeError("controller-secret-token")
+            ),
+        },
+    )
+    failed = mcp.call_tool("operation_contracts")
+    assert "controller-secret-token" not in json.dumps(failed)
+    assert "<redacted>" in json.dumps(failed)
+
+
 def test_stdio_tools_list_and_call(tmp_path):
     reqs = [
         {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
@@ -235,6 +290,62 @@ def test_stdio_tools_list_and_call(tmp_path):
     assert envelope["ok"] is True
     assert envelope["data"]["would_run"] is True
     assert isinstance(envelope["data"]["command"], list)
+
+
+def test_stdio_tool_result_carries_fixed_redacted_target_context_metadata():
+    context = {
+        "command": "Bearer context-secret-token",
+        "topology": "fakoli-reference",
+        "execution_host": "dark",
+        "execution_runtime": "dark-native",
+        "resource_host": "dark",
+        "transport": "controller",
+        "controller_endpoint": "http://100.87.34.66:8765",
+    }
+    request = {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "tools/call",
+        "params": {"name": "operation_contracts", "arguments": {}, "context": context},
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio([json.dumps(request) + "\n"], stdout) == 0
+    response = json.loads(stdout.getvalue())
+    metadata = response["result"]["_meta"]["anvil/context"]
+    assert tuple(metadata) == mcp.CONTEXT_FIELDS
+    assert metadata["topology"] == "fakoli-reference"
+    assert metadata["execution_host"] == "dark"
+    assert metadata["command"] == "Bearer <redacted>"
+    assert "context-secret-token" not in stdout.getvalue()
+
+
+def test_stdio_rejects_unbounded_or_unknown_target_context_before_dispatch(monkeypatch):
+    monkeypatch.setitem(
+        mcp.TOOLS,
+        "operation_contracts",
+        {
+            **mcp.TOOLS["operation_contracts"],
+            "handler": lambda _args: pytest.fail("unsafe context reached handler"),
+        },
+    )
+    request = {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "tools/call",
+        "params": {
+            "name": "operation_contracts",
+            "arguments": {},
+            "context": {"authorization": "Bearer context-secret-token"},
+        },
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio([json.dumps(request) + "\n"], stdout) == 0
+    response = json.loads(stdout.getvalue())
+    assert response["error"]["code"] == -32602
+    assert response["error"]["data"]["code"] == "bad_context"
+    assert "context-secret-token" not in stdout.getvalue()
 
 
 def test_serves_status_is_structured(tmp_path):
@@ -2514,7 +2625,11 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
     def fake_remote(controller_url, request, token, **kwargs):
         seen.append((controller_url, token, request))
         if request["method"] == "tools/list":
-            return {"jsonrpc": "2.0", "id": request["id"], "result": {"tools": []}}
+            return {
+                "jsonrpc": "2.0",
+                "id": request["id"],
+                "result": {"tools": mcp.list_tools()},
+            }
         return {
             "jsonrpc": "2.0",
             "id": request["id"],
@@ -2533,7 +2648,14 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/call",
-            "params": {"name": "preflight_probe", "arguments": {"confirm": False}},
+            "params": {
+                "name": "preflight_probe",
+                "arguments": {
+                    "base_url": "http://127.0.0.1:30000/v1",
+                    "model": "local",
+                    "confirm": False,
+                },
+            },
         },
     ]
     stdout = io.StringIO()
@@ -2545,10 +2667,119 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
     ) == 0
     lines = [json.loads(ln) for ln in stdout.getvalue().splitlines()]
     assert lines[0]["result"]["serverInfo"]["name"] == "anvil-serving"
-    assert lines[1]["result"]["tools"] == []
+    assert lines[1]["result"]["tools"] == mcp.list_tools()
     assert lines[2]["result"]["structuredContent"]["data"]["proxied"] is True
     assert [item[2]["method"] for item in seen] == ["tools/list", "tools/call"]
     assert all(item[0] == "http://127.0.0.1:8765" and item[1] == "secret" for item in seen)
+
+
+def test_stdio_proxy_rejects_catalog_drift_and_unsafe_calls_before_forwarding(monkeypatch):
+    seen = []
+
+    def fake_remote(controller_url, request, token, **kwargs):
+        seen.append(request)
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {
+                "tools": [
+                    {
+                        **mcp.list_tools()[0],
+                        "description": "drifted remote contract",
+                    }
+                ]
+            },
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    requests = [
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+                "name": "router_status",
+                "arguments": {"argv": ["cmd", "/c", "whoami"]},
+            },
+        },
+    ]
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps(request) + "\n" for request in requests],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
+    assert responses[0]["error"]["data"]["code"] == "operation_contract_mismatch"
+    assert responses[1]["error"]["data"]["code"] == "raw_command_not_allowed"
+    assert seen == [requests[0]]
+
+
+def test_stdio_proxy_accepts_an_allowlisted_catalog_subset(monkeypatch):
+    subset = [next(tool for tool in mcp.list_tools() if tool["name"] == "host_summary")]
+
+    def fake_remote(controller_url, request, token, **kwargs):
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"tools": subset},
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}) + "\n"],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    assert json.loads(stdout.getvalue())["result"]["tools"] == subset
+
+
+def test_stdio_proxy_preserves_safe_target_context_as_result_metadata(monkeypatch):
+    def fake_remote(controller_url, request, token, **kwargs):
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {
+                "content": [],
+                "structuredContent": {"ok": True, "data": {}},
+                "isError": False,
+            },
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    request = {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+            "name": "operation_contracts",
+            "arguments": {},
+            "context": {
+                "topology": "fakoli-reference",
+                "execution_host": "dark",
+                "execution_runtime": "dark-native",
+                "transport": "controller",
+            },
+        },
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps(request) + "\n"],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    context = json.loads(stdout.getvalue())["result"]["_meta"]["anvil/context"]
+    assert context["topology"] == "fakoli-reference"
+    assert context["execution_host"] == "dark"
+    assert context["transport"] == "controller"
 
 
 def test_stdio_proxy_does_not_forward_notifications_or_null_ids(monkeypatch):
