@@ -742,6 +742,7 @@ def _one_eval(**over):
     _one_eval(checks=None),                                   # asserts nothing
     _one_eval(checks="contains"),                             # checks not a list
     _one_eval(expect_tool={}, checks=[]),                     # tool w/o name
+    _one_eval(expect_tool={"name": 7}, checks=[]),            # tool name not a string
     _one_eval(expect_tool={"name": "f", "required_args": ["zip"]}),   # args not an object
     _one_eval(expect_tool={"name": "f", "required_args": {"zip": 98101}}),  # non-string value
 ])
