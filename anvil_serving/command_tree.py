@@ -449,12 +449,28 @@ def build_command_tree() -> CommandTree:
         "eval", "Run quality evaluation workflows.",
         children=(
             _resource_node("usage", "Analyze recorded usage.", "anvil_serving.profile", role="evaluation", argv_prefix=()),
-            _resource_node("preflight", "Preflight an endpoint.", "anvil_serving.preflight", role="evaluation", argv_prefix=(), remote_operation=_remote("preflight_probe")),
+            _resource_node(
+                "preflight", "Preflight an endpoint.", "anvil_serving.preflight",
+                role="evaluation", mutation="mutate", argv_prefix=(),
+                options=(_option("--confirm", summary="Confirm the live evaluation workload."),),
+                remote_operation=_remote(
+                    "preflight_probe", confirmed=(("confirm", True),),
+                    allowed=("base_url", "model", "api_key_env", "needle_ctx", "tool_batch", "no_thinking", "timeout_seconds"),
+                ),
+            ),
             _resource_node("planning", "Run planning evaluation.", "anvil_serving.eval", role="evaluation"),
             _resource_node("bootstrap", "Bootstrap a quality profile.", "anvil_serving.eval", role="evaluation", mutation="mutate", options=action_options),
             _resource_node("calibrate", "Calibrate a reviewable quality profile.", "anvil_serving.calibrate", role="evaluation", mutation="mutate", options=action_options, argv_prefix=()),
             _node("benchmark", "Run or import benchmark evidence.", children=(
-                _resource_node("run", "Run an endpoint benchmark.", "anvil_serving.benchmark", role="evaluation", argv_prefix=(), remote_operation=_remote("benchmark_probe")),
+                _resource_node(
+                    "run", "Run an endpoint benchmark.", "anvil_serving.benchmark",
+                    role="evaluation", mutation="mutate", argv_prefix=(),
+                    options=(_option("--confirm", summary="Confirm the live evaluation workload."),),
+                    remote_operation=_remote(
+                        "benchmark_probe", confirmed=(("confirm", True),),
+                        allowed=("base_url", "model", "api_key_env", "requests", "concurrency", "max_tokens", "ctx_tokens", "no_thinking", "timeout_seconds"),
+                    ),
+                ),
                 _node("external", "Manage external benchmark evidence.", children=(*external_actions, notebook), docs_anchor="docs/CLI.md#eval-benchmark-external"),
             ), docs_anchor="docs/CLI.md#eval-benchmark"),
         ),

@@ -678,6 +678,64 @@ def test_cli_remote_router_json_preserves_structured_result_and_context(
     assert payload["data"]["data"]["data"]["running"] is True
 
 
+def test_cli_remote_eval_dispatches_confirmed_typed_probe(tmp_path, monkeypatch):
+    topology = _write_remote_router_topology(tmp_path, "eval-preflight")
+    text = topology.read_text(encoding="utf-8")
+    text = text.replace('roles = ["router"]', 'roles = ["evaluation"]')
+    text = text.replace('role = "router"', 'role = "evaluation"')
+    topology.write_text(text, encoding="utf-8")
+    seen = {}
+
+    def fake_execute(plan, operation, **kwargs):
+        seen["operation"] = operation
+        seen["key"] = kwargs["idempotency_key"]
+        return cli.TransportResult(operation.name, "controller", {"ok": True})
+
+    monkeypatch.setattr(cli, "execute_plan", fake_execute)
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail("remote eval imported the local handler"),
+    )
+
+    assert cli.main([
+        "eval", "preflight", "--topology", str(topology), "--confirm",
+        "--base-url", "http://127.0.0.1:8000/v1", "--model", "served",
+        "--needle-ctx", "4096", "--timeout-seconds", "60",
+    ]) == 0
+    assert seen["operation"].name == "eval-preflight"
+    assert seen["operation"].tool_name == "preflight_probe"
+    assert dict(seen["operation"].arguments) == {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "model": "served",
+        "needle_ctx": 4096,
+        "timeout_seconds": 60,
+        "confirm": True,
+    }
+    assert seen["key"].startswith("cli-")
+
+
+def test_cli_remote_eval_rejects_operator_manifest_before_transport(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_remote_router_topology(tmp_path, "eval-preflight")
+    text = topology.read_text(encoding="utf-8")
+    text = text.replace('roles = ["router"]', 'roles = ["evaluation"]')
+    text = text.replace('role = "router"', 'role = "evaluation"')
+    topology.write_text(text, encoding="utf-8")
+    monkeypatch.setattr(
+        cli,
+        "execute_plan",
+        lambda *_args, **_kwargs: pytest.fail("manifest argument reached transport"),
+    )
+
+    assert cli.main([
+        "eval", "preflight", "--topology", str(topology), "--confirm",
+        "--manifest", "serves.toml", "--tier", "fast",
+    ]) == 2
+    assert "not supported for remote preflight" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize("experimental_flag", [False, True])
 def test_cli_rejects_mini_model_workload_without_topology_permission_before_launch(
     tmp_path, monkeypatch, capsys, experimental_flag
@@ -814,7 +872,9 @@ def test_focused_action_help_for_operational_verbs(capsys):
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "usage: anvil-serving eval preflight" in out
-    assert "--base-url" in out
+    assert "direct endpoint input" in out
+    assert "serves manifest input" in out
+    assert "--base-url" in out and "--manifest" in out and "--tier" in out
 
     with pytest.raises(SystemExit) as exc:
         multiplexer.main(["--help"])
@@ -835,7 +895,10 @@ def test_focused_action_help_for_operational_verbs(capsys):
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "usage: anvil-serving eval benchmark run" in out
-    assert "--base-url" in out
+    assert "direct endpoint input" in out
+    assert "serves manifest input" in out
+    assert "--base-url" in out and "--manifest" in out and "--tier" in out
+    assert "--timeout-seconds" in out
     assert "external" in out
 
 

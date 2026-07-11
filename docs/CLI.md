@@ -214,29 +214,34 @@ anvil-serving models cache prune --mixture openai/gpt-oss-120b,Qwen/Qwen3-32B --
 ### `eval preflight`
 
 ```
-anvil-serving eval preflight --base-url URL --model ID [--api-key-env ENV]
-                        [--needle-ctx N] [--tool-batch N] [--no-thinking]
+anvil-serving eval preflight (--base-url URL --model ID | --tier NAME [--manifest PATH])
+                        --confirm [--api-key-env ENV] [--needle-ctx N]
+                        [--tool-batch N] [--no-thinking]
 ```
 
 Correctness gate against any OpenAI-compatible endpoint, before trusting throughput: short coding
 smoke, structured JSON, long-context needle retrieval (`--needle-ctx`, default 128000), and a
 shared-prefix tool-calling batch (`--tool-batch`, default 20). `--no-thinking` injects
 `chat_template_kwargs={"enable_thinking": false}` so thinking-by-default models (Qwen3.x, GLM)
-don't false-fail with empty content. Exit code 0 = all pass, 1 = any fail.
+don't false-fail with empty content. `--tier` fills the endpoint and model from a serves manifest;
+without `--manifest`, it uses the bundled reference manifest. The CLI requires `--confirm` because
+the gate sends a live workload. Controller execution accepts direct endpoint inputs only, so an
+operator-local manifest path is never interpreted on another host. Exit code 0 = all pass, 1 = any fail.
 
 ```bash
-anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --no-thinking
+anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --no-thinking --confirm
 ```
 
 ### `eval benchmark`
 
 ```
-anvil-serving eval benchmark run --base-url URL --model ID [flags]
+anvil-serving eval benchmark run (--base-url URL --model ID | --tier NAME [--manifest PATH]) --confirm [flags]
 anvil-serving eval benchmark external {init|sources|fetch|import|list|report|export|compare} [flags]
 ```
 
 Replays the measured Claude Code subagent request distribution and reports TTFT, end-to-end
-latency, throughput, and a prefix-cache hit signal.
+latency, throughput, and a prefix-cache hit signal. Like preflight, the CLI requires `--confirm`
+before sending the live workload, and controller execution accepts direct endpoint inputs only.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -245,11 +250,12 @@ latency, throughput, and a prefix-cache hit signal.
 | `--ctx-tokens` / `--max-tokens` | `0` / `64` | Fixed context (0 samples the measured distribution) / generation length. |
 | `--max-model-len` / `--margin` | `0` (auto) / `1024` | Clamp sampled ctx under the serve's window. |
 | `--api-key-env` / `--no-thinking` | — / off | Bearer token env-var name / disable hidden reasoning for thinking-by-default models. |
+| `--timeout` / `--timeout-seconds` | `900` | Equivalent request-timeout spellings; the typed controller contract uses `--timeout-seconds`. |
 | `--json-out` | — | Machine-readable summary for `eval benchmark external compare`. |
 | `--recipe-out`, `--recipe-from-container`, `--recipe-intent`, `--recipe-mode`, `--recipe-status`, `--recipe-model` | — | Record a reproducible `[[recipe]]` block for the live serve (read back with `models recipe`). |
 
 ```bash
-anvil-serving eval benchmark run --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking
+anvil-serving eval benchmark run --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking --confirm
 ```
 
 > **Importable entrypoints.** `preflight` and `benchmark` are dispatched through their module
@@ -403,12 +409,12 @@ Unified shadow-eval harness. See [Serves & eval](SERVES-AND-EVAL.md).
 
 | Subcommand | What it does |
 |------------|--------------|
-| `preflight` / `benchmark` | Run the correctness gate / throughput replay against a manifest tier: `--tier heavy` fills `--base-url`/`--model` from the serves manifest (or override them directly); unknown flags pass through to the underlying script. |
+| `preflight` / `benchmark` | Run the correctness gate / throughput replay against a manifest tier: `--tier heavy` fills `--base-url`/`--model` from the serves manifest (or override them directly). Both live workloads require `--confirm`. |
 | `planning` | Planning-capability bake-off; offline re-grade of committed eval-data by default, `--live` also runs generation against live serves; `--dir` selects the eval-data dir. |
 | `bootstrap` | Replay committed eval fixtures into a quality profile (`--eval-data`, `--out`; the offline, CI-safe alternative to `calibrate`). |
 
 ```bash
-anvil-serving eval preflight --tier fast --no-thinking
+anvil-serving eval preflight --tier fast --no-thinking --confirm
 ```
 
 ### `eval calibrate`

@@ -750,12 +750,18 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
 
     ap = argparse.ArgumentParser(
         prog=prog,
+        description="Benchmark a direct endpoint or a serves-manifest tier.",
         epilog=(
             "Related command: anvil-serving eval benchmark external "
             "(import, report, and compare external benchmark priors)."
         ),
     )
-    ap.add_argument("--base-url", required=True); ap.add_argument("--model", required=True)
+    endpoint = ap.add_argument_group("direct endpoint input")
+    endpoint.add_argument("--base-url", help="OpenAI-compatible endpoint base URL")
+    endpoint.add_argument("--model", help="served model id")
+    manifest = ap.add_argument_group("serves manifest input")
+    manifest.add_argument("--manifest", help="serves manifest TOML (used with --tier)")
+    manifest.add_argument("--tier", help="serve name in the manifest; fills endpoint and model")
     ap.add_argument("--api-key-env", default=None,
                     help="read the bearer token from this environment variable")
     ap.add_argument("--requests", type=int, default=60)
@@ -832,9 +838,19 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
                     help="optional externally measured STT stage latency")
     ap.add_argument("--tts-latency-ms", type=float, default=None,
                     help="optional externally measured TTS stage latency")
-    ap.add_argument("--timeout", type=float, default=900.0,
+    ap.add_argument("--timeout", "--timeout-seconds", dest="timeout", type=float, default=900.0,
                     help="request timeout in seconds (default %(default)s)")
     a = ap.parse_args(argv)
+    from .eval import resolve_endpoint_target
+    try:
+        a.base_url, a.model, _selected = resolve_endpoint_target(
+            tier=a.tier,
+            manifest=a.manifest,
+            base_url=a.base_url,
+            model=a.model,
+        )
+    except (OSError, ValueError) as exc:
+        ap.error(str(exc))
     api_key = resolve_api_key(a.api_key_env)
 
     if a.bakeoff:

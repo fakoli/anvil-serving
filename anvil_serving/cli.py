@@ -695,6 +695,8 @@ def _confirm(
     forwarded = tuple(
         token for token in policy_args if not (declares_confirmation and token == "--confirm")
     ) + tuple(leaf_args)
+    if "--help" in leaf_args or "-h" in leaf_args:
+        return forwarded, False
     if explicit:
         return forwarded, True
     if "--dry-run" in policy_args:
