@@ -814,7 +814,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
     ap.add_argument("--json-out", default=None,
                     help="write a machine-readable JSON summary for benchmark external compare")
     # --- GENERATE a serve recipe as a side effect of benchmarking a live serve ------
-    # (READ them back with `anvil-serving models recipe list|show`.) All optional.
+    # (READ them back with `anvil-serving models recipes list|show`.) All optional.
     ap.add_argument("--recipe-out", default=None,
                     help="after the run, record a [[recipe]] block: PATH to append to the "
                          "serve-recipe registry, or '-' for stdout. Captures the live serve's "

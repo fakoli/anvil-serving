@@ -958,6 +958,18 @@ def _dispatch(
     ):
         _print_focused_help(path)
         return 0
+    if node.children and node.handler is None:
+        command = _command_name(path)
+        actions = ", ".join(child.name for child in _visible(node.children))
+        error = UsageError(
+            f"action required before options; usage: anvil-serving {command} <action> [options]",
+            code="missing_action",
+            details={"command": command, "actions": actions, "unexpected": list(rest)},
+        )
+        if execution_meta is not None:
+            execution_meta["error"] = error
+        print(f"anvil-serving {command}: {error}", file=sys.stderr)
+        return error.exit_code
     if node.handler is None:
         _print_focused_help(path)
         return 0

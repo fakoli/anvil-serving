@@ -1,9 +1,9 @@
-# CLI Consolidation Inventory (T006/T011/T012)
+# CLI Consolidation Inventory (T006/T011/T012/T024/T024.1)
 
 Last updated: 2026-07-11
 
-Scope: documentation alignment and inventory for the CLI taxonomy migration (`deploy`, `external-bench`,
-`cache-prune`, `score`, `voice-sidecar`, `voice start`/`voice stop`, `onboard`).
+Scope: documentation alignment, generated command coverage, and deterministic
+active-reference auditing for the complete Operator CLI v2 taxonomy.
 
 This document preserves the dated pre-implementation audit below. Current
 production behavior is stricter: legacy paths are tombstones, canonical voice
@@ -79,12 +79,12 @@ callable alias or weaken its current migration guidance.
 | Legacy form | Canonical form | Canonical visibility | Notes |
 | --- | --- | --- | --- |
 | `deploy` | `serves render` | `anvil-serving serves render` | No new root verb; command moved under `serves` family. |
-| `external-bench` | `benchmark external` | `anvil-serving benchmark external` | Command remains under `benchmark` family. |
+| `external-bench` | `eval benchmark external` | `anvil-serving eval benchmark external` | External benchmark evidence belongs under the quality-loop family. |
 | `cache-prune` | `models cache prune` | `anvil-serving models cache prune` | `models` command now exposes cache maintenance as subcommand path. |
 | `score` | `models score` | `anvil-serving models score` | `models` command now groups scoring and cache operations. |
 | `voice-sidecar` | `voice sidecar` | `anvil-serving voice sidecar` | Nested under `voice` family. |
 | `voice start` / `voice stop` | `voice audio up` / `voice audio down` | `anvil-serving voice audio up` / `anvil-serving voice audio down` | Removed tombstones; exit `2` with replacement guidance. |
-| `onboard` | `init` | `anvil-serving init` | Alias only. |
+| `onboard` | `init` | `anvil-serving init` | Removed tombstone; no callable alias remains. |
 
 `multiplexer` is intentionally **root-level**: it is a long-running, stateful swap service (data-plane process) and
 does not function as a formatting variant of `serves`. Its operational surface would be materially narrower and
@@ -93,13 +93,13 @@ different if nested.
 ## Legacy alias -> canonical replacement table
 
 - `anvil-serving deploy` -> `anvil-serving serves render`
-- `anvil-serving external-bench` -> `anvil-serving benchmark external`
+- `anvil-serving external-bench` -> `anvil-serving eval benchmark external`
 - `anvil-serving cache-prune` -> `anvil-serving models cache prune`
 - `anvil-serving score` -> `anvil-serving models score`
 - `anvil-serving voice-sidecar` -> `anvil-serving voice sidecar`
 - `anvil-serving voice start` -> `anvil-serving voice audio up`
 - `anvil-serving voice stop` -> `anvil-serving voice audio down`
-- `anvil-serving onboard` -> `anvil-serving init` (explicit alias)
+- `anvil-serving onboard` -> `anvil-serving init`
 
 ## Changed-verb coverage checklist
 
@@ -110,7 +110,7 @@ different if nested.
     `--manifest-out`, `--no-manifest`, and workflow flags.
   - Legacy replacement examples included with explicit mapping note.
 
-- [x] `benchmark external`
+- [x] `eval benchmark external`
   - Subcommands documented: `init`, `sources`, `fetch`, `import`, `list`, `report`, `export`, `compare` in
     `docs/CLI.md` and `docs/EXTERNAL-BENCHMARKS.md`.
   - `--db` and `--source`, `--url`, `--gpu`, `--model` mention paths are preserved in examples.
@@ -131,6 +131,20 @@ different if nested.
 
 ## Post-implementation reference audit
 
+`scripts/audit_cli_references.py` is the read-only enforcement surface. It
+discovers active root docs, docs pages, all four checked-in skill locations,
+examples/configs, implementation, tests, and repository tooling. It excludes
+dated `docs/findings/`, `specs/archive/`, and its classifier fixtures. The
+checked-in numeric baseline is `docs/CLI-REFERENCE-AUDIT.json`; `--check`
+fails on stale counts, generated CLI tables, or an unclassified active legacy
+invocation. Regeneration is explicit through `--update`.
+
+The generated manifest index and tombstone table in `docs/CLI.md` cover every
+visible command path exactly once and every command/option tombstone from
+`docs/CLI-COMMAND-MANIFEST.json`. The JSON inventory records per-scope file,
+category, canonical-reference, allowed-legacy, and violation counts rather
+than relying on a hand-maintained prose estimate.
+
 Explicit legacy command-form references should now appear only where they explain or test compatibility behavior.
 
 | Surface | Remaining legacy references | Canonical references verified |
@@ -139,17 +153,17 @@ Explicit legacy command-form references should now appear only where they explai
 | Operator docs/skills | None as command invocations; `voice-sidecar-render` remains an artifact-kind identifier. | `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md`, `skills/anvil-serving-voice-ops/SKILL.md`, `examples/openclaw/skills/anvil-serving-workbench/SKILL.md`. |
 | Examples | None as command invocations; `voice-sidecar.tailnet.example` remains a sample host name. | `examples/huggingface-speech-to-speech/README.md`. |
 | Tests | Compatibility coverage in `tests/test_cli.py`, `tests/test_init.py`, `tests/test_voice_sidecar.py`, and `tests/external_benchmarks/test_external_benchmarks.py`. | Canonical help/dispatch coverage in `tests/test_cli.py`, `tests/test_models.py`, `tests/test_deploy.py`, `tests/test_mcp.py`, `tests/test_voice_sidecar.py`, `tests/voice/test_voice_cli.py`, and `tests/external_benchmarks/test_external_benchmarks.py`. |
-| Implementation | Hidden root aliases in `anvil_serving/cli.py`; default compatibility progs in `anvil_serving/deploy.py` and `anvil_serving/score.py`; `onboard` alias text in `anvil_serving/init.py`. | Canonical nested dispatch in `anvil_serving/serves.py`, `anvil_serving/models.py`, `anvil_serving/benchmark.py`, `anvil_serving/voice/cli.py`, `anvil_serving/voice_sidecar.py`, and MCP command guidance in `anvil_serving/mcp.py`. |
+| Implementation | Declarative tombstones in `anvil_serving/command_tree.py` and compatibility assertions in `anvil_serving/cli.py`. | Canonical nested dispatch and parser program names in `anvil_serving/serves.py`, `anvil_serving/models.py`, `anvil_serving/benchmark.py`, `anvil_serving/voice/cli.py`, `anvil_serving/voice_sidecar.py`, and MCP command guidance in `anvil_serving/mcp.py`. |
 
 ## Legacy references: keep vs rewrite
 
-- **Keep for compatibility**
-  - CLI compatibility registration and parsing behavior in `anvil_serving/cli.py` until a future runtime migration
-    intentionally removes the aliases.
-  - Tests that prove legacy aliases still work and either warn (`deploy`, `external-bench`, `cache-prune`, `score`,
-    `voice-sidecar`, `voice start`, `voice stop`) or remain quiet (`onboard`).
-  - Compatibility notes in `README.md`, `docs/CLI.md`, and this inventory.
+- **Keep for compatibility evidence**
+  - Declarative tombstones and tests that prove removed forms exit `2`, name
+    their replacement, and never dispatch a handler.
+  - Dedicated migration notes in `README.md`, `docs/CLI.md`, `docs/VOICE.md`,
+    the changelog, and this inventory.
 
 - **Rewrite from legacy to canonical**
   - User-facing docs, examples, skills, MCP command previews, generated comments, and command help should prefer
-    `serves render`, `benchmark external`, `models cache prune`, `models score`, `voice sidecar`, and `init`.
+    `serves render`, `eval benchmark external`, `models cache prune`,
+    `models score`, `voice sidecar`, and `init`.

@@ -1,0 +1,80 @@
+{
+  "record": {
+    "allowed_legacy_counts": {
+      "benchmark": 0,
+      "cache-prune": 0,
+      "calibrate": 0,
+      "deploy": 0,
+      "eval-benchmark-action-flag": 0,
+      "external-bench": 0,
+      "gpus": 0,
+      "mcp-bare": 0,
+      "mcp-list-tools": 0,
+      "models-recipe": 0,
+      "multiplexer": 0,
+      "onboard": 0,
+      "preflight": 0,
+      "profile": 0,
+      "score": 0,
+      "serve": 1,
+      "voice-run-bridge": 0,
+      "voice-sidecar": 0,
+      "voice-start-stop": 0,
+      "voice-up-down": 0
+    },
+    "canonical_counts": {
+      "eval-benchmark-external": 0,
+      "eval-benchmark-run": 1,
+      "eval-calibrate": 0,
+      "eval-preflight": 0,
+      "eval-usage": 0,
+      "host-gpus": 0,
+      "init": 0,
+      "mcp-serve": 0,
+      "mcp-tools": 1,
+      "models-cache-prune": 0,
+      "models-recipes": 0,
+      "models-score": 1,
+      "router-run": 2,
+      "serves-multiplex": 0,
+      "serves-render": 1,
+      "voice-audio": 1,
+      "voice-proxy": 0,
+      "voice-sidecar": 0
+    },
+    "files_by_category": {
+      "docs": 2,
+      "skills": 4
+    },
+    "files_scanned": 6,
+    "skill_roots": [
+      ".agents/skills",
+      ".claude/skills",
+      "examples/*/skills",
+      "skills"
+    ],
+    "violation_counts": {
+      "benchmark": 0,
+      "cache-prune": 0,
+      "calibrate": 0,
+      "deploy": 0,
+      "eval-benchmark-action-flag": 0,
+      "external-bench": 0,
+      "gpus": 0,
+      "mcp-bare": 0,
+      "mcp-list-tools": 0,
+      "models-recipe": 0,
+      "multiplexer": 0,
+      "onboard": 0,
+      "preflight": 0,
+      "profile": 0,
+      "score": 0,
+      "serve": 0,
+      "voice-run-bridge": 0,
+      "voice-sidecar": 0,
+      "voice-start-stop": 0,
+      "voice-up-down": 0
+    }
+  },
+  "schema_version": 1
+}

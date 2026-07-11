@@ -10,11 +10,11 @@
 #                   specialized tiers (ADR-0010).
 #
 # HOW THIS FILE IS USED (it is NOT auto-discovered):
-#   Point ANVIL_MODES_CONFIG at a copy of this file, then run `anvil-serving serve`.
+#   Point ANVIL_MODES_CONFIG at a copy of this file, then run `anvil-serving router run`.
 #       export ANVIL_MODES_CONFIG=/etc/anvil/modes.toml
-#       anvil-serving serve                 # -> active_mode below (here: agentic)
-#       anvil-serving serve --mode flexibility   # flag overrides active_mode
-#       ANVIL_MODE=flexibility anvil-serving serve  # env overrides active_mode
+#       anvil-serving router run                 # -> active_mode below (here: agentic)
+#       anvil-serving router run --mode flexibility   # flag overrides active_mode
+#       ANVIL_MODE=flexibility anvil-serving router run  # env overrides active_mode
 #
 # PRECEDENCE for the active mode:
 #       --mode FLAG  >  ANVIL_MODE env  >  [modes].active_mode  >  built-in default (agentic)

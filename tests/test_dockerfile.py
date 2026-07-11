@@ -77,14 +77,14 @@ def test_dockerfile_has_healthcheck_on_healthz():
     assert "/healthz" in block, f"HEALTHCHECK must probe /healthz, got: {block!r}"
 
 
-def test_dockerfile_entrypoint_runs_anvil_serving_serve():
+def test_dockerfile_entrypoint_runs_canonical_router_command():
     text = _text()
     assert "ENTRYPOINT" in text or "CMD" in text, (
         "Dockerfile must declare an ENTRYPOINT or CMD"
     )
     tail = text[text.index("ENTRYPOINT") if "ENTRYPOINT" in text else text.index("CMD"):]
-    assert "anvil-serving serve" in tail, (
-        "entrypoint must run `anvil-serving serve`"
+    assert "anvil-serving router run" in tail, (
+        "entrypoint must run `anvil-serving router run`"
     )
     assert "--host" in tail and "0.0.0.0" in tail, (
         "entrypoint must bind 0.0.0.0 INSIDE the container (host-side exposure is "

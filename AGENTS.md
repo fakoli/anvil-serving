@@ -7,8 +7,8 @@
 ## What you're working in
 
 A quality-gated local-model router (`anvil_serving/router/`) plus a serving substrate
-(`profile`, `models sync`, `serves render`, `preflight`, `benchmark`, `multiplexer`, plus the
-v0.5.0 onboarding trio `init`/`doctor`/`gpus`). The router is shipped (v0.7.x): token-authed
+(`eval usage`, `models sync`, `serves render`, `eval preflight`, `eval benchmark run`,
+`serves multiplex`, plus `init`, `doctor`, and `host gpus`). The router is shipped (v0.7.x): token-authed
 containerized service, cross-dialect tool translation, true upstream SSE streaming,
 residency-aware routing. The canonical product description is `README.md`; do not contradict it.
 
@@ -64,8 +64,8 @@ residency-aware routing. The canonical product description is `README.md`; do no
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest tests/ -x -q          # full suite; 993 tests expected green
-anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model <name>  # live gate
+python -m pytest tests/ -x -q          # full suite
+anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model <name> --confirm  # live gate
 ```
 
 For router changes, the unit tests in `tests/router/` are the primary gate. Integration

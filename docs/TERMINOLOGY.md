@@ -38,6 +38,7 @@ profile, reference integration, product differentiator, and local serving tools.
 - Say **intent preset** for `planning`, `quick-edit`, `review`, `chat`, `chat-fast`, and
   `long-context`.
 - Say **OpenClaw reference integration** when describing the plugin path.
-- Say **local serving tools** for `profile`, `models`, `serves`, `init`, `preflight`,
-  `benchmark`, `benchmark external`, `multiplexer`, `models cache prune`, `models score`, `doctor`, and `host`.
-- Say **control plane** for `mcp`, `controller`, and `harness`.
+- Say **local serving tools** for `eval usage`, `models`, `serves`, `init`,
+  `eval preflight`, `eval benchmark run`, `eval benchmark external`,
+  `serves multiplex`, `models cache prune`, `models score`, `doctor`, and `host`.
+- Say **control plane** for `mcp serve`, `mcp tools`, `controller`, and `harness`.

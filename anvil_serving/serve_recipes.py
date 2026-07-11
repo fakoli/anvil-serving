@@ -15,7 +15,7 @@ Stdlib-only, on purpose:
 
 This module is imported by BOTH the GENERATE path (`benchmark --recipe-out`, which
 records a recipe as a side effect of benchmarking a serve) and the READ path
-(`models recipe list|show`, which replays a recorded recipe). No new CLI verb.
+(`models recipes list|show`, which replays a recorded recipe). No new CLI verb.
 """
 from __future__ import annotations
 
