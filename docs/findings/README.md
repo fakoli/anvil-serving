@@ -9,6 +9,8 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-10 | [2026-07-10-blackwell-local-model-bakeoff.md](2026-07-10-blackwell-local-model-bakeoff.md) | RTX PRO 6000 and RTX 5090 local-model bakeoff: Nemotron text/Omni, Gemma 4 31B, Ornith 35B, MiniMax M2.7 REAP, DeepSeek V4 Flash — vs production baselines |
+| 2026-07-10 | [scorecard.csv](2026-07-10-blackwell-local-model-bakeoff-evidence/scorecard.csv) | Machine-readable bakeoff scorecard (per-candidate config, gates, throughput, verdict) |
 | 2026-07-08 | [2026-07-08-voice-latency-final-recommendation.md](2026-07-08-voice-latency-final-recommendation.md) | Voice latency final recommendation (voice-latency-model-ab:T007) |
 | 2026-07-08 | [2026-07-08-voice-latency-ab-final-report.md](2026-07-08-voice-latency-ab-final-report.md) | OpenClaw Talk voice latency candidate A/B status report (evidence synthesis) |
 | 2026-07-08 | [2026-07-08-voice-latency-candidate-matrix.md](2026-07-08-voice-latency-candidate-matrix.md) | Voice latency candidate benchmark matrix (T005) |

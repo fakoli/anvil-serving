@@ -1,0 +1,26 @@
+{
+  "base_url": "http://127.0.0.1:39021/v1",
+  "completed": 10,
+  "concurrency": 1,
+  "context_tokens": 8192,
+  "max_context_tokens": 65536,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 862.396240234375,
+    "e2e_p95_ms": 909.8942279815674,
+    "output_tokens": 236,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 27.316470559683015,
+    "ttft_p50_ms": 674.6108531951904,
+    "ttft_p95_ms": 713.7336730957031
+  },
+  "model": "nemotron3-omni-30b-a3b-nvfp4",
+  "requests": 10,
+  "run_id": "benchmark-20260711T062733Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": true,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  }
+}

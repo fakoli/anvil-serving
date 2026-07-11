@@ -1,0 +1,172 @@
+{
+  "context": {
+    "cap_tokens": 64448,
+    "max_model_len": 65536,
+    "targets": [
+      {
+        "attempted_context_tokens": 64448,
+        "clamped_tokens": 64448,
+        "e2e_ms": 41904.534578323364,
+        "estimated_prompt_tokens": 64448,
+        "output_tokens": 64,
+        "status": "passed",
+        "target_tokens": 65536,
+        "ttft_ms": 41286.32664680481,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 56371,
+          "total_tokens": 56435
+        }
+      }
+    ]
+  },
+  "failures": [
+    {
+      "error": "response did not include tool_calls",
+      "suite": "tool"
+    },
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "unified_diff_timeout_edit",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39020/v1",
+    "candidate_id": "nemotron3-nano-30b-a3b",
+    "config_id": "vllm-nvfp4-64k",
+    "model": "nemotron3-nano-30b-a3b-nvfp4",
+    "started_at": "2026-07-11T04:32:54Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "We need to output a unified diff showing changes: change timeout from 30 to 45, keep retries unchanged. Provide only diff. Use unified diff format with context lines. Probably show - and + lines. Prov",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 914.8218631744385,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": true
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": false
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": false
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "We need to respond with one concise sentence identifying the problem and one practical fix. Problem: total turn timeout is 2500 ms, but sum of components is 550+1800+650 = 3000 ms > 2500 ms, causing t",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 2301.8639087677,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260711T043254Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 41904.534578323364,
+    "intelligence_pass_rate": 0.5,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 41286.32664680481,
+    "usable_context_tokens": 65536,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      65536
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "The user wants the session code used. They previously said \"Remember this session code: RIVER-918. Reply with ok.\" The assistant replied \"ok\". Now they ask: \"Wh",
+        "expected": "RIVER-918",
+        "latency_ms": 684.4561100006104,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 41904.534578323364,
+      "e2e_p95_ms": 41904.534578323364,
+      "output_tokens": 64,
+      "ttft_p50_ms": 41286.32664680481,
+      "ttft_p95_ms": 41286.32664680481
+    },
+    "wall_ms": 47118.01481246948
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": null,
+        "error": "response did not include tool_calls",
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 1238.0645275115967,
+        "name": "openai_tool_call_smoke",
+        "status": "failed",
+        "tool_call_count": 0,
+        "valid_tool_call_count": 0,
+        "validation_errors": [
+          "response did not include tool_calls"
+        ]
+      }
+    ],
+    "status": "failed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

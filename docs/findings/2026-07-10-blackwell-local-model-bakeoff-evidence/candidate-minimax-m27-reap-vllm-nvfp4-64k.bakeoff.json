@@ -1,0 +1,163 @@
+{
+  "context": {
+    "cap_tokens": 64448,
+    "max_model_len": 65536,
+    "targets": [
+      {
+        "attempted_context_tokens": 64448,
+        "clamped_tokens": 64448,
+        "e2e_ms": 15064.497470855713,
+        "estimated_prompt_tokens": 64448,
+        "output_tokens": 64,
+        "status": "passed",
+        "target_tokens": 65536,
+        "ttft_ms": 14271.098136901855,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 48073,
+          "total_tokens": 48137
+        }
+      }
+    ]
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:39023/v1",
+    "candidate_id": "minimax-m27-reap-139b",
+    "config_id": "vllm-nvfp4-64k",
+    "model": "minimax-m27-reap-139b-nvfp4",
+    "started_at": "2026-07-11T05:38:04Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "The user wants a unified diff that changes `timeout = 30` to `timeout = 45` and leaves `retries` unchanged. The original file is:\n\n```\ntimeout = 30\nretries = 2\n```\n\nSo we need to output a unified diff",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 2221.188545227051,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": true
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "The user request: \"A voice agent calls STT, an LLM, and TTS. total turn timeout is 2500 ms. Logs show STT=550 ms, LLM=1800 ms, TTS=650 ms.\" They want: \"In one concise sentence, identify the problem an",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 2231.7323684692383,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260711T053804Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 15064.497470855713,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 14271.098136901855,
+    "usable_context_tokens": 65536,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      65536
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "The user is asking what session code should be used and says \"Reply with only the code.\" They have previously mentioned a session code \"RIVER-918\". However, I n",
+        "expected": "RIVER-918",
+        "latency_ms": 593.3523178100586,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 15064.497470855713,
+      "e2e_p95_ms": 15064.497470855713,
+      "output_tokens": 64,
+      "ttft_p50_ms": 14271.098136901855,
+      "ttft_p95_ms": 14271.098136901855
+    },
+    "wall_ms": 20951.746225357056
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 812.2148513793945,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

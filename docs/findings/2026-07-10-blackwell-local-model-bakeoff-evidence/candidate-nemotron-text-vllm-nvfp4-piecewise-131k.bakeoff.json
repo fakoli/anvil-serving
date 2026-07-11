@@ -1,0 +1,174 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": [
+      {
+        "attempted_context_tokens": 129984,
+        "clamped_tokens": 129984,
+        "e2e_ms": 30182.674646377563,
+        "estimated_prompt_tokens": 129984,
+        "output_tokens": 64,
+        "status": "passed",
+        "target_tokens": 131072,
+        "ttft_ms": 29390.323162078857,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 122179,
+          "total_tokens": 122243
+        }
+      }
+    ]
+  },
+  "failures": [
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "unified_diff_timeout_edit",
+      "suite": "intelligence"
+    },
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "parallel_timeout_triage",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39020/v1",
+    "candidate_id": "nemotron3-nano-30b-a3b",
+    "config_id": "vllm-nvfp4-piecewise-131k-nothink",
+    "model": "nemotron3-nano-30b-a3b-nvfp4",
+    "started_at": "2026-07-11T05:20:07Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "```diff\n@@\n- timeout = 30\n+ timeout = 45\n   retries = 2\n```",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 472.67627716064453,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": false
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": false
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": false
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "The problem is that the sum of the component latencies (550\u202f+\u202f1800\u202f+\u202f650\u202f=\u202f3000\u202fms) exceeds the 2500\u202fms turn timeout, causing timeouts; a practical fix is to trim the LLM processing time \u2014 e.g., by us",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 1317.3305988311768,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": false
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260711T052007Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 30182.674646377563,
+    "intelligence_pass_rate": 0.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 29390.323162078857,
+    "usable_context_tokens": 131072,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      131072
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "RIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 213.83380889892578,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 30182.674646377563,
+      "e2e_p95_ms": 30182.674646377563,
+      "output_tokens": 64,
+      "ttft_p50_ms": 29390.323162078857,
+      "ttft_p95_ms": 29390.323162078857
+    },
+    "wall_ms": 32769.615650177
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 536.1409187316895,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

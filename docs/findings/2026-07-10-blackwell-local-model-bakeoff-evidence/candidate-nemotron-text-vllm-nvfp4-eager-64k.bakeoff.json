@@ -1,0 +1,167 @@
+{
+  "context": {
+    "cap_tokens": 64448,
+    "max_model_len": 65536,
+    "targets": [
+      {
+        "attempted_context_tokens": 64448,
+        "clamped_tokens": 64448,
+        "e2e_ms": 22897.38702774048,
+        "estimated_prompt_tokens": 64448,
+        "output_tokens": 64,
+        "status": "passed",
+        "target_tokens": 65536,
+        "ttft_ms": 17123.872756958008,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 56371,
+          "total_tokens": 56435
+        }
+      }
+    ]
+  },
+  "failures": [
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "unified_diff_timeout_edit",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39020/v1",
+    "candidate_id": "nemotron3-nano-30b-a3b",
+    "config_id": "vllm-nvfp4-eager-64k",
+    "model": "nemotron3-nano-30b-a3b-nvfp4",
+    "started_at": "2026-07-11T04:26:27Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "We need to output a unified diff that changes timeout from 30 to 45, leaving retries unchanged. Provide only diff. Use unified diff format. Probably show added line? Actually it's a change. So diff wi",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 8877.695322036743,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": false
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "User wants: \"A voice agent calls STT, an LLM, and TTS. The total turn timeout is 2500 ms. Logs show STT=550 ms, LLM=1800 ms, TTS=650 ms. In one concise sentence, identify the problem and one practical",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 25055.877208709717,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260711T042627Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 22897.38702774048,
+    "intelligence_pass_rate": 0.5,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "default",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 17123.872756958008,
+    "usable_context_tokens": 65536,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      65536
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "The user wants the session code. They previously said \"Remember this session code: RIVER-918. Reply with ok.\" The assistant replied \"ok\". Now they ask: \"What se",
+        "expected": "RIVER-918",
+        "latency_ms": 6115.278244018555,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 22897.38702774048,
+      "e2e_p95_ms": 22897.38702774048,
+      "output_tokens": 64,
+      "ttft_p50_ms": 17123.872756958008,
+      "ttft_p95_ms": 17123.872756958008
+    },
+    "wall_ms": 75155.9374332428
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 12152.451515197754,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
