@@ -151,6 +151,15 @@ def test_unknown_nested_command_remains_a_refusal(capsys):
     err = capsys.readouterr().err
     assert "unknown command: eval benchmrk" in err
     assert "Did you mean 'benchmark'?" in err
+    assert "anvil-serving eval --help" in err
+
+
+def test_unknown_external_action_points_to_external_parser_help(capsys):
+    assert cli.main(["eval", "benchmark", "external", "frobnicate"]) == 2
+    err = capsys.readouterr().err
+    assert "unknown command: eval benchmark external frobnicate" in err
+    assert "anvil-serving eval benchmark external --help" in err
+    assert "anvil-serving --help" not in err
 
 
 def test_removed_path_refuses_without_resolving_a_legacy_tail(capsys):

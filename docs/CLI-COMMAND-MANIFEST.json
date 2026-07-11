@@ -5586,16 +5586,6 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -5729,16 +5719,6 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
           "tombstone": null,
           "value_name": null
         }
@@ -6301,16 +6281,6 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -6589,16 +6559,6 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -6732,16 +6692,6 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
           "tombstone": null,
           "value_name": null
         }
@@ -7053,7 +7003,7 @@
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.external_benchmarks.cli:main",
-      "mutation_class": "read",
+      "mutation_class": "mutate",
       "options": [
         {
           "flags": [

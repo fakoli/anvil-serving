@@ -290,7 +290,12 @@ def _unknown_command(token: str, path: Sequence[CommandNode], siblings: Sequence
         assert match is not None
         suggestion = match.tombstone.replacement if match.tombstone else match.name
         print("Did you mean '%s'?" % suggestion, file=sys.stderr)
-    print("Run 'anvil-serving --help' to see available commands.", file=sys.stderr)
+    help_path = " ".join(node.name for node in path)
+    help_command = "anvil-serving%s --help" % ((" " + help_path) if help_path else "")
+    print("Run '%s' to see available %s." % (
+        help_command,
+        "actions" if path else "commands",
+    ), file=sys.stderr)
     return 2
 
 

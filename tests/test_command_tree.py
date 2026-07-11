@@ -42,6 +42,12 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["eval preflight"]["mutation_class"] == "mutate"
     assert records["eval preflight"]["remote_operation"]["confirmed_arguments"] == {"confirm": True}
     assert records["eval benchmark run"]["remote_operation"]["tool"] == "benchmark_probe"
+    assert records["eval benchmark external export"]["mutation_class"] == "mutate"
+    assert all(
+        "--dry-run" not in option["flags"]
+        for path in ("eval bootstrap", "eval calibrate", "eval benchmark external import")
+        for option in records[path]["options"]
+    )
     assert records["router run"]["remote_operation"] is None
     assert records["controller status"]["remote_operation"]["mode"] == "controller-status"
     global_flags = {

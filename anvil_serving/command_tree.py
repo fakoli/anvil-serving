@@ -421,12 +421,12 @@ def build_command_tree() -> CommandTree:
         "compare": "external_bench_compare",
     }
     external_actions = tuple(
-        _resource_node(action, summary, "anvil_serving.external_benchmarks.cli", role="evaluation", mutation=mutation, options=action_options if mutation == "mutate" else (), argv_prefix=(action,), remote_operation=(_remote(external_remote_tools[action]) if action in external_remote_tools else None))
+        _resource_node(action, summary, "anvil_serving.external_benchmarks.cli", role="evaluation", mutation=mutation, argv_prefix=(action,), remote_operation=(_remote(external_remote_tools[action]) if action in external_remote_tools else None))
         for action, summary, mutation in (
             ("init", "Initialize benchmark evidence storage.", "mutate"), ("sources", "List benchmark sources.", "read"),
             ("fetch", "Fetch and import benchmark evidence.", "mutate"), ("import", "Import saved benchmark evidence.", "mutate"),
             ("list", "List normalized benchmark evidence.", "read"), ("report", "Render a benchmark report.", "read"),
-            ("export", "Export benchmark evidence.", "read"), ("compare", "Compare local benchmark evidence.", "read"),
+            ("export", "Export benchmark evidence.", "mutate"), ("compare", "Compare local benchmark evidence.", "read"),
         )
     )
     notebook = _node(
@@ -459,8 +459,8 @@ def build_command_tree() -> CommandTree:
                 ),
             ),
             _resource_node("planning", "Run planning evaluation.", "anvil_serving.eval", role="evaluation"),
-            _resource_node("bootstrap", "Bootstrap a quality profile.", "anvil_serving.eval", role="evaluation", mutation="mutate", options=action_options),
-            _resource_node("calibrate", "Calibrate a reviewable quality profile.", "anvil_serving.calibrate", role="evaluation", mutation="mutate", options=action_options, argv_prefix=()),
+            _resource_node("bootstrap", "Bootstrap a quality profile.", "anvil_serving.eval", role="evaluation", mutation="mutate"),
+            _resource_node("calibrate", "Calibrate a reviewable quality profile.", "anvil_serving.calibrate", role="evaluation", mutation="mutate", argv_prefix=()),
             _node("benchmark", "Run or import benchmark evidence.", children=(
                 _resource_node(
                     "run", "Run an endpoint benchmark.", "anvil_serving.benchmark",
