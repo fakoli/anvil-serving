@@ -506,6 +506,191 @@ services:
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39016
 
+  # ── 2026-07-10 Blackwell local-model bakeoff candidates ─────────────────────
+  # Evaluation serves only (never production). 5090-track candidates (:39020-21)
+  # coexist with the live heavy tier; PRO-6000-track candidates (:39022-24) share
+  # the card with GPT-OSS heavy — bring `heavy` DOWN first. All are managed via
+  # `anvil-serving serves up/down <name>` and publish loopback-only.
+  # NGC vllm images int-parse CUDA_VISIBLE_DEVICES (see heavy-qwen35-122b note),
+  # so these pin by PCI_BUS_ID index: GPU0 = RTX 5090, GPU1 = RTX PRO 6000.
+  cand-nemotron3-nano-30b:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-nemotron3-nano-30b
+    restart: "no"
+    ipc: host
+    shm_size: "8gb"
+    ports:
+      - "127.0.0.1:39020:39020"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "0"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4
+      --served-model-name nemotron3-nano-30b-a3b-nvfp4
+      --quantization modelopt_fp4
+      --trust-remote-code
+      --enable-auto-tool-choice
+      --tool-call-parser nemotron_json
+      --max-model-len ${CAND_NEMOTRON_MAX_MODEL_LEN:-131072}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.88
+      --host 0.0.0.0 --port 39020
+
+  cand-nemotron3-omni-30b:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-nemotron3-omni-30b
+    restart: "no"
+    ipc: host
+    shm_size: "8gb"
+    ports:
+      - "127.0.0.1:39021:39021"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "0"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4
+      --served-model-name nemotron3-omni-30b-a3b-nvfp4
+      --quantization modelopt_fp4
+      --trust-remote-code
+      --max-model-len ${CAND_OMNI_MAX_MODEL_LEN:-65536}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.88
+      --host 0.0.0.0 --port 39021
+
+  cand-ornith-35b-fp8:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-ornith-35b-fp8
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39022:39022"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve deepreinforce-ai/Ornith-1.0-35B-FP8
+      --served-model-name ornith-1.0-35b-fp8
+      --kv-cache-dtype fp8
+      --trust-remote-code
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --max-model-len ${CAND_ORNITH_MAX_MODEL_LEN:-131072}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.90
+      --host 0.0.0.0 --port 39022
+
+  cand-minimax-m27-reap:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-minimax-m27-reap
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39023:39023"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve dervig/m51Lab-MiniMax-M2.7-REAP-139B-A10B-NVFP4
+      --served-model-name minimax-m27-reap-139b-nvfp4
+      --kv-cache-dtype fp8
+      --trust-remote-code
+      --enable-auto-tool-choice
+      --tool-call-parser minimax_m2
+      --max-model-len ${CAND_MINIMAX_MAX_MODEL_LEN:-65536}
+      --max-num-seqs 1
+      --gpu-memory-utilization 0.95
+      --host 0.0.0.0 --port 39023
+
+  cand-deepseek-v4-flash:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-deepseek-v4-flash
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39024:39024"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/DeepSeek-V4-Flash-NVFP4
+      --served-model-name deepseek-v4-flash-nvfp4
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8
+      --trust-remote-code
+      --max-model-len ${CAND_DSV4_MAX_MODEL_LEN:-16384}
+      --max-num-seqs 1
+      --gpu-memory-utilization 0.97
+      --host 0.0.0.0 --port 39024
+
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache
 volumes:
