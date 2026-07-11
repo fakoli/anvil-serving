@@ -378,6 +378,7 @@ services:
       --max-num-seqs ${FAST_GEMMA4_MAX_NUM_SEQS:-2}
       --gpu-memory-utilization ${FAST_GEMMA4_GPU_MEMORY_UTILIZATION:-0.88}
       --host 0.0.0.0 --port 39011
+      ${FAST_GEMMA4_EXTRA_ARGS:-}
 
   fast-glm47-flash-sglang:
     <<: *fast-sglang-common
@@ -523,6 +524,9 @@ services:
       - "127.0.0.1:39020:39020"
     volumes:
       - "vllm-hfcache:/root/.cache/huggingface"
+      # Official reasoning parser from the model card (nano_v3): without it,
+      # think-text leaks into content and tool-call extraction misfires.
+      - "./nano_v3_reasoning_parser.py:/opt/nano_v3_reasoning_parser.py:ro"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: "0"
@@ -543,11 +547,16 @@ services:
       --quantization modelopt_fp4
       --trust-remote-code
       --enable-auto-tool-choice
-      --tool-call-parser nemotron_json
+      --tool-call-parser qwen3_coder
+      --reasoning-parser-plugin /opt/nano_v3_reasoning_parser.py
+      --reasoning-parser nano_v3
+      --compilation-config '{"cudagraph_mode":"PIECEWISE"}'
+      --mamba-ssm-cache-dtype float16
       --max-model-len ${CAND_NEMOTRON_MAX_MODEL_LEN:-131072}
       --max-num-seqs 2
       --gpu-memory-utilization 0.88
       --host 0.0.0.0 --port 39020
+      ${CAND_NEMOTRON_EXTRA_ARGS:-}
 
   cand-nemotron3-omni-30b:
     image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
@@ -578,10 +587,40 @@ services:
       --served-model-name nemotron3-omni-30b-a3b-nvfp4
       --quantization modelopt_fp4
       --trust-remote-code
+      --compilation-config '{"cudagraph_mode":"PIECEWISE"}'
+      --mamba-ssm-cache-dtype float16
+      ${CAND_OMNI_EXTRA_ARGS:-}
       --max-model-len ${CAND_OMNI_MAX_MODEL_LEN:-65536}
       --max-num-seqs 2
       --gpu-memory-utilization 0.88
       --host 0.0.0.0 --port 39021
+
+  # Gemma 4 31B fallback path after the vLLM 32 GB KV-OOM ladder: official QAT
+  # q4_0 GGUF on llama.cpp, whose iSWA-aware KV cache prices the 50 sliding-window
+  # layers natively — 64k fits on the 5090 where vLLM's legacy runner could not
+  # allocate even 16k.
+  cand-gemma4-31b-llamacpp:
+    <<: *fast-llamacpp-common
+    container_name: llamacpp-cand-gemma4-31b
+    ports:
+      - "127.0.0.1:39025:39025"
+    environment:
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      -hf ${CAND_GEMMA4_GGUF:-google/gemma-4-31B-it-qat-q4_0-gguf}
+      --alias gemma4-31b-it-q4-gguf
+      --host 0.0.0.0 --port 39025
+      -c 65536
+      -ngl 999
+      --jinja
 
   cand-ornith-35b-fp8:
     image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}

@@ -216,3 +216,12 @@ model = "deepseek-v4-flash-nvfp4"
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-deepseek-v4-flash"
+
+[[serve]]
+name = "cand-gemma4-31b-llamacpp"
+container = "llamacpp-cand-gemma4-31b"
+port = 39025
+model = "gemma4-31b-it-q4-gguf"
+engine = "llama.cpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-gemma4-31b-llamacpp"
