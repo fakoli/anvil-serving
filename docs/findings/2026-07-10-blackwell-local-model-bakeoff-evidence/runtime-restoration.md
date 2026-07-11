@@ -20,3 +20,17 @@ Downtime notes:
 - All candidate evaluation containers are stopped and removed. The two
   production containers are the only serves running at close-out
   (GPU0 27.6 GB = fast; GPU1 87.0 GB = heavy).
+
+## Extension round (2026-07-11, second window)
+
+| Tier | Restored | Verification |
+|---|---|---|
+| fast | after the 5090 llama.cpp candidates | preflight pass within tier window (needle probe beyond 32k, expected) |
+| heavy | after the PRO-6000 MTP candidates | cold preflight **ALL PASS** (needle 29.2 s) |
+
+Note: cache-warm REPEAT needle probes against the restored heavy tier
+occasionally return a safety refusal on resample (gpt-oss declining the
+"secret code" retrieval phrasing at default sampling). The cold ALL-PASS run
+is the restoration record; the resample flakiness is a preflight-prompt
+observation, not a serving fault. Close-out: only `vllm-qwen36` and
+`vllm-gptoss120` running.

@@ -1,0 +1,37 @@
+# Override file: MTP-OFF variants of the speculative-decoding candidates, for
+# A/B throughput comparison. Usage:
+#   docker compose -f docker-compose.experiment.yml -f docker-compose.mtp-off.yml up -d <service>
+# Commands mirror the base services minus --speculative-config (and, per the
+# vLLM guidance for the non-MTP config, prefix caching may be enabled for the
+# Qwen candidate).
+services:
+  cand-nemotron3-puzzle-75b:
+    command: >
+      serve nvidia/NVIDIA-Nemotron-Labs-3-Puzzle-75B-A9B-NVFP4
+      --served-model-name nemotron3-puzzle-75b-nvfp4
+      --trust-remote-code
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --reasoning-parser nemotron_v3
+      --mamba-ssm-cache-dtype float16
+      --kv-cache-dtype fp8
+      --max-model-len ${CAND_PUZZLE_MAX_MODEL_LEN:-131072}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.92
+      --host 0.0.0.0 --port 39026
+
+  cand-qwen36-heavy-mtp:
+    command: >
+      serve sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP
+      --served-model-name qwen36-27b-nvfp4-mtp
+      --trust-remote-code
+      --quantization modelopt
+      --language-model-only
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --kv-cache-dtype fp8
+      --max-model-len ${CAND_QWEN36_MAX_MODEL_LEN:-262144}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.92
+      --host 0.0.0.0 --port 39027

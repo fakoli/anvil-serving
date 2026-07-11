@@ -1,0 +1,162 @@
+{
+  "context": {
+    "cap_tokens": null,
+    "max_model_len": null,
+    "targets": [
+      {
+        "attempted_context_tokens": 32768,
+        "clamped_tokens": 32768,
+        "error": "HTTP Error 400: Bad Request",
+        "estimated_prompt_tokens": 74113,
+        "status": "failed",
+        "target_tokens": 32768
+      }
+    ]
+  },
+  "failures": [
+    {
+      "error": "HTTP Error 400: Bad Request",
+      "suite": "context",
+      "target_tokens": 32768
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39028/v1",
+    "candidate_id": "qwen35-35b-a3b-q4km",
+    "config_id": "llamacpp-q4km-64k",
+    "model": "qwen35-35b-a3b-q4km-gguf",
+    "started_at": "2026-07-11T07:42:19Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@ -1,3 +1,3 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 452.5938034057617,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": true
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "The system exceeds its 2500 ms timeout because the sequential processing of STT, LLM, and TTS (totaling 3000 ms) is too slow, so a practical fix is to implement streaming for both the LLM response and",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 553.4639358520508,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260711T074219Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "RIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 292.15240478515625,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 2332.1220874786377
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 426.9447326660156,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
