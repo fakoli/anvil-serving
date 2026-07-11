@@ -471,16 +471,17 @@ def test_cli_rejects_topology_only_mini_override_before_launch(tmp_path, monkeyp
     assert "pass --experimental-model-workload" in captured.err
 
 
-def test_cli_allows_two_part_mini_override_and_surfaces_warning(
+def test_cli_allows_capacity_override_but_refuses_unimplemented_remote_dispatch(
     tmp_path, monkeypatch, capsys
 ):
-    from anvil_serving import controller
-
     topology = _write_capacity_topology(
         tmp_path, allow_experimental_model_workloads=True
     )
-    calls = []
-    monkeypatch.setattr(controller, "main", lambda argv: calls.append(argv) or 0)
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved remote handler: {self.name}"),
+    )
 
     assert cli.main(
         [
@@ -490,30 +491,29 @@ def test_cli_allows_two_part_mini_override_and_surfaces_warning(
             str(topology),
             "--experimental-model-workload",
         ]
-    ) == 0
+    ) == 4
     captured = capsys.readouterr()
-    assert calls == [["status"]]
     assert captured.out == ""
-    assert "experimental model workload override active" in captured.err
-    assert "model-free host 'mini'" in captured.err
+    assert "remote CLI dispatch is not implemented" in captured.err
 
 
-def test_cli_dark_model_owner_is_unchanged_by_capacity_gate(tmp_path, monkeypatch, capsys):
-    from anvil_serving import controller
-
+def test_cli_remote_dark_owner_refuses_before_local_handler(tmp_path, monkeypatch, capsys):
     topology = _write_capacity_topology(
         tmp_path,
         owner="dark",
         workload="llm",
         allow_model_workloads=True,
     )
-    calls = []
-    monkeypatch.setattr(controller, "main", lambda argv: calls.append(argv) or 0)
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved remote handler: {self.name}"),
+    )
 
-    assert cli.main(["controller", "status", "--topology", str(topology)]) == 0
+    assert cli.main(["controller", "status", "--topology", str(topology)]) == 4
     captured = capsys.readouterr()
-    assert calls == [["status"]]
-    assert captured.out == captured.err == ""
+    assert captured.out == ""
+    assert "remote CLI dispatch is not implemented" in captured.err
 
 
 def test_experimental_override_cannot_make_a_removed_path_callable(
@@ -565,14 +565,14 @@ def test_focused_action_help_for_operational_verbs(capsys):
         preflight.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving preflight" in out
+    assert "usage: anvil-serving eval preflight" in out
     assert "--base-url" in out
 
     with pytest.raises(SystemExit) as exc:
         multiplexer.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving multiplexer" in out
+    assert "usage: anvil-serving serves multiplex" in out
     assert "--ram-cap-gb" in out
 
     with pytest.raises(SystemExit) as exc:
@@ -586,7 +586,7 @@ def test_focused_action_help_for_operational_verbs(capsys):
         benchmark.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving benchmark" in out
+    assert "usage: anvil-serving eval benchmark run" in out
     assert "--base-url" in out
     assert "external" in out
 

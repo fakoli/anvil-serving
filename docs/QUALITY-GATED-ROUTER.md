@@ -182,7 +182,7 @@ A table keyed `(model, work-class)` → `{quality_score, sample_n, last_measured
    replay representative requests per work-class to each local tier, grade against cloud
    (deterministic checks + blind/LLM judge), emit the table. Generalize that harness from
    "planning" to arbitrary work-classes.
-2. **Calibrate** deliberately: run the guarded `anvil-serving calibrate` batch against explicitly
+2. **Calibrate** deliberately: run the guarded `anvil-serving eval calibrate` batch against explicitly
    confirmed local endpoints, grade off the hot path with an independent Agent-SDK judge, and review
    the candidate profile before promotion. Continuous production sampling remains a future extension.
 3. **Right-size** from the user's real usage via existing `profile` (which work-classes dominate
@@ -200,7 +200,7 @@ the hot path (ADR-0009). Two batches, sharply separated:
 | Batch | Verb | Calls a real tier? | Judge | CI-safe |
 |---|---|---|---|---|
 | **Replay** (offline bootstrap) | `anvil-serving eval bootstrap` (`profile_bootstrap --replay`) | no — re-grades committed eval fixtures | pre-committed blind-judge rows | yes |
-| **Live** (write-back / calibration) | `anvil-serving calibrate` (`profile_bootstrap.run_live`) | **yes — your configured LOCAL tiers** | independent Agent-SDK `claude` judge (ADR-0007) | **no** |
+| **Live** (write-back / calibration) | `anvil-serving eval calibrate` (`profile_bootstrap.run_live`) | **yes — your configured LOCAL tiers** | independent Agent-SDK `claude` judge (ADR-0007) | **no** |
 
 Both emit the same portable artifact; the difference is where the numbers come from
 (pre-graded fixtures vs. a fresh measurement of *your* serves).
@@ -214,7 +214,7 @@ Both emit the same portable artifact; the difference is where the numbers come f
    prod), graded by the independent Agent-SDK judge:
 
    ```bash
-   anvil-serving calibrate --config configs/example.toml \
+   anvil-serving eval calibrate --config configs/example.toml \
        --out ./profile.candidate.json \
        --endpoint fast-local=http://127.0.0.1:30001/v1 \
        --i-understand-this-calls-real-tiers
@@ -666,9 +666,9 @@ router binds that one mode's tiers + presets; switching modes is a config reload
 never per-request. Two ways to point `serve` at a config:
 
 ```bash
-anvil-serving serve --config configs/example.toml   # explicit path (unchanged; bypasses modes)
-anvil-serving serve --mode flexibility               # resolve the mode to its config file
-ANVIL_MODE=flexibility anvil-serving serve           # same, via env
+anvil-serving router run --config configs/example.toml   # explicit path (unchanged; bypasses modes)
+anvil-serving router run --mode flexibility               # resolve the mode to its config file
+ANVIL_MODE=flexibility anvil-serving router run           # same, via env
 ```
 
 **Which mode is active** — precedence `--mode > ANVIL_MODE > [modes].active_mode > default (agentic)`.

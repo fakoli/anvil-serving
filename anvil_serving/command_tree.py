@@ -70,6 +70,7 @@ class CommandOption:
     value_name: str | None = None
     tombstone: Tombstone | None = None
     output_policy: str | None = None
+    requires_confirmation: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "flags", tuple(self.flags))
@@ -126,12 +127,14 @@ def _option(
     summary: str,
     value_name: str | None = None,
     output_policy: str | None = None,
+    requires_confirmation: bool = False,
 ) -> CommandOption:
     return CommandOption(
         flags=flags,
         summary=summary,
         value_name=value_name,
         output_policy=output_policy,
+        requires_confirmation=requires_confirmation,
     )
 
 
@@ -143,8 +146,17 @@ def _removed_option(*flags: str, replacement: str) -> CommandOption:
     )
 
 
-def _handler(module: str, *, argv_prefix: Iterable[str] | None = None) -> HandlerRef:
-    return HandlerRef(module, argv_prefix=None if argv_prefix is None else tuple(argv_prefix))
+def _handler(
+    module: str,
+    *,
+    attribute: str = "main",
+    argv_prefix: Iterable[str] | None = None,
+) -> HandlerRef:
+    return HandlerRef(
+        module,
+        attribute=attribute,
+        argv_prefix=None if argv_prefix is None else tuple(argv_prefix),
+    )
 
 
 def _future_handler() -> HandlerRef:
@@ -203,13 +215,18 @@ def _resource_node(
     gpu: bool = False,
     options: Iterable[CommandOption] = (),
     argv_prefix: Iterable[str] | None = None,
+    handler_attribute: str = "main",
     output_policy: str = "bounded",
     docs_anchor: str = "docs/CLI.md",
 ) -> CommandNode:
     return _node(
         name,
         summary,
-        handler=_handler(module, argv_prefix=argv_prefix) if module else _future_handler(),
+        handler=_handler(
+            module,
+            attribute=handler_attribute,
+            argv_prefix=argv_prefix,
+        ) if module else _future_handler(),
         resource_role=role,
         transports=("local", "controller", "ssh") if recovery else ("local", "controller"),
         execution_runtime_roles=("native", "docker"),
@@ -234,7 +251,6 @@ GLOBAL_OPTIONS = (
         "--experimental-model-workload",
         summary="Allow a topology-permitted experimental model workload on a model-free host.",
     ),
-    _option("--allow-ssh-fallback", summary="Allow declared SSH recovery after a pre-dispatch failure."),
     _option("--json", summary="Emit the machine-readable result envelope."),
     _option("--quiet", summary="Suppress nonessential human output."),
     _option("--verbose", summary="Include diagnostic human output."),
@@ -273,7 +289,7 @@ def build_command_tree() -> CommandTree:
             ),
             _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router"),
             _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),)),
-            _resource_node("token", "Inspect the router token state.", "anvil_serving.router_manage", role="router", options=(_option("--reveal", summary="Reveal the local token after confirmation."), _option("--confirm", summary="Confirm token reveal."))),
+            _resource_node("token", "Inspect the router token state.", "anvil_serving.router_manage", role="router", options=(_option("--reveal", summary="Reveal the local token after confirmation.", requires_confirmation=True), _option("--confirm", summary="Confirm token reveal."))),
         ),
         docs_anchor="docs/CLI.md#router",
     )
@@ -357,18 +373,18 @@ def build_command_tree() -> CommandTree:
     voice = _node(
         "voice", "Manage audio and realtime proxy operations.",
         children=(
-            _node("audio", "Manage Dark-owned STT/TTS lifecycle.", children=tuple(
-                _resource_node(action, summary, "anvil_serving.voice.cli", role="audio", mutation=mutation, options=confirm_options if mutation == "mutate" else ())
-                for action, summary, mutation in (("up", "Start audio serves.", "mutate"), ("down", "Stop audio serves.", "mutate"), ("status", "Show audio serve status.", "read"), ("logs", "Read audio serve logs.", "read"))
+            _node("audio", "Manage Dark-owned STT/TTS lifecycle.", children=(
+                _resource_node("up", "Start audio serves.", "anvil_serving.voice.cli", role="audio", mutation="mutate", options=confirm_options, argv_prefix=("up",)),
+                _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="audio", mutation="mutate", options=confirm_options, argv_prefix=("down",)),
             ), docs_anchor="docs/VOICE.md#audio-lifecycle"),
-            _node("proxy", "Manage Mini-owned realtime proxy lifecycle.", children=tuple(
-                _resource_node(action, summary, "anvil_serving.voice.cli", role="proxy", mutation=mutation, options=confirm_options if mutation == "mutate" else (), output_policy="foreground" if action == "run" else "bounded")
-                for action, summary, mutation in (("run", "Run the realtime proxy.", "process"), ("up", "Start the realtime proxy.", "mutate"), ("down", "Stop the realtime proxy.", "mutate"), ("restart", "Restart the realtime proxy.", "mutate"), ("status", "Show realtime proxy status.", "read"), ("logs", "Read realtime proxy logs.", "read"), ("bridge", "Manage the Mini-to-Dark audio bridge.", "mutate"))
+            _node("proxy", "Manage the realtime proxy process.", children=(
+                _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="proxy", mutation="process", argv_prefix=("run",), output_policy="foreground"),
+                _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="proxy", mutation="mutate", options=confirm_options, argv_prefix=("bridge",), output_policy="foreground"),
             ), docs_anchor="docs/VOICE.md#realtime-proxy"),
-            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="audio"),
+            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="audio", argv_prefix=("benchmark",)),
             _node("profiles", "Inspect voice profiles.", children=(
-                _resource_node("list", "List voice profiles.", "anvil_serving.voice.cli", role="audio"),
-                _resource_node("validate", "Validate a voice profile.", "anvil_serving.voice.cli", role="audio"),
+                _resource_node("list", "List voice profiles.", "anvil_serving.voice.cli", role="audio", handler_attribute="main_profiles_list", argv_prefix=()),
+                _resource_node("validate", "Validate the profile selected by --profile.", "anvil_serving.voice.cli", role="audio", handler_attribute="main_profiles_validate", argv_prefix=()),
             ), docs_anchor="docs/VOICE.md#profiles"),
             _node("sidecar", "Manage the speech-to-speech sidecar.", children=tuple(
                 _resource_node(action, summary, "anvil_serving.voice_sidecar", role="audio", mutation="mutate" if action == "compose" else "read", options=action_options if action == "compose" else (), argv_prefix=(action,))
@@ -384,25 +400,24 @@ def build_command_tree() -> CommandTree:
     )
     harness = _node("harness", "Manage harness integration.", children=tuple(
         _node(action, summary, children=(_resource_node("openclaw", f"{summary} for OpenClaw.", "anvil_serving.harness", role="gateway", mutation=mutation, recovery=action == "restart", options=confirm_options if mutation == "mutate" else ()),), docs_anchor="docs/CLI.md#harness")
-        for action, summary, mutation in (("sync", "Synchronize harness configuration", "mutate"), ("restart", "Restart the harness", "mutate"), ("status", "Show harness status", "read"))
+        for action, summary, mutation in (("sync", "Synchronize harness configuration", "mutate"), ("restart", "Restart the harness", "mutate"))
     ), docs_anchor="docs/CLI.md#harness")
     mcp = _node("mcp", "Expose bounded MCP management tools.", children=(
         _resource_node("serve", "Run the MCP management server.", "anvil_serving.mcp", role="operator", argv_prefix=(), output_policy="protocol"),
         _resource_node("tools", "List bounded MCP tools.", "anvil_serving.mcp", role="operator", argv_prefix=("list-tools",)),
         _node("list-tools", "Removed MCP tool-listing command.", tombstone=removed("mcp tools"), visible=False),
-    ), options=(_removed_option("--list-tools", replacement="mcp tools"),), tombstone=removed("mcp serve"), docs_anchor="docs/CLI.md#mcp", visible=False)
+    ), options=(_removed_option("--list-tools", replacement="mcp tools"),), tombstone=removed("mcp serve"), docs_anchor="docs/CLI.md#mcp")
     controller = _node("controller", "Manage the private controller service.", children=(
         _resource_node("serve", "Run the private controller.", "anvil_serving.controller", role="controller", mutation="process", options=(_removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),), output_policy="foreground"),
-        _resource_node("status", "Show controller health and capabilities.", "anvil_serving.controller", role="controller"),
+        _resource_node("status", "Probe controller health.", "anvil_serving.controller", role="controller"),
     ), docs_anchor="docs/CLI.md#controller")
-    host = _node("host", "Inspect and repair declared host operations.", children=tuple(
-        _resource_node(action, summary, "anvil_serving.host", role="host", mutation=mutation, recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options if mutation == "mutate" else ())
-        for action, summary, mutation in (("status", "Show host status.", "read"), ("gpus", "Show GPU inventory.", "read"), ("doctor", "Diagnose host configuration.", "read"), ("wsl-config", "Render or update WSL configuration.", "mutate"), ("restart-docker", "Restart Docker Desktop.", "mutate"), ("reset-wsl", "Reset WSL.", "mutate"))
+    host = _node("host", "Inspect and repair declared host operations.", children=(
+        _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=()),
+        *(
+            _resource_node(action, summary, "anvil_serving.host", role="host", mutation=mutation, recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options if mutation == "mutate" else ())
+            for action, summary, mutation in (("doctor", "Diagnose host configuration.", "read"), ("wsl-config", "Render or update WSL configuration.", "mutate"), ("restart-docker", "Restart Docker Desktop.", "mutate"), ("reset-wsl", "Reset WSL.", "mutate"))
+        ),
     ), docs_anchor="docs/CLI.md#host")
-    topology = _node("topology", "Inspect and validate declared topology.", children=tuple(
-        _resource_node(action, summary, None, role="topology", mutation="read")
-        for action, summary in (("show", "Show topology identity."), ("validate", "Validate topology offline."), ("resolve", "Resolve a declared command target."))
-    ), docs_anchor="docs/CLI.md#topology")
 
     tree = CommandTree(
         nodes=(
@@ -417,7 +432,6 @@ def build_command_tree() -> CommandTree:
             _node("controller", controller.summary, children=controller.children, docs_anchor=controller.docs_anchor, group="Control plane & integrations"),
             _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
             _node("doctor", "Check local dependencies and configured health.", handler=_handler("anvil_serving.doctor"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
-            _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Local serving tools"),
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
                 ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),
@@ -565,6 +579,7 @@ def _option_data(option: CommandOption) -> dict[str, object]:
         "value_name": option.value_name,
         "tombstone": _tombstone_data(option.tombstone),
         "output_policy": option.output_policy,
+        "requires_confirmation": option.requires_confirmation,
     }
 
 

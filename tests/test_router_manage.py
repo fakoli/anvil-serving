@@ -162,7 +162,7 @@ def test_status_docker_error_returns_1(capsys):
 
 # ---- token ------------------------------------------------------------------
 
-def test_token_prints_value(capsys):
+def test_token_inspection_does_not_print_value(capsys):
     def run(argv, **kw):
         if argv[:2] == ["docker", "inspect"]:
             return proc(0, "running\n")  # container is up
@@ -170,6 +170,32 @@ def test_token_prints_value(capsys):
         return proc(0, "s3cr3t\n")
     out_rc = rm.cmd_token("anvil-router", _run=run)
     assert out_rc == 0
+    output = capsys.readouterr().out
+    assert "auth is SET" in output
+    assert "s3cr3t" not in output
+
+
+def test_token_reveal_requires_confirmation(monkeypatch, capsys):
+    def run(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        return proc(0, "s3cr3t\n")
+
+    monkeypatch.setattr(rm.guard, "confirm", lambda _prompt: False)
+    assert rm.cmd_token("anvil-router", reveal=True, _run=run) == 1
+    captured = capsys.readouterr()
+    assert "s3cr3t" not in captured.out
+    assert "declined" in captured.err
+
+
+def test_token_reveal_accepts_scoped_dispatcher_confirmation(capsys):
+    def run(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            return proc(0, "running\n")
+        return proc(0, "s3cr3t\n")
+
+    with rm.guard.confirmation_scope(True):
+        assert rm.cmd_token("anvil-router", reveal=True, _run=run) == 0
     assert capsys.readouterr().out.strip() == "s3cr3t"
 
 

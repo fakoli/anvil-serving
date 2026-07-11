@@ -14,14 +14,14 @@ All notable changes to this project are documented here. The format is based on
   implementation while keeping its deferred removal work auditable.
 - **Production CLI discovery contract** — root help now documents global `--help`/`--version`
   flags and the canonical nested workflows, `serves --help` explains every action, and tests lock
-  the help/version surface. Deprecated `voice start`/`voice stop` calls remain compatible but now
-  emit the same migration guidance as other legacy forms. The CLI and voice references document
+  the help/version surface. Removed forms, including `voice start`/`voice stop`, fail with a
+  canonical replacement instead of silently dispatching. The CLI and voice references document
   exit behavior, stdout/stderr conventions, safety gates, and the complete canonical taxonomy.
 - **Bakeoff notebook** — the persistent, comparable record the fast-tier
-  bakeoff report was assembled by hand from. `anvil-serving benchmark
+  bakeoff report was assembled by hand from. `anvil-serving eval benchmark run
   --bakeoff … --notebook DB --notebook-task T --notebook-hardware H` appends
   each run into `bakeoff_runs` (schema: two additive tables `bakeoff_runs`
-  + `bakeoff_verdicts`); `anvil-serving benchmark external notebook
+  + `bakeoff_verdicts`); `anvil-serving eval benchmark external notebook
   add|list|render` records/lists/renders. `render` emits the repeatable form
   of the #181 report — the candidate matrix, a 100-point rubric (encoded as
   data in `external_benchmarks/notebook.py`), and a per-candidate
@@ -64,6 +64,14 @@ All notable changes to this project are documented here. The format is based on
 - **`router restart` / `reload` block ~11s longer** verifying the router
   stays up (crash-loop detection); `--no-verify` restores the old fire-and-
   forget behavior.
+
+### Fixed
+
+- **Operator CLI v2 adversarial hardening** — non-local topology plans now fail closed before a
+  local handler can run; JSON preserves resolved context, warnings, and classified errors; real
+  leaf parsers provide focused help; `--` boundaries and dry-run confirmation behave correctly;
+  token values require `--reveal --confirm`; and every visible canonical leaf either reaches a real
+  parser or is withheld until implemented. Live documentation now uses canonical command paths.
 
 
 ## [0.11.0] - 2026-07-06

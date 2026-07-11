@@ -13,8 +13,10 @@ reliable isolation (examples/fakoli-dark gotcha, CLAUDE.md gotcha #13) is
 Every function here is IMPURE (shells out to `nvidia-smi`) but accepts an
 injectable `_run` seam so callers/tests can run with no GPU present.
 """
+import argparse
 import re
 import subprocess
+import sys
 from collections.abc import Iterable, Mapping
 
 _UUID_PREFIX = "GPU-"
@@ -49,6 +51,20 @@ def list_gpus(_run=subprocess.check_output):
                 "name": parts[2] if len(parts) > 2 else "",
             })
     return gpus
+
+
+def main(argv=None):
+    """Print the local NVIDIA GPU inventory for ``host gpus``."""
+    parser = argparse.ArgumentParser(prog="anvil-serving host gpus")
+    parser.parse_args(sys.argv[1:] if argv is None else argv)
+    rows = list_gpus()
+    if not rows:
+        print("No NVIDIA GPUs detected.")
+        return 0
+    print("INDEX  UUID                                      NAME")
+    for row in rows:
+        print("%-6s %-41s %s" % (row["index"], row["uuid"], row["name"]))
+    return 0
 
 
 def gpu_uuid(index, _run=subprocess.check_output):

@@ -26,10 +26,13 @@ Topology-aware resource commands accept `--topology PATH`, `--command-host`, `--
 The narrow exception requires both an `experimental-model` resource permitted by the topology's
 capacity policy and the per-invocation `--experimental-model-workload` flag. Successful overrides
 emit a warning and capacity audit fields; the flag alone never upgrades an ordinary model resource.
+The M1 dispatcher executes only plans that resolve to `local`; a controller or SSH plan fails closed
+before handler import. Use `mcp serve --controller-url` for supported remote operations until the
+M2 CLI transport adapter lands.
 
-Most built-in commands use exit status `0` for success, `1` for an operational failure or declined
-destructive confirmation, and `2` for invalid usage or a refused safety gate. Commands that invoke
-Docker or another subprocess may preserve that program's non-zero status. Human-readable results
+The dispatcher uses exit status `0` for success, `1` for execution failure, `2` for invalid usage,
+`3` for a refused safety gate, `4` for transport failure, and `5` for partial completion. Leaf
+commands may preserve a subprocess's non-zero status. Human-readable results
 go to stdout; warnings, migration guidance, and errors go to stderr. Commands that can mutate
 containers, host configuration, caches, routing profiles, or non-loopback exposure document their
 confirmation or acknowledgement flags in focused `--help`.
@@ -38,23 +41,23 @@ confirmation or acknowledgement flags in focused `--help`.
 
 | Verb | Purpose | Group |
 |------|---------|-------|
-| `serve` | Start the quality-gated router front door on `127.0.0.1:8000`. | Data plane |
+| `router run` | Start the quality-gated router front door on `127.0.0.1:8000`. | Data plane |
 | `router` | Manage the deployed (containerized) router: lifecycle, token, promote. | Data plane |
 | `serves` | Stop/start/inspect the local GPU model serves from a serves manifest. | Local serving tools |
 | `serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU + model. | Local serving tools |
 | `models` | Model catalog (`sync`), HF downloads into a docker volume (`pull`), serve recipes (`recipe`). | Local serving tools |
 | `models cache prune` | Local HF cache safety and retention planning with explicit execution gates. | Local serving tools |
 | `models score` | Role-suitability scorer over benchmark evidence; recommends a mixture. | Quality loop |
-| `profile` | Turn Claude Code logs into a usage baseline + sizing inputs. | Quality loop |
-| `preflight` | Correctness gate against any OpenAI-compatible endpoint. | Local serving tools |
-| `benchmark` | Replay the measured request distribution (TTFT, throughput, prefix cache). | Local serving tools |
-| `benchmark external` | Ingest, store, report, and compare external inference benchmarks. | Local serving tools |
-| `multiplexer` | Single-resident model swap server on one GPU (RAM-guarded). | Local serving tools |
-| `init` | Detect GPUs + a model; write compose + serves.toml + router.toml (`onboard` is a compatibility alias). | Local serving tools |
+| `eval usage` | Turn Claude Code logs into a usage baseline + sizing inputs. | Quality loop |
+| `eval preflight` | Correctness gate against any OpenAI-compatible endpoint. | Quality loop |
+| `eval benchmark run` | Replay the measured request distribution (TTFT, throughput, prefix cache). | Quality loop |
+| `eval benchmark external` | Ingest, store, report, and compare external inference benchmarks. | Quality loop |
+| `serves multiplex` | Single-resident model swap server on one GPU (RAM-guarded). | Local serving tools |
+| `init` | Detect GPUs + a model; write compose + serves.toml + router.toml. | Local serving tools |
 | `doctor` | Environment preflight for a router deploy (Python, docker, GPU, tier health). | Local serving tools |
 | `host` | Own the WSL / Docker Desktop host config (inspect, cap, restart, reset). | Local serving tools |
 | `eval` | Unified eval harness: preflight / benchmark / planning / bootstrap. | Quality loop |
-| `calibrate` | Guarded write-back batch: measure local tiers, judge, write a candidate profile. | Quality loop |
+| `eval calibrate` | Guarded write-back batch: measure local tiers, judge, write a candidate profile. | Quality loop |
 | `mcp` | Stdio MCP server (and remote-controller proxy) for operational tools. | Control plane & integrations |
 | `controller` | Token-authenticated HTTP controller for split-host MCP forwarding. | Control plane & integrations |
 | `harness` | Render/apply harness-side config (OpenClaw) from the live router config. | Control plane & integrations |
@@ -67,15 +70,15 @@ Legacy aliases are documented in the compatibility section at the end of this fi
 
 ## Data plane
 
-### `serve`
+### `router run`
 
 ```
-anvil-serving serve (--config PATH | --mode agentic|flexibility) [--host HOST] [--port PORT]
+anvil-serving router run (--config PATH | --mode agentic|flexibility) [--host HOST] [--port PORT]
 ```
 
 Starts the protocol-standard front door bound to the tiers in a router config
 (config -> per-tier backends -> front door). A config selector is required — `--config`, `--mode`,
-or the `ANVIL_MODE`/`ANVIL_MODES_CONFIG` environment variables; bare `serve` with none of them
+or the `ANVIL_MODE`/`ANVIL_MODES_CONFIG` environment variables; bare `router run` with none of them
 set is a usage error (the router never silently boots a default). See the
 [Configuration reference](CONFIGURATION.md) for the precedence chain.
 
@@ -87,7 +90,7 @@ set is a usage error (the router never silently boots a default). See the
 | `--port` | `8000` | Bind port. |
 
 ```bash
-anvil-serving serve --config configs/example.toml
+anvil-serving router run --config configs/example.toml
 ```
 
 ### `router`
@@ -106,7 +109,7 @@ then legacy `~/.anvil_env`, then `~/.env` unless `--env-file` is provided.
 |--------|--------------|
 | `up` / `down` | `docker compose` bring-up/tear-down (`--compose`, `--service`, `--env-file`). |
 | `restart` / `reload` / `status` | Restart the container / restart to reload startup-read config / show container + health status. `restart`/`reload` verify the router STAYS up (~11s settle + consecutive samples, the same crash-loop check `promote` uses); `--no-verify` skips it for rapid iteration. |
-| `logs` / `token` | `docker logs` (`--tail`, `--since`, `--follow`) / print the router bearer token. |
+| `logs` / `token` | `docker logs` (`--tail`, `--since`, `--follow`) / inspect whether auth is configured. Token values require `--reveal --confirm`. |
 | `promote` | Validate + write a new profile (and optionally config) into the router's config volume; requires `--profile`; `--no-reload` skips the restart. |
 
 Key flags: `--container` (default `anvil-router`), `--compose`, `--service`, `--dry-run`;
@@ -208,10 +211,10 @@ candidates unless `--include-servable`, and refuses a broad wipe with an empty `
 anvil-serving models cache prune --mixture openai/gpt-oss-120b,Qwen/Qwen3-32B --json
 ```
 
-### `preflight`
+### `eval preflight`
 
 ```
-anvil-serving preflight --base-url URL --model ID [--api-key-env ENV]
+anvil-serving eval preflight --base-url URL --model ID [--api-key-env ENV]
                         [--needle-ctx N] [--tool-batch N] [--no-thinking]
 ```
 
@@ -222,14 +225,14 @@ shared-prefix tool-calling batch (`--tool-batch`, default 20). `--no-thinking` i
 don't false-fail with empty content. Exit code 0 = all pass, 1 = any fail.
 
 ```bash
-anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model local --no-thinking
+anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --no-thinking
 ```
 
-### `benchmark`
+### `eval benchmark`
 
 ```
-anvil-serving benchmark --base-url URL --model ID [flags]
-anvil-serving benchmark external {init|sources|fetch|import|list|report|export|compare} [flags]
+anvil-serving eval benchmark run --base-url URL --model ID [flags]
+anvil-serving eval benchmark external {init|sources|fetch|import|list|report|export|compare} [flags]
 ```
 
 Replays the measured Claude Code subagent request distribution and reports TTFT, end-to-end
@@ -242,22 +245,22 @@ latency, throughput, and a prefix-cache hit signal.
 | `--ctx-tokens` / `--max-tokens` | `0` / `64` | Fixed context (0 samples the measured distribution) / generation length. |
 | `--max-model-len` / `--margin` | `0` (auto) / `1024` | Clamp sampled ctx under the serve's window. |
 | `--api-key-env` / `--no-thinking` | — / off | Bearer token env-var name / disable hidden reasoning for thinking-by-default models. |
-| `--json-out` | — | Machine-readable summary for `benchmark external compare`. |
+| `--json-out` | — | Machine-readable summary for `eval benchmark external compare`. |
 | `--recipe-out`, `--recipe-from-container`, `--recipe-intent`, `--recipe-mode`, `--recipe-status`, `--recipe-model` | — | Record a reproducible `[[recipe]]` block for the live serve (read back with `models recipe`). |
 
 ```bash
-anvil-serving benchmark --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking
+anvil-serving eval benchmark run --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking
 ```
 
 > **Importable entrypoints.** `preflight` and `benchmark` are dispatched through their module
 > `main()` functions like the rest of the CLI. They remain deliberately self-contained enough for
 > direct script-style checks from a checkout, but the supported operator path is the
-> `anvil-serving preflight` / `anvil-serving benchmark` command surface after `pip install -e .`.
+> `anvil-serving eval preflight` / `anvil-serving eval benchmark run` command surface after `pip install -e .`.
 
-### `benchmark external`
+### `eval benchmark external`
 
 ```
-anvil-serving benchmark external {init|sources|fetch|import|list|report|export|compare} [flags]
+anvil-serving eval benchmark external {init|sources|fetch|import|list|report|export|compare} [flags]
 ```
 
 Ingest, store, report, and compare external LLM inference benchmarks in a SQLite store
@@ -267,13 +270,13 @@ JSON/CSV/Markdown/HTML file; `list`/`report` filter by `--gpu`/`--model`/`--sour
 See [External benchmarks](EXTERNAL-BENCHMARKS.md).
 
 ```bash
-anvil-serving benchmark external compare --local bench-fast.json --gpu "RTX 5090"
+anvil-serving eval benchmark external compare --local bench-fast.json --gpu "RTX 5090"
 ```
 
-### `multiplexer`
+### `serves multiplex`
 
 ```
-anvil-serving multiplexer [--registry JSON] [--host 127.0.0.1] [--port 8000]
+anvil-serving serves multiplex [--registry JSON] [--host 127.0.0.1] [--port 8000]
                           [--ram-cap-gb N] [--drain-timeout SECS] [--self-check]
 ```
 
@@ -283,10 +286,10 @@ unauthenticated — keep the default loopback bind. `--self-check` runs the mock
 (no server, no GPU).
 
 ```bash
-anvil-serving multiplexer --port 8000 --ram-cap-gb 48
+anvil-serving serves multiplex --port 8000 --ram-cap-gb 48
 ```
 
-### `init` (alias `onboard`)
+### `init`
 
 ```
 anvil-serving init [--model PATH] [--catalog-dir DIR] [--gpu IDX|UUID] [--served-name NAME]
@@ -362,10 +365,10 @@ anvil-serving host wsl-config --memory 64 --dry-run
 
 ## Quality loop
 
-### `profile`
+### `eval usage`
 
 ```
-anvil-serving profile [--logs-dir DIR] [--out-dir DIR]
+anvil-serving eval usage [--logs-dir DIR] [--out-dir DIR]
 ```
 
 Turns your Claude Code session logs (default `~/.claude/projects`) into
@@ -373,7 +376,7 @@ Turns your Claude Code session logs (default `~/.claude/projects`) into
 (default: CWD) - the sizing inputs for your local serves.
 
 ```bash
-anvil-serving profile --out-dir .
+anvil-serving eval usage --out-dir .
 ```
 
 ### `models score`
@@ -408,10 +411,10 @@ Unified shadow-eval harness. See [Serves & eval](SERVES-AND-EVAL.md).
 anvil-serving eval preflight --tier fast --no-thinking
 ```
 
-### `calibrate`
+### `eval calibrate`
 
 ```
-anvil-serving calibrate (--config PATH | --mode agentic|flexibility) --out PROFILE_JSON
+anvil-serving eval calibrate (--config PATH | --mode agentic|flexibility) --out PROFILE_JSON
                         --endpoint TIER=URL [--endpoint TIER=URL ...]
                         --i-understand-this-calls-real-tiers
                         [--eval-data DIR] [--max-tokens N]
@@ -425,7 +428,7 @@ without both an explicit `--endpoint TIER=URL` confirmation for every measured l
 artifact with `anvil-serving router promote`.
 
 ```bash
-anvil-serving calibrate --config configs/example.toml --out candidate-profile.json \
+anvil-serving eval calibrate --config configs/example.toml --out candidate-profile.json \
   --endpoint fast-local=http://127.0.0.1:30001/v1 \
   --endpoint heavy-local=http://127.0.0.1:30000/v1 \
   --i-understand-this-calls-real-tiers
@@ -464,13 +467,14 @@ anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVI
 ```
 anvil-serving controller serve [--host 127.0.0.1] [--port 8765]
                                [--auth-token-env ANVIL_CONTROLLER_TOKEN]
-                               [--allow-public-bind] [--allow-unauthenticated-loopback]
+                               [--allow-public-bind]
+anvil-serving controller status [--url URL] [--auth-token-env ENV] [--timeout SECONDS]
 ```
 
 Stdlib HTTP controller for tailnet-safe split-host MCP forwarding (ADR-0014): run it on the
 anvil-serving host, bridge from the operator/gateway host with `mcp serve --controller-url`. Auth is
-required by default even on loopback (`--allow-unauthenticated-loopback` is development-only);
-a public or wildcard bind additionally requires `--allow-public-bind` *and* a token.
+required on every bind. A public or wildcard bind additionally requires `--allow-public-bind`
+and a token. `controller status` performs a bounded authenticated `/health` probe.
 
 ```bash
 export ANVIL_CONTROLLER_TOKEN="<controller-secret>"
@@ -510,20 +514,24 @@ anvil-serving harness sync openclaw --config configs/example.toml --gateway-host
 ### `voice`
 
 ```
-anvil-serving voice {up|down|run|benchmark|profiles|bridge|sidecar} [flags]
+anvil-serving voice audio {up|down} [flags]
+anvil-serving voice proxy {run|bridge} [flags]
+anvil-serving voice benchmark [flags]
+anvil-serving voice profiles {list|validate} [flags]
+anvil-serving voice sidecar {validate|command|compose} [flags]
 ```
 
-Local realtime voice pipeline (VAD -> STT -> LLM -> TTS): `up`/`down` manage the STT/TTS serves
+Local realtime voice pipeline (VAD -> STT -> LLM -> TTS): `audio up`/`audio down` manage the STT/TTS serves
 from a voice manifest (`--config`, `--profile`, `--dry-run`; default
-`~/.anvil-serving/voice.toml` when present), `run` starts the realtime server in
+`~/.anvil-serving/voice.toml` when present), `proxy run` starts the realtime server in
 the foreground, `benchmark` replays a recorded session end-to-end and reports latency
 (`--candidate`, `--candidate-overlay`, `--evidence-out`), `profiles` lists/validates profile
-overlays, and `bridge` forwards STT/TTS TCP ports to local audio endpoints (loopback by default;
+overlays, and `proxy bridge` forwards STT/TTS TCP ports to local audio endpoints (loopback by default;
 non-loopback binds require explicit acknowledgement flags). Full flag reference, topologies, and
 validation flows: [Voice pipeline](VOICE.md).
 
 ```bash
-anvil-serving voice up --profile dark-audio --dry-run
+anvil-serving voice audio up --profile dark-audio --dry-run
 ```
 
 ### `voice sidecar`

@@ -120,7 +120,7 @@ def _import_bytes(
     return 0
 
 
-def main(argv=None, *, prog: str = "anvil-serving benchmark external") -> int:
+def main(argv=None, *, prog: str = "anvil-serving eval benchmark external") -> int:
     ap = argparse.ArgumentParser(
         prog=prog,
         description="Ingest, store, report, and compare external LLM inference benchmarks.",

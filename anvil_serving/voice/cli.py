@@ -283,7 +283,7 @@ def cmd_up(args):
                 exit_code = 1
         except ServeNotConfigured as exc:
             print("voice up: %s serve not configured yet -- %s" % (kind, exc))
-    print("voice up: realtime server is run in the foreground with `anvil-serving voice run`.")
+    print("voice up: realtime server is run in the foreground with `anvil-serving voice proxy run`.")
     return exit_code
 
 
@@ -320,7 +320,7 @@ def cmd_down(args):
                 exit_code = 1
         except ServeNotConfigured as exc:
             print("voice down: %s serve not configured yet -- %s" % (kind, exc))
-    print("voice down: realtime server foreground process stops with Ctrl+C in `anvil-serving voice run`.")
+    print("voice down: realtime server foreground process stops with Ctrl+C in `anvil-serving voice proxy run`.")
     return exit_code
 
 
@@ -429,7 +429,7 @@ def _build_realtime_server(data: dict, voice: Dict[str, Any]):
     anvil router -- see `pipeline.real_pipeline_factory_from_manifest`)
     behind a Realtime WebSocket server (`realtime.ws.make_ws_server`),
     mirroring `scripts/voice/realtime_sdk_client_demo.py`'s own
-    `build_server` so `anvil-serving voice run` does not need that script.
+    `build_server` so `anvil-serving voice proxy run` does not need that script.
 
     Returns ``(server, pool)`` -- ``server`` is constructed (its socket is
     bound) but `serve_forever_in_background` has not been called on it yet.
@@ -471,7 +471,7 @@ def cmd_run(args):
         print(
             "voice run: %s -- refusing to start a session pool against an "
             "unreachable endpoint. Bring up the configured serves/router "
-            "first (`anvil-serving voice up`, `anvil-serving serve`) and "
+            "first (`anvil-serving voice audio up`, `anvil-serving router run`) and "
             "retry." % problem,
             file=sys.stderr,
         )
@@ -522,7 +522,7 @@ def cmd_benchmark(args):
     except Exception as exc:  # noqa: BLE001 - the configured serves may simply not be up yet
         print(
             "voice benchmark: could not reach the configured STT/LLM/TTS serves (%s); "
-            "bring them up with `anvil-serving voice up` first. Nothing was measured. "
+            "bring them up with `anvil-serving voice audio up` first. Nothing was measured. "
             "Active config: %s" % (exc, summary)
         )
         return 0
@@ -768,6 +768,30 @@ def build_parser():
     sub.add_parser("sidecar", help="validate or render the Hugging Face speech-to-speech sidecar")
 
     return p
+
+
+def main_profiles_list(argv=None):
+    """Canonical ``voice profiles list`` adapter."""
+    parser = argparse.ArgumentParser(prog="anvil-serving voice")
+    parser.add_argument("--config")
+    args = parser.parse_args(argv)
+    forwarded = ["profiles"]
+    if args.config:
+        forwarded.extend(("--config", args.config))
+    return main(forwarded)
+
+
+def main_profiles_validate(argv=None):
+    """Canonical ``voice profiles validate`` adapter."""
+    parser = argparse.ArgumentParser(prog="anvil-serving voice")
+    parser.add_argument("--config")
+    parser.add_argument("--profile", required=True)
+    args = parser.parse_args(argv)
+    forwarded = ["profiles"]
+    if args.config:
+        forwarded.extend(("--config", args.config))
+    forwarded.extend(("--profile", args.profile))
+    return main(forwarded)
 
 
 def main(argv=None):

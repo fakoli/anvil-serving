@@ -143,9 +143,9 @@ flowchart LR
     REV --> PROF
 ```
 
-- `anvil-serving profile` measures real harness usage to right-size tiers.
+- `anvil-serving eval usage` measures real harness usage to right-size tiers.
 - `anvil-serving eval` runs the shadow-eval harness; `eval bootstrap` seeds a profile from it.
-- `anvil-serving calibrate` grades confirmed local-tier traffic with an independent judge and
+- `anvil-serving eval calibrate` grades confirmed local-tier traffic with an independent judge and
   writes a **candidate** profile — it never auto-promotes.
 - `anvil-serving models score` ranks models for a role from a transcribed benchmark table.
 - `anvil-serving router promote` (or the guarded MCP `router_promote` tool) is the supported
@@ -189,7 +189,7 @@ Deployment shapes, smallest to largest:
 | Shape | What runs where | Notes |
 |-------|-----------------|-------|
 | Single process, no GPU | `python -m anvil_serving.router` (echo backend) | The evaluator smoke test — protocol surface only. |
-| Single host | `anvil-serving serve --config ...` + local serves | Front door binds `127.0.0.1` by default. |
+| Single host | `anvil-serving router run --config ...` + local serves | Front door binds `127.0.0.1` by default. |
 | Containerized service | `anvil-serving router up` (Docker Compose) | Router is the only published port; serves live on the internal network ([ADR-0004](adr/0004-router-as-a-service-containerized-and-authed.md)). |
 | Split-host control plane | Gateway host runs the harness; serving host runs router + serves + `anvil-serving controller serve`; operators bridge with `anvil-serving mcp serve --controller-url ...` | Controller traffic stays on a private/tailnet address with mandatory token auth ([ADR-0014](adr/0014-tailnet-controller-transport.md)). |
 

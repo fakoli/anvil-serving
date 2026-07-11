@@ -84,7 +84,7 @@ adapter package, not the router core.
 
 ### Layer 2: anvil router data plane
 
-The router remains the product's request path: `anvil-serving serve` exposes the Anthropic Messages
+The router remains the product's request path: `anvil-serving router run` exposes the Anthropic Messages
 and OpenAI-compatible front doors, resolves intent presets, filters/ranks tiers through policy,
 verifies local output, runs fallback, streams responses, and writes the decision log.
 

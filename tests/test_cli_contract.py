@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import io
+import json
 
 import pytest
 
 from anvil_serving import cli
 from anvil_serving import guard
 from anvil_serving.command_tree import COMMAND_TREE, CommandNode, HandlerRef
+from anvil_serving.targets import ExecutionPlan
 
 
 def _paths(
@@ -191,3 +193,98 @@ def test_external_benchmark_notebook_help_lists_actions(capsys):
     output = capsys.readouterr().out
     for action in ("add", "list", "render"):
         assert action in output
+
+
+def test_dry_run_does_not_require_confirmation(monkeypatch):
+    calls = []
+    monkeypatch.setattr(cli.sys, "stdin", io.StringIO())
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: calls.append(argv) or 0,
+    )
+
+    assert cli.main(["serves", "up", "--dry-run"]) == 0
+    assert calls == [["up", "--dry-run"]]
+
+
+def test_separator_prevents_dispatcher_help_and_follow_policy(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: calls.append(argv) or 0,
+    )
+
+    assert cli.main(["eval", "preflight", "--", "--help"]) == 0
+    assert calls.pop() == ["--", "--help"]
+    assert cli.main(["serves", "logs", "--json", "--", "--follow"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert calls == [["logs", "--", "--follow"]]
+
+
+def test_json_preserves_local_execution_context(monkeypatch, capsys):
+    def local_plan(path, _options):
+        return ExecutionPlan(
+            command=cli._command_spec(path),
+            topology_id="test-topology",
+            topology_snapshot="sha256:test",
+            command_host=None,
+            command_runtime=None,
+            execution_host=None,
+            execution_runtime=None,
+            resource_host=None,
+            resource_runtime=None,
+            resource=None,
+            transport="local",
+            transport_id=None,
+            transport_endpoint=None,
+            transport_host_key_fingerprint=None,
+            transport_known_hosts_path=None,
+            recovery_transport_id=None,
+            recovery_transport_endpoint=None,
+            recovery_host_key_fingerprint=None,
+            recovery_known_hosts_path=None,
+            resource_endpoint=None,
+            gpu_role=None,
+            selected_target=None,
+            capacity=guard.CapacityDecision(
+                allowed=True,
+                capacity_policy="test-policy",
+                resource_workload="experimental-model",
+                model_workload=True,
+                experimental_model_workload_requested=True,
+                experimental_model_workload_permitted=True,
+                experimental_model_workload_override=True,
+                warning="test capacity warning",
+            ),
+        )
+
+    monkeypatch.setattr(cli, "_resolve_dispatch_plan", local_plan)
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: 0)
+
+    assert cli.main(["controller", "status", "--topology", "test.toml", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["context"]["topology"] == "test-topology"
+    assert payload["context"]["transport"] == "local"
+    assert payload["warnings"] == ["test capacity warning"]
+
+
+def test_json_token_reveal_requires_confirmation_before_handler(monkeypatch, capsys):
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail("resolved token handler without confirmation"),
+    )
+
+    assert cli.main(["router", "token", "--reveal", "--json"]) == 3
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "confirmation_required"
+
+
+def test_voice_profile_validation_requires_profile(capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["voice", "profiles", "validate"])
+    assert exc.value.code == 2
+    assert "--profile" in capsys.readouterr().err

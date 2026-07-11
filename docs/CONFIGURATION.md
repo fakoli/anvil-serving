@@ -2,8 +2,8 @@
 
 anvil-serving is configured through a single TOML file whose `[server]` and `[router]` tables
 declare the front door's auth, the tier topology, and the preset routing map. Start the router with
-an explicit file (`anvil-serving serve --config configs/example.toml`) or by mode name
-(`anvil-serving serve --mode agentic|flexibility`), which resolves to a mode's config file for you
+an explicit file (`anvil-serving router run --config configs/example.toml`) or by mode name
+(`anvil-serving router run --mode agentic|flexibility`), which resolves to a mode's config file for you
 ([ADR-0011](adr/0011-two-mode-operation.md)). A small set of environment variables covers secrets
 (configs never hold secret values, only env-var names), mode selection, and front-door resource
 caps.
@@ -17,7 +17,7 @@ Loading validates eagerly: unknown dialects, malformed tiers, duplicate ids, and
 reference unknown tiers are all startup `ConfigError`s, never per-request surprises. No secret is
 read at load time — only env-var *names* are recorded.
 
-`anvil-serving serve` selects the config one of two mutually exclusive ways:
+`anvil-serving router run` selects the config one of two mutually exclusive ways:
 
 - **`--config PATH`** — load that exact file, verbatim. Bypasses the mode system entirely.
 - **`--mode agentic|flexibility`** — resolve the global mode of operation to its config file
@@ -151,9 +151,9 @@ and [ADR-0011](adr/0011-two-mode-operation.md).
 
 ```bash
 export ANVIL_MODES_CONFIG=/etc/anvil/modes.toml
-anvil-serving serve                          # active_mode from the manifest
-anvil-serving serve --mode flexibility       # flag overrides everything
-ANVIL_MODE=flexibility anvil-serving serve   # env overrides the manifest default
+anvil-serving router run                          # active_mode from the manifest
+anvil-serving router run --mode flexibility       # flag overrides everything
+ANVIL_MODE=flexibility anvil-serving router run   # env overrides the manifest default
 ```
 
 ## Environment variables
@@ -165,7 +165,7 @@ Config files hold env-var *names* only; these are the variables whose *values* c
 | Variable | Used by | Meaning |
 |---|---|---|
 | `ANVIL_ROUTER_TOKEN` | front door (via `[server].auth_env` convention) | The router's own bearer/`x-api-key` token. The conventional name — `router token` prints it, and MCP probe tools accept only this name as `api_key_env`. |
-| `ANVIL_CONTROLLER_TOKEN` | `anvil-serving controller serve` / `mcp serve --controller-url` | Split-host controller auth token (default `--auth-token-env`). Required by default even on loopback; `--allow-unauthenticated-loopback` is development-only. |
+| `ANVIL_CONTROLLER_TOKEN` | `anvil-serving controller serve` / `mcp serve --controller-url` | Split-host controller auth token (default `--auth-token-env`). Required on every bind. |
 | per-tier `auth_env` names | tier backends | Whatever each tier's `auth_env` names, e.g. `ANTHROPIC_API_KEY` for a cloud tier or `ANVIL_FAST_LOCAL_KEY` for an (optionally authed) local relay. |
 
 ### Mode selection

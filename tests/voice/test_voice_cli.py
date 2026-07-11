@@ -1242,8 +1242,8 @@ def test_voice_sidecar_nested_help_dispatches(capsys):
     rc = anvil_cli.main(["voice", "sidecar", "validate", "--help"])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "anvil-serving voice sidecar validate - Validate a sidecar manifest." in out
-    assert "Usage:\n  anvil-serving voice sidecar validate [options]" in out
+    assert "usage: anvil-serving voice sidecar validate" in out
+    assert "--config" in out
     assert "--topology" in out
     assert "--json" in out
     assert "-h, --help" in out

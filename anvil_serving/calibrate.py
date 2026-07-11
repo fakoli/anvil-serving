@@ -1,4 +1,4 @@
-"""``anvil-serving calibrate`` — operator entry to the guarded write-back batch (flexibility:T006).
+"""``anvil-serving eval calibrate`` - operator entry to the guarded write-back batch (flexibility:T006).
 
 This is the operator-facing verb for the *live* half of the quality-profile
 loop (ADR-0009). It is the counterpart of the offline, CI-safe
@@ -95,7 +95,7 @@ def _promote_instructions(out: str, n_rows: Optional[int]) -> str:
         f"    [router]\n"
         f'    profile_path = "{out}"\n'
         f"\n"
-        f"Restart `anvil-serving serve` to route on the measured verdicts.\n"
+        f"Restart `anvil-serving router run` to route on the measured verdicts.\n"
     )
 
 
@@ -116,7 +116,7 @@ def _measured_row_count(out_path: Optional[Path]) -> Optional[int]:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="anvil-serving calibrate",
+        prog="anvil-serving eval calibrate",
         description=(
             "Operator entry to the GUARDED write-back batch (ADR-0009). Measures "
             "your configured LOCAL tiers through their real backends, grades each "
@@ -207,7 +207,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         or (env.get(ENV_MODES_CONFIG) or "").strip()
     ):
         print(
-            "anvil-serving calibrate: no config selected: pass --config PATH or "
+            "anvil-serving eval calibrate: no config selected: pass --config PATH or "
             f"--mode {{{'|'.join(KNOWN_MODES)}}} (or set {ENV_MODE} / point "
             f"{ENV_MODES_CONFIG} at a [modes] manifest) so the tiers to measure "
             "are known",
@@ -218,7 +218,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         endpoints = _parse_endpoints(args.endpoint)
     except ValueError as exc:
-        print(f"anvil-serving calibrate: {exc}", file=sys.stderr)
+        print(f"anvil-serving eval calibrate: {exc}", file=sys.stderr)
         return 2
 
     try:
@@ -227,11 +227,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         config = load(config_path)
     except ConfigError as exc:
-        print(f"anvil-serving calibrate: {exc}", file=sys.stderr)
+        print(f"anvil-serving eval calibrate: {exc}", file=sys.stderr)
         return 2
 
     if mode is not None:
-        print(f"anvil-serving calibrate: mode={mode!r} -> config {config_path}",
+        print(f"anvil-serving eval calibrate: mode={mode!r} -> config {config_path}",
               file=sys.stderr, flush=True)
 
     out_path = Path(args.out)
@@ -240,14 +240,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     # judge grades have already run (and their measurement work is lost). (T006 critic.)
     if not out_path.parent.is_dir():
         print(
-            f"anvil-serving calibrate: output directory does not exist: {out_path.parent}",
+            f"anvil-serving eval calibrate: output directory does not exist: {out_path.parent}",
             file=sys.stderr,
         )
         return 2
     eval_data = Path(args.eval_data)
     if not eval_data.is_dir():
         print(
-            f"anvil-serving calibrate: eval-data directory does not exist: {eval_data} "
+            f"anvil-serving eval calibrate: eval-data directory does not exist: {eval_data} "
             "(pass --eval-data pointing at your committed prompts/)",
             file=sys.stderr,
         )
@@ -274,7 +274,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # The guard fired BEFORE any tier/judge was dialed (missing confirmation,
         # uncovered endpoints, no local tiers/prompts). Surface it cleanly; this is
         # the CI-safe refusal path — nothing was measured, nothing promoted.
-        print(f"anvil-serving calibrate: not configured to run: {exc}", file=sys.stderr)
+        print(f"anvil-serving eval calibrate: not configured to run: {exc}", file=sys.stderr)
         return 2
 
     print(_promote_instructions(str(out_path), _measured_row_count(out_path)))

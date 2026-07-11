@@ -47,6 +47,28 @@ _RESOLUTION_VALUE_OPTIONS = {
     "--target": "target",
     "--transport": "transport",
 }
+_HANDLER_PROGS = {
+    "anvil_serving.benchmark": "anvil-serving eval benchmark run",
+    "anvil_serving.calibrate": "anvil-serving eval calibrate",
+    "anvil_serving.controller": "anvil-serving controller",
+    "anvil_serving.doctor": "anvil-serving doctor",
+    "anvil_serving.eval": "anvil-serving eval",
+    "anvil_serving.external_benchmarks.cli": "anvil-serving eval benchmark external",
+    "anvil_serving.gpus": "anvil-serving host gpus",
+    "anvil_serving.harness": "anvil-serving harness",
+    "anvil_serving.host": "anvil-serving host",
+    "anvil_serving.init": "anvil-serving init",
+    "anvil_serving.mcp": "anvil-serving mcp serve",
+    "anvil_serving.models": "anvil-serving models",
+    "anvil_serving.multiplexer": "anvil-serving serves multiplex",
+    "anvil_serving.preflight": "anvil-serving eval preflight",
+    "anvil_serving.profile": "anvil-serving eval usage",
+    "anvil_serving.router.serve": "anvil-serving router run",
+    "anvil_serving.router_manage": "anvil-serving router",
+    "anvil_serving.serves": "anvil-serving serves",
+    "anvil_serving.voice.cli": "anvil-serving voice",
+    "anvil_serving.voice_sidecar": "anvil-serving voice-sidecar",
+}
 
 
 @dataclass(frozen=True)
@@ -192,6 +214,63 @@ def _print_focused_help(path: Sequence[CommandNode]) -> None:
     print("Docs: %s" % node.docs_anchor)
 
 
+def _handler_argv(path: Sequence[CommandNode]) -> tuple[str, ...]:
+    node = path[-1]
+    assert node.handler is not None
+    if node.handler.argv_prefix is not None:
+        return node.handler.argv_prefix
+    return tuple(item.name for item in path[1:])
+
+
+def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
+    """Render the real leaf parser help under the canonical command path."""
+    node = path[-1]
+    if node.handler is None:
+        return False
+    base_prog = _HANDLER_PROGS.get(node.handler.module)
+    if base_prog is None:
+        return False
+    prefix = _handler_argv(path)
+    stdout, stderr = io.StringIO(), io.StringIO()
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            result = node.handler.resolve()([*prefix, "--help"])
+    except SystemExit as exc:
+        if int(exc.code or 0) != 0:
+            return False
+    else:
+        if result not in (None, 0):
+            return False
+    rendered = stdout.getvalue() or stderr.getvalue()
+    if not rendered:
+        return False
+    old_command = " ".join((base_prog, *prefix))
+    canonical = "anvil-serving " + _command_name(path)
+    rendered = rendered.replace(old_command, canonical)
+    print(rendered, end="" if rendered.endswith("\n") else "\n")
+    dispatcher_options = [
+        option
+        for option in node.options
+        if "--confirm" in option.flags
+    ]
+    global_options = COMMAND_TREE.global_options
+    if node.execution_policy != "resource-owner":
+        resolution_flags = {*_RESOLUTION_VALUE_OPTIONS, "--experimental-model-workload"}
+        global_options = tuple(
+            option
+            for option in global_options
+            if not resolution_flags.intersection(option.flags)
+        )
+    print("\nDispatcher options:")
+    for option in (*global_options, *dispatcher_options):
+        label = ", ".join(option.flags)
+        if option.value_name:
+            label += " " + option.value_name
+        print("  %-40s %s" % (label, option.summary))
+    print("\nDocs: %s" % node.docs_anchor)
+    return True
+
+
 def _unknown_command(token: str, path: Sequence[CommandNode], siblings: Sequence[CommandNode]) -> int:
     attempted = " ".join([*(node.name for node in path), token])
     print("unknown command: %s" % attempted, file=sys.stderr)
@@ -330,9 +409,9 @@ def _resolve_dispatch_plan(
             "target-resolution options require --topology PATH"
         )
     command = _command_spec(path)
-    if options.experimental_model_workload and command.execution_policy != "resource-owner":
+    if command.execution_policy != "resource-owner":
         raise _ResolutionOptionError(
-            "--experimental-model-workload requires a resource-owner command"
+            f"{_command_name(path)} does not support target-resolution options"
         )
     topology = load_topology(options.topology)
     return resolve_execution_plan(
@@ -349,12 +428,14 @@ def _resolve_dispatch_plan(
 
 def _active_option_policies(path: Sequence[CommandNode], rest: Sequence[str]) -> tuple[str, ...]:
     policies = []
+    separator = rest.index("--") if "--" in rest else len(rest)
+    policy_args = rest[:separator]
     for option in COMMAND_TREE.global_options + tuple(
         option for item in path for option in item.options
     ):
         if option.output_policy is None:
             continue
-        if any(token == flag or token.startswith(f"{flag}=") for token in rest for flag in option.flags):
+        if any(token == flag or token.startswith(f"{flag}=") for token in policy_args for flag in option.flags):
             policies.append(option.output_policy)
     return tuple(policies)
 
@@ -367,10 +448,20 @@ def command_policy(path: Sequence[CommandNode], argv: Sequence[str]):
     )
 
 
-def _requires_confirmation(node: CommandNode) -> bool:
-    return node.mutation_class == "mutate" and any(
+def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> bool:
+    mutation_gate = node.mutation_class == "mutate" and any(
         "--confirm" in option.flags for option in node.options
     )
+    option_gate = any(
+        option.requires_confirmation
+        and any(
+            token == flag or token.startswith(f"{flag}=")
+            for token in policy_args
+            for flag in option.flags
+        )
+        for option in node.options
+    )
+    return mutation_gate or option_gate
 
 
 def _confirm(
@@ -390,7 +481,9 @@ def _confirm(
     ) + tuple(leaf_args)
     if explicit:
         return forwarded, True
-    if not _requires_confirmation(node):
+    if "--dry-run" in policy_args:
+        return forwarded, False
+    if not _requires_confirmation(node, policy_args):
         return forwarded, False
     command = _command_name(path)
     next_action = f"rerun with --confirm: anvil-serving {command} --confirm"
@@ -418,13 +511,25 @@ def _confirm(
 
 
 def _dispatch(
-    path: Sequence[CommandNode], rest: Sequence[str], *, output_options: OutputOptions
+    path: Sequence[CommandNode],
+    rest: Sequence[str],
+    *,
+    output_options: OutputOptions,
+    execution_meta: dict[str, object] | None = None,
 ) -> int:
     node = path[-1]
+    separator = rest.index("--") if "--" in rest else len(rest)
+    help_requested = any(token in {"-h", "--help"} for token in rest[:separator])
+    if help_requested and node.children:
+        _print_focused_help(path)
+        return 0
     removed = _tombstone(path, rest)
     if removed is not None:
         return _refuse_tombstone(*removed)
-    if any(token in {"-h", "--help"} for token in rest) or (
+    if help_requested and node.handler is not None and not node.children:
+        if _print_leaf_help(path):
+            return 0
+    if help_requested or (
         node.children and not rest and node.handler is None
     ):
         _print_focused_help(path)
@@ -438,7 +543,19 @@ def _dispatch(
         rest, confirmed = _confirm(path, rest, json_mode=output_options.json_mode)
         resolution_options, rest = _extract_resolution_options(rest)
         plan = _resolve_dispatch_plan(path, resolution_options)
+        if plan is not None and execution_meta is not None:
+            execution_meta["plan"] = plan
+            execution_meta["warnings"] = tuple(plan.warnings)
+        if plan is not None and plan.transport != "local":
+            raise TransportError(
+                "remote CLI dispatch is not implemented; use the MCP/controller "
+                "operation surface for non-local execution",
+                code="remote_cli_dispatch_unavailable",
+                details={"transport": plan.transport},
+            )
     except OperatorError as exc:
+        if execution_meta is not None:
+            execution_meta["error"] = exc
         print(f"anvil-serving: {exc}", file=sys.stderr)
         return exc.exit_code
     except _ResolutionOptionError as exc:
@@ -451,18 +568,22 @@ def _dispatch(
         print(f"anvil-serving: {exc}", file=sys.stderr)
         return exc.exit_code
     if plan is not None:
-        for warning in plan.warnings:
-            print(warning, file=sys.stderr)
+        if not output_options.json_mode:
+            for warning in plan.warnings:
+                print(warning, file=sys.stderr)
     handler = node.handler.resolve()
-    prefix = node.handler.argv_prefix
-    if prefix is None:
-        prefix = tuple(item.name for item in path[1:])
+    prefix = _handler_argv(path)
     with guard.confirmation_scope(confirmed):
         result = handler([*prefix, *rest])
     return 0 if result is None else int(result)
 
 
-def _main(argv: Sequence[str], *, output_options: OutputOptions | None = None) -> int:
+def _main(
+    argv: Sequence[str],
+    *,
+    output_options: OutputOptions | None = None,
+    execution_meta: dict[str, object] | None = None,
+) -> int:
     output_options = output_options or OutputOptions()
     version_error = _check_python_version()
     if version_error:
@@ -480,7 +601,12 @@ def _main(argv: Sequence[str], *, output_options: OutputOptions | None = None) -
     if not path:
         _print_help()
         return 0
-    return _dispatch(path, rest, output_options=output_options)
+    return _dispatch(
+        path,
+        rest,
+        output_options=output_options,
+        execution_meta=execution_meta,
+    )
 
 
 def _error_for_exit(rc: int, message: str) -> OperatorError:
@@ -514,16 +640,28 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
             )))
             return 2
     stdout, stderr = io.StringIO(), io.StringIO()
+    execution_meta: dict[str, object] = {}
     try:
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            rc = _main(argv, output_options=options)
+            rc = _main(argv, output_options=options, execution_meta=execution_meta)
     except SystemExit as exc:
         rc = int(exc.code or 0)
     command = " ".join(argv)
+    context = execution_meta.get("plan")
+    warnings = list(execution_meta.get("warnings", ()))
+    warnings.extend(line for line in stderr.getvalue().splitlines() if line)
     if rc == 0:
-        envelope = success_envelope(command, None, stdout.getvalue())
+        envelope = success_envelope(command, context, stdout.getvalue(), warnings=warnings)
     else:
-        envelope = error_envelope(command, None, _error_for_exit(rc, stderr.getvalue()))
+        error = execution_meta.get("error")
+        if not isinstance(error, OperatorError):
+            error = _error_for_exit(rc, stderr.getvalue())
+        envelope = error_envelope(
+            command,
+            context,
+            error,
+            warnings=execution_meta.get("warnings", ()),
+        )
     print(render_json(envelope))
     return rc
 

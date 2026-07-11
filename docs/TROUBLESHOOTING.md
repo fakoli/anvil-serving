@@ -37,7 +37,7 @@ was hit (see [Request rejected with 413 or a size cap](#request-rejected-with-41
 - Profile deny rows for the work class: the quality gate fails closed, so an unmeasured *local*
   tier on an eval-proven-weak class (e.g. `planning`) is denied by design
   (`anvil_serving/router/policy.py`).
-- Tier reachability: is the serve actually up? `anvil-serving preflight --base-url
+- Tier reachability: is the serve actually up? `anvil-serving eval preflight --base-url
   http://127.0.0.1:30001/v1 --model <served-name>`.
 - Did the request pin a denied tier? A wire `model` field naming a concrete tier id is a
   *preference*, never a gate override: a denied pin is redirected to the work-class's gated pool,
@@ -59,7 +59,7 @@ those classes.
 
 ## Preflight fails
 
-**What it means.** `anvil-serving preflight` runs four correctness tests against an
+**What it means.** `anvil-serving eval preflight` runs four correctness tests against an
 OpenAI-compatible endpoint (`anvil_serving/preflight.py`): a short coding smoke, structured JSON,
 long-context needle retrieval (default ~128k tokens), and a shared-prefix tool-calling batch
 (default 20 concurrent — this one catches sm_120 garbage output and spec-decode tool corruption).
@@ -162,7 +162,7 @@ serve (commonly `:30000` heavy, `:30001` fast in the examples) wants.
 **Fix.** Start the router on a free port and use it in every URL and harness base-URL:
 
 ```bash
-anvil-serving serve --config configs/example.toml --port 8010
+anvil-serving router run --config configs/example.toml --port 8010
 ```
 
 For serve ports, change the port mapping in the serve's compose file and update the matching

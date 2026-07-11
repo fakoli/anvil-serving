@@ -1,7 +1,7 @@
 """anvil-serving serves — lifecycle for the local model serves
 (status / up / down / rm / adopt).
 
-The router (`anvil-serving serve`) only *connects* to model backends; it never
+The router (`anvil-serving router run`) only *connects* to model backends; it never
 controls their containers. This verb fills that gap: a small, declarative way to
 stop, start, and inspect the GPU-backed model serves — so you can free the cards
 between sessions (`serves down`) and bring them back (`serves up`) without

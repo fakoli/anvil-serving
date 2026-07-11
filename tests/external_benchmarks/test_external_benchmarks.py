@@ -443,7 +443,7 @@ def test_benchmark_external_help_uses_canonical_usage(capsys):
         benchmark.main(["external", "--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving benchmark external" in out
+    assert "usage: anvil-serving eval benchmark external" in out
     assert "compare" in out
 
 

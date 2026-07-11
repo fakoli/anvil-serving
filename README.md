@@ -110,7 +110,7 @@ To route real local tiers, start compatible OpenAI-style model serves on the URL
 them with `preflight`, then run:
 
 ```bash
-anvil-serving serve --config configs/example.toml
+anvil-serving router run --config configs/example.toml
 ```
 
 Use `127.0.0.1` for local URLs.
@@ -128,7 +128,7 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 
 | Command | Purpose |
 |---------|---------|
-| `anvil-serving serve` | Start the Anthropic/OpenAI router front door. |
+| `anvil-serving router run` | Start the Anthropic/OpenAI router front door. |
 | `anvil-serving router` | Manage the deployed router container, token, logs, reloads, and profile promotion. |
 
 **Local serving tools** — stand up and validate the tiers the router routes across:
@@ -138,11 +138,11 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | `anvil-serving serves` | Manage local model serves through Docker Compose. |
 | `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and inspect recorded serve recipes (`recipe`). |
 | `anvil-serving serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
-| `anvil-serving init` (alias `onboard`) | Generate a consistent local bring-up from scratch. |
-| `anvil-serving preflight` | Correctness-check a model endpoint before trusting it. |
-| `anvil-serving benchmark` | Replay representative traffic and measure capacity. |
-| `anvil-serving benchmark external` | Import and compare external inference benchmark priors. |
-| `anvil-serving multiplexer` | Swap a single resident model on one GPU (SGLang and vLLM backends). |
+| `anvil-serving init` | Generate a consistent local bring-up from scratch. |
+| `anvil-serving eval preflight` | Correctness-check a model endpoint before trusting it. |
+| `anvil-serving eval benchmark run` | Replay representative traffic and measure capacity. |
+| `anvil-serving eval benchmark external` | Import and compare external inference benchmark priors. |
+| `anvil-serving serves multiplex` | Swap a single resident model on one GPU (SGLang and vLLM backends). |
 | `anvil-serving models cache prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |
 | `anvil-serving doctor` | Preflight the environment a router deploy depends on (Python, Docker, Compose, GPU runtime). |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings (memory caps, mmap gotchas). |
@@ -151,9 +151,9 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 
 | Command | Purpose |
 |---------|---------|
-| `anvil-serving profile` | Measure real coding-agent usage to right-size local tiers. |
+| `anvil-serving eval usage` | Measure real coding-agent usage to right-size local tiers. |
 | `anvil-serving eval` | Run the shadow-eval harness; bootstrap a quality profile from it. |
-| `anvil-serving calibrate` | Grade confirmed local traffic with an independent judge and write a candidate profile (never auto-promotes). |
+| `anvil-serving eval calibrate` | Grade confirmed local traffic with an independent judge and write a candidate profile (never auto-promotes). |
 | `anvil-serving models score` | Rank models for a role from a transcribed benchmark table. |
 
 **Control plane and integrations:**
@@ -172,16 +172,12 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 Canonical command changes:
 
 - `anvil-serving deploy` → `anvil-serving serves render`
-- `anvil-serving external-bench` → `anvil-serving benchmark external`
+- `anvil-serving external-bench` → `anvil-serving eval benchmark external`
 - `anvil-serving cache-prune` → `anvil-serving models cache prune`
 - `anvil-serving score` → `anvil-serving models score`
 
-Compatibility mentions that intentionally remain for migration and implementation compatibility checks:
-
-- `anvil-serving onboard` remains an alias of `anvil-serving init`.
-- `anvil-serving voice-sidecar` remains a compatibility form of `anvil-serving voice sidecar`.
-- `anvil-serving voice start` and `voice stop` remain compatibility forms of `voice up` and
-  `voice down`; they print migration guidance when used.
+Removed forms fail with migration guidance instead of silently dispatching. See the
+[CLI migration table](docs/CLI.md#migration-from-legacy-commands) for every replacement.
 
 ## Cost And Security Defaults
 

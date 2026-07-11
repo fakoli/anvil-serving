@@ -3,7 +3,7 @@
 This module exposes a small stdio JSON-RPC server for agent-facing operations
 around ADR-0013: inspect the router/serves/host state, preview/apply OpenClaw
 harness sync, restart the OpenClaw gateway, and run bounded probes. It is a
-control plane only; model traffic still flows through ``anvil-serving serve``.
+control plane only; model traffic still flows through ``anvil-serving router run``.
 
 Runtime dependencies stay stdlib-only. Commands are argv lists, never shell
 strings. Mutating tools require explicit ``confirm: true`` and keep dry-run
@@ -2344,7 +2344,7 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_openclaw_gateway_restart,
     },
     "preflight_probe": {
-        "description": "Preview or run an anvil-serving preflight command for a model endpoint.",
+        "description": "Preview or run an anvil-serving eval preflight command for a model endpoint.",
         "inputSchema": _schema({
             "base_url": {"type": "string"},
             "model": {"type": "string"},
@@ -2358,7 +2358,7 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_preflight_probe,
     },
     "benchmark_probe": {
-        "description": "Preview or run an anvil-serving benchmark command for a model endpoint.",
+        "description": "Preview or run an anvil-serving eval benchmark run command for a model endpoint.",
         "inputSchema": _schema({
             "base_url": {"type": "string"},
             "model": {"type": "string"},
@@ -2374,7 +2374,7 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_benchmark_probe,
     },
     "benchmark_artifact": {
-        "description": "Preview or run an anvil-serving benchmark and write a validated local JSON artifact.",
+        "description": "Preview or run an anvil-serving eval benchmark run and write a validated local JSON artifact.",
         "inputSchema": _schema({
             "base_url": {"type": "string"},
             "model": {"type": "string"},
