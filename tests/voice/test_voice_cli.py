@@ -40,13 +40,31 @@ model = "kokoro-82m"
 AUDIO_TOPOLOGY = "examples/fakoli-dark/operator-topology.toml"
 
 
-def _audio_command(action, *args):
+def _audio_command(action, *args, runtime="runtime:dark-docker"):
     return [
         "audio", action, *args,
         "--topology", AUDIO_TOPOLOGY,
         "--command-host", "host:fakoli-dark",
-        "--command-runtime", "runtime:dark-docker",
+        "--command-runtime", runtime,
     ]
+
+
+def _use_native_dark_audio_topology(monkeypatch):
+    from dataclasses import replace
+
+    from anvil_serving.topology import load_topology
+
+    topology = load_topology(AUDIO_TOPOLOGY)
+    topology = replace(
+        topology,
+        resources=tuple(
+            replace(resource, runtime="dark-native")
+            if resource.role in {"stt-serve", "tts-serve"}
+            else resource
+            for resource in topology.resources
+        ),
+    )
+    monkeypatch.setattr(voice_cli, "load_topology", lambda path: topology)
 
 
 @pytest.fixture
@@ -117,6 +135,21 @@ def test_old_voice_lifecycle_paths_are_actionable_tombstones(
     assert captured.out == ""
     assert "`voice %s` was removed" % removed in captured.err
     assert "use `%s` instead" % replacement in captured.err
+
+
+def test_audio_requires_topology_before_serve_construction(
+    manifest_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        voice_cli,
+        "_audio_serves",
+        lambda *args, **kwargs: pytest.fail("missing topology reached serve construction"),
+    )
+
+    rc = voice_cli.main(["audio", "up", "--config", manifest_path, "--dry-run"])
+
+    assert rc == 2
+    assert "--topology is required" in capsys.readouterr().err
 
 
 def test_audio_up_uses_dark_owned_host_relative_endpoints(
@@ -862,8 +895,11 @@ def test_cmd_up_runs_native_lifecycle_for_fakoli_mini_style_manifest(tmp_path, m
             }
 
     monkeypatch.setattr(voice_cli.native_serve, "NativeServe", FakeNative)
+    _use_native_dark_audio_topology(monkeypatch)
 
-    rc = voice_cli.main(["audio", "up", "--config", str(manifest), "--dry-run"])
+    rc = voice_cli.main(_audio_command(
+        "up", "--config", str(manifest), "--dry-run", runtime="runtime:dark-native"
+    ))
 
     assert rc == 0
     assert calls == [("stt", True), ("tts", True)]
@@ -902,8 +938,11 @@ def test_cmd_down_runs_native_lifecycle_for_fakoli_mini_style_manifest(tmp_path,
             }
 
     monkeypatch.setattr(voice_cli.native_serve, "NativeServe", FakeNative)
+    _use_native_dark_audio_topology(monkeypatch)
 
-    rc = voice_cli.main(["audio", "down", "--config", str(manifest), "--dry-run"])
+    rc = voice_cli.main(_audio_command(
+        "down", "--config", str(manifest), "--dry-run", runtime="runtime:dark-native"
+    ))
 
     assert rc == 0
     assert calls == [("stt", True), ("tts", True)]

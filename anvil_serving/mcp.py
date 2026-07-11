@@ -1531,6 +1531,7 @@ def _voice_manage_plan(config: str, *, profile: str = "") -> dict:
 
 def tool_voice_manage(args: dict) -> dict:
     from .voice import config as voice_config
+    from .voice import cli as voice_cli
 
     action = _str_arg(args, "action", required=True)
     if action not in {"up", "down", "start", "stop"}:
@@ -1553,9 +1554,30 @@ def tool_voice_manage(args: dict) -> dict:
     }
     if preview:
         return _ok({"applied": False, "dry_run": True, "target": target, "command": argv, "plan": plan})
-    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    try:
+        data = voice_config.load_manifest(config, profile=profile or None)
+        result = voice_cli.execute_audio_lifecycle(data, normalized)
+    except voice_config.ConfigError as exc:
+        raise ToolError(
+            "bad_config",
+            "could not load voice manifest",
+            {"config": config, "error": str(exc)},
+        )
+    if result["returncode"] != 0:
+        raise ToolError(
+            "command_failed",
+            "voice audio lifecycle failed",
+            {"command": argv, "lifecycle": result},
+        )
     applied = any(item.get("lifecycle") != "external" for item in plan.get("audio_serves", []))
-    return _ok({"applied": applied, "dry_run": False, "target": target, "plan": plan, **result})
+    return _ok({
+        "applied": applied,
+        "dry_run": False,
+        "target": target,
+        "command": argv,
+        "plan": plan,
+        "lifecycle": result,
+    })
 
 
 def tool_doctor_summary(args: dict) -> dict:

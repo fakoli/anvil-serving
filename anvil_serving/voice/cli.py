@@ -125,7 +125,12 @@ def _resolve_audio_operation(args):
         return None, None, err, 2
     topology_path = getattr(args, "topology", None)
     if not topology_path:
-        return data, None, None, 0
+        return (
+            None,
+            None,
+            "--topology is required so STT/TTS lifecycle resolves its model owner",
+            2,
+        )
     try:
         topology = load_topology(topology_path)
         targets = voice_config.resolve_audio_targets(
@@ -220,6 +225,81 @@ def _print_native_result(prefix: str, kind: str, result: dict) -> None:
         print("%s: %s log %s" % (prefix, kind, result["log_file"]))
     if result.get("error"):
         print("%s: %s %s" % (prefix, kind, result["error"]), file=sys.stderr)
+
+
+def execute_audio_lifecycle(
+    data: dict,
+    action: str,
+    *,
+    dry_run: bool = False,
+    targets: voice_config.ResolvedAudioTargets | None = None,
+) -> dict:
+    """Execute one already-authorized local audio lifecycle and return typed data."""
+    if action not in {"up", "down"}:
+        raise ValueError("audio lifecycle action must be up or down")
+    results = []
+    exit_code = 0
+    method_name = "bring_up" if action == "up" else "tear_down"
+    for kind, lifecycle, table, serve in _audio_serves(data, targets):
+        item = {"kind": kind, "lifecycle": lifecycle, "state": "pending"}
+        if lifecycle == "external":
+            item["state"] = "external"
+            results.append(item)
+            continue
+        if lifecycle == "native":
+            try:
+                native = native_serve.NativeServe(
+                    native_serve.NativeServeConfig.from_table(kind, table)
+                )
+                native_result = getattr(native, method_name)(dry_run=dry_run)
+                item.update({"state": "completed", "result": native_result})
+                if native_result.get("returncode") != 0:
+                    exit_code = 1
+            except Exception as exc:  # noqa: BLE001 - configured native process may fail locally
+                item.update({"state": "failed", "error": str(exc)})
+                exit_code = 1
+            results.append(item)
+            continue
+        try:
+            method = getattr(serve, method_name)
+            rc = method(dry_run=True) if dry_run else method()
+            item.update({"state": "completed", "returncode": rc})
+            if rc != 0:
+                exit_code = 1
+        except ServeNotConfigured as exc:
+            item.update({"state": "not_configured", "detail": str(exc), "returncode": 0})
+        results.append(item)
+    return {
+        "action": action,
+        "dry_run": dry_run,
+        "returncode": exit_code,
+        "serves": results,
+    }
+
+
+def _print_audio_lifecycle(result: dict) -> None:
+    action = result["action"]
+    prefix = "voice audio %s" % action
+    operation = "bring-up" if action == "up" else "tear-down"
+    for item in result["serves"]:
+        kind = item["kind"]
+        if item["state"] == "external":
+            print("%s: %s serve lifecycle is external; skipping managed %s" % (
+                prefix, kind, operation,
+            ))
+        elif item["lifecycle"] == "native" and item["state"] == "completed":
+            _print_native_result(prefix, kind, item["result"])
+        elif item["state"] == "failed":
+            print(
+                "%s: %s native lifecycle failed -- %s" % (prefix, kind, item["error"]),
+                file=sys.stderr,
+            )
+        elif item["state"] == "not_configured":
+            print("%s: %s serve not configured yet -- %s" % (prefix, kind, item["detail"]))
+        else:
+            print("%s: %s serve %s rc=%s" % (
+                prefix, kind, operation, item["returncode"],
+            ))
 
 
 def _load(config_path, profile=None):
@@ -355,33 +435,14 @@ def cmd_up(args):
         "voice audio up: manifest OK%s -- %s%s"
         % (profile_note, voice_config.describe(data), " -- " + context if context else "")
     )
-    exit_code = 0
-    for kind, lifecycle, table, serve in _audio_serves(data, targets):
-        if lifecycle == "external":
-            print("voice audio up: %s serve lifecycle is external; skipping managed bring-up" % kind)
-            continue
-        if lifecycle == "native":
-            try:
-                native = native_serve.NativeServe(
-                    native_serve.NativeServeConfig.from_table(kind, table)
-                )
-                result = native.bring_up(dry_run=getattr(args, "dry_run", False))
-                _print_native_result("voice audio up", kind, result)
-                if result.get("returncode") != 0:
-                    exit_code = 1
-            except Exception as exc:  # noqa: BLE001 - configured native process may fail locally
-                print("voice audio up: %s native lifecycle failed -- %s" % (kind, exc), file=sys.stderr)
-                exit_code = 1
-            continue
-        try:
-            dry_run = getattr(args, "dry_run", False)
-            rc = serve.bring_up(dry_run=True) if dry_run else serve.bring_up()
-            print("voice audio up: %s serve bring-up rc=%s" % (kind, rc))
-            if rc != 0:
-                exit_code = 1
-        except ServeNotConfigured as exc:
-            print("voice audio up: %s serve not configured yet -- %s" % (kind, exc))
-    return exit_code
+    result = execute_audio_lifecycle(
+        data,
+        "up",
+        dry_run=getattr(args, "dry_run", False),
+        targets=targets,
+    )
+    _print_audio_lifecycle(result)
+    return result["returncode"]
 
 
 def cmd_down(args):
@@ -396,33 +457,14 @@ def cmd_down(args):
         "voice audio down: manifest OK%s -- %s%s"
         % (profile_note, voice_config.describe(data), " -- " + context if context else "")
     )
-    exit_code = 0
-    for kind, lifecycle, table, serve in _audio_serves(data, targets):
-        if lifecycle == "external":
-            print("voice audio down: %s serve lifecycle is external; skipping managed tear-down" % kind)
-            continue
-        if lifecycle == "native":
-            try:
-                native = native_serve.NativeServe(
-                    native_serve.NativeServeConfig.from_table(kind, table)
-                )
-                result = native.tear_down(dry_run=getattr(args, "dry_run", False))
-                _print_native_result("voice audio down", kind, result)
-                if result.get("returncode") != 0:
-                    exit_code = 1
-            except Exception as exc:  # noqa: BLE001 - configured native process may fail locally
-                print("voice audio down: %s native lifecycle failed -- %s" % (kind, exc), file=sys.stderr)
-                exit_code = 1
-            continue
-        try:
-            dry_run = getattr(args, "dry_run", False)
-            rc = serve.tear_down(dry_run=True) if dry_run else serve.tear_down()
-            print("voice audio down: %s serve tear-down rc=%s" % (kind, rc))
-            if rc != 0:
-                exit_code = 1
-        except ServeNotConfigured as exc:
-            print("voice audio down: %s serve not configured yet -- %s" % (kind, exc))
-    return exit_code
+    result = execute_audio_lifecycle(
+        data,
+        "down",
+        dry_run=getattr(args, "dry_run", False),
+        targets=targets,
+    )
+    _print_audio_lifecycle(result)
+    return result["returncode"]
 
 
 def cmd_audio_status(args):

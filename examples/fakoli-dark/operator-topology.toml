@@ -165,7 +165,7 @@ host = "fakoli-dark"
 runtime = "dark-docker"
 endpoint = "http://192.0.2.20:8766"
 auth_env = "ANVIL_CONTROLLER_TOKEN"
-allowed_operations = ["router-status", "serves-status", "voice-status"]
+allowed_operations = ["router-status", "serves-status", "voice-status", "voice-audio-up", "voice-audio-down"]
 # The controller is the durable Tailscale path. SSH is only a credential-free
 # bootstrap/recovery transport; verify its placeholder host key before use.
 [[transports]]

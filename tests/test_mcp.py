@@ -1463,15 +1463,6 @@ def test_voice_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, m
         model = "mlx-tts"
         lifecycle = "external"
     """), encoding="utf-8")
-    seen = {}
-
-    def fake_run(argv, **kwargs):
-        seen["argv"] = argv
-        seen["timeout"] = kwargs.get("timeout")
-        return proc(0, "ok\n", "")
-
-    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
-
     preview = mcp.call_tool("voice_manage", {
         "action": "stop",
         "config": str(config),
@@ -1479,7 +1470,6 @@ def test_voice_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, m
     })
     assert preview["ok"] is True
     assert preview["data"]["applied"] is False
-    assert seen == {}
 
     applied = mcp.call_tool("voice_manage", {
         "action": "stop",
@@ -1490,11 +1480,15 @@ def test_voice_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, m
     })
     assert applied["ok"] is True
     assert applied["data"]["applied"] is False
-    assert seen["argv"][:6] == [
+    assert applied["data"]["command"][:6] == [
         sys.executable, "-m", "anvil_serving.cli", "voice", "audio", "down"
     ]
-    assert "--dry-run" not in seen["argv"]
-    assert seen["timeout"] == 7
+    assert "--dry-run" not in applied["data"]["command"]
+    assert applied["data"]["target"]["timeout_seconds"] == 7
+    assert all(
+        item["state"] == "external"
+        for item in applied["data"]["lifecycle"]["serves"]
+    )
 
 
 def test_voice_manage_confirmed_native_action_bridges_to_cli(tmp_path, monkeypatch):
@@ -1522,12 +1516,14 @@ def test_voice_manage_confirmed_native_action_bridges_to_cli(tmp_path, monkeypat
     """), encoding="utf-8")
     seen = {}
 
-    def fake_run(argv, **kwargs):
-        seen["argv"] = argv
-        seen["timeout"] = kwargs.get("timeout")
-        return proc(0, "ok\n", "")
+    from anvil_serving.voice import cli as voice_cli
 
-    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    def fake_lifecycle(data, action, **kwargs):
+        seen["voice"] = data["voice"]["name"]
+        seen["action"] = action
+        return {"action": action, "dry_run": False, "returncode": 0, "serves": []}
+
+    monkeypatch.setattr(voice_cli, "execute_audio_lifecycle", fake_lifecycle)
 
     applied = mcp.call_tool("voice_manage", {
         "action": "start",
@@ -1539,11 +1535,12 @@ def test_voice_manage_confirmed_native_action_bridges_to_cli(tmp_path, monkeypat
 
     assert applied["ok"] is True
     assert applied["data"]["applied"] is True
-    assert seen["argv"][:6] == [
+    assert applied["data"]["command"][:6] == [
         sys.executable, "-m", "anvil_serving.cli", "voice", "audio", "up"
     ]
-    assert "--dry-run" not in seen["argv"]
-    assert seen["timeout"] == 11
+    assert "--dry-run" not in applied["data"]["command"]
+    assert applied["data"]["target"]["timeout_seconds"] == 11
+    assert seen == {"voice": "mini", "action": "up"}
 
 
 def test_voice_manage_bad_action_and_bad_config(tmp_path):
