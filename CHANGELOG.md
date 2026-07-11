@@ -39,8 +39,8 @@ All notable changes to this project are documented here. The format is based on
   implementation while keeping its deferred removal work auditable.
 - **Production CLI discovery contract** — root help now documents global `--help`/`--version`
   flags and the canonical nested workflows, `serves --help` explains every action, and tests lock
-  the help/version surface. Removed forms, including `voice start`/`voice stop`, fail with a
-  canonical replacement instead of silently dispatching. The CLI and voice references document
+  the help/version surface. Removed module-level voice lifecycle forms fail with a canonical
+  replacement instead of silently dispatching. The CLI and voice references document
   exit behavior, stdout/stderr conventions, safety gates, and the complete canonical taxonomy.
 - **Bakeoff notebook** — the persistent, comparable record the fast-tier
   bakeoff report was assembled by hand from. `anvil-serving eval benchmark run

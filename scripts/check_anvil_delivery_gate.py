@@ -1,22 +1,26 @@
-#!/usr/bin/env python3
 """Fail closed unless Anvil tasks and PR-bound delivery evidence are complete."""
 
 from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from datetime import datetime
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 from typing import Callable, Mapping, Sequence
 
 
 SCHEMA_VERSION = "anvil-delivery/v1"
 FINAL_REVIEW_KINDS = ("documentation", "adversarial")
 COMMIT_RE = re.compile(r"^[0-9a-f]{7,40}$")
+MAX_MANIFEST_BYTES = 1024 * 1024
+MAX_ANVIL_OUTPUT_BYTES = 8 * 1024 * 1024
+MAX_DIAGNOSTIC_CHARS = 4096
 
 
 class DeliveryGateError(RuntimeError):
@@ -40,16 +44,29 @@ class GateResult:
 def _run(
     argv: Sequence[str], *, cwd: Path, environment: Mapping[str, str], timeout: int
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        list(argv),
-        cwd=cwd,
-        env=dict(environment),
-        text=True,
-        capture_output=True,
-        check=False,
-        timeout=timeout,
-        shell=False,
-    )
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        completed = subprocess.run(
+            list(argv),
+            cwd=cwd,
+            env=dict(environment),
+            stdout=stdout,
+            stderr=stderr,
+            check=False,
+            timeout=timeout,
+            shell=False,
+        )
+        stdout.seek(0)
+        stderr.seek(0)
+        stdout_bytes = stdout.read(MAX_ANVIL_OUTPUT_BYTES + 1)
+        stderr_bytes = stderr.read(MAX_ANVIL_OUTPUT_BYTES + 1)
+    if len(stdout_bytes) > MAX_ANVIL_OUTPUT_BYTES or len(stderr_bytes) > MAX_ANVIL_OUTPUT_BYTES:
+        raise DeliveryGateError("Anvil command output exceeded the delivery gate size limit")
+    try:
+        stdout_text = stdout_bytes.decode("utf-8")
+        stderr_text = stderr_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise DeliveryGateError("Anvil command output was not valid UTF-8") from exc
+    return subprocess.CompletedProcess(completed.args, completed.returncode, stdout_text, stderr_text)
 
 
 def _invoke(
@@ -65,8 +82,15 @@ def _invoke(
     command = (*prefix, *arguments)
     commands_run.append(command)
     completed = runner(command, cwd=cwd, environment=environment, timeout=timeout)
+    if not isinstance(completed.stdout, str) or not isinstance(completed.stderr, str):
+        raise DeliveryGateError("Anvil command runner must return text output")
+    if (
+        len(completed.stdout.encode("utf-8")) > MAX_ANVIL_OUTPUT_BYTES
+        or len(completed.stderr.encode("utf-8")) > MAX_ANVIL_OUTPUT_BYTES
+    ):
+        raise DeliveryGateError("Anvil command output exceeded the delivery gate size limit")
     if completed.returncode != 0:
-        message = (completed.stderr or completed.stdout).strip()
+        message = (completed.stderr or completed.stdout).strip()[:MAX_DIAGNOSTIC_CHARS]
         raise DeliveryGateError(f"Anvil command failed ({completed.returncode}): {message}")
     try:
         envelope = json.loads(completed.stdout)
@@ -86,10 +110,28 @@ def _required_string(value: object, label: str) -> str:
     return value.strip()
 
 
+def _timestamp(value: object, label: str) -> str:
+    timestamp = _required_string(value, label)
+    normalized = timestamp[:-1] + "+00:00" if timestamp.endswith("Z") else timestamp
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise DeliveryGateError(f"{label} must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise DeliveryGateError(f"{label} must include a timezone")
+    return timestamp
+
+
 def _load_manifest(path: Path) -> dict[str, object]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        with path.open("rb") as handle:
+            payload = handle.read(MAX_MANIFEST_BYTES + 1)
+        if len(payload) > MAX_MANIFEST_BYTES:
+            raise DeliveryGateError("delivery manifest exceeds the size limit")
+        value = json.loads(payload.decode("utf-8"))
+    except DeliveryGateError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise DeliveryGateError(f"delivery manifest could not be read: {exc}") from exc
     if not isinstance(value, dict) or value.get("schema_version") != SCHEMA_VERSION:
         raise DeliveryGateError(f"delivery manifest must use schema_version {SCHEMA_VERSION}")
@@ -124,17 +166,51 @@ def _validate_final_reviews(manifest: Mapping[str, object], author: str) -> None
         reviewer = _required_string(review.get("reviewer"), f"final_reviews.{kind}.reviewer")
         if reviewer.casefold() == author.casefold():
             raise DeliveryGateError(f"final {kind} reviewer must differ from the author")
-        _required_string(review.get("observed_at"), f"final_reviews.{kind}.observed_at")
+        _timestamp(review.get("observed_at"), f"final_reviews.{kind}.observed_at")
         _required_string(review.get("summary"), f"final_reviews.{kind}.summary")
 
 
-def _proof_key(value: Mapping[str, object]) -> tuple[str, str]:
+def _observed_proof_key(value: Mapping[str, object]) -> tuple[str, str]:
     kind = _required_string(value.get("kind"), "proof.kind")
     if kind == "command":
         return kind, _required_string(value.get("command"), "proof.command")
     if kind == "link":
         return kind, _required_string(value.get("url"), "proof.url")
     raise DeliveryGateError(f"unsupported proof kind: {kind}")
+
+
+def _required_proof_match(
+    required: Mapping[str, object], observed: Mapping[tuple[str, str], Mapping[str, object]]
+) -> tuple[tuple[str, str], Mapping[str, object]]:
+    kind = _required_string(required.get("kind"), "proof.kind")
+    if kind == "command":
+        command = _required_string(required.get("command"), "proof.command")
+        key = (kind, command)
+        proof = observed.get(key)
+        if proof is None:
+            raise DeliveryGateError(f"missing observed proof: {command}")
+        return key, proof
+    if kind != "link":
+        raise DeliveryGateError(f"unsupported proof kind: {kind}")
+
+    exact = required.get("url")
+    contains = required.get("link_contains")
+    if exact is not None:
+        expected = _required_string(exact, "proof.url")
+        candidates = [(key, proof) for key, proof in observed.items() if key == (kind, expected)]
+    else:
+        fragment = _required_string(contains, "proof.link_contains")
+        candidates = [
+            (key, proof)
+            for key, proof in observed.items()
+            if key[0] == kind and fragment in key[1]
+        ]
+        expected = fragment
+    if not candidates:
+        raise DeliveryGateError(f"missing observed proof: {expected}")
+    if len(candidates) != 1:
+        raise DeliveryGateError(f"ambiguous observed link proof: {expected}")
+    return candidates[0]
 
 
 def _validate_proofs(task: Mapping[str, object], entry: Mapping[str, object]) -> None:
@@ -151,7 +227,7 @@ def _validate_proofs(task: Mapping[str, object], entry: Mapping[str, object]) ->
     for value in observed:
         if not isinstance(value, dict):
             raise DeliveryGateError(f"task {task.get('id')} contains a malformed proof")
-        key = _proof_key(value)
+        key = _observed_proof_key(value)
         if key in observed_by_key:
             raise DeliveryGateError(f"task {task.get('id')} contains duplicate proof {key[1]}")
         observed_by_key[key] = value
@@ -159,11 +235,11 @@ def _validate_proofs(task: Mapping[str, object], entry: Mapping[str, object]) ->
     for required_proof in required:
         if not isinstance(required_proof, dict):
             raise DeliveryGateError(f"task {task.get('id')} has a malformed required proof")
-        key = _proof_key(required_proof)
-        proof = observed_by_key.get(key)
-        if proof is None:
-            raise DeliveryGateError(f"task {task.get('id')} is missing observed proof: {key[1]}")
-        _required_string(proof.get("observed_at"), f"task {task.get('id')} proof observed_at")
+        try:
+            key, proof = _required_proof_match(required_proof, observed_by_key)
+        except DeliveryGateError as exc:
+            raise DeliveryGateError(f"task {task.get('id')} is {exc}") from exc
+        _timestamp(proof.get("observed_at"), f"task {task.get('id')} proof observed_at")
         commit = _required_string(proof.get("commit_sha"), f"task {task.get('id')} proof commit_sha")
         if not COMMIT_RE.fullmatch(commit):
             raise DeliveryGateError(f"task {task.get('id')} proof commit_sha is invalid")
@@ -192,7 +268,7 @@ def _validate_disposition(
     if reviewer.casefold() == author.casefold():
         raise DeliveryGateError(f"task {task_id} reviewer must differ from the author")
     _required_string(disposition.get("reason"), f"task {task_id} disposition reason")
-    _required_string(disposition.get("observed_at"), f"task {task_id} disposition observed_at")
+    _timestamp(disposition.get("observed_at"), f"task {task_id} disposition observed_at")
 
 
 def run_gate(

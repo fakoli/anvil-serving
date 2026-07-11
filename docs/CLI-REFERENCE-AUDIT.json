@@ -20,7 +20,7 @@
         "serve": 1,
         "voice-run-bridge": 2,
         "voice-sidecar": 2,
-        "voice-start-stop": 8,
+        "voice-start-stop": 7,
         "voice-up-down": 3
       },
       "canonical_counts": {
@@ -76,7 +76,7 @@
         "benchmark": 3,
         "cache-prune": 2,
         "calibrate": 2,
-        "deploy": 3,
+        "deploy": 4,
         "external-bench": 3,
         "gpus": 0,
         "mcp-bare": 2,
@@ -86,11 +86,11 @@
         "onboard": 8,
         "preflight": 0,
         "profile": 0,
-        "score": 2,
+        "score": 3,
         "serve": 3,
         "voice-run-bridge": 5,
         "voice-sidecar": 3,
-        "voice-start-stop": 10,
+        "voice-start-stop": 9,
         "voice-up-down": 3
       },
       "canonical_counts": {

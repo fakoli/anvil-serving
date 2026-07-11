@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Audit active CLI references and validate manifest-generated documentation.
 
 The check path is read-only and hermetic. ``--update`` is the deliberate
@@ -11,14 +10,19 @@ import argparse
 from collections import Counter
 from dataclasses import asdict, dataclass
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 from typing import Iterable
 
 
 SCHEMA_VERSION = 1
+GIT_TIMEOUT_SECONDS = 15
+MAX_GIT_INDEX_BYTES = 16 * 1024 * 1024
+MAX_TEXT_FILE_BYTES = 4 * 1024 * 1024
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_REL = Path("docs/CLI-COMMAND-MANIFEST.json")
 CLI_DOC_REL = Path("docs/CLI.md")
@@ -193,19 +197,25 @@ def _skill_files(base: Path) -> set[Path]:
 
 
 def _tracked_paths(root: Path) -> set[str]:
-    completed = subprocess.run(
-        ["git", "ls-files", "-z"],
-        cwd=root,
-        text=False,
-        capture_output=True,
-        check=False,
-        shell=False,
-    )
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        completed = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=root,
+            stdout=stdout,
+            stderr=stderr,
+            check=False,
+            shell=False,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+        stdout.seek(0)
+        payload = stdout.read(MAX_GIT_INDEX_BYTES + 1)
     if completed.returncode != 0:
         raise ValueError("production reference audit requires a readable Git index")
+    if len(payload) > MAX_GIT_INDEX_BYTES:
+        raise ValueError("Git index exceeds the production reference audit size limit")
     return {
         value.decode("utf-8").replace("\\", "/")
-        for value in completed.stdout.split(b"\0")
+        for value in payload.split(b"\0")
         if value
     }
 
@@ -276,10 +286,10 @@ def _skill_root(relative: Path) -> str | None:
     return None
 
 
-def _legacy_allowed(relative: Path, category: str, heading: str) -> bool:
+def _legacy_allowed(relative: Path, category: str, heading: str, h2_heading: str) -> bool:
     value = relative.as_posix()
     if value == "CHANGELOG.md":
-        return True
+        return bool(h2_heading) and h2_heading != "[unreleased]"
     if value in {"docs/CLI-CONSOLIDATION-INVENTORY.md", "docs/CLI-LEGACY-DISPOSITIONS.md"}:
         return True
     if value.startswith("docs/adr/"):
@@ -308,12 +318,16 @@ def scan(root: Path, scope: str) -> ScanResult:
         if root_label:
             skill_roots.add(root_label)
         heading = ""
-        text = path.read_text(encoding="utf-8")
+        h2_heading = ""
+        text = _read_text(path)
         for line_number, line in enumerate(text.splitlines(), start=1):
             heading_match = re.match(r"^#{1,6}\s+(.+?)\s*$", line)
             if heading_match:
                 heading = heading_match.group(1).strip().casefold()
-            allowed = _legacy_allowed(relative, category, heading)
+            h2_match = re.match(r"^##\s+(.+?)\s*$", line)
+            if h2_match:
+                h2_heading = h2_match.group(1).strip().casefold()
+            allowed = _legacy_allowed(relative, category, heading, h2_heading)
             for name, pattern in _LEGACY_RE.items():
                 if pattern.search(line):
                     hits.append(
@@ -359,13 +373,47 @@ def inventory_record(result: ScanResult) -> dict[str, object]:
     }
 
 
+def _read_text(path: Path, *, max_bytes: int = MAX_TEXT_FILE_BYTES) -> str:
+    with path.open("rb") as handle:
+        payload = handle.read(max_bytes + 1)
+    if len(payload) > max_bytes:
+        raise ValueError(f"text file exceeds {max_bytes} byte audit limit: {path}")
+    return payload.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _atomic_write_text(path: Path, value: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    existing_mode = path.stat().st_mode if path.exists() else None
+    temporary_name: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline=None,
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_name = handle.name
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if existing_mode is not None:
+            os.chmod(temporary_name, existing_mode)
+        os.replace(temporary_name, path)
+        temporary_name = None
+    finally:
+        if temporary_name is not None:
+            Path(temporary_name).unlink(missing_ok=True)
+
+
 def _load_json(path: Path) -> dict[str, object]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(_read_text(path))
 
 
 def _write_json(path: Path, value: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _atomic_write_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n")
 
 
 def _manifest(root: Path) -> dict[str, object]:
@@ -456,7 +504,7 @@ def _replace_block(text: str, start: str, end: str, body: str) -> str:
 
 def generated_docs_match(root: Path) -> bool:
     manifest = _manifest(root)
-    text = (root / CLI_DOC_REL).read_text(encoding="utf-8")
+    text = _read_text(root / CLI_DOC_REL)
     return (
         _block(text, INDEX_START, INDEX_END) == render_manifest_index(manifest)
         and _block(text, MIGRATION_START, MIGRATION_END) == render_tombstones(manifest)
@@ -466,10 +514,10 @@ def generated_docs_match(root: Path) -> bool:
 def update_generated_docs(root: Path) -> None:
     manifest = _manifest(root)
     path = root / CLI_DOC_REL
-    text = path.read_text(encoding="utf-8")
+    text = _read_text(path)
     text = _replace_block(text, INDEX_START, INDEX_END, render_manifest_index(manifest))
     text = _replace_block(text, MIGRATION_START, MIGRATION_END, render_tombstones(manifest))
-    path.write_text(text, encoding="utf-8")
+    _atomic_write_text(path, text)
 
 
 def _inventory_path(root: Path, scope: str) -> Path:
@@ -522,7 +570,14 @@ def main(argv: list[str] | None = None) -> int:
             update_inventories(root)
         inventory_ok = inventory_matches(root, args.scope, record)
         generated_ok = True if args.scope == "fixtures" else generated_docs_match(root)
-    except (FileNotFoundError, OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+    except (
+        FileNotFoundError,
+        OSError,
+        UnicodeError,
+        ValueError,
+        json.JSONDecodeError,
+        subprocess.SubprocessError,
+    ) as exc:
         payload = {"ok": False, "scope": args.scope, "error": str(exc)}
         if args.json:
             print(json.dumps(payload, sort_keys=True))

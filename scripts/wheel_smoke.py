@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Verify a built wheel from a clean, temporary installation."""
 
 from __future__ import annotations
@@ -16,6 +15,8 @@ import venv
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TIMEOUT_SECONDS = 120
+MAX_COMMAND_OUTPUT_BYTES = 8 * 1024 * 1024
+MAX_DIAGNOSTIC_CHARS = 4096
 PACKAGE_DATA_PROBE = """
 from importlib import resources
 import anvil_serving
@@ -60,16 +61,29 @@ def _run(
     environment: dict[str, str],
     timeout: int,
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        list(argv),
-        cwd=cwd,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-        timeout=timeout,
-        shell=False,
-    )
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        completed = subprocess.run(
+            list(argv),
+            cwd=cwd,
+            env=environment,
+            stdout=stdout,
+            stderr=stderr,
+            check=False,
+            timeout=timeout,
+            shell=False,
+        )
+        stdout.seek(0)
+        stderr.seek(0)
+        stdout_bytes = stdout.read(MAX_COMMAND_OUTPUT_BYTES + 1)
+        stderr_bytes = stderr.read(MAX_COMMAND_OUTPUT_BYTES + 1)
+    if len(stdout_bytes) > MAX_COMMAND_OUTPUT_BYTES or len(stderr_bytes) > MAX_COMMAND_OUTPUT_BYTES:
+        raise WheelSmokeError("command output exceeded the wheel smoke size limit")
+    try:
+        stdout_text = stdout_bytes.decode("utf-8")
+        stderr_text = stderr_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise WheelSmokeError("command output was not valid UTF-8") from exc
+    return subprocess.CompletedProcess(completed.args, completed.returncode, stdout_text, stderr_text)
 
 
 def _checked(
@@ -81,8 +95,15 @@ def _checked(
     timeout: int,
 ) -> subprocess.CompletedProcess[str]:
     completed = runner(argv, cwd=cwd, environment=environment, timeout=timeout)
+    if not isinstance(completed.stdout, str) or not isinstance(completed.stderr, str):
+        raise WheelSmokeError("command runner must return text output")
+    if (
+        len(completed.stdout.encode("utf-8")) > MAX_COMMAND_OUTPUT_BYTES
+        or len(completed.stderr.encode("utf-8")) > MAX_COMMAND_OUTPUT_BYTES
+    ):
+        raise WheelSmokeError("command output exceeded the wheel smoke size limit")
     if completed.returncode != 0:
-        output = (completed.stderr or completed.stdout).strip()
+        output = (completed.stderr or completed.stdout).strip()[:MAX_DIAGNOSTIC_CHARS]
         raise WheelSmokeError(f"command failed ({completed.returncode}): {output}")
     return completed
 

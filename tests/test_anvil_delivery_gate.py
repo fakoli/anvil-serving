@@ -185,3 +185,66 @@ def test_bad_anvil_subprocess_envelopes_fail_closed(tmp_path):
                 manifest,
                 runner=lambda *args, completed=completed, **kwargs: completed,
             )
+
+
+def test_link_contains_requirement_matches_one_observed_url(tmp_path):
+    task = _task("operator-cli-v2:T024")
+    value = _manifest([task])
+    task["verification"]["required_proofs"] = [
+        {"kind": "link", "link_contains": "github.com/fakoli/anvil-serving/pull/"}
+    ]
+    value["tasks"][0]["proofs"] = [
+        {
+            "kind": "link",
+            "url": "https://github.com/fakoli/anvil-serving/pull/206",
+            "observed_at": "2026-07-11T00:00:00Z",
+            "commit_sha": "abcdef1",
+        }
+    ]
+    manifest = _write(tmp_path / "delivery.json", value)
+
+    result = gate.run_gate(manifest, timeout=9, runner=_runner([task], []))
+
+    assert result.task_ids == ("operator-cli-v2:T024",)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda value: value["tasks"][0]["proofs"][0].update(observed_at="not-a-date"),
+        lambda value: value["tasks"][0]["human_disposition"].update(
+            observed_at="2026-07-11T00:01:00"
+        ),
+        lambda value: value["final_reviews"]["documentation"].update(
+            observed_at="2026-07-11"
+        ),
+    ],
+)
+def test_gate_requires_zoned_iso_timestamps(tmp_path, mutate):
+    task = _task("operator-cli-v2:T024")
+    value = _manifest([task])
+    mutate(value)
+    manifest = _write(tmp_path / "delivery.json", value)
+
+    with pytest.raises(gate.DeliveryGateError, match="ISO-8601|include a timezone"):
+        gate.run_gate(manifest, timeout=9, runner=_runner([task], []))
+
+
+def test_gate_rejects_oversized_manifest_before_parsing(tmp_path):
+    manifest = tmp_path / "delivery.json"
+    manifest.write_bytes(b"{" + b" " * gate.MAX_MANIFEST_BYTES)
+
+    with pytest.raises(gate.DeliveryGateError, match="exceeds the size limit"):
+        gate.run_gate(manifest)
+
+
+def test_gate_rejects_oversized_runner_output(tmp_path, monkeypatch):
+    task = _task("operator-cli-v2:T024")
+    manifest = _write(tmp_path / "delivery.json", _manifest([task]))
+    monkeypatch.setattr(gate, "MAX_ANVIL_OUTPUT_BYTES", 8)
+
+    with pytest.raises(gate.DeliveryGateError, match="output exceeded"):
+        gate.run_gate(
+            manifest,
+            runner=lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, "{}" * 5, ""),
+        )

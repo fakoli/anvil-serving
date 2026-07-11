@@ -8,6 +8,8 @@ import shutil
 import subprocess
 import sys
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "audit_cli_references.py"
@@ -73,6 +75,64 @@ def test_check_fails_closed_on_stale_inventory(tmp_path: Path):
     result = _run("--scope", "fixtures", "--check", "--json", root=tmp_path)
     assert result.returncode == 1
     assert json.loads(result.stdout)["inventory_match"] is False
+
+
+def test_changelog_unreleased_is_active_but_released_sections_are_historical(tmp_path: Path):
+    root = tmp_path
+    input_root = root / audit.FIXTURE_REL / "input"
+    input_root.mkdir(parents=True)
+    (input_root / "CHANGELOG.md").write_text(
+        "# Changelog\n\n"
+        "## [Unreleased]\n\n"
+        "### Changed\n\n"
+        "- Run `anvil-serving deploy`.\n\n"
+        "## [0.1.0] - 2025-01-01\n\n"
+        "### Added\n\n"
+        "- Run `anvil-serving score`.\n",
+        encoding="utf-8",
+    )
+
+    result = audit.scan(root, "fixtures")
+
+    assert [(hit.name, hit.allowed) for hit in result.hits if hit.kind == "legacy"] == [
+        ("deploy", False),
+        ("score", True),
+    ]
+
+
+def test_bounded_reader_rejects_oversized_text(tmp_path: Path):
+    path = tmp_path / "large.md"
+    path.write_bytes(b"x" * 9)
+
+    with pytest.raises(ValueError, match="exceeds 8 byte"):
+        audit._read_text(path, max_bytes=8)
+
+
+def test_git_index_lookup_has_a_timeout(monkeypatch, tmp_path: Path):
+    def timeout(*args, **kwargs):
+        assert kwargs["timeout"] == audit.GIT_TIMEOUT_SECONDS
+        raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr(audit.subprocess, "run", timeout)
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        audit._tracked_paths(tmp_path)
+
+
+def test_atomic_write_preserves_original_on_replace_failure(monkeypatch, tmp_path: Path):
+    path = tmp_path / "generated.json"
+    path.write_text("original\n", encoding="utf-8")
+
+    def fail_replace(source, destination):
+        raise OSError("replace interrupted")
+
+    monkeypatch.setattr(audit.os, "replace", fail_replace)
+
+    with pytest.raises(OSError, match="replace interrupted"):
+        audit._atomic_write_text(path, "replacement\n")
+
+    assert path.read_text(encoding="utf-8") == "original\n"
+    assert list(tmp_path.iterdir()) == [path]
 
 
 def test_check_mode_is_read_only():

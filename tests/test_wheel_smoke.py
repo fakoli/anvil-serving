@@ -118,3 +118,16 @@ def test_run_smoke_rejects_checkout_import(tmp_path):
 
     with pytest.raises(smoke.WheelSmokeError, match="source checkout"):
         smoke.run_smoke(wheel, runner=runner, create_venv=create_venv, os_name="posix")
+
+
+def test_checked_rejects_oversized_runner_output(tmp_path, monkeypatch):
+    monkeypatch.setattr(smoke, "MAX_COMMAND_OUTPUT_BYTES", 8)
+
+    with pytest.raises(smoke.WheelSmokeError, match="output exceeded"):
+        smoke._checked(
+            lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, "x" * 9, ""),
+            ["probe"],
+            cwd=tmp_path,
+            environment={},
+            timeout=1,
+        )
