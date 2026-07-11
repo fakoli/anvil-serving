@@ -1,0 +1,36 @@
+{
+  "schema": "anvil-serving.bakeoff-environment/v1",
+  "recorded_at": "2026-07-10T21:35:00Z",
+  "host_role": "fakoli-dark (reference serving host)",
+  "os": "Windows 11 Pro 10.0.26200 + WSL2 (Ubuntu-24.04) Docker Desktop backend",
+  "docker": "Docker version 29.5.3, build d1c06ef",
+  "python": "3.13.13 (Windows host, anvil-serving CLI)",
+  "nvidia_driver": "610.62",
+  "gpus": [
+    {
+      "index": 0,
+      "name": "NVIDIA GeForce RTX 5090",
+      "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+      "vram_mib": 32607,
+      "arch": "sm_120",
+      "role": "fast tier / small-candidate track"
+    },
+    {
+      "index": 1,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+      "vram_mib": 97887,
+      "arch": "sm_120",
+      "role": "heavy tier / large-candidate track"
+    }
+  ],
+  "model_cache": "docker named volume vllm-hfcache (D:-backed ext4; avoids 9P bind-mount tax)",
+  "repo": "fakoli/anvil-serving",
+  "branch": "bench/2026-07-10-blackwell-model-bakeoff",
+  "starting_commit": "0e11df6dad7f5859a9fd2c7feace59183d720765",
+  "notes": [
+    "Production heavy tier (gpt-oss-120b, container vllm-gptoss120) was running at bakeoff start.",
+    "All candidate serves bind 127.0.0.1 only.",
+    "WSL2 device_ids isolation is ignored (repo gotcha #13); GPU pinning is done via CUDA_VISIBLE_DEVICES with CUDA_DEVICE_ORDER=PCI_BUS_ID."
+  ]
+}
