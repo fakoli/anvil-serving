@@ -310,11 +310,19 @@ anvil-serving init [--model PATH] [--catalog-dir DIR] [--gpu IDX|UUID] [--served
 
 Generic onboarding (ADR-0003): detects GPUs and a local model (default: the biggest loadable entry
 from the `models sync` catalog in `--catalog-dir`, default `./model-library`), and writes a
-consistent `docker-compose.yml` + `serves.toml` + `router.toml` bring-up, then prints the
-remaining manual steps (`serves up`, `serves status`, `serve --config`).
+consistent `docker-compose.yml` + `serves.toml` + `router.toml` + `operator-topology.toml`
+bring-up, then prints the remaining manual steps (`serves up`, `serves status`, `router run`).
+
+The generated topology is an offline-valid generic base. It uses stable `local-*` identifiers and
+`127.0.0.1`, and does not inspect or record the machine hostname, operating system, network,
+GPU UUIDs, credentials, or ambient command identity. Keep machine-specific addresses, host OS,
+GPU roles, and authenticated controllers in a separate deployment overlay. Consequently,
+OS-specific repairs and GPU-bound topology execution remain unavailable until those facts are
+declared explicitly.
 
 ```bash
 anvil-serving init --catalog-dir ./model-library --gpu 0
+anvil-serving topology validate --topology ./operator-topology.toml
 ```
 
 ### `doctor`
