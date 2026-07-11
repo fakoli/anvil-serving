@@ -1,0 +1,163 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": [
+      {
+        "attempted_context_tokens": 129984,
+        "clamped_tokens": 129984,
+        "e2e_ms": 32770.31326293945,
+        "estimated_prompt_tokens": 129984,
+        "output_tokens": 64,
+        "status": "passed",
+        "target_tokens": 131072,
+        "ttft_ms": 31905.324935913086,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 127426,
+          "total_tokens": 127490
+        }
+      }
+    ]
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:39017/v1",
+    "candidate_id": "qwen35-122b-a10b",
+    "config_id": "vllm-nvfp4-131k",
+    "model": "qwen35-122b-a10b-nvfp4",
+    "started_at": "2026-07-11T00:26:01Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "--- a/app.py\n+++ b/app.py\n@@ -1,3 +1,3 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 603.0452251434326,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": true
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "The total latency of 3000 ms exceeds the 2500 ms budget primarily due to the LLM's 1800 ms response time, which can be reduced by implementing streaming responses to overlap processing with audio gene",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 752.957820892334,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260711T002601Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 32770.31326293945,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 31905.324935913086,
+    "usable_context_tokens": 131072,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      131072
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "RIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 168.95532608032227,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": "configs/serve-recipes.toml#nvidia-Qwen3.5-122B-A10B-NVFP4",
+    "serve_command": "docker compose -f examples/fakoli-dark/docker-compose.experiment.yml up -d heavy-qwen35-122b"
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 32770.31326293945,
+      "e2e_p95_ms": 32770.31326293945,
+      "output_tokens": 64,
+      "ttft_p50_ms": 31905.324935913086,
+      "ttft_p95_ms": 31905.324935913086
+    },
+    "wall_ms": 34846.92120552063
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 512.3310089111328,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

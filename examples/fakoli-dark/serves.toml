@@ -155,3 +155,15 @@ model = "qwen3-30b-a3b-instruct"
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-qwen3-30b-a3b"
+
+# Heavy-tier CANDIDATE (evaluation, NOT promoted): Qwen3.5-122B-A10B-NVFP4 on the RTX PRO 6000
+# (:39017). Shares the PRO 6000 with the production GPT-OSS heavy tier, so stop `heavy` before
+# `serves up heavy-qwen35-122b`. Not wired into the router until explicitly promoted to heavy-local.
+[[serve]]
+name = "heavy-qwen35-122b"
+container = "vllm-heavy-qwen35-122b"
+port = 39017
+model = "qwen35-122b-a10b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d heavy-qwen35-122b"
