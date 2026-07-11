@@ -224,8 +224,9 @@ Start with the path that matches you:
 - **Operating a deployment?** [Getting started](docs/GETTING-STARTED.md) (real tiers) →
   [Configuration reference](docs/CONFIGURATION.md) → [CLI reference](docs/CLI.md) →
   [Operator playbooks](docs/OPERATOR-PLAYBOOKS.md) →
-  [Troubleshooting](docs/TROUBLESHOOTING.md); [`examples/fakoli-dark/`](examples/fakoli-dark/) is
-  a fully worked two-GPU instance.
+  [Troubleshooting](docs/TROUBLESHOOTING.md); [`examples/fakoli-dark/`](examples/fakoli-dark/)
+  contains an offline Dark/Mini topology reference alongside the existing machine-specific
+  two-GPU operational artifacts.
 - **Contributing?** [CONTRIBUTING.md](CONTRIBUTING.md) (module map and extension recipes) →
   [Architecture](docs/ARCHITECTURE.md) → [ADRs](docs/adr/README.md).
 

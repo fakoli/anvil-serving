@@ -6,9 +6,11 @@ tmp_path so nothing here depends on real STT/TTS/router serves being up.
 """
 
 import copy
+from dataclasses import replace
 
 import pytest
 
+from anvil_serving.topology import load_topology, parse_topology
 from anvil_serving.voice import config as voice_config
 
 
@@ -34,6 +36,139 @@ def _valid_manifest():
             },
         }
     }
+
+
+def test_reference_audio_targets_resolve_dark_owned_model_endpoints():
+    resolved = voice_config.resolve_audio_targets(
+        load_topology("examples/fakoli-dark/operator-topology.toml")
+    )
+
+    assert resolved.stt.plan.resource.id == "dark-stt"
+    assert resolved.tts.plan.resource.id == "dark-tts"
+    assert resolved.stt.plan.resource_host.id == "fakoli-dark"
+    assert resolved.tts.plan.resource_host.id == "fakoli-dark"
+    assert resolved.stt.base_url == "http://127.0.0.1:30110/v1"
+    assert resolved.tts.base_url == "http://127.0.0.1:30111/v1"
+    assert resolved.stt.endpoint_kind == "host-relative-loopback"
+    assert resolved.stt.plan.transport == "controller"
+
+
+def test_audio_target_resolution_never_treats_mini_proxy_as_model_endpoint():
+    resolved = voice_config.resolve_audio_targets(
+        load_topology("examples/fakoli-dark/operator-topology.toml")
+    )
+
+    assert resolved.stt.plan.resource.role == "stt-serve"
+    assert resolved.tts.plan.resource.role == "tts-serve"
+    assert resolved.stt.plan.resource.workload == "stt"
+    assert resolved.tts.plan.resource.workload == "tts"
+    assert resolved.stt.plan.resource.id != "mini-dark-stt-proxy"
+    assert resolved.tts.plan.resource.id != "mini-dark-tts-proxy"
+
+
+def _reference_topology_with_resource(kind, **changes):
+    topology = load_topology("examples/fakoli-dark/operator-topology.toml")
+    resources = tuple(
+        replace(resource, **changes) if resource.role == f"{kind}-serve" else resource
+        for resource in topology.resources
+    )
+    return replace(topology, resources=resources)
+
+
+def _record_transport_selection(monkeypatch):
+    from anvil_serving import targets
+
+    selected = []
+    monkeypatch.setattr(targets, "_select_transport", lambda *args: selected.append(args))
+    return selected
+
+
+@pytest.mark.parametrize("kind", ("stt", "tts"))
+def test_audio_target_model_free_rejection_precedes_all_transport_selection(
+    monkeypatch, kind
+):
+    from anvil_serving import targets
+
+    topology = _reference_topology_with_resource(
+        kind,
+        host="fakoli-mini",
+        runtime="mini-native",
+    )
+    selected = _record_transport_selection(monkeypatch)
+
+    with pytest.raises(targets.TargetResolutionError, match=f"prohibits '{kind}'"):
+        voice_config.resolve_audio_targets(topology)
+
+    assert selected == []
+
+
+@pytest.mark.parametrize("kind", ("stt", "tts"))
+def test_audio_target_duplicate_owner_precedes_all_transport_selection(monkeypatch, kind):
+    from anvil_serving import targets
+
+    topology = load_topology("examples/fakoli-dark/operator-topology.toml")
+    resource = next(item for item in topology.resources if item.role == f"{kind}-serve")
+    topology = replace(
+        topology,
+        resources=topology.resources + (replace(resource, id=f"duplicate-{kind}"),),
+    )
+    selected = _record_transport_selection(monkeypatch)
+
+    with pytest.raises(targets.TargetResolutionError, match="has 2 declared owners"):
+        voice_config.resolve_audio_targets(topology)
+
+    assert selected == []
+
+
+@pytest.mark.parametrize("kind", ("stt", "tts"))
+def test_audio_target_missing_endpoint_precedes_all_transport_selection(monkeypatch, kind):
+    topology = _reference_topology_with_resource(kind, endpoint=None)
+    selected = _record_transport_selection(monkeypatch)
+
+    with pytest.raises(voice_config.ConfigError, match=f"resource for {kind} has no endpoint"):
+        voice_config.resolve_audio_targets(topology)
+
+    assert selected == []
+
+
+def test_audio_targets_honor_only_the_two_part_experimental_override():
+    data = {
+        "schema_version": 1,
+        "id": "experimental-audio",
+        "command_host": "host:lab",
+        "command_runtime": "runtime:lab-native",
+        "capacity_policies": [
+            {
+                "id": "model-free-lab",
+                "allow_model_workloads": False,
+                "allow_experimental_model_workloads": True,
+            }
+        ],
+        "hosts": [{"id": "lab", "roles": ["lab"], "capacity_policy": "model-free-lab"}],
+        "runtimes": [{"id": "lab-native", "host": "lab", "role": "native"}],
+        "resources": [
+            {
+                "id": kind,
+                "role": f"{kind}-serve",
+                "host": "lab",
+                "runtime": "lab-native",
+                "endpoint": f"http://127.0.0.1:{port}/v1",
+                "endpoint_kind": "host-relative-loopback",
+                "workload": "experimental-model",
+            }
+            for kind, port in (("stt", 30110), ("tts", 30111))
+        ],
+    }
+    topology = parse_topology(data)
+
+    resolved = voice_config.resolve_audio_targets(
+        topology,
+        experimental_model_workload=True,
+    )
+
+    assert resolved.stt.plan.capacity.experimental_model_workload_override is True
+    assert resolved.tts.plan.capacity.experimental_model_workload_override is True
+    assert len(resolved.warnings) == 2
 
 
 def test_shipped_example_manifest_is_valid():
