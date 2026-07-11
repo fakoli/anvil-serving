@@ -10415,13 +10415,15 @@
       "visible": true
     },
     {
-      "coowned_resource_roles": [],
+      "coowned_resource_roles": [
+        "stt-proxy",
+        "tts-proxy"
+      ],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.voice.cli:main",
@@ -10553,7 +10555,7 @@
       "path": "voice benchmark",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "audio",
+      "resource_role": "realtime-proxy",
       "summary": "Benchmark an end-to-end voice session.",
       "tombstone": null,
       "transports": [
@@ -10707,11 +10709,8 @@
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
       "gpu_role_required": false,
       "handler": "anvil_serving.voice.cli:main_profiles_list",
       "mutation_class": "read",
@@ -10842,23 +10841,18 @@
       "path": "voice profiles list",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "audio",
+      "resource_role": null,
       "summary": "List voice profiles.",
       "tombstone": null,
-      "transports": [
-        "local"
-      ],
+      "transports": [],
       "visible": true
     },
     {
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
       "gpu_role_required": false,
       "handler": "anvil_serving.voice.cli:main_profiles_validate",
       "mutation_class": "read",
@@ -10989,12 +10983,10 @@
       "path": "voice profiles validate",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "audio",
+      "resource_role": null,
       "summary": "Validate the profile selected by --profile.",
       "tombstone": null,
-      "transports": [
-        "local"
-      ],
+      "transports": [],
       "visible": true
     },
     {
@@ -11143,11 +11135,8 @@
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
       "gpu_role_required": false,
       "handler": "anvil_serving.voice_sidecar:main",
       "mutation_class": "read",
@@ -11278,23 +11267,18 @@
       "path": "voice sidecar validate",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "audio",
+      "resource_role": null,
       "summary": "Validate a sidecar manifest.",
       "tombstone": null,
-      "transports": [
-        "local"
-      ],
+      "transports": [],
       "visible": true
     },
     {
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
       "gpu_role_required": false,
       "handler": "anvil_serving.voice_sidecar:main",
       "mutation_class": "read",
@@ -11425,26 +11409,21 @@
       "path": "voice sidecar command",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "audio",
+      "resource_role": null,
       "summary": "Render a sidecar command.",
       "tombstone": null,
-      "transports": [
-        "local"
-      ],
+      "transports": [],
       "visible": true
     },
     {
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
       "gpu_role_required": false,
       "handler": "anvil_serving.voice_sidecar:main",
-      "mutation_class": "mutate",
+      "mutation_class": "read",
       "options": [
         {
           "flags": [
@@ -11566,28 +11545,16 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "voice sidecar compose",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "audio",
+      "resource_role": null,
       "summary": "Render sidecar compose configuration.",
       "tombstone": null,
-      "transports": [
-        "local"
-      ],
+      "transports": [],
       "visible": true
     },
     {

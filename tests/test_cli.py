@@ -969,6 +969,33 @@ def test_voice_audio_dispatch_resolves_coowned_dark_resources_and_forwards_conte
     assert capsys.readouterr().err == ""
 
 
+def test_voice_benchmark_json_includes_resolved_proxy_context(monkeypatch, capsys):
+    topology = (
+        Path(__file__).parent.parent
+        / "examples"
+        / "fakoli-dark"
+        / "operator-topology.toml"
+    )
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: 0)
+
+    assert cli.main([
+        "voice", "benchmark", "--topology", str(topology), "--json",
+    ]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["context"]["resource"] == "mini-realtime-proxy"
+    assert payload["context"]["execution_host"] == "fakoli-mini"
+    assert payload["context"]["resource_endpoint"] == "http://127.0.0.1:8765/usage"
+
+
+@pytest.mark.parametrize("path", [["voice", "profiles"], ["voice", "sidecar"]])
+def test_offline_voice_group_help_hides_target_resolution(path, capsys):
+    assert cli.main([*path, "--help"]) == 0
+    output = capsys.readouterr().out
+    assert "--topology" not in output
+    assert "--transport" not in output
+
+
 def test_cli_remote_host_repair_is_typed_and_os_checked(tmp_path, monkeypatch, capsys):
     topology = _write_remote_router_topology(tmp_path, "host-wsl-config")
     text = topology.read_text(encoding="utf-8")

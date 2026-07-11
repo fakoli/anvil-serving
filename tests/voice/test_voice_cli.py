@@ -1533,7 +1533,7 @@ def test_voice_sidecar_nested_help_dispatches(capsys):
     out = capsys.readouterr().out
     assert "usage: anvil-serving voice sidecar validate" in out
     assert "--config" in out
-    assert "--topology" in out
+    assert "--topology" not in out
     assert "--json" in out
     assert "-h, --help" in out
     assert "Docs: docs/CLI.md" in out

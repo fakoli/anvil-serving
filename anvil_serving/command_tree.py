@@ -535,13 +535,13 @@ def build_command_tree() -> CommandTree:
                 _resource_node("logs", "Show bounded realtime proxy logs.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "pid_file", "log_file", "tail", "timeout_seconds")), execution_runtime_roles=("native",)),
                 _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "bridge"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
             ), docs_anchor="docs/VOICE.md#realtime-proxy"),
-            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="audio", argv_prefix=("benchmark",)),
+            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("benchmark",), execution_runtime_roles=("native",)),
             _node("profiles", "Inspect voice profiles.", children=(
-                _resource_node("list", "List voice profiles.", "anvil_serving.voice.cli", role="audio", handler_attribute="main_profiles_list", argv_prefix=()),
-                _resource_node("validate", "Validate the profile selected by --profile.", "anvil_serving.voice.cli", role="audio", handler_attribute="main_profiles_validate", argv_prefix=()),
+                _node("list", "List voice profiles.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_list", argv_prefix=())),
+                _node("validate", "Validate the profile selected by --profile.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_validate", argv_prefix=())),
             ), docs_anchor="docs/VOICE.md#profiles"),
             _node("sidecar", "Manage the speech-to-speech sidecar.", children=tuple(
-                _resource_node(action, summary, "anvil_serving.voice_sidecar", role="audio", mutation="mutate" if action == "compose" else "read", options=action_options if action == "compose" else (), argv_prefix=(action,))
+                _node(action, summary, handler=_handler("anvil_serving.voice_sidecar", argv_prefix=(action,)))
                 for action, summary in (("validate", "Validate a sidecar manifest."), ("command", "Render a sidecar command."), ("compose", "Render sidecar compose configuration."))
             ), docs_anchor="docs/VOICE.md#speech-to-speech-sidecar"),
             *(_node(name, "Removed voice command.", tombstone=removed(replacement), visible=False) for name, replacement in (

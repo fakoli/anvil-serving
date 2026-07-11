@@ -137,6 +137,12 @@ def _visible(nodes: Sequence[CommandNode]) -> tuple[CommandNode, ...]:
     return tuple(node for node in nodes if node.visible)
 
 
+def _walk_nodes(nodes: Sequence[CommandNode]):
+    for node in nodes:
+        yield node
+        yield from _walk_nodes(node.children)
+
+
 def _find(nodes: Sequence[CommandNode], name: str) -> CommandNode | None:
     return next((node for node in nodes if node.name == name), None)
 
@@ -215,7 +221,23 @@ def _print_focused_help(path: Sequence[CommandNode]) -> None:
         print("Actions:")
         for child in children:
             print("  %-15s %s" % (child.name, child.summary))
-    options = COMMAND_TREE.global_options + node.options
+    supports_resolution = node.execution_policy == "resource-owner" or any(
+        descendant.execution_policy == "resource-owner"
+        for descendant in _walk_nodes(node.children)
+    )
+    global_options = COMMAND_TREE.global_options
+    if not supports_resolution:
+        resolution_flags = {
+            *_RESOLUTION_VALUE_OPTIONS,
+            "--experimental-model-workload",
+            "--allow-ssh-fallback",
+        }
+        global_options = tuple(
+            option
+            for option in global_options
+            if not resolution_flags.intersection(option.flags)
+        )
+    options = global_options + node.options
     if options:
         print()
         print("Options:")
@@ -273,7 +295,11 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
     ]
     global_options = COMMAND_TREE.global_options
     if node.execution_policy != "resource-owner":
-        resolution_flags = {*_RESOLUTION_VALUE_OPTIONS, "--experimental-model-workload"}
+        resolution_flags = {
+            *_RESOLUTION_VALUE_OPTIONS,
+            "--experimental-model-workload",
+            "--allow-ssh-fallback",
+        }
         global_options = tuple(
             option
             for option in global_options
