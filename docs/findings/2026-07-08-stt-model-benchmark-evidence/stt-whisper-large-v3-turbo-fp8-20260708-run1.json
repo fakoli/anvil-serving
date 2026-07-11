@@ -1,0 +1,20 @@
+{
+  "hypothesis": " The end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the end of the day, the end of the day, the end of the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the, the end of the day, the, the end of the day, the end of the day, the end of the day, the end of the day, the end of the day, the, the end of the day, the, the end of the day, the, the end of the day, the, the end of the day, the, the end of the day, the, the end of the day, the end of the day, the end of the,",
+  "identity": {
+    "candidate": "stt-whisper-large-v3-turbo-fp8",
+    "profile": "dark-audio",
+    "stt": {
+      "base_url": "http://100.87.34.66:39102/v1",
+      "model": "whisper-large-v3-turbo-fp8"
+    }
+  },
+  "latency_ms": 44007.92,
+  "reference_text": "the quick brown fox jumps over the lazy dog",
+  "sample": {
+    "bytes": 92058,
+    "sample_rate": 16000
+  },
+  "schema_version": "voice-stt-benchmark/v1",
+  "wer": 1.0,
+  "wer_normalized": 1.0
+}

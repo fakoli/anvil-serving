@@ -72,6 +72,22 @@ intelligence 2/2) and production fast qwen36-35b-a3b (matches its 2026-07-08 pro
 
 ## OpenClaw interaction and voice evidence
 
+The focused Dark-host STT smoke benchmark used one clean 16 kHz utterance and
+therefore establishes latency and basic serving correctness, not broad ASR
+quality. Parakeet remained the default; Qwen3-ASR 0.6B was the only new
+candidate both accurate after provider-prefix post-processing and near the
+experimental warm-latency target. The tested Whisper Turbo vLLM recipes were
+rejected because they repeated a hallucinated phrase. Full methodology and all
+17 raw runs are in the [STT model benchmark](findings/2026-07-08-stt-model-benchmark.md).
+
+| STT candidate / tested configuration | Warm latency | Normalized WER | Outcome |
+|---|---:|---:|---|
+| Parakeet `tdt_ctc-110m`, existing Dark endpoint | 82.62, 89.30 ms | 0.0 | **Current default**; fastest passing configuration. |
+| Qwen3-ASR 0.6B, vLLM | 196.36, 278.98 ms | 0.0 after postprocess | Retain as the next candidate for a future managed evaluation on a larger corpus. |
+| Qwen3-ASR 1.7B, vLLM | 290.59, 223.96 ms | 0.0 | No demonstrated advantage over 0.6B on this sample. |
+| Whisper Large V3 Turbo FP8, vLLM | 730.69, 669.57 ms | 1.0 | Reject tested recipe; repeated hallucinated phrase. |
+| Whisper Large V3 Turbo BF16, vLLM | 642.42, 643.63 ms | 1.0 | Reject tested recipe; bounded decode was faster but still incorrect. |
+
 | Scenario | Scope | Measured result | Interpretation |
 |---|---|---|---|
 | OpenClaw COLO interaction benchmark | Mini gateway to Dark router; `chat-fast`; 10 requests | 10/10 HTTP 200; latency p50/p95 568.6 / 1259.9 ms; exact-generation throughput p50/p95 82.77 / 171.82 tok/s | Current route and interaction path was functional. The run carried a warning because it did not include `--run-generations`. |
