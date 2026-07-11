@@ -177,6 +177,33 @@ every URL in configs, tests, and examples uses `127.0.0.1` explicitly, and the f
 
 **Fix.** Replace `localhost` with `127.0.0.1` in the offending base URL, config, or env var.
 
+## Windows starves for RAM during repeated big model loads (WSL page cache)
+
+**What it means.** Every 60–90 GB model-weight stream (bakeoffs, repeated serve restarts) passes
+through the WSL2 VM's Linux page cache, which grows until it fills most of the VM — 50–54 GB of a
+64 GB VM was observed during the 2026-07-10/11 Blackwell bakeoff. The VM holds that memory, and
+Windows itself starts starving. `autoMemoryReclaim=gradual` in `.wslconfig` does return it, but
+lags load bursts by minutes.
+
+**Fix.** Inspect, then drop the cache (data-safe — only clean cache pages are evicted; the next
+load re-reads weights from disk):
+
+```bash
+anvil-serving host memory                    # host RAM / WSL used + page cache / GPU VRAM
+anvil-serving host reclaim --confirm         # sync && echo 3 > /proc/sys/vm/drop_caches (as root)
+```
+
+`reclaim` refuses while a load is actively streaming (the cache is growing fast — dropping it
+mid-load would evict pages the loader is about to reuse); wait or `--force`. For a bakeoff
+session, run the watchdog in a spare terminal instead of remediating by hand:
+
+```bash
+anvil-serving host reclaim --watch --threshold-gb 40 --interval 30 --confirm
+```
+
+This is a symptom-relief valve, not the sizing fix — if the VM cap itself is wrong, size it with
+`host doctor` / `host wsl-config` ([CLI.md → host](CLI.md#host)).
+
 ## 401/403 from the router
 
 **What it means.** Front-door auth is on and the request carried no valid token. Auth is

@@ -556,6 +556,7 @@ def build_command_tree() -> CommandTree:
         _resource_node("status", "Show structured host status.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
         _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("gpu_inventory")),
         _resource_node("doctor", "Diagnose host configuration.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
+        _resource_node("memory", "Show host RAM and WSL VM memory usage.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), execution_host_os=("windows",)),
     )
     host_repairs = tuple(
         _resource_node(
@@ -573,7 +574,15 @@ def build_command_tree() -> CommandTree:
             ("reset-wsl", "Reset WSL.", ("windows",), ("dry_run",)),
         )
     )
-    host = _node("host", "Inspect and repair declared host operations.", children=(*host_read_actions, *host_repairs), docs_anchor="docs/CLI.md#host")
+    # reclaim's --watch is a foreground loop: option-level "follow" policy makes --json refuse
+    # it up front instead of buffering an infinite watchdog into the JSON envelope. Local-only
+    # (no remote_operation): the watchdog is a foreground session on the host itself.
+    host_reclaim = _resource_node(
+        "reclaim", "Drop the WSL VM page cache.", "anvil_serving.host", role="host",
+        mutation="mutate", execution_runtime_roles=("native",), execution_host_os=("windows",),
+        options=confirm_options + (_option("--watch", summary="Foreground reclaim watchdog loop.", output_policy="follow"),),
+    )
+    host = _node("host", "Inspect and repair declared host operations.", children=(*host_read_actions, *host_repairs, host_reclaim), docs_anchor="docs/CLI.md#host")
     topology = _node("topology", "Inspect and resolve deployment topology.", children=tuple(
         _node(action, summary, handler=_handler("anvil_serving.topology_cli", argv_prefix=(action,)), docs_anchor="docs/CLI.md#topology")
         for action, summary in (
