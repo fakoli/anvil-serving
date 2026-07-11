@@ -894,7 +894,7 @@ total_params_b = 27
   throughput_longgen_mtp3_tok_s = 95.0
   throughput_longgen_nomtp_tok_s = 69.9
   mtp_speedup = 1.36
-  context_validation = "131072 AND 262144 pass (largest verified window of the exercise; 262k full-prefill TTFT ~124 s)"
+  context_validation = "262144-token window verified (usage 261,949 prompt tokens; TTFT ~124 s; largest of the exercise). Sub-window targets ballooned to the cap by a harness sizing bug - see failures.md"
   tool_calls = "PASS (preflight 20/20)"
   intelligence_checks = "2/2"
   preflight = "ALL PASS"
@@ -932,7 +932,7 @@ active_params_b = 3
   throughput_single_tok_s = 147
   ttft_warm_p50_ms = 178
   prefill_tok_s = 4458
-  context_validation = "32768 and 65536 pass (64k full-prefill TTFT 8.1 s)"
+  context_validation = "65536-token window verified (TTFT 8.1 s, warm: 17.5k of 59k tokens prefix-cached)"
   tool_calls = "PASS (preflight 20/20)"
   intelligence_checks = "2/2"
   caveats = "decode below the community 5090 reference (214 tok/s, newer build) — build freshness matters on this arch; llama.cpp MTP (--spec-type draft-mtp, MTP-GGUF artifacts) untested"
@@ -967,7 +967,7 @@ total_params_b = 8
   [recipe.measured]
   throughput_single_tok_s = 97.0
   ttft_warm_p50_ms = 61
-  context_validation = "32768 and 65536 pass (64k full-prefill TTFT 6.4 s)"
+  context_validation = "65536-token window verified (TTFT 6.4 s cold)"
   tool_calls = "PASS (preflight 20/20)"
   intelligence_checks = "1/2"
 
