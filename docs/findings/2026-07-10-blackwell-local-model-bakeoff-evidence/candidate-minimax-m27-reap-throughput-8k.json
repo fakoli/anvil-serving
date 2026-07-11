@@ -1,0 +1,26 @@
+{
+  "base_url": "http://127.0.0.1:39023/v1",
+  "completed": 10,
+  "concurrency": 1,
+  "context_tokens": 8192,
+  "max_context_tokens": 65536,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 2611.5434169769287,
+    "e2e_p95_ms": 2631.734848022461,
+    "output_tokens": 2179,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 97.24293865980717,
+    "ttft_p50_ms": 85.86978912353516,
+    "ttft_p95_ms": 108.68430137634277
+  },
+  "model": "minimax-m27-reap-139b-nvfp4",
+  "requests": 10,
+  "run_id": "benchmark-20260711T053825Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": true,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  }
+}

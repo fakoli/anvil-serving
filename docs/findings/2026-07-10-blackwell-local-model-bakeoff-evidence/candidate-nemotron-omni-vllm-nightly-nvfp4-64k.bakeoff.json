@@ -1,0 +1,174 @@
+{
+  "context": {
+    "cap_tokens": 64448,
+    "max_model_len": 65536,
+    "targets": [
+      {
+        "attempted_context_tokens": 64448,
+        "clamped_tokens": 64448,
+        "e2e_ms": 3758.2435607910156,
+        "estimated_prompt_tokens": 64448,
+        "output_tokens": 58,
+        "status": "passed",
+        "target_tokens": 65536,
+        "ttft_ms": 3132.535934448242,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 56371,
+          "total_tokens": 56435
+        }
+      }
+    ]
+  },
+  "failures": [
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "unified_diff_timeout_edit",
+      "suite": "intelligence"
+    },
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "parallel_timeout_triage",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39021/v1",
+    "candidate_id": "nemotron3-omni-30b-a3b",
+    "config_id": "vllm-nightly-nvfp4-tools-64k",
+    "model": "nemotron3-omni-30b-a3b-nvfp4",
+    "started_at": "2026-07-11T06:27:27Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "\n```diff\n- timeout = 30\n+ timeout = 45\n retries = 2\n```",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 320.48797607421875,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": false
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": false
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": false
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "\nThe problem is that the sum of STT, LLM, and TTS times (3000 ms) exceeds the 2500 ms timeout, so the practical fix is to optimize the LLM processing time (e.g., by reducing model complexity or using ",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 729.4652462005615,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": false
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260711T062727Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 3758.2435607910156,
+    "intelligence_pass_rate": 0.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 3132.535934448242,
+    "usable_context_tokens": 65536,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      65536
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "\nRIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 189.21279907226562,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 3758.2435607910156,
+      "e2e_p95_ms": 3758.2435607910156,
+      "output_tokens": 58,
+      "ttft_p50_ms": 3132.535934448242,
+      "ttft_p95_ms": 3132.535934448242
+    },
+    "wall_ms": 5557.882308959961
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 507.2214603424072,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

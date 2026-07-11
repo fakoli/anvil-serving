@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.bakeoff-load-failure/v1",
+  "identity": {
+    "candidate_id": "nemotron3-omni-30b-a3b",
+    "config_id": "vllm-nvfp4-64k",
+    "model": "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4",
+    "served_model_name": "nemotron3-omni-30b-a3b-nvfp4",
+    "base_url": "http://127.0.0.1:39021/v1",
+    "attempted_at": "2026-07-11T04:34:00Z"
+  },
+  "engine": {
+    "image": "nvcr.io/nvidia/vllm:26.04-py3",
+    "vllm_version": "0.19.0+6bc3197f.nv26.04.48680843",
+    "gpu": "NVIDIA GeForce RTX 5090 (sm_120)"
+  },
+  "outcome": "load_failure",
+  "failure_class": "engine-unsupported-architecture",
+  "error_excerpt": [
+    "pydantic ValidationError for ModelConfig: Model architectures ['NemotronH_Nano_Omni_Reasoning_V3'] are not supported for now.",
+    "Secondary: ImportError: mamba-ssm is required by the Mamba model but cannot be imported (ModuleNotFoundError: No module named 'mamba_ssm')"
+  ],
+  "notes": [
+    "The image's supported-architecture list includes text NemotronHForCausalLM and the vision NemotronH_Nano_VL_V2, but NOT the Omni Reasoning V3 any-to-any architecture.",
+    "Failure is engine-support-specific, not weights-, quant-, or hardware-specific: the container exits during config validation before any GPU work.",
+    "RETRY with the NGC 26.04 release-notes workaround --hf-overrides '{\"architectures\":[\"NemotronH_Nano_VL_V2\"]}' passed config validation but failed during weight load: KeyError 'layers.0.mixer.in_proj.input_scale' — the Omni-Reasoning NVFP4 checkpoint's quantization-scale layout does not map onto the VL_V2 class. The workaround does not apply to this checkpoint.",
+    "Not attempted: vLLM >= 0.20 (lists native support: --reasoning-parser nemotron_v3), transformers custom_code serving path, BF16/FP8 Omni checkpoints under the masquerade."
+  ],
+  "verdict": "reject under tested configuration; watch for runtime fixes",
+  "production_impact": "none (5090 track; container exited pre-load)"
+}
