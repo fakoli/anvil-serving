@@ -94,6 +94,12 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **Serve-manifest upgrade and environment isolation** - manifests generated
+  before the `engine` field was introduced load through deterministic legacy
+  inference while malformed or contradictory engine declarations still fail.
+  Each loaded serve now owns its manifest directory directly, eliminating the
+  unbounded object-ID map and preventing another manifest's `.env` values from
+  leaking into long-lived lifecycle/controller processes.
 - **Container startup follows the canonical CLI.** The Docker image entrypoint
   now runs `anvil-serving router run`; the removed root `serve` tombstone could
   not start a container built from current `main`.
