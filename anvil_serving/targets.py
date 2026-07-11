@@ -74,11 +74,13 @@ class CommandSpec:
     mutation_class: str
     recovery_capable: bool
     gpu_role_required: bool
+    execution_host_os: tuple[str, ...] = ()
     execution_policy: str = "resource-owner"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "supported_transports", tuple(self.supported_transports))
         object.__setattr__(self, "execution_runtime_roles", tuple(self.execution_runtime_roles))
+        object.__setattr__(self, "execution_host_os", tuple(self.execution_host_os))
         if not self.name:
             raise CommandSpecError("command name is required")
         if self.execution_policy not in _EXECUTION_POLICIES:
@@ -86,7 +88,7 @@ class CommandSpec:
                 f"execution policy must be one of {sorted(_EXECUTION_POLICIES)}"
             )
         if self.execution_policy == "offline":
-            if self.resource_role is not None or self.supported_transports or self.execution_runtime_roles:
+            if self.resource_role is not None or self.supported_transports or self.execution_runtime_roles or self.execution_host_os:
                 raise CommandSpecError(
                     "offline commands must not declare a resource role, transport, or runtime role"
                 )
@@ -287,7 +289,8 @@ def preflight_execution_plan(
     identity = command_identity or _command_identity(
         topology, command_host=command_host, command_runtime=command_runtime, environment=environment
     )
-    resource = _resource_owner(topology, command.resource_role)
+    selected_target = _target_host(topology, target)
+    resource = _resource_owner(topology, command.resource_role, selected_target)
     resource_host = _host(topology, resource.host, "resource host")
     resource_runtime = _runtime(topology, resource.runtime, "resource runtime")
     if resource_runtime.host != resource_host.id:
@@ -298,6 +301,13 @@ def preflight_execution_plan(
         raise TargetResolutionError(
             f"command {command.name!r} does not support execution runtime role {resource_runtime.role!r}"
         )
+    if command.execution_host_os and resource_host.os not in command.execution_host_os:
+        declared = resource_host.os or "unspecified"
+        raise TargetResolutionError(
+            f"command {command.name!r} does not support host OS {declared!r}; "
+            f"requires one of {list(command.execution_host_os)!r}",
+            exit_class="safety",
+        )
     capacity = _capacity_decision(
         topology,
         resource_host,
@@ -307,11 +317,6 @@ def preflight_execution_plan(
     if not capacity.allowed:
         assert capacity.reason is not None
         raise TargetResolutionError(capacity.reason, details=capacity.as_dict())
-    selected_target = _target_host(topology, target)
-    if selected_target is not None and selected_target.id != resource_host.id:
-        raise TargetResolutionError(
-            f"target {selected_target.id!r} does not own resource role {command.resource_role!r}"
-        )
     gpu_role = _gpu_role(topology, resource, command)
     return ExecutionPreflight(
         command=command,
@@ -468,12 +473,19 @@ def _command_identity(
     return identity
 
 
-def _resource_owner(topology: Topology, role: str | None) -> Resource:
+def _resource_owner(topology: Topology, role: str | None, target: Host | None = None) -> Resource:
     assert role is not None
-    try:
-        return topology.resource_owner(role)
-    except TopologyResolutionError as exc:
-        raise TargetResolutionError(str(exc)) from None
+    matches = tuple(
+        resource
+        for resource in topology.resources
+        if resource.role == role and (target is None or resource.host == target.id)
+    )
+    if len(matches) != 1:
+        target_suffix = f" on target {target.id!r}" if target is not None else ""
+        raise TargetResolutionError(
+            f"resource role {role!r}{target_suffix} has {len(matches)} declared owners"
+        )
+    return matches[0]
 
 
 def _target_host(topology: Topology, target: str | None) -> Host | None:

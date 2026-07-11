@@ -1562,6 +1562,61 @@ def tool_host_summary(args: dict) -> dict:
     return _ok(host.host_summary())
 
 
+def tool_gpu_inventory(args: dict) -> dict:
+    from . import gpus
+
+    if args:
+        raise ToolError("bad_argument", "gpu_inventory does not accept arguments")
+    return _ok({"gpus": gpus.list_gpus()})
+
+
+def tool_host_manage(args: dict) -> dict:
+    from . import host
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"wsl-config", "restart-docker", "reset-wsl"}:
+        raise ToolError("bad_action", "action must be wsl-config, restart-docker, or reset-wsl")
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    force = _arg_bool(args.get("force"), False, name="force")
+    revert = _arg_bool(args.get("revert"), False, name="revert")
+    memory = _bounded_int_arg(args, "memory", 0, min_value=0, max_value=4096)
+    swap = _bounded_int_arg(args, "swap", 0, min_value=0, max_value=4096)
+    target = {
+        "action": action,
+        "memory": memory or None,
+        "swap": swap if "swap" in args else None,
+        "revert": revert,
+        "force": force,
+    }
+    if dry_run or not confirm:
+        return _ok({"applied": False, "dry_run": True, "target": target})
+    if action != "wsl-config" and any(key in args for key in ("memory", "swap", "revert", "force")):
+        raise ToolError("bad_argument", "memory, swap, revert, and force apply only to wsl-config")
+    if action == "wsl-config":
+        rc, stdout, stderr = _capture(lambda: host.cmd_wsl_config(
+            memory_gb=memory or None,
+            swap_gb=swap if "swap" in args else None,
+            revert=revert,
+            force=force,
+        ))
+    elif action == "restart-docker":
+        rc, stdout, stderr = _capture(lambda: host.cmd_restart_docker(force=True))
+    else:
+        rc, stdout, stderr = _capture(lambda: host.cmd_reset_wsl(force=True))
+    result = {
+        "applied": rc == 0,
+        "dry_run": False,
+        "returncode": rc,
+        "stdout": stdout,
+        "stderr": stderr,
+        "target": target,
+    }
+    if rc != 0:
+        raise ToolError("command_failed", f"host {action} exited with status {rc}", result)
+    return _ok(result)
+
+
 def tool_models_inventory(args: dict) -> dict:
     from . import models
 
@@ -2600,6 +2655,24 @@ TOOLS: Dict[str, dict] = {
         "description": "Return read-only WSL/Docker/GPU host checks; performs no repair or restart.",
         "inputSchema": _schema({}),
         "handler": tool_host_summary,
+    },
+    "gpu_inventory": {
+        "description": "Return the local NVIDIA GPU inventory with stable UUIDs.",
+        "inputSchema": _schema({}),
+        "handler": tool_gpu_inventory,
+    },
+    "host_manage": {
+        "description": "Preview or run a bounded host repair operation on the controller host.",
+        "inputSchema": _schema({
+            "action": {"type": "string"},
+            "memory": {"type": "integer", "minimum": 1, "maximum": 4096},
+            "swap": {"type": "integer", "minimum": 0, "maximum": 4096},
+            "revert": {"type": "boolean"},
+            "force": {"type": "boolean"},
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+        }, required=["action"]),
+        "handler": tool_host_manage,
     },
     "models_inventory": {
         "description": "Read the generated model catalog, or preview/run `models sync` to create it.",

@@ -6,6 +6,7 @@ runtime observations such as GPU indexes and container IDs.
 """
 from __future__ import annotations
 
+import copy
 import ipaddress
 import hashlib
 import json
@@ -98,7 +99,8 @@ _TOPOLOGY_FIELDS = frozenset(
     }
 )
 _CAPACITY_POLICY_FIELDS = frozenset({"id", "allow_model_workloads", "allow_experimental_model_workloads"})
-_HOST_FIELDS = frozenset({"id", "roles", "address", "capacity_policy"})
+_HOST_FIELDS = frozenset({"id", "roles", "address", "capacity_policy", "os"})
+_HOST_OSES = frozenset({"linux", "macos", "windows"})
 _RUNTIME_FIELDS = frozenset({"id", "host", "role"})
 _RESOURCE_FIELDS = frozenset(
     {"id", "role", "host", "runtime", "endpoint", "endpoint_kind", "path", "gpu_role", "workload"}
@@ -154,6 +156,7 @@ class Host:
     roles: tuple[str, ...]
     address: str | None = None
     capacity_policy: str | None = None
+    os: str | None = None
 
 
 @dataclass(frozen=True)
@@ -343,42 +346,69 @@ def parse_topology(data: Mapping[str, Any]) -> Topology:
     return result.topology
 
 
-def load_topology_result(path: str | os.PathLike[str]) -> TopologyValidationResult:
-    """Load TOML and validate it offline, including parse/read failures as errors."""
+def _read_topology_toml(path: str | os.PathLike[str]) -> tuple[Mapping[str, Any] | None, TopologyError | None]:
     if not isinstance(path, (str, os.PathLike)):
-        return TopologyValidationResult(
-            None,
-            (TopologyError("$", "topology path must be a string or os.PathLike value", "read"),),
-        )
+        return None, TopologyError("$", "topology path must be a string or os.PathLike value", "read")
     try:
         filesystem_path = os.fspath(path)
-    except Exception as exc:
-        return TopologyValidationResult(None, (TopologyError("$", str(exc), "read"),))
-    try:
         with open(filesystem_path, "rb") as handle:
             raw = handle.read(_MAX_TOPOLOGY_FILE_BYTES + 1)
         if len(raw) > _MAX_TOPOLOGY_FILE_BYTES:
-            return TopologyValidationResult(
-                None,
-                (
-                    TopologyError(
-                        "$",
-                        "topology file exceeds the maximum byte size",
-                        "resource",
-                    ),
-                ),
-            )
-        data = tomllib.loads(raw.decode("utf-8"))
+            return None, TopologyError("$", "topology file exceeds the maximum byte size", "resource")
+        return tomllib.loads(raw.decode("utf-8")), None
     except (tomllib.TOMLDecodeError, UnicodeDecodeError) as exc:
-        return TopologyValidationResult(None, (TopologyError("$", str(exc), "toml"),))
-    except (OSError, TypeError, ValueError) as exc:
-        return TopologyValidationResult(None, (TopologyError("$", str(exc), "read"),))
+        return None, TopologyError("$", str(exc), "toml")
+    except Exception as exc:
+        return None, TopologyError("$", str(exc), "read")
+
+
+def _merge_topology_overlay(base: Mapping[str, Any], overlay: Mapping[str, Any]) -> dict[str, Any]:
+    merged = copy.deepcopy(dict(base))
+    for key, value in overlay.items():
+        current = merged.get(key)
+        if isinstance(current, dict) and isinstance(value, Mapping):
+            merged[key] = _merge_topology_overlay(current, value)
+        elif isinstance(current, list) and isinstance(value, list) and all(
+            isinstance(item, Mapping) and isinstance(item.get("id"), str)
+            for item in (*current, *value)
+        ):
+            rows = copy.deepcopy(current)
+            positions = {row["id"]: index for index, row in enumerate(rows)}
+            for overlay_row in value:
+                row_id = overlay_row["id"]
+                if row_id in positions:
+                    rows[positions[row_id]] = _merge_topology_overlay(
+                        rows[positions[row_id]], overlay_row
+                    )
+                else:
+                    positions[row_id] = len(rows)
+                    rows.append(copy.deepcopy(dict(overlay_row)))
+            merged[key] = rows
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
+def load_topology_result(
+    path: str | os.PathLike[str], overlay_path: str | os.PathLike[str] | None = None
+) -> TopologyValidationResult:
+    """Load TOML and validate it offline, including parse/read failures as errors."""
+    data, error = _read_topology_toml(path)
+    if error is not None:
+        return TopologyValidationResult(None, (error,))
+    assert data is not None
+    if overlay_path is not None:
+        overlay, overlay_error = _read_topology_toml(overlay_path)
+        if overlay_error is not None:
+            return TopologyValidationResult(None, (overlay_error,))
+        assert overlay is not None
+        data = _merge_topology_overlay(data, overlay)
     return validate_topology(data)
 
 
-def load_topology(path: str) -> Topology:
+def load_topology(path: str, overlay_path: str | None = None) -> Topology:
     """Strict TOML loader for commands that require a valid topology."""
-    result = load_topology_result(path)
+    result = load_topology_result(path, overlay_path)
     if result.errors:
         raise TopologyValidationError(result.errors)
     assert result.topology is not None
@@ -451,8 +481,11 @@ def _parse_hosts(raw: object, errors: list[TopologyError]) -> list[tuple[int, Ho
         roles = _required_roles(record, "roles", path, errors)
         address = _optional_host(record, "address", path, errors)
         policy = _optional_id(record, "capacity_policy", path, errors)
+        host_os = _optional_string(record, "os", path, errors)
+        if host_os is not None and host_os not in _HOST_OSES:
+            _error(errors, f"{path}.os", f"must be one of {sorted(_HOST_OSES)}", "value")
         if host_id is not None and roles is not None:
-            parsed.append((index, Host(host_id, roles, address, policy)))
+            parsed.append((index, Host(host_id, roles, address, policy, host_os)))
     return parsed
 
 
@@ -749,12 +782,19 @@ def _validate_references(
                 "reference",
             )
     for role, owners in resource_owners.items():
-        if len(owners) > 1:
+        hosts_with_multiple = {
+            resource.host
+            for _, resource in owners
+            if sum(1 for _, candidate in owners if candidate.host == resource.host) > 1
+        }
+        if hosts_with_multiple:
             for index, resource in owners:
+                if resource.host not in hosts_with_multiple:
+                    continue
                 _error(
                     errors,
                     f"resources[{index}].role",
-                    f"role {role!r} has multiple owners; use distinct declared resource roles",
+                    f"role {role!r} has multiple owners on host {resource.host!r}",
                     "ambiguous_owner",
                 )
 

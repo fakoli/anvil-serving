@@ -4,6 +4,7 @@ subprocess/`input`/`sys.platform`/`_wslconfig_path` are all injected or monkeypa
 on any OS with no docker, no WSL, no prompts.
 """
 import os
+import json
 import types
 
 import pytest
@@ -275,6 +276,28 @@ def test_reset_wsl_rejected_off_windows(monkeypatch, capsys):
     assert "Windows only" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    ("action", "platform"),
+    [("restart-docker", "win32"), ("restart-docker", "darwin"), ("reset-wsl", "win32")],
+)
+def test_disruptive_host_dry_run_never_launches(monkeypatch, capsys, action, platform):
+    monkeypatch.setattr(host.sys, "platform", platform)
+    def runner(*_args, **_kwargs):
+        pytest.fail("host dry-run launched a process")
+    if action == "restart-docker":
+        rc = host.cmd_restart_docker(dry_run=True, _run=runner)
+    else:
+        rc = host.cmd_reset_wsl(dry_run=True, _run=runner)
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out)["dry_run"] is True
+
+
+def test_host_status_prints_structured_summary(monkeypatch, capsys):
+    monkeypatch.setattr(host, "host_summary", lambda **_kwargs: {"mutates": False, "checks": []})
+    assert host.cmd_status() == 0
+    assert json.loads(capsys.readouterr().out) == {"checks": [], "mutates": False}
+
+
 # ---- cmd_doctor --------------------------------------------------------------
 
 def test_doctor_reports_and_recommends(monkeypatch, capsys):
@@ -302,3 +325,16 @@ def test_main_dispatches(monkeypatch):
     monkeypatch.setattr(host, "cmd_wsl_config", lambda **k: seen.update(k) or 0)
     rc = host.main(["wsl-config", "--memory", "80", "--force"])
     assert rc == 0 and seen["memory_gb"] == 80 and seen["force"] is True
+
+
+def test_main_dispatches_status_and_disruptive_dry_run(monkeypatch):
+    seen = []
+    monkeypatch.setattr(host, "cmd_status", lambda: seen.append("status") or 0)
+    monkeypatch.setattr(
+        host,
+        "cmd_restart_docker",
+        lambda **kwargs: seen.append(("restart", kwargs)) or 0,
+    )
+    assert host.main(["status"]) == 0
+    assert host.main(["restart-docker", "--dry-run"]) == 0
+    assert seen == ["status", ("restart", {"force": False, "dry_run": True})]

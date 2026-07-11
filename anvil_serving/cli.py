@@ -77,6 +77,7 @@ _HANDLER_PROGS = {
     "anvil_serving.router.serve": "anvil-serving router run",
     "anvil_serving.router_manage": "anvil-serving router",
     "anvil_serving.serves": "anvil-serving serves",
+    "anvil_serving.topology_cli": "anvil-serving topology",
     "anvil_serving.voice.cli": "anvil-serving voice",
     "anvil_serving.voice_sidecar": "anvil-serving voice-sidecar",
 }
@@ -171,6 +172,8 @@ def _print_help() -> None:
     print("  anvil-serving --version")
     print()
     print("Global options:")
+    print("  %-20s %s" % ("--command-manifest", "Print the machine-readable command manifest and exit."))
+    print("  %-20s %s" % ("-V, --version", "Print the installed version and exit."))
     for option in COMMAND_TREE.global_options:
         print("  %-20s %s" % (", ".join(option.flags), option.summary))
     print()
@@ -415,6 +418,7 @@ def _command_spec(path: Sequence[CommandNode]) -> CommandSpec:
         resource_role=node.resource_role,
         supported_transports=node.transports,
         execution_runtime_roles=node.execution_runtime_roles,
+        execution_host_os=node.execution_host_os,
         mutation_class=node.mutation_class,
         recovery_capable=node.recovery_capable,
         gpu_role_required=node.gpu_role_required,
@@ -441,7 +445,7 @@ def _resolve_dispatch_plan(
         raise _ResolutionOptionError(
             f"{_command_name(path)} is not recovery-capable; drop --allow-ssh-fallback"
         )
-    topology = load_topology(options.topology)
+    topology = load_topology(options.topology, options.topology_overlay)
     return resolve_execution_plan(
         topology,
         command,
@@ -645,7 +649,7 @@ def _dispatch_remote_tool(
         data = {
             "operation": plan.command.name,
             "transport": "ssh",
-            "data": {"dry_run": True, "adapter": "harness restart openclaw"},
+            "data": {"dry_run": True, "adapter": plan.command.name},
             "response_bytes": 0,
         }
         if execution_meta is not None:
@@ -728,6 +732,12 @@ def _ssh_recovery_transport(plan: ExecutionPlan) -> SSHRecoveryTransport:
     adapter = {
         "harness-restart-openclaw": (
             "anvil-serving", "harness", "restart", "openclaw", "--confirm",
+        ),
+        "host-restart-docker": (
+            "anvil-serving", "host", "restart-docker", "--confirm",
+        ),
+        "host-reset-wsl": (
+            "anvil-serving", "host", "reset-wsl", "--confirm",
         ),
     }.get(plan.command.name)
     if adapter is None:
@@ -865,6 +875,46 @@ def _dispatch(
         policy = command_policy(path, rest)
         enforce_command_policy(policy, json_mode=output_options.json_mode)
         rest, confirmed = _confirm(path, rest, json_mode=output_options.json_mode)
+        if path[0].name == "topology":
+            from . import topology_cli
+
+            data = topology_cli.run([*_handler_argv(path), *rest])
+            if node.name == "resolve":
+                context: Mapping[str, object] = data
+            else:
+                context = {
+                    "command": f"topology-{node.name}",
+                    "topology": data.get("topology"),
+                    "overlay": data.get("overlay"),
+                }
+            if data.get("valid") is False:
+                error = UsageError(
+                    "topology validation failed",
+                    code="invalid_topology",
+                    details={"errors": data.get("errors", [])},
+                )
+                if execution_meta is not None:
+                    execution_meta["plan"] = context
+                    execution_meta["error"] = error
+                if not output_options.json_mode:
+                    rendered = render_human(
+                        error_envelope(_command_name(path), context, error),
+                        options=output_options,
+                    )
+                    if rendered.stderr:
+                        print(rendered.stderr, end="", file=sys.stderr)
+                return error.exit_code
+            if execution_meta is not None:
+                execution_meta["plan"] = context
+                execution_meta["data"] = data
+            if not output_options.json_mode:
+                rendered = render_human(
+                    success_envelope(_command_name(path), context, data),
+                    options=output_options,
+                )
+                if rendered.stdout:
+                    print(rendered.stdout, end="")
+            return 0
         resolution_options, rest = _extract_resolution_options(rest)
         plan = _resolve_dispatch_plan(path, resolution_options)
         if plan is not None and execution_meta is not None:
@@ -959,7 +1009,18 @@ def _main(
         _print_help()
         return 0
     if argv[0] in ("-V", "--version"):
+        if len(argv) != 1:
+            print("anvil-serving: --version does not accept command arguments", file=sys.stderr)
+            return 2
         print("anvil-serving %s" % _installed_version())
+        return 0
+    if argv[0] == "--command-manifest":
+        if len(argv) != 1:
+            print("anvil-serving: --command-manifest does not accept command arguments", file=sys.stderr)
+            return 2
+        from .command_tree import render_manifest
+
+        sys.stdout.write(render_manifest().decode("utf-8"))
         return 0
     path, rest, unknown, siblings = _resolve(argv)
     if unknown is not None:

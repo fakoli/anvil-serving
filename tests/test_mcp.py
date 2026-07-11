@@ -160,6 +160,8 @@ def test_tools_list_has_json_schemas():
         "voice_manage",
         "doctor_summary",
         "host_summary",
+        "host_manage",
+        "gpu_inventory",
         "models_inventory",
         "cache_prune_plan",
         "route_decision",
@@ -212,6 +214,7 @@ def test_tools_list_has_json_schemas():
     assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
     assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
     assert tools["host_summary"]["inputSchema"]["properties"] == {}
+    assert tools["host_manage"]["inputSchema"]["required"] == ["action"]
     assert "execute" not in tools["cache_prune_plan"]["inputSchema"]["properties"]
 
 
@@ -886,6 +889,47 @@ def test_host_summary_tool_is_structured_and_read_only(monkeypatch):
 
 def test_host_summary_rejects_arguments():
     env = mcp.call_tool("host_summary", {"confirm": True})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_host_manage_previews_without_calling_host(monkeypatch):
+    from anvil_serving import host
+
+    monkeypatch.setattr(
+        host,
+        "cmd_wsl_config",
+        lambda **_kwargs: pytest.fail("host preview applied a repair"),
+    )
+    env = mcp.call_tool("host_manage", {
+        "action": "wsl-config", "memory": 80, "confirm": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    assert env["data"]["target"]["memory"] == 80
+
+
+def test_host_manage_confirmed_restart_uses_noninteractive_gate(monkeypatch):
+    from anvil_serving import host
+
+    seen = {}
+    monkeypatch.setattr(
+        host,
+        "cmd_restart_docker",
+        lambda **kwargs: seen.update(kwargs) or 0,
+    )
+    env = mcp.call_tool("host_manage", {
+        "action": "restart-docker", "confirm": True, "dry_run": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is True
+    assert seen == {"force": True}
+
+
+def test_host_manage_rejects_wsl_arguments_for_restart():
+    env = mcp.call_tool("host_manage", {
+        "action": "restart-docker", "memory": 80, "confirm": True, "dry_run": False,
+    })
     assert env["ok"] is False
     assert env["error"]["code"] == "bad_argument"
 

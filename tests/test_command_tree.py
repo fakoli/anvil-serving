@@ -45,6 +45,12 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["eval benchmark external export"]["mutation_class"] == "mutate"
     assert records["harness sync openclaw"]["remote_operation"]["tool"] == "openclaw_sync"
     assert records["harness restart openclaw"]["recovery_capable"] is True
+    assert records["host wsl-config"]["execution_host_os"] == ["windows"]
+    assert records["host restart-docker"]["execution_host_os"] == ["windows", "macos"]
+    assert records["host reset-wsl"]["execution_host_os"] == ["windows"]
+    assert records["host status"]["remote_operation"]["tool"] == "host_summary"
+    assert records["doctor"]["remote_operation"]["tool"] == "doctor_summary"
+    assert {"topology show", "topology validate", "topology resolve"} <= records.keys()
     assert records["harness status openclaw"]["remote_operation"] == {
         "mode": "tool",
         "tool": "openclaw_gateway_status",

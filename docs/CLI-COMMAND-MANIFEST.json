@@ -2,6 +2,7 @@
   "commands": [
     {
       "docs_anchor": "docs/CLI.md#init",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -142,6 +143,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#router",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -282,6 +284,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -467,6 +470,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -647,6 +651,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -826,6 +831,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1005,6 +1011,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1184,6 +1191,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1369,6 +1377,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1524,6 +1533,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1692,6 +1702,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1857,6 +1868,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#serves",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -1997,6 +2009,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2152,6 +2165,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2359,6 +2373,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2546,6 +2561,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2743,6 +2759,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2940,6 +2957,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3105,6 +3123,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3300,6 +3319,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3445,6 +3465,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#models",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -3585,6 +3606,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3740,6 +3762,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3905,6 +3928,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -4050,6 +4074,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#models-recipes",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -4190,6 +4215,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -4335,6 +4361,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -4480,6 +4507,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#models-cache-prune",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -4620,6 +4648,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -4795,6 +4824,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -4938,6 +4968,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -5081,6 +5112,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -5224,6 +5256,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#eval",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -5364,6 +5397,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -5509,6 +5543,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -5682,6 +5717,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -5827,6 +5863,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -5972,6 +6009,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6117,6 +6155,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#eval-benchmark",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -6257,6 +6296,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6432,6 +6472,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#eval-benchmark-external",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -6572,6 +6613,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6717,6 +6759,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6870,6 +6913,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7015,6 +7059,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7160,6 +7205,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7313,6 +7359,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7466,6 +7513,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7611,6 +7659,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7764,6 +7813,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#eval-benchmark-external",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -7904,6 +7954,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8049,6 +8100,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8194,6 +8246,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8339,6 +8392,7 @@
     },
     {
       "docs_anchor": "docs/VOICE.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -8479,6 +8533,7 @@
     },
     {
       "docs_anchor": "docs/VOICE.md#audio-lifecycle",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -8619,6 +8674,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8794,6 +8850,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8969,6 +9026,7 @@
     },
     {
       "docs_anchor": "docs/VOICE.md#realtime-proxy",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -9109,6 +9167,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9254,6 +9313,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9419,6 +9479,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9564,6 +9625,7 @@
     },
     {
       "docs_anchor": "docs/VOICE.md#profiles",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -9704,6 +9766,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9849,6 +9912,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9994,6 +10058,7 @@
     },
     {
       "docs_anchor": "docs/VOICE.md#speech-to-speech-sidecar",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10134,6 +10199,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -10279,6 +10345,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -10424,6 +10491,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -10579,6 +10647,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10722,6 +10791,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10865,6 +10935,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11008,6 +11079,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11151,6 +11223,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11294,6 +11367,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11437,6 +11511,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#harness",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11577,6 +11652,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#harness",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11717,6 +11793,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -11910,6 +11987,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#harness",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -12050,6 +12128,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -12229,6 +12308,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#harness",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -12369,6 +12449,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -12525,6 +12606,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#mcp",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -12681,6 +12763,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -12847,6 +12930,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -13013,6 +13097,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13169,6 +13254,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#controller",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13309,6 +13395,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -13467,6 +13554,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -13620,6 +13708,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#host",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13760,10 +13849,163 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.host:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host status",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_summary"
+      },
+      "resource_role": "host",
+      "summary": "Show structured host status.",
+      "tombstone": null,
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.gpus:main",
@@ -13894,21 +14136,29 @@
       "output_policy": "bounded",
       "path": "host gpus",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "gpu_inventory"
+      },
       "resource_role": "host",
       "summary": "Show GPU inventory.",
       "tombstone": null,
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.host:main",
@@ -14045,7 +14295,7 @@
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
-        "tool": "doctor_summary"
+        "tool": "host_summary"
       },
       "resource_role": "host",
       "summary": "Diagnose host configuration.",
@@ -14058,10 +14308,12 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [
+        "windows"
+      ],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.host:main",
@@ -14212,21 +14464,42 @@
       "output_policy": "bounded",
       "path": "host wsl-config",
       "recovery_capable": false,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "memory",
+          "swap",
+          "revert",
+          "force",
+          "dry_run"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "wsl-config"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_manage"
+      },
       "resource_role": "host",
       "summary": "Render or update WSL configuration.",
       "tombstone": null,
       "transports": [
-        "local"
+        "local",
+        "controller"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [
+        "windows",
+        "macos"
+      ],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.host:main",
@@ -14377,22 +14650,38 @@
       "output_policy": "bounded",
       "path": "host restart-docker",
       "recovery_capable": true,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "dry_run"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "restart-docker"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_manage"
+      },
       "resource_role": "host",
       "summary": "Restart Docker Desktop.",
       "tombstone": null,
       "transports": [
         "local",
+        "controller",
         "ssh"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [
+        "windows"
+      ],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.host:main",
@@ -14543,20 +14832,37 @@
       "output_policy": "bounded",
       "path": "host reset-wsl",
       "recovery_capable": true,
-      "remote_operation": null,
+      "remote_operation": {
+        "allowed_arguments": [
+          "dry_run"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "reset-wsl"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_manage"
+      },
       "resource_role": "host",
       "summary": "Reset WSL.",
       "tombstone": null,
       "transports": [
         "local",
+        "controller",
         "ssh"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md#doctor",
-      "execution_policy": "offline",
-      "execution_runtime_roles": [],
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native"
+      ],
       "gpu_role_required": false,
       "handler": "anvil_serving.doctor:main",
       "mutation_class": "read",
@@ -14686,15 +14992,590 @@
       "output_policy": "bounded",
       "path": "doctor",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "doctor_summary"
+      },
+      "resource_role": "host",
+      "summary": "Check dependencies and configured health.",
+      "tombstone": null,
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#topology",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology",
+      "recovery_capable": false,
       "remote_operation": null,
       "resource_role": null,
-      "summary": "Check local dependencies and configured health.",
+      "summary": "Inspect and resolve deployment topology.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#topology",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.topology_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology show",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Show a validated topology summary.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#topology",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.topology_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology validate",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Validate a topology offline.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#topology",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.topology_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology resolve",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Resolve one canonical command against a topology.",
       "tombstone": null,
       "transports": [],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -14838,6 +15719,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -14981,6 +15863,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -15124,6 +16007,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -15267,6 +16151,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -15410,6 +16295,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -15553,6 +16439,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -15696,6 +16583,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -15839,6 +16727,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -15982,6 +16871,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -16125,6 +17015,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -16268,6 +17159,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -16411,6 +17303,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,

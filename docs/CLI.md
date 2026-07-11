@@ -13,6 +13,7 @@ never `localhost`.
 ```
 anvil-serving --help
 anvil-serving --version
+anvil-serving --command-manifest
 anvil-serving <command> --help
 ```
 
@@ -20,6 +21,7 @@ anvil-serving <command> --help
 installed package version as `anvil-serving X.Y.Z`. Root help also names the canonical nested
 workflows that are easiest to miss: `serves render`, `models cache prune`, `models score`,
 `benchmark external`, and `voice sidecar`.
+`--command-manifest` prints the deterministic JSON command contract and rejects command arguments.
 
 Topology-aware resource commands accept `--topology PATH`, `--command-host`, `--command-runtime`,
 `--target`, `--transport`, and `--allow-ssh-fallback`. A model-free host rejects model workloads before handler launch.
@@ -63,6 +65,7 @@ confirmation or acknowledgement flags in focused `--help`.
 | `mcp` | Stdio MCP server (and remote-controller proxy) for operational tools. | Control plane & integrations |
 | `controller` | Token-authenticated HTTP controller for split-host MCP forwarding. | Control plane & integrations |
 | `harness` | Render/apply harness-side config (OpenClaw) from the live router config. | Control plane & integrations |
+| `topology` | Validate and resolve host/resource ownership without execution. | Control plane & integrations |
 | `voice` | Voice pipeline: STT/TTS serve lifecycle, realtime server, benchmark, bridge. | Voice |
 | `voice sidecar` | Validate/render the HF speech-to-speech sidecar command and compose. | Voice |
 
@@ -353,20 +356,46 @@ anvil-serving doctor --config configs/example.toml
 ### `host`
 
 ```
-anvil-serving host {doctor|wsl-config|restart-docker|reset-wsl} [flags]
+anvil-serving host {status|gpus|doctor|wsl-config|restart-docker|reset-wsl} [flags]
 ```
 
 Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
 
 | Action | What it does |
 |--------|--------------|
+| `status` | Return structured host RAM, Docker/WSL memory, and GPU status. |
+| `gpus` | List observed NVIDIA indexes, names, and stable UUIDs. |
 | `doctor` | Inspect the host + recommend a safe WSL memory cap. |
-| `wsl-config` | Edit `.wslconfig` memory/swap (`--memory GB`, `--swap GB`); backup + safe-cap refusal (`--force` to override), `--revert` restores the newest anvil backup, `--dry-run` shows the change. |
-| `restart-docker` | Apply via a Docker Desktop restart (confirm prompt; `--force` skips). |
-| `reset-wsl` | Un-wedge a hung WSL subsystem (confirm prompt; `--force` skips). |
+| `wsl-config` | Windows-native only. Edit `.wslconfig` memory/swap (`--memory GB`, `--swap GB`); backup + safe-cap refusal (`--force` overrides only that cap), `--revert` restores the newest anvil backup, and `--dry-run` shows the change. |
+| `restart-docker` | Windows/macOS native only. Apply via a Docker Desktop restart; requires `--confirm`, while `--dry-run` performs no restart. |
+| `reset-wsl` | Windows-native only. Un-wedge a hung WSL subsystem; requires `--confirm`, while `--dry-run` performs no reset. |
 
 ```bash
 anvil-serving host wsl-config --memory 64 --dry-run
+```
+
+With `--topology`, host actions resolve a declared `host` resource. Use `--target host:ID` when a
+topology contains more than one host resource. OS/runtime compatibility is checked before local or
+controller dispatch, so a Windows-only action cannot execute on Fakoli Mini/macOS.
+
+### `topology`
+
+```
+anvil-serving topology show --topology PATH [--topology-overlay PATH]
+anvil-serving topology validate --topology PATH [--topology-overlay PATH]
+anvil-serving topology resolve --topology PATH --command "host status" [target options]
+```
+
+`show` and `validate` are offline and do not require command identity. A partial deployment overlay
+merges tables by stable `id` before validation. `resolve` performs the same owner, target, host OS,
+runtime, capacity, and transport selection used by operational commands, but executes nothing. Its
+human and JSON output includes command, execution, and resource hosts/runtimes, transport and
+controller/resource endpoints, topology/overlay identity, and GPU role/UUID when applicable.
+
+```bash
+anvil-serving topology resolve \
+  --topology examples/fakoli-dark/operator-topology.toml \
+  --command "host status" --target host:fakoli-mini
 ```
 
 ---

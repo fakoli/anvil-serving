@@ -21,7 +21,8 @@ Validate the complete reference without probing hosts or reading credentials:
 python -c "from anvil_serving.topology import load_topology_result; r = load_topology_result('examples/fakoli-dark/operator-topology.toml'); print(r.ok); raise SystemExit(not r.ok)"
 ```
 
-`operator-topology.overlay.example.toml` is intentionally partial. Copy its
-operator-selected values into a private copy of the complete topology before
-validation. Do not use it as a standalone topology document and do not add
-tokens, passwords, real GPU UUIDs, or runtime observations to either file.
+`operator-topology.overlay.example.toml` is intentionally partial. Pass a private
+deployment copy with `--topology-overlay`; tables merge by stable `id` before
+offline validation. Do not use it as a standalone topology document and do not add
+tokens, passwords, or runtime observations to either file. Real GPU UUID bindings
+belong only in the gitignored private overlay.

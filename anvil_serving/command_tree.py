@@ -20,6 +20,7 @@ _TRANSPORTS = frozenset({"local", "controller", "ssh"})
 _EXECUTION_POLICIES = frozenset({"offline", "resource-owner"})
 _OUTPUT_POLICIES = frozenset({"bounded", "foreground", "protocol", "follow"})
 _REMOTE_MODES = frozenset({"tool", "controller-status", "mcp-bridge"})
+_HOST_OSES = frozenset({"linux", "macos", "windows"})
 
 
 class CommandTreeError(ValueError):
@@ -107,6 +108,7 @@ class CommandNode:
     resource_role: str | None = None
     transports: tuple[str, ...] = field(default_factory=tuple)
     execution_runtime_roles: tuple[str, ...] = field(default_factory=tuple)
+    execution_host_os: tuple[str, ...] = field(default_factory=tuple)
     mutation_class: str = "read"
     recovery_capable: bool = False
     gpu_role_required: bool = False
@@ -123,6 +125,7 @@ class CommandNode:
         object.__setattr__(self, "options", tuple(self.options))
         object.__setattr__(self, "transports", tuple(self.transports))
         object.__setattr__(self, "execution_runtime_roles", tuple(self.execution_runtime_roles))
+        object.__setattr__(self, "execution_host_os", tuple(self.execution_host_os))
 
 
 @dataclass(frozen=True)
@@ -212,6 +215,7 @@ def _node(
     resource_role: str | None = None,
     transports: tuple[str, ...] = (),
     execution_runtime_roles: tuple[str, ...] = (),
+    execution_host_os: tuple[str, ...] = (),
     mutation_class: str = "read",
     recovery_capable: bool = False,
     gpu_role_required: bool = False,
@@ -232,6 +236,7 @@ def _node(
         resource_role=resource_role,
         transports=transports,
         execution_runtime_roles=execution_runtime_roles,
+        execution_host_os=execution_host_os,
         mutation_class=mutation_class,
         recovery_capable=recovery_capable,
         gpu_role_required=gpu_role_required,
@@ -260,6 +265,9 @@ def _resource_node(
     output_policy: str = "bounded",
     docs_anchor: str = "docs/CLI.md",
     remote_operation: RemoteOperation | None = None,
+    execution_runtime_roles: tuple[str, ...] = ("native", "docker"),
+    execution_host_os: tuple[str, ...] = (),
+    group: str | None = None,
 ) -> CommandNode:
     return _node(
         name,
@@ -279,7 +287,8 @@ def _resource_node(
             if remote_operation is not None
             else ("local",)
         ),
-        execution_runtime_roles=("native", "docker"),
+        execution_runtime_roles=execution_runtime_roles,
+        execution_host_os=execution_host_os,
         mutation_class=mutation,
         recovery_capable=recovery,
         gpu_role_required=gpu,
@@ -288,6 +297,7 @@ def _resource_node(
         options=options,
         docs_anchor=docs_anchor,
         remote_operation=remote_operation,
+        group=group,
     )
 
 
@@ -542,13 +552,36 @@ def build_command_tree() -> CommandTree:
         _resource_node("serve", "Run the private controller.", "anvil_serving.controller", role="controller", mutation="process", options=(_removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),), output_policy="foreground"),
         _resource_node("status", "Probe controller health.", "anvil_serving.controller", role="controller", remote_operation=_remote(mode="controller-status")),
     ), docs_anchor="docs/CLI.md#controller")
-    host = _node("host", "Inspect and repair declared host operations.", children=(
-        _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=()),
-        *(
-            _resource_node(action, summary, "anvil_serving.host", role="host", mutation=mutation, recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options if mutation == "mutate" else (), remote_operation=_remote("doctor_summary") if action == "doctor" else None)
-            for action, summary, mutation in (("doctor", "Diagnose host configuration.", "read"), ("wsl-config", "Render or update WSL configuration.", "mutate"), ("restart-docker", "Restart Docker Desktop.", "mutate"), ("reset-wsl", "Reset WSL.", "mutate"))
-        ),
-    ), docs_anchor="docs/CLI.md#host")
+    host_read_actions = (
+        _resource_node("status", "Show structured host status.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
+        _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("gpu_inventory")),
+        _resource_node("doctor", "Diagnose host configuration.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
+    )
+    host_repairs = tuple(
+        _resource_node(
+            action, summary, "anvil_serving.host", role="host", mutation="mutate",
+            recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options,
+            execution_runtime_roles=("native",), execution_host_os=host_os,
+            remote_operation=_remote(
+                "host_manage", fixed=(("action", action),), confirmed=(("confirm", True),),
+                allowed=allowed,
+            ),
+        )
+        for action, summary, host_os, allowed in (
+            ("wsl-config", "Render or update WSL configuration.", ("windows",), ("memory", "swap", "revert", "force", "dry_run")),
+            ("restart-docker", "Restart Docker Desktop.", ("windows", "macos"), ("dry_run",)),
+            ("reset-wsl", "Reset WSL.", ("windows",), ("dry_run",)),
+        )
+    )
+    host = _node("host", "Inspect and repair declared host operations.", children=(*host_read_actions, *host_repairs), docs_anchor="docs/CLI.md#host")
+    topology = _node("topology", "Inspect and resolve deployment topology.", children=tuple(
+        _node(action, summary, handler=_handler("anvil_serving.topology_cli", argv_prefix=(action,)), docs_anchor="docs/CLI.md#topology")
+        for action, summary in (
+            ("show", "Show a validated topology summary."),
+            ("validate", "Validate a topology offline."),
+            ("resolve", "Resolve one canonical command against a topology."),
+        )
+    ), docs_anchor="docs/CLI.md#topology")
 
     tree = CommandTree(
         nodes=(
@@ -562,7 +595,8 @@ def build_command_tree() -> CommandTree:
             _node("mcp", mcp.summary, children=mcp.children, options=mcp.options, handler=mcp.handler, docs_anchor=mcp.docs_anchor, tombstone=mcp.tombstone, visible=mcp.visible, group="Control plane & integrations"),
             _node("controller", controller.summary, children=controller.children, docs_anchor=controller.docs_anchor, group="Control plane & integrations"),
             _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
-            _node("doctor", "Check local dependencies and configured health.", handler=_handler("anvil_serving.doctor"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
+            _resource_node("doctor", "Check dependencies and configured health.", "anvil_serving.doctor", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("doctor_summary"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
+            _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Control plane & integrations"),
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
                 ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),
@@ -663,11 +697,13 @@ def _validate_policy(node: CommandNode, label: str) -> None:
     if len(transports) != len(node.transports) or not transports <= _TRANSPORTS:
         raise CommandTreeError(f"command {label!r} has invalid transports")
     if node.execution_policy == "offline":
-        if node.resource_role or node.transports or node.execution_runtime_roles or node.recovery_capable or node.gpu_role_required or node.remote_operation:
+        if node.resource_role or node.transports or node.execution_runtime_roles or node.execution_host_os or node.recovery_capable or node.gpu_role_required or node.remote_operation:
             raise CommandTreeError(f"offline command {label!r} must not declare execution metadata")
         return
     if not node.resource_role or not node.transports or not node.execution_runtime_roles:
         raise CommandTreeError(f"resource-owner command {label!r} requires resource, transport, and runtime metadata")
+    if len(set(node.execution_host_os)) != len(node.execution_host_os) or not set(node.execution_host_os) <= _HOST_OSES:
+        raise CommandTreeError(f"command {label!r} has invalid execution host OS metadata")
     if node.recovery_capable and "ssh" not in transports:
         raise CommandTreeError(f"recovery-capable command {label!r} requires ssh transport")
     if ("controller" in transports) != (node.remote_operation is not None):
@@ -721,6 +757,7 @@ def _manifest_records(nodes: tuple[CommandNode, ...], parent: tuple[str, ...], i
             "resource_role": node.resource_role,
             "transports": list(node.transports),
             "execution_runtime_roles": list(node.execution_runtime_roles),
+            "execution_host_os": list(node.execution_host_os),
             "recovery_capable": node.recovery_capable,
             "gpu_role_required": node.gpu_role_required,
             "handler": node.handler.name if node.handler else None,

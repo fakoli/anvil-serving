@@ -68,6 +68,7 @@ def test_top_level_help_groups_commands_and_shows_examples(capsys):
         "Control plane & integrations:",
         "Voice:",
         "Global options:",
+        "--command-manifest",
         "anvil-serving --version",
         "router run",
         "eval preflight",
@@ -99,6 +100,16 @@ def test_top_level_version_reports_installed_version(flag, capsys):
     rc = cli.main([flag])
     assert rc == 0
     assert capsys.readouterr().out == "anvil-serving %s\n" % cli.__version__
+
+
+def test_command_manifest_is_terminal_and_machine_readable(capsys):
+    assert cli.main(["--command-manifest"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["schema_version"] == 2
+    assert any(record["path"] == "topology resolve" for record in payload["commands"])
+
+    assert cli.main(["--command-manifest", "router", "status"]) == 2
+    assert "does not accept command arguments" in capsys.readouterr().err
 
 
 def test_top_level_version_reads_installed_metadata(monkeypatch, capsys):
@@ -477,11 +488,13 @@ command_runtime = "runtime:operator-native"
 id = "operator"
 roles = ["operator"]
 address = "127.0.0.1"
+os = "linux"
 
 [[hosts]]
 id = "dark"
 roles = ["router"]
 address = "100.87.34.66"
+os = "windows"
 
 [[runtimes]]
 id = "operator-native"
@@ -887,6 +900,58 @@ def test_cli_rejects_ssh_fallback_for_non_recovery_operation(tmp_path, capsys, l
     argv = ["--allow-ssh-fallback", *argv] if leading else [*argv, "--allow-ssh-fallback"]
     assert cli.main(argv) == 2
     assert "not recovery-capable" in capsys.readouterr().err
+
+
+def test_topology_resolve_json_is_structured_and_contextual(capsys):
+    topology = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
+    assert cli.main([
+        "--json", "topology", "resolve", "--topology", str(topology),
+        "--command", "host status", "--target", "host:fakoli-mini",
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert payload["context"]["execution_host"] == "fakoli-mini"
+    assert payload["context"]["resource"] == "mini-host"
+    assert payload["data"]["resolved_command"] == "host-status"
+    assert not isinstance(payload["data"], str)
+
+
+def test_cli_remote_host_repair_is_typed_and_os_checked(tmp_path, monkeypatch, capsys):
+    topology = _write_remote_router_topology(tmp_path, "host-wsl-config")
+    text = topology.read_text(encoding="utf-8")
+    text = text.replace('roles = ["router"]', 'roles = ["host"]')
+    text = text.replace('role = "router"', 'role = "host"')
+    topology.write_text(text, encoding="utf-8")
+    seen = {}
+
+    def fake_execute(plan, operation, **kwargs):
+        seen["plan"] = plan
+        seen["operation"] = operation
+        seen["key"] = kwargs["idempotency_key"]
+        return cli.TransportResult(operation.name, "controller", {"ok": True})
+
+    monkeypatch.setattr(cli, "execute_plan", fake_execute)
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail("remote host repair imported the local handler"),
+    )
+    assert cli.main([
+        "host", "wsl-config", "--topology", str(topology), "--confirm", "--memory", "80"
+    ]) == 0
+    assert seen["plan"].execution_host.os == "windows"
+    assert seen["operation"].tool_name == "host_manage"
+    assert dict(seen["operation"].arguments) == {
+        "action": "wsl-config", "memory": 80, "confirm": True, "dry_run": False,
+    }
+    assert seen["key"].startswith("cli-")
+
+    text = topology.read_text(encoding="utf-8").replace('os = "windows"', 'os = "macos"')
+    topology.write_text(text, encoding="utf-8")
+    assert cli.main([
+        "host", "wsl-config", "--topology", str(topology), "--confirm", "--memory", "80"
+    ]) == 3
+    assert "does not support host OS" in capsys.readouterr().err
 
 
 def test_cli_explicit_ssh_restart_dry_run_needs_no_identity_or_process(
