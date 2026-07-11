@@ -12,18 +12,24 @@ tool functions are injectable.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import hashlib
 import hmac
 import ipaddress
 import json
 import os
 import re
 import socket
+import sqlite3
 import sys
+import threading
 import time
+import urllib.parse
 import uuid
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Callable, Mapping, Optional, Sequence
+from pathlib import Path
+from typing import Any, Callable, Iterator, Mapping, Optional, Sequence
 
 from . import mcp
 
@@ -57,11 +63,471 @@ _WILDCARD_BINDS = {"", "0", "0.0.0.0", "::"}
 _TOKEN_HEADER = "x-api-key"
 _REQUEST_ID_HEADER = "X-Request-Id"
 _REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,96}$")
+_IDEMPOTENCY_KEY_HEADER = "X-Anvil-Idempotency-Key"
+_IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_IDEMPOTENCY_CONTEXT_FIELDS = ("topology", "execution_host", "execution_runtime")
+_SECRET_TEXT_PATTERNS = (
+    re.compile(r"(?i)\b(bearer\s+)[^\s'\"\\]+"),
+    re.compile(
+        r"(?i)\b((?:access[_-]?key|api[_-]?key|authorization|client[_-]?secret|"
+        r"private[_-]?key|secret[_-]?access[_-]?key|session[_-]?token|x-api-key)"
+        r"\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+"
+    ),
+    re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
+    re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{8,}\b"),
+    re.compile(r"\bhf_[A-Za-z0-9]{8,}\b"),
+)
+_TOMBSTONE_BYTES_PER_RECORD = 16
+_TOMBSTONE_MIN_BYTES = 128
+_TOMBSTONE_HASH_COUNT = 7
+DEFAULT_IDEMPOTENCY_RETENTION_SECONDS = 24 * 60 * 60
+DEFAULT_IDEMPOTENCY_MAX_RECORDS = 1024
+DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES = 64 * 1024
+DEFAULT_IDEMPOTENCY_DB_PATH = os.path.join(
+    os.path.expanduser("~"), ".anvil-serving", "controller-operations.sqlite3"
+)
 
 IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 AuditLogger = Callable[[dict[str, Any]], None]
 ListToolsFunc = Callable[[], list[dict]]
 CallToolFunc = Callable[[str, Optional[dict]], dict]
+
+
+class OperationStore:
+    """Durable, bounded controller mutation records keyed by idempotency key."""
+
+    def __init__(
+        self,
+        path: str = DEFAULT_IDEMPOTENCY_DB_PATH,
+        *,
+        retention_seconds: float = DEFAULT_IDEMPOTENCY_RETENTION_SECONDS,
+        max_records: int = DEFAULT_IDEMPOTENCY_MAX_RECORDS,
+        max_result_bytes: int = DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
+    ) -> None:
+        if not isinstance(path, str) or not path:
+            raise ValueError("idempotency database path must be a non-empty string")
+        if retention_seconds <= 0:
+            raise ValueError("idempotency retention must be positive")
+        if max_records < 1:
+            raise ValueError("idempotency max records must be positive")
+        if max_result_bytes < 1:
+            raise ValueError("idempotency max result bytes must be positive")
+        self.path = path
+        self.retention_seconds = float(retention_seconds)
+        self.max_records = int(max_records)
+        self.max_result_bytes = int(max_result_bytes)
+        self._tombstone_bytes = max(
+            _TOMBSTONE_MIN_BYTES,
+            self.max_records * _TOMBSTONE_BYTES_PER_RECORD,
+        )
+        self._lock = threading.RLock()
+        self._active_keys: set[str] = set()
+        self._lease_owner = uuid.uuid4().hex
+
+    def claim(
+        self, key: str, fingerprint: str, request_id: str
+    ) -> tuple[str, Optional[dict[str, Any]]]:
+        """Create a running record, or return an existing matching record."""
+        now = time.time()
+        with self._lock, self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            self._expire_records(connection, now)
+            row = connection.execute(
+                "SELECT * FROM operation_records WHERE idempotency_key = ?", (key,)
+            ).fetchone()
+            if row is not None:
+                record = self._record(row)
+                connection.commit()
+                if record["fingerprint"] != fingerprint:
+                    return "conflict", record
+                return "existing", record
+            if self._is_tombstoned(connection, key):
+                disposition = (
+                    "expired" if self._is_tombstoned(connection, key, fingerprint) else "conflict"
+                )
+                connection.commit()
+                return disposition, {"key": key, "status": "expired"}
+            count = connection.execute("SELECT COUNT(*) FROM operation_records").fetchone()[0]
+            if count >= self.max_records:
+                connection.rollback()
+                return "full", None
+            connection.execute(
+                """
+                INSERT INTO operation_records (
+                    idempotency_key, fingerprint, request_id, status,
+                    created_at, updated_at, expires_at, response, result, error
+                ) VALUES (?, ?, ?, 'running', ?, ?, ?, NULL, NULL, NULL)
+                """,
+                (key, fingerprint, request_id, now, now, now + self.retention_seconds),
+            )
+            connection.commit()
+        return "claimed", None
+
+    @contextmanager
+    def executing(self, key: str) -> Iterator[None]:
+        """Protect a dispatched running record from compaction until completion."""
+        stop = threading.Event()
+        with self._lock:
+            self._active_keys.add(key)
+        try:
+            self._write_lease(key)
+        except Exception:
+            with self._lock:
+                self._active_keys.discard(key)
+            raise
+        heartbeat = threading.Thread(
+            target=self._heartbeat_lease,
+            args=(key, stop),
+            daemon=True,
+        )
+        heartbeat.start()
+        try:
+            yield
+        finally:
+            stop.set()
+            heartbeat.join(timeout=max(1.0, min(5.0, self.retention_seconds / 3.0) + 1.0))
+            self._delete_lease(key)
+            with self._lock:
+                self._active_keys.discard(key)
+
+    def complete(
+        self, key: str, status: str, response: Mapping[str, Any], auth_token: Optional[str]
+    ) -> None:
+        if status not in {"succeeded", "failed"}:
+            raise ValueError("operation records can only complete as succeeded or failed")
+        safe_response = _bounded_persisted_value(response, auth_token, self.max_result_bytes)
+        if _is_persistence_failure(safe_response):
+            status = "failed"
+        result = safe_response if status == "succeeded" else None
+        error = (
+            safe_response.get("error")
+            if status == "failed" and isinstance(safe_response, dict)
+            else None
+        )
+        now = time.time()
+        with self._lock, self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                """
+                UPDATE operation_records
+                SET status = ?, updated_at = ?, expires_at = ?, response = ?, result = ?, error = ?
+                WHERE idempotency_key = ? AND status = 'running'
+                """,
+                (
+                    status,
+                    now,
+                    now + self.retention_seconds,
+                    _json_dumps(safe_response),
+                    _json_dumps(result) if result is not None else None,
+                    _json_dumps(error) if error is not None else None,
+                    key,
+                ),
+            )
+            if cursor.rowcount != 1:
+                connection.rollback()
+                raise RuntimeError("active idempotency record is unavailable for completion")
+            self._expire_records(connection, now)
+            connection.commit()
+
+    def lookup(self, key: str) -> Optional[dict[str, Any]]:
+        now = time.time()
+        with self._lock, self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            self._expire_records(connection, now)
+            row = connection.execute(
+                "SELECT * FROM operation_records WHERE idempotency_key = ?", (key,)
+            ).fetchone()
+            if row is not None:
+                record = self._record(row)
+            elif self._is_tombstoned(connection, key):
+                record = {"key": key, "status": "expired"}
+            else:
+                record = None
+            connection.commit()
+        return record
+
+    @contextmanager
+    def _connection(self) -> Iterator[sqlite3.Connection]:
+        path = Path(self.path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(str(path), timeout=5.0, isolation_level=None)
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS operation_records (
+                    idempotency_key TEXT PRIMARY KEY,
+                    fingerprint TEXT NOT NULL,
+                    request_id TEXT NOT NULL,
+                    status TEXT NOT NULL CHECK(status IN ('running', 'succeeded', 'failed')),
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    expires_at REAL NOT NULL,
+                    response TEXT,
+                    result TEXT,
+                    error TEXT
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS operation_leases (
+                    idempotency_key TEXT PRIMARY KEY,
+                    owner TEXT NOT NULL,
+                    updated_at REAL NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS operation_tombstones (
+                    singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+                    key_bits BLOB NOT NULL,
+                    fingerprint_bits BLOB NOT NULL,
+                    generation_started_at REAL NOT NULL DEFAULT 0,
+                    previous_key_bits BLOB NOT NULL DEFAULT X'',
+                    previous_fingerprint_bits BLOB NOT NULL DEFAULT X''
+                )
+                """
+            )
+            columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(operation_tombstones)")
+            }
+            for name, declaration in (
+                ("generation_started_at", "REAL NOT NULL DEFAULT 0"),
+                ("previous_key_bits", "BLOB NOT NULL DEFAULT X''"),
+                ("previous_fingerprint_bits", "BLOB NOT NULL DEFAULT X''"),
+            ):
+                if name not in columns:
+                    connection.execute(
+                        f"ALTER TABLE operation_tombstones ADD COLUMN {name} {declaration}"
+                    )
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO operation_tombstones (
+                    singleton, key_bits, fingerprint_bits,
+                    generation_started_at, previous_key_bits, previous_fingerprint_bits
+                ) VALUES (1, ?, ?, 0, ?, ?)
+                """,
+                (bytes(self._tombstone_bytes),) * 4,
+            )
+            self._normalize_tombstones(connection)
+            yield connection
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _record(row: sqlite3.Row) -> dict[str, Any]:
+        record = {
+            "key": row["idempotency_key"],
+            "request_id": row["request_id"],
+            "fingerprint": row["fingerprint"],
+            "status": row["status"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+            "expires_at": row["expires_at"],
+        }
+        for name in ("response", "result", "error"):
+            value = row[name]
+            if value is not None:
+                try:
+                    record[name] = _strict_json_loads(value)
+                except (TypeError, ValueError):
+                    record[name] = {"truncated": True}
+        return record
+
+    def _expire_records(self, connection: sqlite3.Connection, now: float) -> None:
+        self._rotate_tombstones(connection, now)
+        connection.execute(
+            "DELETE FROM operation_leases WHERE updated_at <= ?",
+            (now - self.retention_seconds,),
+        )
+        rows = connection.execute(
+            """
+            SELECT idempotency_key, fingerprint
+            FROM operation_records
+            WHERE expires_at <= ?
+              AND idempotency_key NOT IN (SELECT idempotency_key FROM operation_leases)
+            """,
+            (now,),
+        ).fetchall()
+        rows = [row for row in rows if row["idempotency_key"] not in self._active_keys]
+        if not rows:
+            return
+        tombstones = connection.execute(
+            "SELECT key_bits, fingerprint_bits FROM operation_tombstones WHERE singleton = 1"
+        ).fetchone()
+        key_bits = bytearray(tombstones["key_bits"])
+        fingerprint_bits = bytearray(tombstones["fingerprint_bits"])
+        for row in rows:
+            self._bloom_add(key_bits, row["idempotency_key"])
+            self._bloom_add(
+                fingerprint_bits,
+                self._tombstone_fingerprint(row["idempotency_key"], row["fingerprint"]),
+            )
+        connection.execute(
+            """
+            UPDATE operation_tombstones
+            SET key_bits = ?, fingerprint_bits = ?
+            WHERE singleton = 1
+            """,
+            (bytes(key_bits), bytes(fingerprint_bits)),
+        )
+        connection.executemany(
+            "DELETE FROM operation_records WHERE idempotency_key = ?",
+            ((row["idempotency_key"],) for row in rows),
+        )
+
+    def _write_lease(self, key: str) -> None:
+        with self._lock, self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                """
+                INSERT INTO operation_leases (idempotency_key, owner, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(idempotency_key) DO UPDATE SET
+                    owner = excluded.owner,
+                    updated_at = excluded.updated_at
+                """,
+                (key, self._lease_owner, time.time()),
+            )
+            connection.commit()
+
+    def _heartbeat_lease(self, key: str, stop: threading.Event) -> None:
+        interval = max(0.05, min(5.0, self.retention_seconds / 3.0))
+        while not stop.wait(interval):
+            try:
+                self._write_lease(key)
+            except Exception:
+                continue
+
+    def _delete_lease(self, key: str) -> None:
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                connection.execute(
+                    "DELETE FROM operation_leases WHERE idempotency_key = ? AND owner = ?",
+                    (key, self._lease_owner),
+                )
+                connection.commit()
+        except Exception:
+            pass
+
+    def _is_tombstoned(
+        self,
+        connection: sqlite3.Connection,
+        key: str,
+        fingerprint: Optional[str] = None,
+    ) -> bool:
+        self._rotate_tombstones(connection, time.time())
+        row = connection.execute(
+            """
+            SELECT key_bits, fingerprint_bits, previous_key_bits,
+                   previous_fingerprint_bits
+            FROM operation_tombstones WHERE singleton = 1
+            """
+        ).fetchone()
+        if fingerprint is None:
+            return any(
+                self._bloom_contains(row[name], key) for name in ("key_bits", "previous_key_bits")
+            )
+        value = self._tombstone_fingerprint(key, fingerprint)
+        return any(
+            self._bloom_contains(row[name], value)
+            for name in ("fingerprint_bits", "previous_fingerprint_bits")
+        )
+
+    def _normalize_tombstones(self, connection: sqlite3.Connection) -> None:
+        row = connection.execute(
+            "SELECT * FROM operation_tombstones WHERE singleton = 1"
+        ).fetchone()
+        empty = bytes(self._tombstone_bytes)
+        saturated = bytes([0xFF]) * self._tombstone_bytes
+        values = []
+        changed = False
+        for name in (
+            "key_bits",
+            "fingerprint_bits",
+            "previous_key_bits",
+            "previous_fingerprint_bits",
+        ):
+            value = bytes(row[name])
+            if len(value) != self._tombstone_bytes:
+                value = empty if name.startswith("previous_") and not value else saturated
+                changed = True
+            values.append(value)
+        if changed:
+            connection.execute(
+                """
+                UPDATE operation_tombstones
+                SET key_bits = ?, fingerprint_bits = ?, previous_key_bits = ?,
+                    previous_fingerprint_bits = ?
+                WHERE singleton = 1
+                """,
+                values,
+            )
+
+    def _rotate_tombstones(self, connection: sqlite3.Connection, now: float) -> None:
+        row = connection.execute(
+            "SELECT * FROM operation_tombstones WHERE singleton = 1"
+        ).fetchone()
+        started_at = float(row["generation_started_at"])
+        if started_at <= 0:
+            connection.execute(
+                "UPDATE operation_tombstones SET generation_started_at = ? WHERE singleton = 1",
+                (now,),
+            )
+            return
+        elapsed = now - started_at
+        if elapsed < self.retention_seconds:
+            return
+        empty = bytes(self._tombstone_bytes)
+        generations = int(elapsed // self.retention_seconds)
+        if generations == 1:
+            previous_key_bits = row["key_bits"]
+            previous_fingerprint_bits = row["fingerprint_bits"]
+        else:
+            previous_key_bits = empty
+            previous_fingerprint_bits = empty
+        connection.execute(
+            """
+            UPDATE operation_tombstones
+            SET key_bits = ?, fingerprint_bits = ?, generation_started_at = ?,
+                previous_key_bits = ?, previous_fingerprint_bits = ?
+            WHERE singleton = 1
+            """,
+            (
+                empty,
+                empty,
+                started_at + generations * self.retention_seconds,
+                previous_key_bits,
+                previous_fingerprint_bits,
+            ),
+        )
+
+    @staticmethod
+    def _tombstone_fingerprint(key: str, fingerprint: str) -> str:
+        return key + "\x00" + fingerprint
+
+    @staticmethod
+    def _bloom_positions(value: str, bit_count: int) -> Iterator[int]:
+        digest = hashlib.sha256(value.encode("utf-8")).digest()
+        for index in range(_TOMBSTONE_HASH_COUNT):
+            start = index * 4
+            yield int.from_bytes(digest[start : start + 4], "big") % bit_count
+
+    @classmethod
+    def _bloom_add(cls, bits: bytearray, value: str) -> None:
+        for position in cls._bloom_positions(value, len(bits) * 8):
+            bits[position // 8] |= 1 << (position % 8)
+
+    @classmethod
+    def _bloom_contains(cls, bits: bytes, value: str) -> bool:
+        return all(
+            bits[position // 8] & (1 << (position % 8))
+            for position in cls._bloom_positions(value, len(bits) * 8)
+        )
 
 
 class ControllerError(Exception):
@@ -104,22 +570,177 @@ class IPv6ThreadingHTTPServer(ThreadingHTTPServer):
 
 
 def _json_dumps(obj: Any) -> str:
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _strict_json_loads(value: str) -> Any:
+    def reject_constant(constant: str) -> None:
+        raise ValueError("non-finite JSON number: " + constant)
+
+    return json.loads(value, parse_constant=reject_constant)
 
 
 def _redact_secret(value: Any, secret: Optional[str]) -> Any:
-    if not secret:
-        return value
     if isinstance(value, str):
-        return value.replace(secret, "<redacted>")
+        if secret:
+            value = value.replace(secret, "<redacted>")
+        for pattern in _SECRET_TEXT_PATTERNS:
+            value = pattern.sub(
+                lambda match: match.group(1) + "<redacted>" if match.lastindex else "<redacted>",
+                value,
+            )
+        return value
     if isinstance(value, list):
+        return [_redact_secret(item, secret) for item in value]
+    if isinstance(value, tuple):
         return [_redact_secret(item, secret) for item in value]
     if isinstance(value, dict):
         return {
-            _redact_secret(key, secret): _redact_secret(item, secret)
+            str(_redact_secret(str(key), secret)): _redact_secret(item, secret)
             for key, item in value.items()
         }
     return value
+
+
+def _sanitize_persisted_value(value: Any, secret: Optional[str]) -> Any:
+    if isinstance(value, str):
+        return _redact_secret(value, secret)
+    if isinstance(value, list):
+        return [_sanitize_persisted_value(item, secret) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_persisted_value(item, secret) for item in value]
+    if isinstance(value, dict):
+        rendered: dict[str, Any] = {}
+        for key, item in value.items():
+            key_text = str(_redact_secret(str(key), secret))
+            rendered[key_text] = (
+                "<redacted>"
+                if _is_sensitive_key(str(key))
+                else _sanitize_persisted_value(item, secret)
+            )
+        return rendered
+    return value
+
+
+def _is_sensitive_key(key: str) -> bool:
+    parts = tuple(part for part in re.split(r"[^a-z0-9]+", key.lower()) if part)
+    compact = "".join(parts)
+    if set(parts) & {"authorization", "credential", "credentials", "password", "secret", "token"}:
+        return True
+    return any(
+        shape in compact
+        for shape in (
+            "accesskey",
+            "accesstoken",
+            "apikey",
+            "authorization",
+            "bearertoken",
+            "clientsecret",
+            "privatekey",
+            "refreshtoken",
+            "secretaccesskey",
+            "sessiontoken",
+        )
+    )
+
+
+def _bounded_persisted_value(
+    value: Mapping[str, Any], secret: Optional[str], max_bytes: int
+) -> dict[str, Any]:
+    safe = _sanitize_persisted_value(dict(value), secret)
+    try:
+        if len(_json_dumps(safe).encode("utf-8")) <= max_bytes:
+            return safe
+    except (TypeError, ValueError):
+        pass
+    return {
+        "ok": False,
+        "error": {
+            "code": "persisted_result_too_large",
+            "message": "persisted operation result exceeded the configured limit",
+            "details": {"max_result_bytes": max_bytes},
+        },
+    }
+
+
+def _is_persistence_failure(value: Mapping[str, Any]) -> bool:
+    error = value.get("error")
+    return isinstance(error, Mapping) and error.get("code") == "persisted_result_too_large"
+
+
+def _idempotency_key(headers) -> Optional[str]:
+    values = headers.get_all(_IDEMPOTENCY_KEY_HEADER) or []
+    if not values:
+        return None
+    if len(values) != 1 or not _IDEMPOTENCY_KEY_RE.fullmatch(values[0]):
+        raise ControllerError(
+            "bad_idempotency_key",
+            "%s must be a single 1-128 character token" % _IDEMPOTENCY_KEY_HEADER,
+            status=400,
+        )
+    return values[0]
+
+
+def _operation_status_key(path_segment: str) -> str:
+    if re.search(r"%(?![0-9A-Fa-f]{2})", path_segment):
+        raise ControllerError(
+            "bad_idempotency_key",
+            "operation status route requires a valid idempotency key",
+            status=400,
+        )
+    try:
+        key = urllib.parse.unquote_to_bytes(path_segment).decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ControllerError(
+            "bad_idempotency_key",
+            "operation status route requires a valid idempotency key",
+            status=400,
+        ) from exc
+    if not _IDEMPOTENCY_KEY_RE.fullmatch(key):
+        raise ControllerError(
+            "bad_idempotency_key",
+            "operation status route requires a valid idempotency key",
+            status=400,
+        )
+    return key
+
+
+def _idempotency_context(value: Any) -> dict[str, str]:
+    if not isinstance(value, Mapping) or set(value) != set(_IDEMPOTENCY_CONTEXT_FIELDS):
+        raise ControllerError(
+            "bad_idempotency_context",
+            "idempotent calls require topology, execution_host, and execution_runtime",
+            status=400,
+        )
+    context: dict[str, str] = {}
+    for field in _IDEMPOTENCY_CONTEXT_FIELDS:
+        item = value.get(field)
+        if not isinstance(item, str) or not _IDEMPOTENCY_KEY_RE.fullmatch(item):
+            raise ControllerError(
+                "bad_idempotency_context",
+                "idempotency context fields must be bounded identifiers",
+                status=400,
+                details={"field": field},
+            )
+        context[field] = item
+    return context
+
+
+def _operation_fingerprint(
+    tool_name: str,
+    arguments: Mapping[str, Any],
+    context: Mapping[str, str],
+) -> str:
+    payload = _json_dumps(
+        {
+            "arguments": dict(arguments),
+            "execution_host": context["execution_host"],
+            "execution_runtime": context["execution_runtime"],
+            "operation": tool_name,
+            "topology": context["topology"],
+        }
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _default_audit_logger(record: dict[str, Any]) -> None:
@@ -243,7 +864,9 @@ def validate_bind_safety(
         private = False
         tailscale = False
         public = True
-        addresses: tuple[str, ...] = (host,) if host in _WILDCARD_BINDS else tuple(str(addr) for addr in addrs)
+        addresses: tuple[str, ...] = (
+            (host,) if host in _WILDCARD_BINDS else tuple(str(addr) for addr in addrs)
+        )
     else:
         loopback = all(addr.is_loopback for addr in addrs)
         private = all(addr.is_private for addr in addrs)
@@ -251,7 +874,9 @@ def validate_bind_safety(
         public = any(not _is_safe_private_ip(addr) for addr in addrs)
         addresses = tuple(str(addr) for addr in addrs)
 
-    if not (host in _WILDCARD_BINDS or wildcard_resolved) and any(_is_forbidden_bind_ip(addr) for addr in addrs):
+    if not (host in _WILDCARD_BINDS or wildcard_resolved) and any(
+        _is_forbidden_bind_ip(addr) for addr in addrs
+    ):
         raise BindSafetyError(
             "unsafe_bind_address",
             "refusing to bind controller to a link-local, reserved, multicast, or documentation address",
@@ -345,6 +970,31 @@ def _content_type_is_json(value: Optional[str]) -> bool:
     return media_type == "application/json" or media_type.endswith("+json")
 
 
+def _mcp_tool_name(name: str) -> str:
+    """Translate declared topology operation names to MCP catalog names."""
+    return name.replace("-", "_")
+
+
+def _validated_tool_catalog(list_tools_func: ListToolsFunc) -> tuple[list[dict], dict[str, str]]:
+    """Snapshot a tool catalog and reject ambiguous normalized names."""
+    tools = list_tools_func()
+    normalized: dict[str, str] = {}
+    for tool in tools:
+        name = tool.get("name") if isinstance(tool, dict) else None
+        if not isinstance(name, str):
+            continue
+        catalog_name = _mcp_tool_name(name)
+        existing = normalized.setdefault(catalog_name, name)
+        if existing != name:
+            raise ControllerError(
+                "ambiguous_tool_catalog",
+                "controller tool catalog contains hyphen/underscore normalization collisions",
+                status=500,
+                details={"tools": sorted((existing, name))},
+            )
+    return tools, normalized
+
+
 def _error_body(
     code: str,
     message: str,
@@ -359,12 +1009,14 @@ def _error_body(
     }
 
 
-def _response_with_request_id(envelope: dict, request_id: str) -> dict:
+def _response_with_request_id(
+    envelope: dict, request_id: str, auth_token: Optional[str] = None
+) -> dict:
     if "request_id" in envelope:
-        return dict(envelope)
+        return _sanitize_persisted_value(dict(envelope), auth_token)
     response = dict(envelope)
     response["request_id"] = request_id
-    return response
+    return _sanitize_persisted_value(response, auth_token)
 
 
 def _tool_result(envelope: dict) -> dict:
@@ -393,10 +1045,13 @@ def make_handler(
     audit_logger: Optional[AuditLogger] = None,
     max_body_bytes: int = _MAX_BODY_BYTES,
     read_timeout_seconds: float = _READ_TIMEOUT_SECONDS,
+    operation_store: Optional[OperationStore] = None,
 ):
     """Build a request handler class for controller tests or ``make_server``."""
 
     audit = audit_logger or _default_audit_logger
+    declared_tools, declared_name_by_normalized = _validated_tool_catalog(list_tools_func)
+    store = operation_store or OperationStore()
 
     class ControllerHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -423,9 +1078,7 @@ def make_handler(
             supplied = _extract_request_token(self.headers)
             if supplied is None:
                 return False
-            return hmac.compare_digest(
-                supplied.encode("utf-8"), auth_token.encode("utf-8")
-            )
+            return hmac.compare_digest(supplied.encode("utf-8"), auth_token.encode("utf-8"))
 
         def _send_json(
             self,
@@ -553,9 +1206,7 @@ def make_handler(
             chunks: list[bytes] = []
             remaining = length
             deadline = (
-                time.perf_counter() + read_timeout_seconds
-                if read_timeout_seconds > 0
-                else None
+                time.perf_counter() + read_timeout_seconds if read_timeout_seconds > 0 else None
             )
             try:
                 while remaining > 0:
@@ -578,7 +1229,10 @@ def make_handler(
                             "incomplete_body",
                             "request body ended before Content-Length bytes were received",
                             status=400,
-                            details={"expected_body_bytes": length, "received_body_bytes": length - remaining},
+                            details={
+                                "expected_body_bytes": length,
+                                "received_body_bytes": length - remaining,
+                            },
                         )
                     chunks.append(chunk)
                     remaining -= len(chunk)
@@ -595,7 +1249,7 @@ def make_handler(
                     self.connection.settimeout(read_timeout_seconds)
             raw = b"".join(chunks)
             try:
-                obj = json.loads(raw.decode("utf-8"))
+                obj = _strict_json_loads(raw.decode("utf-8"))
             except (UnicodeDecodeError, ValueError) as exc:
                 raise ControllerError(
                     "invalid_json",
@@ -611,7 +1265,107 @@ def make_handler(
                 )
             return obj
 
-        def _jsonrpc_response(self, body: dict[str, Any]) -> Optional[dict[str, Any]]:
+        def _dispatch_tool(
+            self,
+            tool_name: str,
+            arguments: dict[str, Any],
+            *,
+            request_id: str,
+            idempotency_key: Optional[str],
+            idempotency_context: Any = None,
+        ) -> tuple[dict[str, Any], int]:
+            if (
+                arguments.get("confirm") is True
+                and arguments.get("dry_run") is not True
+                and idempotency_key is None
+            ):
+                raise ControllerError(
+                    "idempotency_key_required",
+                    "confirmed mutation operations require an idempotency key",
+                    status=409,
+                )
+            if idempotency_key is None:
+                return _response_with_request_id(
+                    call_tool_func(tool_name, arguments), request_id, auth_token
+                ), 200
+
+            context = _idempotency_context(idempotency_context)
+            disposition, record = store.claim(
+                idempotency_key,
+                _operation_fingerprint(tool_name, arguments, context),
+                request_id,
+            )
+            if disposition == "conflict":
+                raise ControllerError(
+                    "idempotency_key_conflict",
+                    "idempotency key was already used for a different operation",
+                    status=409,
+                    details={"key": idempotency_key},
+                )
+            if disposition == "full":
+                raise ControllerError(
+                    "idempotency_store_full",
+                    "operation status store is at capacity",
+                    status=503,
+                )
+            if disposition == "expired":
+                raise ControllerError(
+                    "idempotency_key_expired",
+                    "idempotency key is expired and cannot be reused",
+                    status=409,
+                    details={"key": idempotency_key},
+                )
+            if disposition == "existing":
+                assert record is not None
+                if record["status"] == "running":
+                    return (
+                        _error_body(
+                            "operation_running",
+                            "operation with this idempotency key is still running",
+                            request_id=request_id,
+                            details={"key": idempotency_key},
+                        ),
+                        202,
+                    )
+                response = record.get("response")
+                if isinstance(response, dict):
+                    return response, 200
+                raise ControllerError(
+                    "idempotency_record_unavailable",
+                    "operation record is not available for replay",
+                    status=503,
+                )
+
+            with store.executing(idempotency_key):
+                try:
+                    envelope = _response_with_request_id(
+                        call_tool_func(tool_name, arguments), request_id, auth_token
+                    )
+                    if not isinstance(envelope, dict):
+                        raise TypeError("MCP tool result must be an object")
+                except Exception:
+                    failure = _error_body(
+                        "internal_error",
+                        "internal error",
+                        request_id=request_id,
+                    )
+                    store.complete(idempotency_key, "failed", failure, auth_token)
+                    raise
+                store.complete(
+                    idempotency_key,
+                    "succeeded" if envelope.get("ok") else "failed",
+                    envelope,
+                    auth_token,
+                )
+            return envelope, 200
+
+        def _jsonrpc_response(
+            self,
+            body: dict[str, Any],
+            *,
+            request_id: str,
+            idempotency_key: Optional[str],
+        ) -> Optional[dict[str, Any]]:
             if "id" not in body:
                 return None
             req_id = body.get("id")
@@ -629,7 +1383,7 @@ def make_handler(
                     "capabilities": {"tools": {}},
                 }
             elif method == "tools/list":
-                result = {"tools": list_tools_func()}
+                result = {"tools": declared_tools}
             elif method == "tools/call":
                 params = body.get("params", {})
                 if params is None:
@@ -643,19 +1397,22 @@ def make_handler(
                             "message": "params must be an object",
                         },
                     }
-                tool_name = params.get("name")
-                available = {
-                    tool.get("name")
-                    for tool in list_tools_func()
-                    if isinstance(tool, dict) and isinstance(tool.get("name"), str)
-                }
-                if not isinstance(tool_name, str) or tool_name not in available:
+                raw_tool_name = params.get("name")
+                normalized_name = (
+                    _mcp_tool_name(raw_tool_name) if isinstance(raw_tool_name, str) else None
+                )
+                tool_name = (
+                    declared_name_by_normalized.get(normalized_name)
+                    if normalized_name is not None
+                    else None
+                )
+                if tool_name is None:
                     return {
                         "jsonrpc": "2.0",
                         "id": req_id,
                         "error": {
                             "code": -32602,
-                            "message": "unknown tool %r" % tool_name,
+                            "message": "unknown tool %r" % normalized_name,
                             "data": {"code": "unknown_tool"},
                         },
                     }
@@ -672,10 +1429,25 @@ def make_handler(
                             "data": {"code": "bad_arguments"},
                         },
                     }
-                result = _tool_result(call_tool_func(
-                    tool_name,
-                    arguments,
-                ))
+                try:
+                    envelope, _ = self._dispatch_tool(
+                        tool_name,
+                        arguments,
+                        request_id=request_id,
+                        idempotency_key=idempotency_key,
+                        idempotency_context=params.get("context"),
+                    )
+                except ControllerError as exc:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {
+                            "code": -32009,
+                            "message": exc.message,
+                            "data": {"code": exc.code, "details": exc.details},
+                        },
+                    }
+                result = _tool_result(envelope)
             elif method == "notifications/initialized":
                 return None
             else:
@@ -731,7 +1503,22 @@ def make_handler(
                     ok = True
                     self._send_json(
                         status,
-                        {"tools": list_tools_func(), "request_id": request_id},
+                        {"tools": declared_tools, "request_id": request_id},
+                        request_id=request_id,
+                    )
+                    return
+                if route.startswith("/operations/"):
+                    key = _operation_status_key(route[len("/operations/") :])
+                    record = store.lookup(key)
+                    status = 200
+                    ok = True
+                    self._send_json(
+                        status,
+                        (
+                            record
+                            if record is not None
+                            else {"key": key, "status": "unknown", "request_id": request_id}
+                        ),
                         request_id=request_id,
                     )
                     return
@@ -754,6 +1541,17 @@ def make_handler(
                     "unknown controller route",
                     request_id=request_id,
                     details={"path": route},
+                )
+            except ControllerError as exc:
+                status = exc.status
+                ok = False
+                error_code = exc.code
+                self._send_error_json(
+                    status,
+                    exc.code,
+                    exc.message,
+                    request_id=request_id,
+                    details=exc.details,
                 )
             except Exception:
                 status = 500
@@ -797,7 +1595,7 @@ def make_handler(
                     ok = True
                     self._send_json(
                         status,
-                        {"tools": list_tools_func(), "request_id": request_id},
+                        {"tools": declared_tools, "request_id": request_id},
                         request_id=request_id,
                     )
                     return
@@ -812,12 +1610,25 @@ def make_handler(
                             if raw_arguments is None:
                                 raw_arguments = {}
                             if isinstance(raw_arguments, dict):
-                                tool = params.get("name") if isinstance(params.get("name"), str) else None
+                                tool = (
+                                    params.get("name")
+                                    if isinstance(params.get("name"), str)
+                                    else None
+                                )
                                 if isinstance(raw_arguments.get("dry_run"), bool):
                                     dry_run = raw_arguments["dry_run"]
                                 if isinstance(raw_arguments.get("confirm"), bool):
                                     confirm = raw_arguments["confirm"]
-                    response = self._jsonrpc_response(body)
+                    idempotency_key = (
+                        _idempotency_key(self.headers)
+                        if body.get("method") == "tools/call"
+                        else None
+                    )
+                    response = self._jsonrpc_response(
+                        body,
+                        request_id=request_id,
+                        idempotency_key=idempotency_key,
+                    )
                     status = 200
                     ok = response is None
                     if response is not None:
@@ -832,7 +1643,11 @@ def make_handler(
                         else:
                             ok = True
                             result = response.get("result")
-                            structured = result.get("structuredContent") if isinstance(result, dict) else None
+                            structured = (
+                                result.get("structuredContent")
+                                if isinstance(result, dict)
+                                else None
+                            )
                             if isinstance(structured, dict) and structured.get("ok") is False:
                                 ok = False
                                 err = structured.get("error")
@@ -847,7 +1662,9 @@ def make_handler(
 
                 if route != "/tools/call":
                     status = 405 if route in ("/health", "/healthz") else 404
-                    error_code = "method_not_allowed" if route in ("/health", "/healthz") else "not_found"
+                    error_code = (
+                        "method_not_allowed" if route in ("/health", "/healthz") else "not_found"
+                    )
                     self._send_error_json(
                         status,
                         error_code,
@@ -858,7 +1675,9 @@ def make_handler(
                         ),
                         request_id=request_id,
                         details={} if route in ("/health", "/healthz") else {"path": route},
-                        extra_headers={"Allow": "GET"} if route in ("/health", "/healthz") else None,
+                        extra_headers={"Allow": "GET"}
+                        if route in ("/health", "/healthz")
+                        else None,
                     )
                     return
 
@@ -880,14 +1699,20 @@ def make_handler(
                         status=400,
                     )
 
-                tool = raw_name
+                normalized_name = _mcp_tool_name(raw_name)
+                tool = declared_name_by_normalized.get(normalized_name, normalized_name)
                 if isinstance(raw_arguments.get("dry_run"), bool):
                     dry_run = raw_arguments["dry_run"]
                 if isinstance(raw_arguments.get("confirm"), bool):
                     confirm = raw_arguments["confirm"]
 
-                envelope = call_tool_func(raw_name, raw_arguments)
-                status = 200
+                envelope, status = self._dispatch_tool(
+                    tool,
+                    raw_arguments,
+                    request_id=request_id,
+                    idempotency_key=_idempotency_key(self.headers),
+                    idempotency_context=body.get("context"),
+                )
                 ok = bool(envelope.get("ok"))
                 if not ok:
                     err = envelope.get("error") if isinstance(envelope, dict) else None
@@ -895,7 +1720,7 @@ def make_handler(
                         error_code = err["code"]
                 self._send_json(
                     status,
-                    _response_with_request_id(envelope, request_id),
+                    envelope,
                     request_id=request_id,
                 )
             except ControllerError as exc:
@@ -984,6 +1809,11 @@ def make_server(
     audit_logger: Optional[AuditLogger] = None,
     max_body_bytes: int = _MAX_BODY_BYTES,
     read_timeout_seconds: float = _READ_TIMEOUT_SECONDS,
+    idempotency_db_path: str = DEFAULT_IDEMPOTENCY_DB_PATH,
+    idempotency_retention_seconds: float = DEFAULT_IDEMPOTENCY_RETENTION_SECONDS,
+    idempotency_max_records: int = DEFAULT_IDEMPOTENCY_MAX_RECORDS,
+    idempotency_max_result_bytes: int = DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
+    operation_store: Optional[OperationStore] = None,
     resolver: Optional[Callable[..., Sequence[Any]]] = None,
 ) -> ThreadingHTTPServer:
     """Return an unstarted controller server.
@@ -1006,6 +1836,12 @@ def make_server(
         env=effective_env,
         required=assessment.requires_auth,
     )
+    store = operation_store or OperationStore(
+        idempotency_db_path,
+        retention_seconds=idempotency_retention_seconds,
+        max_records=idempotency_max_records,
+        max_result_bytes=idempotency_max_result_bytes,
+    )
     handler = make_handler(
         list_tools_func=list_tools_func,
         call_tool_func=call_tool_func,
@@ -1013,6 +1849,7 @@ def make_server(
         audit_logger=audit_logger,
         max_body_bytes=max_body_bytes,
         read_timeout_seconds=read_timeout_seconds,
+        operation_store=store,
     )
     cls = server_class or _server_class_for_host(host)
     httpd = cls((host, port), handler)
@@ -1062,8 +1899,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--auth-token-env",
         default=DEFAULT_AUTH_TOKEN_ENV,
         help=(
-            "environment variable containing the controller token "
-            "(default: ANVIL_CONTROLLER_TOKEN; unset disables auth only on loopback)"
+            "environment variable containing the controller token (default: ANVIL_CONTROLLER_TOKEN)"
         ),
     )
     serve_parser.add_argument(
