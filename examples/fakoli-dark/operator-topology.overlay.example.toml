@@ -1,0 +1,30 @@
+# Illustrative overlay values for a private deployment.
+# This file is deliberately partial: merge these keys into a copy of
+# operator-topology.toml before validating or passing it to an operator command.
+# Keep credentials in environment variables; do not put tokens in an overlay.
+
+command_host = "host:fakoli-mini"
+command_runtime = "runtime:mini-native"
+
+# Replace only with private, operator-controlled addresses.
+# The base reference uses synthetic RFC 5737 documentation addresses.
+
+# [[transports]]
+# id = "dark-controller"
+# kind = "controller"
+# host = "fakoli-dark"
+# runtime = "dark-docker"
+# endpoint = "http://192.0.2.20:8766"
+# auth_env = "ANVIL_CONTROLLER_TOKEN"
+#
+# The controller remains the durable Tailscale path. This passwordless SSH
+# fallback is limited to bootstrap/recovery and requires a verified host key.
+# [[transports]]
+# id = "dark-ssh-bootstrap-recovery"
+# kind = "ssh"
+# host = "fakoli-dark"
+# runtime = "dark-docker"
+# endpoint = "ssh://operator@192.0.2.20:22"
+# allowed_operations = ["controller-bootstrap", "controller-recovery"]
+# host_key_fingerprint = "SHA256:REPLACE-WITH-VERIFIED-HOST-KEY"
+# known_hosts_path = "~/.ssh/known_hosts"

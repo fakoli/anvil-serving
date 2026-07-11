@@ -1,0 +1,140 @@
+# Offline reference identity for the split Fakoli Mini and Fakoli Dark deployment.
+# Addresses and GPU UUIDs are synthetic documentation values.
+schema_version = 1
+id = "fakoli-dark-reference"
+command_host = "host:fakoli-mini"
+command_runtime = "runtime:mini-native"
+
+[[capacity_policies]]
+id = "mini-model-free"
+allow_model_workloads = false
+
+[[capacity_policies]]
+id = "dark-model-capable"
+allow_model_workloads = true
+
+[[hosts]]
+id = "fakoli-mini"
+roles = ["gateway", "operator", "proxy"]
+address = "192.0.2.10"
+capacity_policy = "mini-model-free"
+
+[[hosts]]
+id = "fakoli-dark"
+roles = ["router", "serve", "audio"]
+address = "192.0.2.20"
+capacity_policy = "dark-model-capable"
+
+[[runtimes]]
+id = "mini-native"
+host = "fakoli-mini"
+role = "native"
+
+[[runtimes]]
+id = "dark-docker"
+host = "fakoli-dark"
+role = "docker"
+
+[[gpu_roles]]
+id = "dark-fast"
+host = "fakoli-dark"
+runtime = "dark-docker"
+uuid = "GPU-00000000-0000-0000-0000-000000000001"
+
+[[gpu_roles]]
+id = "dark-heavy"
+host = "fakoli-dark"
+runtime = "dark-docker"
+uuid = "GPU-00000000-0000-0000-0000-000000000002"
+
+# Mini runs gateway and proxy services only. It has no GPU role or model workload.
+[[resources]]
+id = "openclaw-gateway"
+role = "gateway"
+host = "fakoli-mini"
+runtime = "mini-native"
+endpoint = "http://127.0.0.1:18789"
+endpoint_kind = "host-relative-loopback"
+workload = "service"
+
+[[resources]]
+id = "mini-dark-stt-proxy"
+role = "stt-proxy"
+host = "fakoli-mini"
+runtime = "mini-native"
+endpoint = "http://127.0.0.1:30110/v1"
+endpoint_kind = "host-relative-loopback"
+workload = "service"
+
+[[resources]]
+id = "mini-dark-tts-proxy"
+role = "tts-proxy"
+host = "fakoli-mini"
+runtime = "mini-native"
+endpoint = "http://127.0.0.1:30111/v1"
+endpoint_kind = "host-relative-loopback"
+workload = "service"
+
+# Dark owns all model and audio operations, including the endpoints behind Mini's proxies.
+[[resources]]
+id = "anvil-router"
+role = "router"
+host = "fakoli-dark"
+runtime = "dark-docker"
+endpoint = "http://192.0.2.20:8000/v1"
+endpoint_kind = "data-plane"
+workload = "service"
+
+[[resources]]
+id = "fast-llm"
+role = "fast-llm-serve"
+host = "fakoli-dark"
+runtime = "dark-docker"
+gpu_role = "dark-fast"
+workload = "llm"
+
+[[resources]]
+id = "heavy-llm"
+role = "heavy-llm-serve"
+host = "fakoli-dark"
+runtime = "dark-docker"
+gpu_role = "dark-heavy"
+workload = "llm"
+
+[[resources]]
+id = "dark-stt"
+role = "stt-serve"
+host = "fakoli-dark"
+runtime = "dark-docker"
+endpoint = "http://127.0.0.1:30110/v1"
+endpoint_kind = "host-relative-loopback"
+workload = "stt"
+
+[[resources]]
+id = "dark-tts"
+role = "tts-serve"
+host = "fakoli-dark"
+runtime = "dark-docker"
+endpoint = "http://127.0.0.1:30111/v1"
+endpoint_kind = "host-relative-loopback"
+workload = "tts"
+
+[[transports]]
+id = "dark-controller"
+kind = "controller"
+host = "fakoli-dark"
+runtime = "dark-docker"
+endpoint = "http://192.0.2.20:8766"
+auth_env = "ANVIL_CONTROLLER_TOKEN"
+allowed_operations = ["router-status", "serves-status", "voice-status"]
+# The controller is the durable Tailscale path. SSH is only a credential-free
+# bootstrap/recovery transport; verify its placeholder host key before use.
+[[transports]]
+id = "dark-ssh-bootstrap-recovery"
+kind = "ssh"
+host = "fakoli-dark"
+runtime = "dark-docker"
+endpoint = "ssh://operator@192.0.2.20:22"
+allowed_operations = ["controller-bootstrap", "controller-recovery"]
+host_key_fingerprint = "SHA256:REPLACE-WITH-VERIFIED-HOST-KEY"
+known_hosts_path = "~/.ssh/known_hosts"

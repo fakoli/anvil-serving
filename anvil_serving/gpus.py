@@ -13,9 +13,18 @@ reliable isolation (examples/fakoli-dark gotcha, CLAUDE.md gotcha #13) is
 Every function here is IMPURE (shells out to `nvidia-smi`) but accepts an
 injectable `_run` seam so callers/tests can run with no GPU present.
 """
+import re
 import subprocess
+from collections.abc import Iterable, Mapping
 
 _UUID_PREFIX = "GPU-"
+_GPU_UUID_RE = re.compile(
+    r"^GPU-[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+)
+
+
+class GpuRoleResolutionError(ValueError):
+    """A configured GPU role cannot be matched safely to observed hardware."""
 
 
 def list_gpus(_run=subprocess.check_output):
@@ -53,6 +62,82 @@ def gpu_uuid(index, _run=subprocess.check_output):
         if g["index"] == index:
             return g["uuid"]
     return None
+
+
+def canonical_gpu_uuid(value):
+    """Return the canonical ``GPU-`` UUID form or raise a resolution error."""
+    if not isinstance(value, str) or not _GPU_UUID_RE.fullmatch(value):
+        raise GpuRoleResolutionError(
+            f"GPU UUID {value!r} must use the NVIDIA GPU- UUID form with hexadecimal 8-4-4-4-12 groups"
+        )
+    return f"GPU-{value[4:].lower()}"
+
+
+def resolve_gpu_roles(roles: Iterable[object], _run=subprocess.check_output):
+    """Resolve declared GPU roles against ``nvidia-smi`` by UUID, never index.
+
+    ``roles`` accepts topology-style objects with ``id`` and ``uuid`` attributes
+    or mappings containing those fields.  The returned rows are suitable for
+    human or JSON command context: ``role``, canonical ``uuid``, observed
+    runtime ``index``, and observed device ``name``.  An unavailable, duplicate,
+    malformed, or mismatched UUID raises before a caller can start a model serve.
+    """
+    configured = []
+    role_ids = set()
+    uuids = set()
+    for role in roles:
+        role_id = _role_value(role, "id")
+        if not isinstance(role_id, str) or not role_id:
+            raise GpuRoleResolutionError("GPU role is missing a non-empty id")
+        if role_id in role_ids:
+            raise GpuRoleResolutionError(f"duplicate GPU role id {role_id!r}")
+        uuid_value = _role_value(role, "uuid")
+        if uuid_value is None:
+            raise GpuRoleResolutionError(f"GPU role {role_id!r} is missing a UUID")
+        uuid = canonical_gpu_uuid(uuid_value)
+        if uuid in uuids:
+            raise GpuRoleResolutionError(f"duplicate configured GPU UUID {uuid!r}")
+        role_ids.add(role_id)
+        uuids.add(uuid)
+        configured.append((role_id, uuid))
+
+    observed = {}
+    indexes = set()
+    for device in list_gpus(_run=_run):
+        try:
+            uuid = canonical_gpu_uuid(device["uuid"])
+            index = device["index"]
+        except (KeyError, GpuRoleResolutionError) as exc:
+            raise GpuRoleResolutionError(f"nvidia-smi reported an invalid GPU record: {exc}") from None
+        if uuid in observed:
+            raise GpuRoleResolutionError(f"nvidia-smi reported duplicate GPU UUID {uuid!r}")
+        if index in indexes:
+            raise GpuRoleResolutionError(f"nvidia-smi reported duplicate GPU index {index!r}")
+        observed[uuid] = device
+        indexes.add(index)
+
+    resolved = []
+    for role_id, uuid in configured:
+        device = observed.get(uuid)
+        if device is None:
+            raise GpuRoleResolutionError(
+                f"GPU role {role_id!r} requires UUID {uuid!r}, which nvidia-smi did not report"
+            )
+        resolved.append(
+            {
+                "role": role_id,
+                "uuid": uuid,
+                "index": device["index"],
+                "name": device["name"],
+            }
+        )
+    return resolved
+
+
+def _role_value(role, field):
+    if isinstance(role, Mapping):
+        return role.get(field)
+    return getattr(role, field, None)
 
 
 def _looks_like_uuid(spec):

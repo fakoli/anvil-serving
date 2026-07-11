@@ -9,6 +9,70 @@ import pytest
 from anvil_serving import guard
 
 
+# ---- capacity policy ----------------------------------------------------------
+
+def test_model_free_experimental_override_requires_permission_and_flag():
+    flag_only = guard.evaluate_capacity_policy(
+        host_id="mini",
+        workload="experimental-model",
+        capacity_policy="model-free",
+        allow_model_workloads=False,
+        allow_experimental_model_workloads=False,
+        experimental_model_workload=True,
+    )
+    permission_only = guard.evaluate_capacity_policy(
+        host_id="mini",
+        workload="experimental-model",
+        capacity_policy="mini-experimental",
+        allow_model_workloads=False,
+        allow_experimental_model_workloads=True,
+    )
+
+    assert flag_only.allowed is False
+    assert flag_only.experimental_model_workload_override is False
+    assert permission_only.allowed is False
+    assert permission_only.experimental_model_workload_permitted is True
+    assert "--experimental-model-workload" in permission_only.reason
+
+
+def test_model_free_experimental_override_is_auditable_when_both_parts_are_present():
+    decision = guard.evaluate_capacity_policy(
+        host_id="mini",
+        workload="experimental-model",
+        capacity_policy="mini-experimental",
+        allow_model_workloads=False,
+        allow_experimental_model_workloads=True,
+        experimental_model_workload=True,
+    )
+
+    assert decision.allowed is True
+    assert decision.experimental_model_workload_override is True
+    assert decision.as_dict() == {
+        "capacity_policy": "mini-experimental",
+        "resource_workload": "experimental-model",
+        "model_workload": True,
+        "experimental_model_workload_requested": True,
+        "experimental_model_workload_permitted": True,
+        "experimental_model_workload_override": True,
+    }
+    assert "model-free host 'mini'" in decision.warning
+
+
+def test_experimental_flag_does_not_bypass_an_ordinary_model_resource():
+    decision = guard.evaluate_capacity_policy(
+        host_id="mini",
+        workload="llm",
+        capacity_policy="model-free",
+        allow_model_workloads=False,
+        allow_experimental_model_workloads=True,
+        experimental_model_workload=True,
+    )
+
+    assert decision.allowed is False
+    assert decision.experimental_model_workload_override is False
+    assert "non-experimental resource" in decision.reason
+
+
 # ---- confirm ------------------------------------------------------------------
 
 def test_confirm_yes_variants():
