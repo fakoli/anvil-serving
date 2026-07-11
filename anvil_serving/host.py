@@ -16,6 +16,17 @@ hand-set `memory=84GB` on a 93.7 GB host starved Windows, Docker Desktop failed 
   reset-wsl       un-wedge a HUNG WSL subsystem (`wsl` times out, Docker Desktop can't start): force-kill
                   the WSL VM (vmmemWSL) + hung `wsl.exe`, then restart Docker Desktop. Codifies the manual
                   Task-Manager 'End task on vmmemWSL' recovery; prints the elevated fallback if kill is denied.
+  memory          show host RAM, the WSL VM's used/page-cache/available (via `/proc/meminfo` inside the
+                  distro), and GPU VRAM. The page-cache line is the one that matters during bakeoffs:
+                  repeated 60-90 GB weight streams balloon it until Windows starves.
+  reclaim         drop the WSL VM's page cache (`sync && echo 3 > /proc/sys/vm/drop_caches` as root inside
+                  the distro) - the safe manual remediation from the 2026-07-10/11 Blackwell bakeoff,
+                  promoted per "operational utilities belong in anvil-serving". Confirm-gated: via the
+                  anvil-serving CLI the gate is --confirm (--force does NOT satisfy it); --force
+                  overrides the streaming-load refusal (a load in flight = page cache growing fast) and
+                  skips the [y/N] prompt on direct module invocation. `--watch --threshold-gb N
+                  [--interval S]` runs it as a foreground watchdog because `autoMemoryReclaim=gradual`
+                  lags load bursts.
 
 Cross-cutting standards (the user's directive): back up before any change, offer a revert, confirm
 before a disruptive action + a --force for autonomous runs. stdlib-only; subprocess/`input` are
@@ -27,6 +38,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from . import guard
 
 # Leave AT LEAST this much for Windows (hard floor: refuse a WSL memory that leaves less, unless --force).
@@ -99,6 +111,80 @@ def _gpus(_run=subprocess.run, timeout=DEFAULT_PROBE_TIMEOUT_SECONDS):
             except ValueError:
                 continue
     return out
+
+
+# --------------------------------------------------------------------------- #
+# WSL page-cache inspection + reclaim (the 2026-07-10/11 Blackwell-bakeoff watchdog)
+# --------------------------------------------------------------------------- #
+
+# `Cached` growing faster than this means a model checkpoint is STREAMING through the page cache
+# RIGHT NOW (a 60-90 GB load runs well above it; idle churn is ~MB/s) -> reclaim refuses unless
+# --force, because dropping caches mid-load evicts pages the loader is about to reuse.
+# ponytail: fixed heuristic; make it a flag if a slow disk ever streams below 0.25 GB/s.
+STREAMING_CACHE_GROWTH_GBPS = 0.25
+_STREAM_SAMPLE_SECONDS = 2.0
+DROP_CACHES_CMD = "sync && echo 3 > /proc/sys/vm/drop_caches"
+
+
+def _wsl_argv(tail, distro=None):
+    return ["wsl"] + (["-d", distro] if distro else []) + tail
+
+
+def wsl_meminfo(_run=subprocess.run, distro=None):
+    """{'total_gb','used_gb','available_gb','cached_gb'} from the WSL VM's `/proc/meminfo`, or None
+    if WSL is unreachable. All distros share ONE VM/kernel, so any running distro sees VM-wide
+    memory - the default distro is fine even though docker-desktop is a separate distro."""
+    try:
+        r = _run(_wsl_argv(["-e", "cat", "/proc/meminfo"], distro),
+                 capture_output=True, text=True, errors="replace", timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if r is None or r.returncode != 0:
+        return None
+    kb = {}
+    for line in (r.stdout or "").splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0].endswith(":"):
+            try:
+                kb[parts[0][:-1]] = int(parts[1])
+            except ValueError:
+                continue
+    if "MemTotal" not in kb:
+        return None
+    def gb(key):
+        return kb[key] / (1024 ** 2) if key in kb else None
+    total, avail = gb("MemTotal"), gb("MemAvailable")
+    return {
+        "total_gb": total,
+        "used_gb": None if avail is None else total - avail,
+        "available_gb": avail,
+        "cached_gb": gb("Cached"),
+    }
+
+
+def _cache_growth_gbps(_run=subprocess.run, distro=None, _sleep=time.sleep):
+    """GB/s the WSL page cache grew over a short window - the load-in-flight signal. None if
+    meminfo is unreadable (callers must decide fail-open vs fail-closed explicitly)."""
+    a = wsl_meminfo(_run=_run, distro=distro)
+    if a is None or a["cached_gb"] is None:
+        return None
+    _sleep(_STREAM_SAMPLE_SECONDS)
+    b = wsl_meminfo(_run=_run, distro=distro)
+    if b is None or b["cached_gb"] is None:
+        return None
+    return (b["cached_gb"] - a["cached_gb"]) / _STREAM_SAMPLE_SECONDS
+
+
+def _drop_caches(distro, _run):
+    """`sync && echo 3 > /proc/sys/vm/drop_caches` as root inside the distro. True on success.
+    Only clean (already-written) cache pages are evicted, so this is data-safe; `sync` first
+    flushes any dirty pages. Generous timeout: sync can take a while under write load."""
+    try:
+        r = _run(_wsl_argv(["-u", "root", "-e", "sh", "-c", DROP_CACHES_CMD], distro),
+                 capture_output=True, text=True, errors="replace", timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return r is not None and r.returncode == 0
 
 
 def recommend_wsl_memory_gb(host_gb, reserve_gb=RECOMMENDED_WINDOWS_RESERVE_GB):
@@ -302,6 +388,139 @@ def _confirm(prompt, force, _input):
     return guard.confirm(prompt, force=force, _input=_input)
 
 
+def cmd_memory(distro=None, _run=subprocess.run):
+    """Show host RAM, the WSL VM's memory (incl. the page cache that model-weight streams
+    balloon), and GPU VRAM - the read side of `host reclaim`."""
+    if sys.platform != "win32":
+        print("host memory reads the WSL2 VM (Windows only); on %s read /proc/meminfo directly."
+              % sys.platform, file=sys.stderr)
+        return 2
+    print("host RAM (physical):   %s" % _fmt(_host_total_gb(_run=_run)))
+    mem = wsl_meminfo(_run=_run, distro=distro)
+    if mem is None:
+        print("WSL VM:                unavailable (WSL not installed/running?)")
+    else:
+        print("WSL VM total:          %s" % _fmt(mem["total_gb"]))
+        print("WSL VM used:           %s" % _fmt(mem["used_gb"]))
+        print("WSL VM page cache:     %s  <- repeated model-weight streams balloon this" %
+              _fmt(mem["cached_gb"]))
+        print("WSL VM available:      %s" % _fmt(mem["available_gb"]))
+    for index, name, used, total in _gpus(_run=_run):
+        print("GPU %s (%s): %.1f / %.1f GB" % (index, name, used, total))
+    if mem and mem["cached_gb"] is not None and mem["total_gb"] and \
+            mem["cached_gb"] > mem["total_gb"] / 2:
+        print("\npage cache is over half the VM - free it with:  anvil-serving host reclaim --confirm")
+    return 0
+
+
+def cmd_reclaim(force=False, yes=False, watch=False, threshold_gb=None, interval_s=None,
+                distro=None, dry_run=False, _run=subprocess.run, _input=input, _sleep=time.sleep):
+    """Drop the WSL VM's page cache. One-shot by default (confirm-gated, refuses mid-load);
+    `--watch --threshold-gb N` is the foreground watchdog for bakeoff sessions where
+    `autoMemoryReclaim=gradual` lags the load bursts."""
+    if sys.platform != "win32":
+        print("host reclaim drops the WSL2 VM page cache (Windows only); on %s run:  %s"
+              % (sys.platform, DROP_CACHES_CMD), file=sys.stderr)
+        return 2
+    if watch:
+        if threshold_gb is None:
+            print("reclaim --watch needs --threshold-gb <GB> (drop when the page cache exceeds it).",
+                  file=sys.stderr)
+            return 2
+        if threshold_gb <= 0:
+            print("--threshold-gb must be > 0 (a zero/negative threshold would drop every interval).",
+                  file=sys.stderr)
+            return 2
+        interval_s = 30.0 if interval_s is None else interval_s
+        if interval_s <= 0:
+            print("--interval must be > 0 seconds.", file=sys.stderr)
+            return 2
+    elif threshold_gb is not None or interval_s is not None:
+        print("--threshold-gb/--interval only apply with --watch (did you mean reclaim --watch?).",
+              file=sys.stderr)
+        return 2
+    if dry_run:
+        print("would run in WSL%s (as root):  %s" %
+              (" distro %s" % distro if distro else "", DROP_CACHES_CMD))
+        return 0
+
+    try:
+        if watch:
+            if not _confirm("Start the reclaim watchdog? Drops the WSL page cache whenever it "
+                            "exceeds %.0f GB (checking every %.0fs) until Ctrl-C."
+                            % (threshold_gb, interval_s), force or yes, _input):
+                print("aborted (declined).")
+                return 1
+            print("watching the WSL page cache (threshold %.0f GB, every %.0fs) - Ctrl-C to stop."
+                  % (threshold_gb, interval_s))
+            try:
+                while True:
+                    mem = wsl_meminfo(_run=_run, distro=distro)
+                    if mem is None or mem["cached_gb"] is None:
+                        print("  meminfo unreadable - retrying next interval.")
+                    elif mem["cached_gb"] < threshold_gb:
+                        print("  cache %.1f GB < %.0f GB - ok." % (mem["cached_gb"], threshold_gb))
+                    else:
+                        growth = None if force else _cache_growth_gbps(_run=_run, distro=distro,
+                                                                       _sleep=_sleep)
+                        if growth is None and not force:
+                            # FAIL CLOSED per tick: an unreadable sample is LIKELIEST during the
+                            # very disk-saturating load the guard protects (guard.py doctrine);
+                            # unattended, "skip this interval" is free - the next tick retries.
+                            print("  streaming check unavailable (meminfo sample failed) - not "
+                                  "dropping this interval.")
+                        elif growth is not None and growth > STREAMING_CACHE_GROWTH_GBPS:
+                            # a load is streaming: don't yank pages it's about to reuse; wait it out
+                            print("  cache %.1f GB over threshold but growing %.2f GB/s (model load "
+                                  "streaming) - waiting." % (mem["cached_gb"], growth))
+                        elif _drop_caches(distro, _run):
+                            after = wsl_meminfo(_run=_run, distro=distro)
+                            print("  dropped: %.1f GB -> %s cached" %
+                                  (mem["cached_gb"], _fmt(None if after is None else after["cached_gb"])))
+                        else:
+                            print("  drop_caches failed (WSL unreachable / root exec denied) - "
+                                  "retrying next interval.", file=sys.stderr)
+                    _sleep(interval_s)
+            except KeyboardInterrupt:
+                print("\nwatchdog stopped.")
+                return 0
+
+        before = wsl_meminfo(_run=_run, distro=distro)
+        if before is None:
+            print("cannot read the WSL VM's /proc/meminfo (WSL not installed/running?).",
+                  file=sys.stderr)
+            return 1
+        if not force:
+            growth = _cache_growth_gbps(_run=_run, distro=distro, _sleep=_sleep)
+            if growth is None:
+                # One-shot stays fail-open (a human is at the confirm prompt and the harm is
+                # perf-only) but NEVER silently: say the guard didn't run.
+                print("note: streaming check unavailable (meminfo sample failed) - proceeding "
+                      "without it.", file=sys.stderr)
+            elif growth > STREAMING_CACHE_GROWTH_GBPS:
+                print("REFUSING: the page cache is growing %.2f GB/s - a model checkpoint looks like "
+                      "it is streaming RIGHT NOW, and dropping caches would evict pages the loader is "
+                      "about to reuse. Wait for the load to finish, or --force." % growth,
+                      file=sys.stderr)
+                return 2
+        if not _confirm("Drop the WSL page cache (%s)? Data-safe - only clean cache pages are "
+                        "evicted - but the next model load re-reads weights from disk." % DROP_CACHES_CMD,
+                        force or yes, _input):
+            print("aborted (declined).")
+            return 1
+        if not _drop_caches(distro, _run):
+            print("drop_caches failed (WSL unreachable or root exec denied).", file=sys.stderr)
+            return 1
+        after = wsl_meminfo(_run=_run, distro=distro)
+        print("page cache: %s -> %s" %
+              (_fmt(before["cached_gb"]), _fmt(None if after is None else after["cached_gb"])))
+        return 0
+    except KeyboardInterrupt:
+        # Ctrl-C at the confirm prompt or during the 2 s growth sample: clean abort, not a traceback.
+        print("\naborted.")
+        return 1
+
+
 def cmd_wsl_config(memory_gb=None, swap_gb=None, revert=False, force=False, dry_run=False,
                    _run=subprocess.run, _input=input):
     if sys.platform != "win32":
@@ -496,6 +715,26 @@ def _build_parser():
     reset = sub.add_parser("reset-wsl", help="reset a wedged WSL subsystem")
     reset.add_argument("--force", action="store_true", help="skip the confirm prompt.")
     reset.add_argument("--dry-run", action="store_true", help="show the reset plan only.")
+
+    mem = sub.add_parser("memory", help="show host RAM / WSL VM memory (incl. page cache) / GPUs")
+    mem.add_argument("--distro", help="WSL distro to query (default: the default distro).")
+
+    rec = sub.add_parser("reclaim", help="drop the WSL VM page cache (sync && drop_caches=3)")
+    rec.add_argument("--force", action="store_true",
+                     help="override the streaming-load refusal (and skip the [y/N] prompt when "
+                          "invoking this module directly; via the anvil-serving CLI the "
+                          "confirmation gate is --confirm).")
+    rec.add_argument("--yes", action="store_true",
+                     help="skip the [y/N] prompt WITHOUT overriding the streaming-load refusal "
+                          "(guard.py's --yes/--force split; via the anvil-serving CLI use --confirm).")
+    rec.add_argument("--watch", action="store_true",
+                     help="foreground watchdog: drop whenever the cache exceeds --threshold-gb.")
+    rec.add_argument("--threshold-gb", type=float,
+                     help="(--watch) drop when the page cache exceeds this many GB.")
+    rec.add_argument("--interval", type=float,
+                     help="(--watch) seconds between checks (default 30).")
+    rec.add_argument("--distro", help="WSL distro to run in (default: the default distro).")
+    rec.add_argument("--dry-run", action="store_true", help="show the command, run nothing.")
     return p
 
 
@@ -515,6 +754,11 @@ def main(argv=None):
         return cmd_restart_docker(force=a.force, dry_run=a.dry_run)
     if a.action == "reset-wsl":
         return cmd_reset_wsl(force=a.force, dry_run=a.dry_run)
+    if a.action == "memory":
+        return cmd_memory(distro=a.distro)
+    if a.action == "reclaim":
+        return cmd_reclaim(force=a.force, yes=a.yes, watch=a.watch, threshold_gb=a.threshold_gb,
+                           interval_s=a.interval, distro=a.distro, dry_run=a.dry_run)
     return 2
 
 
