@@ -1,0 +1,51 @@
+{
+  "schema": "anvil-serving.bakeoff-recommendations/v1",
+  "recorded_at": "2026-07-11T07:30:00Z",
+  "policy_reminder": "A published benchmark recommendation is evidence, not an automatic production change. Nothing below alters router tier assignments; promotion requires explicit operator action.",
+  "production_impact": "NONE. Production heavy (gpt-oss-120b) and fast (qwen36-35b-a3b) tiers are unchanged and were restored after the bakeoff window.",
+  "recommendations": [
+    {
+      "role": "heavy / quality + agentic",
+      "best_measured_candidate": "dervig/m51Lab-MiniMax-M2.7-REAP-139B-A10B-NVFP4",
+      "status": "best measured candidate for the role; NOT promoted",
+      "evidence": "candidate-minimax-m27-reap-vllm-nvfp4-64k.bakeoff.json",
+      "highlights": "clean sweep with thinking disabled (intelligence 2/2, tools, session, 64k), 97.2 tok/s single-stream, TTFT p50 86 ms warm",
+      "caveats": [
+        "community REAP-pruned checkpoint, not an official MiniMax release — provenance and long-tail quality unverified",
+        "94.3 GB VRAM at 64k: no headroom for 131k on the 96 GB card",
+        "default thinking mode leaks reasoning into content without a configured reasoning parser; tier config must disable thinking or configure the parser",
+        "single-stream decode (97 tok/s) still trails the gpt-oss-120b production baseline (183 tok/s prior measurement)"
+      ]
+    },
+    {
+      "role": "agentic-coding specialist / long-context",
+      "best_measured_candidate": "deepreinforce-ai/Ornith-1.0-35B-FP8",
+      "status": "retain as specialist; NOT promoted",
+      "evidence": "candidate-ornith-35b-vllm-fp8-131k.bakeoff.json",
+      "highlights": "full 131072 context verified (needle 11.9 s, fastest full-prefill TTFT of the set at 13.1 s), tools 20/20, session pass",
+      "caveats": [
+        "29 tok/s single-stream is modest; the fla/GDN hybrid path on sm_120 likely leaves performance on the table",
+        "intelligence 1/2 (matches fast baseline, below heavy baseline)",
+        "vendor benchmark claims were used only for candidate selection, never as measurements"
+      ]
+    },
+    {
+      "role": "fast / high-fan-out",
+      "best_measured_candidate": "none beats the incumbent",
+      "status": "retain production qwen36-35b-a3b",
+      "evidence": "baseline-qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json",
+      "notes": "Nemotron-3-Nano-30B (the only fast-track candidate that fully served) needs the PIECEWISE workaround. The clean re-measure (WSL 2.7.10, idle host) resolved the earlier TTFT erraticness (warm p50 1.68 s) and lifted intelligence to 1/2 — but 15 tok/s single-stream decode is far below the incumbent; keep experimental."
+    },
+    {
+      "role": "multimodal probe",
+      "best_measured_candidate": "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4 (vLLM >= 0.23 only)",
+      "status": "keep experimental; watch for stable-release support",
+      "evidence": "candidate-nemotron-omni-vllm-nightly-nvfp4-64k.bakeoff.json",
+      "notes": "unsupported on vLLM 0.19 (NGC 26.04); loads and serves on nightly v0.23.1rc1 with native nemotron_v3 parser; 64k TTFT 3.6 s. Final tool-call cycle recorded in evidence."
+    }
+  ],
+  "environment_caveats": [
+    "Measurements before 2026-07-11T07:00Z ran on WSL 2.6.2 (below the community-reported 2.7.0 cudagraph-reliability threshold for RTX 5090). The platform was upgraded to WSL 2.7.10 mid-run; Omni's final cycle and the Nemotron text re-measure ran post-upgrade and are labeled accordingly.",
+    "Some earlier measurements ran with concurrent model downloads/loads on the host; decode-bound throughput numbers are believed insensitive, but single-request TTFT numbers from that window carry a concurrency caveat (see failures.md and the finding narrative)."
+  ]
+}
