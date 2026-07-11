@@ -17,6 +17,11 @@ All notable changes to this project are documented here. The format is based on
   evidence. Parent command groups now reject action-specific flags when the
   required child action is missing instead of printing help and returning
   success. This unreleased work does not publish a version, tag, or package.
+- **Hermetic Markdown link guard** - checks relative targets in every
+  Git-tracked Markdown file using the same Python-Markdown/Pymdown parser
+  family as MkDocs, ignores external URLs and rendered code examples, and now
+  runs beside strict MkDocs in documentation CI. Parser packages stay confined
+  to docs/test extras; untracked worktrees cannot change the scan scope.
 - **Operator CLI v2 voice lifecycle (M3)** — adds canonical
   `voice audio up|down|status|logs` and
   `voice proxy run|up|down|restart|status|logs|bridge` surfaces. Audio remains
