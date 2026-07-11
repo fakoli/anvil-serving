@@ -4479,6 +4479,16 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--execute"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Delete the planned cache candidates.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",

@@ -664,7 +664,8 @@ def _dispatch_remote_tool(
 
 
 def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> bool:
-    mutation_gate = node.mutation_class == "mutate" and any(
+    has_conditional_gate = any(option.requires_confirmation for option in node.options)
+    mutation_gate = node.mutation_class == "mutate" and not has_conditional_gate and any(
         "--confirm" in option.flags for option in node.options
     )
     option_gate = any(

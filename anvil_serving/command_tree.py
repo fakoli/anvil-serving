@@ -399,7 +399,7 @@ def build_command_tree() -> CommandTree:
                 _resource_node("show", "Show one recorded serve recipe.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "show")),
             ), docs_anchor="docs/CLI.md#models-recipes"),
             _node("cache", "Manage model cache storage.", children=(
-                _resource_node("prune", "Plan or prune the model cache.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options),
+                _resource_node("prune", "Plan or prune the model cache.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options + (_option("--execute", summary="Delete the planned cache candidates.", requires_confirmation=True),)),
             ), docs_anchor="docs/CLI.md#models-cache-prune"),
             _node(
                 "recipe",
