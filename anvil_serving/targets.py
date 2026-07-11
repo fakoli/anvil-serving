@@ -352,18 +352,19 @@ def finalize_execution_plan(
     )
     recovery_transport = None
     if command.recovery_capable:
-        recovery_transport = _transport(
+        recovery_transport = _optional_transport(
             topology,
             command.name,
             "ssh",
             preflight.execution_host.id,
             preflight.execution_runtime.id,
         )
-        _validate_transport_owner(
-            recovery_transport,
-            preflight.command_identity.host,
-            preflight.execution_host,
-        )
+        if recovery_transport is not None:
+            _validate_transport_owner(
+                recovery_transport,
+                preflight.command_identity.host,
+                preflight.execution_host,
+            )
     return ExecutionPlan(
         command=command,
         topology_id=topology.id,
@@ -591,6 +592,25 @@ def _transport(
             f"has {len(matches)} declared owners"
         )
     return matches[0]
+
+
+def _optional_transport(
+    topology: Topology, command_name: str, kind: str, host_id: str, runtime_id: str
+) -> Transport | None:
+    matches = tuple(
+        transport
+        for transport in topology.transports
+        if transport.kind == kind
+        and transport.host == host_id
+        and transport.runtime == runtime_id
+        and command_name in transport.allowed_operations
+    )
+    if len(matches) > 1:
+        raise TargetResolutionError(
+            f"{kind} transport for operation {command_name!r} on {host_id!r}/{runtime_id!r} "
+            f"has {len(matches)} declared owners"
+        )
+    return matches[0] if matches else None
 
 
 def _host(topology: Topology, host_id: str, label: str) -> Host:

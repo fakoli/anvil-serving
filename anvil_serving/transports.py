@@ -733,6 +733,7 @@ def execute_plan(
     local: Optional[LocalTransport] = None,
     controller: Optional[ControllerTransport] = None,
     ssh: Optional[SSHRecoveryTransport] = None,
+    ssh_operation: Optional[Operation] = None,
     allow_ssh_fallback: bool = False,
     idempotency_key: Optional[str] = None,
 ) -> TransportResult:
@@ -743,6 +744,13 @@ def execute_plan(
             "operation_plan_mismatch",
             "operation does not match the resolved execution plan",
             details={"operation": operation.name},
+        )
+    ssh_operation = ssh_operation or operation
+    if ssh_operation.name != operation.name:
+        raise TransportError(
+            "operation_plan_mismatch",
+            "SSH recovery operation does not match the selected operation",
+            details={"operation": operation.name, "ssh_operation": ssh_operation.name},
         )
     selected = getattr(plan, "transport", None)
     if selected == "local":
@@ -787,14 +795,14 @@ def execute_plan(
                     "ssh_transport_missing", "SSH recovery adapter is not configured"
                 ) from None
             _validate_ssh_plan_binding(plan, ssh, endpoint_attribute="recovery_transport_endpoint")
-            return ssh.execute(operation)
+            return ssh.execute(ssh_operation)
     if selected == "ssh":
         if ssh is None:
             raise TransportError("ssh_transport_missing", "SSH recovery adapter is not configured")
         if not getattr(command, "recovery_capable", False):
             raise TransportError("ssh_operation_not_allowed", "operation is not recovery-capable")
         _validate_ssh_plan_binding(plan, ssh, endpoint_attribute="transport_endpoint")
-        return ssh.execute(operation)
+        return ssh.execute(ssh_operation)
     raise TransportError(
         "unsupported_transport",
         "execution plan requires an unsupported transport",

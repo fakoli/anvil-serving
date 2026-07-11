@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 import difflib
 import io
+import os
 import sys
 import uuid
 from importlib import metadata as importlib_metadata
@@ -33,6 +34,7 @@ from .topology import TopologyValidationError, load_topology
 from .transports import (
     ControllerTransport,
     Operation,
+    SSHRecoveryTransport,
     TransportError as AdapterTransportError,
     TransportResult,
     execute_plan,
@@ -88,6 +90,7 @@ class _ResolutionOptions:
     command_runtime: str | None = None
     target: str | None = None
     transport: str = "auto"
+    allow_ssh_fallback: bool = False
     experimental_model_workload: bool = False
 
     @property
@@ -101,7 +104,7 @@ class _ResolutionOptions:
                 self.command_runtime,
                 self.target,
             )
-        ) or self.transport != "auto" or self.experimental_model_workload
+        ) or self.transport != "auto" or self.allow_ssh_fallback or self.experimental_model_workload
 
 
 class _ResolutionOptionError(ValueError):
@@ -353,6 +356,7 @@ def _extract_resolution_options(
         "command_runtime": None,
         "target": None,
         "transport": "auto",
+        "allow_ssh_fallback": False,
         "experimental_model_workload": False,
     }
     forwarded: list[str] = []
@@ -377,6 +381,12 @@ def _extract_resolution_options(
             raise _ResolutionOptionError(
                 "--experimental-model-workload does not accept a value"
             )
+        if token == "--allow-ssh-fallback":
+            values["allow_ssh_fallback"] = True
+            index += 1
+            continue
+        if token.startswith("--allow-ssh-fallback="):
+            raise _ResolutionOptionError("--allow-ssh-fallback does not accept a value")
 
         flag, separator, inline_value = token.partition("=")
         attribute = _RESOLUTION_VALUE_OPTIONS.get(flag)
@@ -426,6 +436,10 @@ def _resolve_dispatch_plan(
     if command.execution_policy != "resource-owner":
         raise _ResolutionOptionError(
             f"{_command_name(path)} does not support target-resolution options"
+        )
+    if options.allow_ssh_fallback and not command.recovery_capable:
+        raise _ResolutionOptionError(
+            f"{_command_name(path)} is not recovery-capable; drop --allow-ssh-fallback"
         )
     topology = load_topology(options.topology)
     return resolve_execution_plan(
@@ -517,6 +531,7 @@ def _remote_arguments(
             raise UsageError(
                 f"{flag} is not supported for remote {node.name}; use focused help"
             )
+
         if field in arguments:
             raise UsageError(f"{flag} is fixed by the canonical command path")
         schema_type = field_schema.get("type")
@@ -620,22 +635,44 @@ def _dispatch_remote_tool(
     confirmed: bool,
     output_options: OutputOptions,
     execution_meta: dict[str, object] | None,
+    allow_ssh_fallback: bool = False,
 ) -> int:
     node = path[-1]
     remote = node.remote_operation
     assert remote is not None and remote.mode == "tool" and remote.tool is not None
-    if not plan.transport_endpoint or not plan.transport_auth_env:
-        raise TransportError(
-            "resolved controller transport is missing endpoint or token configuration",
-            code="controller_transport_incomplete",
-        )
     arguments = _remote_arguments(node, rest, confirmed=confirmed)
-    controller = ControllerTransport(
-        plan.transport_endpoint,
-        auth_env=plan.transport_auth_env,
-        allowed_operations=plan.transport_allowed_operations,
-    )
+    if plan.transport == "ssh" and arguments.get("dry_run") is True:
+        data = {
+            "operation": plan.command.name,
+            "transport": "ssh",
+            "data": {"dry_run": True, "adapter": "harness restart openclaw"},
+            "response_bytes": 0,
+        }
+        if execution_meta is not None:
+            execution_meta["data"] = data
+        if not output_options.json_mode:
+            rendered = render_human(
+                success_envelope(_command_name(path), plan, data, warnings=plan.warnings),
+                options=output_options,
+            )
+            if rendered.stdout:
+                print(rendered.stdout, end="")
+        return 0
+    controller = None
+    if plan.transport == "controller":
+        if not plan.transport_endpoint or not plan.transport_auth_env:
+            raise TransportError(
+                "resolved controller transport is missing endpoint or token configuration",
+                code="controller_transport_incomplete",
+            )
+        controller = ControllerTransport(
+            plan.transport_endpoint,
+            auth_env=plan.transport_auth_env,
+            allowed_operations=plan.transport_allowed_operations,
+        )
+    ssh = _ssh_recovery_transport(plan) if plan.transport == "ssh" or allow_ssh_fallback else None
     operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
+    ssh_operation = Operation(plan.command.name, {})
     idempotency_key = (
         "cli-" + uuid.uuid4().hex
         if confirmed and node.mutation_class == "mutate"
@@ -646,19 +683,38 @@ def _dispatch_remote_tool(
             plan,
             operation,
             controller=controller,
+            ssh=ssh,
+            ssh_operation=ssh_operation,
+            allow_ssh_fallback=allow_ssh_fallback,
             idempotency_key=idempotency_key,
         )
     except AdapterTransportError as exc:
-        if idempotency_key is not None and exc.may_have_executed:
+        if execution_meta is not None and exc.code.startswith("ssh_"):
+            context = plan.as_dict()
+            context["transport"] = "ssh"
+            execution_meta["plan"] = context
+        if (
+            plan.transport == "controller"
+            and controller is not None
+            and idempotency_key is not None
+            and exc.may_have_executed
+            and not exc.code.startswith("ssh_")
+        ):
             result = _reconcile_remote_mutation(controller, idempotency_key, exc)
         else:
             raise TransportError(str(exc), code=exc.code, details=exc.as_dict()) from None
     data = result.as_dict()
+    result_context: ExecutionPlan | Mapping[str, object] = plan
+    if result.transport != plan.transport:
+        context = plan.as_dict()
+        context["transport"] = result.transport
+        result_context = context
     if execution_meta is not None:
         execution_meta["data"] = data
+        execution_meta["plan"] = result_context
     if not output_options.json_mode:
         rendered = render_human(
-            success_envelope(_command_name(path), plan, data, warnings=plan.warnings),
+            success_envelope(_command_name(path), result_context, data, warnings=plan.warnings),
             options=output_options,
         )
         if rendered.stdout:
@@ -666,6 +722,51 @@ def _dispatch_remote_tool(
         if rendered.stderr:
             print(rendered.stderr, end="", file=sys.stderr)
     return 0
+
+
+def _ssh_recovery_transport(plan: ExecutionPlan) -> SSHRecoveryTransport:
+    adapter = {
+        "harness-restart-openclaw": (
+            "anvil-serving", "harness", "restart", "openclaw", "--confirm",
+        ),
+    }.get(plan.command.name)
+    if adapter is None:
+        raise TransportError(
+            "no fixed SSH recovery adapter is declared for this operation",
+            code="ssh_operation_not_allowed",
+        )
+    selected = plan.transport == "ssh"
+    endpoint = plan.transport_endpoint if selected else plan.recovery_transport_endpoint
+    transport_id = plan.transport_id if selected else plan.recovery_transport_id
+    fingerprint = (
+        plan.transport_host_key_fingerprint if selected else plan.recovery_host_key_fingerprint
+    )
+    known_hosts = (
+        plan.transport_known_hosts_path if selected else plan.recovery_known_hosts_path
+    )
+    identity_file = (os.environ.get("ANVIL_SSH_IDENTITY_FILE") or "").strip()
+    if not endpoint or not fingerprint or not known_hosts:
+        raise TransportError(
+            "resolved SSH recovery transport is missing endpoint or host verification metadata",
+            code="ssh_transport_incomplete",
+        )
+    if not identity_file:
+        raise TransportError(
+            "ANVIL_SSH_IDENTITY_FILE must name the private key for SSH recovery",
+            code="ssh_identity_missing",
+        )
+    try:
+        return SSHRecoveryTransport(
+            endpoint,
+            adapters={plan.command.name: adapter},
+            known_hosts_path=os.path.expanduser(known_hosts),
+            host_key_fingerprint=fingerprint,
+            identity_file=os.path.expanduser(identity_file),
+            transport_id=transport_id,
+            timeout_seconds=60,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise TransportError(str(exc), code="ssh_transport_invalid") from None
 
 
 def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> bool:
@@ -791,7 +892,7 @@ def _dispatch(
                 rest = (*rest, "--auth-token-env", plan.transport_auth_env)
         elif (
             plan is not None
-            and plan.transport == "controller"
+            and plan.transport in {"controller", "ssh"}
             and node.remote_operation is not None
             and node.remote_operation.mode == "tool"
         ):
@@ -802,6 +903,7 @@ def _dispatch(
                 confirmed=confirmed,
                 output_options=output_options,
                 execution_meta=execution_meta,
+                allow_ssh_fallback=resolution_options.allow_ssh_fallback,
             )
         elif plan is not None and plan.transport != "local":
             raise TransportError(
@@ -961,8 +1063,11 @@ def _move_leading_resolution_options(argv: Sequence[str]) -> tuple[str, ...]:
                 leading.append(argv[index])
             index += 1
             continue
-        if token == "--experimental-model-workload" or token.startswith(
-            "--experimental-model-workload="
+        if (
+            token == "--experimental-model-workload"
+            or token.startswith("--experimental-model-workload=")
+            or token == "--allow-ssh-fallback"
+            or token.startswith("--allow-ssh-fallback=")
         ):
             leading.append(token)
             index += 1

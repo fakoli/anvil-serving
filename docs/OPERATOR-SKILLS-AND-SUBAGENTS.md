@@ -117,6 +117,7 @@ require editing a skill, plugin, or benchmark prompt.
 | Router decision probe | `route_decision` | Implemented |
 | OpenClaw config preview/apply | `openclaw_sync` | Implemented |
 | OpenClaw gateway restart | `openclaw_gateway_restart` | Implemented |
+| OpenClaw gateway status | `openclaw_gateway_status` | Implemented |
 | Correctness gate probe | `preflight_probe` | Implemented |
 | Bounded throughput probe | `benchmark_probe` | Implemented |
 | Benchmark evidence artifact | `benchmark_artifact` | Implemented; writes `--json-out` only to the workspace or server-configured `ANVIL_BENCHMARK_EVIDENCE_DIR` / `ANVIL_EVIDENCE_DIR` roots |

@@ -43,6 +43,16 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["eval preflight"]["remote_operation"]["confirmed_arguments"] == {"confirm": True}
     assert records["eval benchmark run"]["remote_operation"]["tool"] == "benchmark_probe"
     assert records["eval benchmark external export"]["mutation_class"] == "mutate"
+    assert records["harness sync openclaw"]["remote_operation"]["tool"] == "openclaw_sync"
+    assert records["harness restart openclaw"]["recovery_capable"] is True
+    assert records["harness status openclaw"]["remote_operation"] == {
+        "mode": "tool",
+        "tool": "openclaw_gateway_status",
+        "fixed_arguments": {},
+        "confirmed_arguments": {},
+        "allowed_arguments": ["timeout_seconds", "max_output_bytes"],
+        "positional_arguments": [],
+    }
     assert all(
         "--dry-run" not in option["flags"]
         for path in ("eval bootstrap", "eval calibrate", "eval benchmark external import")
@@ -56,6 +66,7 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
         for flag in option["flags"]
     }
     assert "--experimental-model-workload" in global_flags
+    assert "--allow-ssh-fallback" in global_flags
 
 
 def test_duplicate_paths_fail_validation():

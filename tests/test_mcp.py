@@ -653,6 +653,41 @@ def test_openclaw_sync_preview_uses_harness_logic_and_env_ref(tmp_path):
     assert preview["api_key"] == "${ANVIL_ROUTER_TOKEN}"
 
 
+def test_openclaw_gateway_status_is_bounded_and_structured(monkeypatch):
+    from anvil_serving import harness
+
+    seen = {}
+    monkeypatch.setattr(
+        harness,
+        "openclaw_gateway_status",
+        lambda **kwargs: seen.update(kwargs) or {
+            "ok": True,
+            "returncode": 0,
+            "status": {"status": "running"},
+        },
+    )
+    env = mcp.call_tool("openclaw_gateway_status", {
+        "timeout_seconds": 9,
+        "max_output_bytes": 4096,
+    })
+    assert env["ok"] is True
+    assert env["data"]["status"] == {"status": "running"}
+    assert seen == {"timeout_seconds": 9, "max_output_bytes": 4096}
+
+
+def test_openclaw_gateway_status_failure_is_classified(monkeypatch):
+    from anvil_serving import harness
+
+    monkeypatch.setattr(
+        harness,
+        "openclaw_gateway_status",
+        lambda **_kwargs: {"ok": False, "returncode": 1, "stderr": "not running"},
+    )
+    env = mcp.call_tool("openclaw_gateway_status", {})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "command_failed"
+
+
 def test_openclaw_sync_preview_can_include_skills(tmp_path):
     cfg = _router_cfg(tmp_path)
     env = mcp.call_tool("openclaw_sync", {
@@ -1574,7 +1609,8 @@ def test_gateway_restart_is_gated_and_uses_argv_preview():
     assert env["ok"] is True
     assert env["data"]["restarted"] is False
     assert env["data"]["command"] == [
-        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=60",
+        "ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+        "-o", "ConnectTimeout=60",
         "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
         "--", "sd@mini", 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"',
     ]

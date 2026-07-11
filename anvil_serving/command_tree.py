@@ -298,6 +298,7 @@ GLOBAL_OPTIONS = (
     _option("--command-runtime", summary="Declared command runtime.", value_name="runtime:ID"),
     _option("--target", summary="Explicit resource-owner target.", value_name="host:ID|host-role:ROLE"),
     _option("--transport", summary="Execution transport.", value_name="auto|local|controller|ssh"),
+    _option("--allow-ssh-fallback", summary="Allow verified SSH recovery after a proven pre-dispatch controller failure."),
     _option(
         "--experimental-model-workload",
         summary="Allow a topology-permitted experimental model workload on a model-free host.",
@@ -504,9 +505,33 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor="docs/VOICE.md",
     )
+    harness_operations = (
+        ("sync", "Synchronize harness configuration", "mutate", False, _remote(
+            "openclaw_sync", confirmed=(("confirm", True),),
+            allowed=(
+                "config", "base_url", "api_key_env", "out", "overwrite",
+                "restart", "skills", "skill_dir", "voice", "voice_realtime_url", "voice_model",
+                "voice_consult_model", "voice_consult_thinking_level",
+                "voice_consult_bootstrap_context_mode", "voice_api_key_env", "dry_run",
+                "timeout_seconds",
+            ),
+        )),
+        ("restart", "Restart the harness", "mutate", True, _remote(
+            "openclaw_gateway_restart", confirmed=(("confirm", True),),
+            allowed=("dry_run", "timeout_seconds"),
+        )),
+        ("status", "Show harness status", "read", False, _remote(
+            "openclaw_gateway_status", allowed=("timeout_seconds", "max_output_bytes"),
+        )),
+    )
     harness = _node("harness", "Manage harness integration.", children=tuple(
-        _node(action, summary, children=(_resource_node("openclaw", f"{summary} for OpenClaw.", "anvil_serving.harness", role="gateway", mutation=mutation, recovery=action == "restart", options=confirm_options if mutation == "mutate" else (), remote_operation=_remote("openclaw_sync" if action == "sync" else "openclaw_gateway_restart")),), docs_anchor="docs/CLI.md#harness")
-        for action, summary, mutation in (("sync", "Synchronize harness configuration", "mutate"), ("restart", "Restart the harness", "mutate"))
+        _node(action, summary, children=(_resource_node(
+            "openclaw", f"{summary} for OpenClaw.", "anvil_serving.harness", role="gateway",
+            mutation=mutation, recovery=recovery,
+            options=confirm_options if mutation == "mutate" else (),
+            remote_operation=remote_operation,
+        ),), docs_anchor="docs/CLI.md#harness")
+        for action, summary, mutation, recovery, remote_operation in harness_operations
     ), docs_anchor="docs/CLI.md#harness")
     mcp = _node("mcp", "Expose bounded MCP management tools.", children=(
         _resource_node("serve", "Run the MCP management server.", "anvil_serving.mcp", role="operator", argv_prefix=(), output_policy="protocol", remote_operation=_remote(mode="mcp-bridge")),

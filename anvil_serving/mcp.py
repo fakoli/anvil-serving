@@ -1923,6 +1923,25 @@ def tool_openclaw_gateway_restart(args: dict) -> dict:
     return _ok(result)
 
 
+def tool_openclaw_gateway_status(args: dict) -> dict:
+    from . import harness
+
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 120, min_value=1, max_value=7200)
+    max_output_bytes = _bounded_int_arg(
+        args, "max_output_bytes", 65536, min_value=1024, max_value=1048576
+    )
+    try:
+        result = harness.openclaw_gateway_status(
+            timeout_seconds=timeout_seconds,
+            max_output_bytes=max_output_bytes,
+        )
+    except ValueError as exc:
+        raise ToolError("bad_argument", str(exc))
+    if not result.get("ok"):
+        raise ToolError("command_failed", "OpenClaw gateway status failed", result)
+    return _ok(result)
+
+
 def tool_preflight_probe(args: dict) -> dict:
     base_url = _safe_probe_url(_str_arg(args, "base_url", required=True))
     model = _str_arg(args, "model", required=True)
@@ -2656,6 +2675,14 @@ TOOLS: Dict[str, dict] = {
             "timeout_seconds": _bounded_integer_schema(1, 7200, 120),
         }),
         "handler": tool_openclaw_gateway_restart,
+    },
+    "openclaw_gateway_status": {
+        "description": "Read bounded local OpenClaw gateway status.",
+        "inputSchema": _schema({
+            "timeout_seconds": _bounded_integer_schema(1, 7200, 120),
+            "max_output_bytes": _bounded_integer_schema(1024, 1048576, 65536),
+        }),
+        "handler": tool_openclaw_gateway_status,
     },
     "preflight_probe": {
         "description": "Preview or run an anvil-serving eval preflight command for a model endpoint.",

@@ -70,6 +70,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -197,6 +207,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -330,6 +350,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -508,6 +538,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -675,6 +715,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -847,6 +897,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -1016,6 +1076,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -1182,6 +1252,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -1360,6 +1440,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -1502,6 +1592,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -1663,6 +1763,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -1815,6 +1925,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -1945,6 +2065,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2090,6 +2220,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2290,6 +2430,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -2464,6 +2614,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2654,6 +2814,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -2841,6 +3011,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -2993,6 +3173,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3181,6 +3371,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -3310,6 +3510,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3443,6 +3653,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3588,6 +3808,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3746,6 +3976,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -3875,6 +4115,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4008,6 +4258,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4146,6 +4406,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -4275,6 +4545,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4408,6 +4688,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4573,6 +4863,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -4703,6 +5003,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4839,6 +5149,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -4969,6 +5289,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -5105,6 +5435,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -5237,6 +5577,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -5403,6 +5753,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -5535,6 +5895,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -5673,6 +6043,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -5802,6 +6182,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -5935,6 +6325,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -6100,6 +6500,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -6230,6 +6640,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -6365,6 +6785,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -6511,6 +6941,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -6646,6 +7086,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -6778,6 +7228,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -6924,6 +7384,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -7067,6 +7537,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -7199,6 +7679,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -7342,6 +7832,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -7472,6 +7972,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -7610,6 +8120,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -7745,6 +8265,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -7874,6 +8404,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -8007,6 +8547,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -8137,6 +8687,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -8305,6 +8865,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -8467,6 +9037,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -8597,6 +9177,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -8732,6 +9322,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -8890,6 +9490,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -9019,6 +9629,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -9152,6 +9772,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -9290,6 +9920,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -9419,6 +10059,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -9552,6 +10202,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -9690,6 +10350,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -9822,6 +10492,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -9967,6 +10647,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -10097,6 +10787,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10233,6 +10933,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -10363,6 +11073,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10499,6 +11219,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -10629,6 +11359,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10765,6 +11505,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -10892,6 +11642,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -11028,6 +11788,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -11102,8 +11872,28 @@
       "path": "harness sync openclaw",
       "recovery_capable": false,
       "remote_operation": {
-        "allowed_arguments": [],
-        "confirmed_arguments": {},
+        "allowed_arguments": [
+          "config",
+          "base_url",
+          "api_key_env",
+          "out",
+          "overwrite",
+          "restart",
+          "skills",
+          "skill_dir",
+          "voice",
+          "voice_realtime_url",
+          "voice_model",
+          "voice_consult_model",
+          "voice_consult_thinking_level",
+          "voice_consult_bootstrap_context_mode",
+          "voice_api_key_env",
+          "dry_run",
+          "timeout_seconds"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -11185,6 +11975,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -11321,6 +12121,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -11395,8 +12205,13 @@
       "path": "harness restart openclaw",
       "recovery_capable": true,
       "remote_operation": {
-        "allowed_arguments": [],
-        "confirmed_arguments": {},
+        "allowed_arguments": [
+          "dry_run",
+          "timeout_seconds"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
         "fixed_arguments": {},
         "mode": "tool",
         "positional_arguments": [],
@@ -11409,6 +12224,302 @@
         "local",
         "controller",
         "ssh"
+      ],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#harness",
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "harness status",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Show harness status",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md",
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.harness:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "harness status openclaw",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "timeout_seconds",
+          "max_output_bytes"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "openclaw_gateway_status"
+      },
+      "resource_role": "gateway",
+      "summary": "Show harness status for OpenClaw.",
+      "tombstone": null,
+      "transports": [
+        "local",
+        "controller"
       ],
       "visible": true
     },
@@ -11479,6 +12590,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -11628,6 +12749,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -11787,6 +12918,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -11940,6 +13081,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -12086,6 +13237,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -12216,6 +13377,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -12367,6 +13538,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -12507,6 +13688,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -12637,6 +13828,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -12772,6 +13973,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -12915,6 +14126,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13070,6 +14291,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13229,6 +14460,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -13382,6 +14623,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -13509,6 +14760,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13645,6 +14906,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -13775,6 +15046,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13911,6 +15192,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -14041,6 +15332,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14177,6 +15478,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -14307,6 +15618,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14443,6 +15764,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -14573,6 +15904,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14709,6 +16050,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -14839,6 +16190,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14975,6 +16336,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -15105,6 +16476,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [

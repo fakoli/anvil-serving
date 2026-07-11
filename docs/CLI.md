@@ -22,13 +22,15 @@ workflows that are easiest to miss: `serves render`, `models cache prune`, `mode
 `benchmark external`, and `voice sidecar`.
 
 Topology-aware resource commands accept `--topology PATH`, `--command-host`, `--command-runtime`,
-`--target`, and `--transport`. A model-free host rejects model workloads before handler launch.
+`--target`, `--transport`, and `--allow-ssh-fallback`. A model-free host rejects model workloads before handler launch.
 The narrow exception requires both an `experimental-model` resource permitted by the topology's
 capacity policy and the per-invocation `--experimental-model-workload` flag. Successful overrides
 emit a warning and capacity audit fields; the flag alone never upgrades an ordinary model resource.
-The M1 dispatcher executes only plans that resolve to `local`; a controller or SSH plan fails closed
-before handler import. Use `mcp serve --controller-url` for supported remote operations until the
-M2 CLI transport adapter lands.
+Remote-capable commands execute through the authenticated controller declared for the resource
+owner. `auto` never selects SSH. A recovery-capable command may use `--transport ssh` or
+`--allow-ssh-fallback`; fallback is limited to a proven pre-dispatch controller connection failure
+and requires a pinned host identity plus the private-key path in `ANVIL_SSH_IDENTITY_FILE`.
+Ambiguous controller outcomes are reconciled by idempotency status and never replayed over SSH.
 
 The dispatcher uses exit status `0` for success, `1` for execution failure, `2` for invalid usage,
 `3` for a refused safety gate, `4` for transport failure, and `5` for partial completion. Leaf
@@ -490,12 +492,14 @@ anvil-serving controller serve --host 100.64.0.10 --auth-token-env ANVIL_CONTROL
 ### `harness`
 
 ```
-anvil-serving harness {sync|restart} openclaw [flags]
+anvil-serving harness {sync|restart|status} openclaw [flags]
 ```
 
 Owns the harness-side config: renders a harness's model/provider config **from** the live router
 config so the two never drift (v1 target: OpenClaw). `sync` requires `--config <router.toml>`;
-`restart` reloads the gateway (locally or over ssh) and takes only `--gateway-host`/`--gateway-user`.
+`restart` reloads the gateway, and `status` returns bounded gateway status. With topology options,
+all three target the declared gateway owner and use its controller. Restart alone is marked for
+explicit verified SSH recovery; normal `auto` execution never invokes SSH.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -505,12 +509,15 @@ config so the two never drift (v1 target: OpenClaw). `sync` requires `--config <
 | `--api-key-env` | `ANVIL_ROUTER_TOKEN` | Token env-var name (referenced by name, never the secret). |
 | `--gateway-host` / `--gateway-user` / `--gateway-path` | — | Push to a remote OpenClaw gateway over ssh (merge by default, backup taken); `--overwrite` replaces instead of merging. |
 | `--restart` | off | After `sync`: restart the gateway (requires an applied target, not stdout). |
+| `--dry-run` | off | Validate/render sync or show the fixed restart command without applying it. |
 | `--skills` / `--skill-dir` | off | Also render/apply the workbench skill + sub-agent config. |
 | `--voice`, `--voice-realtime-url`, `--voice-model`, `--voice-consult-*`, `--voice-api-key-env` | off | Also render/apply OpenClaw Talk realtime config for Anvil Voice. |
-| `--timeout-seconds` | bounded | Cap each ssh/scp/openclaw subprocess call. |
+| `--timeout-seconds` | bounded | Cap each controller-side or local OpenClaw subprocess call. |
+| `--max-output-bytes` | `65536` | For `status`, bound each captured output stream. |
 
 ```bash
 anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --restart
+anvil-serving harness status openclaw --topology examples/fakoli-dark/operator-topology.toml
 ```
 
 ---

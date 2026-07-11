@@ -745,6 +745,176 @@ def test_cli_remote_eval_rejects_operator_manifest_before_transport(
     assert "not supported for remote preflight" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    ("path", "operation", "tool", "arguments"),
+    [
+        (
+            ["harness", "sync", "openclaw"],
+            "harness-sync-openclaw",
+            "openclaw_sync",
+            {"config": "router.toml", "out": "openclaw.json", "confirm": True,
+             "dry_run": False},
+        ),
+        (
+            ["harness", "restart", "openclaw"],
+            "harness-restart-openclaw",
+            "openclaw_gateway_restart",
+            {"confirm": True, "dry_run": False},
+        ),
+        (
+            ["harness", "status", "openclaw"],
+            "harness-status-openclaw",
+            "openclaw_gateway_status",
+            {"timeout_seconds": 7},
+        ),
+    ],
+)
+def test_cli_remote_harness_operations_are_typed_and_controller_first(
+    tmp_path, monkeypatch, path, operation, tool, arguments
+):
+    topology = _write_remote_router_topology(tmp_path, operation)
+    text = topology.read_text(encoding="utf-8")
+    text = text.replace('roles = ["router"]', 'roles = ["gateway"]')
+    text = text.replace('role = "router"', 'role = "gateway"')
+    topology.write_text(text, encoding="utf-8")
+    seen = {}
+
+    def fake_execute(plan, dispatched, **kwargs):
+        seen["plan"] = plan
+        seen["operation"] = dispatched
+        seen["kwargs"] = kwargs
+        return cli.TransportResult(dispatched.name, "controller", {"ok": True})
+
+    monkeypatch.setattr(cli, "execute_plan", fake_execute)
+    monkeypatch.setattr(
+        cli,
+        "SSHRecoveryTransport",
+        lambda *_args, **_kwargs: pytest.fail("normal auto mode constructed SSH recovery"),
+    )
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail("remote harness imported its local/SSH handler"),
+    )
+    leaf_args = {
+        "openclaw_sync": ["--confirm", "--config", "router.toml", "--out", "openclaw.json"],
+        "openclaw_gateway_restart": ["--confirm"],
+        "openclaw_gateway_status": ["--timeout-seconds", "7"],
+    }[tool]
+    assert cli.main([*path, "--topology", str(topology), *leaf_args]) == 0
+    assert seen["plan"].transport == "controller"
+    assert seen["operation"].name == operation
+    assert seen["operation"].tool_name == tool
+    assert dict(seen["operation"].arguments) == arguments
+
+
+def _append_harness_ssh_transport(topology, tmp_path, operation):
+    known_hosts = tmp_path / "known_hosts"
+    known_hosts.write_text("synthetic\n", encoding="utf-8")
+    known_hosts_toml = str(known_hosts).replace("\\", "\\\\")
+    with topology.open("a", encoding="utf-8") as handle:
+        handle.write(f'''\n[[transports]]
+id = "gateway-ssh-recovery"
+kind = "ssh"
+host = "dark"
+runtime = "dark-native"
+endpoint = "ssh://operator@100.87.34.66:22"
+allowed_operations = ["{operation}"]
+host_key_fingerprint = "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+known_hosts_path = "{known_hosts_toml}"
+''')
+    return known_hosts
+
+
+def test_cli_harness_restart_ssh_fallback_is_explicit_and_fixed(
+    tmp_path, monkeypatch, capsys
+):
+    operation = "harness-restart-openclaw"
+    topology = _write_remote_router_topology(tmp_path, operation)
+    text = topology.read_text(encoding="utf-8")
+    text = text.replace('roles = ["router"]', 'roles = ["gateway"]')
+    text = text.replace('role = "router"', 'role = "gateway"')
+    topology.write_text(text, encoding="utf-8")
+    known_hosts = _append_harness_ssh_transport(topology, tmp_path, operation)
+    identity = tmp_path / "id_recovery"
+    identity.write_text("synthetic", encoding="utf-8")
+    monkeypatch.setenv("ANVIL_SSH_IDENTITY_FILE", str(identity))
+    seen = {}
+
+    class FakeController:
+        def __init__(self, endpoint, **_kwargs):
+            self.endpoint = endpoint
+
+        def execute(self, *_args, **_kwargs):
+            raise cli.AdapterTransportError(
+                "controller_connect_failed", "refused before dispatch"
+            )
+
+    class FakeSSH:
+        def __init__(self, endpoint, **kwargs):
+            self.endpoint = endpoint
+            self.host = "100.87.34.66"
+            self.transport_id = kwargs["transport_id"]
+            self.known_hosts_path = str(known_hosts)
+            self.host_key_fingerprint = kwargs["host_key_fingerprint"]
+            seen["adapters"] = kwargs["adapters"]
+
+        def execute(self, dispatched):
+            seen["operation"] = dispatched
+            return cli.TransportResult(dispatched.name, "ssh", {"returncode": 0})
+
+    monkeypatch.setattr(cli, "ControllerTransport", FakeController)
+    monkeypatch.setattr(cli, "SSHRecoveryTransport", FakeSSH)
+
+    assert cli.main([
+        "harness", "restart", "openclaw", "--topology", str(topology),
+        "--allow-ssh-fallback", "--confirm",
+    ]) == 0
+    assert seen["adapters"] == {
+        operation: ("anvil-serving", "harness", "restart", "openclaw", "--confirm")
+    }
+    assert seen["operation"].name == operation
+    assert dict(seen["operation"].arguments) == {}
+    output = capsys.readouterr().out
+    assert "transport=ssh" in output
+    assert "controller=http://100.87.34.66:8765" in output
+
+
+@pytest.mark.parametrize("leading", [False, True])
+def test_cli_rejects_ssh_fallback_for_non_recovery_operation(tmp_path, capsys, leading):
+    topology = _write_remote_router_topology(tmp_path, "router-status")
+    argv = ["router", "status", "--topology", str(topology)]
+    argv = ["--allow-ssh-fallback", *argv] if leading else [*argv, "--allow-ssh-fallback"]
+    assert cli.main(argv) == 2
+    assert "not recovery-capable" in capsys.readouterr().err
+
+
+def test_cli_explicit_ssh_restart_dry_run_needs_no_identity_or_process(
+    tmp_path, monkeypatch, capsys
+):
+    operation = "harness-restart-openclaw"
+    topology = _write_remote_router_topology(tmp_path, operation)
+    text = topology.read_text(encoding="utf-8")
+    text = text.replace('roles = ["router"]', 'roles = ["gateway"]')
+    text = text.replace('role = "router"', 'role = "gateway"')
+    topology.write_text(text, encoding="utf-8")
+    _append_harness_ssh_transport(topology, tmp_path, operation)
+    monkeypatch.delenv("ANVIL_SSH_IDENTITY_FILE", raising=False)
+    monkeypatch.setattr(
+        cli,
+        "SSHRecoveryTransport",
+        lambda *_args, **_kwargs: pytest.fail("SSH dry-run constructed a process adapter"),
+    )
+
+    assert cli.main([
+        "harness", "restart", "openclaw", "--topology", str(topology),
+        "--transport", "ssh", "--dry-run",
+    ]) == 0
+    output = capsys.readouterr().out
+    assert "transport=ssh" in output
+    assert '"dry_run": true' in output
+
+
 @pytest.mark.parametrize("experimental_flag", [False, True])
 def test_cli_rejects_mini_model_workload_without_topology_permission_before_launch(
     tmp_path, monkeypatch, capsys, experimental_flag
