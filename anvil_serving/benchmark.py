@@ -68,7 +68,8 @@ def make_prompt(shared_prefix, ctx_tokens, uniq, max_prompt_tokens=None,
     if char_budget <= 0:
         # shared prefix ALONE exceeds the budget (tiny window / big --shared-prefix-tokens):
         # front-truncate it — keeps its head for prefix-cache hits, never overflows.
-        return shared_prefix[: int(budget * chars_per_token) - len(tail)] + tail
+        # max(0, ...) because a NEGATIVE slice index would keep almost the whole prefix.
+        return shared_prefix[: max(0, int(budget * chars_per_token) - len(tail))] + tail
     lines = []
     filled = 0
     i = 0
@@ -418,7 +419,10 @@ def run_bakeoff(a, api_key):
                 "target_tokens": target,
                 "clamped_tokens": clamped,
                 "attempted_context_tokens": clamped,
-                "estimated_prompt_tokens": est_tokens(prompt),
+                # estimate with the SAME rate the prompt was sized with — this field is
+                # the operator's diagnostic when a row fails (no usage comes back), so
+                # it must not drift from the fixed constant once calibration advances.
+                "estimated_prompt_tokens": int(len(prompt) / chars_per_token),
                 "chars_per_token": round(chars_per_token, 3),
                 "status": "pending",
             }

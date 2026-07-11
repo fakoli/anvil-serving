@@ -85,8 +85,18 @@ def test_make_prompt_sub_window_targets_scale_with_target():
         prompt = bm.make_prompt(shared, clamped, target, max_prompt_tokens=cap)
         # estimated size lands within 10% of the clamped per-target budget
         assert abs(bm.est_tokens(prompt) - clamped) <= 0.10 * clamped
+        # the shared prefix must survive verbatim at the START (prefix-cache contract)
+        assert prompt.startswith(shared)
         prompts[target] = prompt
     assert len(prompts[131072]) < 0.6 * len(prompts[262144])
+
+
+def test_make_prompt_tiny_target_never_returns_whole_prefix():
+    # A target smaller than the tail line must not flip the truncation slice index
+    # negative (s[:-k] keeps everything BUT k chars — i.e. ~the whole 68k prefix).
+    shared = (bm.FILLER % (0, 0)) * 1000
+    prompt = bm.make_prompt(shared, 5, 0)
+    assert len(prompt) < 100
 
 
 def test_make_prompt_calibrated_chars_per_token_resizes():
@@ -422,6 +432,10 @@ def test_bakeoff_context_rows_calibrate_from_usage_and_hit_targets(monkeypatch, 
     # two targets -> meaningfully different prompts; calibrated row hits its target
     assert rows[0]["usage"]["prompt_tokens"] < 0.6 * rows[1]["usage"]["prompt_tokens"]
     assert rows[1]["usage"]["prompt_tokens"] == pytest.approx(65536, rel=0.10)
+    # the recorded estimate uses the SAME calibrated rate the prompt was sized with —
+    # it is the failure diagnostic, so it must not drift once calibration advances
+    # (estimating with the fixed 3.0 constant would report ~76k here, 17% over).
+    assert rows[1]["estimated_prompt_tokens"] == pytest.approx(65536, rel=0.10)
 
 
 def test_bakeoff_tool_suite_records_tool_call(monkeypatch, tmp_path):
