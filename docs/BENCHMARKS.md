@@ -2,7 +2,7 @@
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-11**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-11** (incl. the same-day extension round).
 
 ## Read these results correctly
 
@@ -57,6 +57,15 @@ and raw evidence: [Blackwell local model bakeoff](findings/2026-07-10-blackwell-
 | Nemotron-3-Nano-Omni-30B, vLLM **nightly v0.23** NVFP4, 64K | RTX 5090 | 65,536 | pass in window | pass 20/20 | 27.3 tok/s | 64K pass (TTFT 3.1 s) | Keep experimental; unsupported on vLLM ≤0.19 — watch for stable release |
 | Gemma-4-31B-IT NVFP4, vLLM gemma4-unified, six configs | RTX 5090 | none fit | fail (KV OOM ladder) | — | — | — | Reject under tested configuration (32 GB + WSL2 legacy runner); llama.cpp GGUF / PRO 6000 untested |
 | DeepSeek-V4-Flash NVFP4, NGC + nightly attempts | PRO 6000 | not reached | — | — | — | — | Not enough evidence (engine-version reject; nightly load aborted) |
+
+### Extension round (2026-07-11)
+
+| Candidate / tested configuration | Hardware | Context | Preflight | Tool calls | Decode rate | MTP A/B | Role verdict |
+|---|---|---:|---|---|---:|---|---|
+| Nemotron-Labs-3-Puzzle-75B-A9B NVFP4, vLLM nightly, MTP n=3, 131K | PRO 6000 | 131,072 | ALL PASS | pass 20/20 | 137.0 tok/s (long-gen) | **1.50×** (91.4 → 137.0) | **Best measured candidate for the heavy role; not promoted** (official checkpoint; pin a stable engine first) |
+| Qwen3.6-27B-Text-NVFP4-MTP (community), vLLM nightly, MTP n=3, 262K | PRO 6000 | **262,144 verified** | ALL PASS | pass 20/20 | 95.0 tok/s (long-gen) | 1.36× (69.9 → 95.0) | 262K big-KV experiment validated; community checkpoint; not promoted |
+| Qwen3.5-35B-A3B Q4_K_M, llama.cpp, 64K | RTX 5090 | 65,536 | pass in window | pass 20/20 | ~147 tok/s decode, 178 ms TTFT | untested (draft-mtp) | Strongest fast-tier challenger (intelligence 2/2); not promoted |
+| Gemma-4-E4B-it QAT UD-Q4_K_XL, llama.cpp, 64K | RTX 5090 | 65,536 | pass in window | pass 20/20 | 97.0 tok/s, 61 ms TTFT | — | Low-latency specialist; not promoted (upstream PLE gap open) |
 
 Baselines measured in the same window: production heavy gpt-oss-120b (all gates pass, 131K,
 intelligence 2/2) and production fast qwen36-35b-a3b (matches its 2026-07-08 promotion profile).

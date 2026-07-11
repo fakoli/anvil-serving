@@ -251,6 +251,68 @@ transformers). Nightly image: loads, but ~80 s/shard × 46 shards projected
 60+ min; aborted at shard 18/46 by operator to protect concurrent
 measurements. The 96 GB fit question stays open; re-attempt in isolation.
 
+
+## Extension — 2026-07-11 (post-merge round)
+
+Four additional candidates, measured with the same gates after PR #198 merged.
+Operational deltas from the base round: the Operator CLI v2 merge renamed
+`preflight`/`benchmark` to `eval preflight`/`eval benchmark run` and gated
+`serves up/down` behind `--confirm` (the reproduction section below reflects
+the new surface); llama.cpp endpoints need an explicit `--max-model-len` hint
+(they do not advertise a window, and the context probe overshoots without it);
+and this llama.cpp build resolves `-hf` downloads into the HF hub cache layout,
+so the compose anchor now mounts the cache volume at both paths.
+
+### nvidia/NVIDIA-Nemotron-Labs-3-Puzzle-75B-A9B-NVFP4 — verdict: **best measured heavy candidate; not promoted**
+vLLM nightly v0.23.1rc1, PRO 6000, `mtp` n=3 per the model card. Preflight ALL
+PASS; full sweep at 131k (needle 13.8 s); intelligence 2/2. Long-generation
+A/B: 91.4 tok/s -> **137.0 tok/s with MTP (1.50x)** — matching the
+community-reported ~1.53x. The engine auto-disabled prefix caching for the
+Mamba+MTP combination (consistent with upstream #39809). Official checkpoint,
+distilled from Nemotron-3-Super-120B with trained MTP. Supersedes MiniMax REAP
+as the heavy-role recommendation: official provenance, 131k vs 64k, 137 vs 97
+tok/s, same 2/2 intelligence. Promotion still requires a pinned stable engine
+release and an operator decision.
+
+### sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP — verdict: **262k big-KV experiment validated; community checkpoint; not promoted**
+The community-favorite Qwen3.6-27B dense, as a text-only NVFP4 conversion with
+the bf16 MTP head preserved. Preflight ALL PASS; context verified at 131,072
+AND **262,144 tokens** (largest verified window of the exercise; quarter-million
+-token prefill TTFT ~124 s); intelligence 2/2; tools 20/20. MTP
+(`qwen3_5_mtp` n=3): 69.9 -> **95.0 tok/s (1.36x)**; the author-reported 1.74x
+did not reproduce at this config. Requires `--language-model-only` and prefix
+caching off with MTP (three upstream issues; see the recipe).
+
+### unsloth/Qwen3.5-35B-A3B-GGUF Q4_K_M (llama.cpp) — verdict: **strongest fast-tier candidate measured; not promoted**
+RTX 5090, 64k window (GDN hybrid makes KV nearly free), unsloth non-thinking
+sampling defaults. Intelligence 2/2 — the only fast-track candidate to match
+the heavy baseline — tools 20/20, session pass, 64k full-prefill 8.1 s,
+~147 tok/s decode at 178 ms warm TTFT. Below the 214 tok/s community 5090
+reference (newer llama.cpp build there; build freshness measurably matters on
+this arch). llama.cpp MTP (`--spec-type draft-mtp`) untested — the obvious
+next optimization pass.
+
+### unsloth/gemma-4-E4B-it-qat-GGUF UD-Q4_K_XL (llama.cpp) — verdict: **low-latency specialist; not promoted**
+QAT UD-Q4_K_XL chosen over naive Q4_K_M on unsloth's published KLD data.
+Tools 20/20, session pass, 32k/64k context pass, intelligence 1/2, 97 tok/s at
+**61 ms warm TTFT**. Two recorded artifacts: default-mode probes can route all
+output into `reasoning_content` (zero-completion-token measurement trap), and
+the open upstream PLE gap (#22243) leaves a standing quality question for
+E-class Gemma on llama.cpp specifically.
+
+### Extension operational notes
+- The standard 10-request short-completion benchmark **under-generates for MTP
+  A/Bs** (completions EOS at 10-31 tokens; speculative overhead cannot
+  amortize). The archived `*-mtp-ab-longgen.json` probes (3x1024 tokens,
+  temp 0) are the deciding artifacts; the short-probe JSONs are kept as the
+  negative methodology result.
+- An in-layer GGUF salvage stream was killed by rotating the card mid-copy
+  (operator error, ~20 GB re-download exposure only; measurements were
+  complete). Rule: never rotate a card while a container-layer salvage is live.
+- `docker-compose.mtp-off.yml` mirrors the candidate commands minus
+  speculation; the mirrors must be edited in lockstep (one drift, one failed
+  start, fixed).
+
 ## Comparison Scorecard
 
 Machine-readable: `…-evidence/scorecard.csv`. Compact reader-facing table in
@@ -291,4 +353,6 @@ All under `docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/`:
 - `candidate-ornith-35b-*` — 131k bakeoff, throughput
 - `candidate-minimax-m27-reap-*` — 64k bakeoff, throughput
 - `preflight-transcripts.md` — verbatim preflight console captures (needle timings, 20/20 tool batches) + operator nvidia-smi observations
+- `candidate-nemotron-puzzle-75b-*`, `candidate-qwen36-27b-mtp-*` — extension heavy candidates: bakeoff JSONs, short-probe throughput, and `*-mtp-ab-longgen.json` A/B probes
+- `candidate-qwen35-35b-llamacpp-*`, `candidate-gemma4-e4b-llamacpp-*` — extension llama.cpp fast candidates (incl. the context-suite rerun with the `--max-model-len` hint)
 - `scorecard.csv`, `recommendations.json`, `failures.md`, `reproduction.md`, `runtime-restoration.md`, `checksums.sha256`
