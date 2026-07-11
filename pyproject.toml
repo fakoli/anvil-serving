@@ -30,7 +30,7 @@ classifiers = [
 dependencies = []   # stdlib-only by design; optional extras pull in nothing required
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "Markdown>=3.6", "pymdown-extensions>=10.0"]
 # `voice` extra: ONLY for optionally running the voice-pipeline orchestrator +
 # realtime server locally (anvil_serving/voice/). The STT/TTS engines
 # themselves run OUT-OF-PROCESS as separate serves speaking the OpenAI audio
