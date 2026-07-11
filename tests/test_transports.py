@@ -7,7 +7,6 @@ import base64
 import hashlib
 import json
 import os
-import shutil
 import socket
 import subprocess
 import urllib.error
@@ -570,31 +569,14 @@ def test_ssh_recovery_uses_verified_host_and_argument_array(tmp_path):
     assert seen[0][1] == {"timeout": 4.0, "max_output_bytes": 128}
 
 
-def test_ssh_recovery_effective_config_has_only_explicit_identity(tmp_path):
-    ssh = shutil.which("ssh")
-    if ssh is None:
-        pytest.skip("OpenSSH is unavailable")
+@pytest.mark.parametrize("platform_name", ["windows", "posix"])
+def test_ssh_recovery_process_contract_is_platform_invariant(tmp_path, platform_name):
     known_hosts, fingerprint = _known_host(tmp_path)
     identity = _identity(tmp_path)
-    effective_identity_files = []
-    identity_exists_during_launch = []
+    launches = []
 
     def runner(argv, **kwargs):
-        probe = subprocess.run(
-            [ssh, "-G", *argv[1:]],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-            timeout=5,
-        )
-        assert probe.returncode == 0, probe.stderr.decode("utf-8", "replace")
-        effective_identity_files.extend(
-            line.partition(" ")[2].strip()
-            for line in probe.stdout.decode("utf-8", "replace").splitlines()
-            if line.lower().startswith("identityfile ")
-        )
-        identity_exists_during_launch.append(os.path.isfile(effective_identity_files[-1]))
+        launches.append((platform_name, list(argv), dict(kwargs)))
         return subprocess.CompletedProcess(argv, 0, b"ok", b"")
 
     transport = transports.SSHRecoveryTransport(
@@ -608,13 +590,17 @@ def test_ssh_recovery_effective_config_has_only_explicit_identity(tmp_path):
 
     transport.execute(transports.Operation("controller-recovery", {}))
 
-    assert effective_identity_files[0].lower() == "none"
-    assert len(effective_identity_files) == 2
-    assert os.path.normcase(os.path.abspath(effective_identity_files[1])) != os.path.normcase(
-        identity
-    )
-    assert identity_exists_during_launch == [True]
-    assert not os.path.exists(effective_identity_files[1])
+    _, argv, kwargs = launches[0]
+    assert argv[0:3] == ["ssh", "-F", "/dev/null"]
+    assert "IdentityFile=none" in argv
+    explicit_identity = [item for item in argv if item.startswith("IdentityFile=")][-1]
+    verified_identity = explicit_identity.partition("=")[2]
+    assert os.path.normcase(os.path.abspath(verified_identity)) != os.path.normcase(identity)
+    assert not os.path.exists(verified_identity)
+    assert "GlobalKnownHostsFile=/dev/null" in argv
+    assert "nul" not in argv
+    assert "cmd" not in argv and "sh" not in argv
+    assert kwargs == {"timeout": 10.0, "max_output_bytes": 65536}
 
 
 def test_ssh_recovery_rejects_identity_disappearance_without_launch(tmp_path):

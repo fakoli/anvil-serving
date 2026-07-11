@@ -33,6 +33,89 @@ def _guarded_paths() -> tuple[tuple[str, ...], ...]:
     )
 
 
+def _tombstone_cases() -> tuple[tuple[tuple[str, ...], str], ...]:
+    cases: list[tuple[tuple[str, ...], str]] = []
+    for path in _paths():
+        command = tuple(node.name for node in path)
+        node = path[-1]
+        if node.tombstone is not None:
+            cases.append((command, node.tombstone.replacement))
+        for option in node.options:
+            if option.tombstone is None:
+                continue
+            flag = next((item for item in option.flags if item.startswith("--")), option.flags[0])
+            cases.append(((*command, flag), option.tombstone.replacement))
+    return tuple(cases)
+
+
+def _unbounded_json_cases() -> tuple[tuple[tuple[str, ...], str], ...]:
+    cases: list[tuple[tuple[str, ...], str]] = []
+    for path in _paths():
+        command = tuple(node.name for node in path)
+        node = path[-1]
+        if node.visible and node.output_policy != "bounded":
+            cases.append((command, node.output_policy))
+        if not node.visible:
+            continue
+        for option in node.options:
+            if option.output_policy is None:
+                continue
+            flag = next((item for item in option.flags if item.startswith("--")), option.flags[0])
+            cases.append(((*command, flag), option.output_policy))
+    return tuple(cases)
+
+
+@pytest.mark.parametrize(("argv", "replacement"), _tombstone_cases())
+def test_every_tombstone_refuses_human_and_json_before_resolution(
+    monkeypatch, capsys, argv, replacement
+):
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved tombstone handler: {self.name}"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "_resolve_dispatch_plan",
+        lambda *_args, **_kwargs: pytest.fail("resolved topology for tombstone"),
+    )
+
+    assert cli.main(list(argv)) == 2
+    human = capsys.readouterr()
+    assert human.out == ""
+    assert replacement in human.err
+
+    assert cli.main([*argv, "--json"]) == 2
+    machine = capsys.readouterr()
+    assert machine.err == ""
+    payload = json.loads(machine.out)
+    assert payload["error"]["class"] == "usage"
+    assert payload["error"]["details"]["replacement"] == replacement
+
+
+@pytest.mark.parametrize(("argv", "classification"), _unbounded_json_cases())
+def test_every_unbounded_manifest_case_refuses_json_before_resolution(
+    monkeypatch, capsys, argv, classification
+):
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved unbounded handler: {self.name}"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "_resolve_dispatch_plan",
+        lambda *_args, **_kwargs: pytest.fail("resolved topology for unbounded JSON"),
+    )
+
+    assert cli.main([*argv, "--json"]) == 2
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    payload = json.loads(captured.out)
+    assert payload["error"]["class"] == "usage"
+    assert classification in payload["error"]["message"]
+
+
 @pytest.mark.parametrize("path", _guarded_paths())
 def test_explicit_confirmation_is_consumed_before_guarded_handler_dispatch(monkeypatch, path):
     calls: list[list[str]] = []
