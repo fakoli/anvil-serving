@@ -415,7 +415,7 @@ def build_command_tree() -> CommandTree:
         _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=()),
         *(
             _resource_node(action, summary, "anvil_serving.host", role="host", mutation=mutation, recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options if mutation == "mutate" else ())
-            for action, summary, mutation in (("doctor", "Diagnose host configuration.", "read"), ("wsl-config", "Render or update WSL configuration.", "mutate"), ("restart-docker", "Restart Docker Desktop.", "mutate"), ("reset-wsl", "Reset WSL.", "mutate"))
+            for action, summary, mutation in (("doctor", "Diagnose host configuration.", "read"), ("wsl-config", "Render or update WSL configuration.", "mutate"), ("restart-docker", "Restart Docker Desktop.", "mutate"), ("reset-wsl", "Reset WSL.", "mutate"), ("memory", "Show host RAM and WSL VM memory usage.", "read"), ("reclaim", "Drop the WSL VM page cache.", "mutate"))
         ),
     ), docs_anchor="docs/CLI.md#host")
 

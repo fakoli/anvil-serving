@@ -345,7 +345,7 @@ anvil-serving doctor --config configs/example.toml
 ### `host`
 
 ```
-anvil-serving host {doctor|wsl-config|restart-docker|reset-wsl} [flags]
+anvil-serving host {doctor|wsl-config|restart-docker|reset-wsl|memory|reclaim} [flags]
 ```
 
 Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
@@ -356,10 +356,20 @@ Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
 | `wsl-config` | Edit `.wslconfig` memory/swap (`--memory GB`, `--swap GB`); backup + safe-cap refusal (`--force` to override), `--revert` restores the newest anvil backup, `--dry-run` shows the change. |
 | `restart-docker` | Apply via a Docker Desktop restart (confirm prompt; `--force` skips). |
 | `reset-wsl` | Un-wedge a hung WSL subsystem (confirm prompt; `--force` skips). |
+| `memory` | Show host RAM, the WSL VM's used / **page cache** / available (from `/proc/meminfo` inside the distro), and GPU VRAM. `--distro NAME` targets a specific distro. |
+| `reclaim` | Drop the WSL VM's page cache (`sync && echo 3 > /proc/sys/vm/drop_caches` as root). Confirm-gated (`--confirm`/`--force`); **refuses while a model load is actively streaming** (page cache growing fast) unless `--force`. `--watch --threshold-gb N [--interval S]` runs a foreground watchdog that drops whenever the cache exceeds the threshold; `--dry-run` shows the command. |
 
 ```bash
 anvil-serving host wsl-config --memory 64 --dry-run
+anvil-serving host memory
+anvil-serving host reclaim --confirm                       # one-shot
+anvil-serving host reclaim --watch --threshold-gb 40 --interval 30 --confirm   # bakeoff watchdog
 ```
+
+Repeated 60–90 GB model-weight streams balloon the WSL2 VM's Linux page cache until Windows
+itself starves (`autoMemoryReclaim=gradual` in `.wslconfig` lags load bursts) — `memory` shows
+it, `reclaim` frees it. Both are Windows/WSL2-only and exit with a clear message elsewhere. See
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md#windows-starves-for-ram-during-repeated-big-model-loads-wsl-page-cache).
 
 ---
 

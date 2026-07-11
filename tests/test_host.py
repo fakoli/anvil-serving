@@ -295,6 +295,155 @@ def test_doctor_reports_and_recommends(monkeypatch, capsys):
     assert "RTX PRO 6000" in out and "GPU 1" in out
 
 
+# ---- wsl_meminfo / cmd_memory / cmd_reclaim (page-cache watchdog) -------------
+
+def _meminfo_text(total_gb=64, avail_gb=8, cached_gb=50):
+    kb = lambda gb: int(gb * 1024 ** 2)
+    return ("MemTotal:       %d kB\nMemFree:        %d kB\nMemAvailable:   %d kB\n"
+            "Buffers:        1000 kB\nCached:         %d kB\n"
+            % (kb(total_gb), kb(1), kb(avail_gb), kb(cached_gb)))
+
+
+class _WslBox:
+    """Injectable _run for the WSL page-cache commands: serves a sequence of Cached values to
+    meminfo reads, records drop_caches invocations."""
+    def __init__(self, cached_seq):
+        self.cached = list(cached_seq)
+        self.drops = []
+
+    def __call__(self, argv, **k):
+        j = " ".join(argv)
+        if "drop_caches" in j:
+            self.drops.append(argv)
+            return proc(0)
+        if "/proc/meminfo" in j:
+            c = self.cached[0] if len(self.cached) == 1 else self.cached.pop(0)
+            return proc(0, _meminfo_text(cached_gb=c))
+        return proc(0)
+
+
+def test_wsl_meminfo_parses_proc_meminfo():
+    mem = host.wsl_meminfo(_run=lambda a, **k: proc(0, _meminfo_text(64, 8, 50)))
+    assert round(mem["total_gb"]) == 64 and round(mem["cached_gb"]) == 50
+    assert round(mem["available_gb"]) == 8 and round(mem["used_gb"]) == 56   # total - available
+    assert host.wsl_meminfo(_run=lambda a, **k: proc(1, "", "no wsl")) is None
+    def boom(a, **k):
+        raise OSError("wsl.exe not found")
+    assert host.wsl_meminfo(_run=boom) is None
+
+
+def test_wsl_meminfo_targets_the_requested_distro():
+    seen = []
+    host.wsl_meminfo(_run=lambda a, **k: seen.append(a) or proc(0, _meminfo_text()), distro="Ubuntu")
+    assert seen[0][:3] == ["wsl", "-d", "Ubuntu"]
+
+
+def test_memory_reports_wsl_and_page_cache(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    def fake(argv, **k):
+        j = " ".join(argv)
+        if "Win32_ComputerSystem" in j:
+            return proc(0, _bytes(93.7))
+        if "/proc/meminfo" in j:
+            return proc(0, _meminfo_text(64, 8, 50))
+        if argv[0] == "nvidia-smi":
+            return proc(0, "0, RTX 5090, 28330, 32607\n")
+        return proc(0)
+    rc = host.cmd_memory(_run=fake)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "page cache:     50.0 GB" in out
+    assert "RTX 5090" in out
+    assert "host reclaim --confirm" in out          # cache > half the VM -> points at the fix
+
+
+def test_memory_rejected_off_windows(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "linux")
+    assert host.cmd_memory() == 2
+    assert "Windows only" in capsys.readouterr().err
+
+
+def test_reclaim_rejected_off_windows(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "linux")
+    assert host.cmd_reclaim(force=True) == 2
+    assert "Windows only" in capsys.readouterr().err
+
+
+def test_reclaim_refuses_while_a_load_is_streaming(monkeypatch, capsys):
+    # Cached grows 2 GB across the 2 s sample window (1 GB/s > 0.25 floor) -> a checkpoint is
+    # streaming -> refuse, run nothing.
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50, 50, 52])                     # before, sample A, sample B
+    rc = host.cmd_reclaim(_run=box, _input=lambda p: "y", _sleep=lambda s: None)
+    assert rc == 2
+    assert "REFUSING" in capsys.readouterr().err
+    assert box.drops == []                          # drop_caches NOT run
+
+
+def test_reclaim_force_overrides_streaming_and_prompt(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50, 5])                          # before, after
+    rc = host.cmd_reclaim(force=True, _run=box, _input=lambda p: "n", _sleep=lambda s: None)
+    assert rc == 0 and len(box.drops) == 1
+    j = " ".join(box.drops[0])
+    assert "-u root" in j and "drop_caches" in j and "sync" in j
+    assert "50.0 GB -> 5.0 GB" in capsys.readouterr().out
+
+
+def test_reclaim_declined_without_confirmation(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50])                             # stable cache -> passes the streaming check
+    rc = host.cmd_reclaim(_run=box, _input=lambda p: "n", _sleep=lambda s: None)
+    assert rc == 1 and box.drops == []
+    assert "aborted" in capsys.readouterr().out
+
+
+def test_reclaim_fails_when_wsl_unreachable(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    rc = host.cmd_reclaim(force=True, _run=lambda a, **k: proc(1, "", "no wsl"))
+    assert rc == 1
+    assert "cannot read" in capsys.readouterr().err
+
+
+def test_reclaim_dry_run_runs_nothing(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50])
+    rc = host.cmd_reclaim(dry_run=True, _run=box)
+    assert rc == 0 and box.drops == []
+    assert "drop_caches" in capsys.readouterr().out
+
+
+def test_reclaim_watch_requires_threshold(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    assert host.cmd_reclaim(watch=True, force=True) == 2
+    assert "--threshold-gb" in capsys.readouterr().err
+
+
+def test_reclaim_watch_drops_over_threshold_then_stops_on_interrupt(monkeypatch, capsys):
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50, 5])                          # 50 >= 40 -> drop; 5 = post-drop read
+    def interrupt(seconds):                         # the interval sleep = the user's Ctrl-C
+        raise KeyboardInterrupt
+    rc = host.cmd_reclaim(watch=True, threshold_gb=40, force=True, _run=box, _sleep=interrupt)
+    assert rc == 0 and len(box.drops) == 1
+    out = capsys.readouterr().out
+    assert "dropped: 50.0 GB" in out and "watchdog stopped" in out
+
+
+def test_reclaim_watch_waits_out_a_streaming_load(monkeypatch, capsys):
+    # Over threshold but growing fast -> the watchdog must WAIT for the load, not drop under it.
+    monkeypatch.setattr(host.sys, "platform", "win32")
+    box = _WslBox([50, 50, 52])                     # check, sample A, sample B (streaming)
+    calls = {"n": 0}
+    def sleep(seconds):
+        calls["n"] += 1
+        if calls["n"] >= 2:                         # sample sleep, then interval sleep -> stop
+            raise KeyboardInterrupt
+    rc = host.cmd_reclaim(watch=True, threshold_gb=40, _run=box, _input=lambda p: "y", _sleep=sleep)
+    assert rc == 0 and box.drops == []
+    assert "waiting" in capsys.readouterr().out
+
+
 # ---- CLI dispatch ------------------------------------------------------------
 
 def test_main_dispatches(monkeypatch):
@@ -302,3 +451,11 @@ def test_main_dispatches(monkeypatch):
     monkeypatch.setattr(host, "cmd_wsl_config", lambda **k: seen.update(k) or 0)
     rc = host.main(["wsl-config", "--memory", "80", "--force"])
     assert rc == 0 and seen["memory_gb"] == 80 and seen["force"] is True
+
+
+def test_main_dispatches_reclaim_flags(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(host, "cmd_reclaim", lambda **k: seen.update(k) or 0)
+    rc = host.main(["reclaim", "--watch", "--threshold-gb", "40", "--interval", "15", "--force"])
+    assert rc == 0 and seen["watch"] is True and seen["threshold_gb"] == 40
+    assert seen["interval_s"] == 15 and seen["force"] is True

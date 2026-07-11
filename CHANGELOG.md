@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **`host memory` + `host reclaim` — the WSL page-cache watchdog** — promotes the ad-hoc
+  remediation from the 2026-07-10/11 Blackwell bakeoff (repeated 60–90 GB weight streams
+  ballooned the WSL2 VM's page cache to 50–54 GB of 64 GB, starving Windows;
+  `autoMemoryReclaim=gradual` lags load bursts). `host memory` shows host RAM, the WSL VM's
+  used/page-cache/available (`/proc/meminfo` via `wsl`), and GPU VRAM. `host reclaim` runs
+  `sync && echo 3 > /proc/sys/vm/drop_caches` as root inside the distro — confirm-gated
+  (`--confirm`/`--force`), refusing while a checkpoint is actively streaming (page cache
+  growing > 0.25 GB/s) unless `--force`; `--watch --threshold-gb N [--interval S]` is the
+  foreground watchdog form. Windows/WSL2-guarded with a clear message elsewhere.
 - **Production-polish reconciliation inventory** — records the 49 pre-existing CLI
   polish hunks, their retain/adapt disposition, their v2 task ownership, and the
   planned callable-alias-to-tombstone conversion. This preserves the working
