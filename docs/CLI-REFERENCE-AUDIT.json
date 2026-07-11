@@ -36,7 +36,7 @@
         "models-cache-prune": 7,
         "models-recipes": 1,
         "models-score": 8,
-        "router-run": 26,
+        "router-run": 27,
         "serves-multiplex": 3,
         "serves-render": 9,
         "voice-audio": 17,
@@ -106,7 +106,7 @@
         "models-cache-prune": 10,
         "models-recipes": 4,
         "models-score": 11,
-        "router-run": 51,
+        "router-run": 54,
         "serves-multiplex": 6,
         "serves-render": 15,
         "voice-audio": 28,
@@ -118,10 +118,10 @@
         "examples": 41,
         "implementation": 114,
         "skills": 4,
-        "tests": 132,
-        "tooling": 22
+        "tests": 117,
+        "tooling": 24
       },
-      "files_scanned": 353,
+      "files_scanned": 340,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

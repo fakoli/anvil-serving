@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 from typing import Iterable
 
@@ -136,6 +137,7 @@ def _is_excluded(relative: Path) -> bool:
         or value.startswith("specs/archive/")
         or value.startswith(".anvil/")
         or value.startswith("tests/fixtures/cli_reference_audit/")
+        or value.startswith("tests/fixtures/eval-data/")
         or value == "scripts/audit_cli_references.py"
         or value == INVENTORY_REL.as_posix()
     )
@@ -190,8 +192,27 @@ def _skill_files(base: Path) -> set[Path]:
     return {path for path in paths if path.is_file()}
 
 
+def _tracked_paths(root: Path) -> set[str]:
+    completed = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=root,
+        text=False,
+        capture_output=True,
+        check=False,
+        shell=False,
+    )
+    if completed.returncode != 0:
+        raise ValueError("production reference audit requires a readable Git index")
+    return {
+        value.decode("utf-8").replace("\\", "/")
+        for value in completed.stdout.split(b"\0")
+        if value
+    }
+
+
 def discover_files(root: Path, scope: str) -> tuple[Path, tuple[Path, ...]]:
     scan_root = root
+    fixture_scope = scope == "fixtures"
     if scope == "fixtures":
         scan_root = root / FIXTURE_REL / "input"
         if not scan_root.is_dir():
@@ -219,6 +240,9 @@ def discover_files(root: Path, scope: str) -> tuple[Path, tuple[Path, ...]]:
             paths.update(_text_files(scan_root, relative_root))
     else:
         raise ValueError(f"unsupported scope: {scope}")
+    if not fixture_scope:
+        tracked = _tracked_paths(scan_root)
+        paths = {path for path in paths if path.relative_to(scan_root).as_posix() in tracked}
     return scan_root, tuple(sorted(paths, key=lambda item: item.relative_to(scan_root).as_posix()))
 
 

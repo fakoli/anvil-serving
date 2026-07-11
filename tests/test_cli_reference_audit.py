@@ -103,7 +103,15 @@ def test_generated_manifest_index_and_tombstones_match_checked_in_cli_reference(
 
 
 def test_repository_scope_inventories_match():
+    tracked = {
+        line.replace("\\", "/")
+        for line in subprocess.run(
+            ["git", "ls-files"], cwd=ROOT, text=True, capture_output=True, check=True
+        ).stdout.splitlines()
+    }
     for scope in ("docs", "skills", "full"):
         result = audit.scan(ROOT, scope)
         assert not result.violations
+        assert set(result.files) <= tracked
+        assert not any(path.startswith("tests/fixtures/eval-data/") for path in result.files)
         assert audit.inventory_matches(ROOT, scope, audit.inventory_record(result))
