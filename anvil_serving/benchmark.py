@@ -233,6 +233,39 @@ def validate_function_tool_call(message, expected_name, required_args):
 
     return {"valid": True, "error": None, "arguments": args}
 
+def load_suite_spec(path):
+    """Load + validate an externally-authored eval suite (--suite-file).
+
+    Spec shape (deliberately compatible with the session-evals plugin's suite.json):
+    {suite, date?, work_class?, evals: [{id, prompt|messages, max_tokens?, tools?,
+    expect_tool?: {name, required_args}, checks?: [{name, contains|contains_all|
+    contains_any}]}]} — checks use evaluate_text_checks semantics, expect_tool uses
+    validate_function_tool_call. A malformed spec is an operator error (loud, before
+    any request is sent), not benchmark evidence.
+    """
+    with open(path, encoding="utf-8") as f:
+        spec = json.load(f)
+    if not isinstance(spec, dict):
+        raise ValueError("suite file must be a JSON object")
+    suite = spec.get("suite")
+    if not isinstance(suite, str) or not suite.strip():
+        raise ValueError("suite file needs a non-empty 'suite' name")
+    evals = spec.get("evals")
+    if not isinstance(evals, list) or not evals:
+        raise ValueError("suite file needs a non-empty 'evals' list")
+    for i, item in enumerate(evals):
+        if not isinstance(item, dict) or not item.get("id"):
+            raise ValueError("evals[%d] must be an object with an 'id'" % i)
+        if not isinstance(item.get("prompt"), str) and not isinstance(item.get("messages"), list):
+            raise ValueError("evals[%d] (%s) needs 'prompt' or 'messages'" % (i, item["id"]))
+        expect = item.get("expect_tool")
+        if expect is not None and (not isinstance(expect, dict) or not expect.get("name")):
+            raise ValueError("evals[%d] (%s) expect_tool needs a 'name'" % (i, item["id"]))
+        # an eval that asserts nothing proves nothing — reject it up front
+        if not item.get("checks") and not expect:
+            raise ValueError("evals[%d] (%s) needs 'checks' or 'expect_tool'" % (i, item["id"]))
+    return spec
+
 def evaluate_text_checks(content, checks):
     """Deterministic text checks; this never asks the candidate to grade itself."""
     normalized = content.lower()
@@ -574,6 +607,84 @@ def run_bakeoff(a, api_key):
             "checks": checks,
         }
 
+    # --suite-file: externally-authored evals through the SAME check engine as the
+    # built-in intelligence/tool suites (spec validated up front in main()).
+    external_suites = {}
+    spec = getattr(a, "suite_spec", None)
+    if spec:
+        checks = []
+        for item in spec["evals"]:
+            check = {
+                "id": item["id"],
+                "status": "pending",
+                "validator": "deterministic_text_checks",
+            }
+            try:
+                request_messages = item.get("messages") or [
+                    {"role": "user", "content": item["prompt"]}
+                ]
+                result = post_chat(
+                    a.base_url,
+                    a.model,
+                    api_key,
+                    request_messages,
+                    max_tokens=int(item.get("max_tokens") or 256),
+                    timeout=a.timeout,
+                    tools=item.get("tools"),
+                    chat_template_kwargs=ctk,
+                )
+                messages = _choice_messages(result.get("response", {}))
+                content = _message_text(messages[0]) if messages else ""
+                text_checks = evaluate_text_checks(content, item.get("checks") or [])
+                errors = [c["name"] for c in text_checks if not c["passed"]]
+                check.update({
+                    "latency_ms": result["latency_s"] * 1000.0,
+                    "text_checks": text_checks,
+                    "content_excerpt": content[:200],
+                })
+                expect = item.get("expect_tool")
+                if expect:
+                    validations = [
+                        validate_function_tool_call(
+                            message, expect["name"], expect.get("required_args") or {}
+                        )
+                        for message in messages
+                    ]
+                    valid = [v for v in validations if v["valid"]]
+                    check["tool_call"] = {
+                        "valid": bool(valid),
+                        "arguments": valid[0]["arguments"] if valid else None,
+                        "validation_errors": [v["error"] for v in validations if v["error"]],
+                    }
+                    if not valid:
+                        errors.extend(
+                            check["tool_call"]["validation_errors"]
+                            or ["response did not include tool_calls"]
+                        )
+                check["status"] = "passed" if not errors else "failed"
+                if errors:
+                    check["error"] = "; ".join(errors)
+                    failures.append({
+                        "suite": spec["suite"],
+                        "eval_id": item["id"],
+                        "error": check["error"],
+                    })
+            except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
+                check.update({"status": "failed", "error": str(exc)})
+                failures.append({
+                    "suite": spec["suite"],
+                    "eval_id": item["id"],
+                    "error": str(exc),
+                })
+            checks.append(check)
+        external_suites[spec["suite"]] = {
+            "status": "passed" if all(c["status"] == "passed" for c in checks) else "failed",
+            "source": a.suite_file,
+            "date": spec.get("date"),
+            "work_class": spec.get("work_class"),
+            "checks": checks,
+        }
+
     voice_section = {
         "status": "not_run",
         "stt_latency_ms": a.stt_latency_ms,
@@ -632,6 +743,7 @@ def run_bakeoff(a, api_key):
         "tool": tool_section,
         "session": session_section,
         "intelligence": intelligence_section,
+        "suites": external_suites,
         "thinking": thinking_section,
         "voice": voice_section,
         "score_inputs": {
@@ -843,6 +955,10 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
     ap.add_argument("--suite", action="append",
                     help="bakeoff suite(s) to run; repeatable or comma-separated. "
                          "Known suites: chat, context, tool, session, intelligence, voice")
+    ap.add_argument("--suite-file", default=None, metavar="SPECS_JSON",
+                    help="also run an externally-authored eval suite (e.g. a session-evals "
+                         "suite.json) through the bakeoff check engine; per-eval checks land "
+                         "in the evidence JSON under suites.<spec suite name>. Requires --bakeoff.")
     ap.add_argument("--evidence-out", default=None,
                     help="write --bakeoff structured evidence JSON to this path")
     ap.add_argument("--notebook", default=None,
@@ -877,9 +993,19 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
         ap.error(str(exc))
     api_key = resolve_api_key(a.api_key_env)
 
+    if a.suite_file and not a.bakeoff:
+        ap.error("--suite-file requires --bakeoff (it runs through the bakeoff evidence engine)")
+
     if a.bakeoff:
         if not a.candidate_id or not a.config_id:
             ap.error("--bakeoff requires --candidate-id and --config-id")
+        if a.suite_file:
+            # validate BEFORE any request is sent: a malformed spec is an operator
+            # error (exit 2 + message), never partial evidence.
+            try:
+                a.suite_spec = load_suite_spec(a.suite_file)
+            except (OSError, ValueError) as exc:
+                ap.error("--suite-file: %s" % exc)
         return run_bakeoff(a, api_key)
 
     # Resolve the serve's context window: explicit flag wins; else best-effort probe /v1/models.
