@@ -1,1 +1,2 @@
 docs/CLI-COMMAND-MANIFEST.json text eol=lf
+docs/findings/*-evidence/** -text

@@ -1,0 +1,115 @@
+{
+  "schema": "anvil-serving.bakeoff-source-registry/v1",
+  "recorded_at": "2026-07-10T21:40:00Z",
+  "policy": "Community reports select candidates and seed recipes. Promotion conclusions come ONLY from local measurements on this host.",
+  "entries": [
+    {
+      "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4",
+      "official_model_card": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4",
+      "engine_docs": "https://docs.vllm.ai/",
+      "community_source": "internal MODEL-LANDSCAPE research notes (Nemotron 3 family shortlist; NVIDIA RTX-PC positioning)",
+      "source_date": "2026-03-15 (last model-card update)",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "official",
+      "hardware_relevance": "NVFP4 Blackwell-native; ~30B MoE A3B fits RTX 5090 32GB",
+      "engine_relevance": "vLLM; nemotron_h hybrid Mamba-Transformer arch, custom_code",
+      "influenced": "candidate selection (fast-tier text role) + quantization choice (NVFP4 per repo gotcha #17)"
+    },
+    {
+      "model": "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4",
+      "official_model_card": "https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4",
+      "engine_docs": "https://docs.vllm.ai/",
+      "community_source": null,
+      "source_date": "2026-05-05 (last model-card update)",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "official",
+      "hardware_relevance": "~30B MoE A3B NVFP4 fits RTX 5090 32GB",
+      "engine_relevance": "any-to-any multimodal arch NemotronH_Nano_Omni_Reasoning_V3; vLLM support to be verified locally",
+      "influenced": "candidate selection (multimodal role probe)"
+    },
+    {
+      "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+      "official_model_card": "https://huggingface.co/google/gemma-4-31B-it-qat-w4a16-ct",
+      "engine_docs": "https://docs.vllm.ai/",
+      "community_source": "internal MODEL-LANDSCAPE research notes (Gemma 4 as Ornith base; general-assistant role)",
+      "source_date": "2026-06-04 (QAT checkpoint created)",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "official",
+      "hardware_relevance": "31B dense QAT W4A16 (~19GB weights) fits RTX 5090 32GB",
+      "engine_relevance": "vLLM compressed-tensors; OMIT --quantization per repo gotcha #18",
+      "influenced": "candidate selection (fast/general tier) + quantization choice (official QAT over community GGUF)"
+    },
+    {
+      "model": "deepreinforce-ai/Ornith-1.0-35B-FP8",
+      "official_model_card": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-35B-FP8",
+      "engine_docs": "https://docs.vllm.ai/",
+      "community_source": "internal MODEL-LANDSCAPE research notes: 'SOTA open @ size (TB-2.1, SWE-Bench, OpenClaw), agentic-coding-native' — vendor-reported scores flagged as unverified",
+      "source_date": "2026-06-26 (FP8 checkpoint created; base released 2026-06-21)",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "community-prior",
+      "hardware_relevance": "35B MoE FP8 (~36GB weights) requires RTX PRO 6000 96GB",
+      "engine_relevance": "qwen3_5_moe arch (Gated-DeltaNet hybrid risk on sm_120 per repo gotcha #16); compressed-tensors FP8 — omit --quantization",
+      "influenced": "candidate selection (agent/coding role). Vendor benchmark claims used ONLY for selection, never as measured results."
+    },
+    {
+      "model": "dervig/m51Lab-MiniMax-M2.7-REAP-139B-A10B-NVFP4",
+      "official_model_card": "https://huggingface.co/dervig/m51Lab-MiniMax-M2.7-REAP-139B-A10B-NVFP4",
+      "base_model_card": "https://huggingface.co/MiniMaxAI/MiniMax-M2.7",
+      "engine_docs": "https://docs.vllm.ai/",
+      "community_source": "community REAP expert-pruning release (arXiv:2510.13999 method); NOT an official MiniMax checkpoint",
+      "source_date": "2026-04-21 (checkpoint last modified)",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "community-prior",
+      "hardware_relevance": "139B-A10B REAP NVFP4 (~70GB weights) targets RTX PRO 6000 96GB",
+      "engine_relevance": "minimax_m2 arch, custom_code, compressed-tensors NVFP4 tagged vllm/blackwell",
+      "influenced": "candidate selection (heavy tier). Community checkpoint quality unverified; local gates decide."
+    },
+    {
+      "model": "nvidia/DeepSeek-V4-Flash-NVFP4",
+      "official_model_card": "https://huggingface.co/nvidia/DeepSeek-V4-Flash-NVFP4",
+      "base_model_card": "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash",
+      "engine_docs": "https://docs.vllm.ai/",
+      "community_source": null,
+      "source_date": "2026-06-15 (NVFP4 checkpoint last modified; base released 2026-04-22)",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "official",
+      "hardware_relevance": "158B MoE; native FP8 (~158GB) does NOT fit 96GB. NVFP4 (~83GB weights) is a borderline fit attempt on RTX PRO 6000",
+      "engine_relevance": "deepseek_v4 arch; ModelOpt NVFP4 takes --quantization modelopt_fp4 per repo gotcha #10",
+      "influenced": "candidate selection (heavy tier stretch). Expected tight fit; failure to fit is itself a recorded result."
+    },
+    {
+      "model": "openai/gpt-oss-120b (production heavy baseline)",
+      "official_model_card": "https://huggingface.co/openai/gpt-oss-120b",
+      "engine_docs": "https://docs.vllm.ai/",
+      "community_source": null,
+      "source_date": "pre-existing production tier",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "local-measurement",
+      "hardware_relevance": "current production heavy tier on RTX PRO 6000",
+      "engine_relevance": "vLLM",
+      "influenced": "baseline for all heavy-track comparisons"
+    },
+    {
+      "model": "Qwen3.6 fast tier (production fast baseline)",
+      "official_model_card": "https://huggingface.co/Qwen",
+      "engine_docs": "https://docs.vllm.ai/",
+      "community_source": "prior local finding: docs/findings/2026-07-08-fast-tier-promotion.md",
+      "source_date": "2026-07-08 (fast-tier promotion)",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "local-measurement",
+      "hardware_relevance": "current production fast tier on RTX 5090",
+      "engine_relevance": "vLLM",
+      "influenced": "baseline for all 5090-track comparisons"
+    },
+    {
+      "model": "(cross-reference wikis)",
+      "official_model_card": null,
+      "community_source": "local-inference-lab/rtx6kpro wiki + 0xsero/blackwell-gpu-wiki (repo gotcha #19: sm_120 prior art)",
+      "date_accessed": "2026-07-10",
+      "evidence_type": "community-prior",
+      "hardware_relevance": "sm_120 kernel-maturity guidance (MoE-NVFP4 grouped-GEMM caveats, gotcha #16)",
+      "engine_relevance": "vLLM/SGLang kernel path selection",
+      "influenced": "engine image choice (nvcr.io/nvidia/vllm:26.04-py3, proven by the 2026-07-10 qwen35-122b heavy candidate run) and expectation-setting for hybrid-attention candidates"
+    }
+  ]
+}

@@ -167,3 +167,61 @@ model = "qwen35-122b-a10b-nvfp4"
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d heavy-qwen35-122b"
+
+# ── 2026-07-10 Blackwell local-model bakeoff CANDIDATES (evaluation, NOT promoted) ──
+# 5090-track (:39020-21) coexist with live heavy; PRO-6000-track (:39022-24) share the
+# card with GPT-OSS heavy — stop `heavy` before bringing any of those up. None of these
+# are wired into the router.
+[[serve]]
+name = "cand-nemotron3-nano-30b"
+container = "vllm-cand-nemotron3-nano-30b"
+port = 39020
+model = "nemotron3-nano-30b-a3b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-nano-30b"
+
+[[serve]]
+name = "cand-nemotron3-omni-30b"
+container = "vllm-cand-nemotron3-omni-30b"
+port = 39021
+model = "nemotron3-omni-30b-a3b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-omni-30b"
+
+[[serve]]
+name = "cand-ornith-35b-fp8"
+container = "vllm-cand-ornith-35b-fp8"
+port = 39022
+model = "ornith-1.0-35b-fp8"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-ornith-35b-fp8"
+
+[[serve]]
+name = "cand-minimax-m27-reap"
+container = "vllm-cand-minimax-m27-reap"
+port = 39023
+model = "minimax-m27-reap-139b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-minimax-m27-reap"
+
+[[serve]]
+name = "cand-deepseek-v4-flash"
+container = "vllm-cand-deepseek-v4-flash"
+port = 39024
+model = "deepseek-v4-flash-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-deepseek-v4-flash"
+
+[[serve]]
+name = "cand-gemma4-31b-llamacpp"
+container = "llamacpp-cand-gemma4-31b"
+port = 39025
+model = "gemma4-31b-it-q4-gguf"
+engine = "llamacpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-gemma4-31b-llamacpp"
