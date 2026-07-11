@@ -11,6 +11,7 @@
 - PRD ID(s): <!-- e.g. operator-cli-v2 -->
 - Task ID(s): <!-- exact namespaced task IDs -->
 - Delivery manifest: <!-- path, or N/A with reason -->
+- Reviewed commit: <!-- exact full Git HEAD; proofs retain their full ancestor commit -->
 - Delivery gate: <!-- exact command and pass/fail status -->
 - Implementer: <!-- identity -->
 - Independent task reviewer: <!-- must differ from implementer -->

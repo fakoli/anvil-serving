@@ -13,11 +13,12 @@ import subprocess
 import sys
 import tempfile
 from typing import Callable, Mapping, Sequence
+from urllib.parse import urlsplit
 
 
 SCHEMA_VERSION = "anvil-delivery/v1"
 FINAL_REVIEW_KINDS = ("documentation", "adversarial")
-COMMIT_RE = re.compile(r"^[0-9a-f]{7,40}$")
+COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 MAX_MANIFEST_BYTES = 1024 * 1024
 MAX_ANVIL_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_DIAGNOSTIC_CHARS = 4096
@@ -84,10 +85,12 @@ def _invoke(
     completed = runner(command, cwd=cwd, environment=environment, timeout=timeout)
     if not isinstance(completed.stdout, str) or not isinstance(completed.stderr, str):
         raise DeliveryGateError("Anvil command runner must return text output")
-    if (
-        len(completed.stdout.encode("utf-8")) > MAX_ANVIL_OUTPUT_BYTES
-        or len(completed.stderr.encode("utf-8")) > MAX_ANVIL_OUTPUT_BYTES
-    ):
+    try:
+        stdout_size = len(completed.stdout.encode("utf-8"))
+        stderr_size = len(completed.stderr.encode("utf-8"))
+    except UnicodeEncodeError as exc:
+        raise DeliveryGateError("Anvil command output was not valid UTF-8") from exc
+    if stdout_size > MAX_ANVIL_OUTPUT_BYTES or stderr_size > MAX_ANVIL_OUTPUT_BYTES:
         raise DeliveryGateError("Anvil command output exceeded the delivery gate size limit")
     if completed.returncode != 0:
         message = (completed.stderr or completed.stdout).strip()[:MAX_DIAGNOSTIC_CHARS]
@@ -108,6 +111,57 @@ def _required_string(value: object, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise DeliveryGateError(f"{label} is required")
     return value.strip()
+
+
+def _commit(value: object, label: str) -> str:
+    commit = _required_string(value, label).casefold()
+    if not COMMIT_RE.fullmatch(commit):
+        raise DeliveryGateError(f"{label} must be a full 40-character Git commit")
+    return commit
+
+
+def _url(value: object, label: str) -> str:
+    url = _required_string(value, label)
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise DeliveryGateError(f"{label} must be an absolute HTTP(S) URL")
+    return url
+
+
+def _git_head(*, cwd: Path, environment: Mapping[str, str], timeout: int) -> str:
+    completed = subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=cwd,
+        env=dict(environment),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=timeout,
+        shell=False,
+    )
+    if completed.returncode != 0:
+        raise DeliveryGateError("delivery gate requires a readable Git HEAD")
+    return _commit(completed.stdout.strip(), "Git HEAD")
+
+
+def _git_is_ancestor(
+    ancestor: str, descendant: str, *, cwd: Path, environment: Mapping[str, str], timeout: int
+) -> bool:
+    completed = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+        cwd=cwd,
+        env=dict(environment),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=timeout,
+        shell=False,
+    )
+    if completed.returncode == 0:
+        return True
+    if completed.returncode == 1:
+        return False
+    raise DeliveryGateError(f"could not validate proof commit ancestry: {ancestor}")
 
 
 def _timestamp(value: object, label: str) -> str:
@@ -153,7 +207,9 @@ def _task_entries(manifest: Mapping[str, object]) -> dict[str, dict[str, object]
     return entries
 
 
-def _validate_final_reviews(manifest: Mapping[str, object], author: str) -> None:
+def _validate_final_reviews(
+    manifest: Mapping[str, object], author: str, *, reviewed_commit: str
+) -> None:
     reviews = manifest.get("final_reviews")
     if not isinstance(reviews, dict):
         raise DeliveryGateError("final_reviews must be an object")
@@ -166,6 +222,9 @@ def _validate_final_reviews(manifest: Mapping[str, object], author: str) -> None
         reviewer = _required_string(review.get("reviewer"), f"final_reviews.{kind}.reviewer")
         if reviewer.casefold() == author.casefold():
             raise DeliveryGateError(f"final {kind} reviewer must differ from the author")
+        review_commit = _commit(review.get("commit_sha"), f"final_reviews.{kind}.commit_sha")
+        if review_commit != reviewed_commit:
+            raise DeliveryGateError(f"final_reviews.{kind}.commit_sha is stale")
         _timestamp(review.get("observed_at"), f"final_reviews.{kind}.observed_at")
         _required_string(review.get("summary"), f"final_reviews.{kind}.summary")
 
@@ -175,7 +234,7 @@ def _observed_proof_key(value: Mapping[str, object]) -> tuple[str, str]:
     if kind == "command":
         return kind, _required_string(value.get("command"), "proof.command")
     if kind == "link":
-        return kind, _required_string(value.get("url"), "proof.url")
+        return kind, _url(value.get("url"), "proof.url")
     raise DeliveryGateError(f"unsupported proof kind: {kind}")
 
 
@@ -196,7 +255,7 @@ def _required_proof_match(
     exact = required.get("url")
     contains = required.get("link_contains")
     if exact is not None:
-        expected = _required_string(exact, "proof.url")
+        expected = _url(exact, "proof.url")
         candidates = [(key, proof) for key, proof in observed.items() if key == (kind, expected)]
     else:
         fragment = _required_string(contains, "proof.link_contains")
@@ -213,7 +272,9 @@ def _required_proof_match(
     return candidates[0]
 
 
-def _validate_proofs(task: Mapping[str, object], entry: Mapping[str, object]) -> None:
+def _validate_proofs(
+    task: Mapping[str, object], entry: Mapping[str, object], *, proof_commits: set[str]
+) -> None:
     verification = task.get("verification")
     if not isinstance(verification, dict):
         raise DeliveryGateError(f"task {task.get('id')} has no verification contract")
@@ -240,22 +301,34 @@ def _validate_proofs(task: Mapping[str, object], entry: Mapping[str, object]) ->
         except DeliveryGateError as exc:
             raise DeliveryGateError(f"task {task.get('id')} is {exc}") from exc
         _timestamp(proof.get("observed_at"), f"task {task.get('id')} proof observed_at")
-        commit = _required_string(proof.get("commit_sha"), f"task {task.get('id')} proof commit_sha")
-        if not COMMIT_RE.fullmatch(commit):
-            raise DeliveryGateError(f"task {task.get('id')} proof commit_sha is invalid")
+        commit = _commit(proof.get("commit_sha"), f"task {task.get('id')} proof commit_sha")
+        proof_commits.add(commit)
         if key[0] == "command":
             exit_code = proof.get("exit_code")
             passing = required_proof.get("passing_exit_codes", [0])
             if isinstance(exit_code, bool) or not isinstance(exit_code, int):
                 raise DeliveryGateError(f"task {task.get('id')} proof exit_code must be an integer")
-            if not isinstance(passing, list) or exit_code not in passing:
+            if (
+                not isinstance(passing, list)
+                or not passing
+                or any(isinstance(code, bool) or not isinstance(code, int) for code in passing)
+            ):
+                raise DeliveryGateError(
+                    f"task {task.get('id')} passing_exit_codes must be a non-empty integer array"
+                )
+            if exit_code not in passing:
                 raise DeliveryGateError(
                     f"task {task.get('id')} proof failed ({exit_code}): {key[1]}"
                 )
 
 
 def _validate_disposition(
-    task_id: str, entry: Mapping[str, object], *, author: str, default_reviewer: str
+    task_id: str,
+    entry: Mapping[str, object],
+    *,
+    author: str,
+    default_reviewer: str,
+    reviewed_commit: str,
 ) -> None:
     if entry.get("evidence_status") != "complete":
         raise DeliveryGateError(f"task {task_id} evidence_status must be complete")
@@ -267,6 +340,11 @@ def _validate_disposition(
         raise DeliveryGateError(f"task {task_id} disposition reviewer must match manifest reviewer")
     if reviewer.casefold() == author.casefold():
         raise DeliveryGateError(f"task {task_id} reviewer must differ from the author")
+    disposition_commit = _commit(
+        disposition.get("commit_sha"), f"task {task_id} disposition commit_sha"
+    )
+    if disposition_commit != reviewed_commit:
+        raise DeliveryGateError(f"task {task_id} disposition commit_sha is stale")
     _required_string(disposition.get("reason"), f"task {task_id} disposition reason")
     _timestamp(disposition.get("observed_at"), f"task {task_id} disposition observed_at")
 
@@ -280,23 +358,38 @@ def run_gate(
     environment: Mapping[str, str] | None = None,
     timeout: int = 30,
     runner: Callable[..., subprocess.CompletedProcess[str]] = _run,
+    expected_commit: str | None = None,
 ) -> GateResult:
     if not anvil_prefix or any(not token for token in anvil_prefix):
         raise DeliveryGateError("anvil command prefix must not be empty")
     if timeout < 1:
         raise DeliveryGateError("timeout must be positive")
     manifest = _load_manifest(manifest_path)
+    working_directory = (cwd or Path.cwd()).resolve()
+    command_environment = dict(os.environ if environment is None else environment)
+    reviewed_commit = _commit(manifest.get("reviewed_commit"), "reviewed_commit")
+    current_commit = (
+        _commit(expected_commit, "expected_commit")
+        if expected_commit is not None
+        else _git_head(cwd=working_directory, environment=command_environment, timeout=timeout)
+    )
+    if reviewed_commit != current_commit:
+        raise DeliveryGateError("delivery manifest reviewed_commit does not match Git HEAD")
     author = _required_string(manifest.get("author"), "author")
     reviewer = _required_string(manifest.get("reviewer"), "reviewer")
     if author.casefold() == reviewer.casefold():
         raise DeliveryGateError("reviewer must differ from author")
-    _validate_final_reviews(manifest, author)
+    _validate_final_reviews(manifest, author, reviewed_commit=reviewed_commit)
     entries = _task_entries(manifest)
 
-    working_directory = (cwd or Path.cwd()).resolve()
-    command_environment = dict(os.environ if environment is None else environment)
     commands_run: list[tuple[str, ...]] = []
-    prd_ids = tuple(dict.fromkeys((*include_prds,)))
+    proof_commits: set[str] = set()
+    prd_ids = tuple(
+        dict.fromkeys(
+            _required_string(prd_id, f"include_prds[{index}]")
+            for index, prd_id in enumerate(include_prds)
+        )
+    )
     required_ids = set(entries)
     for prd_id in prd_ids:
         data = _invoke(
@@ -311,11 +404,10 @@ def run_gate(
         tasks = data.get("tasks")
         if not isinstance(tasks, list):
             raise DeliveryGateError(f"Anvil list for {prd_id} returned malformed tasks")
-        required_ids.update(
-            _required_string(task.get("id"), f"Anvil list {prd_id} task id")
-            for task in tasks
-            if isinstance(task, dict)
-        )
+        for index, task in enumerate(tasks):
+            if not isinstance(task, dict):
+                raise DeliveryGateError(f"Anvil list {prd_id} tasks[{index}] must be an object")
+            required_ids.add(_required_string(task.get("id"), f"Anvil list {prd_id} task id"))
 
     for task_id in sorted(required_ids):
         entry = entries.get(task_id)
@@ -335,8 +427,27 @@ def run_gate(
             raise DeliveryGateError(f"Anvil show returned the wrong task for {task_id}")
         if task.get("status") != "done":
             raise DeliveryGateError(f"task {task_id} is not done (status={task.get('status')})")
-        _validate_disposition(task_id, entry, author=author, default_reviewer=reviewer)
-        _validate_proofs(task, entry)
+        _validate_disposition(
+            task_id,
+            entry,
+            author=author,
+            default_reviewer=reviewer,
+            reviewed_commit=reviewed_commit,
+        )
+        _validate_proofs(task, entry, proof_commits=proof_commits)
+
+    if expected_commit is None:
+        for proof_commit in sorted(proof_commits):
+            if not _git_is_ancestor(
+                proof_commit,
+                reviewed_commit,
+                cwd=working_directory,
+                environment=command_environment,
+                timeout=timeout,
+            ):
+                raise DeliveryGateError(
+                    f"proof commit is not an ancestor of reviewed_commit: {proof_commit}"
+                )
 
     return GateResult(tuple(sorted(required_ids)), prd_ids, tuple(commands_run))
 

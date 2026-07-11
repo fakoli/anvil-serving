@@ -33,6 +33,17 @@ def _guarded_paths() -> tuple[tuple[str, ...], ...]:
     )
 
 
+def _action_group_paths() -> tuple[tuple[str, ...], ...]:
+    return tuple(
+        tuple(node.name for node in path)
+        for path in _paths()
+        if path[-1].visible
+        and path[-1].children
+        and path[-1].handler is None
+        and path[-1].tombstone is None
+    )
+
+
 def _tombstone_cases() -> tuple[tuple[tuple[str, ...], str], ...]:
     cases: list[tuple[tuple[str, ...], str]] = []
     for path in _paths():
@@ -114,6 +125,21 @@ def test_every_unbounded_manifest_case_refuses_json_before_resolution(
     payload = json.loads(captured.out)
     assert payload["error"]["class"] == "usage"
     assert classification in payload["error"]["message"]
+
+
+@pytest.mark.parametrize("path", _action_group_paths())
+def test_every_action_group_rejects_options_without_an_action(capsys, path):
+    assert cli.main([*path, "--definitely-invalid"]) == 2
+    human = capsys.readouterr()
+    assert human.out == ""
+    assert "action required before options" in human.err
+
+    assert cli.main([*path, "--definitely-invalid", "--json"]) == 2
+    machine = capsys.readouterr()
+    assert machine.err == ""
+    payload = json.loads(machine.out)
+    assert payload["error"]["code"] == "missing_action"
+    assert payload["error"]["details"]["actions"]
 
 
 @pytest.mark.parametrize("path", _guarded_paths())

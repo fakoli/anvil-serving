@@ -58,6 +58,7 @@ LEGACY_PATTERNS = {
     "voice-start-stop": r"voice\s+(?:start|stop)\b",
     "mcp-list-tools": r"mcp\s+list-tools\b",
     "mcp-bare": r"mcp(?=\s*(?:`|$|[.,;:]))",
+    "eval-benchmark-action-flag": r"eval\s+benchmark\s+--(?!help\b)",
 }
 CANONICAL_PATTERNS = {
     "router-run": r"router\s+run\b",
@@ -106,6 +107,7 @@ _SKILL_BARE_RE = {
     name: re.compile(r"`" + LEGACY_PATTERNS[name] + r"(?=\s|`|$)", re.IGNORECASE)
     for name in {"serve", "multiplexer", "profile", "preflight", "score"}
 }
+_UNRELEASED_HEADING_RE = re.compile(r"^\[?unreleased\]?(?:\s|$)", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -220,6 +222,59 @@ def _tracked_paths(root: Path) -> set[str]:
     }
 
 
+def _tracked_candidates(root: Path) -> set[Path]:
+    candidates: set[Path] = set()
+    for value in _tracked_paths(root):
+        relative = Path(value)
+        path = root / relative
+        if path.is_file() and not _is_excluded(relative):
+            candidates.add(path)
+    return candidates
+
+
+def _in_docs_scope(relative: Path) -> bool:
+    return (
+        (len(relative.parts) == 1 and relative.suffix.lower() == ".md")
+        or (
+            bool(relative.parts)
+            and relative.parts[0] == "docs"
+            and relative.suffix.lower() in TEXT_SUFFIXES
+        )
+    )
+
+
+def _in_skills_scope(relative: Path) -> bool:
+    value = relative.as_posix()
+    return relative.name == "SKILL.md" and (
+        value.startswith(".agents/skills/")
+        or value.startswith(".claude/skills/")
+        or value.startswith("skills/")
+        or (value.startswith("examples/") and "/skills/" in value)
+    )
+
+
+def _in_full_scope(relative: Path) -> bool:
+    if len(relative.parts) == 1:
+        return relative.suffix.lower() in TEXT_SUFFIXES or relative.name == "Dockerfile"
+    if _in_docs_scope(relative) or _in_skills_scope(relative):
+        return True
+    return (
+        relative.parts[0]
+        in {
+            "examples",
+            "tests",
+            "anvil_serving",
+            "scripts",
+            ".github",
+            "configs",
+            "templates",
+            "plugins",
+            "specs",
+        }
+        and relative.suffix.lower() in TEXT_SUFFIXES
+    )
+
+
 def discover_files(root: Path, scope: str) -> tuple[Path, tuple[Path, ...]]:
     scan_root = root
     fixture_scope = scope == "fixtures"
@@ -230,29 +285,33 @@ def discover_files(root: Path, scope: str) -> tuple[Path, tuple[Path, ...]]:
         scope = "full"
 
     paths: set[Path]
-    if scope == "docs":
-        paths = _docs_files(scan_root)
-    elif scope == "skills":
-        paths = _skill_files(scan_root)
-    elif scope == "full":
-        paths = _root_product_files(scan_root) | _docs_files(scan_root) | _skill_files(scan_root)
-        for relative_root in (
-            Path("examples"),
-            Path("tests"),
-            Path("anvil_serving"),
-            Path("scripts"),
-            Path(".github"),
-            Path("configs"),
-            Path("templates"),
-            Path("plugins"),
-            Path("specs"),
-        ):
-            paths.update(_text_files(scan_root, relative_root))
+    if fixture_scope:
+        if scope == "full":
+            paths = _root_product_files(scan_root) | _docs_files(scan_root) | _skill_files(scan_root)
+            for relative_root in (
+                Path("examples"),
+                Path("tests"),
+                Path("anvil_serving"),
+                Path("scripts"),
+                Path(".github"),
+                Path("configs"),
+                Path("templates"),
+                Path("plugins"),
+                Path("specs"),
+            ):
+                paths.update(_text_files(scan_root, relative_root))
+        else:
+            raise ValueError(f"unsupported fixture scope: {scope}")
     else:
-        raise ValueError(f"unsupported scope: {scope}")
-    if not fixture_scope:
-        tracked = _tracked_paths(scan_root)
-        paths = {path for path in paths if path.relative_to(scan_root).as_posix() in tracked}
+        candidates = _tracked_candidates(scan_root)
+        if scope == "docs":
+            paths = {path for path in candidates if _in_docs_scope(path.relative_to(scan_root))}
+        elif scope == "skills":
+            paths = {path for path in candidates if _in_skills_scope(path.relative_to(scan_root))}
+        elif scope == "full":
+            paths = {path for path in candidates if _in_full_scope(path.relative_to(scan_root))}
+        else:
+            raise ValueError(f"unsupported scope: {scope}")
     return scan_root, tuple(sorted(paths, key=lambda item: item.relative_to(scan_root).as_posix()))
 
 
@@ -289,7 +348,7 @@ def _skill_root(relative: Path) -> str | None:
 def _legacy_allowed(relative: Path, category: str, heading: str, h2_heading: str) -> bool:
     value = relative.as_posix()
     if value == "CHANGELOG.md":
-        return bool(h2_heading) and h2_heading != "[unreleased]"
+        return bool(h2_heading) and _UNRELEASED_HEADING_RE.match(h2_heading) is None
     if value in {"docs/CLI-CONSOLIDATION-INVENTORY.md", "docs/CLI-LEGACY-DISPOSITIONS.md"}:
         return True
     if value.startswith("docs/adr/"):
@@ -409,7 +468,10 @@ def _atomic_write_text(path: Path, value: str) -> None:
 
 
 def _load_json(path: Path) -> dict[str, object]:
-    return json.loads(_read_text(path))
+    value = json.loads(_read_text(path))
+    if not isinstance(value, dict):
+        raise ValueError(f"JSON document must contain an object: {path}")
+    return value
 
 
 def _write_json(path: Path, value: dict[str, object]) -> None:
@@ -418,8 +480,36 @@ def _write_json(path: Path, value: dict[str, object]) -> None:
 
 def _manifest(root: Path) -> dict[str, object]:
     value = _load_json(root / MANIFEST_REL)
-    if not isinstance(value.get("commands"), list):
+    commands = value.get("commands")
+    if not isinstance(commands, list):
         raise ValueError("command manifest must contain a commands array")
+    for command_index, command in enumerate(commands):
+        if not isinstance(command, dict):
+            raise ValueError(f"command manifest commands[{command_index}] must be an object")
+        for field in ("path", "summary", "mutation_class", "output_policy"):
+            if not isinstance(command.get(field), str) or not command[field].strip():
+                raise ValueError(f"command manifest commands[{command_index}].{field} is required")
+        if not isinstance(command.get("visible"), bool):
+            raise ValueError(f"command manifest commands[{command_index}].visible must be boolean")
+        options = command.get("options")
+        if not isinstance(options, list):
+            raise ValueError(f"command manifest commands[{command_index}].options must be an array")
+        for option_index, option in enumerate(options):
+            if not isinstance(option, dict):
+                raise ValueError(
+                    f"command manifest commands[{command_index}].options[{option_index}] "
+                    "must be an object"
+                )
+            flags = option.get("flags")
+            if (
+                not isinstance(flags, list)
+                or not flags
+                or any(not isinstance(flag, str) or not flag for flag in flags)
+            ):
+                raise ValueError(
+                    f"command manifest commands[{command_index}].options[{option_index}].flags "
+                    "must be a non-empty string array"
+                )
     return value
 
 
@@ -487,16 +577,16 @@ def render_tombstones(manifest: dict[str, object]) -> str:
 
 def _block(text: str, start: str, end: str) -> str:
     pattern = re.compile(re.escape(start) + r"\n(.*?)\n" + re.escape(end), re.DOTALL)
-    match = pattern.search(text)
-    if not match:
-        raise ValueError(f"generated block markers missing: {start}")
-    return match.group(1)
+    matches = pattern.findall(text)
+    if len(matches) != 1:
+        raise ValueError(f"generated block markers missing or duplicated: {start}")
+    return matches[0]
 
 
 def _replace_block(text: str, start: str, end: str, body: str) -> str:
     pattern = re.compile(re.escape(start) + r"\n.*?\n" + re.escape(end), re.DOTALL)
     replacement = f"{start}\n{body}\n{end}"
-    updated, count = pattern.subn(lambda _match: replacement, text, count=1)
+    updated, count = pattern.subn(lambda _match: replacement, text)
     if count != 1:
         raise ValueError(f"generated block markers missing or duplicated: {start}")
     return updated
@@ -568,6 +658,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("refusing to update while active legacy-reference violations exist")
             update_generated_docs(root)
             update_inventories(root)
+            result = scan(root, args.scope)
+            record = inventory_record(result)
         inventory_ok = inventory_matches(root, args.scope, record)
         generated_ok = True if args.scope == "fixtures" else generated_docs_match(root)
     except (

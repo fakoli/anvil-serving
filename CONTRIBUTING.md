@@ -119,11 +119,13 @@ silently change direction and never delete an ADR — supersede it.
   installs the single wheel with `--no-deps`, verifies required package data, and invokes the
   installed `anvil-serving router run --help` outside the checkout.
 - Delivery PRs use `.github/PULL_REQUEST_TEMPLATE.md` to record namespaced PRD/task IDs,
-  proof status, implementer/reviewer separation, human apply/merge disposition, and final
+  the exact reviewed Git commit, proof status, implementer/reviewer separation, human apply/merge disposition, and final
   documentation/adversarial review outcomes. Run the local read-only gate with
   `python scripts/check_anvil_delivery_gate.py --manifest <delivery.json>`; add
   `--include-prd cli-consolidation` when closing the legacy task partition. The gate shells out
-  only to supported Anvil JSON commands and never reads or copies Anvil state files directly.
+  only to supported Anvil JSON commands plus `git rev-parse --verify HEAD`; it never reads or
+  copies Anvil state files directly. Review dispositions must name the exact HEAD; each observed
+  proof must name its full Git commit, which the gate verifies is an ancestor of that HEAD.
 - The OpenClaw plugin has its own `node --test` suite under
   `plugins/openclaw-anvil-intent-router/`; `tests/router/test_keyword_parity.py` guards drift
   between the plugin's classifier data and the Python classifier.

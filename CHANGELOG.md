@@ -14,7 +14,9 @@ All notable changes to this project are documented here. The format is based on
   Codex, Claude Code, OpenClaw, and voice operations. Active docs, examples,
   configs, parser program names, and agent guidance now use canonical nested
   commands; compatibility forms remain only in explicit migration/tombstone
-  evidence. This unreleased work does not publish a version, tag, or package.
+  evidence. Parent command groups now reject action-specific flags when the
+  required child action is missing instead of printing help and returning
+  success. This unreleased work does not publish a version, tag, or package.
 - **Operator CLI v2 voice lifecycle (M3)** — adds canonical
   `voice audio up|down|status|logs` and
   `voice proxy run|up|down|restart|status|logs|bridge` surfaces. Audio remains

@@ -186,7 +186,7 @@ Promotion remains a separate human-gated router/profile decision.
 
 ```bash
 anvil-serving eval preflight --tier fast     # correctness gate vs the fast serve
-anvil-serving eval benchmark --tier heavy    # throughput / request-replay
+anvil-serving eval benchmark run --tier heavy --confirm    # throughput / request-replay
 anvil-serving eval planning                  # planning bake-off (offline re-grade)
 anvil-serving eval planning --live           # also re-generate against live serves
 anvil-serving eval bootstrap                 # replay eval fixtures -> quality profile
@@ -211,7 +211,7 @@ anvil-serving eval bootstrap                 # replay eval fixtures -> quality p
 ```bash
 anvil-serving serves up                       # bring the models up
 anvil-serving eval preflight --tier fast      # is it correct?
-anvil-serving eval benchmark --tier fast      # is it fast enough?
+anvil-serving eval benchmark run --tier fast --confirm      # is it fast enough?
 anvil-serving serves down                     # free the GPUs when done
 anvil-serving eval planning                   # re-grade the bake-off offline anytime
 ```

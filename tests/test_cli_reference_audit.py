@@ -63,6 +63,24 @@ def test_fixture_scope_classifies_active_legacy_invocation_as_violation(tmp_path
     assert payload["violations"][0]["category"] == "skills"
 
 
+def test_eval_benchmark_group_help_is_valid_but_action_flags_require_run(tmp_path: Path):
+    fixture = ROOT / "tests" / "fixtures" / "cli_reference_audit"
+    target = tmp_path / "tests" / "fixtures" / "cli_reference_audit"
+    shutil.copytree(fixture, target)
+    guide = target / "input" / "docs" / "guide.md"
+    guide.write_text(
+        "Run `anvil-serving eval benchmark --help` for discovery.\n"
+        "Run `anvil-serving eval benchmark --tier fast` for capacity.\n",
+        encoding="utf-8",
+    )
+
+    result = audit.scan(tmp_path, "fixtures")
+
+    assert [(hit.name, hit.line) for hit in result.violations] == [
+        ("eval-benchmark-action-flag", 2)
+    ]
+
+
 def test_check_fails_closed_on_stale_inventory(tmp_path: Path):
     fixture = ROOT / "tests" / "fixtures" / "cli_reference_audit"
     target = tmp_path / "tests" / "fixtures" / "cli_reference_audit"
@@ -77,13 +95,16 @@ def test_check_fails_closed_on_stale_inventory(tmp_path: Path):
     assert json.loads(result.stdout)["inventory_match"] is False
 
 
-def test_changelog_unreleased_is_active_but_released_sections_are_historical(tmp_path: Path):
+@pytest.mark.parametrize("unreleased_heading", ["[Unreleased]", "Unreleased"])
+def test_changelog_unreleased_is_active_but_released_sections_are_historical(
+    tmp_path: Path, unreleased_heading: str
+):
     root = tmp_path
     input_root = root / audit.FIXTURE_REL / "input"
     input_root.mkdir(parents=True)
     (input_root / "CHANGELOG.md").write_text(
         "# Changelog\n\n"
-        "## [Unreleased]\n\n"
+        f"## {unreleased_heading}\n\n"
         "### Changed\n\n"
         "- Run `anvil-serving deploy`.\n\n"
         "## [0.1.0] - 2025-01-01\n\n"
@@ -135,6 +156,41 @@ def test_atomic_write_preserves_original_on_replace_failure(monkeypatch, tmp_pat
     assert list(tmp_path.iterdir()) == [path]
 
 
+def test_generated_block_reader_rejects_duplicate_blocks():
+    block = f"{audit.INDEX_START}\nbody\n{audit.INDEX_END}"
+
+    with pytest.raises(ValueError, match="duplicated"):
+        audit._block(f"{block}\n{block}", audit.INDEX_START, audit.INDEX_END)
+
+
+def test_json_loader_rejects_non_object_documents(tmp_path: Path):
+    path = tmp_path / "inventory.json"
+    path.write_text("[]", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must contain an object"):
+        audit._load_json(path)
+
+
+def test_update_rechecks_the_post_generation_snapshot(monkeypatch, tmp_path: Path, capsys):
+    before = audit.ScanResult("full", ("before.md",), (), ())
+    after = audit.ScanResult("full", ("after.md", "generated.md"), (), ())
+    snapshots = iter((before, after))
+    monkeypatch.setattr(audit, "scan", lambda root, scope: next(snapshots))
+    monkeypatch.setattr(audit, "update_generated_docs", lambda root: None)
+    monkeypatch.setattr(audit, "update_inventories", lambda root: None)
+    monkeypatch.setattr(
+        audit,
+        "inventory_matches",
+        lambda root, scope, record: record["files_scanned"] == 2,
+    )
+    monkeypatch.setattr(audit, "generated_docs_match", lambda root: True)
+
+    result = audit.main(["--root", str(tmp_path), "--scope", "full", "--update", "--json"])
+
+    assert result == 0
+    assert json.loads(capsys.readouterr().out)["record"]["files_scanned"] == 2
+
+
 def test_check_mode_is_read_only():
     paths = [
         ROOT / "docs" / "CLI.md",
@@ -175,3 +231,14 @@ def test_repository_scope_inventories_match():
         assert set(result.files) <= tracked
         assert not any(path.startswith("tests/fixtures/eval-data/") for path in result.files)
         assert audit.inventory_matches(ROOT, scope, audit.inventory_record(result))
+
+
+def test_repository_discovery_does_not_walk_untracked_trees(monkeypatch):
+    def fail_rglob(*args, **kwargs):
+        raise AssertionError("production discovery must come from git ls-files")
+
+    monkeypatch.setattr(Path, "rglob", fail_rglob)
+
+    _, files = audit.discover_files(ROOT, "full")
+
+    assert files

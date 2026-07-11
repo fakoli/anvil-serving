@@ -303,8 +303,8 @@ Model catalog + fetch. `sync` scans HF caches and plain model dirs, pulls model 
 serving facts, and writes `cards/` + `INDEX.md` (default out dir `./model-library`). `pull`
 downloads a HF repo into a **named docker volume** (default `vllm-hfcache`) via `hf download`
 inside a container, avoiding the 9P bind-mount tax; `--token-env` forwards an HF token by env-var
-name only. `recipe list`/`recipe show` read the recorded serve-recipe registry (default
-`configs/serve-recipes.toml`) written by `benchmark --recipe-out`. Cache pruning and model scoring
+name only. `recipes list`/`recipes show` read the recorded serve-recipe registry (default
+`configs/serve-recipes.toml`) written by `eval benchmark run --recipe-out`. Cache pruning and model scoring
 are documented in their focused sections below.
 
 ```bash
@@ -388,7 +388,7 @@ anvil-serving eval benchmark external {init|sources|fetch|import|list|report|exp
 Ingest, store, report, and compare external LLM inference benchmarks in a SQLite store
 (`--db` on every subcommand). `fetch --source S --url U` pulls a snapshot; `import` loads a saved
 JSON/CSV/Markdown/HTML file; `list`/`report` filter by `--gpu`/`--model`/`--source`;
-`compare --local FILE` compares an anvil `benchmark --json-out` result against the store.
+`compare --local FILE` compares an `eval benchmark run --json-out` result against the store.
 See [External benchmarks](EXTERNAL-BENCHMARKS.md).
 
 ```bash

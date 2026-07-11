@@ -14,7 +14,8 @@ tailnet transport. v0.7.x added wire fidelity (tools/tool-history forwarding, re
 sampling params), production hardening, and heavy-tier speculative decoding (ADR-0008). v0.6.0 made
 the router a containerized, token-authed service (ADR-0004); v0.5.0 shipped generic onboarding
 (ADR-0003); v0.4.x shipped advise-and-defer and Docker-Compose-defined serves. The local serving
-tools (`profile`, `models sync`, `serves render` (legacy `deploy`), `preflight`, `benchmark`, `multiplexer`)
+tools (`eval usage`, `models sync`, `serves render`, `eval preflight`,
+`eval benchmark run`, `serves multiplex`)
 ship and right-size the local tiers the router routes across.
 
 Source of truth for product framing: **`README.md`**.
@@ -49,12 +50,12 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 
 ```
 anvil_serving/
-  cli.py               dispatch: profile | models | serves | serve | preflight |
-                                 benchmark | eval | multiplexer | init (alias onboard) |
-                                 doctor | voice | voice sidecar |
+  cli.py               dispatch: models | serves | eval | init | doctor | voice |
                                  router | harness | host | mcp | controller |
+                                 eval usage | eval preflight | eval benchmark run |
                                  eval benchmark external | eval calibrate |
-                                 models cache prune | models score
+                                 serves render | serves multiplex |
+                                 models cache prune | models score | voice sidecar
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
   models.py            `sync`: scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py);
