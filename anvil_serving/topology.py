@@ -350,7 +350,7 @@ def _read_topology_toml(path: str | os.PathLike[str]) -> tuple[Mapping[str, Any]
     if not isinstance(path, (str, os.PathLike)):
         return None, TopologyError("$", "topology path must be a string or os.PathLike value", "read")
     try:
-        filesystem_path = os.fspath(path)
+        filesystem_path = os.path.expanduser(os.fspath(path))
         with open(filesystem_path, "rb") as handle:
             raw = handle.read(_MAX_TOPOLOGY_FILE_BYTES + 1)
         if len(raw) > _MAX_TOPOLOGY_FILE_BYTES:

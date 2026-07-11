@@ -33,6 +33,8 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert "eval benchmark external compare" in records
     assert records["voice audio up"]["resource_role"] == "stt-serve"
     assert records["voice audio up"]["coowned_resource_roles"] == ["tts-serve"]
+    assert records["voice audio status"]["remote_operation"]["tool"] == "voice_manage"
+    assert records["voice audio logs"]["output_policy"] == "bounded"
     assert records["voice proxy run"]["mutation_class"] == "process"
     assert records["voice proxy run"]["resource_role"] == "realtime-proxy"
     assert records["voice proxy run"]["coowned_resource_roles"] == [

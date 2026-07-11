@@ -13,6 +13,7 @@ import threading
 
 import pytest
 
+from anvil_serving.voice import bridge as bridge_module
 from anvil_serving.voice.bridge import (
     BridgeStopTimeoutError,
     ForwardingBridgeService,
@@ -64,11 +65,62 @@ def test_forwarding_bridge_rejects_non_mini_owner():
         )
 
 
+def test_forwarding_bridge_refuses_connections_after_capacity_is_reached():
+    class Client:
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    class Server:
+        def __init__(self, client):
+            self.client = client
+            self.calls = 0
+
+        def accept(self):
+            self.calls += 1
+            if self.calls == 1:
+                return self.client, ("127.0.0.1", 1)
+            raise OSError("closed")
+
+    client = Client()
+    slots = threading.BoundedSemaphore(1)
+    assert slots.acquire(blocking=False)
+    logs = []
+
+    bridge_module._accept_loop(
+        Server(client),
+        TCPBridgeRoute("stt", "127.0.0.1", 30110, "100.87.34.66", 30110),
+        threading.Event(),
+        logs.append,
+        slots,
+    )
+
+    assert client.closed is True
+    assert logs == ["stt connection refused: active connection limit reached"]
+
+
+@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), True, "1"])
+def test_forwarding_bridge_stop_rejects_invalid_timeout(timeout):
+    bridge = _bridge(lambda routes, stop_event, *, log: None)
+
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        bridge.stop(timeout=timeout)
+
+
 @pytest.mark.parametrize("listen_host", ["0.0.0.0", "::", "100.87.34.66"])
 def test_forwarding_bridge_rejects_non_loopback_and_wildcard_listeners(listen_host):
     with pytest.raises(ValueError, match="listen on 127.0.0.1"):
         ForwardingBridgeService(
             [TCPBridgeRoute("tts", listen_host, 30111, "100.87.34.66", 30111)]
+        )
+
+
+def test_raw_bridge_runner_also_rejects_non_loopback_listener():
+    with pytest.raises(ValueError, match="listen on 127.0.0.1"):
+        bridge_module.serve_until_stopped(
+            [TCPBridgeRoute("tts", "0.0.0.0", 30111, "100.87.34.66", 30111)],
+            threading.Event(),
         )
 
 

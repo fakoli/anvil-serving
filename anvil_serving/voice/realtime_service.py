@@ -1,6 +1,7 @@
 """Persistent process lifecycle for the Mini-owned Realtime voice proxy."""
 from __future__ import annotations
 
+import math
 import os
 import shlex
 import subprocess
@@ -51,6 +52,17 @@ class ProxyProcessConfig:
             raise ValueError("config_path and topology_path are required")
         if not self.owner:
             raise ValueError("proxy owner is required")
+        for name, value in (
+            ("ready_timeout", self.ready_timeout),
+            ("stop_timeout", self.stop_timeout),
+        ):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(float(value))
+                or value <= 0
+            ):
+                raise ValueError("%s must be a positive finite number" % name)
 
     @property
     def endpoint(self) -> str:

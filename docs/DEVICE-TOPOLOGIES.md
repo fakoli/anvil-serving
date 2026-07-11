@@ -11,7 +11,7 @@ path.
 | Role | Owns | Current Reference Example |
 |---|---|---|
 | Gateway host | OpenClaw gateway, harness runtime, gateway-local restart/apply actions. | Fakoli Mini |
-| Voice host | `anvil-serving voice proxy run`, microphone/speaker path, and Realtime/proxy orchestration. | Fakoli Mini |
+| Voice host | Persistent or foreground Realtime proxy, Mini-local audio forwarding, and microphone/speaker path. | Fakoli Mini |
 | Audio model host | STT/TTS model endpoints and optional private bridge ports. | Fakoli Dark or another non-Mini audio host |
 | Router host | `anvil-serving router run` or deployed router container, router config, token auth, decision logs. | Fakoli Dark |
 | Serve host | GPU/CPU LLM serves, `serves.toml`, model cache, preflight and benchmark target endpoints. | Fakoli Dark |
@@ -73,22 +73,21 @@ command is being run on the audio host itself through local CLI or a controller.
 `lifecycle = "native"` starts a process on the host running `voice audio up`; it is
 not a remote shell mechanism.
 
-If the audio host's STT/TTS services are intentionally loopback-only, expose
-private bridge ports with the product utility on the audio host:
+For the reference split topology, run the product bridge on Mini. It binds only
+Mini loopback ports and derives the Dark target address and ports from topology:
 
 ```bash
 anvil-serving voice proxy bridge \
-  --listen-host 100.87.34.66 \
-  --stt-listen-port 30110 \
-  --tts-listen-port 30111 \
-  --i-understand-this-exposes-voice-audio
+  --topology ~/.anvil-serving/operator-topology.toml \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile mini-dark-audio-proxy
 ```
 
-Then point the voice host manifest profile at those private bridge ports and
-keep the STT/TTS lifecycle as `external`.
-Use a concrete private or tailnet address for `--listen-host`; wildcard binds
-require `--allow-wildcard-listen` and should be reserved for firewall-scoped
-deployments.
+Point the Mini voice profile at `127.0.0.1:30110` and
+`127.0.0.1:30111`, and keep STT/TTS lifecycle `external` there because Dark
+owns the model processes. Non-loopback and wildcard Mini listeners are always
+rejected. Dark target ports still require private reachability and tailnet/LAN
+ACLs.
 
 ### Add Another Laptop As A Router Or Serve Host
 

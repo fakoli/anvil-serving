@@ -53,6 +53,7 @@ from __future__ import annotations
 import base64
 import itertools
 import json
+import math
 import os
 import queue
 import threading
@@ -252,7 +253,12 @@ class RealtimeProxyService:
             return self._state_locked()
 
     def stop(self, *, timeout: float = DEFAULT_STOP_TIMEOUT_SECONDS) -> RealtimeProxyState:
-        if timeout <= 0:
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not math.isfinite(float(timeout))
+            or timeout <= 0
+        ):
             raise ValueError("timeout must be positive")
         deadline = time.monotonic() + timeout
         with self._lock:

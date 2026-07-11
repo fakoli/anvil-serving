@@ -38,8 +38,10 @@ import argparse
 import copy
 import ipaddress
 import json
+import math
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -84,6 +86,7 @@ _AUDIO_SERVES = (
     ("stt", stt_serve.STTServeConfig, stt_serve.STTServe),
     ("tts", tts_serve.TTSServeConfig, tts_serve.TTSServe),
 )
+_MAX_AUDIO_LOG_BYTES = 1024 * 1024
 
 
 def _resolve_manifest_reference(path: str, manifest_dir: str | None) -> str:
@@ -98,6 +101,8 @@ def _resolve_manifest_reference(path: str, manifest_dir: str | None) -> str:
 def _audio_serves(
     data: dict,
     targets: voice_config.ResolvedAudioTargets | None = None,
+    *,
+    subprocess_deadline: float | None = None,
 ):
     voice = data.get("voice", {})
     manifest_dir = data.get("_manifest_dir")
@@ -118,7 +123,22 @@ def _audio_serves(
                 manifest_path, manifest_dir
             )
         config = config_cls(**config_kwargs)
-        yield kind, lifecycle, table, serve_cls(config)
+        kwargs = {}
+        if subprocess_deadline is not None:
+            kwargs["_run"] = _deadline_subprocess_runner(subprocess_deadline)
+        yield kind, lifecycle, table, serve_cls(config, **kwargs)
+
+
+def _deadline_subprocess_runner(deadline: float):
+    def run(*args, **kwargs):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(args[0] if args else "subprocess", 0)
+        requested = kwargs.get("timeout")
+        kwargs["timeout"] = min(float(requested), remaining) if requested else remaining
+        return subprocess.run(*args, **kwargs)
+
+    return run
 
 
 def _resolve_audio_operation(args):
@@ -236,14 +256,25 @@ def execute_audio_lifecycle(
     *,
     dry_run: bool = False,
     targets: voice_config.ResolvedAudioTargets | None = None,
+    timeout_seconds: float | None = None,
 ) -> dict:
     """Execute one already-authorized local audio lifecycle and return typed data."""
     if action not in {"up", "down"}:
         raise ValueError("audio lifecycle action must be up or down")
+    if timeout_seconds is not None and (
+        isinstance(timeout_seconds, bool)
+        or not isinstance(timeout_seconds, (int, float))
+        or not math.isfinite(float(timeout_seconds))
+        or timeout_seconds <= 0
+    ):
+        raise ValueError("timeout_seconds must be a positive finite number")
     results = []
     exit_code = 0
     method_name = "bring_up" if action == "up" else "tear_down"
-    for kind, lifecycle, table, serve in _audio_serves(data, targets):
+    deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
+    for kind, lifecycle, table, serve in _audio_serves(
+        data, targets, subprocess_deadline=deadline
+    ):
         item = {"kind": kind, "lifecycle": lifecycle, "state": "pending"}
         if lifecycle == "external":
             item["state"] = "external"
@@ -251,6 +282,11 @@ def execute_audio_lifecycle(
             continue
         if lifecycle == "native":
             try:
+                if deadline is not None:
+                    remaining = max(0.1, deadline - time.monotonic())
+                    timeout_key = "ready_timeout" if action == "up" else "stop_timeout"
+                    table = dict(table)
+                    table[timeout_key] = min(float(table.get(timeout_key, remaining)), remaining)
                 native = native_serve.NativeServe(
                     native_serve.NativeServeConfig.from_table(kind, table)
                 )
@@ -271,6 +307,9 @@ def execute_audio_lifecycle(
                 exit_code = 1
         except ServeNotConfigured as exc:
             item.update({"state": "not_configured", "detail": str(exc), "returncode": 0})
+        except subprocess.TimeoutExpired as exc:
+            item.update({"state": "failed", "error": str(exc), "returncode": 1})
+            exit_code = 1
         results.append(item)
     return {
         "action": action,
@@ -471,7 +510,10 @@ def cmd_down(args):
 
 
 def cmd_audio_status(args):
-    data, targets, err, error_code = _resolve_audio_operation(args)
+    resolved = getattr(args, "_resolved_audio", None)
+    data, targets, err, error_code = (
+        (*resolved, None, 0) if resolved is not None else _resolve_audio_operation(args)
+    )
     if err:
         print("voice audio status: %s" % err, file=sys.stderr)
         return error_code
@@ -480,14 +522,23 @@ def cmd_audio_status(args):
     if context:
         print("voice audio status: %s" % context)
     exit_code = 0
-    for kind, lifecycle, table, serve in _audio_serves(data, targets):
+    timeout_seconds = getattr(args, "operation_timeout", None)
+    deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
+    for kind, lifecycle, table, serve in _audio_serves(
+        data, targets, subprocess_deadline=deadline
+    ):
         if lifecycle == "native":
             status = native_serve.NativeServe(
                 native_serve.NativeServeConfig.from_table(kind, table)
             ).status()
             print("voice audio status: %s %s" % (kind, json.dumps(status, sort_keys=True)))
             continue
-        readiness = serve.wait_ready(timeout=getattr(args, "ready_timeout", 3.0))
+        try:
+            readiness = serve.wait_ready(timeout=getattr(args, "ready_timeout", 3.0))
+        except subprocess.TimeoutExpired as exc:
+            print("voice audio status: %s timed out -- %s" % (kind, exc), file=sys.stderr)
+            exit_code = 1
+            continue
         print(
             "voice audio status: %s lifecycle=%s state=%s ready=%s detail=%s"
             % (kind, lifecycle, readiness.docker_state, readiness.ready, readiness.detail)
@@ -499,14 +550,21 @@ def cmd_audio_status(args):
 
 def _tail_file(path: str, lines: int) -> list[str]:
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as handle:
-            return handle.readlines()[-lines:]
+        with open(path, "rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - _MAX_AUDIO_LOG_BYTES))
+            raw = handle.read(_MAX_AUDIO_LOG_BYTES)
     except FileNotFoundError:
         return []
+    return raw.decode("utf-8", errors="replace").splitlines(keepends=True)[-lines:]
 
 
 def cmd_audio_logs(args):
-    data, targets, err, error_code = _resolve_audio_operation(args)
+    resolved = getattr(args, "_resolved_audio", None)
+    data, targets, err, error_code = (
+        (*resolved, None, 0) if resolved is not None else _resolve_audio_operation(args)
+    )
     if err:
         print("voice audio logs: %s" % err, file=sys.stderr)
         return error_code
@@ -515,7 +573,11 @@ def cmd_audio_logs(args):
     if context:
         print("voice audio logs: %s" % context)
     exit_code = 0
-    for kind, lifecycle, table, serve in _audio_serves(data, targets):
+    timeout_seconds = getattr(args, "operation_timeout", None)
+    deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
+    for kind, lifecycle, table, serve in _audio_serves(
+        data, targets, subprocess_deadline=deadline
+    ):
         if lifecycle == "external":
             print("voice audio logs: %s lifecycle is external; no owned logs" % kind)
             continue
@@ -532,9 +594,12 @@ def cmd_audio_logs(args):
             continue
         try:
             manifest = generic_serves.load_manifest(serve.config.manifest_path)
-            rc = generic_serves.cmd_logs(manifest, [serve.config.serve_name], tail=str(args.tail))
-        except (FileNotFoundError, ServeNotConfigured) as exc:
-            print("voice audio logs: %s serve not configured -- %s" % (kind, exc), file=sys.stderr)
+            run = _deadline_subprocess_runner(deadline) if deadline is not None else subprocess.run
+            rc = generic_serves.cmd_logs(
+                manifest, [serve.config.serve_name], tail=str(args.tail), _run=run
+            )
+        except (FileNotFoundError, ServeNotConfigured, subprocess.TimeoutExpired) as exc:
+            print("voice audio logs: %s log read failed -- %s" % (kind, exc), file=sys.stderr)
             rc = 1
         if rc != 0:
             exit_code = 1
@@ -922,6 +987,26 @@ def _tcp_port(value: str) -> int:
     return port
 
 
+def _bounded_tail(value: str) -> int:
+    try:
+        tail = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("tail must be an integer")
+    if tail < 1 or tail > 5000:
+        raise argparse.ArgumentTypeError("tail must be between 1 and 5000")
+    return tail
+
+
+def _bounded_ready_timeout(value: str) -> float:
+    try:
+        timeout = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("ready timeout must be a number")
+    if not math.isfinite(timeout) or timeout < 0.1 or timeout > 60.0:
+        raise argparse.ArgumentTypeError("ready timeout must be between 0.1 and 60 seconds")
+    return timeout
+
+
 def _host_is_loopback(host: str) -> bool:
     if host.lower() == "localhost":
         return False
@@ -1113,11 +1198,11 @@ def build_parser():
 
     sp = audio_sub.add_parser("status", help="show bounded STT/TTS lifecycle status")
     add_audio_resolution(sp)
-    sp.add_argument("--ready-timeout", type=float, default=3.0)
+    sp.add_argument("--ready-timeout", type=_bounded_ready_timeout, default=3.0)
 
     sp = audio_sub.add_parser("logs", help="show bounded STT/TTS lifecycle logs")
     add_audio_resolution(sp)
-    sp.add_argument("--tail", type=int, default=200)
+    sp.add_argument("--tail", type=_bounded_tail, default=200)
 
     proxy = sub.add_parser("proxy", help="manage the Mini-owned realtime proxy")
     proxy_sub = proxy.add_subparsers(
@@ -1174,7 +1259,7 @@ def build_parser():
     sp = proxy_sub.add_parser("logs", help="show bounded realtime proxy logs")
     add_proxy_resolution(sp)
     add_proxy_process_files(sp)
-    sp.add_argument("--tail", type=int, default=200)
+    sp.add_argument("--tail", type=_bounded_tail, default=200)
 
     sp = sub.add_parser("benchmark", help="replay a recorded session end-to-end and report latency")
     add_config(sp)

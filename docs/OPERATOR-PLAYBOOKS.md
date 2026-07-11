@@ -44,9 +44,10 @@ resource and keep the same gate semantics.
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
 | Start or restore compose-defined serves | `serves_manage` with preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves up <name>` |
 | Start an experiment serve | `serves_manage` with `compose` preview, then `confirm:true` and `dry_run:false` | `anvil-serving serves up --compose <compose.yml> <service>` |
-| Start or stop voice STT/TTS serves | `voice_manage` with preview, optional `profile`, then `confirm:true` and `dry_run:false` | `anvil-serving voice audio up --profile <name>`; `anvil-serving voice audio down --profile <name>` |
-| Switch or inspect voice profiles | `voice_manage` plan with `profile`; no separate mutation required | `anvil-serving voice profiles list`; `anvil-serving voice proxy run --profile <name>` |
-| Expose private STT/TTS bridge ports | Human-gated CLI on the audio host | `anvil-serving voice proxy bridge --listen-host <private-tailnet-address> ... --i-understand-this-exposes-voice-audio` |
+| Manage or inspect voice STT/TTS serves | `voice_manage` with topology; preview then confirm for `up`/`down`, immediate bounded `status`/`logs` | `anvil-serving voice audio {up\|down\|status\|logs} --topology <file> ...` |
+| Manage the persistent Realtime proxy | `voice_proxy_manage`; preview then confirm for `up`/`down`/`restart`, immediate bounded `status`/`logs` | `anvil-serving voice proxy {up\|down\|restart\|status\|logs} --topology <file> ...` |
+| Inspect voice profiles | Offline CLI; no topology or mutation required | `anvil-serving voice profiles {list\|validate}` |
+| Forward Mini-local audio ports to Dark | Foreground CLI on Mini, topology-owned and loopback-only | `anvil-serving voice proxy bridge --topology <file> ...` |
 | Probe a multiplexer endpoint | Not exposed yet | `GET /healthz`; `GET /v1/models` on the multiplexer base URL |
 | Serve logs | `serves_logs` with bounded `tail`; no follow mode | `anvil-serving serves logs <name> --tail 200` |
 | Correctness gate | `preflight_probe` | `anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
@@ -337,23 +338,23 @@ an MCP wrapper actually exists.
 
 ## Playbook C: voice lifecycle and validation
 
-Use this when operating `anvil-serving voice` on a gateway, Mini, laptop, or
-other trusted voice host. The voice command surface has three layers: STT/TTS
-lifecycle (`up`/`down`), optional private audio bridging (`bridge`),
-foreground Realtime serving (`run`), and evidence (`benchmark` or a
-topology-specific validation harness). For reference OpenClaw Talk, Fakoli
-Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
+Use this when operating `anvil-serving voice` across the reference Mini/Dark
+topology. The surface separates Dark-owned STT/TTS lifecycle, Mini-owned
+persistent or foreground Realtime serving, Mini-local loopback forwarding,
+and benchmark evidence. For reference OpenClaw Talk, Mini remains model-free;
+STT/TTS/LLM model serves live on Dark.
 
 1. Identify the voice topology and manifest.
 
-   First name the devices that own each role: voice/Realtime server, STT, TTS,
+   Start from `examples/fakoli-dark/operator-topology.toml`, then name the
+   devices that own each role: voice/Realtime server, STT, TTS,
    LLM router, and lifecycle control. Same-host endpoints should use
    `127.0.0.1`; cross-device endpoints should use a private tailnet or direct
    address. `lifecycle = "native"` starts a process on the host running
    `voice audio up`, so use `external` for remote STT/TTS unless operating that
    remote host through local CLI or a controller.
 
-   The checked-in Mini-local manifest is an optional same-host audio topology:
+   The checked-in Mini-local manifest is an optional same-host audio lab config:
 
    ```bash
    examples/voice/fakoli-mini.toml
@@ -362,7 +363,8 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
    It runs STT and TTS as native processes on `127.0.0.1:30010` and
    `127.0.0.1:30011`, while the LLM goes to the Fakoli Dark router over the
    tailnet. Do not use it for normal OpenClaw Talk validation on the 16 GB
-   Mini; it exists for explicit same-host/local-audio testing.
+   Mini; it exists for explicit same-host/local-audio testing and requires a
+   separate non-production topology that permits Mini model workloads.
    For OpenClaw Talk, `examples/voice/openclaw-anvil-voice.toml` declares
    `mini-audio`, `dark-audio`, `mini-dark-audio-proxy`, `mini-validation`,
    and opt-in `candidate-*` LLM profiles. Use `--profile` for the audio
@@ -373,13 +375,14 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
    manifests.
 
    ```bash
+   TOPOLOGY=~/.anvil-serving/operator-topology.toml
    anvil-serving voice profiles list --config examples/voice/openclaw-anvil-voice.toml
    ```
 
 2. Preview STT/TTS lifecycle before mutation.
 
    ```bash
-   anvil-serving voice audio up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --dry-run
+   anvil-serving voice audio up --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --dry-run
    ```
 
    Prefer `voice_manage` through MCP/controller when available:
@@ -388,7 +391,8 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
    {
      "action": "up",
      "config": "examples/voice/openclaw-anvil-voice.toml",
-     "profile": "dark-audio"
+     "profile": "dark-audio",
+     "topology": "~/.anvil-serving/operator-topology.toml"
    }
    ```
 
@@ -401,7 +405,7 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
 3. Start the audio endpoints only after the target manifest is exact.
 
    ```bash
-   anvil-serving voice audio up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+   anvil-serving voice audio up --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --confirm
    ```
 
    Through MCP/controller, the live call requires:
@@ -411,6 +415,7 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
      "action": "up",
      "config": "examples/voice/openclaw-anvil-voice.toml",
      "profile": "dark-audio",
+     "topology": "~/.anvil-serving/operator-topology.toml",
      "confirm": true,
      "dry_run": false
    }
@@ -428,32 +433,21 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
    A 4xx response still proves a listener is present; connection refusal means
    the local audio endpoint is not up.
 
-   Then expose those endpoints through the `anvil-serving voice proxy bridge` command
-   on the audio host. This is a product utility, not a one-off port-forwarding
-   script. Bind a concrete private/tailnet address and acknowledge the
-   non-loopback exposure explicitly:
+   Then run the product bridge on Mini. It binds only Mini loopback, resolves
+   the Dark target address and both port pairs from topology, and refuses
+   wildcard or non-loopback listeners:
 
    ```bash
    anvil-serving voice proxy bridge \
-     --listen-host 100.87.34.66 \
-     --stt-listen-port 30110 \
-     --stt-target-host 127.0.0.1 \
-     --stt-target-port 30010 \
-     --tts-listen-port 30111 \
-     --tts-target-host 127.0.0.1 \
-     --tts-target-port 30011 \
-     --i-understand-this-exposes-voice-audio
+     --topology "$TOPOLOGY" \
+     --config examples/voice/openclaw-anvil-voice.toml \
+     --profile mini-dark-audio-proxy
    ```
 
-   Wildcard binds such as `0.0.0.0` are not the normal path. They require the
-   additional `--allow-wildcard-listen` flag and should be used only after
-   firewall or tailnet ACL scoping is proven.
-
-   On Fakoli Mini, select that topology in the Realtime and benchmark commands
-   by using `--profile dark-audio`. If the
-   operator runs a proxy on Mini that forwards local ports `30110` and `30111`
-   to Dark audio, use `--profile mini-dark-audio-proxy`; first verify those
-   Mini-local proxy ports are listening.
+   Dark's target ports still require private reachability and ACL scoping.
+   Select `mini-dark-audio-proxy` for Realtime and benchmark commands after the
+   two Mini-local listeners are up. Use `dark-audio` only when the manifest's
+   direct Dark endpoint URLs are independently reachable from Mini.
 
    For LLM latency A/B runs, first start the matching Dark candidate serve
    through the managed surface:
@@ -468,19 +462,19 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
 
    ```bash
    anvil-serving voice proxy run \
+     --topology "$TOPOLOGY" \
      --config examples/voice/openclaw-anvil-voice.toml \
-     --profile dark-audio \
+     --profile mini-dark-audio-proxy \
      --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
      --candidate qwen3-32b-nvfp4
    ```
 
-5. Start the Realtime server in the foreground. Use `dark-audio` after the
-   Dark-host bridge above is listening, or `mini-dark-audio-proxy` after a
-   Mini-local proxy to Dark is listening. Use `mini-audio` only for explicit
-   same-host/local-audio tests.
+5. Start the Realtime server. Use `proxy up` for the persistent Mini service or
+   `proxy run` for a foreground diagnostic process.
 
    ```bash
-   anvil-serving voice proxy run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+   anvil-serving voice proxy up --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy --confirm
+   anvil-serving voice proxy status --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
    ```
 
    This command probes the LLM, STT, and TTS endpoints before binding the
@@ -504,7 +498,7 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
    The generated `talk.realtime` config must select provider `anvil`,
    transport `gateway-relay`, brain `agent-consult`, consult routing
    `force-agent-consult`, and the same Anvil Voice WebSocket URL that
-   `voice proxy run` binds. The generated Talk consult defaults to
+   the Realtime proxy binds. The generated Talk consult defaults to
    `consultThinkingLevel: "off"` and `consultBootstrapContextMode:
    "lightweight"` for lower spoken-turn latency. For a private/tailnet
    Realtime bind, keep the bearer token in an env var and pass only its name
@@ -515,7 +509,7 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
    For a quick smoke measurement:
 
    ```bash
-   anvil-serving voice benchmark --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+   anvil-serving voice benchmark --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
    ```
 
    For a candidate LLM measurement, keep the audio topology in `--profile` and
@@ -523,8 +517,9 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
 
    ```bash
    anvil-serving voice benchmark \
+     --topology "$TOPOLOGY" \
      --config examples/voice/openclaw-anvil-voice.toml \
-     --profile dark-audio \
+     --profile mini-dark-audio-proxy \
      --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
      --candidate qwen3-32b-nvfp4
    ```
@@ -562,11 +557,12 @@ Mini runs gateway/realtime/proxy only; STT/TTS/LLM model serves live off Mini.
 8. Stop audio endpoints when done.
 
    ```bash
-   anvil-serving voice audio down --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+   anvil-serving voice proxy down --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy --confirm
+   anvil-serving voice audio down --topology "$TOPOLOGY" --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --confirm
    ```
 
-   `voice audio down` does not stop the router and does not stop an already-running
-   foreground `voice proxy run`; stop that process with Ctrl+C.
+   `voice audio down` does not stop the router or proxy. `voice proxy down`
+   stops only the persistent process; stop a foreground `proxy run` with Ctrl+C.
 
 ## Playbook D: preflight then benchmark
 

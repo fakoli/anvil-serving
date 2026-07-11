@@ -7,10 +7,9 @@ import io
 import os
 import sys
 import uuid
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from importlib import metadata as importlib_metadata
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 
 from . import __version__
 from . import guard

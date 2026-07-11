@@ -9,6 +9,7 @@ authenticate, or transform OpenAI-compatible HTTP traffic.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 import socket
 import threading
 import time
@@ -19,6 +20,7 @@ from typing import Callable, Iterable, Optional
 MINI_OWNER = "mini"
 DEFAULT_STOP_TIMEOUT_SECONDS = 5.0
 DEFAULT_LOG_BYTES = 64 * 1024
+MAX_ACTIVE_CONNECTIONS = 64
 
 
 @dataclass(frozen=True)
@@ -78,11 +80,22 @@ def serve_until_stopped(
     stop_event: threading.Event,
     *,
     log: Callable[[str], None] | None = None,
+    max_active_connections: int = MAX_ACTIVE_CONNECTIONS,
 ) -> None:
     """Bind all routes and forward connections until `stop_event` is set."""
     route_list = list(routes)
     if not route_list:
         raise ValueError("at least one bridge route is required")
+    for route in route_list:
+        if route.listen_host != "127.0.0.1":
+            raise ValueError("voice forwarding bridge must listen on 127.0.0.1")
+    if (
+        not isinstance(max_active_connections, int)
+        or isinstance(max_active_connections, bool)
+        or max_active_connections < 1
+    ):
+        raise ValueError("max_active_connections must be a positive integer")
+    connection_slots = threading.BoundedSemaphore(max_active_connections)
 
     servers: list[tuple[socket.socket, TCPBridgeRoute]] = []
     try:
@@ -99,7 +112,7 @@ def serve_until_stopped(
         for server, route in servers:
             thread = threading.Thread(
                 target=_accept_loop,
-                args=(server, route, stop_event, log),
+                args=(server, route, stop_event, log, connection_slots),
                 daemon=True,
             )
             thread.start()
@@ -119,6 +132,7 @@ def _accept_loop(
     route: TCPBridgeRoute,
     stop_event: threading.Event,
     log: Callable[[str], None] | None,
+    connection_slots: threading.BoundedSemaphore,
 ) -> None:
     while not stop_event.is_set():
         try:
@@ -127,12 +141,29 @@ def _accept_loop(
             continue
         except OSError:
             return
+        if not connection_slots.acquire(blocking=False):
+            _close_socket(client)
+            if log:
+                log("%s connection refused: active connection limit reached" % route.name)
+            continue
         thread = threading.Thread(
-            target=_handle_client,
-            args=(client, route, log),
+            target=_handle_client_with_slot,
+            args=(client, route, log, connection_slots),
             daemon=True,
         )
         thread.start()
+
+
+def _handle_client_with_slot(
+    client: socket.socket,
+    route: TCPBridgeRoute,
+    log: Callable[[str], None] | None,
+    connection_slots: threading.BoundedSemaphore,
+) -> None:
+    try:
+        _handle_client(client, route, log)
+    finally:
+        connection_slots.release()
 
 
 def _handle_client(
@@ -295,7 +326,12 @@ class ForwardingBridgeService:
             return self._state_locked()
 
     def stop(self, *, timeout: float = DEFAULT_STOP_TIMEOUT_SECONDS) -> BridgeState:
-        if timeout <= 0:
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not math.isfinite(float(timeout))
+            or timeout <= 0
+        ):
             raise ValueError("timeout must be positive")
         with self._lock:
             event, runner = self._stop_event, self._runner

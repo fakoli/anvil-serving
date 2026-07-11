@@ -155,7 +155,7 @@ agent workflow.
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
 | Controller transport | `controller serve`, `mcp serve --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
 | Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
-| Voice | `voice up/down/run/benchmark/profiles/bridge`, `voice sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle and profile-aware previews; skill/CLI for foreground realtime server, private audio bridge, and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`; reference OpenClaw Talk keeps Mini model-free and reaches Dark-host audio directly or through a Mini proxy. Private STT/TTS port exposure uses `voice bridge`, not one-off proxy scripts. |
+| Voice | `voice audio up/down/status/logs`, `voice proxy run/up/down/restart/status/logs/bridge`, `voice benchmark/profiles`, `voice sidecar validate/command/compose` | `voice_manage` for Dark STT/TTS; `voice_proxy_manage` for the persistent Mini Realtime process; skill/CLI for foreground proxy, loopback bridge, and benchmark sequencing | Every operational path resolves topology first. Reference OpenClaw Talk keeps Mini model-free, Dark owns models, and the Mini bridge remains loopback-only. Mutations require preview plus confirmation; status/logs are bounded reads. |
 | Local analytics | `profile`, `models score`, `models cache prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `models score` are offline analysis. `models cache prune` deletion stays CLI-only and human-gated. |
 
 ## Recommended Skills
@@ -180,8 +180,9 @@ tool-backed, not a new policy engine.
 skill source. Install or copy it into the active harness skill store when the
 operator wants a dedicated voice playbook. It intentionally uses the existing
 `anvil-serving voice sidecar validate`, `voice sidecar command`,
-`voice sidecar compose`, `voice up`, `voice down`, `voice profiles`,
-`voice bridge`, `voice run`, and `voice benchmark` verbs before proposing new
+`voice sidecar compose`, `voice audio up/down/status/logs`, `voice profiles`,
+`voice proxy run/up/down/restart/status/logs/bridge`, and `voice benchmark`
+verbs before proposing new
 MCP tools or fallback scripts.
 
 Voice benchmark output is voice-pipeline evidence, not router work-class promotion evidence.

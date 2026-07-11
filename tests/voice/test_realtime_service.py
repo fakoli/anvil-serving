@@ -211,6 +211,14 @@ def test_realtime_proxy_immediate_start_stop_has_initialized_server():
     assert server.closed is True
 
 
+@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), True, "1"])
+def test_realtime_proxy_stop_rejects_invalid_timeout(timeout):
+    proxy = RealtimeProxyService(lambda: _BlockingServer())
+
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        proxy.stop(timeout=timeout)
+
+
 def test_persistent_proxy_dry_run_uses_canonical_foreground_command(tmp_path):
     config = ProxyProcessConfig(
         config_path=str(tmp_path / "voice.toml"),
@@ -234,6 +242,19 @@ def test_persistent_proxy_dry_run_uses_canonical_foreground_command(tmp_path):
     assert command[3:7] == ["voice", "proxy", "run", "--config"]
     assert "audio" not in command
     assert "--topology" in command
+
+
+@pytest.mark.parametrize("timeout", [0, float("nan"), float("inf"), True])
+def test_persistent_proxy_config_rejects_invalid_timeouts(tmp_path, timeout):
+    with pytest.raises(ValueError, match="positive finite"):
+        ProxyProcessConfig(
+            config_path=str(tmp_path / "voice.toml"),
+            topology_path=str(tmp_path / "topology.toml"),
+            profile=None,
+            host="127.0.0.1",
+            port=8765,
+            ready_timeout=timeout,
+        )
 
 
 def test_persistent_proxy_logs_are_bounded_and_typed(tmp_path):

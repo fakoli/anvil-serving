@@ -107,6 +107,46 @@ def test_help_lists_subcommands(capsys):
     assert "stop" not in out
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["audio", "logs", "--tail", "0"],
+        ["audio", "logs", "--tail", "5001"],
+        ["proxy", "logs", "--tail", "-1"],
+        ["audio", "status", "--ready-timeout", "nan"],
+        ["audio", "status", "--ready-timeout", "60.1"],
+    ],
+)
+def test_bounded_audio_and_proxy_read_options_reject_invalid_values(argv):
+    with pytest.raises(SystemExit) as exc:
+        voice_cli.build_parser().parse_args(argv)
+
+    assert exc.value.code == 2
+
+
+def test_native_audio_log_tail_bounds_bytes_as_well_as_lines(tmp_path):
+    log = tmp_path / "large.log"
+    log.write_bytes(b"x" * (voice_cli._MAX_AUDIO_LOG_BYTES + 100) + b"\nlast\n")
+
+    result = voice_cli._tail_file(str(log), 200)
+
+    assert len("".join(result).encode("utf-8")) <= voice_cli._MAX_AUDIO_LOG_BYTES
+    assert result[-1] == "last\n"
+
+
+def test_audio_subprocess_deadline_refuses_work_after_budget_expires():
+    run = voice_cli._deadline_subprocess_runner(time.monotonic() - 1)
+
+    with pytest.raises(voice_cli.subprocess.TimeoutExpired):
+        run(["does-not-run"])
+
+
+@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), True, "1"])
+def test_audio_lifecycle_rejects_invalid_timeout(timeout):
+    with pytest.raises(ValueError, match="positive finite"):
+        voice_cli.execute_audio_lifecycle({}, "up", timeout_seconds=timeout)
+
+
 def test_no_subcommand_errors(capsys):
     with pytest.raises(SystemExit) as exc:
         voice_cli.main([])
