@@ -12,7 +12,7 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
 
 - Prefer anvil-serving MCP/controller tools: `router_status`, `router_logs`,
   `router_manage`, `decision_summary`, `router_promote`, `serves_status`,
-  `serves_manage`, `serves_logs`, `voice_manage`, `doctor_summary`,
+  `serves_manage`, `serves_logs`, `voice_manage`, `voice_proxy_manage`, `doctor_summary`,
   `host_summary`, `models_inventory`, `cache_prune_plan`, `route_decision`,
   `openclaw_sync`, `openclaw_gateway_restart`,
   `preflight_probe`, `benchmark_probe`, `benchmark_artifact`,
@@ -21,11 +21,13 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
   `workflow_packet_validate` before treating a packet as promotion evidence.
 - Use documented `anvil-serving` CLI verbs only when a structured tool is
   missing. Safe fallbacks are read-only or preview-first verbs such as
-  `profile`, `models sync`, `models recipe`, `models score`,
+  `eval usage`, `models sync`, `models recipes`, `models score`,
   `harness sync openclaw --out -`, and other render/inspect commands. Return
   the command preview as evidence and name the missing MCP wrapper as a product
   gap.
 - Use `127.0.0.1` for local URLs. Do not use `localhost`.
+- For resource-owned commands, pass the deployed topology and declare the
+  actual command host/runtime; do not infer command identity from the target.
 - For OpenClaw Talk / Anvil Voice work, record the command host before
   interpreting loopback. Reference deployment: Fakoli Mini runs OpenClaw
   Gateway plus Anvil Voice Realtime/proxy and reserves its 16 GB RAM for
@@ -57,8 +59,9 @@ It mirrors the repo workbench skill used by Codex and Claude Code.
 - Serve swap: preview with `serves_manage`, inspect bounded logs, require exact
   target plus `confirm=true` and `dry_run=false`, then run preflight before
   benchmark.
-- Voice lifecycle: preview with `voice_manage`; live native or managed STT/TTS
-  start/stop on the owning host requires `confirm=true` plus `dry_run=false`.
+- Voice lifecycle: preview audio with `voice_manage` and the persistent
+  Realtime proxy with `voice_proxy_manage`; live lifecycle changes on the
+  owning host require `confirm=true` plus `dry_run=false`.
   Profile selection is topology selection: for reference OpenClaw Talk and
   candidate benchmarks, keep Mini model-free and select Dark-host audio or a
   Mini-side proxy to Dark. Use `mini-audio` only when explicitly testing the

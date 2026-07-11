@@ -20,7 +20,7 @@ anvil-serving <command> --help
 `-h`/`--help` prints the grouped root surface or focused parser help. `-V`/`--version` prints the
 installed package version as `anvil-serving X.Y.Z`. Root help also names the canonical nested
 workflows that are easiest to miss: `serves render`, `models cache prune`, `models score`,
-`benchmark external`, and `voice sidecar`.
+`eval benchmark external`, and `voice sidecar`.
 `--command-manifest` prints the deterministic JSON command contract and rejects command arguments.
 
 Topology-aware resource commands accept `--topology PATH`, `--command-host`, `--command-runtime`,
@@ -70,6 +70,117 @@ confirmation or acknowledgement flags in focused `--help`.
 | `voice sidecar` | Validate/render the HF speech-to-speech sidecar command and compose. | Voice |
 
 Legacy aliases are documented in the compatibility section at the end of this file.
+
+## Manifest contract index
+
+This generated index is the mechanical coverage contract for the checked-in command manifest.
+Every visible manifest path appears exactly once here. Options shown are command-specific policy
+options declared by the dispatcher; leaf parsers may expose additional workload-specific flags in
+focused `--help`.
+
+<!-- BEGIN GENERATED CLI MANIFEST INDEX -->
+| Command path | Purpose | Class / output | Declared command options |
+|---|---|---|---|
+| `init` | Generate a local bring-up from detected facts. | `read` / `bounded` | - |
+| `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
+| `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--mode`<br>`--host`<br>`--port` |
+| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `router promote` | Promote a reviewed router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `router status` | Show router status. | `read` / `bounded` | - |
+| `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
+| `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
+| `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
+| `serves render` | Render a model serve definition. | `mutate` / `bounded` | `--dry-run` |
+| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--compose`<br>`--recreate` |
+| `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest` |
+| `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
+| `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
+| `serves status` | Show model serve status. | `read` / `bounded` | `--manifest` |
+| `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--since`<br>`--follow` |
+| `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
+| `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
+| `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run` |
+| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
+| `models recipes` | Inspect recorded serve recipes. | `read` / `bounded` | - |
+| `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
+| `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | - |
+| `models cache` | Manage model cache storage. | `read` / `bounded` | - |
+| `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
+| `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
+| `eval usage` | Analyze recorded usage. | `read` / `bounded` | - |
+| `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--confirm` |
+| `eval planning` | Run planning evaluation. | `read` / `bounded` | - |
+| `eval bootstrap` | Bootstrap a quality profile. | `mutate` / `bounded` | - |
+| `eval calibrate` | Calibrate a reviewable quality profile. | `mutate` / `bounded` | - |
+| `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark run` | Run an endpoint benchmark. | `mutate` / `bounded` | `--confirm` |
+| `eval benchmark external` | Manage external benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark external init` | Initialize benchmark evidence storage. | `mutate` / `bounded` | - |
+| `eval benchmark external sources` | List benchmark sources. | `read` / `bounded` | - |
+| `eval benchmark external fetch` | Fetch and import benchmark evidence. | `mutate` / `bounded` | - |
+| `eval benchmark external import` | Import saved benchmark evidence. | `mutate` / `bounded` | - |
+| `eval benchmark external list` | List normalized benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark external report` | Render a benchmark report. | `read` / `bounded` | - |
+| `eval benchmark external export` | Export benchmark evidence. | `mutate` / `bounded` | - |
+| `eval benchmark external compare` | Compare local benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark external notebook` | Record, list, or render model-bakeoff notebook runs. | `read` / `bounded` | - |
+| `eval benchmark external notebook add` | Record a bakeoff evidence run. | `mutate` / `bounded` | - |
+| `eval benchmark external notebook list` | List recorded bakeoff runs. | `read` / `bounded` | - |
+| `eval benchmark external notebook render` | Render the bakeoff comparison. | `read` / `bounded` | - |
+| `voice` | Manage audio and realtime proxy operations. | `read` / `bounded` | - |
+| `voice audio` | Manage Dark-owned STT/TTS lifecycle. | `read` / `bounded` | - |
+| `voice audio up` | Start audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice audio down` | Stop audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice audio status` | Show bounded audio serve status. | `read` / `bounded` | - |
+| `voice audio logs` | Show bounded audio serve logs. | `read` / `bounded` | - |
+| `voice proxy` | Manage the realtime proxy process. | `read` / `bounded` | - |
+| `voice proxy run` | Run the realtime proxy. | `process` / `foreground` | - |
+| `voice proxy up` | Start the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice proxy down` | Stop the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice proxy restart` | Restart the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `voice proxy status` | Show realtime proxy status. | `read` / `bounded` | - |
+| `voice proxy logs` | Show bounded realtime proxy logs. | `read` / `bounded` | - |
+| `voice proxy bridge` | Run the Mini-to-Dark audio bridge. | `process` / `foreground` | - |
+| `voice benchmark` | Benchmark an end-to-end voice session. | `read` / `bounded` | - |
+| `voice profiles` | Inspect voice profiles. | `read` / `bounded` | - |
+| `voice profiles list` | List voice profiles. | `read` / `bounded` | - |
+| `voice profiles validate` | Validate the profile selected by --profile. | `read` / `bounded` | - |
+| `voice sidecar` | Manage the speech-to-speech sidecar. | `read` / `bounded` | - |
+| `voice sidecar validate` | Validate a sidecar manifest. | `read` / `bounded` | - |
+| `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | - |
+| `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | - |
+| `harness` | Manage harness integration. | `read` / `bounded` | - |
+| `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
+| `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `harness restart` | Restart the harness | `read` / `bounded` | - |
+| `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `harness status` | Show harness status | `read` / `bounded` | - |
+| `harness status openclaw` | Show harness status for OpenClaw. | `read` / `bounded` | - |
+| `mcp` | Expose bounded MCP management tools. | `read` / `bounded` | `--list-tools` |
+| `mcp serve` | Run the MCP management server. | `read` / `protocol` | `--list-tools` |
+| `mcp tools` | List bounded MCP tools. | `read` / `bounded` | `--list-tools` |
+| `controller` | Manage the private controller service. | `read` / `bounded` | - |
+| `controller serve` | Run the private controller. | `process` / `foreground` | `--allow-unauthenticated-loopback` |
+| `controller status` | Probe controller health. | `read` / `bounded` | - |
+| `host` | Inspect and repair declared host operations. | `read` / `bounded` | - |
+| `host status` | Show structured host status. | `read` / `bounded` | - |
+| `host gpus` | Show GPU inventory. | `read` / `bounded` | - |
+| `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
+| `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | - |
+| `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `host restart-docker` | Restart Docker Desktop. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `host reset-wsl` | Reset WSL. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `host reclaim` | Drop the WSL VM page cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--watch` |
+| `doctor` | Check dependencies and configured health. | `read` / `bounded` | - |
+| `topology` | Inspect and resolve deployment topology. | `read` / `bounded` | - |
+| `topology show` | Show a validated topology summary. | `read` / `bounded` | - |
+| `topology validate` | Validate a topology offline. | `read` / `bounded` | - |
+| `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | - |
+<!-- END GENERATED CLI MANIFEST INDEX -->
 
 ---
 
@@ -183,7 +294,7 @@ anvil-serving serves render --model /models/qwen3-32b-nvfp4 --gpu 1 --context 13
 anvil-serving models sync [--out DIR] [--hf-roots ROOTS] [--model-dirs DIRS]
 anvil-serving models pull REPO_ID [--volume VOL] [--image IMG] [--revision R]
                                   [--include GLOB] [--exclude GLOB] [--token-env ENV] [--dry-run]
-anvil-serving models recipe {list|show MODEL} [--registry TOML]
+anvil-serving models recipes {list|show MODEL} [--registry TOML]
 anvil-serving models cache prune [flags]
 anvil-serving models score [flags]
 ```
@@ -192,8 +303,8 @@ Model catalog + fetch. `sync` scans HF caches and plain model dirs, pulls model 
 serving facts, and writes `cards/` + `INDEX.md` (default out dir `./model-library`). `pull`
 downloads a HF repo into a **named docker volume** (default `vllm-hfcache`) via `hf download`
 inside a container, avoiding the 9P bind-mount tax; `--token-env` forwards an HF token by env-var
-name only. `recipe list`/`recipe show` read the recorded serve-recipe registry (default
-`configs/serve-recipes.toml`) written by `benchmark --recipe-out`. Cache pruning and model scoring
+name only. `recipes list`/`recipes show` read the recorded serve-recipe registry (default
+`configs/serve-recipes.toml`) written by `eval benchmark run --recipe-out`. Cache pruning and model scoring
 are documented in their focused sections below.
 
 ```bash
@@ -257,7 +368,7 @@ before sending the live workload, and controller execution accepts direct endpoi
 | `--api-key-env` / `--no-thinking` | — / off | Bearer token env-var name / disable hidden reasoning for thinking-by-default models. |
 | `--timeout` / `--timeout-seconds` | `900` | Equivalent request-timeout spellings; the typed controller contract uses `--timeout-seconds`. |
 | `--json-out` | — | Machine-readable summary for `eval benchmark external compare`. |
-| `--recipe-out`, `--recipe-from-container`, `--recipe-intent`, `--recipe-mode`, `--recipe-status`, `--recipe-model` | — | Record a reproducible `[[recipe]]` block for the live serve (read back with `models recipe`). |
+| `--recipe-out`, `--recipe-from-container`, `--recipe-intent`, `--recipe-mode`, `--recipe-status`, `--recipe-model` | — | Record a reproducible `[[recipe]]` block for the live serve (read back with `models recipes`). |
 
 ```bash
 anvil-serving eval benchmark run --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking --confirm
@@ -277,7 +388,7 @@ anvil-serving eval benchmark external {init|sources|fetch|import|list|report|exp
 Ingest, store, report, and compare external LLM inference benchmarks in a SQLite store
 (`--db` on every subcommand). `fetch --source S --url U` pulls a snapshot; `import` loads a saved
 JSON/CSV/Markdown/HTML file; `list`/`report` filter by `--gpu`/`--model`/`--source`;
-`compare --local FILE` compares an anvil `benchmark --json-out` result against the store.
+`compare --local FILE` compares an `eval benchmark run --json-out` result against the store.
 See [External benchmarks](EXTERNAL-BENCHMARKS.md).
 
 ```bash
@@ -620,8 +731,25 @@ The following forms have been removed. They exit `2` before a handler is importe
 invoked, and print the replacement guidance to stderr. With CLI `--json`, they emit one
 error envelope to stdout instead.
 
+<!-- BEGIN GENERATED CLI TOMBSTONES -->
 | Removed path | Replacement |
 |---|---|
+| `models recipe` | `models recipes` |
+| `models recipe list` | `models recipes list` |
+| `models recipe show` | `models recipes show` |
+| `voice up` | `voice audio up` |
+| `voice down` | `voice audio down` |
+| `voice run` | `voice proxy run` |
+| `voice bridge` | `voice proxy bridge` |
+| `voice start` | `voice audio up` |
+| `voice stop` | `voice audio down` |
+| `mcp` | `mcp serve` |
+| `mcp --list-tools` | `mcp tools` |
+| `mcp serve --list-tools` | `mcp tools` |
+| `mcp tools --list-tools` | `mcp tools` |
+| `mcp list-tools` | `mcp tools` |
+| `mcp list-tools --list-tools` | `mcp tools` |
+| `controller serve --allow-unauthenticated-loopback` | `Configure the token named by --auth-token-env` |
 | `serve` | `router run` |
 | `deploy` | `serves render` |
 | `multiplexer` | `serves multiplex` |
@@ -633,15 +761,9 @@ error envelope to stdout instead.
 | `external-bench` | `eval benchmark external` |
 | `calibrate` | `eval calibrate` |
 | `gpus` | `host gpus` |
-| `models recipe list\|show` | `models recipes list\|show` |
 | `voice-sidecar` | `voice sidecar` |
-| `voice up\|down` | `voice audio up\|down` |
-| `voice run\|bridge` | `voice proxy run\|bridge` |
-| `voice start\|stop` | `voice audio up\|down` |
 | `onboard` | `init` |
-| `mcp list-tools` or `mcp --list-tools` | `mcp tools` |
-| bare `mcp` | `mcp serve` |
-| `controller serve --allow-unauthenticated-loopback` | Configure the token named by `--auth-token-env` |
+<!-- END GENERATED CLI TOMBSTONES -->
 
 ---
 

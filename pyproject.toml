@@ -37,7 +37,7 @@ dev = ["pytest"]
 # sub-protocols (/v1/audio/transcriptions, /v1/audio/speech) -- see
 # docs/findings/2026-07-04-hf-speech-to-speech-review.md -- so this extra
 # stays deliberately small. Nothing here is required to import
-# anvil_serving.router or run `anvil-serving serve`; the router hot path gains
+# anvil_serving.router or run `anvil-serving router run`; the router hot path gains
 # ZERO new required dependency. Concrete pins land in the unit that wires the
 # orchestrator's audio I/O; the placeholders below just name the expected shape.
 voice = [

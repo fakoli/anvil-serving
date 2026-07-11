@@ -294,7 +294,7 @@ log, wire-form `(a)` from a separately **captured outbound request** (`--capture
 ### Gap 2 — firing cadence (the logging hook)
 
 1. **Start the anvil-serving front door** somewhere OpenClaw can reach it
-   (loopback is fine): `anvil-serving serve --config configs/example.toml`
+   (loopback is fine): `anvil-serving router run --config configs/example.toml`
    (front door defaults to `http://127.0.0.1:8000/v1`).
 2. **Install the logging hook** on Fakoli Mini. Use `--link` (symlinked install) —
    OpenClaw >=2026.6.11 rejects a plain copy-install for a TypeScript/compiled

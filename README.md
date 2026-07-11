@@ -136,7 +136,7 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | Command | Purpose |
 |---------|---------|
 | `anvil-serving serves` | Manage local model serves through Docker Compose. |
-| `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and inspect recorded serve recipes (`recipe`). |
+| `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and inspect recorded serve recipes (`recipes`). |
 | `anvil-serving serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
 | `anvil-serving init` | Generate a consistent local bring-up and generic offline topology. |
 | `anvil-serving eval preflight` | Correctness-check a model endpoint before trusting it. |
