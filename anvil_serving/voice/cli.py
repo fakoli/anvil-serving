@@ -35,6 +35,7 @@ must FAIL LOUDLY with a clear, non-crashing message -- never pretend the
 pool is usable when it is not.
 """
 import argparse
+import copy
 import ipaddress
 import json
 import os
@@ -42,6 +43,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any, Callable, Dict, Optional
 
@@ -55,6 +57,7 @@ from . import bridge as voice_bridge
 from . import config as voice_config
 from .realtime.app import build_realtime_server_from_manifest
 from .realtime.ws import serve_forever_in_background
+from .realtime_service import ProxyProcessConfig, RealtimeProxyProcessService
 from .serves import native as native_serve
 from .serves import stt as stt_serve
 from .serves import tts as tts_serve
@@ -538,6 +541,143 @@ def cmd_audio_logs(args):
     return exit_code
 
 
+def _resolve_proxy_operation(args, action: str):
+    """Resolve the Mini proxy and its local audio forwarders before I/O."""
+    resolved, err = _load_resolved_config(args)
+    if err:
+        return None, None, None, err, 2
+    topology_path = getattr(args, "topology", None)
+    if not topology_path:
+        return None, None, None, "--topology is required to resolve the proxy owner", 2
+    try:
+        topology = load_topology(topology_path, getattr(args, "topology_overlay", None))
+        targets = voice_config.resolve_proxy_targets(
+            topology,
+            operation="voice-proxy-%s" % action,
+            target=getattr(args, "target", None),
+            transport=getattr(args, "transport", "auto"),
+            command_host=getattr(args, "command_host", None),
+            command_runtime=getattr(args, "command_runtime", None),
+            overlay=getattr(args, "topology_overlay", None),
+        )
+    except TopologyValidationError as exc:
+        return None, None, None, "invalid topology: %s" % exc, 2
+    except TargetResolutionError as exc:
+        return None, None, None, str(exc), exc.exit_code
+    except voice_config.ConfigError as exc:
+        return None, None, None, str(exc), 2
+    if targets.proxy.transport != "local":
+        return (
+            None,
+            targets,
+            resolved,
+            "resolved remote proxy owner; refusing local process execution "
+            "(owner=%s transport=%s)"
+            % (targets.proxy.resource_host.id, targets.proxy.transport),
+            4,
+        )
+    data = copy.deepcopy(resolved.data)
+    voice = data["voice"]
+    voice["stt"]["base_url"] = targets.stt_proxy.endpoint
+    voice["tts"]["base_url"] = targets.tts_proxy.endpoint
+    endpoint = urllib.parse.urlparse(targets.endpoint)
+    manifest_host = voice.get("realtime_host", "127.0.0.1")
+    manifest_port = int(voice.get("realtime_port", 8765))
+    if endpoint.hostname != manifest_host or endpoint.port != manifest_port:
+        return (
+            None,
+            targets,
+            resolved,
+            "manifest realtime listener %s:%s does not match topology proxy endpoint %s:%s"
+            % (manifest_host, manifest_port, endpoint.hostname, endpoint.port),
+            3,
+        )
+    return data, targets, resolved, None, 0
+
+
+def _proxy_context(targets: voice_config.ResolvedProxyTargets) -> str:
+    plan = targets.proxy
+    return (
+        "owner=%s execution=%s transport=%s proxy=%s stt_proxy=%s tts_proxy=%s"
+        % (
+            plan.resource_host.id,
+            plan.execution_host.id,
+            plan.transport,
+            targets.endpoint,
+            targets.stt_proxy.endpoint,
+            targets.tts_proxy.endpoint,
+        )
+    )
+
+
+def _proxy_process_service(
+    args,
+    data: dict,
+    targets: voice_config.ResolvedProxyTargets,
+) -> RealtimeProxyProcessService:
+    voice = data["voice"]
+    config = ProxyProcessConfig(
+        config_path=voice_config.resolve_config_path(getattr(args, "config", None)),
+        topology_path=args.topology,
+        topology_overlay=getattr(args, "topology_overlay", None),
+        profile=getattr(args, "profile", None),
+        command_host=getattr(args, "command_host", None),
+        command_runtime=getattr(args, "command_runtime", None),
+        target=getattr(args, "target", None),
+        host=voice.get("realtime_host", "127.0.0.1"),
+        port=int(voice.get("realtime_port", 8765)),
+        owner=targets.proxy.resource_host.id,
+        pid_file=getattr(args, "pid_file", None) or os.path.join(
+            "~/.anvil-serving/run", "voice-proxy.pid"
+        ),
+        log_file=getattr(args, "log_file", None) or os.path.join(
+            "~/.anvil-serving/run", "voice-proxy.log"
+        ),
+    )
+    return RealtimeProxyProcessService(config)
+
+
+def _print_proxy_process_result(result: dict) -> int:
+    print("voice proxy %s: %s" % (result["action"], json.dumps(result, sort_keys=True)))
+    return int(result.get("returncode", 0))
+
+
+def cmd_proxy_lifecycle(args):
+    action = args.proxy_action
+    data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, action)
+    if err:
+        print("voice proxy %s: %s" % (action, err), file=sys.stderr)
+        return error_code
+    assert data is not None and targets is not None
+    print("voice proxy %s: %s" % (action, _proxy_context(targets)))
+    service = _proxy_process_service(args, data, targets)
+    result = getattr(service, action)(dry_run=getattr(args, "dry_run", False))
+    return _print_proxy_process_result(result)
+
+
+def cmd_proxy_status(args):
+    data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, "status")
+    if err:
+        print("voice proxy status: %s" % err, file=sys.stderr)
+        return error_code
+    assert data is not None and targets is not None
+    print("voice proxy status: %s" % _proxy_context(targets))
+    return _print_proxy_process_result(_proxy_process_service(args, data, targets).status())
+
+
+def cmd_proxy_logs(args):
+    data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, "logs")
+    if err:
+        print("voice proxy logs: %s" % err, file=sys.stderr)
+        return error_code
+    assert data is not None and targets is not None
+    print("voice proxy logs: %s" % _proxy_context(targets))
+    result = _proxy_process_service(args, data, targets).logs(tail=args.tail)
+    for line in result["lines"]:
+        print(line)
+    return int(result["returncode"])
+
+
 def _probe_endpoint(
     name: str, base_url: str, *, timeout: float = ENDPOINT_PROBE_TIMEOUT_S,
     token: Optional[str] = None, _open: Callable[..., Any] = urllib.request.urlopen,
@@ -670,20 +810,22 @@ def _wait_forever_default() -> None:
 
 
 def cmd_run(args):
-    resolved, err = _load_resolved_config(args)
+    data, targets, resolved, err, error_code = _resolve_proxy_operation(args, "run")
     if err:
-        print("voice run: %s" % err, file=sys.stderr)
-        return 2
-    assert resolved is not None
-    data = resolved.data
+        print("voice proxy run: %s" % err, file=sys.stderr)
+        return error_code
+    assert data is not None and targets is not None and resolved is not None
     voice = data.get("voice", {})
     summary = _identity_summary(resolved)
-    print("voice run: manifest OK -- %s -- %s" % (summary, voice_config.describe(data)))
+    print(
+        "voice proxy run: manifest OK -- %s -- %s -- %s"
+        % (summary, voice_config.describe(data), _proxy_context(targets))
+    )
 
     problem = _check_required_endpoints_reachable(voice)
     if problem:
         print(
-            "voice run: %s -- refusing to start a session pool against an "
+            "voice proxy run: %s -- refusing to start a session pool against an "
             "unreachable endpoint. Bring up the configured serves/router "
             "first (`anvil-serving voice audio up`, `anvil-serving router run`) and "
             "retry." % problem,
@@ -694,19 +836,19 @@ def cmd_run(args):
     try:
         server, pool = _build_realtime_server(data, voice)
     except ValueError as exc:
-        print("voice run: %s" % exc, file=sys.stderr)
+        print("voice proxy run: %s" % exc, file=sys.stderr)
         return 2
 
     thread = serve_forever_in_background(server)
     host, port = server.server_address[:2]
     print(
-        "voice run: realtime server up at ws://%s:%d/v1/realtime (pool size %d)"
+        "voice proxy run: realtime server up at ws://%s:%d/v1/realtime (pool size %d)"
         % (host, port, pool.size)
     )
     try:
         _wait_forever_default()
     except KeyboardInterrupt:
-        print("\nvoice run: interrupted -- shutting down")
+        print("\nvoice proxy run: interrupted -- shutting down")
     finally:
         server.shutdown()
         server.server_close()
@@ -818,23 +960,40 @@ def _validate_bridge_hosts(args) -> Optional[str]:
             return "%s must be a concrete target host, not %s" % (key, host)
         if _host_is_public_ip(host):
             return "%s must be a private/tailnet address or private DNS name, not a public IP (%s)" % (key, host)
-    if _host_is_wildcard(args.listen_host) and not args.allow_wildcard_listen:
-        return (
-            "voice bridge listen_host is wildcard (%s); bind a concrete private/tailnet address "
-            "or pass --allow-wildcard-listen only after firewall/private-network scoping is proven"
-            % args.listen_host
-        )
-    if (
-        not args.dry_run
-        and not _host_is_loopback(args.listen_host)
-        and not args.i_understand_this_exposes_voice_audio
-    ):
-        return (
-            "voice bridge listen_host is non-loopback (%s); rerun with "
-            "--i-understand-this-exposes-voice-audio after confirming the bind is private/tailnet-scoped"
-            % args.listen_host
-        )
+    if not _host_is_loopback(args.listen_host):
+        return "voice proxy bridge listeners must remain Mini-local on 127.0.0.1"
     return None
+
+
+def _endpoint_port(endpoint: str | None, kind: str) -> int:
+    if not endpoint:
+        raise voice_config.ConfigError("%s endpoint is missing" % kind)
+    parsed = urllib.parse.urlparse(endpoint)
+    if parsed.port is None:
+        raise voice_config.ConfigError("%s endpoint has no explicit port" % kind)
+    return parsed.port
+
+
+def _apply_bridge_defaults(args, targets: voice_config.ResolvedProxyTargets) -> None:
+    args.listen_host = args.listen_host or "127.0.0.1"
+    args.stt_listen_port = args.stt_listen_port or _endpoint_port(
+        targets.stt_proxy.endpoint, "STT proxy"
+    )
+    args.tts_listen_port = args.tts_listen_port or _endpoint_port(
+        targets.tts_proxy.endpoint, "TTS proxy"
+    )
+    args.stt_target_host = args.stt_target_host or targets.stt_target_host
+    args.tts_target_host = args.tts_target_host or targets.tts_target_host
+    if not args.stt_target_host or not args.tts_target_host:
+        raise voice_config.ConfigError(
+            "remote audio model hosts must declare reachable topology addresses"
+        )
+    args.stt_target_port = args.stt_target_port or _endpoint_port(
+        targets.stt_model.endpoint, "STT model"
+    )
+    args.tts_target_port = args.tts_target_port or _endpoint_port(
+        targets.tts_model.endpoint, "TTS model"
+    )
 
 
 def _bridge_routes_from_args(args):
@@ -857,6 +1016,17 @@ def _bridge_routes_from_args(args):
 
 
 def cmd_bridge(args):
+    _data, targets, _resolved, err, error_code = _resolve_proxy_operation(args, "bridge")
+    if err:
+        print("voice proxy bridge: %s" % err, file=sys.stderr)
+        return error_code
+    assert targets is not None
+    print("voice proxy bridge: %s" % _proxy_context(targets))
+    try:
+        _apply_bridge_defaults(args, targets)
+    except voice_config.ConfigError as exc:
+        print("voice proxy bridge: %s" % exc, file=sys.stderr)
+        return 2
     problem = _validate_bridge_hosts(args)
     if problem:
         print("voice bridge: %s" % problem, file=sys.stderr)
@@ -888,7 +1058,7 @@ def build_parser():
     sub = p.add_subparsers(
         dest="action",
         required=True,
-        metavar="{audio,run,benchmark,profiles,bridge,sidecar}",
+        metavar="{audio,proxy,benchmark,profiles,sidecar}",
     )
 
     def add_config(sp):
@@ -949,9 +1119,34 @@ def build_parser():
     add_audio_resolution(sp)
     sp.add_argument("--tail", type=int, default=200)
 
-    sp = sub.add_parser("run", help="run the realtime server in the foreground")
-    add_config(sp)
-    add_profile(sp)
+    proxy = sub.add_parser("proxy", help="manage the Mini-owned realtime proxy")
+    proxy_sub = proxy.add_subparsers(
+        dest="proxy_action",
+        required=True,
+        metavar="{run,up,down,restart,status,logs,bridge}",
+    )
+
+    def add_proxy_resolution(sp):
+        add_config(sp)
+        add_profile(sp)
+        sp.add_argument("--topology", help="topology document used to resolve the proxy owner")
+        sp.add_argument("--topology-overlay", help="deployment overlay applied to the topology")
+        sp.add_argument("--command-host", help="declared command host")
+        sp.add_argument("--command-runtime", help="declared command runtime")
+        sp.add_argument("--target", help="explicit proxy resource owner")
+        sp.add_argument(
+            "--transport",
+            choices=("auto", "local", "controller"),
+            default="auto",
+            help="execution transport selected after proxy ownership resolution",
+        )
+
+    def add_proxy_process_files(sp):
+        sp.add_argument("--pid-file", help="owned proxy PID record path")
+        sp.add_argument("--log-file", help="bounded proxy process log path")
+
+    sp = proxy_sub.add_parser("run", help="run the realtime server in the foreground")
+    add_proxy_resolution(sp)
     sp.add_argument(
         "--candidate",
         help="candidate label recorded in run logs; defaults to overlay file stem",
@@ -960,6 +1155,26 @@ def build_parser():
         "--candidate-overlay",
         help="candidate TOML overlay applied after the selected profile for this run",
     )
+
+    for action, help_text in (
+        ("up", "start the realtime proxy in the background"),
+        ("down", "stop the owned realtime proxy process"),
+        ("restart", "restart the owned realtime proxy process"),
+    ):
+        sp = proxy_sub.add_parser(action, help=help_text)
+        add_proxy_resolution(sp)
+        add_proxy_process_files(sp)
+        add_dry_run(sp)
+        sp.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+
+    sp = proxy_sub.add_parser("status", help="show bounded realtime proxy status")
+    add_proxy_resolution(sp)
+    add_proxy_process_files(sp)
+
+    sp = proxy_sub.add_parser("logs", help="show bounded realtime proxy logs")
+    add_proxy_resolution(sp)
+    add_proxy_process_files(sp)
+    sp.add_argument("--tail", type=int, default=200)
 
     sp = sub.add_parser("benchmark", help="replay a recorded session end-to-end and report latency")
     add_config(sp)
@@ -994,25 +1209,16 @@ def build_parser():
     add_config(sp)
     add_profile(sp)
 
-    sp = sub.add_parser("bridge", help="forward STT/TTS TCP ports from this host to local audio endpoints")
-    sp.add_argument("--listen-host", default="127.0.0.1", help="host/interface to bind; non-loopback requires explicit acknowledgement")
-    sp.add_argument("--stt-listen-port", type=_tcp_port, default=30110, help="bridge listen port for STT")
-    sp.add_argument("--stt-target-host", default="127.0.0.1", help="target host for the local STT endpoint")
-    sp.add_argument("--stt-target-port", type=_tcp_port, default=30010, help="target port for the local STT endpoint")
-    sp.add_argument("--tts-listen-port", type=_tcp_port, default=30111, help="bridge listen port for TTS")
-    sp.add_argument("--tts-target-host", default="127.0.0.1", help="target host for the local TTS endpoint")
-    sp.add_argument("--tts-target-port", type=_tcp_port, default=30011, help="target port for the local TTS endpoint")
+    sp = proxy_sub.add_parser("bridge", help="forward Mini-local STT/TTS ports to Dark")
+    add_proxy_resolution(sp)
+    sp.add_argument("--listen-host", help="Mini-local listen host; defaults to 127.0.0.1")
+    sp.add_argument("--stt-listen-port", type=_tcp_port, help="STT listener port; defaults from topology")
+    sp.add_argument("--stt-target-host", help="Dark STT host; defaults from topology")
+    sp.add_argument("--stt-target-port", type=_tcp_port, help="Dark STT port; defaults from topology")
+    sp.add_argument("--tts-listen-port", type=_tcp_port, help="TTS listener port; defaults from topology")
+    sp.add_argument("--tts-target-host", help="Dark TTS host; defaults from topology")
+    sp.add_argument("--tts-target-port", type=_tcp_port, help="Dark TTS port; defaults from topology")
     sp.add_argument("--dry-run", action="store_true", help="print bridge routes without binding sockets")
-    sp.add_argument(
-        "--i-understand-this-exposes-voice-audio",
-        action="store_true",
-        help="acknowledge that a non-loopback bridge bind exposes STT/TTS audio traffic",
-    )
-    sp.add_argument(
-        "--allow-wildcard-listen",
-        action="store_true",
-        help="allow 0.0.0.0/:: listen hosts after separate firewall/private-network scoping",
-    )
 
     sub.add_parser("sidecar", help="validate or render the Hugging Face speech-to-speech sidecar")
 
@@ -1050,6 +1256,8 @@ def main(argv=None):
         "down": "voice audio down",
         "start": "voice audio up",
         "stop": "voice audio down",
+        "run": "voice proxy run",
+        "bridge": "voice proxy bridge",
     }
     if argv and argv[0] in removed_audio_paths:
         print(
@@ -1064,10 +1272,8 @@ def main(argv=None):
         return voice_sidecar.main(argv[1:], prog="anvil-serving voice sidecar")
     args = build_parser().parse_args(argv)
     handlers = {
-        "run": cmd_run,
         "benchmark": cmd_benchmark,
         "profiles": cmd_profiles,
-        "bridge": cmd_bridge,
     }
     if args.action == "audio":
         return {
@@ -1076,6 +1282,16 @@ def main(argv=None):
             "status": cmd_audio_status,
             "logs": cmd_audio_logs,
         }[args.audio_action](args)
+    if args.action == "proxy":
+        return {
+            "run": cmd_run,
+            "up": cmd_proxy_lifecycle,
+            "down": cmd_proxy_lifecycle,
+            "restart": cmd_proxy_lifecycle,
+            "status": cmd_proxy_status,
+            "logs": cmd_proxy_logs,
+            "bridge": cmd_bridge,
+        }[args.proxy_action](args)
     return handlers[args.action](args)
 
 

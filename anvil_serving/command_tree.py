@@ -506,8 +506,34 @@ def build_command_tree() -> CommandTree:
                 _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), mutation="mutate", options=confirm_options, argv_prefix=("audio", "down"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "down"),))),
             ), docs_anchor="docs/VOICE.md#audio-lifecycle"),
             _node("proxy", "Manage the realtime proxy process.", children=(
-                _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="proxy", mutation="process", argv_prefix=("run",), output_policy="foreground"),
-                _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="proxy", mutation="mutate", options=confirm_options, argv_prefix=("bridge",), output_policy="foreground"),
+                _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "run"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
+                *(
+                    _resource_node(
+                        action,
+                        summary,
+                        "anvil_serving.voice.cli",
+                        role="realtime-proxy",
+                        coowned_roles=("stt-proxy", "tts-proxy"),
+                        mutation="mutate",
+                        options=confirm_options,
+                        argv_prefix=("proxy", action),
+                        forward_resolution_options=True,
+                        remote_operation=_remote(
+                            "voice_proxy_manage",
+                            fixed=(("action", action),),
+                            allowed=("config", "profile", "pid_file", "log_file", "dry_run", "timeout_seconds"),
+                        ),
+                        execution_runtime_roles=("native",),
+                    )
+                    for action, summary in (
+                        ("up", "Start the realtime proxy."),
+                        ("down", "Stop the realtime proxy."),
+                        ("restart", "Restart the realtime proxy."),
+                    )
+                ),
+                _resource_node("status", "Show realtime proxy status.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "status"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "status"),), allowed=("config", "profile", "pid_file", "log_file", "timeout_seconds")), execution_runtime_roles=("native",)),
+                _resource_node("logs", "Show bounded realtime proxy logs.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "pid_file", "log_file", "tail", "timeout_seconds")), execution_runtime_roles=("native",)),
+                _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "bridge"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
             ), docs_anchor="docs/VOICE.md#realtime-proxy"),
             _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="audio", argv_prefix=("benchmark",)),
             _node("profiles", "Inspect voice profiles.", children=(

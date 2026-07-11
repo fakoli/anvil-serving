@@ -66,6 +66,21 @@ def test_audio_target_resolution_never_treats_mini_proxy_as_model_endpoint():
     assert resolved.tts.plan.resource.id != "mini-dark-tts-proxy"
 
 
+def test_reference_proxy_targets_resolve_mini_local_forwarders():
+    resolved = voice_config.resolve_proxy_targets(
+        load_topology("examples/fakoli-dark/operator-topology.toml"),
+        operation="voice-proxy-status",
+    )
+
+    assert resolved.proxy.resource_host.id == "fakoli-mini"
+    assert resolved.proxy.execution_host.id == "fakoli-mini"
+    assert resolved.endpoint == "http://127.0.0.1:8765/usage"
+    assert resolved.stt_proxy.id == "mini-dark-stt-proxy"
+    assert resolved.stt_proxy.endpoint == "http://127.0.0.1:30110/v1"
+    assert resolved.tts_proxy.id == "mini-dark-tts-proxy"
+    assert resolved.tts_proxy.endpoint == "http://127.0.0.1:30111/v1"
+
+
 def _reference_topology_with_resource(kind, **changes):
     topology = load_topology("examples/fakoli-dark/operator-topology.toml")
     resources = tuple(

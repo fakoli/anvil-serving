@@ -49,6 +49,15 @@ def _audio_command(action, *args, runtime="runtime:dark-docker"):
     ]
 
 
+def _proxy_command(action, *args, topology=AUDIO_TOPOLOGY):
+    return [
+        "proxy", action, *args,
+        "--topology", topology,
+        "--command-host", "host:fakoli-mini",
+        "--command-runtime", "runtime:mini-native",
+    ]
+
+
 def _use_native_dark_audio_topology(monkeypatch):
     from dataclasses import replace
 
@@ -90,7 +99,7 @@ def test_help_lists_subcommands(capsys):
         voice_cli.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for sub in ("audio", "run", "benchmark", "profiles", "bridge", "sidecar"):
+    for sub in ("audio", "proxy", "benchmark", "profiles", "sidecar"):
         assert sub in out
     assert "up" not in out
     assert "down" not in out
@@ -259,6 +268,61 @@ def test_audio_rejects_manifest_lifecycle_for_wrong_runtime_before_construction(
     assert "lifecycle=native requires a native runtime" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("action", ["up", "down", "restart", "status", "logs"])
+def test_proxy_lifecycle_is_mini_owned_and_never_invokes_audio_handlers(
+    action, manifest_path, monkeypatch, capsys
+):
+    calls = []
+
+    class FakeProxyProcess:
+        def up(self, *, dry_run=False):
+            calls.append(("up", dry_run))
+            return {"action": "up", "owner": "fakoli-mini", "returncode": 0}
+
+        def down(self, *, dry_run=False):
+            calls.append(("down", dry_run))
+            return {"action": "down", "owner": "fakoli-mini", "returncode": 0}
+
+        def restart(self, *, dry_run=False):
+            calls.append(("restart", dry_run))
+            return {"action": "restart", "owner": "fakoli-mini", "returncode": 0}
+
+        def status(self):
+            calls.append(("status", False))
+            return {"action": "status", "owner": "fakoli-mini", "returncode": 0}
+
+        def logs(self, *, tail):
+            calls.append(("logs", tail))
+            return {
+                "action": "logs",
+                "owner": "fakoli-mini",
+                "returncode": 0,
+                "lines": ["bounded"],
+            }
+
+    monkeypatch.setattr(
+        voice_cli,
+        "execute_audio_lifecycle",
+        lambda *args, **kwargs: pytest.fail("proxy invoked audio lifecycle"),
+    )
+    monkeypatch.setattr(
+        voice_cli,
+        "_proxy_process_service",
+        lambda *args, **kwargs: FakeProxyProcess(),
+    )
+    extra = ["--dry-run"] if action in {"up", "down", "restart"} else []
+
+    rc = voice_cli.main(_proxy_command(
+        action, "--config", manifest_path, *extra
+    ))
+
+    assert rc == 0
+    assert calls == [(action, 200 if action == "logs" else action in {"up", "down", "restart"})]
+    output = capsys.readouterr().out
+    assert "owner=fakoli-mini" in output
+    assert "stt_proxy=http://127.0.0.1:30110/v1" in output
+
+
 def test_profiles_command_lists_and_describes_profiles(tmp_path, capsys):
     manifest = tmp_path / "voice_profiles.toml"
     manifest.write_text(
@@ -334,12 +398,14 @@ lifecycle = "external"
     monkeypatch.setattr(voice_cli, "serve_forever_in_background", lambda server: _FakeThread())
     monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
 
-    rc = voice_cli.main(["run", "--config", str(manifest), "--profile", "dark-audio"])
+    rc = voice_cli.main(_proxy_command(
+        "run", "--config", str(manifest), "--profile", "dark-audio"
+    ))
 
     assert rc == 0
     assert seen == {
-        "stt": "http://100.87.34.66:30110/v1",
-        "tts": "http://100.87.34.66:30111/v1",
+        "stt": "http://127.0.0.1:30110/v1",
+        "tts": "http://127.0.0.1:30111/v1",
     }
 
 
@@ -402,7 +468,7 @@ api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
     monkeypatch.setattr(voice_cli, "serve_forever_in_background", lambda server: _FakeThread())
     monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
 
-    rc = voice_cli.main([
+    rc = voice_cli.main(_proxy_command(
         "run",
         "--config",
         str(manifest),
@@ -410,14 +476,14 @@ api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
         "dark-audio",
         "--candidate-overlay",
         str(overlay),
-    ])
+    ))
 
     assert rc == 0
     assert seen == {
         "llm": "http://100.87.34.66:39000/v1",
         "llm_model": "qwen3-32b-nvfp4",
-        "stt": "http://100.87.34.66:30110/v1",
-        "tts": "http://100.87.34.66:30111/v1",
+        "stt": "http://127.0.0.1:30110/v1",
+        "tts": "http://127.0.0.1:30111/v1",
     }
     out = capsys.readouterr().out
     assert "profile=dark-audio" in out
@@ -426,40 +492,38 @@ api_key_env = "ANVIL_CANDIDATE_LLM_TOKEN"
 
 
 def test_bridge_dry_run_prints_default_routes(capsys):
-    rc = voice_cli.main(["bridge", "--dry-run"])
+    rc = voice_cli.main(_proxy_command("bridge", "--dry-run"))
 
     assert rc == 0
     out = capsys.readouterr().out
-    assert "stt 127.0.0.1:30110 -> 127.0.0.1:30010" in out
-    assert "tts 127.0.0.1:30111 -> 127.0.0.1:30011" in out
+    assert "stt 127.0.0.1:30110 -> 192.0.2.20:30110" in out
+    assert "tts 127.0.0.1:30111 -> 192.0.2.20:30111" in out
 
 
 def test_bridge_refuses_non_loopback_live_bind_without_ack(capsys):
-    rc = voice_cli.main(["bridge", "--listen-host", "100.87.34.66"])
+    rc = voice_cli.main(_proxy_command("bridge", "--listen-host", "100.87.34.66"))
 
     assert rc == 2
     err = capsys.readouterr().err
-    assert "--i-understand-this-exposes-voice-audio" in err
+    assert "Mini-local on 127.0.0.1" in err
 
 
 def test_bridge_refuses_wildcard_without_extra_ack(capsys):
-    rc = voice_cli.main([
+    rc = voice_cli.main(_proxy_command(
         "bridge",
         "--listen-host", "0.0.0.0",
-        "--i-understand-this-exposes-voice-audio",
-    ])
+    ))
 
     assert rc == 2
     err = capsys.readouterr().err
-    assert "--allow-wildcard-listen" in err
+    assert "Mini-local on 127.0.0.1" in err
 
 
 def test_bridge_rejects_public_ip_bind(capsys):
-    rc = voice_cli.main([
+    rc = voice_cli.main(_proxy_command(
         "bridge",
         "--listen-host", "8.8.8.8",
-        "--i-understand-this-exposes-voice-audio",
-    ])
+    ))
 
     assert rc == 2
     err = capsys.readouterr().err
@@ -467,7 +531,9 @@ def test_bridge_rejects_public_ip_bind(capsys):
 
 
 def test_bridge_rejects_localhost_hostnames(capsys):
-    rc = voice_cli.main(["bridge", "--listen-host", "localhost", "--dry-run"])
+    rc = voice_cli.main(_proxy_command(
+        "bridge", "--listen-host", "localhost", "--dry-run"
+    ))
 
     assert rc == 2
     err = capsys.readouterr().err
@@ -484,12 +550,12 @@ def test_bridge_calls_package_bridge_server(monkeypatch):
 
     monkeypatch.setattr(voice_cli.voice_bridge, "serve_forever", fake_serve_forever)
 
-    rc = voice_cli.main([
+    rc = voice_cli.main(_proxy_command(
         "bridge",
         "--listen-host", "127.0.0.1",
         "--stt-listen-port", "31110",
         "--tts-listen-port", "31111",
-    ])
+    ))
 
     assert rc == 0
     assert [route.name for route in seen["routes"]] == ["stt", "tts"]
@@ -556,13 +622,16 @@ def test_bridge_module_forwards_bytes_over_loopback():
     echo_thread.join(timeout=2.0)
 
 
-@pytest.mark.parametrize("action", [["audio", "up"], ["audio", "down"], ["run"], ["benchmark"]])
+@pytest.mark.parametrize("action", [["audio", "up"], ["audio", "down"], ["proxy", "run"], ["benchmark"]])
 def test_each_subcommand_reports_error_on_bad_manifest(action, tmp_path, capsys):
     bad = tmp_path / "bad.toml"
     bad.write_text("not [valid toml at all", encoding="utf-8")
     argv = (
         _audio_command(action[1], "--config", str(bad))
-        if action[0] == "audio" else [*action, "--config", str(bad)]
+        if action[0] == "audio"
+        else _proxy_command(action[1], "--config", str(bad))
+        if action[0] == "proxy"
+        else [*action, "--config", str(bad)]
     )
     rc = voice_cli.main(argv)
     assert rc == 2
@@ -570,13 +639,16 @@ def test_each_subcommand_reports_error_on_bad_manifest(action, tmp_path, capsys)
     assert "cannot parse" in err
 
 
-@pytest.mark.parametrize("action", [["audio", "up"], ["audio", "down"], ["run"], ["benchmark"]])
+@pytest.mark.parametrize("action", [["audio", "up"], ["audio", "down"], ["proxy", "run"], ["benchmark"]])
 def test_each_subcommand_rejects_localhost_manifest(action, tmp_path, capsys):
     bad = tmp_path / "localhost.toml"
     bad.write_text(VALID_MANIFEST.replace("127.0.0.1:8000", "localhost:8000"), encoding="utf-8")
     argv = (
         _audio_command(action[1], "--config", str(bad))
-        if action[0] == "audio" else [*action, "--config", str(bad)]
+        if action[0] == "audio"
+        else _proxy_command(action[1], "--config", str(bad))
+        if action[0] == "proxy"
+        else [*action, "--config", str(bad)]
     )
     rc = voice_cli.main(argv)
     assert rc == 2
@@ -594,7 +666,7 @@ def test_run_reports_unreachable_endpoint_and_exits_nonzero(manifest_path, monke
         voice_cli, "_probe_endpoint",
         lambda name, base_url, **kw: "%s at %s is unreachable (mocked)" % (name, base_url),
     )
-    rc = voice_cli.main(["run", "--config", manifest_path])
+    rc = voice_cli.main(_proxy_command("run", "--config", manifest_path))
     assert rc != 0
     err = capsys.readouterr().err
     assert "unreachable" in err
@@ -634,7 +706,7 @@ def test_run_builds_expected_components_with_fakes(manifest_path, monkeypatch, c
     monkeypatch.setattr(voice_cli, "serve_forever_in_background", lambda server: _FakeThread())
     monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
 
-    rc = voice_cli.main(["run", "--config", manifest_path])
+    rc = voice_cli.main(_proxy_command("run", "--config", manifest_path))
     assert rc == 0
     assert calls == ["build", "shutdown", "server_close", "join"]
     out = capsys.readouterr().out
@@ -642,7 +714,7 @@ def test_run_builds_expected_components_with_fakes(manifest_path, monkeypatch, c
     assert "pool size 3" in out
 
 
-def test_run_builds_real_session_pool_and_ws_server(runnable_manifest_path, monkeypatch, capsys):
+def test_run_builds_real_session_pool_and_ws_server(tmp_path, monkeypatch, capsys):
     """A lower-level, non-mocked proof that `_build_realtime_server` really
     does construct a working `SessionPool` (real `VoicePipeline` instances,
     real STT/TTS/LLM stage configs from the manifest) behind a real (but
@@ -654,7 +726,25 @@ def test_run_builds_real_session_pool_and_ws_server(runnable_manifest_path, monk
     monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
     monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
 
-    rc = voice_cli.main(["run", "--config", runnable_manifest_path])
+    port = _free_tcp_port()
+    manifest = tmp_path / "voice_runnable.toml"
+    manifest.write_text(
+        VALID_MANIFEST.replace("realtime_port = 8765", "realtime_port = %d" % port),
+        encoding="utf-8",
+    )
+    topology = tmp_path / "operator-topology.toml"
+    with open(AUDIO_TOPOLOGY, "r", encoding="utf-8") as handle:
+        topology_text = handle.read()
+    topology.write_text(
+        topology_text.replace(
+            "127.0.0.1:8765/usage", "127.0.0.1:%d/usage" % port
+        ),
+        encoding="utf-8",
+    )
+
+    rc = voice_cli.main(_proxy_command(
+        "run", "--config", str(manifest), topology=str(topology)
+    ))
     assert rc == 0
     out = capsys.readouterr().out
     assert "ws://127.0.0.1:" in out
@@ -683,7 +773,7 @@ def test_run_refuses_non_loopback_bind_without_token(tmp_path, monkeypatch, caps
     )
     monkeypatch.setattr(voice_cli, "_check_required_endpoints_reachable", lambda voice: None)
 
-    rc = voice_cli.main(["run", "--config", str(manifest)])
+    rc = voice_cli.main(_proxy_command("run", "--config", str(manifest)))
     assert rc != 0
     err = capsys.readouterr().err
     assert "token" in err.lower()
@@ -1144,7 +1234,7 @@ def test_cmd_benchmark_help_lists_profile_candidate_overlay_and_evidence_options
 
 def test_cmd_run_help_lists_profile_candidate_overlay_options(capsys):
     with pytest.raises(SystemExit) as exc:
-        voice_cli.main(["run", "--help"])
+        voice_cli.main(["proxy", "run", "--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "--profile" in out
@@ -1354,7 +1444,7 @@ def test_run_does_not_refuse_start_when_endpoints_return_401(tmp_path, monkeypat
             "[voice]\n"
             'name = "test-voice"\n'
             'realtime_host = "127.0.0.1"\n'
-            "realtime_port = 0\n"
+            "realtime_port = 8765\n"
             "\n"
             "[voice.llm]\n"
             'base_url = "%s"\n'
@@ -1369,6 +1459,21 @@ def test_run_does_not_refuse_start_when_endpoints_return_401(tmp_path, monkeypat
             'model = "kokoro-82m"\n'
         )
         % (llm_url, stt_url, tts_url),
+        encoding="utf-8",
+    )
+    topology = tmp_path / "operator-topology.toml"
+    with open(AUDIO_TOPOLOGY, "r", encoding="utf-8") as handle:
+        topology_text = handle.read()
+    topology.write_text(
+        topology_text.replace(
+            'endpoint = "http://127.0.0.1:30110/v1"',
+            'endpoint = "%s"' % stt_url,
+            1,
+        ).replace(
+            'endpoint = "http://127.0.0.1:30111/v1"',
+            'endpoint = "%s"' % tts_url,
+            1,
+        ),
         encoding="utf-8",
     )
 
@@ -1398,7 +1503,9 @@ def test_run_does_not_refuse_start_when_endpoints_return_401(tmp_path, monkeypat
     monkeypatch.setattr(voice_cli, "serve_forever_in_background", lambda server: _FakeThread())
     monkeypatch.setattr(voice_cli, "_wait_forever_default", lambda: None)
 
-    rc = voice_cli.main(["run", "--config", str(manifest)])
+    rc = voice_cli.main(_proxy_command(
+        "run", "--config", str(manifest), topology=str(topology)
+    ))
     assert rc == 0
     assert "build" in calls  # proves the preflight passed and `run` proceeded
 

@@ -1556,6 +1556,65 @@ def test_voice_manage_bad_action_and_bad_config(tmp_path):
     assert missing["error"]["code"] == "bad_config"
 
 
+def test_voice_proxy_manage_is_persistent_typed_and_model_free(tmp_path, monkeypatch):
+    from anvil_serving.voice import realtime_service
+
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        name = "mini-proxy"
+        realtime_host = "127.0.0.1"
+        realtime_port = 8765
+
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+
+        [voice.stt]
+        base_url = "http://127.0.0.1:30110/v1"
+        model = "remote-stt"
+        lifecycle = "external"
+
+        [voice.tts]
+        base_url = "http://127.0.0.1:30111/v1"
+        model = "remote-tts"
+        lifecycle = "external"
+    """), encoding="utf-8")
+    topology = Path(__file__).parents[1] / "examples" / "fakoli-dark" / "operator-topology.toml"
+    calls = []
+
+    class FakeProcess:
+        def __init__(self, process_config):
+            calls.append(("init", process_config.owner, process_config.topology_path))
+
+        def status(self):
+            calls.append(("status",))
+            return {"action": "status", "owner": "fakoli-mini", "returncode": 0}
+
+        def up(self, *, dry_run=False):
+            calls.append(("up", dry_run))
+            return {"action": "up", "owner": "fakoli-mini", "returncode": 0}
+
+    monkeypatch.setattr(realtime_service, "RealtimeProxyProcessService", FakeProcess)
+    monkeypatch.setenv("ANVIL_VOICE_TOPOLOGY", str(topology))
+
+    status = mcp.call_tool("voice_proxy_manage", {
+        "action": "status", "config": str(config),
+    })
+    preview = mcp.call_tool("voice_proxy_manage", {
+        "action": "up", "config": str(config),
+    })
+    applied = mcp.call_tool("voice_proxy_manage", {
+        "action": "up", "config": str(config), "confirm": True, "dry_run": False,
+    })
+
+    assert status["ok"] is True
+    assert preview["data"]["dry_run"] is True
+    assert applied["data"]["applied"] is True
+    assert ("up", True) in calls and ("up", False) in calls
+    assert all("audio" not in str(call) for call in calls)
+
+
 def test_host_manage_rejects_action_specific_arguments_in_preview():
     env = mcp.call_tool(
         "host_manage",

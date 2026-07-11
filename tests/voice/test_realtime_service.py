@@ -9,6 +9,7 @@ import base64
 import json
 import queue
 import threading
+import urllib.error
 from types import SimpleNamespace
 
 import pytest
@@ -21,6 +22,10 @@ from anvil_serving.voice.realtime.service import (
     RealtimeProxyLogs,
     RealtimeProxyService,
     RealtimeProxyStopTimeoutError,
+)
+from anvil_serving.voice.realtime_service import (
+    ProxyProcessConfig,
+    RealtimeProxyProcessService,
 )
 from anvil_serving.voice.stages.vad import VADConfig
 
@@ -204,6 +209,51 @@ def test_realtime_proxy_immediate_start_stop_has_initialized_server():
     proxy.start()
     assert proxy.stop(timeout=1).running is False
     assert server.closed is True
+
+
+def test_persistent_proxy_dry_run_uses_canonical_foreground_command(tmp_path):
+    config = ProxyProcessConfig(
+        config_path=str(tmp_path / "voice.toml"),
+        topology_path=str(tmp_path / "topology.toml"),
+        profile="mini-dark-audio-proxy",
+        host="127.0.0.1",
+        port=8765,
+        owner="gateway-host",
+        pid_file=str(tmp_path / "proxy.pid"),
+        log_file=str(tmp_path / "proxy.log"),
+    )
+
+    def unavailable(*_args, **_kwargs):
+        raise urllib.error.URLError("not running")
+
+    result = RealtimeProxyProcessService(config, opener=unavailable).up(dry_run=True)
+
+    assert result["returncode"] == 0
+    assert result["owner"] == "gateway-host"
+    command = result["command"]
+    assert command[3:7] == ["voice", "proxy", "run", "--config"]
+    assert "audio" not in command
+    assert "--topology" in command
+
+
+def test_persistent_proxy_logs_are_bounded_and_typed(tmp_path):
+    log_file = tmp_path / "proxy.log"
+    log_file.write_text("one\ntwo\nthree\n", encoding="utf-8")
+    service = RealtimeProxyProcessService(ProxyProcessConfig(
+        config_path=str(tmp_path / "voice.toml"),
+        topology_path=str(tmp_path / "topology.toml"),
+        profile=None,
+        host="127.0.0.1",
+        port=8765,
+        pid_file=str(tmp_path / "proxy.pid"),
+        log_file=str(log_file),
+    ))
+
+    result = service.logs(tail=2)
+
+    assert result["action"] == "logs"
+    assert result["lines"] == ["two", "three"]
+    assert result["max_bytes"] > 0
 
 
 def test_session_update_merges_config_and_echoes():

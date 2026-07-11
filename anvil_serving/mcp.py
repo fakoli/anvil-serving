@@ -1580,6 +1580,75 @@ def tool_voice_manage(args: dict) -> dict:
     })
 
 
+def tool_voice_proxy_manage(args: dict) -> dict:
+    """Manage the persistent Mini proxy process without touching model serves."""
+    from .topology import load_topology
+    from .voice import config as voice_config
+    from .voice.realtime_service import ProxyProcessConfig, RealtimeProxyProcessService
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"up", "down", "restart", "status", "logs"}:
+        raise ToolError(
+            "bad_action",
+            "action must be one of: up, down, restart, status, logs",
+            {"action": action},
+        )
+    config = voice_config.resolve_config_path(_str_arg(args, "config", "") or None)
+    profile = _str_arg(args, "profile", "")
+    topology_path = _str_arg(args, "topology", "") or os.environ.get(
+        "ANVIL_VOICE_TOPOLOGY", ""
+    ).strip()
+    if not topology_path:
+        raise ToolError(
+            "missing_topology",
+            "set ANVIL_VOICE_TOPOLOGY on the Mini controller or pass topology",
+        )
+    try:
+        data = voice_config.load_manifest(config, profile=profile or None)
+        topology = load_topology(topology_path)
+        targets = voice_config.resolve_proxy_targets(
+            topology,
+            operation="voice-proxy-%s" % action,
+            transport="local",
+        )
+    except (OSError, ValueError) as exc:
+        raise ToolError(
+            "bad_proxy_config",
+            "could not resolve Mini proxy configuration",
+            {"config": config, "topology": topology_path, "error": str(exc)},
+        )
+    voice = data["voice"]
+    process = RealtimeProxyProcessService(ProxyProcessConfig(
+        config_path=config,
+        topology_path=topology_path,
+        profile=profile or None,
+        host=voice.get("realtime_host", "127.0.0.1"),
+        port=int(voice.get("realtime_port", 8765)),
+        owner=targets.proxy.resource_host.id,
+        pid_file=_str_arg(args, "pid_file", "") or os.path.join(
+            "~/.anvil-serving/run", "voice-proxy.pid"
+        ),
+        log_file=_str_arg(args, "log_file", "") or os.path.join(
+            "~/.anvil-serving/run", "voice-proxy.log"
+        ),
+        ready_timeout=float(_bounded_int_arg(
+            args, "timeout_seconds", 15, min_value=1, max_value=300
+        )),
+    ))
+    if action == "status":
+        return _ok(process.status())
+    if action == "logs":
+        tail = _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000)
+        return _ok(process.logs(tail=tail))
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    preview = dry_run or not confirm
+    result = getattr(process, action)(dry_run=preview)
+    result["dry_run"] = preview
+    result["applied"] = not preview and result.get("returncode") == 0
+    return _ok(result)
+
+
 def tool_doctor_summary(args: dict) -> dict:
     from . import doctor
 
@@ -2676,6 +2745,22 @@ TOOLS: Dict[str, dict] = {
             "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
         }, required=["action"]),
         "handler": tool_voice_manage,
+    },
+    "voice_proxy_manage": {
+        "description": "Manage the persistent Mini-owned Realtime proxy process.",
+        "inputSchema": _schema({
+            "action": {"type": "string", "enum": ["up", "down", "restart", "status", "logs"]},
+            "config": {"type": "string"},
+            "profile": {"type": "string"},
+            "topology": {"type": "string"},
+            "pid_file": {"type": "string"},
+            "log_file": {"type": "string"},
+            "tail": _bounded_integer_schema(1, 5000, 200),
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 300, 15),
+        }, required=["action"]),
+        "handler": tool_voice_proxy_manage,
     },
     "doctor_summary": {
         "description": "Run anvil-serving environment checks and return structured results.",
