@@ -1,6 +1,6 @@
 """anvil-serving router — manage the DEPLOYED (ADR-0004 containerized) anvil-router.
 
-`anvil-serving serve` runs the router in-process; `anvil-serving serves` manages the
+`anvil-serving router run` runs the router in-process; `anvil-serving serves` manages the
 GPU model serves. Neither manages the *deployed*, token-authed router container from
 ADR-0004 — until now operators reached for raw `docker`. This verb fills that gap.
 
@@ -457,7 +457,7 @@ def cmd_status(container, _run=subprocess.run, _open=urllib.request.urlopen):
     return 0
 
 
-def cmd_token(container, _run=subprocess.run):
+def cmd_token(container, *, reveal=False, _run=subprocess.run):
     # Rule out "can't reach the container" FIRST, so a stopped/absent container or a docker
     # error is reported as such — not silently as "auth UNSET" (a false success).
     st = docker_state(container, _run=_run)
@@ -475,6 +475,15 @@ def cmd_token(container, _run=subprocess.run):
         return 1
     token = (r.stdout or "").strip()
     if r.returncode == 0 and token:
+        if not reveal:
+            print(
+                "auth is SET: ANVIL_ROUTER_TOKEN is configured on %s "
+                "(pass --reveal --confirm to print it)." % container
+            )
+            return 0
+        if not guard.confirm("Reveal the deployed router bearer token?"):
+            print("token reveal declined", file=sys.stderr)
+            return 1
         print(token)
         return 0
     # The container IS running (checked above), so a non-zero printenv / empty value means
@@ -645,7 +654,7 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
     bak_cmds = ["[ -f %s ] && cp %s %s || true" % (prof, prof, prof_bak)]
     if config_text is not None:
         bak_cmds.append("[ -f %s ] && cp %s %s || true" % (cfg_file, cfg_file, cfg_bak))
-    # `--entrypoint sh`: the router IMAGE's default entrypoint is `anvil-serving serve`,
+    # `--entrypoint sh`: the router IMAGE's default entrypoint is `anvil-serving router run`,
     # so without this the side-container would try to START the router (and fail) instead
     # of running our file ops. (The validate step above overrides with `--entrypoint python`.)
     backup_argv = ["docker", "run", "--rm", "--user", "0", "-v", vol_mount,
@@ -811,6 +820,11 @@ def _build_parser():
 
     sp = sub.add_parser("token", help="Print the deployed router bearer token.")
     add_container(sp)
+    sp.add_argument(
+        "--reveal",
+        action="store_true",
+        help="print the token value after an interactive or dispatcher confirmation",
+    )
 
     sp = sub.add_parser("promote", help="Validate and write a reviewed profile/config into the deployed router config volume.")
     add_container(sp)
@@ -865,7 +879,7 @@ def main(argv=None):
     if a.action == "logs":
         return cmd_logs(a.container, tail=a.tail, since=a.since, follow=a.follow)
     if a.action == "token":
-        return cmd_token(a.container)
+        return cmd_token(a.container, reveal=a.reveal)
     if a.action == "promote":
         return cmd_promote(
             a.profile, config_path=a.config, container=a.container,

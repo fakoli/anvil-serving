@@ -7,5 +7,5 @@ serves delegate to the same declarative `serves.toml` lifecycle used by
 :mod:`anvil_serving.serves`. Same-host native serves on an audio-owning host
 use trusted commands declared in the voice manifest with PID/log files. Both
 paths keep engine details out of the pipeline stages and add an
-OpenAI-compatible readiness probe for `anvil-serving voice up/down`.
+OpenAI-compatible readiness probe for `anvil-serving voice audio up/down`.
 """

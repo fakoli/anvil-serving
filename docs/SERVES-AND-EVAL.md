@@ -6,7 +6,7 @@ invocation styles with no single entry point.
 
 ## `anvil-serving serves` — model-serve lifecycle
 
-The router (`anvil-serving serve`) talks to the GPU model serves as backends but
+The router (`anvil-serving router run`) talks to the GPU model serves as backends but
 never starts or stops them. `serves` does, driven by a declarative manifest
 that is the single source of truth for *which container runs on which port as
 which model*. When `--manifest` is omitted, `serves` checks `./serves.toml`
@@ -129,7 +129,7 @@ The loaded-endpoint benchmark mode records one candidate/config run without star
 the serve:
 
 ```bash
-anvil-serving benchmark \
+anvil-serving eval benchmark run \
   --bakeoff \
   --base-url http://127.0.0.1:39010/v1 \
   --model qwen36-35b-a3b-nvfp4 \
@@ -158,7 +158,7 @@ anvil-serving voice benchmark \
   --candidate qwen36-35b-a3b-vllm-nvfp4-32k \
   --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.voice.json
 
-anvil-serving benchmark \
+anvil-serving eval benchmark run \
   --bakeoff \
   --base-url http://127.0.0.1:39010/v1 \
   --model qwen36-35b-a3b-nvfp4 \

@@ -139,17 +139,39 @@ def test_make_server_rejects_loopback_without_token_by_default():
     assert exc.value.code == "auth_token_required"
 
 
-def test_controller_cli_restores_unauthenticated_loopback_compatibility(monkeypatch):
+def test_controller_cli_rejects_unauthenticated_loopback_flag():
+    with pytest.raises(SystemExit) as exc:
+        controller.main(["serve", "--allow-unauthenticated-loopback"])
+    assert exc.value.code == 2
+
+
+def test_controller_status_uses_bounded_authenticated_health_probe(monkeypatch, capsys):
     seen = {}
 
-    def fake_serve(**kwargs):
-        seen.update(kwargs)
-        return 0
+    class Response:
+        def __enter__(self):
+            return self
 
-    monkeypatch.setattr(controller, "serve", fake_serve)
+        def __exit__(self, *_args):
+            return False
 
-    assert controller.main(["serve", "--allow-unauthenticated-loopback"]) == 0
-    assert seen["allow_unauthenticated_loopback"] is True
+        def read(self):
+            return b'{"service":"anvil-serving-controller","status":"ok"}'
+
+    def open_status(request, timeout):
+        seen["url"] = request.full_url
+        seen["authorization"] = request.get_header("Authorization")
+        seen["timeout"] = timeout
+        return Response()
+
+    monkeypatch.setenv("ANVIL_CONTROLLER_TOKEN", TOKEN)
+    assert controller.status("http://127.0.0.1:8765", timeout=1.25, _open=open_status) == 0
+    assert seen == {
+        "url": "http://127.0.0.1:8765/health",
+        "authorization": "Bearer " + TOKEN,
+        "timeout": 1.25,
+    }
+    assert json.loads(capsys.readouterr().out)["status"] == "ok"
 
 
 def test_controller_serve_restores_python_unauthenticated_loopback_parameter():

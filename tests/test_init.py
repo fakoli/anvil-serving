@@ -191,12 +191,11 @@ def test_init_cli_help_exits_zero():
     assert exc.value.code == 0
 
 
-def test_cli_dispatches_init_and_onboard(tmp_path, monkeypatch):
+def test_cli_dispatches_init_and_refuses_removed_onboard(tmp_path, monkeypatch, capsys):
     from anvil_serving import cli
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     out1 = tmp_path / "a"
-    out2 = tmp_path / "b"
     assert cli.main(["init", "--model", "/w/model", "--out-dir", str(out1)]) == 0
-    assert cli.main(["onboard", "--model", "/w/model", "--out-dir", str(out2)]) == 0
     assert os.path.isfile(out1 / "router.toml")
-    assert os.path.isfile(out2 / "router.toml")
+    assert cli.main(["onboard", "--model", "/w/model"]) == 2
+    assert "was removed; use `init`" in capsys.readouterr().err

@@ -228,7 +228,7 @@ def main(argv):
     print("Remaining manual steps:")
     print("  1. anvil-serving serves up            # docker compose up -d, per serves.toml")
     print("  2. anvil-serving serves status         # wait for it to report healthy")
-    print("  3. anvil-serving serve --config %s" % result["router"])
+    print("  3. anvil-serving router run --config %s" % result["router"])
     print("  4. Point your harness at http://127.0.0.1:8000 (ANTHROPIC_BASE_URL) and set")
     print("     ANTHROPIC_MODEL to a preset (planning / quick-edit / review / chat / long-context).")
     print("     For OpenClaw: see docs/OPENCLAW-INTEGRATION-SPEC.md for the provider adapter.")

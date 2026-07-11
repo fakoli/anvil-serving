@@ -1,4 +1,4 @@
-"""``anvil-serving serve`` — config -> per-tier backends -> front door (T012).
+"""``anvil-serving router run`` - config -> per-tier backends -> front door (T012).
 
 This is the pip-install-to-running surface: one verb that turns a validated
 router :class:`~anvil_serving.router.config.RouterConfig` into a live,
@@ -1005,7 +1005,7 @@ def serve(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """``anvil-serving serve`` CLI: parse args and run :func:`serve`.
+    """``anvil-serving router run`` CLI: parse args and run :func:`serve`.
 
     Two ways to select the config to serve (ADR-0011 / flexibility:T012):
 
@@ -1021,7 +1021,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     error (the router never silently boots a default).
     """
     ap = argparse.ArgumentParser(
-        prog="anvil-serving serve",
+        prog="anvil-serving router run",
         description=(
             "Start the protocol-standard front door bound to the tiers in a "
             "router config (config -> per-tier backends -> front door). Select the "
@@ -1101,7 +1101,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # so it enters the serve fingerprint + decision log (flexibility:T013).
         serve(config_path, host=args.host, port=args.port, mode=mode)
     except ConfigError as e:
-        print(f"anvil-serving serve: {e}", file=sys.stderr)
+        print(f"anvil-serving router run: {e}", file=sys.stderr)
         return 2
     return 0
 

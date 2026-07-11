@@ -66,7 +66,7 @@ anvil-serving controller.
 The controller runs on the host that owns the anvil-serving CLI, router config,
 serve manifests, model services, and local GPU operations. It listens on a Tailscale
 address or tailnet DNS name, not on a public interface by default. It exposes the
-same control-plane contract as `anvil-serving mcp`: structured tools, JSON schemas,
+same control-plane contract as `anvil-serving mcp serve`: structured tools, JSON schemas,
 dry-run previews, explicit `confirm` fields for disruptive operations, and no raw
 credential values in requests or responses.
 
@@ -84,14 +84,14 @@ The implemented split-host shape is:
 
   For single-host local development, bind to `127.0.0.1` instead of the tailnet
   hostname.
-- `anvil-serving mcp` remains the local stdio MCP server when no remote controller
+- `anvil-serving mcp serve` remains the local stdio MCP server when no remote controller
   URL is supplied.
 - On the gateway or operator host, the MCP bridge points at the controller and
   resolves the same token from the environment:
 
   ```bash
   export ANVIL_CONTROLLER_TOKEN="<same-secret-as-controller-host>"
-  anvil-serving mcp \
+  anvil-serving mcp serve \
     --controller-url http://anvil-gpu.tailnet.example:8766 \
     --auth-env ANVIL_CONTROLLER_TOKEN
   ```
@@ -160,7 +160,7 @@ The split-host product contract becomes:
 - `harness sync openclaw` should be refactored toward render/apply primitives that
   support both push and pull flows. In split-host mode, rendering can happen on the
   anvil-serving host while gateway-local apply/restart happens on the gateway host.
-- The controller server uses the same tool schemas as `anvil-serving mcp`, not a
+- The controller server uses the same tool schemas as `anvil-serving mcp serve`, not a
   second bespoke REST API with different semantics.
 - Tool schemas must stay transport-neutral. A skill should not care whether a tool
   call is satisfied by local stdio, a local controller, or a tailnet controller.

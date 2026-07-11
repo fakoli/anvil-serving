@@ -1,4 +1,4 @@
-"""Package-owned Realtime server assembly for ``anvil-serving voice run``.
+"""Package-owned Realtime server assembly for ``anvil-serving voice proxy run``.
 
 This module wires the pure transport/protocol pieces together:
 
