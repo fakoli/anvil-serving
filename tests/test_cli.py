@@ -471,17 +471,14 @@ def test_cli_rejects_topology_only_mini_override_before_launch(tmp_path, monkeyp
     assert "pass --experimental-model-workload" in captured.err
 
 
-def test_cli_allows_capacity_override_but_refuses_unimplemented_remote_dispatch(
+def test_cli_allows_capacity_override_and_probes_resolved_controller(
     tmp_path, monkeypatch, capsys
 ):
     topology = _write_capacity_topology(
         tmp_path, allow_experimental_model_workloads=True
     )
-    monkeypatch.setattr(
-        HandlerRef,
-        "resolve",
-        lambda self: pytest.fail(f"resolved remote handler: {self.name}"),
-    )
+    seen = []
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: seen.append(argv) or 0)
 
     assert cli.main(
         [
@@ -491,29 +488,37 @@ def test_cli_allows_capacity_override_but_refuses_unimplemented_remote_dispatch(
             str(topology),
             "--experimental-model-workload",
         ]
-    ) == 4
+    ) == 0
     captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "remote CLI dispatch is not implemented" in captured.err
+    assert "transport=controller" in captured.out
+    assert seen == [[
+        "status",
+        "--url",
+        "http://192.0.2.20:8766",
+        "--auth-token-env",
+        "ANVIL_CONTROLLER_TOKEN",
+    ]]
 
 
-def test_cli_remote_dark_owner_refuses_before_local_handler(tmp_path, monkeypatch, capsys):
+def test_cli_remote_dark_owner_probes_resolved_controller(tmp_path, monkeypatch, capsys):
     topology = _write_capacity_topology(
         tmp_path,
         owner="dark",
         workload="llm",
         allow_model_workloads=True,
     )
-    monkeypatch.setattr(
-        HandlerRef,
-        "resolve",
-        lambda self: pytest.fail(f"resolved remote handler: {self.name}"),
-    )
+    seen = []
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: seen.append(argv) or 0)
 
-    assert cli.main(["controller", "status", "--topology", str(topology)]) == 4
+    assert cli.main(["controller", "status", "--topology", str(topology)]) == 0
     captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "remote CLI dispatch is not implemented" in captured.err
+    assert "execution=dark" in captured.out
+    assert seen[0][-4:] == [
+        "--url",
+        "http://192.0.2.20:8766",
+        "--auth-token-env",
+        "ANVIL_CONTROLLER_TOKEN",
+    ]
 
 
 def test_experimental_override_cannot_make_a_removed_path_callable(

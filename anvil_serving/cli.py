@@ -23,6 +23,7 @@ from .operator_output import (
     classify_command_policy,
     enforce_command_policy,
     error_envelope,
+    render_human,
     render_json,
     success_envelope,
 )
@@ -546,7 +547,27 @@ def _dispatch(
         if plan is not None and execution_meta is not None:
             execution_meta["plan"] = plan
             execution_meta["warnings"] = tuple(plan.warnings)
-        if plan is not None and plan.transport != "local":
+        controller_probe = (
+            plan is not None
+            and plan.command.name == "controller-status"
+            and plan.transport in {"local", "controller"}
+        )
+        if controller_probe:
+            assert plan is not None
+            if any(
+                token == "--url" or token.startswith("--url=")
+                for token in rest
+            ):
+                raise UsageError(
+                    "controller status --url cannot be combined with topology resolution"
+                )
+            endpoint = plan.transport_endpoint or plan.resource_endpoint
+            if not endpoint:
+                raise UsageError("resolved controller status has no controller endpoint")
+            rest = (*rest, "--url", endpoint)
+            if plan.transport_auth_env:
+                rest = (*rest, "--auth-token-env", plan.transport_auth_env)
+        elif plan is not None and plan.transport != "local":
             raise TransportError(
                 "remote CLI dispatch is not implemented; use the MCP/controller "
                 "operation surface for non-local execution",
@@ -571,6 +592,13 @@ def _dispatch(
         if not output_options.json_mode:
             for warning in plan.warnings:
                 print(warning, file=sys.stderr)
+            if plan.transport != "local":
+                rendered = render_human(
+                    success_envelope(_command_name(path), plan, None),
+                    options=output_options,
+                )
+                if rendered.stdout:
+                    print(rendered.stdout, end="")
     handler = node.handler.resolve()
     prefix = _handler_argv(path)
     with guard.confirmation_scope(confirmed):

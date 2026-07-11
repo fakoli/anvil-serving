@@ -135,6 +135,8 @@ class ExecutionPlan:
     selected_target: str | None
     overlay: str | None = None
     capacity: CapacityDecision | None = None
+    transport_auth_env: str | None = None
+    transport_allowed_operations: tuple[str, ...] = ()
 
     @property
     def endpoint(self) -> str | None:
@@ -161,6 +163,8 @@ class ExecutionPlan:
             "endpoint": self.endpoint,
             "transport_endpoint": self.transport_endpoint,
             "transport_endpoint_kind": self.transport,
+            "transport_auth_env": self.transport_auth_env,
+            "transport_allowed_operations": list(self.transport_allowed_operations),
             "recovery_transport_endpoint": self.recovery_transport_endpoint,
             "recovery_transport_id": self.recovery_transport_id,
             "recovery_transport_endpoint_kind": (
@@ -399,6 +403,12 @@ def finalize_execution_plan(
         selected_target=preflight.selected_target,
         capacity=preflight.capacity,
         overlay=preflight.overlay,
+        transport_auth_env=(
+            selected_transport_record.auth_env if selected_transport_record else None
+        ),
+        transport_allowed_operations=(
+            selected_transport_record.allowed_operations if selected_transport_record else ()
+        ),
     )
 
 

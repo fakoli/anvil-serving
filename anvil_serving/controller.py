@@ -41,6 +41,7 @@ DEFAULT_AUTH_TOKEN_ENV = "ANVIL_CONTROLLER_TOKEN"
 DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 DEFAULT_READ_TIMEOUT_SECONDS = 30.0
 DEFAULT_STATUS_URL = "http://127.0.0.1:8765"
+DEFAULT_STATUS_MAX_RESPONSE_BYTES = 64 * 1024
 
 _MAX_BODY_BYTES = int(
     os.environ.get("ANVIL_CONTROLLER_MAX_BODY_BYTES", str(DEFAULT_MAX_BODY_BYTES))
@@ -977,7 +978,10 @@ def _mcp_tool_name(name: str) -> str:
     return name.replace("-", "_")
 
 
-def _validated_tool_catalog(list_tools_func: ListToolsFunc) -> tuple[list[dict], dict[str, str]]:
+def _validated_tool_catalog(
+    list_tools_func: ListToolsFunc,
+    allowed_operations: Optional[Sequence[str]] = None,
+) -> tuple[list[dict], dict[str, str]]:
     """Snapshot a tool catalog and reject ambiguous normalized names."""
     tools = list_tools_func()
     normalized: dict[str, str] = {}
@@ -994,6 +998,26 @@ def _validated_tool_catalog(list_tools_func: ListToolsFunc) -> tuple[list[dict],
                 status=500,
                 details={"tools": sorted((existing, name))},
             )
+    if allowed_operations is not None:
+        allowed = {_mcp_tool_name(name) for name in allowed_operations}
+        unknown = sorted(allowed - set(normalized))
+        if unknown:
+            raise ControllerError(
+                "unknown_allowed_operation",
+                "controller allowlist contains operations absent from the tool catalog",
+                status=400,
+                details={"operations": unknown},
+            )
+        tools = [
+            tool
+            for tool in tools
+            if isinstance(tool, dict)
+            and isinstance(tool.get("name"), str)
+            and _mcp_tool_name(tool["name"]) in allowed
+        ]
+        normalized = {
+            key: value for key, value in normalized.items() if key in allowed
+        }
     return tools, normalized
 
 
@@ -1048,11 +1072,15 @@ def make_handler(
     max_body_bytes: int = _MAX_BODY_BYTES,
     read_timeout_seconds: float = _READ_TIMEOUT_SECONDS,
     operation_store: Optional[OperationStore] = None,
+    allowed_operations: Optional[Sequence[str]] = None,
 ):
     """Build a request handler class for controller tests or ``make_server``."""
 
     audit = audit_logger or _default_audit_logger
-    declared_tools, declared_name_by_normalized = _validated_tool_catalog(list_tools_func)
+    allowlist_enabled = allowed_operations is not None
+    declared_tools, declared_name_by_normalized = _validated_tool_catalog(
+        list_tools_func, allowed_operations
+    )
     store = operation_store or OperationStore()
 
     class ControllerHandler(BaseHTTPRequestHandler):
@@ -1702,7 +1730,15 @@ def make_handler(
                     )
 
                 normalized_name = _mcp_tool_name(raw_name)
-                tool = declared_name_by_normalized.get(normalized_name, normalized_name)
+                tool = declared_name_by_normalized.get(normalized_name)
+                if tool is None and allowlist_enabled:
+                    raise ControllerError(
+                        "unknown_tool",
+                        "unknown tool %r" % normalized_name,
+                        status=400,
+                    )
+                if tool is None:
+                    tool = normalized_name
                 if isinstance(raw_arguments.get("dry_run"), bool):
                     dry_run = raw_arguments["dry_run"]
                 if isinstance(raw_arguments.get("confirm"), bool):
@@ -1817,6 +1853,7 @@ def make_server(
     idempotency_max_result_bytes: int = DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
     operation_store: Optional[OperationStore] = None,
     resolver: Optional[Callable[..., Sequence[Any]]] = None,
+    allowed_operations: Optional[Sequence[str]] = None,
 ) -> ThreadingHTTPServer:
     """Return an unstarted controller server.
 
@@ -1852,6 +1889,7 @@ def make_server(
         max_body_bytes=max_body_bytes,
         read_timeout_seconds=read_timeout_seconds,
         operation_store=store,
+        allowed_operations=allowed_operations,
     )
     cls = server_class or _server_class_for_host(host)
     httpd = cls((host, port), handler)
@@ -1868,6 +1906,7 @@ def serve(
     auth_token_env: Optional[str] = DEFAULT_AUTH_TOKEN_ENV,
     allow_public_bind: bool = False,
     allow_unauthenticated_loopback: bool = False,
+    allowed_operations: Optional[Sequence[str]] = None,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
     httpd = server_factory(
@@ -1876,6 +1915,7 @@ def serve(
         auth_token_env=auth_token_env,
         allow_public_bind=allow_public_bind,
         allow_unauthenticated_loopback=allow_unauthenticated_loopback,
+        allowed_operations=allowed_operations,
     )
     actual_host, actual_port = httpd.server_address[:2]
     print(
@@ -1909,11 +1949,51 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="allow a public or wildcard bind; still requires --auth-token-env to be set",
     )
+    serve_parser.add_argument(
+        "--allow-operation",
+        action="append",
+        default=None,
+        help="restrict the controller to a declared operation (repeatable)",
+    )
     status_parser = subparsers.add_parser("status", help="probe controller health")
     status_parser.add_argument("--url", default=DEFAULT_STATUS_URL)
     status_parser.add_argument("--auth-token-env", default=DEFAULT_AUTH_TOKEN_ENV)
     status_parser.add_argument("--timeout", type=float, default=5.0)
+    status_parser.add_argument(
+        "--max-response-bytes", type=int, default=DEFAULT_STATUS_MAX_RESPONSE_BYTES
+    )
+    status_parser.add_argument(
+        "--require-operation",
+        action="append",
+        default=(),
+        help="require a declared controller capability (repeatable)",
+    )
     return parser
+
+
+def _status_payload(
+    url: str,
+    path: str,
+    *,
+    token: str,
+    timeout: float,
+    max_response_bytes: int,
+    _open: Callable[..., Any],
+) -> dict[str, Any]:
+    request = urllib.request.Request(
+        url.rstrip("/") + path,
+        headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
+    )
+    with _open(request, timeout=timeout) as response:
+        raw = response.read(max_response_bytes + 1)
+    if not isinstance(raw, bytes):
+        raise ValueError("controller status response body must be bytes")
+    if len(raw) > max_response_bytes:
+        raise ValueError("controller status response exceeds the configured limit")
+    payload = json.loads(raw.decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("controller status response must be an object")
+    return payload
 
 
 def status(
@@ -1921,22 +2001,77 @@ def status(
     *,
     auth_token_env: str = DEFAULT_AUTH_TOKEN_ENV,
     timeout: float = 5.0,
+    max_response_bytes: int = DEFAULT_STATUS_MAX_RESPONSE_BYTES,
+    required_operations: Sequence[str] = (),
+    environment: Optional[Mapping[str, str]] = None,
     _open=urllib.request.urlopen,
 ) -> int:
-    """Probe the bounded controller health endpoint."""
-    endpoint = url.rstrip("/") + "/health"
-    headers = {}
-    token = os.environ.get(auth_token_env, "").strip()
-    if token:
-        headers["Authorization"] = "Bearer " + token
-    request = urllib.request.Request(endpoint, headers=headers)
+    """Probe bounded authenticated controller health and capabilities."""
+    if timeout <= 0 or timeout > 60:
+        print("controller status: timeout must be between 0 and 60 seconds", file=sys.stderr)
+        return 2
+    if max_response_bytes < 1 or max_response_bytes > DEFAULT_MAX_BODY_BYTES:
+        print(
+            "controller status: max response bytes must be between 1 and %s"
+            % DEFAULT_MAX_BODY_BYTES,
+            file=sys.stderr,
+        )
+        return 2
+    effective_env = os.environ if environment is None else environment
+    token = (effective_env.get(auth_token_env) or "").strip()
+    if not token:
+        print(
+            "controller status: token environment variable %s is unset or empty"
+            % auth_token_env,
+            file=sys.stderr,
+        )
+        return 3
     try:
-        with _open(request, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        health = _status_payload(
+            url,
+            "/health",
+            token=token,
+            timeout=timeout,
+            max_response_bytes=max_response_bytes,
+            _open=_open,
+        )
+        if health.get("status") != "ok" or health.get("service") != "anvil-serving-controller":
+            raise ValueError("controller health identity is invalid")
+        capabilities = _status_payload(
+            url,
+            "/tools/list",
+            token=token,
+            timeout=timeout,
+            max_response_bytes=max_response_bytes,
+            _open=_open,
+        )
+        tools = capabilities.get("tools")
+        if not isinstance(tools, list):
+            raise ValueError("controller capability response has no tools list")
+        tool_names = sorted(
+            tool["name"]
+            for tool in tools
+            if isinstance(tool, dict) and isinstance(tool.get("name"), str)
+        )
+        if len(tool_names) != len(tools) or len(set(tool_names)) != len(tool_names):
+            raise ValueError("controller capability response contains invalid tool declarations")
+        required = {_mcp_tool_name(name) for name in required_operations}
+        missing = sorted(required - {_mcp_tool_name(name) for name in tool_names})
+        if missing:
+            raise ValueError("controller is missing required operations: %s" % ", ".join(missing))
     except (OSError, ValueError) as exc:
         print("controller status: %s" % exc, file=sys.stderr)
         return 1
-    print(json.dumps(payload, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "service": "anvil-serving-controller",
+                "capabilities": {"tool_count": len(tool_names), "tools": tool_names},
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 
@@ -1955,6 +2090,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 auth_token_env=args.auth_token_env,
                 allow_public_bind=args.allow_public_bind,
                 allow_unauthenticated_loopback=False,
+                allowed_operations=args.allow_operation,
             )
         except ControllerError as exc:
             print(
@@ -1976,6 +2112,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             args.url,
             auth_token_env=args.auth_token_env,
             timeout=args.timeout,
+            max_response_bytes=args.max_response_bytes,
+            required_operations=args.require_operation,
         )
     parser.print_help(sys.stderr)
     return 2
