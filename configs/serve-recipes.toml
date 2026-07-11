@@ -10,14 +10,14 @@
 #   "verified"   — measured on OUR hardware (a real serve + preflight/benchmark here).
 #                  These are reproducible: copy the [recipe.serve] block and go.
 #   "unverified" — an external prior (e.g. local-inference-lab/rtx6kpro via
-#                  `anvil-serving benchmark external`) or a config we have NOT measured
+#                  `anvil-serving eval benchmark external`) or a config we have NOT measured
 #                  on-box. Treat as advisory only — PREFLIGHT before trusting.
 #
 # Fields align with the `anvil_serving.external_benchmarks` schema (model, engine,
 # quantization, gpu_model, vram_gb, context_tokens, throughput_tok_s, ...) so a row
 # here and an external prior can be compared directly. Enrich external priors with:
-#   anvil-serving benchmark external import <snapshot.json> --source rtx6kpro
-#   anvil-serving benchmark external compare <our-benchmark.json>
+#   anvil-serving eval benchmark external import <snapshot.json> --source rtx6kpro
+#   anvil-serving eval benchmark external compare <our-benchmark.json>
 # A row graduates unverified -> verified once we measure it on-box (preflight ALL
 # PASS + a benchmark number).
 
@@ -594,7 +594,7 @@ total_params_b = 27
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Add new recipes above. External priors (unverified) can also be pulled from
-# local-inference-lab/rtx6kpro and other sources via `anvil-serving benchmark external`;
+# local-inference-lab/rtx6kpro and other sources via `anvil-serving eval benchmark external`;
 # copy a row here (status="unverified", source=...) to keep it alongside our verified
 # recipes, then graduate it to "verified" once measured on-box.
 

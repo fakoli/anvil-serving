@@ -41,4 +41,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # 0.0.0.0 is correct HERE (inside the container): host-side exposure is controlled by
 # the published port (compose: only ${ROUTER_PUBLISH:-127.0.0.1}:8000:8000), not by the
 # in-container bind address (CLAUDE.md gotcha #1 is about the HOST side).
-ENTRYPOINT ["sh", "-c", "exec anvil-serving serve --config \"${ANVIL_CONFIG:-/etc/anvil/config.toml}\" --host 0.0.0.0 --port 8000"]
+ENTRYPOINT ["sh", "-c", "exec anvil-serving router run --config \"${ANVIL_CONFIG:-/etc/anvil/config.toml}\" --host 0.0.0.0 --port 8000"]

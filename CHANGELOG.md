@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Operator CLI v2 production closure (M4)** - adds a manifest-generated
+  complete command index and tombstone table, a deterministic active-reference
+  audit with checked-in numeric inventories, and aligned operator skills across
+  Codex, Claude Code, OpenClaw, and voice operations. Active docs, examples,
+  configs, parser program names, and agent guidance now use canonical nested
+  commands; compatibility forms remain only in explicit migration/tombstone
+  evidence. Parent command groups now reject action-specific flags when the
+  required child action is missing instead of printing help and returning
+  success. This unreleased work does not publish a version, tag, or package.
 - **Operator CLI v2 voice lifecycle (M3)** — adds canonical
   `voice audio up|down|status|logs` and
   `voice proxy run|up|down|restart|status|logs|bridge` surfaces. Audio remains
@@ -32,8 +41,8 @@ All notable changes to this project are documented here. The format is based on
   implementation while keeping its deferred removal work auditable.
 - **Production CLI discovery contract** — root help now documents global `--help`/`--version`
   flags and the canonical nested workflows, `serves --help` explains every action, and tests lock
-  the help/version surface. Removed forms, including `voice start`/`voice stop`, fail with a
-  canonical replacement instead of silently dispatching. The CLI and voice references document
+  the help/version surface. Removed module-level voice lifecycle forms fail with a canonical
+  replacement instead of silently dispatching. The CLI and voice references document
   exit behavior, stdout/stderr conventions, safety gates, and the complete canonical taxonomy.
 - **Bakeoff notebook** — the persistent, comparable record the fast-tier
   bakeoff report was assembled by hand from. `anvil-serving eval benchmark run
@@ -85,6 +94,9 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **Container startup follows the canonical CLI.** The Docker image entrypoint
+  now runs `anvil-serving router run`; the removed root `serve` tombstone could
+  not start a container built from current `main`.
 - **Operator CLI v2 adversarial hardening** — non-local topology plans now fail closed before a
   local handler can run; JSON preserves resolved context, warnings, and classified errors; real
   leaf parsers provide focused help; `--` boundaries and dry-run confirmation behave correctly;

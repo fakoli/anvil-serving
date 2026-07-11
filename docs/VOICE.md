@@ -42,6 +42,8 @@ Realtime server and cascade itself.
 | `anvil-serving voice proxy bridge` | On Mini, forwards loopback STT/TTS proxy ports to topology-owned Dark endpoints. | Does not bind publicly, manage models, add auth, or inspect audio traffic. |
 | `anvil-serving voice sidecar` | Validates or renders a Hugging Face speech-to-speech sidecar. | Does not run anvil-serving's native Realtime cascade. |
 
+### Removed module-level paths
+
 The old module-level paths (`voice up`, `down`, `start`, `stop`, `run`, and
 `bridge`) are removed tombstones. They exit with replacement guidance and do
 not import or invoke an operational handler.

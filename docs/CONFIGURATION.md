@@ -24,7 +24,7 @@ read at load time — only env-var *names* are recorded.
   ([ADR-0011](adr/0011-two-mode-operation.md)). Exactly one mode's tiers and presets are bound at
   startup; switching modes is a restart, never per-request.
 
-Bare `serve` with no selector at all (no `--config`, no `--mode`, no `ANVIL_MODE`, no
+Bare `router run` with no selector at all (no `--config`, no `--mode`, no `ANVIL_MODE`, no
 `ANVIL_MODES_CONFIG`) is a usage error — the router never silently boots a default.
 
 Mode resolution uses two precedence chains:
@@ -40,7 +40,7 @@ non-editable (wheel) install does not ship `configs/`, so set `ANVIL_CONFIG_<MOD
 `[modes]` manifest, or pass an explicit `--config`. An unknown mode from any source is a
 `ConfigError` naming the known modes.
 
-`serve` also takes `--host` (default `127.0.0.1`; a non-loopback bind prints a prominent warning —
+`router run` also takes `--host` (default `127.0.0.1`; a non-loopback bind prints a prominent warning —
 see [SECURITY.md](https://github.com/fakoli/anvil-serving/blob/main/SECURITY.md)) and `--port`
 (default `8000`).
 
@@ -54,7 +54,7 @@ the loopback-only default.
 |---|---|---|---|
 | `auth_env` | string | unset (auth off) | Name of the env var holding the front door's bearer token. Incoming requests must present it as `Authorization: Bearer <token>` or `x-api-key: <token>` (compared constant-time). Must match `^[A-Z][A-Z0-9_]*$`; credential-shaped values (e.g. an AWS `AKIA…` key id) are rejected. |
 
-If `auth_env` is set but the named env var is unset or empty at startup, `serve` fails with a
+If `auth_env` is set but the named env var is unset or empty at startup, `router run` fails with a
 `ConfigError` rather than silently starting unauthenticated — a configured-but-unresolved
 `auth_env` is a misconfiguration, not an opt-out. The `/healthz` liveness route stays
 unauthenticated even with auth on (container healthchecks need no token). The conventional token
@@ -76,7 +76,7 @@ The main table: tier topology, preset map, and routing policy knobs.
 | `cost_sync` | boolean | `false` | When `true`, tiers with unset cost fields are filled from the LiteLLM pricing JSON at load (a network fetch only when the local cache is stale). Explicit config values always win and are never overwritten. |
 | `relay_timeout` | number (seconds) | `20.0` | Transport timeout for `privacy = "local"` tier backends. Kept short so a hung or cold local serve fails fast to the next tier. Cloud tiers are unaffected (they keep a 120 s default). A tier's own `timeout` overrides this. |
 | `verify_local_min` | boolean | `true` | When `true`, a local tier under an "allow" profile verdict still passes through a minimal commit window (non-empty, not-truncated checks) before the first byte reaches the client, so an empty or truncated local 200 escalates instead of being served silently. Cloud tiers are never affected. |
-| `profile_path` | string (path) | unset | Path to a measured quality profile (`profile.json`, written by `python -m anvil_serving.router.profile_bootstrap`). When set, `serve` routes on your measured verdicts instead of the built-in seed profile. A configured-but-unloadable path is a startup `ConfigError` — fail fast, never silently fall back to seeds the operator asked to replace. `~` is expanded. |
+| `profile_path` | string (path) | unset | Path to a measured quality profile (`profile.json`, written by `python -m anvil_serving.router.profile_bootstrap`). When set, `router run` routes on your measured verdicts instead of the built-in seed profile. A configured-but-unloadable path is a startup `ConfigError` — fail fast, never silently fall back to seeds the operator asked to replace. `~` is expanded. |
 
 ## `[[router.tiers]]`
 
@@ -178,7 +178,7 @@ Config files hold env-var *names* only; these are the variables whose *values* c
 
 ### Front-door resource caps
 
-Read once at import; set before starting `serve`.
+Read once at import; set before starting `router run`.
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -196,7 +196,7 @@ Read once at import; set before starting `serve`.
 
 ### Other (local serving tools, plugins)
 
-Briefly: `ANVIL_CLAUDE_LOGS` (where `profile` reads Claude usage logs; default
+Briefly: `ANVIL_CLAUDE_LOGS` (where `eval usage` reads Claude usage logs; default
 `~/.claude/projects`), `ANVIL_MODELS_OUT` / `ANVIL_HF_ROOTS` / `ANVIL_MODEL_DIRS` (`models sync`
 output dir and extra scan roots), `ANVIL_CLAUDE_BIN` (pin the `claude` executable used by the
 Agent-SDK calibration grader), and `ANVIL_CLOUD_CLASSES` (OpenClaw adapter plugin: comma-separated
@@ -207,7 +207,7 @@ preset names allowed to route cloud-side — the harness-side counterpart of `me
 All live in
 [`configs/`](https://github.com/fakoli/anvil-serving/tree/main/configs). The top-level keys some of
 them carry (`claude_logs`, `hf_extra_roots`, `model_dirs`, `gpu_index`, `served_model_name`)
-configure the *local serving tools* (`profile`, `models sync`, `serves render`) that share the file; the
+configure the *local serving tools* (`eval usage`, `models sync`, `serves render`) that share the file; the
 router reads only `[server]` and `[router]`.
 
 ### `example.toml` — local-only baseline
@@ -247,7 +247,7 @@ The `[modes]` manifest template described above. Copy it, point `ANVIL_MODES_CON
 
 Not router config: a repeatable record of how each model is served on your hardware (engine, image,
 flags, env, measured throughput/VRAM, `verified`/`unverified` status). Consumed by the
-`serves`/`benchmark external` tooling as the reproducible "pull this model out again" reference.
+`serves`/`eval benchmark external` tooling as the reproducible "pull this model out again" reference.
 
 ## Secrets policy
 

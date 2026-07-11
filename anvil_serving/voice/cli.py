@@ -767,7 +767,7 @@ def _probe_endpoint(
     answering HTTP on that socket, so `run` must NOT refuse to start over it.
     Before this fix, a token-authed router that correctly requires auth on
     ``GET /v1/models`` was probed with NO token, got a 401, and was
-    misreported "unhealthy" -- blocking a perfectly healthy `voice run`.
+    misreported "unhealthy" -- blocking a perfectly healthy `voice proxy run`.
     Only a genuine connection failure (``URLError`` that is NOT an
     ``HTTPError``, or ``OSError`` -- see the U2-b note below) is
     "unreachable", and only an actual 5xx (a running-but-broken serve, e.g. a

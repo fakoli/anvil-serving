@@ -40,7 +40,7 @@ class ServeNotConfigured(RuntimeError):
     """The serves manifest (or an entry named for this serve) isn't declared yet.
 
     Expected before an operator has wired the audio serve's container into
-    `serves.toml` -- callers (e.g. the `voice up`/`down` CLI) should treat
+    `serves.toml` -- callers (e.g. the `voice audio up`/`down` CLI) should treat
     this as "nothing to manage yet", not an error.
     """
 

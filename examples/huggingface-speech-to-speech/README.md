@@ -14,7 +14,7 @@ Use your normal router config. The shipped local-only example exposes the OpenAI
 route at `http://127.0.0.1:8000/v1/chat/completions`.
 
 ```bash
-anvil-serving serve --config configs/example.toml
+anvil-serving router run --config configs/example.toml
 ```
 
 For voice turns, start with the `chat` preset. It maps to the low-latency local tiers in the
@@ -27,7 +27,7 @@ this key inside the existing `[router]` table:
 verify_local_min = false
 ```
 
-Only do this after `anvil-serving preflight` passes for the local chat tier. The default
+Only do this after `anvil-serving eval preflight --confirm` passes for the local chat tier. The default
 `verify_local_min = true` keeps a minimal empty/truncated-output safety check on, which can buffer a
 local response before `speech-to-speech` sees the first text delta.
 

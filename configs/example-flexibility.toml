@@ -5,7 +5,7 @@
 # Two ways to run anvil's local tiers:
 #
 #   • BATCH-SERVING (agentic) config — configs/example.toml: anvil right-sizes and
-#     serves the local models itself (deploy/serves/multiplexer), tuned for
+#     serves the local models itself (`serves render` / `serves` / `serves multiplex`), tuned for
 #     prefix-cache reuse across an agent's many turns. That is the default.
 #
 #   • FLEXIBILITY MODE (this file): anvil serves NOTHING. It relays to an engine

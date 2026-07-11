@@ -578,7 +578,7 @@ def _selfcheck():
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-def main(argv=None, *, prog="anvil-serving score"):
+def main(argv=None, *, prog="anvil-serving models score"):
     import argparse
     import json as _json
     p = argparse.ArgumentParser(

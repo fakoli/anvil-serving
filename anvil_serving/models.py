@@ -271,7 +271,7 @@ DEFAULT_REGISTRY = os.path.join("configs", "serve-recipes.toml")
 
 def _default_registry():
     """Resolve the default registry path regardless of cwd (cwd-relative first, then
-    repo-root-relative so `python -m anvil_serving.cli models recipe ...` works anywhere)."""
+    repo-root-relative so `python -m anvil_serving.cli models recipes ...` works anywhere)."""
     if os.path.exists(DEFAULT_REGISTRY):
         return DEFAULT_REGISTRY
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -347,7 +347,7 @@ def _print_recipe_show(recipe):
 
 
 def _recipe_main(argv):
-    ap = argparse.ArgumentParser(prog="anvil-serving models recipe")
+    ap = argparse.ArgumentParser(prog="anvil-serving models recipes")
     sub = ap.add_subparsers(dest="recipe_action", required=True)
     p_list = sub.add_parser("list", help="table the recorded serve recipes")
     p_list.add_argument("--registry", default=None, help="registry TOML (default: %s)" % DEFAULT_REGISTRY)

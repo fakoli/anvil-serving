@@ -325,7 +325,7 @@ def _infer_engine(model_path):
     return "vllm" if ("nvfp4" in qsig or "fp4" in qsig) else "sglang"
 
 
-def main(argv, *, prog="anvil-serving deploy"):
+def main(argv, *, prog="anvil-serving serves render"):
     ap = argparse.ArgumentParser(prog=prog)
     ap.add_argument("--model", required=True, help="local model dir mounted into the container")
     ap.add_argument("--gpu", default="0", help="GPU index (e.g. 1) or GPU-UUID to pin the serve to")
