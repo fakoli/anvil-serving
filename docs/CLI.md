@@ -364,7 +364,7 @@ anvil-serving doctor --config configs/example.toml
 ### `host`
 
 ```
-anvil-serving host {status|gpus|doctor|wsl-config|restart-docker|reset-wsl} [flags]
+anvil-serving host {status|gpus|doctor|memory|wsl-config|restart-docker|reset-wsl|reclaim} [flags]
 ```
 
 Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
@@ -377,10 +377,20 @@ Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
 | `wsl-config` | Windows-native only. Edit `.wslconfig` memory/swap (`--memory GB`, `--swap GB`); backup + safe-cap refusal (`--force` overrides only that cap), `--revert` restores the newest anvil backup, and `--dry-run` shows the change. |
 | `restart-docker` | Windows/macOS native only. Apply via a Docker Desktop restart; requires `--confirm`, while `--dry-run` performs no restart. |
 | `reset-wsl` | Windows-native only. Un-wedge a hung WSL subsystem; requires `--confirm`, while `--dry-run` performs no reset. |
+| `memory` | Show host RAM, the WSL VM's used / **page cache** / available (from `/proc/meminfo` inside the distro), and GPU VRAM. `--distro NAME` targets a specific distro. Note: querying `/proc/meminfo` starts the (default) distro if it is stopped — a cold boot can take longer than the 15 s probe timeout. |
+| `reclaim` | Drop the WSL VM's page cache (`sync && echo 3 > /proc/sys/vm/drop_caches` as root). Confirm-gated per the CLI safety policy (`--confirm`); **refuses while a model load is actively streaming** (page cache growing fast) unless `--force` (which overrides only that refusal, not the confirmation gate). `--watch --threshold-gb N [--interval S]` runs a foreground watchdog that drops whenever the cache exceeds the threshold; `--dry-run` shows the command. |
 
 ```bash
 anvil-serving host wsl-config --memory 64 --dry-run
+anvil-serving host memory
+anvil-serving host reclaim --confirm                       # one-shot
+anvil-serving host reclaim --watch --threshold-gb 40 --interval 30 --confirm   # bakeoff watchdog
 ```
+
+Repeated 60–90 GB model-weight streams balloon the WSL2 VM's Linux page cache until Windows
+itself starves (`autoMemoryReclaim=gradual` in `.wslconfig` lags load bursts) — `memory` shows
+it, `reclaim` frees it. Both are Windows/WSL2-only and exit with a clear message elsewhere. See
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md#windows-starves-for-ram-during-repeated-big-model-loads-wsl-page-cache).
 
 With `--topology`, host actions resolve a declared `host` resource. Use `--target host:ID` when a
 topology contains more than one host resource. OS/runtime compatibility is checked before local or
@@ -405,7 +415,6 @@ anvil-serving topology resolve \
   --topology examples/fakoli-dark/operator-topology.toml \
   --command "host status" --target host:fakoli-mini
 ```
-
 ---
 
 ## Quality loop
