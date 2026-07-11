@@ -9,7 +9,7 @@
 
 ## Context
 
-The router (`anvil-serving serve`) runs as a **bare loopback process with no authentication** — SECURITY.md
+The router (`anvil-serving router run`) runs as a **bare loopback process with no authentication** — SECURITY.md
 says so explicitly, and a code check confirms `secrets.py` only *redacts* tokens from logs; the front door
 validates nothing (the README even tells clients to send `ANTHROPIC_AUTH_TOKEN="$ANVIL_ROUTER_TOKEN"`, which
 the router currently **ignores**). It is supposed to be "the auth/routing front that fronts the serves," but

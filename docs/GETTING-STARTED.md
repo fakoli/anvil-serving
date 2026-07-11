@@ -90,14 +90,14 @@ models, change the config's tier `model` fields (and these commands) to match.
 Before starting the router, stand up those serves and validate each endpoint:
 
 ```bash
-anvil-serving preflight --base-url http://127.0.0.1:30001/v1 --model gpt-oss-20b
-anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model qwen35-awq-local
+anvil-serving eval preflight --base-url http://127.0.0.1:30001/v1 --model gpt-oss-20b
+anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model qwen35-awq-local
 ```
 
 Then start the router:
 
 ```bash
-anvil-serving serve --config configs/example.toml
+anvil-serving router run --config configs/example.toml
 ```
 
 Point a harness at the router:

@@ -66,7 +66,7 @@ This **supersedes the ad-hoc `docker run` serve scripts** (`serve-fast-gptoss-vl
 
 - **Docker Compose v2 is now a serving-substrate operational prerequisite — NOT a Python runtime
   dependency.** It is required only to *operate* the GPU serves (`serves` / `deploy`), which already
-  require Docker + NVIDIA GPUs. **The router (`anvil-serving serve`) and the rest of the Python
+  require Docker + NVIDIA GPUs. **The router (`anvil-serving router run`) and the rest of the Python
   package remain stdlib-only** — no new import, no PyPI dependency, nothing added to the hot path.
   This is an ops tool the operator installs, on the same footing as Docker itself, and it is
   documented as such in `README.md` and `docs/SERVES-AND-EVAL.md`.

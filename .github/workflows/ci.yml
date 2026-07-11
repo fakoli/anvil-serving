@@ -75,6 +75,6 @@ jobs:
           /tmp/smoke/bin/python -m pip install --upgrade pip
           /tmp/smoke/bin/python -m pip install dist/*.whl
           # Proves the wheel ships the package, the console entry point, and the
-          # tier0_keywords.json package-data (serve --help imports the router
+          # tier0_keywords.json package-data (router run --help imports the router
           # chain, which loads that JSON at import time). Non-zero exit fails CI.
-          /tmp/smoke/bin/anvil-serving serve --help
+          /tmp/smoke/bin/anvil-serving router run --help

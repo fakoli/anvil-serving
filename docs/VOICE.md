@@ -5,7 +5,7 @@ runs an OpenAI Realtime-compatible WebSocket server and wires a voice cascade:
 
 ```text
 Realtime client
-  -> anvil-serving voice run
+  -> anvil-serving voice proxy run
   -> VAD
   -> STT endpoint
   -> anvil router / OpenAI Chat Completions endpoint
@@ -27,14 +27,16 @@ Realtime server and cascade itself.
 
 | Command | What It Does | What It Does Not Do |
 |---|---|---|
-| `anvil-serving voice up` | Validates the voice manifest and starts manifest-owned managed/native STT/TTS lifecycle. | Does not start the Realtime WebSocket server or the LLM router. |
-| `anvil-serving voice start` | Alias for `voice up`. | Same as `up`. |
-| `anvil-serving voice down` | Stops manifest-owned managed/native STT/TTS lifecycle. | Does not stop the LLM router; a foreground `voice run` process stops with Ctrl+C. |
-| `anvil-serving voice stop` | Alias for `voice down`. | Same as `down`. |
-| `anvil-serving voice run` | Starts the Realtime WebSocket server in the foreground after probing the LLM, STT, and TTS endpoints. | Does not silently continue when required endpoints are unreachable. |
+| `anvil-serving voice audio up` | Validates the voice manifest and starts manifest-owned managed/native STT/TTS lifecycle. | Does not start the Realtime WebSocket server or the LLM router. |
+| `anvil-serving voice audio down` | Stops manifest-owned managed/native STT/TTS lifecycle. | Does not stop the LLM router; a foreground `voice proxy run` process stops with Ctrl+C. |
+| `anvil-serving voice proxy run` | Starts the Realtime WebSocket server in the foreground after probing the LLM, STT, and TTS endpoints. | Does not silently continue when required endpoints are unreachable. |
 | `anvil-serving voice benchmark` | Runs one configured end-to-end voice turn and prints latency/quality metrics as JSON. | Does not promote routing policy or prove subjective audio quality by itself. |
-| `anvil-serving voice profiles` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
-| `anvil-serving voice bridge` | Forwards STT/TTS TCP ports from a private interface to local audio endpoints. | Does not add auth, inspect audio traffic, or replace endpoint/router tokens. |
+| `anvil-serving voice profiles list` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
+| `anvil-serving voice proxy bridge` | Forwards STT/TTS TCP ports from a private interface to local audio endpoints. | Does not add auth, inspect audio traffic, or replace endpoint/router tokens. |
+| `anvil-serving voice sidecar` | Validates or renders a Hugging Face speech-to-speech sidecar. | Does not run anvil-serving's native Realtime cascade. |
+
+`voice start` and `voice stop` remain deprecated compatibility forms of `voice audio up` and
+`voice audio down`. They are hidden from primary help and print migration guidance to stderr.
 
 Manifest-backed commands take `--config <voice.toml>`. If omitted,
 `~/.anvil-serving/voice.toml` is used when present; otherwise the shipped
@@ -58,19 +60,19 @@ Voice has three separate operational concerns:
 
 1. **Audio model lifecycle:** STT and TTS endpoints may be Docker containers,
    native processes on a voice host, or manually managed services.
-   `voice up/down` owns only this layer.
-2. **Realtime session serving:** `voice run` owns the WebSocket server and
+   `voice audio up/down` owns only this layer.
+2. **Realtime session serving:** `voice proxy run` owns the WebSocket server and
    session pool. It is foreground by design so shutdown and logs are explicit.
 3. **Evidence capture:** `voice benchmark` and the hardware validation scripts
    measure whether the configured STT -> LLM -> TTS path is usable on the
    target host.
-4. **Private audio bridging:** `voice bridge` exposes same-host STT/TTS
+4. **Private audio bridging:** `voice proxy bridge` exposes same-host STT/TTS
    endpoints on operator-selected private ports when the audio host and
    Realtime/gateway host are different devices.
 
 Keeping those concerns separate avoids a common failure mode: a command that
-appears to start "voice" but only starts one part of the pipeline. `voice up`
-makes STT/TTS available; `voice run` is the user-facing Realtime server.
+appears to start "voice" but only starts one part of the pipeline. `voice audio up`
+makes STT/TTS available; `voice proxy run` is the user-facing Realtime server.
 
 ## Manifest Shape
 
@@ -162,10 +164,10 @@ stop_timeout = 5.0
 
 ## STT/TTS Lifecycle Modes
 
-`voice.stt.lifecycle` and `voice.tts.lifecycle` choose what `voice up/down`
+`voice.stt.lifecycle` and `voice.tts.lifecycle` choose what `voice audio up/down`
 can manage.
 
-| Lifecycle | Use When | `voice up` | `voice down` |
+| Lifecycle | Use When | `voice audio up` | `voice audio down` |
 |---|---|---|---|
 | `managed` | The audio serve is declared in `serves.toml`. | Delegates to the same serve adapter used by `anvil-serving serves`. | Stops the matching serve. |
 | `native` | The audio serve is a same-host process, such as MLX Audio on a Mac Mini or laptop. | Starts `start_command` without a shell, writes `pid_file`, logs to `log_file`, and probes `/models`. | Stops the PID it started; if no PID is present but the endpoint is up, uses optional `stop_command`. |
@@ -184,23 +186,23 @@ See [Device topologies](DEVICE-TOPOLOGIES.md) for the broader role model.
 
 Common layouts:
 
-- Voice and audio on one laptop: run `voice up` and `voice run` on that laptop;
+- Voice and audio on one laptop: run `voice audio up` and `voice proxy run` on that laptop;
   keep STT/TTS `base_url` values on `127.0.0.1`; use `native` or `managed`
   lifecycle there.
 - Voice on one laptop, LLM router on another host: keep STT/TTS local to the
   voice laptop and point `[voice.llm].base_url` at the router's private
   tailnet or direct address.
 - Voice host separate from audio host: set STT/TTS `base_url` values to the
-  remote private addresses and use `lifecycle = "external"` unless `voice up`
+  remote private addresses and use `lifecycle = "external"` unless `voice audio up`
   is being run on the audio host itself through local CLI or a controller.
 - Audio host exposing loopback-only STT/TTS to a private network: run
-  `anvil-serving voice bridge` on the audio host, then point the voice host's
+  `anvil-serving voice proxy bridge` on the audio host, then point the voice host's
   profile at the bridge ports. If the proxy runs on the voice host itself,
   point the profile at that host's `127.0.0.1` proxy listener rather than at
   the remote host address.
 
 `lifecycle = "native"` is intentionally same-host. It starts the manifest
-command on the host where `anvil-serving voice up` runs; it is not a remote
+command on the host where `anvil-serving voice audio up` runs; it is not a remote
 shell transport. For remote lifecycle, run the command on the resource-owning
 host or use an anvil-serving controller on that host.
 
@@ -208,7 +210,7 @@ Any service bound beyond loopback needs the appropriate token env var and
 private network controls. Tailscale reachability is the transport requirement;
 it is not a replacement for router, Realtime, or controller auth.
 
-`voice bridge` defaults to a loopback bind. A non-loopback bind is refused
+`voice proxy bridge` defaults to a loopback bind. A non-loopback bind is refused
 unless the operator passes `--i-understand-this-exposes-voice-audio`; use that
 only on a concrete private/tailnet address. Wildcard binds such as `0.0.0.0`
 also require `--allow-wildcard-listen` and should be reserved for cases where a
@@ -242,24 +244,24 @@ device.
 Preview the actions:
 
 ```bash
-anvil-serving voice up --config examples/voice/fakoli-mini.toml --dry-run
-anvil-serving voice down --config examples/voice/fakoli-mini.toml --dry-run
+anvil-serving voice audio up --config examples/voice/fakoli-mini.toml --dry-run
+anvil-serving voice audio down --config examples/voice/fakoli-mini.toml --dry-run
 ```
 
 Run them on the Mini:
 
 ```bash
-anvil-serving voice up --config examples/voice/fakoli-mini.toml
-anvil-serving voice run --config examples/voice/fakoli-mini.toml
+anvil-serving voice audio up --config examples/voice/fakoli-mini.toml
+anvil-serving voice proxy run --config examples/voice/fakoli-mini.toml
 ```
 
 Stop the audio processes when done:
 
 ```bash
-anvil-serving voice down --config examples/voice/fakoli-mini.toml
+anvil-serving voice audio down --config examples/voice/fakoli-mini.toml
 ```
 
-`voice run` stays foreground. Stop it with Ctrl+C.
+`voice proxy run` stays foreground. Stop it with Ctrl+C.
 
 ## OpenClaw Anvil Voice Provider
 
@@ -271,7 +273,7 @@ Anvil Voice owns STT, the fast-tier LLM turn, and TTS:
 OpenClaw Talk or Voice Call
   -> OpenClaw Gateway realtime provider "anvil"
   -> ws://127.0.0.1:8765/v1/realtime
-  -> anvil-serving voice run
+  -> anvil-serving voice proxy run
   -> STT -> [voice.llm] anvil router -> TTS
 ```
 
@@ -319,14 +321,14 @@ audio latency versus the `72` character cross-topology default, while a more
 aggressive `48` character split produced Kokoro stream errors on some sentence
 fragments.
 
-Start the voice side first. `dark-audio` has external lifecycle, so `voice up`
+Start the voice side first. `dark-audio` has external lifecycle, so `voice audio up`
 will validate the manifest and report that audio is externally managed:
 
 ```bash
-anvil-serving voice profiles --config examples/voice/openclaw-anvil-voice.toml
-anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --dry-run
-anvil-serving voice up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
-anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+anvil-serving voice profiles list --config examples/voice/openclaw-anvil-voice.toml
+anvil-serving voice audio up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --dry-run
+anvil-serving voice audio up --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+anvil-serving voice proxy run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 ```
 
 To try Gepard as the Fast TTS path, start it on Fakoli Dark through the
@@ -349,7 +351,7 @@ benchmark loops:
 
 ```bash
 anvil-serving serves --manifest examples/fakoli-dark/serves.toml up tts-gepard-fast
-anvil-serving voice run --config examples/voice/fakoli-dark.toml --profile gepard-fast-tts
+anvil-serving voice proxy run --config examples/voice/fakoli-dark.toml --profile gepard-fast-tts
 anvil-serving voice benchmark \
   --config examples/voice/fakoli-dark.toml \
   --profile gepard-fast-tts \
@@ -361,7 +363,7 @@ shorter and checkout-independent:
 
 ```bash
 anvil-serving serves up tts-gepard-fast
-anvil-serving voice run --profile gepard-fast-tts
+anvil-serving voice proxy run --profile gepard-fast-tts
 ```
 
 That `fakoli-dark.toml` profile marks Gepard as `managed` and names the
@@ -372,7 +374,7 @@ From the Mini gateway, use the OpenClaw profile only after the Dark service is
 up and reachable on Dark's private address:
 
 ```bash
-anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile gepard-fast-tts
+anvil-serving voice proxy run --config examples/voice/openclaw-anvil-voice.toml --profile gepard-fast-tts
 anvil-serving voice benchmark \
   --config examples/voice/openclaw-anvil-voice.toml \
   --profile gepard-fast-tts \
@@ -389,7 +391,7 @@ reach the direct candidate endpoint:
 
 ```bash
 anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
-anvil-serving voice run \
+anvil-serving voice proxy run \
   --config examples/voice/openclaw-anvil-voice.toml \
   --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \
@@ -418,7 +420,7 @@ Then expose those loopback audio services on private bridge ports from the Dark
 host:
 
 ```bash
-anvil-serving voice bridge \
+anvil-serving voice proxy bridge \
   --listen-host 100.87.34.66 \
   --stt-listen-port 30110 \
   --stt-target-host 127.0.0.1 \
@@ -432,14 +434,14 @@ anvil-serving voice bridge \
 Then run the Mini Realtime server with the Dark audio profile:
 
 ```bash
-anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+anvil-serving voice proxy run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
 ```
 
 If a Mini-side proxy is the operational boundary instead, start or verify that
 proxy first and use the Mini-local proxy profile:
 
 ```bash
-anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
+anvil-serving voice proxy run --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
 ```
 
 When testing a candidate LLM against Dark audio, compose the same candidate
@@ -511,7 +513,7 @@ name; it does not contain the token value.
 
 ## Realtime Server
 
-`voice run` validates the manifest, probes the configured LLM/STT/TTS
+`voice proxy run` validates the manifest, probes the configured LLM/STT/TTS
 endpoints, then binds the Realtime WebSocket server at:
 
 ```text
@@ -571,7 +573,7 @@ the benchmark process. They do not promote the candidate, change the router's
 Fast preset, or make OpenClaw use the candidate outside this explicit run.
 
 For Fast-tier LLM bakeoffs, pair `voice benchmark` with
-`anvil-serving benchmark --bakeoff` against the same loaded endpoint and record
+`anvil-serving eval benchmark run --bakeoff` against the same loaded endpoint and record
 the final `anvil-serving serves --manifest examples/fakoli-dark/serves.toml
 status` after restoring production Fast. Voice benchmark JSON is stage-latency
 evidence unless the STT hypothesis and WER prove semantic transcription quality
@@ -639,7 +641,7 @@ path. Gather comparable successful data with Dark-host or Mini-proxied audio
 before any production promotion, and keep promotion behind the normal human
 `router_promote` gate.
 
-For live Realtime Talk sessions, `voice run` also emits redacted
+For live Realtime Talk sessions, `voice proxy run` also emits redacted
 `voice_stage_timing` log lines for the core `stt`, `llm`, and `tts` stages.
 Use those lines to attribute latency without exposing prompts or transcripts:
 
@@ -707,11 +709,11 @@ explicit confirmed call.
 
 ## Troubleshooting
 
-- `voice up` says lifecycle is external: change the manifest to `managed` or
+- `voice audio up` says lifecycle is external: change the manifest to `managed` or
   `native`, or keep managing that endpoint manually.
-- `voice run` refuses to start: check the `/models` endpoint for the LLM, STT,
+- `voice proxy run` refuses to start: check the `/models` endpoint for the LLM, STT,
   and TTS base URLs named in the manifest.
-- Native `voice down` reports `ready_but_unmanaged`: the endpoint is answering,
+- Native `voice audio down` reports `ready_but_unmanaged`: the endpoint is answering,
   but no PID file or `stop_command` can identify what to stop.
 - Optional Mini-local STT/TTS logs live under `/tmp/anvil-voice-mini` in the
   checked-in Mini-local manifest.
@@ -719,4 +721,4 @@ explicit confirmed call.
   `voice.llm.api_key_env`; do not paste token values into the manifest.
 - If the assistant forgets facts from the same Talk session, verify the active
   profile is not setting `voice.llm.history_max_turns = 0`, then restart
-  `voice run` so the updated manifest is loaded.
+  `voice proxy run` so the updated manifest is loaded.
