@@ -124,3 +124,40 @@ context, and hardware configuration tested.
   locks (repo gotcha #12 shape: the stall is the lock, not a rate limit).
   Killing the stale container released the locks; throughput jumped from
   ~3.7 MB/s (anonymous, rate-limited) to ~90 MB/s (authenticated).
+
+## 7. Extension-round operational notes (2026-07-11)
+
+- **CLI surface changed under us mid-exercise:** Operator CLI v2 (merged to
+  main between rounds) removed `preflight`/`benchmark` (now `eval preflight` /
+  `eval benchmark run`) and gated `serves up/down` behind `--confirm`. First
+  extension pipelines no-op'd their measurement steps with migration notices;
+  reproduction docs updated. The fail-closed `--confirm` gate correctly
+  protected production from an unconfirmed stop.
+- **llama.cpp `-hf` downloads land in the HF hub cache layout**
+  (`/root/.cache/huggingface`), not `~/.cache/llama.cpp` — with only the
+  legacy mount, ~20 GB of GGUF landed in the container writable layer,
+  silently (this build logs no download progress at default verbosity).
+  Compose anchor now mounts the volume at both paths. A salvage copy of the
+  layer was aborted by rotating the card mid-stream (operator error;
+  re-download exposure only).
+- **llama.cpp endpoints do not advertise max_model_len** - the context suite
+  overshot the 64k window and recorded a false context failure until rerun with
+  an explicit `--max-model-len` hint (operator-observed server log lines:
+  105,649- and 68,718-token requests rejected; the committed failed-run
+  artifact records estimated_prompt_tokens 74,113).
+- **Harness prompt-sizing bug (pre-existing on main):** benchmark.py
+  make_prompt sizes filler by a words heuristic that underestimates real
+  tokenization (~2.7 tok/word) and truncates at the WINDOW cap rather than the
+  clamped target - so every sub-window context target balloons to the window
+  (usage in the committed extension bakeoff JSONs proves it: the '131k' probe
+  sent 261,949 tokens). Window-size verifications stand; sub-window rows do
+  not test their nominal sizes. Filed as a follow-up fix; invisible in the
+  base round because targets equaled windows.
+- **Gemma E4B default-mode zero-token artifact:** with `--jinja` +
+  reasoning-format auto, a benchmark probe recorded 0 completion tokens (all
+  output routed to `reasoning_content`); rerun with thinking suppressed.
+  Measurement trap, not a serving failure.
+- **MTP A/B methodology:** the standard short-completion benchmark cannot
+  measure speculative decoding (10-31-token completions; overhead never
+  amortizes). Long-generation probes (3x1024 tokens, temp 0) are the deciding
+  artifacts for both MTP candidates.
