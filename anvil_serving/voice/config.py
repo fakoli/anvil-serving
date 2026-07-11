@@ -33,8 +33,17 @@ import re
 import shlex
 import urllib.parse
 from dataclasses import dataclass
+from typing import Mapping
 
 from anvil_serving.paths import config_path
+from anvil_serving.targets import (
+    CommandSpec,
+    ExecutionPlan,
+    ExecutionPreflight,
+    finalize_execution_plan,
+    preflight_execution_plan,
+)
+from anvil_serving.topology import CommandIdentity, Topology
 
 try:
     import tomllib  # Python 3.11+
@@ -90,6 +99,109 @@ class ResolvedVoiceConfig:
             "tts_base_url": self.tts_base_url,
             "tts_model": self.tts_model,
         }
+
+
+@dataclass(frozen=True)
+class ResolvedAudioEndpoint:
+    """One topology-owned audio model endpoint and its execution context."""
+
+    kind: str
+    plan: ExecutionPlan
+
+    @property
+    def base_url(self) -> str:
+        endpoint = self.plan.resource_endpoint
+        if endpoint is None:
+            raise ConfigError(f"topology resource for {self.kind} has no endpoint")
+        return endpoint
+
+    @property
+    def endpoint_kind(self) -> str | None:
+        resource = self.plan.resource
+        return resource.endpoint_kind if resource else None
+
+    def as_dict(self) -> dict[str, object]:
+        """Return stable endpoint identity without flattening host-relative loopback."""
+        context = self.plan.as_dict()
+        context.update(
+            {
+                "audio_kind": self.kind,
+                "base_url": self.base_url,
+                "endpoint_kind": self.endpoint_kind,
+            }
+        )
+        return context
+
+
+@dataclass(frozen=True)
+class ResolvedAudioTargets:
+    """Topology-resolved STT/TTS model owners for voice audio operations."""
+
+    stt: ResolvedAudioEndpoint
+    tts: ResolvedAudioEndpoint
+
+    def as_dict(self) -> dict[str, dict[str, object]]:
+        return {"stt": self.stt.as_dict(), "tts": self.tts.as_dict()}
+
+    @property
+    def warnings(self) -> tuple[str, ...]:
+        return self.stt.plan.warnings + self.tts.plan.warnings
+
+
+def resolve_audio_targets(
+    topology: Topology,
+    *,
+    operation: str = "voice-status",
+    target: str | None = None,
+    transport: str = "auto",
+    command_identity: CommandIdentity | None = None,
+    command_host: str | None = None,
+    command_runtime: str | None = None,
+    environment: Mapping[str, str] | None = None,
+    overlay: str | None = None,
+    experimental_model_workload: bool = False,
+) -> ResolvedAudioTargets:
+    """Resolve STT/TTS model owners without dispatching a CLI or transport.
+
+    Proxy resources are intentionally ineligible: audio lifecycle targets the
+    ``stt-serve`` and ``tts-serve`` roles only. A loopback URL is returned
+    verbatim and remains relative to the resolved resource/execution host.
+    """
+    common = {
+        "target": target,
+        "command_identity": command_identity,
+        "command_host": command_host,
+        "command_runtime": command_runtime,
+        "environment": environment,
+        "overlay": overlay,
+        "experimental_model_workload": experimental_model_workload,
+    }
+
+    def preflight(kind: str) -> ExecutionPreflight:
+        result = preflight_execution_plan(
+            topology,
+            CommandSpec(
+                name=operation,
+                resource_role=f"{kind}-serve",
+                supported_transports=("local", "controller"),
+                execution_runtime_roles=("native", "docker"),
+                mutation_class="service",
+                recovery_capable=False,
+                gpu_role_required=False,
+            ),
+            **common,
+        )
+        if result.resource.endpoint is None:
+            raise ConfigError(f"topology resource for {kind} has no endpoint")
+        return result
+
+    preflights = {kind: preflight(kind) for kind in ("stt", "tts")}
+
+    def resolve(kind: str) -> ResolvedAudioEndpoint:
+        plan = finalize_execution_plan(topology, preflights[kind], transport=transport)
+        return ResolvedAudioEndpoint(kind, plan)
+
+    return ResolvedAudioTargets(stt=resolve("stt"), tts=resolve("tts"))
 
 
 def _resolve_config_path(path: str | None) -> str:

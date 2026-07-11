@@ -30,9 +30,106 @@ Doctrine (the parts that are policy, not just helpers):
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import os
 import shutil
 import time
+
+
+_MODEL_WORKLOADS = frozenset({"model", "llm", "stt", "tts", "experimental-model"})
+
+
+@dataclass(frozen=True)
+class CapacityDecision:
+    """Auditable result of checking one resource against its owning host."""
+
+    allowed: bool
+    capacity_policy: str | None
+    resource_workload: str
+    model_workload: bool
+    experimental_model_workload_requested: bool
+    experimental_model_workload_permitted: bool
+    experimental_model_workload_override: bool
+    reason: str | None = None
+    warning: str | None = None
+
+    def as_dict(self) -> dict[str, object]:
+        """Return the stable capacity fields used by output and audit records."""
+        return {
+            "capacity_policy": self.capacity_policy,
+            "resource_workload": self.resource_workload,
+            "model_workload": self.model_workload,
+            "experimental_model_workload_requested": self.experimental_model_workload_requested,
+            "experimental_model_workload_permitted": self.experimental_model_workload_permitted,
+            "experimental_model_workload_override": self.experimental_model_workload_override,
+        }
+
+
+def evaluate_capacity_policy(
+    *,
+    host_id: str,
+    workload: str,
+    capacity_policy: str | None,
+    allow_model_workloads: bool,
+    allow_experimental_model_workloads: bool,
+    experimental_model_workload: bool = False,
+) -> CapacityDecision:
+    """Evaluate model capacity without performing transport or host I/O.
+
+    A model-free host accepts only a resource explicitly declared as an
+    ``experimental-model``, and only when both its topology policy and the
+    per-invocation flag opt in.  The flag never upgrades an ordinary model
+    workload and has no effect on unrelated service resources.
+    """
+    is_model = workload in _MODEL_WORKLOADS
+    is_experimental = workload == "experimental-model"
+    permitted = is_experimental and allow_experimental_model_workloads
+    override = (
+        is_model
+        and not allow_model_workloads
+        and permitted
+        and experimental_model_workload
+    )
+    common = {
+        "capacity_policy": capacity_policy,
+        "resource_workload": workload,
+        "model_workload": is_model,
+        "experimental_model_workload_requested": bool(experimental_model_workload),
+        "experimental_model_workload_permitted": permitted,
+        "experimental_model_workload_override": override,
+    }
+    if not is_model or allow_model_workloads:
+        return CapacityDecision(True, **common)
+    if override:
+        policy = capacity_policy or "<none>"
+        return CapacityDecision(
+            True,
+            **common,
+            warning=(
+                f"experimental model workload override active for model-free host "
+                f"{host_id!r} under capacity policy {policy!r}"
+            ),
+        )
+
+    policy = capacity_policy or "<none>"
+    if not is_experimental:
+        reason = (
+            f"resource host {host_id!r} capacity policy {policy!r} prohibits "
+            f"{workload!r} model workloads; the experimental flag cannot override "
+            "a non-experimental resource"
+        )
+    elif not permitted:
+        reason = (
+            f"resource host {host_id!r} capacity policy {policy!r} does not permit "
+            "experimental model workloads"
+        )
+    else:
+        reason = (
+            f"resource host {host_id!r} capacity policy {policy!r} is model-free; "
+            "pass --experimental-model-workload to use its topology-permitted "
+            "experimental model resource"
+        )
+    return CapacityDecision(False, **common, reason=reason)
 
 
 # --------------------------------------------------------------------------- #
