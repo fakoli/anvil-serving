@@ -24,7 +24,7 @@ anvil-serving is not a generic token proxy. It is a local-first routing layer th
 question a proxy cannot answer: **is this local model trusted for this kind of work?**
 
 For OpenClaw and agent-assisted operations, anvil-serving also exposes a structured control plane:
-`anvil-serving mcp` for same-host stdio MCP, and `anvil-serving controller serve` for a
+`anvil-serving mcp serve` for same-host stdio MCP, and `anvil-serving controller serve` for a
 token-authenticated private/tailnet controller that lets a gateway host operate a separate
 router, serve, or voice host without making raw SSH the product contract.
 
@@ -121,6 +121,8 @@ Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
 
 One CLI covers the router, the local serving tools, the measurement loop that feeds the quality
 profile, and the control plane. Full flags and examples: [CLI reference](docs/CLI.md).
+Run `anvil-serving --help` for the grouped command surface, `anvil-serving <command> --help` for
+focused action flags, and `anvil-serving --version` to verify the installed build.
 
 **Data plane** — run and manage the router:
 
@@ -159,7 +161,8 @@ profile, and the control plane. Full flags and examples: [CLI reference](docs/CL
 | Command | Purpose |
 |---------|---------|
 | `anvil-serving harness sync openclaw` | Render OpenClaw model config from live router presets. |
-| `anvil-serving mcp` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools; `--list-tools` prints the catalog. |
+| `anvil-serving mcp serve` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
+| `anvil-serving mcp tools` | Print the MCP tool catalog as JSON. |
 | `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |
 | `anvil-serving voice` | Manage STT/TTS lifecycle, switch voice profiles, bridge private audio endpoints, run the local Realtime voice server, benchmark voice turns, and delegate nested `voice sidecar` operations. |
 | `anvil-serving voice sidecar` | Validate or render a Hugging Face speech-to-speech sidecar manifest. |
@@ -177,6 +180,8 @@ Compatibility mentions that intentionally remain for migration and implementatio
 
 - `anvil-serving onboard` remains an alias of `anvil-serving init`.
 - `anvil-serving voice-sidecar` remains a compatibility form of `anvil-serving voice sidecar`.
+- `anvil-serving voice start` and `voice stop` remain compatibility forms of `voice up` and
+  `voice down`; they print migration guidance when used.
 
 ## Cost And Security Defaults
 

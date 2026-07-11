@@ -98,7 +98,7 @@ that actually sees the model response.
 
 ### Layer 3: MCP control plane
 
-Add an `anvil-serving mcp` server as the structured operational surface. It should expose tools that
+Add an `anvil-serving mcp serve` server as the structured operational surface. It should expose tools that
 wrap the existing typed management verbs and their underlying library functions, for example:
 
 - inspect router, serve, GPU, and gateway status;

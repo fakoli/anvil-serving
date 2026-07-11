@@ -45,7 +45,7 @@ heavy local serve, and an optional, explicitly-metered cloud endpoint.
    (`[router].exhaustion_status`, default `503`) tells the calling harness to use its own cloud
    path, keeping metered billing an explicit caller decision
    ([ADR-0001](adr/0001-cloud-cost-and-subscription-auth.md)).
-7. A **control plane** (`anvil-serving mcp`, `anvil-serving controller serve`) exposes operations —
+7. A **control plane** (`anvil-serving mcp serve`, `anvil-serving controller serve`) exposes operations —
    status, probes, harness sync, promotion — as guarded MCP tools, kept strictly out of the request
    data plane ([ADR-0013](adr/0013-openclaw-layers-and-mcp-control-plane.md)).
 
@@ -191,7 +191,7 @@ Deployment shapes, smallest to largest:
 | Single process, no GPU | `python -m anvil_serving.router` (echo backend) | The evaluator smoke test — protocol surface only. |
 | Single host | `anvil-serving serve --config ...` + local serves | Front door binds `127.0.0.1` by default. |
 | Containerized service | `anvil-serving router up` (Docker Compose) | Router is the only published port; serves live on the internal network ([ADR-0004](adr/0004-router-as-a-service-containerized-and-authed.md)). |
-| Split-host control plane | Gateway host runs the harness; serving host runs router + serves + `anvil-serving controller serve`; operators bridge with `anvil-serving mcp --controller-url ...` | Controller traffic stays on a private/tailnet address with mandatory token auth ([ADR-0014](adr/0014-tailnet-controller-transport.md)). |
+| Split-host control plane | Gateway host runs the harness; serving host runs router + serves + `anvil-serving controller serve`; operators bridge with `anvil-serving mcp serve --controller-url ...` | Controller traffic stays on a private/tailnet address with mandatory token auth ([ADR-0014](adr/0014-tailnet-controller-transport.md)). |
 
 ## Module Map
 

@@ -1,0 +1,592 @@
+"""Declarative Operator CLI v2 command tree and manifest renderer.
+
+This module is deliberately independent of the current root dispatcher.  It
+defines the public v2 surface so later migration tasks can drive dispatch,
+help, and tombstones from one validated declaration.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import importlib
+import json
+from pathlib import Path
+from typing import Callable, Iterable
+
+
+MANIFEST_SCHEMA_VERSION = 1
+MANIFEST_PATH = Path(__file__).resolve().parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
+_MUTATION_CLASSES = frozenset({"read", "mutate", "process"})
+_TRANSPORTS = frozenset({"local", "controller", "ssh"})
+_EXECUTION_POLICIES = frozenset({"offline", "resource-owner"})
+_OUTPUT_POLICIES = frozenset({"bounded", "foreground", "protocol", "follow"})
+
+
+class CommandTreeError(ValueError):
+    """A command tree declaration is incomplete or internally inconsistent."""
+
+
+@dataclass(frozen=True)
+class HandlerRef:
+    """A lazy, importable handler reference used by the future dispatcher."""
+
+    module: str
+    attribute: str = "main"
+    argv_prefix: tuple[str, ...] | None = None
+
+    def __post_init__(self) -> None:
+        if self.argv_prefix is not None:
+            object.__setattr__(self, "argv_prefix", tuple(self.argv_prefix))
+
+    @property
+    def name(self) -> str:
+        return f"{self.module}:{self.attribute}"
+
+    def resolve(self) -> Callable[..., object]:
+        try:
+            target: object = importlib.import_module(self.module)
+            for part in self.attribute.split("."):
+                target = getattr(target, part)
+        except (AttributeError, ImportError, ModuleNotFoundError) as exc:
+            raise CommandTreeError(f"unresolved handler {self.name!r}") from exc
+        if not callable(target):
+            raise CommandTreeError(f"handler {self.name!r} is not callable")
+        return target
+
+
+@dataclass(frozen=True)
+class Tombstone:
+    """Migration guidance for a removed path or option."""
+
+    replacement: str
+    docs_anchor: str
+
+
+@dataclass(frozen=True)
+class CommandOption:
+    """A visible CLI option, including declarative option tombstones."""
+
+    flags: tuple[str, ...]
+    summary: str
+    value_name: str | None = None
+    tombstone: Tombstone | None = None
+    output_policy: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "flags", tuple(self.flags))
+
+
+@dataclass(frozen=True)
+class CommandNode:
+    """One path segment in the public command tree."""
+
+    name: str
+    summary: str
+    children: tuple["CommandNode", ...] = field(default_factory=tuple)
+    options: tuple[CommandOption, ...] = field(default_factory=tuple)
+    handler: HandlerRef | None = None
+    resource_role: str | None = None
+    transports: tuple[str, ...] = field(default_factory=tuple)
+    execution_runtime_roles: tuple[str, ...] = field(default_factory=tuple)
+    mutation_class: str = "read"
+    recovery_capable: bool = False
+    gpu_role_required: bool = False
+    execution_policy: str = "offline"
+    output_policy: str = "bounded"
+    docs_anchor: str = "docs/CLI.md"
+    tombstone: Tombstone | None = None
+    visible: bool = True
+    group: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "children", tuple(self.children))
+        object.__setattr__(self, "options", tuple(self.options))
+        object.__setattr__(self, "transports", tuple(self.transports))
+        object.__setattr__(self, "execution_runtime_roles", tuple(self.execution_runtime_roles))
+
+
+@dataclass(frozen=True)
+class CommandTree:
+    """The sole declarative source for the v2 CLI public surface."""
+
+    nodes: tuple[CommandNode, ...]
+    global_options: tuple[CommandOption, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "nodes", tuple(self.nodes))
+        object.__setattr__(self, "global_options", tuple(self.global_options))
+
+
+def _deferred_handler(*_args: object, **_kwargs: object) -> None:
+    """Marker handler for v2 paths whose concrete implementation lands later."""
+    raise RuntimeError("this v2 command is not wired into the dispatcher yet")
+
+
+def _option(
+    *flags: str,
+    summary: str,
+    value_name: str | None = None,
+    output_policy: str | None = None,
+) -> CommandOption:
+    return CommandOption(
+        flags=flags,
+        summary=summary,
+        value_name=value_name,
+        output_policy=output_policy,
+    )
+
+
+def _removed_option(*flags: str, replacement: str) -> CommandOption:
+    return CommandOption(
+        flags=flags,
+        summary="Removed option.",
+        tombstone=Tombstone(replacement, "docs/CLI.md#migration-from-legacy-commands"),
+    )
+
+
+def _handler(module: str, *, argv_prefix: Iterable[str] | None = None) -> HandlerRef:
+    return HandlerRef(module, argv_prefix=None if argv_prefix is None else tuple(argv_prefix))
+
+
+def _future_handler() -> HandlerRef:
+    return HandlerRef("anvil_serving.command_tree", "_deferred_handler")
+
+
+def _node(
+    name: str,
+    summary: str,
+    *,
+    children: Iterable[CommandNode] = (),
+    options: Iterable[CommandOption] = (),
+    handler: HandlerRef | None = None,
+    resource_role: str | None = None,
+    transports: tuple[str, ...] = (),
+    execution_runtime_roles: tuple[str, ...] = (),
+    mutation_class: str = "read",
+    recovery_capable: bool = False,
+    gpu_role_required: bool = False,
+    execution_policy: str = "offline",
+    output_policy: str = "bounded",
+    docs_anchor: str = "docs/CLI.md",
+    tombstone: Tombstone | None = None,
+    visible: bool = True,
+    group: str | None = None,
+) -> CommandNode:
+    return CommandNode(
+        name=name,
+        summary=summary,
+        children=tuple(children),
+        options=tuple(options),
+        handler=handler,
+        resource_role=resource_role,
+        transports=transports,
+        execution_runtime_roles=execution_runtime_roles,
+        mutation_class=mutation_class,
+        recovery_capable=recovery_capable,
+        gpu_role_required=gpu_role_required,
+        execution_policy=execution_policy,
+        output_policy=output_policy,
+        docs_anchor=docs_anchor,
+        tombstone=tombstone,
+        visible=visible,
+        group=group,
+    )
+
+
+def _resource_node(
+    name: str,
+    summary: str,
+    module: str | None,
+    *,
+    role: str,
+    mutation: str = "read",
+    recovery: bool = False,
+    gpu: bool = False,
+    options: Iterable[CommandOption] = (),
+    argv_prefix: Iterable[str] | None = None,
+    output_policy: str = "bounded",
+    docs_anchor: str = "docs/CLI.md",
+) -> CommandNode:
+    return _node(
+        name,
+        summary,
+        handler=_handler(module, argv_prefix=argv_prefix) if module else _future_handler(),
+        resource_role=role,
+        transports=("local", "controller", "ssh") if recovery else ("local", "controller"),
+        execution_runtime_roles=("native", "docker"),
+        mutation_class=mutation,
+        recovery_capable=recovery,
+        gpu_role_required=gpu,
+        execution_policy="resource-owner",
+        output_policy=output_policy,
+        options=options,
+        docs_anchor=docs_anchor,
+    )
+
+
+GLOBAL_OPTIONS = (
+    _option("--topology", summary="Topology document used for target resolution.", value_name="PATH"),
+    _option("--topology-overlay", summary="Deployment overlay applied to the topology.", value_name="PATH"),
+    _option("--command-host", summary="Declared command host.", value_name="host:ID"),
+    _option("--command-runtime", summary="Declared command runtime.", value_name="runtime:ID"),
+    _option("--target", summary="Explicit resource-owner target.", value_name="host:ID|host-role:ROLE"),
+    _option("--transport", summary="Execution transport.", value_name="auto|local|controller|ssh"),
+    _option(
+        "--experimental-model-workload",
+        summary="Allow a topology-permitted experimental model workload on a model-free host.",
+    ),
+    _option("--allow-ssh-fallback", summary="Allow declared SSH recovery after a pre-dispatch failure."),
+    _option("--json", summary="Emit the machine-readable result envelope."),
+    _option("--quiet", summary="Suppress nonessential human output."),
+    _option("--verbose", summary="Include diagnostic human output."),
+    _option("-h", "--help", summary="Show focused help and exit."),
+)
+
+
+def build_command_tree() -> CommandTree:
+    """Build the complete canonical v2 tree without importing command handlers."""
+    migration_docs = "docs/CLI.md#migration-from-legacy-commands"
+
+    def removed(replacement: str) -> Tombstone:
+        return Tombstone(replacement, migration_docs)
+
+    action_options = (_option("--dry-run", summary="Preview without mutating state."),)
+    confirm_options = action_options + (_option("--confirm", summary="Confirm the guarded mutation."),)
+    manifest_option = _option("--manifest", summary="Serve manifest TOML.", value_name="PATH")
+    assume_yes_option = _option("--yes", summary="Confirm a direct irreversible leaf operation.")
+
+    router = _node(
+        "router", "Manage the deployed router and its lifecycle.",
+        children=(
+            _resource_node("run", "Run the router in the foreground.", "anvil_serving.router.serve", role="router", mutation="process", argv_prefix=(), output_policy="foreground", options=(
+                _option("--config", summary="Router TOML; alternatively configure ANVIL_MODE.", value_name="PATH"),
+                _option("--mode", summary="Configured router mode; alternatively use ANVIL_MODE.", value_name="agentic|flexibility"),
+                _option("--host", summary="Router bind host.", value_name="ADDRESS"),
+                _option("--port", summary="Router bind port.", value_name="PORT"),
+            )),
+            *(
+                _resource_node(action, summary, "anvil_serving.router_manage", role="router", mutation="mutate", options=confirm_options)
+                for action, summary in (
+                    ("up", "Start the deployed router."), ("down", "Stop the deployed router."),
+                    ("restart", "Restart the deployed router."), ("reload", "Reload router configuration."),
+                    ("promote", "Promote a reviewed router configuration."),
+                )
+            ),
+            _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router"),
+            _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),)),
+            _resource_node("token", "Inspect the router token state.", "anvil_serving.router_manage", role="router", options=(_option("--reveal", summary="Reveal the local token after confirmation."), _option("--confirm", summary="Confirm token reveal."))),
+        ),
+        docs_anchor="docs/CLI.md#router",
+    )
+    serves_actions = (
+        _resource_node("render", "Render a model serve definition.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=action_options),
+        _resource_node("up", "Start manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--compose", summary="Use an ad-hoc compose file.", value_name="PATH"), _option("--recreate", summary="Recreate an existing container."))),
+        _resource_node("down", "Stop manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option,)),
+        _resource_node("rm", "Remove a model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option)),
+        _resource_node("adopt", "Adopt an existing model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option)),
+        _resource_node("status", "Show model serve status.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option,)),
+        _resource_node("logs", "Read bounded model serve logs.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, _option("--tail", summary="Number of trailing lines.", value_name="N|all"), _option("--since", summary="Only logs since a timestamp or duration.", value_name="TIME"), _option("--follow", summary="Follow log output.", output_policy="follow"))),
+        _resource_node("multiplex", "Run the single-resident model multiplexer.", "anvil_serving.multiplexer", role="model-serve", mutation="process", gpu=True, argv_prefix=(), output_policy="foreground"),
+    )
+    serves = _node("serves", "Manage local model serve lifecycle.", children=serves_actions, docs_anchor="docs/CLI.md#serves")
+    models = _node(
+        "models", "Manage model catalog, artifacts, and recipes.",
+        children=(
+            _resource_node("sync", "Sync the model catalog.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=action_options),
+            _resource_node("pull", "Pull a model artifact.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options),
+            _resource_node("score", "Rank models from benchmark evidence.", "anvil_serving.models", role="model-catalog"),
+            _node("recipes", "Inspect recorded serve recipes.", children=(
+                _resource_node("list", "List recorded serve recipes.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "list")),
+                _resource_node("show", "Show one recorded serve recipe.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "show")),
+            ), docs_anchor="docs/CLI.md#models-recipes"),
+            _node("cache", "Manage model cache storage.", children=(
+                _resource_node("prune", "Plan or prune the model cache.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options),
+            ), docs_anchor="docs/CLI.md#models-cache-prune"),
+            _node(
+                "recipe",
+                "Removed singular recipe spelling.",
+                children=(
+                    _node("list", "Removed singular recipe list path.", tombstone=removed("models recipes list"), visible=False),
+                    _node("show", "Removed singular recipe show path.", tombstone=removed("models recipes show"), visible=False),
+                ),
+                tombstone=removed("models recipes"),
+                visible=False,
+            ),
+        ),
+        docs_anchor="docs/CLI.md#models",
+    )
+    external_actions = tuple(
+        _resource_node(action, summary, "anvil_serving.external_benchmarks.cli", role="evaluation", mutation=mutation, options=action_options if mutation == "mutate" else (), argv_prefix=(action,))
+        for action, summary, mutation in (
+            ("init", "Initialize benchmark evidence storage.", "mutate"), ("sources", "List benchmark sources.", "read"),
+            ("fetch", "Fetch and import benchmark evidence.", "mutate"), ("import", "Import saved benchmark evidence.", "mutate"),
+            ("list", "List normalized benchmark evidence.", "read"), ("report", "Render a benchmark report.", "read"),
+            ("export", "Export benchmark evidence.", "read"), ("compare", "Compare local benchmark evidence.", "read"),
+        )
+    )
+    notebook = _node(
+        "notebook", "Record, list, or render model-bakeoff notebook runs.",
+        children=tuple(
+            _resource_node(
+                action, summary, "anvil_serving.external_benchmarks.cli",
+                role="evaluation", mutation="mutate" if action == "add" else "read",
+                argv_prefix=("notebook", action),
+            )
+            for action, summary in (
+                ("add", "Record a bakeoff evidence run."),
+                ("list", "List recorded bakeoff runs."),
+                ("render", "Render the bakeoff comparison."),
+            )
+        ),
+        docs_anchor="docs/CLI.md#eval-benchmark-external",
+    )
+    eval_node = _node(
+        "eval", "Run quality evaluation workflows.",
+        children=(
+            _resource_node("usage", "Analyze recorded usage.", "anvil_serving.profile", role="evaluation", argv_prefix=()),
+            _resource_node("preflight", "Preflight an endpoint.", "anvil_serving.preflight", role="evaluation", argv_prefix=()),
+            _resource_node("planning", "Run planning evaluation.", "anvil_serving.eval", role="evaluation"),
+            _resource_node("bootstrap", "Bootstrap a quality profile.", "anvil_serving.eval", role="evaluation", mutation="mutate", options=action_options),
+            _resource_node("calibrate", "Calibrate a reviewable quality profile.", "anvil_serving.calibrate", role="evaluation", mutation="mutate", options=action_options, argv_prefix=()),
+            _node("benchmark", "Run or import benchmark evidence.", children=(
+                _resource_node("run", "Run an endpoint benchmark.", "anvil_serving.benchmark", role="evaluation", argv_prefix=()),
+                _node("external", "Manage external benchmark evidence.", children=(*external_actions, notebook), docs_anchor="docs/CLI.md#eval-benchmark-external"),
+            ), docs_anchor="docs/CLI.md#eval-benchmark"),
+        ),
+        docs_anchor="docs/CLI.md#eval",
+    )
+    voice = _node(
+        "voice", "Manage audio and realtime proxy operations.",
+        children=(
+            _node("audio", "Manage Dark-owned STT/TTS lifecycle.", children=tuple(
+                _resource_node(action, summary, "anvil_serving.voice.cli", role="audio", mutation=mutation, options=confirm_options if mutation == "mutate" else ())
+                for action, summary, mutation in (("up", "Start audio serves.", "mutate"), ("down", "Stop audio serves.", "mutate"), ("status", "Show audio serve status.", "read"), ("logs", "Read audio serve logs.", "read"))
+            ), docs_anchor="docs/VOICE.md#audio-lifecycle"),
+            _node("proxy", "Manage Mini-owned realtime proxy lifecycle.", children=tuple(
+                _resource_node(action, summary, "anvil_serving.voice.cli", role="proxy", mutation=mutation, options=confirm_options if mutation == "mutate" else (), output_policy="foreground" if action == "run" else "bounded")
+                for action, summary, mutation in (("run", "Run the realtime proxy.", "process"), ("up", "Start the realtime proxy.", "mutate"), ("down", "Stop the realtime proxy.", "mutate"), ("restart", "Restart the realtime proxy.", "mutate"), ("status", "Show realtime proxy status.", "read"), ("logs", "Read realtime proxy logs.", "read"), ("bridge", "Manage the Mini-to-Dark audio bridge.", "mutate"))
+            ), docs_anchor="docs/VOICE.md#realtime-proxy"),
+            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="audio"),
+            _node("profiles", "Inspect voice profiles.", children=(
+                _resource_node("list", "List voice profiles.", "anvil_serving.voice.cli", role="audio"),
+                _resource_node("validate", "Validate a voice profile.", "anvil_serving.voice.cli", role="audio"),
+            ), docs_anchor="docs/VOICE.md#profiles"),
+            _node("sidecar", "Manage the speech-to-speech sidecar.", children=tuple(
+                _resource_node(action, summary, "anvil_serving.voice_sidecar", role="audio", mutation="mutate" if action == "compose" else "read", options=action_options if action == "compose" else (), argv_prefix=(action,))
+                for action, summary in (("validate", "Validate a sidecar manifest."), ("command", "Render a sidecar command."), ("compose", "Render sidecar compose configuration."))
+            ), docs_anchor="docs/VOICE.md#speech-to-speech-sidecar"),
+            *(_node(name, "Removed voice command.", tombstone=removed(replacement), visible=False) for name, replacement in (
+                ("up", "voice audio up"), ("down", "voice audio down"),
+                ("run", "voice proxy run"), ("bridge", "voice proxy bridge"),
+                ("start", "voice audio up"), ("stop", "voice audio down"),
+            )),
+        ),
+        docs_anchor="docs/VOICE.md",
+    )
+    harness = _node("harness", "Manage harness integration.", children=tuple(
+        _node(action, summary, children=(_resource_node("openclaw", f"{summary} for OpenClaw.", "anvil_serving.harness", role="gateway", mutation=mutation, recovery=action == "restart", options=confirm_options if mutation == "mutate" else ()),), docs_anchor="docs/CLI.md#harness")
+        for action, summary, mutation in (("sync", "Synchronize harness configuration", "mutate"), ("restart", "Restart the harness", "mutate"), ("status", "Show harness status", "read"))
+    ), docs_anchor="docs/CLI.md#harness")
+    mcp = _node("mcp", "Expose bounded MCP management tools.", children=(
+        _resource_node("serve", "Run the MCP management server.", "anvil_serving.mcp", role="operator", argv_prefix=(), output_policy="protocol"),
+        _resource_node("tools", "List bounded MCP tools.", "anvil_serving.mcp", role="operator", argv_prefix=("list-tools",)),
+        _node("list-tools", "Removed MCP tool-listing command.", tombstone=removed("mcp tools"), visible=False),
+    ), options=(_removed_option("--list-tools", replacement="mcp tools"),), tombstone=removed("mcp serve"), docs_anchor="docs/CLI.md#mcp", visible=False)
+    controller = _node("controller", "Manage the private controller service.", children=(
+        _resource_node("serve", "Run the private controller.", "anvil_serving.controller", role="controller", mutation="process", options=(_removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),), output_policy="foreground"),
+        _resource_node("status", "Show controller health and capabilities.", "anvil_serving.controller", role="controller"),
+    ), docs_anchor="docs/CLI.md#controller")
+    host = _node("host", "Inspect and repair declared host operations.", children=tuple(
+        _resource_node(action, summary, "anvil_serving.host", role="host", mutation=mutation, recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options if mutation == "mutate" else ())
+        for action, summary, mutation in (("status", "Show host status.", "read"), ("gpus", "Show GPU inventory.", "read"), ("doctor", "Diagnose host configuration.", "read"), ("wsl-config", "Render or update WSL configuration.", "mutate"), ("restart-docker", "Restart Docker Desktop.", "mutate"), ("reset-wsl", "Reset WSL.", "mutate"))
+    ), docs_anchor="docs/CLI.md#host")
+    topology = _node("topology", "Inspect and validate declared topology.", children=tuple(
+        _resource_node(action, summary, None, role="topology", mutation="read")
+        for action, summary in (("show", "Show topology identity."), ("validate", "Validate topology offline."), ("resolve", "Resolve a declared command target."))
+    ), docs_anchor="docs/CLI.md#topology")
+
+    tree = CommandTree(
+        nodes=(
+            _node("init", "Generate a local bring-up from detected facts.", handler=_handler("anvil_serving.init"), docs_anchor="docs/CLI.md#init", group="Local serving tools"),
+            _node("router", router.summary, children=router.children, docs_anchor=router.docs_anchor, group="Data plane"),
+            _node("serves", serves.summary, children=serves.children, docs_anchor=serves.docs_anchor, group="Local serving tools"),
+            _node("models", models.summary, children=models.children, docs_anchor=models.docs_anchor, group="Local serving tools"),
+            _node("eval", eval_node.summary, children=eval_node.children, docs_anchor=eval_node.docs_anchor, group="Quality loop"),
+            _node("voice", voice.summary, children=voice.children, docs_anchor=voice.docs_anchor, group="Voice"),
+            _node("harness", harness.summary, children=harness.children, docs_anchor=harness.docs_anchor, group="Control plane & integrations"),
+            _node("mcp", mcp.summary, children=mcp.children, options=mcp.options, handler=mcp.handler, docs_anchor=mcp.docs_anchor, tombstone=mcp.tombstone, visible=mcp.visible, group="Control plane & integrations"),
+            _node("controller", controller.summary, children=controller.children, docs_anchor=controller.docs_anchor, group="Control plane & integrations"),
+            _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
+            _node("doctor", "Check local dependencies and configured health.", handler=_handler("anvil_serving.doctor"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
+            _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Local serving tools"),
+            *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
+                ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
+                ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),
+                ("preflight", "eval preflight"), ("benchmark", "eval benchmark run"),
+                ("external-bench", "eval benchmark external"), ("calibrate", "eval calibrate"),
+                ("gpus", "host gpus"), ("voice-sidecar", "voice sidecar"), ("onboard", "init"),
+            )),
+        ),
+        global_options=GLOBAL_OPTIONS,
+    )
+    return tree
+
+
+COMMAND_TREE = build_command_tree()
+
+
+def validate_command_tree(tree: CommandTree = COMMAND_TREE, *, resolve_handlers: bool = True) -> None:
+    """Raise ``CommandTreeError`` when a command declaration is invalid."""
+    _validate_options(tree.global_options, "<global>")
+    _validate_nodes(
+        tree.nodes,
+        (),
+        inherited_flags=frozenset(flag for option in tree.global_options for flag in option.flags),
+        resolve_handlers=resolve_handlers,
+    )
+
+
+def _validate_nodes(
+    nodes: tuple[CommandNode, ...],
+    parent: tuple[str, ...],
+    *,
+    inherited_flags: frozenset[str],
+    resolve_handlers: bool,
+) -> None:
+    names: set[str] = set()
+    for node in nodes:
+        path = parent + (node.name,)
+        label = " ".join(path)
+        if not node.name or any(character.isspace() for character in node.name):
+            raise CommandTreeError(f"invalid command path segment {node.name!r} at {label!r}")
+        if node.name in names:
+            raise CommandTreeError(f"duplicate command path {label!r}")
+        names.add(node.name)
+        if not node.summary:
+            raise CommandTreeError(f"command {label!r} requires a summary")
+        if not node.docs_anchor:
+            raise CommandTreeError(f"command {label!r} requires a documentation anchor")
+        if node.mutation_class not in _MUTATION_CLASSES:
+            raise CommandTreeError(f"command {label!r} has an invalid mutation class")
+        if node.execution_policy not in _EXECUTION_POLICIES:
+            raise CommandTreeError(f"command {label!r} has an invalid execution policy")
+        if node.output_policy not in _OUTPUT_POLICIES:
+            raise CommandTreeError(f"command {label!r} has an invalid output policy")
+        _validate_options(node.options, label)
+        declared_flags = frozenset(flag for option in node.options for flag in option.flags)
+        duplicate_inherited = inherited_flags & declared_flags
+        if duplicate_inherited:
+            raise CommandTreeError(
+                f"duplicate option {sorted(duplicate_inherited)[0]!r} on {label!r}"
+            )
+        _validate_policy(node, label)
+        if node.tombstone is not None:
+            if node.handler is not None:
+                raise CommandTreeError(f"tombstone {label!r} must not declare a handler")
+            if not node.tombstone.replacement or not node.tombstone.docs_anchor:
+                raise CommandTreeError(f"tombstone {label!r} requires replacement and documentation")
+        elif not node.children and node.handler is None:
+            raise CommandTreeError(f"command {label!r} has no handler")
+        if node.handler is not None and resolve_handlers:
+            node.handler.resolve()
+        _validate_nodes(
+            node.children,
+            path,
+            inherited_flags=inherited_flags | declared_flags,
+            resolve_handlers=resolve_handlers,
+        )
+
+
+def _validate_options(options: tuple[CommandOption, ...], label: str) -> None:
+    flags: set[str] = set()
+    for option in options:
+        if not option.flags or not option.summary:
+            raise CommandTreeError(f"option on {label!r} requires flags and a summary")
+        for flag in option.flags:
+            if not flag.startswith("-"):
+                raise CommandTreeError(f"invalid option {flag!r} on {label!r}")
+            if flag in flags:
+                raise CommandTreeError(f"duplicate option {flag!r} on {label!r}")
+            flags.add(flag)
+        if option.tombstone is not None and (not option.tombstone.replacement or not option.tombstone.docs_anchor):
+            raise CommandTreeError(f"option tombstone on {label!r} requires replacement and documentation")
+        if option.output_policy is not None and option.output_policy not in _OUTPUT_POLICIES:
+            raise CommandTreeError(f"option on {label!r} has an invalid output policy")
+
+
+def _validate_policy(node: CommandNode, label: str) -> None:
+    transports = set(node.transports)
+    if len(transports) != len(node.transports) or not transports <= _TRANSPORTS:
+        raise CommandTreeError(f"command {label!r} has invalid transports")
+    if node.execution_policy == "offline":
+        if node.resource_role or node.transports or node.execution_runtime_roles or node.recovery_capable or node.gpu_role_required:
+            raise CommandTreeError(f"offline command {label!r} must not declare execution metadata")
+        return
+    if not node.resource_role or not node.transports or not node.execution_runtime_roles:
+        raise CommandTreeError(f"resource-owner command {label!r} requires resource, transport, and runtime metadata")
+    if node.recovery_capable and "ssh" not in transports:
+        raise CommandTreeError(f"recovery-capable command {label!r} requires ssh transport")
+
+
+def manifest_data(tree: CommandTree = COMMAND_TREE) -> dict[str, object]:
+    """Return deterministic, JSON-serializable manifest data for ``tree``."""
+    validate_command_tree(tree)
+    records = list(_manifest_records(tree.nodes, (), tree.global_options))
+    return {"schema_version": MANIFEST_SCHEMA_VERSION, "commands": records}
+
+
+def _manifest_records(nodes: tuple[CommandNode, ...], parent: tuple[str, ...], inherited: tuple[CommandOption, ...]):
+    for node in nodes:
+        path = parent + (node.name,)
+        options = inherited + node.options
+        yield {
+            "path": " ".join(path),
+            "summary": node.summary,
+            "visible": node.visible,
+            "options": [_option_data(option) for option in options],
+            "mutation_class": node.mutation_class,
+            "execution_policy": node.execution_policy,
+            "output_policy": node.output_policy,
+            "resource_role": node.resource_role,
+            "transports": list(node.transports),
+            "execution_runtime_roles": list(node.execution_runtime_roles),
+            "recovery_capable": node.recovery_capable,
+            "gpu_role_required": node.gpu_role_required,
+            "handler": node.handler.name if node.handler else None,
+            "tombstone": _tombstone_data(node.tombstone),
+            "docs_anchor": node.docs_anchor,
+        }
+        yield from _manifest_records(node.children, path, options)
+
+
+def _option_data(option: CommandOption) -> dict[str, object]:
+    return {
+        "flags": list(option.flags),
+        "summary": option.summary,
+        "value_name": option.value_name,
+        "tombstone": _tombstone_data(option.tombstone),
+        "output_policy": option.output_policy,
+    }
+
+
+def _tombstone_data(tombstone: Tombstone | None) -> dict[str, str] | None:
+    if tombstone is None:
+        return None
+    return {"replacement": tombstone.replacement, "docs_anchor": tombstone.docs_anchor}
+
+
+def render_manifest(tree: CommandTree = COMMAND_TREE) -> bytes:
+    """Serialize the manifest with stable ordering and a final newline."""
+    return (json.dumps(manifest_data(tree), indent=2, sort_keys=True, ensure_ascii=True) + "\n").encode("utf-8")
+
+
+def manifest_matches(path: Path = MANIFEST_PATH, tree: CommandTree = COMMAND_TREE) -> bool:
+    """Return whether the checked-in manifest equals in-memory regeneration."""
+    try:
+        return path.read_bytes() == render_manifest(tree)
+    except OSError:
+        return False
+
+
+def write_manifest(path: Path = MANIFEST_PATH, tree: CommandTree = COMMAND_TREE) -> None:
+    """Write the deterministic manifest for deliberate regeneration workflows."""
+    path.write_bytes(render_manifest(tree))

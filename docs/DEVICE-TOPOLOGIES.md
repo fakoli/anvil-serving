@@ -47,7 +47,7 @@ There are two planes:
 | Plane | Examples | Cross-Device Rule |
 |---|---|---|
 | Data plane | Router front door, STT endpoint, TTS endpoint, model serve endpoint. | The caller's configured `base_url` must be reachable and authenticated if exposed beyond loopback. |
-| Control plane | `anvil-serving mcp`, `anvil-serving controller serve`, guarded lifecycle tools. | The resource-owning host runs the controller; the operator/gateway host bridges to it with `--controller-url` and `--auth-env`. |
+| Control plane | `anvil-serving mcp serve`, `anvil-serving controller serve`, guarded lifecycle tools. | The resource-owning host runs the controller; the operator/gateway host bridges to it with `--controller-url` and `--auth-env`. |
 
 ## Expansion Patterns
 
@@ -110,7 +110,7 @@ Operator clients then bridge to that controller instead of shelling into the
 host:
 
 ```bash
-anvil-serving mcp \
+anvil-serving mcp serve \
   --controller-url http://anvil-gpu.tailnet.example:8766 \
   --auth-env ANVIL_CONTROLLER_TOKEN
 ```

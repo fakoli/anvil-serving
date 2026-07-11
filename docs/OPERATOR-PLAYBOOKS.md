@@ -16,12 +16,12 @@ profile.
 ADR-0013 calls for an MCP control plane, and ADR-0014 adds the split-host
 transport. There are two operator entry points:
 
-- Same-host operation: `anvil-serving mcp --list-tools` exposes the bounded
+- Same-host operation: `anvil-serving mcp tools` exposes the bounded
   stdio tool surface for model inventory, status, route probes, OpenClaw sync,
   voice lifecycle, preflight, and benchmark probes.
 - Split-host operation: the anvil-serving host runs
   `anvil-serving controller serve`, and the gateway or operator host runs the MCP bridge with
-  `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
+  `anvil-serving mcp serve --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
   The bridge presents the same tool names while sending calls to the controller
   over the private tailnet.
 
@@ -67,13 +67,13 @@ before falling back to the operator home.
 
 MCP invocation rules:
 
-- Start by listing tools (`anvil-serving mcp --list-tools`) or using the
+- Start by listing tools (`anvil-serving mcp tools`) or using the
   client-provided tool registry; do not assume future tools exist.
 - In split-host mode, start the same remote bridge the operator will use for the
   run and let the MCP client issue `tools/list` through that bridge:
 
   ```bash
-  anvil-serving mcp \
+  anvil-serving mcp serve \
     --controller-url http://anvil-gpu.tailnet.example:8766 \
     --auth-env ANVIL_CONTROLLER_TOKEN
   ```
@@ -155,7 +155,7 @@ reachable over Tailscale or another private or direct network path.
 
    ```bash
    export ANVIL_CONTROLLER_TOKEN="<same-secret-as-controller-host>"
-   anvil-serving mcp \
+   anvil-serving mcp serve \
      --controller-url http://anvil-gpu.tailnet.example:8766 \
      --auth-env ANVIL_CONTROLLER_TOKEN
    ```

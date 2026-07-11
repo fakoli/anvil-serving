@@ -165,7 +165,7 @@ Config files hold env-var *names* only; these are the variables whose *values* c
 | Variable | Used by | Meaning |
 |---|---|---|
 | `ANVIL_ROUTER_TOKEN` | front door (via `[server].auth_env` convention) | The router's own bearer/`x-api-key` token. The conventional name — `router token` prints it, and MCP probe tools accept only this name as `api_key_env`. |
-| `ANVIL_CONTROLLER_TOKEN` | `anvil-serving controller serve` / `mcp --controller-url` | Split-host controller auth token (default `--auth-token-env`). Required by default even on loopback; `--allow-unauthenticated-loopback` is development-only. |
+| `ANVIL_CONTROLLER_TOKEN` | `anvil-serving controller serve` / `mcp serve --controller-url` | Split-host controller auth token (default `--auth-token-env`). Required by default even on loopback; `--allow-unauthenticated-loopback` is development-only. |
 | per-tier `auth_env` names | tier backends | Whatever each tier's `auth_env` names, e.g. `ANTHROPIC_API_KEY` for a cloud tier or `ANVIL_FAST_LOCAL_KEY` for an (optionally authed) local relay. |
 
 ### Mode selection

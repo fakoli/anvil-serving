@@ -244,16 +244,20 @@ def test_models_score_help_uses_canonical_usage(capsys):
     assert "--no-local" in out
 
 
-def test_models_score_dispatch_matches_root_score_no_local(capsys):
+def test_models_score_dispatches_canonically_and_root_score_refuses(capsys):
     assert models.main(["score", "--json", "--no-local"]) == 0
-    nested = json.loads(capsys.readouterr().out)
-    assert cli.main(["score", "--json", "--no-local"]) == 0
-    legacy = json.loads(capsys.readouterr().out)
-    assert nested == legacy
+    direct = json.loads(capsys.readouterr().out)
+    assert cli.main(["models", "score", "--json", "--no-local"]) == 0
+    canonical = json.loads(capsys.readouterr().out)
+    assert canonical["ok"] is True
+    assert direct["candidates"]
+    assert "Per-candidate role scores" in canonical["data"]
+    assert cli.main(["score", "--no-local"]) == 2
+    assert "was removed" in capsys.readouterr().err
 
 
 def test_pull_dispatches_through_top_level_cli(monkeypatch, capsys):
-    rc = cli.main(["models", "pull", "openai/gpt-oss-120b", "--dry-run"])
+    rc = cli.main(["models", "pull", "openai/gpt-oss-120b", "--dry-run", "--confirm"])
     assert rc == 0
     out = capsys.readouterr().out
     assert "download openai/gpt-oss-120b" in out
@@ -416,7 +420,7 @@ def test_recipe_default_registry_resolves_without_explicit_flag(request, capsys)
 
 
 def test_recipe_dispatches_through_cli(request, capsys):
-    rc = cli.main(["models", "recipe", "show", "gpt-oss-120b",
+    rc = cli.main(["models", "recipes", "show", "gpt-oss-120b",
                    "--registry", _registry(request)])
     out = capsys.readouterr().out
     assert rc == 0

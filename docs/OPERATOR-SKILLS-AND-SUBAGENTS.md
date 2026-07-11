@@ -97,7 +97,7 @@ require editing a skill, plugin, or benchmark prompt.
 
 ## Implemented Now
 
-`anvil-serving mcp --list-tools` currently exposes:
+`anvil-serving mcp tools` currently exposes:
 
 | Need | Current tool | Status |
 |---|---|---|
@@ -152,7 +152,7 @@ agent workflow.
 | Quality profile | `eval bootstrap`, `calibrate`, `router promote` | MCP preview/status; skill evidence packet; human promotion gate | These change routing trust. Small models can collect evidence, but not promote. |
 | External priors | `benchmark external init/sources/import/list/report/export/compare` | MCP read/report/compare; skill marks advisory-only | External results are useful priors, not quality evidence. |
 | Harness config | `harness sync/restart openclaw` | MCP for provider/model sync, workbench skill rendering, and restart | Keep router presets, model allowlists, skill visibility, and gateway config in lockstep. |
-| Controller transport | `controller serve`, `mcp --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
+| Controller transport | `controller serve`, `mcp serve --controller-url` | Skill-only bootstrap plus health checks | Binding the controller is a deployment/security decision; tool calls happen after it is up. |
 | Multiplexer | `multiplexer` | Skill runbook and endpoint probes | Long-running unauthenticated data-plane process; inspect through `/healthz`, `/v1/models`, preflight, and benchmark. |
 | Voice | `voice up/down/run/benchmark/profiles/bridge`, `voice sidecar validate/command/compose` | `voice_manage` for guarded STT/TTS lifecycle and profile-aware previews; skill/CLI for foreground realtime server, private audio bridge, and benchmark sequencing | Native audio endpoints use `lifecycle = "native"` with manifest-declared commands, PID files, and logs on the host running `voice up`; reference OpenClaw Talk keeps Mini model-free and reaches Dark-host audio directly or through a Mini proxy. Private STT/TTS port exposure uses `voice bridge`, not one-off proxy scripts. |
 | Local analytics | `profile`, `models score`, `models cache prune` | Skill/CLI plus `cache_prune_plan` for MCP JSON planning | `profile` and `models score` are offline analysis. `models cache prune` deletion stays CLI-only and human-gated. |

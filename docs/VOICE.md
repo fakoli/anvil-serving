@@ -28,13 +28,15 @@ Realtime server and cascade itself.
 | Command | What It Does | What It Does Not Do |
 |---|---|---|
 | `anvil-serving voice up` | Validates the voice manifest and starts manifest-owned managed/native STT/TTS lifecycle. | Does not start the Realtime WebSocket server or the LLM router. |
-| `anvil-serving voice start` | Alias for `voice up`. | Same as `up`. |
 | `anvil-serving voice down` | Stops manifest-owned managed/native STT/TTS lifecycle. | Does not stop the LLM router; a foreground `voice run` process stops with Ctrl+C. |
-| `anvil-serving voice stop` | Alias for `voice down`. | Same as `down`. |
 | `anvil-serving voice run` | Starts the Realtime WebSocket server in the foreground after probing the LLM, STT, and TTS endpoints. | Does not silently continue when required endpoints are unreachable. |
 | `anvil-serving voice benchmark` | Runs one configured end-to-end voice turn and prints latency/quality metrics as JSON. | Does not promote routing policy or prove subjective audio quality by itself. |
 | `anvil-serving voice profiles` | Lists manifest profiles or validates the resolved manifest for one profile. | Does not mutate lifecycle or start the Realtime server. |
 | `anvil-serving voice bridge` | Forwards STT/TTS TCP ports from a private interface to local audio endpoints. | Does not add auth, inspect audio traffic, or replace endpoint/router tokens. |
+| `anvil-serving voice sidecar` | Validates or renders a Hugging Face speech-to-speech sidecar. | Does not run anvil-serving's native Realtime cascade. |
+
+`voice start` and `voice stop` remain deprecated compatibility forms of `voice up` and
+`voice down`. They are hidden from primary help and print migration guidance to stderr.
 
 Manifest-backed commands take `--config <voice.toml>`. If omitted,
 `~/.anvil-serving/voice.toml` is used when present; otherwise the shipped

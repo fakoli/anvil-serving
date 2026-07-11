@@ -246,7 +246,7 @@ The install is stdlib-only — no required runtime dependencies.
 - **`anvil-serving router logs`** — docker logs for the deployed router container
   (`--tail`/`--since`/`--follow`). Exhaustion and over-context refusals are logged to stderr
   with the tier list and reason.
-- **MCP tools** — `anvil-serving mcp --list-tools` exposes `router_status` and
+- **MCP tools** — `anvil-serving mcp tools` exposes `router_status` and
   `decision_summary` (plus `route_decision` for a no-serve routing probe against
   `POST /v1/route`), locally or via the split-host controller.
 - **Playbooks** — step-by-step operator workflows for status, preflight, benchmark, and OpenClaw

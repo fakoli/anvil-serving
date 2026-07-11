@@ -631,28 +631,31 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
 
 _ACTIONS = ("status", "up", "down", "rm", "adopt", "logs", "render")
 
+_ACTION_DESCRIPTIONS = {
+    "status": "Show docker and health state for manifest serves.",
+    "up": "Start manifest serves or an ad-hoc compose service.",
+    "down": "Stop manifest serves and verify they stay stopped.",
+    "rm": "Remove serve containers after explicit confirmation.",
+    "adopt": "Bring externally-started serves under compose management.",
+    "logs": "Show bounded or streaming docker logs for one serve.",
+    "render": "Render tuned compose, manifest, and router-tier configuration.",
+}
+
 
 def _build_parser():
     p = argparse.ArgumentParser(
         prog="anvil-serving serves",
         description="Stop/start/inspect the local GPU model serves declared in a serves manifest.")
-    p.add_argument("action", choices=_ACTIONS)
+    sub = p.add_subparsers(dest="action", required=True)
+    for action in _ACTIONS:
+        sub.add_parser(action, help=_ACTION_DESCRIPTIONS[action], add_help=False)
     return p
 
 
 def _build_action_parser(action):
-    descriptions = {
-        "status": "Show docker and health state for manifest serves.",
-        "up": "Start manifest serves, or bring up services from an ad-hoc compose file.",
-        "down": "Stop manifest serves.",
-        "rm": "Remove serve containers.",
-        "adopt": "Bring externally-started manifest serves under compose management.",
-        "logs": "Show docker logs for one serve.",
-        "render": "Render a tuned compose file, serves manifest entry, and router-tier stub.",
-    }
     p = argparse.ArgumentParser(
         prog="anvil-serving serves %s" % action,
-        description=descriptions[action],
+        description=_ACTION_DESCRIPTIONS[action],
     )
     if action == "logs":
         p.add_argument("names", nargs=1, metavar="NAME",

@@ -447,19 +447,17 @@ def test_benchmark_external_help_uses_canonical_usage(capsys):
     assert "compare" in out
 
 
-def test_benchmark_external_dispatch_matches_root_external_bench(capsys):
-    db1 = _scratch("benchmark-external-root") / "benchmarks.sqlite"
-    db2 = _scratch("benchmark-external-nested") / "benchmarks.sqlite"
+def test_eval_benchmark_external_dispatches_and_removed_roots_refuse(capsys):
+    db = _scratch("eval-benchmark-external") / "benchmarks.sqlite"
     fixture = FIXTURES / "millstone_sample.json"
     local = FIXTURES / "local_benchmark_sample.json"
 
-    assert top_cli.main(["external-bench", "import", "--source", "millstone", "--file", str(fixture), "--db", str(db1)]) == 0
+    assert top_cli.main(["eval", "benchmark", "external", "import", "--source", "millstone", "--file", str(fixture), "--db", str(db)]) == 0
     capsys.readouterr()
-    assert top_cli.main(["benchmark", "external", "import", "--source", "millstone", "--file", str(fixture), "--db", str(db2)]) == 0
-    capsys.readouterr()
+    assert top_cli.main(["eval", "benchmark", "external", "compare", "--local", str(local), "--gpu", "RTX PRO 6000", "--db", str(db)]) == 0
+    assert "# External Benchmark Comparison" in capsys.readouterr().out
 
-    assert top_cli.main(["external-bench", "compare", "--local", str(local), "--gpu", "RTX PRO 6000", "--db", str(db1)]) == 0
-    root_out = capsys.readouterr().out
-    assert top_cli.main(["benchmark", "external", "compare", "--local", str(local), "--gpu", "RTX PRO 6000", "--db", str(db2)]) == 0
-    nested_out = capsys.readouterr().out
-    assert nested_out == root_out
+    assert top_cli.main(["external-bench", "list"]) == 2
+    assert "was removed" in capsys.readouterr().err
+    assert top_cli.main(["benchmark", "external", "list"]) == 2
+    assert "was removed" in capsys.readouterr().err

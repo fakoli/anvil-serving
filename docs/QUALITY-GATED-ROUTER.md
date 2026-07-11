@@ -432,7 +432,7 @@ the top-level README's "Run the router in Docker" section, and
 [`examples/fakoli-dark/README.md`](https://github.com/fakoli/anvil-serving/blob/main/examples/fakoli-dark/README.md) for the worked example.
 
 **Operations are a separate control plane.** The OpenClaw hook plugin is for per-run intent
-selection only; the router is the model data plane; `anvil-serving mcp` and
+selection only; the router is the model data plane; `anvil-serving mcp serve` and
 `anvil-serving controller serve` are the operational control plane for status, preflight,
 benchmark, OpenClaw sync, and split-host management over a private tailnet. See
 [ADR-0013](adr/0013-openclaw-layers-and-mcp-control-plane.md),

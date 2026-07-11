@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Production-polish reconciliation inventory** — records the 49 pre-existing CLI
+  polish hunks, their retain/adapt disposition, their v2 task ownership, and the
+  planned callable-alias-to-tombstone conversion. This preserves the working
+  implementation while keeping its deferred removal work auditable.
+- **Production CLI discovery contract** — root help now documents global `--help`/`--version`
+  flags and the canonical nested workflows, `serves --help` explains every action, and tests lock
+  the help/version surface. Deprecated `voice start`/`voice stop` calls remain compatible but now
+  emit the same migration guidance as other legacy forms. The CLI and voice references document
+  exit behavior, stdout/stderr conventions, safety gates, and the complete canonical taxonomy.
 - **Bakeoff notebook** — the persistent, comparable record the fast-tier
   bakeoff report was assembled by hand from. `anvil-serving benchmark
   --bakeoff … --notebook DB --notebook-task T --notebook-hardware H` appends

@@ -776,8 +776,16 @@ def main(argv=None):
         from anvil_serving import voice_sidecar
         return voice_sidecar.main(argv[1:], prog="anvil-serving voice sidecar")
     if argv and argv[0] == "start":
+        print(
+            "anvil-serving: `voice start` is a compatibility alias; use `voice up` instead.",
+            file=sys.stderr,
+        )
         argv[0] = "up"
     elif argv and argv[0] == "stop":
+        print(
+            "anvil-serving: `voice stop` is a compatibility alias; use `voice down` instead.",
+            file=sys.stderr,
+        )
         argv[0] = "down"
     args = build_parser().parse_args(argv)
     handlers = {

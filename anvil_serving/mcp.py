@@ -2574,7 +2574,7 @@ def serve_stdio(
 
 def _build_main_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="anvil-serving mcp",
+        prog="anvil-serving mcp serve",
         description=(
             "Run the stdio MCP control plane locally, list available tools, "
             "or proxy MCP tool calls to a token-authenticated controller."

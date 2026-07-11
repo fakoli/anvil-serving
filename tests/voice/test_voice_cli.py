@@ -84,8 +84,11 @@ def test_each_subcommand_validates_and_reports_ok(action, manifest_path, capsys)
 def test_start_stop_aliases_validate_and_report_ok(manifest_path, capsys):
     assert voice_cli.main(["start", "--config", manifest_path]) == 0
     assert voice_cli.main(["stop", "--config", manifest_path]) == 0
-    out = capsys.readouterr().out
+    captured = capsys.readouterr()
+    out = captured.out
     assert "test-voice" in out
+    assert "`voice start` is a compatibility alias; use `voice up`" in captured.err
+    assert "`voice stop` is a compatibility alias; use `voice down`" in captured.err
 
 
 def test_profiles_command_lists_and_describes_profiles(tmp_path, capsys):
@@ -1227,20 +1230,24 @@ def test_default_config_falls_back_to_shipped_example(capsys):
 
 
 def test_dispatched_via_top_level_cli(capsys):
-    with pytest.raises(SystemExit) as exc:
-        anvil_cli.main(["voice", "--help"])
-    assert exc.value.code == 0
+    rc = anvil_cli.main(["voice", "--help"])
+    assert rc == 0
     out = capsys.readouterr().out
-    assert "up" in out and "benchmark" in out
+    assert "anvil-serving voice - Manage audio and realtime proxy operations." in out
+    assert "audio" in out and "proxy" in out and "benchmark" in out
+    assert "Docs: docs/VOICE.md" in out
 
 
 def test_voice_sidecar_nested_help_dispatches(capsys):
-    with pytest.raises(SystemExit) as exc:
-        anvil_cli.main(["voice", "sidecar", "validate", "--help"])
-    assert exc.value.code == 0
+    rc = anvil_cli.main(["voice", "sidecar", "validate", "--help"])
+    assert rc == 0
     out = capsys.readouterr().out
-    assert "anvil-serving voice sidecar validate" in out
-    assert "--config" in out
+    assert "anvil-serving voice sidecar validate - Validate a sidecar manifest." in out
+    assert "Usage:\n  anvil-serving voice sidecar validate [options]" in out
+    assert "--topology" in out
+    assert "--json" in out
+    assert "-h, --help" in out
+    assert "Docs: docs/CLI.md" in out
 
 
 def test_top_level_help_mentions_voice(capsys):
