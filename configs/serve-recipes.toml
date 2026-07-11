@@ -597,3 +597,85 @@ total_params_b = 27
 # local-inference-lab/rtx6kpro and other sources via `anvil-serving benchmark external`;
 # copy a row here (status="unverified", source=...) to keep it alongside our verified
 # recipes, then graduate it to "verified" once measured on-box.
+
+[[recipe]]
+model = "nvidia/Qwen3.5-122B-A10B-NVFP4"
+status = "verified"
+source = "measured on fakoli-dark 2026-07-10 — anvil preflight ALL PASS + benchmark (benchmark-20260710T230943Z)"
+family = "qwen3.5"
+total_params_b = 122
+active_params_b = 10        # MoE: 122B total, ~10B active per token
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 96
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "nvcr.io/nvidia/vllm:26.04-py3"
+  managed_serve = "heavy-qwen35-122b"
+  served_model_name = "qwen35-122b-a10b-nvfp4"
+  quantization = "modelopt_fp4"
+  port = 39017
+  env = [
+    "CUDA_VISIBLE_DEVICES=1",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "CUDA_VERSION=13.2.1.009",
+    "CUDA_DRIVER_VERSION=595.58.03",
+    "CUDA_ARCH_LIST=7.5 8.0 8.6 9.0 10.0 12.0",
+    "CUDA_COMPONENT_LIST=cccl crt nvrtc driver-dev culibos-dev cudart cudart-dev nvcc tileiras",
+    "VLLM_VERSION=0.19.0+6bc3197f",
+    "CUDA_HOME=/usr/local/cuda",
+    "VLLM_FLASH_ATTN_SRC_DIR=/opt/vllm/vllm-flash-attn/",
+  ]
+  flags = [
+    "--served-model-name qwen35-122b-a10b-nvfp4",
+    "--trust-remote-code",
+    "--quantization modelopt_fp4",
+    "--kv-cache-dtype fp8",
+    "--tensor-parallel-size 1",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--max-model-len 131072",
+    "--max-num-seqs 1",
+    "--gpu-memory-utilization 0.95",
+    "--language-model-only",
+    "--enable-prefix-caching",
+    "--host 0.0.0.0",
+    "--port 39017",
+  ]
+  context_tokens = 131072
+
+  [recipe.measured]
+  throughput_single_tok_s = 38.8            # 10 req, concurrency 1, 8192-ctx conservative bench
+  ttft_p50_ms = 223.4
+  throughput_probe_tok_s = 41.5             # 2 req, 1024-ctx recipe-record probe
+  longctx_100k_ttft_p50_s = 28.0            # 3 req, 100000-ctx bench
+  longctx_100k_throughput_tok_s = 8.06
+  vram_used_gb = 94.1                        # PRO 6000 at gpu_memory_utilization 0.95
+  model_weights_gb = 72.35
+  kv_cache_tokens = 354960                   # fp8 KV; 8.97x concurrency @ 131072
+  host_ram_peak_gb = 6.0                     # WSL VM; swap ~0 (no OOM)
+  cold_start_s = 250                         # weights 76.8s + torch.compile 71s + engine init 138s
+  cuda_graphs = "captured (PIECEWISE=2, FULL=1)"
+  preflight = "ALL PASS (smoke, structured JSON, needle@128k, tool-batch x20)"
+  context_validation = "128k needle PASS (sentinel retrieved)"
+  tool_calls = "PASS (preflight 20/20 clean + manual system_status(hostname=fakoli-dark))"
+  reasoning = "PASS (enable_thinking: reasoning field populated & clean, no tag leak, final answer distinct)"
+  caveats = "fp8 KV uncalibrated q/k scale=1.0 (checkpoint ships no scales) — possible FP8-attention accuracy note"
+
+  [recipe.intent]
+  suited = [
+    "quality",
+    "long-context",
+    "planning",
+    "review",
+    "research",
+  ]
+  mode = "flexibility"
+  rationale = "gpt-oss-120b heavy baseline measures 183.2 tok/s (agentic-fast); this 122B-A10B NVFP4 trades single-stream throughput (~38.8 tok/s @8k ctx) for a full 131072-ctx window (8.97x concurrency, 128k needle verified), separated reasoning, and clean tool-calling. Suited to quality/long-context/planning/review, NOT latency-sensitive chat. CANDIDATE only — not promoted to heavy-local."
