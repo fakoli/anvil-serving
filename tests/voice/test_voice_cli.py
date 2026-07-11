@@ -37,6 +37,17 @@ base_url = "http://127.0.0.1:8091/v1"
 model = "kokoro-82m"
 """.strip()
 
+AUDIO_TOPOLOGY = "examples/fakoli-dark/operator-topology.toml"
+
+
+def _audio_command(action, *args):
+    return [
+        "audio", action, *args,
+        "--topology", AUDIO_TOPOLOGY,
+        "--command-host", "host:fakoli-dark",
+        "--command-runtime", "runtime:dark-docker",
+    ]
+
 
 @pytest.fixture
 def manifest_path(tmp_path):
@@ -61,8 +72,10 @@ def test_help_lists_subcommands(capsys):
         voice_cli.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for sub in ("up", "down", "run", "benchmark", "profiles", "bridge", "sidecar"):
+    for sub in ("audio", "run", "benchmark", "profiles", "bridge", "sidecar"):
         assert sub in out
+    assert "up" not in out
+    assert "down" not in out
     assert "start" not in out
     assert "stop" not in out
 
@@ -73,22 +86,144 @@ def test_no_subcommand_errors(capsys):
     assert exc.value.code != 0
 
 
-@pytest.mark.parametrize("action", ["up", "down", "benchmark"])
+@pytest.mark.parametrize("action", [["audio", "up"], ["audio", "down"], ["benchmark"]])
 def test_each_subcommand_validates_and_reports_ok(action, manifest_path, capsys):
-    rc = voice_cli.main([action, "--config", manifest_path])
+    argv = (
+        _audio_command(action[1], "--config", manifest_path)
+        if action[0] == "audio" else [*action, "--config", manifest_path]
+    )
+    rc = voice_cli.main(argv)
     assert rc == 0
     out = capsys.readouterr().out
     assert "test-voice" in out
 
 
-def test_start_stop_aliases_validate_and_report_ok(manifest_path, capsys):
-    assert voice_cli.main(["start", "--config", manifest_path]) == 0
-    assert voice_cli.main(["stop", "--config", manifest_path]) == 0
+@pytest.mark.parametrize(
+    ("removed", "replacement"),
+    [("up", "voice audio up"), ("down", "voice audio down"),
+     ("start", "voice audio up"), ("stop", "voice audio down")],
+)
+def test_old_voice_lifecycle_paths_are_actionable_tombstones(
+    removed, replacement, manifest_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        voice_cli,
+        "_resolve_audio_operation",
+        lambda args: pytest.fail("removed path reached lifecycle resolution"),
+    )
+
+    assert voice_cli.main([removed, "--config", manifest_path]) == 2
     captured = capsys.readouterr()
-    out = captured.out
-    assert "test-voice" in out
-    assert "`voice start` is a compatibility alias; use `voice up`" in captured.err
-    assert "`voice stop` is a compatibility alias; use `voice down`" in captured.err
+    assert captured.out == ""
+    assert "`voice %s` was removed" % removed in captured.err
+    assert "use `%s` instead" % replacement in captured.err
+
+
+def test_audio_up_uses_dark_owned_host_relative_endpoints(
+    manifest_path, monkeypatch, capsys
+):
+    seen = {}
+
+    def fake_stt_up(self, **kwargs):
+        seen["stt"] = self.config.base_url
+        return 0
+
+    def fake_tts_up(self, **kwargs):
+        seen["tts"] = self.config.base_url
+        return 0
+
+    monkeypatch.setattr(voice_cli.stt_serve.STTServe, "bring_up", fake_stt_up)
+    monkeypatch.setattr(voice_cli.tts_serve.TTSServe, "bring_up", fake_tts_up)
+
+    rc = voice_cli.main(_audio_command(
+        "up",
+        "--config", manifest_path,
+        "--dry-run",
+    ))
+
+    assert rc == 0
+    assert seen == {
+        "stt": "http://127.0.0.1:30110/v1",
+        "tts": "http://127.0.0.1:30111/v1",
+    }
+    out = capsys.readouterr().out
+    assert "stt owner=fakoli-dark execution=fakoli-dark transport=local" in out
+    assert "tts owner=fakoli-dark execution=fakoli-dark transport=local" in out
+    assert "endpoint_kind=host-relative-loopback" in out
+    assert "mini-dark-stt-proxy" not in out
+    assert "mini-dark-tts-proxy" not in out
+
+
+def test_audio_model_free_rejection_happens_before_serve_construction(
+    manifest_path, monkeypatch, capsys
+):
+    from dataclasses import replace
+
+    from anvil_serving.topology import load_topology
+
+    topology = load_topology("examples/fakoli-dark/operator-topology.toml")
+    topology = replace(
+        topology,
+        resources=tuple(
+            replace(resource, host="fakoli-mini", runtime="mini-native")
+            if resource.role == "stt-serve" else resource
+            for resource in topology.resources
+        ),
+    )
+    monkeypatch.setattr(voice_cli, "load_topology", lambda path: topology)
+    monkeypatch.setattr(
+        voice_cli,
+        "_audio_serves",
+        lambda *args, **kwargs: pytest.fail("serve construction preceded capacity rejection"),
+    )
+
+    rc = voice_cli.main([
+        "audio", "status",
+        "--config", manifest_path,
+        "--topology", "ignored.toml",
+    ])
+
+    assert rc == 3
+    assert "prohibits 'stt'" in capsys.readouterr().err
+
+
+def test_audio_remote_owner_refuses_before_local_serve_construction(
+    manifest_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        voice_cli,
+        "_audio_serves",
+        lambda *args, **kwargs: pytest.fail("remote plan reached local serve construction"),
+    )
+
+    rc = voice_cli.main([
+        "audio", "status",
+        "--config", manifest_path,
+        "--topology", AUDIO_TOPOLOGY,
+    ])
+
+    assert rc == 4
+    err = capsys.readouterr().err
+    assert "resolved remote audio owner" in err
+    assert "owner=fakoli-dark transport=controller" in err
+
+
+def test_audio_rejects_manifest_lifecycle_for_wrong_runtime_before_construction(
+    manifest_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        voice_cli,
+        "_audio_serves",
+        lambda *args, **kwargs: pytest.fail("runtime mismatch reached serve construction"),
+    )
+    data = voice_cli.voice_config.load_manifest(manifest_path)
+    data["voice"]["stt"]["lifecycle"] = "native"
+    monkeypatch.setattr(voice_cli, "_load", lambda *args: (data, None))
+
+    rc = voice_cli.main(_audio_command("up", "--config", manifest_path, "--dry-run"))
+
+    assert rc == 3
+    assert "lifecycle=native requires a native runtime" in capsys.readouterr().err
 
 
 def test_profiles_command_lists_and_describes_profiles(tmp_path, capsys):
@@ -388,21 +523,29 @@ def test_bridge_module_forwards_bytes_over_loopback():
     echo_thread.join(timeout=2.0)
 
 
-@pytest.mark.parametrize("action", ["up", "down", "run", "benchmark"])
+@pytest.mark.parametrize("action", [["audio", "up"], ["audio", "down"], ["run"], ["benchmark"]])
 def test_each_subcommand_reports_error_on_bad_manifest(action, tmp_path, capsys):
     bad = tmp_path / "bad.toml"
     bad.write_text("not [valid toml at all", encoding="utf-8")
-    rc = voice_cli.main([action, "--config", str(bad)])
+    argv = (
+        _audio_command(action[1], "--config", str(bad))
+        if action[0] == "audio" else [*action, "--config", str(bad)]
+    )
+    rc = voice_cli.main(argv)
     assert rc == 2
     err = capsys.readouterr().err
     assert "cannot parse" in err
 
 
-@pytest.mark.parametrize("action", ["up", "down", "run", "benchmark"])
+@pytest.mark.parametrize("action", [["audio", "up"], ["audio", "down"], ["run"], ["benchmark"]])
 def test_each_subcommand_rejects_localhost_manifest(action, tmp_path, capsys):
     bad = tmp_path / "localhost.toml"
     bad.write_text(VALID_MANIFEST.replace("127.0.0.1:8000", "localhost:8000"), encoding="utf-8")
-    rc = voice_cli.main([action, "--config", str(bad)])
+    argv = (
+        _audio_command(action[1], "--config", str(bad))
+        if action[0] == "audio" else [*action, "--config", str(bad)]
+    )
+    rc = voice_cli.main(argv)
     assert rc == 2
     err = capsys.readouterr().err
     assert "localhost" in err
@@ -523,7 +666,7 @@ def test_cmd_up_returns_nonzero_when_a_serve_bring_up_fails(manifest_path, monke
 
     monkeypatch.setattr(stt_serve.STTServe, "bring_up", lambda self, **kw: 1)
     monkeypatch.setattr(tts_serve.TTSServe, "bring_up", lambda self, **kw: 0)
-    rc = voice_cli.main(["up", "--config", manifest_path])
+    rc = voice_cli.main(_audio_command("up", "--config", manifest_path))
     assert rc != 0
     out = capsys.readouterr().out
     assert "bring-up rc=1" in out
@@ -535,7 +678,7 @@ def test_cmd_up_returns_zero_when_every_serve_bring_up_succeeds(manifest_path, m
 
     monkeypatch.setattr(stt_serve.STTServe, "bring_up", lambda self, **kw: 0)
     monkeypatch.setattr(tts_serve.TTSServe, "bring_up", lambda self, **kw: 0)
-    rc = voice_cli.main(["up", "--config", manifest_path])
+    rc = voice_cli.main(_audio_command("up", "--config", manifest_path))
     assert rc == 0
 
 
@@ -560,7 +703,7 @@ def test_cmd_up_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(stt_serve.STTServe, "bring_up", lambda self, **kw: (_ for _ in ()).throw(AssertionError("skip stt")))
     monkeypatch.setattr(tts_serve.TTSServe, "bring_up", lambda self, **kw: (_ for _ in ()).throw(AssertionError("skip tts")))
 
-    rc = voice_cli.main(["up", "--config", str(manifest)])
+    rc = voice_cli.main(_audio_command("up", "--config", str(manifest)))
 
     assert rc == 0
     out = capsys.readouterr().out
@@ -600,7 +743,7 @@ def test_cmd_up_uses_manifest_declared_audio_serve_name(tmp_path, monkeypatch):
 
     monkeypatch.setattr(tts_serve.TTSServe, "bring_up", fake_bring_up)
 
-    rc = voice_cli.main(["up", "--config", str(manifest)])
+    rc = voice_cli.main(_audio_command("up", "--config", str(manifest)))
 
     assert rc == 0
     assert seen == {
@@ -641,7 +784,7 @@ def test_cmd_up_resolves_relative_serves_manifest_from_voice_manifest_dir(tmp_pa
 
     monkeypatch.setattr(tts_serve.TTSServe, "bring_up", fake_bring_up)
 
-    rc = voice_cli.main(["up", "--config", str(manifest)])
+    rc = voice_cli.main(_audio_command("up", "--config", str(manifest)))
 
     assert rc == 0
     assert seen["manifest_path"] == str(config_dir / "serves.toml")
@@ -653,7 +796,7 @@ def test_cmd_down_returns_nonzero_when_a_serve_tear_down_fails(manifest_path, mo
 
     monkeypatch.setattr(stt_serve.STTServe, "tear_down", lambda self: 0)
     monkeypatch.setattr(tts_serve.TTSServe, "tear_down", lambda self: 1)
-    rc = voice_cli.main(["down", "--config", manifest_path])
+    rc = voice_cli.main(_audio_command("down", "--config", manifest_path))
     assert rc != 0
     out = capsys.readouterr().out
     assert "tear-down rc=1" in out
@@ -678,7 +821,7 @@ def test_cmd_down_skips_external_lifecycle_serves(tmp_path, monkeypatch, capsys)
     monkeypatch.setattr(stt_serve.STTServe, "tear_down", lambda self: (_ for _ in ()).throw(AssertionError("skip stt")))
     monkeypatch.setattr(tts_serve.TTSServe, "tear_down", lambda self: (_ for _ in ()).throw(AssertionError("skip tts")))
 
-    rc = voice_cli.main(["down", "--config", str(manifest)])
+    rc = voice_cli.main(_audio_command("down", "--config", str(manifest)))
 
     assert rc == 0
     out = capsys.readouterr().out
@@ -720,7 +863,7 @@ def test_cmd_up_runs_native_lifecycle_for_fakoli_mini_style_manifest(tmp_path, m
 
     monkeypatch.setattr(voice_cli.native_serve, "NativeServe", FakeNative)
 
-    rc = voice_cli.main(["up", "--config", str(manifest), "--dry-run"])
+    rc = voice_cli.main(["audio", "up", "--config", str(manifest), "--dry-run"])
 
     assert rc == 0
     assert calls == [("stt", True), ("tts", True)]
@@ -760,7 +903,7 @@ def test_cmd_down_runs_native_lifecycle_for_fakoli_mini_style_manifest(tmp_path,
 
     monkeypatch.setattr(voice_cli.native_serve, "NativeServe", FakeNative)
 
-    rc = voice_cli.main(["down", "--config", str(manifest), "--dry-run"])
+    rc = voice_cli.main(["audio", "down", "--config", str(manifest), "--dry-run"])
 
     assert rc == 0
     assert calls == [("stt", True), ("tts", True)]
@@ -1223,7 +1366,7 @@ def test_run_does_not_refuse_start_when_endpoints_return_401(tmp_path, monkeypat
 
 def test_default_config_falls_back_to_shipped_example(capsys):
     # No --config passed: should use the shipped examples/voice example and succeed.
-    rc = voice_cli.main(["up"])
+    rc = voice_cli.main(_audio_command("up"))
     assert rc == 0
     out = capsys.readouterr().out
     assert "anvil-voice" in out

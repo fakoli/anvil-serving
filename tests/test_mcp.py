@@ -1326,7 +1326,9 @@ def test_voice_manage_preview_is_dry_run_argv(tmp_path):
     assert env["ok"] is True
     data = env["data"]
     assert data["applied"] is False
-    assert data["command"][:5] == [sys.executable, "-m", "anvil_serving.cli", "voice", "up"]
+    assert data["command"][:6] == [
+        sys.executable, "-m", "anvil_serving.cli", "voice", "audio", "up"
+    ]
     assert "--dry-run" in data["command"]
     assert data["plan"]["audio_serves"][0]["lifecycle"] == "native"
     assert data["plan"]["audio_serves"][0]["start_command"][:3] == ["python", "-m", "mlx_audio.server"]
@@ -1380,16 +1382,17 @@ def test_voice_manage_accepts_profile_selection(tmp_path):
 
     assert env["ok"] is True
     data = env["data"]
-    assert data["command"][:7] == [
+    assert data["command"][:8] == [
         sys.executable,
         "-m",
         "anvil_serving.cli",
         "voice",
+        "audio",
         "up",
         "--config",
         str(config),
     ]
-    assert data["command"][7:9] == ["--profile", "dark-audio"]
+    assert data["command"][8:10] == ["--profile", "dark-audio"]
     assert data["plan"]["profile"] == "dark-audio"
     assert data["plan"]["available_profiles"] == ["dark-audio"]
     assert data["plan"]["audio_serves"][0]["lifecycle"] == "external"
@@ -1487,7 +1490,9 @@ def test_voice_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, m
     })
     assert applied["ok"] is True
     assert applied["data"]["applied"] is False
-    assert seen["argv"][:5] == [sys.executable, "-m", "anvil_serving.cli", "voice", "down"]
+    assert seen["argv"][:6] == [
+        sys.executable, "-m", "anvil_serving.cli", "voice", "audio", "down"
+    ]
     assert "--dry-run" not in seen["argv"]
     assert seen["timeout"] == 7
 
@@ -1534,7 +1539,9 @@ def test_voice_manage_confirmed_native_action_bridges_to_cli(tmp_path, monkeypat
 
     assert applied["ok"] is True
     assert applied["data"]["applied"] is True
-    assert seen["argv"][:5] == [sys.executable, "-m", "anvil_serving.cli", "voice", "up"]
+    assert seen["argv"][:6] == [
+        sys.executable, "-m", "anvil_serving.cli", "voice", "audio", "up"
+    ]
     assert "--dry-run" not in seen["argv"]
     assert seen["timeout"] == 11
 

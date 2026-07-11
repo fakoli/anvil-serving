@@ -1,6 +1,7 @@
 {
   "commands": [
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#init",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -142,6 +143,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#router",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -283,6 +285,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -469,6 +472,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -650,6 +654,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -830,6 +835,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -1010,6 +1016,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -1190,6 +1197,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -1376,6 +1384,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -1532,6 +1541,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -1701,6 +1711,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -1867,6 +1878,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#serves",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -2008,6 +2020,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -2164,6 +2177,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -2372,6 +2386,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -2560,6 +2575,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -2758,6 +2774,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -2956,6 +2973,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -3122,6 +3140,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -3318,6 +3337,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -3464,6 +3484,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#models",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -3605,6 +3626,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -3761,6 +3783,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -3927,6 +3950,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -4073,6 +4097,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#models-recipes",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -4214,6 +4239,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -4360,6 +4386,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -4506,6 +4533,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#models-cache-prune",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -4647,6 +4675,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -4823,6 +4852,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -4967,6 +4997,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -5111,6 +5142,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -5255,6 +5287,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#eval",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -5396,6 +5429,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -5542,6 +5576,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -5716,6 +5751,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -5862,6 +5898,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -6008,6 +6045,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -6154,6 +6192,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#eval-benchmark",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -6295,6 +6334,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -6471,6 +6511,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#eval-benchmark-external",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -6612,6 +6653,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -6758,6 +6800,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -6912,6 +6955,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -7058,6 +7102,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -7204,6 +7249,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -7358,6 +7404,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -7512,6 +7559,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -7658,6 +7706,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -7812,6 +7861,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#eval-benchmark-external",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -7953,6 +8003,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -8099,6 +8150,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -8245,6 +8297,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -8391,6 +8444,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/VOICE.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -8532,6 +8586,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/VOICE.md#audio-lifecycle",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -8673,6 +8728,9 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [
+        "tts-serve"
+      ],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -8839,7 +8897,7 @@
         "positional_arguments": [],
         "tool": "voice_manage"
       },
-      "resource_role": "audio",
+      "resource_role": "stt-serve",
       "summary": "Start audio serves.",
       "tombstone": null,
       "transports": [
@@ -8849,6 +8907,9 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [
+        "tts-serve"
+      ],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -9015,7 +9076,7 @@
         "positional_arguments": [],
         "tool": "voice_manage"
       },
-      "resource_role": "audio",
+      "resource_role": "stt-serve",
       "summary": "Stop audio serves.",
       "tombstone": null,
       "transports": [
@@ -9025,6 +9086,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/VOICE.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -9166,6 +9228,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -9312,6 +9375,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -9478,6 +9542,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -9624,6 +9689,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/VOICE.md#profiles",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -9765,6 +9831,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -9911,6 +9978,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -10057,6 +10125,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/VOICE.md#speech-to-speech-sidecar",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -10198,6 +10267,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -10344,6 +10414,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -10490,6 +10561,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -10646,6 +10718,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -10790,6 +10863,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -10934,6 +11008,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -11078,6 +11153,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -11222,6 +11298,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -11366,6 +11443,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -11510,6 +11588,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#harness",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -11651,6 +11730,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#harness",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -11792,6 +11872,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -11986,6 +12067,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#harness",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -12127,6 +12209,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -12307,6 +12390,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#harness",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -12448,6 +12532,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -12605,6 +12690,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#mcp",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -12762,6 +12848,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -12929,6 +13016,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -13096,6 +13184,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -13253,6 +13342,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#controller",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -13394,6 +13484,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -13553,6 +13644,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -13707,6 +13799,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#host",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -13848,6 +13941,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -14001,6 +14095,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -14154,6 +14249,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -14307,6 +14403,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [
         "windows"
@@ -14454,6 +14551,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [
         "windows"
@@ -14639,6 +14737,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [
         "windows",
@@ -14822,6 +14921,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [
         "windows"
@@ -15004,6 +15104,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [
         "windows"
@@ -15181,6 +15282,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#doctor",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
@@ -15334,6 +15436,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#topology",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -15475,6 +15578,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#topology",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -15616,6 +15720,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#topology",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -15757,6 +15862,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md#topology",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -15898,6 +16004,7 @@
       "visible": true
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -16042,6 +16149,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -16186,6 +16294,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -16330,6 +16439,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -16474,6 +16584,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -16618,6 +16729,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -16762,6 +16874,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -16906,6 +17019,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -17050,6 +17164,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -17194,6 +17309,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -17338,6 +17454,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -17482,6 +17599,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -17626,6 +17744,7 @@
       "visible": false
     },
     {
+      "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
       "execution_host_os": [],
       "execution_policy": "offline",

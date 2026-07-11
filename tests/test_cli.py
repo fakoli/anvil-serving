@@ -924,6 +924,51 @@ def test_topology_resolve_json_is_structured_and_contextual(capsys):
     assert not isinstance(payload["data"], str)
 
 
+def test_voice_audio_dispatch_resolves_coowned_dark_resources_and_forwards_context(
+    monkeypatch, capsys
+):
+    topology = (
+        Path(__file__).parent.parent
+        / "examples"
+        / "fakoli-dark"
+        / "operator-topology.toml"
+    )
+    seen = []
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: seen.append(argv) or 0,
+    )
+
+    assert cli.main([
+        "voice",
+        "audio",
+        "up",
+        "--topology",
+        str(topology),
+        "--command-host",
+        "host:fakoli-dark",
+        "--command-runtime",
+        "runtime:dark-docker",
+        "--dry-run",
+    ]) == 0
+
+    assert seen == [[
+        "audio",
+        "up",
+        "--dry-run",
+        "--topology",
+        str(topology),
+        "--command-host",
+        "host:fakoli-dark",
+        "--command-runtime",
+        "runtime:dark-docker",
+        "--transport",
+        "auto",
+    ]]
+    assert capsys.readouterr().err == ""
+
+
 def test_cli_remote_host_repair_is_typed_and_os_checked(tmp_path, monkeypatch, capsys):
     topology = _write_remote_router_topology(tmp_path, "host-wsl-config")
     text = topology.read_text(encoding="utf-8")

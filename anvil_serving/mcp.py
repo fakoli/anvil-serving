@@ -1461,7 +1461,16 @@ def tool_serves_logs(args: dict) -> dict:
 
 
 def _voice_cli_argv(action: str, config: str, *, dry_run: bool = False, profile: str = "") -> list[str]:
-    argv = [sys.executable, "-m", "anvil_serving.cli", "voice", action, "--config", config]
+    argv = [
+        sys.executable,
+        "-m",
+        "anvil_serving.cli",
+        "voice",
+        "audio",
+        action,
+        "--config",
+        config,
+    ]
     if profile:
         argv += ["--profile", profile]
     if dry_run:

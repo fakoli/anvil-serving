@@ -7,6 +7,7 @@ import io
 import os
 import sys
 import uuid
+from dataclasses import replace
 from importlib import metadata as importlib_metadata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -448,7 +449,7 @@ def _resolve_dispatch_plan(
             f"{_command_name(path)} is not recovery-capable; drop --allow-ssh-fallback"
         )
     topology = load_topology(options.topology, options.topology_overlay)
-    return resolve_execution_plan(
+    plan = resolve_execution_plan(
         topology,
         command,
         target=options.target,
@@ -458,6 +459,59 @@ def _resolve_dispatch_plan(
         overlay=options.topology_overlay,
         experimental_model_workload=options.experimental_model_workload,
     )
+    for role in path[-1].coowned_resource_roles:
+        related = resolve_execution_plan(
+            topology,
+            replace(command, resource_role=role),
+            target=options.target,
+            transport=options.transport,
+            command_host=options.command_host,
+            command_runtime=options.command_runtime,
+            overlay=options.topology_overlay,
+            experimental_model_workload=options.experimental_model_workload,
+        )
+        primary_identity = (
+            plan.resource_host.id,
+            plan.resource_runtime.id,
+            plan.execution_host.id,
+            plan.execution_runtime.id,
+        )
+        related_identity = (
+            related.resource_host.id,
+            related.resource_runtime.id,
+            related.execution_host.id,
+            related.execution_runtime.id,
+        )
+        if related_identity != primary_identity:
+            raise SafetyError(
+                "operation requires co-owned resources on one execution host",
+                code="split_resource_ownership",
+                details={
+                    "primary_role": command.resource_role,
+                    "primary_host": plan.resource_host.id,
+                    "related_role": role,
+                    "related_host": related.resource_host.id,
+                },
+            )
+    return plan
+
+
+def _resolution_options_argv(options: _ResolutionOptions) -> tuple[str, ...]:
+    """Reconstruct dispatcher-owned options for an explicitly opted-in handler."""
+    if not options.requested:
+        return ()
+    values = (
+        ("--topology", options.topology),
+        ("--topology-overlay", options.topology_overlay),
+        ("--command-host", options.command_host),
+        ("--command-runtime", options.command_runtime),
+        ("--target", options.target),
+        ("--transport", options.transport),
+    )
+    argv = [token for flag, value in values if value is not None for token in (flag, value)]
+    if options.experimental_model_workload:
+        argv.append("--experimental-model-workload")
+    return tuple(argv)
 
 
 def _active_option_policies(path: Sequence[CommandNode], rest: Sequence[str]) -> tuple[str, ...]:
@@ -882,6 +936,7 @@ def _dispatch(
     if node.handler is None:
         _print_focused_help(path)
         return 0
+    resolution_options = _ResolutionOptions()
     try:
         policy = command_policy(path, rest)
         enforce_command_policy(policy, json_mode=output_options.json_mode)
@@ -1000,6 +1055,8 @@ def _dispatch(
                     print(rendered.stdout, end="")
     handler = node.handler.resolve()
     prefix = _handler_argv(path)
+    if node.handler.forward_resolution_options:
+        rest = (*rest, *_resolution_options_argv(resolution_options))
     with guard.confirmation_scope(confirmed):
         result = handler([*prefix, *rest])
     return 0 if result is None else int(result)

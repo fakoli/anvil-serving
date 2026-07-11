@@ -1,4 +1,4 @@
-"""anvil-serving voice — up / down / start / stop / run / benchmark / profiles / bridge (anvil task T001;
+"""anvil-serving voice audio lifecycle plus realtime and benchmark commands.
 `run` wired to the real cascade for PUNCH-LIST #2).
 
 The voice-pipeline verb for the anvil-style stdlib orchestrator described in
@@ -45,7 +45,10 @@ import urllib.error
 import urllib.request
 from typing import Any, Callable, Dict, Optional
 
+from anvil_serving import serves as generic_serves
 from anvil_serving.mcp import ToolError, _resolve_benchmark_artifact_path
+from anvil_serving.targets import TargetResolutionError
+from anvil_serving.topology import TopologyValidationError, load_topology
 
 from . import benchmark as voice_benchmark
 from . import bridge as voice_bridge
@@ -89,11 +92,16 @@ def _resolve_manifest_reference(path: str, manifest_dir: str | None) -> str:
     return path
 
 
-def _audio_serves(data: dict):
+def _audio_serves(
+    data: dict,
+    targets: voice_config.ResolvedAudioTargets | None = None,
+):
     voice = data.get("voice", {})
     manifest_dir = data.get("_manifest_dir")
     for kind, config_cls, serve_cls in _AUDIO_SERVES:
-        table = voice.get(kind, {})
+        table = dict(voice.get(kind, {}))
+        if targets is not None:
+            table["base_url"] = getattr(targets, kind).base_url
         lifecycle = table.get("lifecycle", "managed")
         config_kwargs = {
             "base_url": table.get("base_url", ""),
@@ -108,6 +116,91 @@ def _audio_serves(data: dict):
             )
         config = config_cls(**config_kwargs)
         yield kind, lifecycle, table, serve_cls(config)
+
+
+def _resolve_audio_operation(args):
+    """Load the manifest and resolve both model owners before lifecycle I/O."""
+    data, err = _load(args.config, getattr(args, "profile", None))
+    if err:
+        return None, None, err, 2
+    topology_path = getattr(args, "topology", None)
+    if not topology_path:
+        return data, None, None, 0
+    try:
+        topology = load_topology(topology_path)
+        targets = voice_config.resolve_audio_targets(
+            topology,
+            target=getattr(args, "target", None),
+            transport=getattr(args, "transport", "auto"),
+            command_host=getattr(args, "command_host", None),
+            command_runtime=getattr(args, "command_runtime", None),
+            overlay=getattr(args, "topology_overlay", None),
+            experimental_model_workload=getattr(
+                args, "experimental_model_workload", False
+            ),
+        )
+    except TopologyValidationError as exc:
+        return None, None, "invalid topology: %s" % exc, 2
+    except TargetResolutionError as exc:
+        return None, None, str(exc), exc.exit_code
+    except voice_config.ConfigError as exc:
+        return None, None, str(exc), 2
+    remote = [
+        endpoint
+        for endpoint in (targets.stt, targets.tts)
+        if endpoint.plan.transport != "local"
+    ]
+    if remote:
+        details = ", ".join(
+            "%s owner=%s transport=%s endpoint=%s"
+            % (
+                endpoint.kind,
+                endpoint.plan.resource_host.id,
+                endpoint.plan.transport,
+                endpoint.base_url,
+            )
+            for endpoint in remote
+        )
+        return (
+            None,
+            targets,
+            "resolved remote audio owner; refusing local lifecycle transport (%s)" % details,
+            4,
+        )
+    voice = data.get("voice", {})
+    for endpoint in (targets.stt, targets.tts):
+        lifecycle = voice.get(endpoint.kind, {}).get("lifecycle", "managed")
+        required_runtime = {"managed": "docker", "native": "native"}.get(lifecycle)
+        actual_runtime = endpoint.plan.execution_runtime.role
+        if required_runtime is not None and actual_runtime != required_runtime:
+            return (
+                None,
+                targets,
+                "%s lifecycle=%s requires a %s runtime, but topology resolves %s"
+                % (endpoint.kind, lifecycle, required_runtime, actual_runtime),
+                3,
+            )
+    return data, targets, None, 0
+
+
+def _audio_context(targets: voice_config.ResolvedAudioTargets | None) -> str:
+    if targets is None:
+        return ""
+    parts = []
+    for endpoint in (targets.stt, targets.tts):
+        plan = endpoint.plan
+        parts.append(
+            "%s owner=%s execution=%s transport=%s endpoint=%s endpoint_kind=%s"
+            % (
+                endpoint.kind,
+                plan.resource_host.id,
+                plan.execution_host.id,
+                plan.transport,
+                endpoint.base_url,
+                endpoint.endpoint_kind,
+            )
+        )
+    return " -- ".join(parts)
 
 
 def _print_native_result(prefix: str, kind: str, result: dict) -> None:
@@ -251,16 +344,21 @@ def _write_benchmark_evidence(path: str, evidence: dict) -> str:
 
 
 def cmd_up(args):
-    data, err = _load(args.config, getattr(args, "profile", None))
+    data, targets, err, error_code = _resolve_audio_operation(args)
     if err:
-        print("voice up: %s" % err, file=sys.stderr)
-        return 2
+        print("voice audio up: %s" % err, file=sys.stderr)
+        return error_code
+    assert data is not None
     profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
-    print("voice up: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
+    context = _audio_context(targets)
+    print(
+        "voice audio up: manifest OK%s -- %s%s"
+        % (profile_note, voice_config.describe(data), " -- " + context if context else "")
+    )
     exit_code = 0
-    for kind, lifecycle, table, serve in _audio_serves(data):
+    for kind, lifecycle, table, serve in _audio_serves(data, targets):
         if lifecycle == "external":
-            print("voice up: %s serve lifecycle is external; skipping managed bring-up" % kind)
+            print("voice audio up: %s serve lifecycle is external; skipping managed bring-up" % kind)
             continue
         if lifecycle == "native":
             try:
@@ -268,36 +366,40 @@ def cmd_up(args):
                     native_serve.NativeServeConfig.from_table(kind, table)
                 )
                 result = native.bring_up(dry_run=getattr(args, "dry_run", False))
-                _print_native_result("voice up", kind, result)
+                _print_native_result("voice audio up", kind, result)
                 if result.get("returncode") != 0:
                     exit_code = 1
             except Exception as exc:  # noqa: BLE001 - configured native process may fail locally
-                print("voice up: %s native lifecycle failed -- %s" % (kind, exc), file=sys.stderr)
+                print("voice audio up: %s native lifecycle failed -- %s" % (kind, exc), file=sys.stderr)
                 exit_code = 1
             continue
         try:
             dry_run = getattr(args, "dry_run", False)
             rc = serve.bring_up(dry_run=True) if dry_run else serve.bring_up()
-            print("voice up: %s serve bring-up rc=%s" % (kind, rc))
+            print("voice audio up: %s serve bring-up rc=%s" % (kind, rc))
             if rc != 0:
                 exit_code = 1
         except ServeNotConfigured as exc:
-            print("voice up: %s serve not configured yet -- %s" % (kind, exc))
-    print("voice up: realtime server is run in the foreground with `anvil-serving voice proxy run`.")
+            print("voice audio up: %s serve not configured yet -- %s" % (kind, exc))
     return exit_code
 
 
 def cmd_down(args):
-    data, err = _load(args.config, getattr(args, "profile", None))
+    data, targets, err, error_code = _resolve_audio_operation(args)
     if err:
-        print("voice down: %s" % err, file=sys.stderr)
-        return 2
+        print("voice audio down: %s" % err, file=sys.stderr)
+        return error_code
+    assert data is not None
     profile_note = " profile=%s" % args.profile if getattr(args, "profile", None) else ""
-    print("voice down: manifest OK%s -- %s" % (profile_note, voice_config.describe(data)))
+    context = _audio_context(targets)
+    print(
+        "voice audio down: manifest OK%s -- %s%s"
+        % (profile_note, voice_config.describe(data), " -- " + context if context else "")
+    )
     exit_code = 0
-    for kind, lifecycle, table, serve in _audio_serves(data):
+    for kind, lifecycle, table, serve in _audio_serves(data, targets):
         if lifecycle == "external":
-            print("voice down: %s serve lifecycle is external; skipping managed tear-down" % kind)
+            print("voice audio down: %s serve lifecycle is external; skipping managed tear-down" % kind)
             continue
         if lifecycle == "native":
             try:
@@ -305,22 +407,92 @@ def cmd_down(args):
                     native_serve.NativeServeConfig.from_table(kind, table)
                 )
                 result = native.tear_down(dry_run=getattr(args, "dry_run", False))
-                _print_native_result("voice down", kind, result)
+                _print_native_result("voice audio down", kind, result)
                 if result.get("returncode") != 0:
                     exit_code = 1
             except Exception as exc:  # noqa: BLE001 - configured native process may fail locally
-                print("voice down: %s native lifecycle failed -- %s" % (kind, exc), file=sys.stderr)
+                print("voice audio down: %s native lifecycle failed -- %s" % (kind, exc), file=sys.stderr)
                 exit_code = 1
             continue
         try:
             dry_run = getattr(args, "dry_run", False)
             rc = serve.tear_down(dry_run=True) if dry_run else serve.tear_down()
-            print("voice down: %s serve tear-down rc=%s" % (kind, rc))
+            print("voice audio down: %s serve tear-down rc=%s" % (kind, rc))
             if rc != 0:
                 exit_code = 1
         except ServeNotConfigured as exc:
-            print("voice down: %s serve not configured yet -- %s" % (kind, exc))
-    print("voice down: realtime server foreground process stops with Ctrl+C in `anvil-serving voice proxy run`.")
+            print("voice audio down: %s serve not configured yet -- %s" % (kind, exc))
+    return exit_code
+
+
+def cmd_audio_status(args):
+    data, targets, err, error_code = _resolve_audio_operation(args)
+    if err:
+        print("voice audio status: %s" % err, file=sys.stderr)
+        return error_code
+    assert data is not None
+    context = _audio_context(targets)
+    if context:
+        print("voice audio status: %s" % context)
+    exit_code = 0
+    for kind, lifecycle, table, serve in _audio_serves(data, targets):
+        if lifecycle == "native":
+            status = native_serve.NativeServe(
+                native_serve.NativeServeConfig.from_table(kind, table)
+            ).status()
+            print("voice audio status: %s %s" % (kind, json.dumps(status, sort_keys=True)))
+            continue
+        readiness = serve.wait_ready(timeout=getattr(args, "ready_timeout", 3.0))
+        print(
+            "voice audio status: %s lifecycle=%s state=%s ready=%s detail=%s"
+            % (kind, lifecycle, readiness.docker_state, readiness.ready, readiness.detail)
+        )
+        if not readiness.ready:
+            exit_code = 1
+    return exit_code
+
+
+def _tail_file(path: str, lines: int) -> list[str]:
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            return handle.readlines()[-lines:]
+    except FileNotFoundError:
+        return []
+
+
+def cmd_audio_logs(args):
+    data, targets, err, error_code = _resolve_audio_operation(args)
+    if err:
+        print("voice audio logs: %s" % err, file=sys.stderr)
+        return error_code
+    assert data is not None
+    context = _audio_context(targets)
+    if context:
+        print("voice audio logs: %s" % context)
+    exit_code = 0
+    for kind, lifecycle, table, serve in _audio_serves(data, targets):
+        if lifecycle == "external":
+            print("voice audio logs: %s lifecycle is external; no owned logs" % kind)
+            continue
+        if lifecycle == "native":
+            native = native_serve.NativeServe(
+                native_serve.NativeServeConfig.from_table(kind, table)
+            )
+            lines = _tail_file(native.log_file, args.tail)
+            if not lines:
+                print("voice audio logs: %s has no log output at %s" % (kind, native.log_file))
+                continue
+            print("voice audio logs: %s %s" % (kind, native.log_file))
+            print("".join(lines), end="" if lines[-1].endswith("\n") else "\n")
+            continue
+        try:
+            manifest = generic_serves.load_manifest(serve.config.manifest_path)
+            rc = generic_serves.cmd_logs(manifest, [serve.config.serve_name], tail=str(args.tail))
+        except (FileNotFoundError, ServeNotConfigured) as exc:
+            print("voice audio logs: %s serve not configured -- %s" % (kind, exc), file=sys.stderr)
+            rc = 1
+        if rc != 0:
+            exit_code = 1
     return exit_code
 
 
@@ -674,7 +846,7 @@ def build_parser():
     sub = p.add_subparsers(
         dest="action",
         required=True,
-        metavar="{up,down,run,benchmark,profiles,bridge,sidecar}",
+        metavar="{audio,run,benchmark,profiles,bridge,sidecar}",
     )
 
     def add_config(sp):
@@ -690,15 +862,50 @@ def build_parser():
     def add_dry_run(sp):
         sp.add_argument("--dry-run", action="store_true", help="print the lifecycle action without starting/stopping processes")
 
-    sp = sub.add_parser("up", help="bring up the STT/TTS serves (validates manifest)")
-    add_config(sp)
-    add_profile(sp)
-    add_dry_run(sp)
+    audio = sub.add_parser("audio", help="manage Dark-owned STT/TTS model serves")
+    audio_sub = audio.add_subparsers(
+        dest="audio_action",
+        required=True,
+        metavar="{up,down,status,logs}",
+    )
 
-    sp = sub.add_parser("down", help="tear down the STT/TTS serves")
-    add_config(sp)
-    add_profile(sp)
+    def add_audio_resolution(sp):
+        add_config(sp)
+        add_profile(sp)
+        sp.add_argument("--topology", help="topology document used to resolve STT/TTS owners")
+        sp.add_argument("--topology-overlay", help="deployment overlay identity recorded in context")
+        sp.add_argument("--command-host", help="declared command host")
+        sp.add_argument("--command-runtime", help="declared command runtime")
+        sp.add_argument("--target", help="explicit audio model resource owner")
+        sp.add_argument(
+            "--transport",
+            choices=("auto", "local", "controller"),
+            default="auto",
+            help="execution transport selected after ownership and capacity checks",
+        )
+        sp.add_argument(
+            "--experimental-model-workload",
+            action="store_true",
+            help="allow a topology-permitted experimental model workload",
+        )
+
+    sp = audio_sub.add_parser("up", help="bring up the Dark-owned STT/TTS serves")
+    add_audio_resolution(sp)
     add_dry_run(sp)
+    sp.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+
+    sp = audio_sub.add_parser("down", help="tear down the Dark-owned STT/TTS serves")
+    add_audio_resolution(sp)
+    add_dry_run(sp)
+    sp.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+
+    sp = audio_sub.add_parser("status", help="show bounded STT/TTS lifecycle status")
+    add_audio_resolution(sp)
+    sp.add_argument("--ready-timeout", type=float, default=3.0)
+
+    sp = audio_sub.add_parser("logs", help="show bounded STT/TTS lifecycle logs")
+    add_audio_resolution(sp)
+    sp.add_argument("--tail", type=int, default=200)
 
     sp = sub.add_parser("run", help="run the realtime server in the foreground")
     add_config(sp)
@@ -796,30 +1003,37 @@ def main_profiles_validate(argv=None):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    removed_audio_paths = {
+        "up": "voice audio up",
+        "down": "voice audio down",
+        "start": "voice audio up",
+        "stop": "voice audio down",
+    }
+    if argv and argv[0] in removed_audio_paths:
+        print(
+            "anvil-serving: `voice %s` was removed; use `%s` instead. "
+            "See docs/CLI.md#migration-from-legacy-commands."
+            % (argv[0], removed_audio_paths[argv[0]]),
+            file=sys.stderr,
+        )
+        return 2
     if argv and argv[0] == "sidecar":
         from anvil_serving import voice_sidecar
         return voice_sidecar.main(argv[1:], prog="anvil-serving voice sidecar")
-    if argv and argv[0] == "start":
-        print(
-            "anvil-serving: `voice start` is a compatibility alias; use `voice up` instead.",
-            file=sys.stderr,
-        )
-        argv[0] = "up"
-    elif argv and argv[0] == "stop":
-        print(
-            "anvil-serving: `voice stop` is a compatibility alias; use `voice down` instead.",
-            file=sys.stderr,
-        )
-        argv[0] = "down"
     args = build_parser().parse_args(argv)
     handlers = {
-        "up": cmd_up,
-        "down": cmd_down,
         "run": cmd_run,
         "benchmark": cmd_benchmark,
         "profiles": cmd_profiles,
         "bridge": cmd_bridge,
     }
+    if args.action == "audio":
+        return {
+            "up": cmd_up,
+            "down": cmd_down,
+            "status": cmd_audio_status,
+            "logs": cmd_audio_logs,
+        }[args.audio_action](args)
     return handlers[args.action](args)
 
 
