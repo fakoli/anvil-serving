@@ -72,11 +72,44 @@ def test_realtime_proxy_lifecycle_is_mini_owned_and_bounded():
     assert proxy.logs() == RealtimeProxyLogs()
 
 
-def test_realtime_proxy_rejects_non_mini_ownership_or_non_loopback_bind():
+def test_realtime_proxy_rejects_non_mini_ownership():
     with pytest.raises(ValueError, match="owner"):
         RealtimeProxyService(lambda: _BlockingServer(), owner="dark")
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "100.87.34.66"])
+def test_realtime_proxy_rejects_non_loopback_and_wildcard_binds(host):
     with pytest.raises(ValueError, match="127.0.0.1"):
-        RealtimeProxyService(lambda: _BlockingServer(), host="100.87.34.66")
+        RealtimeProxyService(lambda: _BlockingServer(), host=host)
+
+
+def test_realtime_proxy_close_failure_is_typed_and_does_not_block_restart():
+    close_error = OSError("close failed")
+
+    class CloseFailingServer(_BlockingServer):
+        def server_close(self):
+            self.closed = True
+            raise close_error
+
+    first = CloseFailingServer()
+    second = _BlockingServer()
+    servers = iter((first, second))
+    proxy = RealtimeProxyService(lambda: next(servers))
+
+    proxy.start()
+    assert first.started.wait(1)
+    stopped = proxy.stop(timeout=1)
+    assert stopped.running is False
+    assert stopped.stopping is False
+    assert stopped.close_error is close_error
+    assert first.closed is True
+
+    restarted = proxy.restart(timeout=1)
+    assert restarted.running is True
+    assert restarted.close_error is None
+    assert second.started.wait(1)
+    assert proxy.stop(timeout=1).running is False
+    assert second.closed is True
 
 
 def test_realtime_proxy_foreground_run_reports_running_and_can_be_stopped():

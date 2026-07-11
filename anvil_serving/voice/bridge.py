@@ -207,6 +207,9 @@ class ForwardingBridgeService:
         self._routes = tuple(routes)
         if not self._routes:
             raise ValueError("at least one bridge route is required")
+        for route in self._routes:
+            if route.listen_host != "127.0.0.1":
+                raise ValueError("Mini forwarding bridge routes must listen on 127.0.0.1")
         self._owner = owner
         self._max_log_bytes = max_log_bytes
         self._serve = serve

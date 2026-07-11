@@ -119,6 +119,7 @@ class RealtimeProxyState:
     port: int
     started_at: Optional[float]
     stopping: bool = False
+    close_error: Optional[BaseException] = None
 
 
 @dataclass(frozen=True)
@@ -175,6 +176,7 @@ class RealtimeProxyService:
         self._started_at: Optional[float] = None
         self._running = False
         self._stopping = False
+        self._close_error: Optional[BaseException] = None
         self._shutdown_runner: Optional[threading.Thread] = None
         self._shutdown_request: Optional[_ShutdownRequest] = None
 
@@ -186,6 +188,7 @@ class RealtimeProxyService:
             self._port,
             self._started_at,
             self._stopping,
+            self._close_error,
         )
 
     def _serve_registered(self, server: Any) -> RealtimeProxyState:
@@ -193,9 +196,13 @@ class RealtimeProxyService:
         try:
             server.serve_forever()
         finally:
+            close_error = None
             close = getattr(server, "server_close", None)
             if callable(close):
-                close()
+                try:
+                    close()
+                except BaseException as exc:
+                    close_error = exc
             with self._lock:
                 if self._runner is runner:
                     self._server = None
@@ -204,6 +211,7 @@ class RealtimeProxyService:
                     self._started_at = None
                     self._running = False
                     self._stopping = False
+                    self._close_error = close_error
                     self._shutdown_runner = None
                     self._shutdown_request = None
         return self.status()
@@ -219,6 +227,7 @@ class RealtimeProxyService:
             self._started_at = self._clock()
             self._running = True
             self._stopping = False
+            self._close_error = None
         return self._serve_registered(server)
 
     def start(self) -> RealtimeProxyState:
@@ -238,6 +247,7 @@ class RealtimeProxyService:
             self._started_at = self._clock()
             self._running = True
             self._stopping = False
+            self._close_error = None
             thread.start()
             return self._state_locked()
 

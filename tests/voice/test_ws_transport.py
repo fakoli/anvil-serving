@@ -64,6 +64,14 @@ def test_forwarding_bridge_rejects_non_mini_owner():
         )
 
 
+@pytest.mark.parametrize("listen_host", ["0.0.0.0", "::", "100.87.34.66"])
+def test_forwarding_bridge_rejects_non_loopback_and_wildcard_listeners(listen_host):
+    with pytest.raises(ValueError, match="listen on 127.0.0.1"):
+        ForwardingBridgeService(
+            [TCPBridgeRoute("tts", listen_host, 30111, "100.87.34.66", 30111)]
+        )
+
+
 def _bridge(serve, *, max_log_bytes=64 * 1024):
     return ForwardingBridgeService(
         [TCPBridgeRoute("stt", "127.0.0.1", 30110, "100.87.34.66", 30110)],
