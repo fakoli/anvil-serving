@@ -2,6 +2,7 @@
   "commands": [
     {
       "docs_anchor": "docs/CLI.md#init",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -70,6 +71,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -123,6 +134,7 @@
       "output_policy": "bounded",
       "path": "init",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Generate a local bring-up from detected facts.",
       "tombstone": null,
@@ -131,6 +143,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#router",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -199,6 +212,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -252,6 +275,7 @@
       "output_policy": "bounded",
       "path": "router",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage the deployed router and its lifecycle.",
       "tombstone": null,
@@ -260,6 +284,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -328,6 +353,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -424,17 +459,18 @@
       "output_policy": "foreground",
       "path": "router run",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "router",
       "summary": "Run the router in the foreground.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -503,6 +539,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -579,6 +625,21 @@
       "output_policy": "bounded",
       "path": "router up",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "compose",
+          "service",
+          "env_file",
+          "dry_run"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "up"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_manage"
+      },
       "resource_role": "router",
       "summary": "Start the deployed router.",
       "tombstone": null,
@@ -590,6 +651,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -658,6 +720,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -734,6 +806,20 @@
       "output_policy": "bounded",
       "path": "router down",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "compose",
+          "service",
+          "dry_run"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "down"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_manage"
+      },
       "resource_role": "router",
       "summary": "Stop the deployed router.",
       "tombstone": null,
@@ -745,6 +831,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -813,6 +900,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -889,6 +986,20 @@
       "output_policy": "bounded",
       "path": "router restart",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "container",
+          "dry_run",
+          "no_verify"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "restart"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_manage"
+      },
       "resource_role": "router",
       "summary": "Restart the deployed router.",
       "tombstone": null,
@@ -900,6 +1011,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -968,6 +1080,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -1044,6 +1166,20 @@
       "output_policy": "bounded",
       "path": "router reload",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "container",
+          "dry_run",
+          "no_verify"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "reload"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_manage"
+      },
       "resource_role": "router",
       "summary": "Reload router configuration.",
       "tombstone": null,
@@ -1055,6 +1191,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1123,6 +1260,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -1199,6 +1346,26 @@
       "output_policy": "bounded",
       "path": "router promote",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "container",
+          "dry_run",
+          "profile",
+          "config",
+          "cfg_volume",
+          "image",
+          "profile_dest",
+          "config_dest",
+          "no_reload"
+        ],
+        "confirmed_arguments": {
+          "human_approved": true
+        },
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_promote"
+      },
       "resource_role": "router",
       "summary": "Promote a reviewed router configuration.",
       "tombstone": null,
@@ -1210,6 +1377,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1278,6 +1446,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -1334,6 +1512,16 @@
       "output_policy": "bounded",
       "path": "router status",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "container"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_status"
+      },
       "resource_role": "router",
       "summary": "Show router status.",
       "tombstone": null,
@@ -1345,6 +1533,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1413,6 +1602,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -1479,6 +1678,19 @@
       "output_policy": "bounded",
       "path": "router logs",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "container",
+          "tail",
+          "since",
+          "follow"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "router_logs"
+      },
       "resource_role": "router",
       "summary": "Read bounded router logs.",
       "tombstone": null,
@@ -1490,6 +1702,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1558,6 +1771,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -1634,17 +1857,18 @@
       "output_policy": "bounded",
       "path": "router token",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "router",
       "summary": "Inspect the router token state.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md#serves",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -1713,6 +1937,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -1766,6 +2000,7 @@
       "output_policy": "bounded",
       "path": "serves",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage local model serve lifecycle.",
       "tombstone": null,
@@ -1774,6 +2009,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1842,6 +2078,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -1908,17 +2154,18 @@
       "output_policy": "bounded",
       "path": "serves render",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-serve",
       "summary": "Render a model serve definition.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -1987,6 +2234,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2093,6 +2350,18 @@
       "output_policy": "bounded",
       "path": "serves up",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "up"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_manage"
+      },
       "resource_role": "model-serve",
       "summary": "Start manifest-owned model serves.",
       "tombstone": null,
@@ -2104,6 +2373,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2172,6 +2442,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2258,6 +2538,18 @@
       "output_policy": "bounded",
       "path": "serves down",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "down"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_manage"
+      },
       "resource_role": "model-serve",
       "summary": "Stop manifest-owned model serves.",
       "tombstone": null,
@@ -2269,6 +2561,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2337,6 +2630,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2433,6 +2736,18 @@
       "output_policy": "bounded",
       "path": "serves rm",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "rm"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_manage"
+      },
       "resource_role": "model-serve",
       "summary": "Remove a model serve.",
       "tombstone": null,
@@ -2444,6 +2759,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2512,6 +2828,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2608,6 +2934,18 @@
       "output_policy": "bounded",
       "path": "serves adopt",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "adopt"
+        },
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_manage"
+      },
       "resource_role": "model-serve",
       "summary": "Adopt an existing model serve.",
       "tombstone": null,
@@ -2619,6 +2957,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2687,6 +3026,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2753,6 +3102,16 @@
       "output_policy": "bounded",
       "path": "serves status",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_status"
+      },
       "resource_role": "model-serve",
       "summary": "Show model serve status.",
       "tombstone": null,
@@ -2764,6 +3123,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -2832,6 +3192,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -2928,6 +3298,16 @@
       "output_policy": "bounded",
       "path": "serves logs",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [
+          "names"
+        ],
+        "tool": "serves_logs"
+      },
       "resource_role": "model-serve",
       "summary": "Read bounded model serve logs.",
       "tombstone": null,
@@ -2939,6 +3319,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3010,6 +3391,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -3063,17 +3454,18 @@
       "output_policy": "foreground",
       "path": "serves multiplex",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-serve",
       "summary": "Run the single-resident model multiplexer.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md#models",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -3142,6 +3534,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -3195,6 +3597,7 @@
       "output_policy": "bounded",
       "path": "models",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage model catalog, artifacts, and recipes.",
       "tombstone": null,
@@ -3203,6 +3606,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3271,6 +3675,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3337,17 +3751,18 @@
       "output_policy": "bounded",
       "path": "models sync",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Sync the model catalog.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3416,6 +3831,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3492,17 +3917,18 @@
       "output_policy": "bounded",
       "path": "models pull",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Pull a model artifact.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3571,6 +3997,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3627,17 +4063,18 @@
       "output_policy": "bounded",
       "path": "models score",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Rank models from benchmark evidence.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md#models-recipes",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -3703,6 +4140,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3759,6 +4206,7 @@
       "output_policy": "bounded",
       "path": "models recipes",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Inspect recorded serve recipes.",
       "tombstone": null,
@@ -3767,6 +4215,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3835,6 +4284,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -3891,17 +4350,18 @@
       "output_policy": "bounded",
       "path": "models recipes list",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "List recorded serve recipes.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -3973,6 +4433,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -4026,17 +4496,18 @@
       "output_policy": "bounded",
       "path": "models recipes show",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Show one recorded serve recipe.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md#models-cache-prune",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -4105,6 +4576,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -4158,6 +4639,7 @@
       "output_policy": "bounded",
       "path": "models cache",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage model cache storage.",
       "tombstone": null,
@@ -4166,6 +4648,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -4234,6 +4717,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4305,22 +4798,33 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--execute"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Delete the planned cache candidates.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "models cache prune",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "model-catalog",
       "summary": "Plan or prune the model cache.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -4386,6 +4890,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4442,6 +4956,7 @@
       "output_policy": "bounded",
       "path": "models recipe",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed singular recipe spelling.",
       "tombstone": {
@@ -4453,6 +4968,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -4518,6 +5034,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4574,6 +5100,7 @@
       "output_policy": "bounded",
       "path": "models recipe list",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed singular recipe list path.",
       "tombstone": {
@@ -4585,6 +5112,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -4650,6 +5178,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -4706,6 +5244,7 @@
       "output_policy": "bounded",
       "path": "models recipe show",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed singular recipe show path.",
       "tombstone": {
@@ -4717,6 +5256,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#eval",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -4785,6 +5325,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -4838,6 +5388,7 @@
       "output_policy": "bounded",
       "path": "eval",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Run quality evaluation workflows.",
       "tombstone": null,
@@ -4846,6 +5397,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -4917,6 +5469,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -4970,17 +5532,18 @@
       "output_policy": "bounded",
       "path": "eval usage",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Analyze recorded usage.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -4988,7 +5551,7 @@
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.preflight:main",
-      "mutation_class": "read",
+      "mutation_class": "mutate",
       "options": [
         {
           "flags": [
@@ -5052,6 +5615,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -5100,11 +5673,39 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the live evaluation workload.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "eval preflight",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "base_url",
+          "model",
+          "api_key_env",
+          "needle_ctx",
+          "tool_batch",
+          "no_thinking",
+          "timeout_seconds"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "preflight_probe"
+      },
       "resource_role": "evaluation",
       "summary": "Preflight an endpoint.",
       "tombstone": null,
@@ -5116,6 +5717,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -5187,6 +5789,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -5240,17 +5852,18 @@
       "output_policy": "bounded",
       "path": "eval planning",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Run planning evaluation.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -5322,6 +5935,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -5370,32 +5993,23 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "eval bootstrap",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Bootstrap a quality profile.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -5467,6 +6081,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -5515,32 +6139,23 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "eval calibrate",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Calibrate a reviewable quality profile.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md#eval-benchmark",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -5606,6 +6221,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -5662,6 +6287,7 @@
       "output_policy": "bounded",
       "path": "eval benchmark",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Run or import benchmark evidence.",
       "tombstone": null,
@@ -5670,6 +6296,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -5677,7 +6304,7 @@
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.benchmark:main",
-      "mutation_class": "read",
+      "mutation_class": "mutate",
       "options": [
         {
           "flags": [
@@ -5741,6 +6368,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -5789,11 +6426,41 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the live evaluation workload.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "eval benchmark run",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "base_url",
+          "model",
+          "api_key_env",
+          "requests",
+          "concurrency",
+          "max_tokens",
+          "ctx_tokens",
+          "no_thinking",
+          "timeout_seconds"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_probe"
+      },
       "resource_role": "evaluation",
       "summary": "Run an endpoint benchmark.",
       "tombstone": null,
@@ -5805,6 +6472,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#eval-benchmark-external",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -5870,6 +6538,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -5926,6 +6604,7 @@
       "output_policy": "bounded",
       "path": "eval benchmark external",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage external benchmark evidence.",
       "tombstone": null,
@@ -5934,6 +6613,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6005,6 +6685,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -6053,32 +6743,23 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "eval benchmark external init",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Initialize benchmark evidence storage.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6147,6 +6828,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -6203,6 +6894,14 @@
       "output_policy": "bounded",
       "path": "eval benchmark external sources",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "external_bench_sources"
+      },
       "resource_role": "evaluation",
       "summary": "List benchmark sources.",
       "tombstone": null,
@@ -6214,6 +6913,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6285,6 +6985,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -6331,16 +7041,6 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
           "tombstone": null,
           "value_name": null
         }
@@ -6348,17 +7048,18 @@
       "output_policy": "bounded",
       "path": "eval benchmark external fetch",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Fetch and import benchmark evidence.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6430,6 +7131,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -6478,32 +7189,23 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
       "path": "eval benchmark external import",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Import saved benchmark evidence.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6572,6 +7274,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -6628,6 +7340,14 @@
       "output_policy": "bounded",
       "path": "eval benchmark external list",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "external_bench_list"
+      },
       "resource_role": "evaluation",
       "summary": "List normalized benchmark evidence.",
       "tombstone": null,
@@ -6639,6 +7359,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -6707,6 +7428,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -6763,6 +7494,14 @@
       "output_policy": "bounded",
       "path": "eval benchmark external report",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "external_bench_report"
+      },
       "resource_role": "evaluation",
       "summary": "Render a benchmark report.",
       "tombstone": null,
@@ -6774,405 +7513,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
-      "gpu_role_required": false,
-      "handler": "anvil_serving.external_benchmarks.cli:main",
-      "mutation_class": "read",
-      "options": [
-        {
-          "flags": [
-            "--topology"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
-          "tombstone": null,
-          "value_name": "PATH"
-        },
-        {
-          "flags": [
-            "--topology-overlay"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Deployment overlay applied to the topology.",
-          "tombstone": null,
-          "value_name": "PATH"
-        },
-        {
-          "flags": [
-            "--command-host"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Declared command host.",
-          "tombstone": null,
-          "value_name": "host:ID"
-        },
-        {
-          "flags": [
-            "--command-runtime"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Declared command runtime.",
-          "tombstone": null,
-          "value_name": "runtime:ID"
-        },
-        {
-          "flags": [
-            "--target"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Explicit resource-owner target.",
-          "tombstone": null,
-          "value_name": "host:ID|host-role:ROLE"
-        },
-        {
-          "flags": [
-            "--transport"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Execution transport.",
-          "tombstone": null,
-          "value_name": "auto|local|controller|ssh"
-        },
-        {
-          "flags": [
-            "--experimental-model-workload"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--json"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Emit the machine-readable result envelope.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--quiet"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Suppress nonessential human output.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--verbose"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Include diagnostic human output.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "-h",
-            "--help"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Show focused help and exit.",
-          "tombstone": null,
-          "value_name": null
-        }
-      ],
-      "output_policy": "bounded",
-      "path": "eval benchmark external export",
-      "recovery_capable": false,
-      "resource_role": "evaluation",
-      "summary": "Export benchmark evidence.",
-      "tombstone": null,
-      "transports": [
-        "local",
-        "controller"
-      ],
-      "visible": true
-    },
-    {
-      "docs_anchor": "docs/CLI.md",
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
-      "gpu_role_required": false,
-      "handler": "anvil_serving.external_benchmarks.cli:main",
-      "mutation_class": "read",
-      "options": [
-        {
-          "flags": [
-            "--topology"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
-          "tombstone": null,
-          "value_name": "PATH"
-        },
-        {
-          "flags": [
-            "--topology-overlay"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Deployment overlay applied to the topology.",
-          "tombstone": null,
-          "value_name": "PATH"
-        },
-        {
-          "flags": [
-            "--command-host"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Declared command host.",
-          "tombstone": null,
-          "value_name": "host:ID"
-        },
-        {
-          "flags": [
-            "--command-runtime"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Declared command runtime.",
-          "tombstone": null,
-          "value_name": "runtime:ID"
-        },
-        {
-          "flags": [
-            "--target"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Explicit resource-owner target.",
-          "tombstone": null,
-          "value_name": "host:ID|host-role:ROLE"
-        },
-        {
-          "flags": [
-            "--transport"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Execution transport.",
-          "tombstone": null,
-          "value_name": "auto|local|controller|ssh"
-        },
-        {
-          "flags": [
-            "--experimental-model-workload"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--json"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Emit the machine-readable result envelope.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--quiet"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Suppress nonessential human output.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--verbose"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Include diagnostic human output.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "-h",
-            "--help"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Show focused help and exit.",
-          "tombstone": null,
-          "value_name": null
-        }
-      ],
-      "output_policy": "bounded",
-      "path": "eval benchmark external compare",
-      "recovery_capable": false,
-      "resource_role": "evaluation",
-      "summary": "Compare local benchmark evidence.",
-      "tombstone": null,
-      "transports": [
-        "local",
-        "controller"
-      ],
-      "visible": true
-    },
-    {
-      "docs_anchor": "docs/CLI.md#eval-benchmark-external",
-      "execution_policy": "offline",
-      "execution_runtime_roles": [],
-      "gpu_role_required": false,
-      "handler": null,
-      "mutation_class": "read",
-      "options": [
-        {
-          "flags": [
-            "--topology"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
-          "tombstone": null,
-          "value_name": "PATH"
-        },
-        {
-          "flags": [
-            "--topology-overlay"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Deployment overlay applied to the topology.",
-          "tombstone": null,
-          "value_name": "PATH"
-        },
-        {
-          "flags": [
-            "--command-host"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Declared command host.",
-          "tombstone": null,
-          "value_name": "host:ID"
-        },
-        {
-          "flags": [
-            "--command-runtime"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Declared command runtime.",
-          "tombstone": null,
-          "value_name": "runtime:ID"
-        },
-        {
-          "flags": [
-            "--target"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Explicit resource-owner target.",
-          "tombstone": null,
-          "value_name": "host:ID|host-role:ROLE"
-        },
-        {
-          "flags": [
-            "--transport"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Execution transport.",
-          "tombstone": null,
-          "value_name": "auto|local|controller|ssh"
-        },
-        {
-          "flags": [
-            "--experimental-model-workload"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--json"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Emit the machine-readable result envelope.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--quiet"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Suppress nonessential human output.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--verbose"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Include diagnostic human output.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "-h",
-            "--help"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Show focused help and exit.",
-          "tombstone": null,
-          "value_name": null
-        }
-      ],
-      "output_policy": "bounded",
-      "path": "eval benchmark external notebook",
-      "recovery_capable": false,
-      "resource_role": null,
-      "summary": "Record, list, or render model-bakeoff notebook runs.",
-      "tombstone": null,
-      "transports": [],
-      "visible": true
-    },
-    {
-      "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7244,6 +7585,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -7295,19 +7646,20 @@
         }
       ],
       "output_policy": "bounded",
-      "path": "eval benchmark external notebook add",
+      "path": "eval benchmark external export",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
-      "summary": "Record a bakeoff evidence run.",
+      "summary": "Export benchmark evidence.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7376,6 +7728,457 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark external compare",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "external_bench_compare"
+      },
+      "resource_role": "evaluation",
+      "summary": "Compare local benchmark evidence.",
+      "tombstone": null,
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#eval-benchmark-external",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark external notebook",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Record, list, or render model-bakeoff notebook runs.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.external_benchmarks.cli:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark external notebook add",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "evaluation",
+      "summary": "Record a bakeoff evidence run.",
+      "tombstone": null,
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.external_benchmarks.cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -7432,17 +8235,18 @@
       "output_policy": "bounded",
       "path": "eval benchmark external notebook list",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "List recorded bakeoff runs.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7514,6 +8318,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -7567,17 +8381,18 @@
       "output_policy": "bounded",
       "path": "eval benchmark external notebook render",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "evaluation",
       "summary": "Render the bakeoff comparison.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/VOICE.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -7643,6 +8458,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -7699,6 +8524,7 @@
       "output_policy": "bounded",
       "path": "voice",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage audio and realtime proxy operations.",
       "tombstone": null,
@@ -7707,6 +8533,7 @@
     },
     {
       "docs_anchor": "docs/VOICE.md#audio-lifecycle",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -7775,6 +8602,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -7828,6 +8665,7 @@
       "output_policy": "bounded",
       "path": "voice audio",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage Dark-owned STT/TTS lifecycle.",
       "tombstone": null,
@@ -7836,6 +8674,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -7904,6 +8743,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -7980,6 +8829,16 @@
       "output_policy": "bounded",
       "path": "voice audio up",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "up"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "voice_manage"
+      },
       "resource_role": "audio",
       "summary": "Start audio serves.",
       "tombstone": null,
@@ -7991,6 +8850,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8059,6 +8919,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -8135,6 +9005,16 @@
       "output_policy": "bounded",
       "path": "voice audio down",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "action": "down"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "voice_manage"
+      },
       "resource_role": "audio",
       "summary": "Stop audio serves.",
       "tombstone": null,
@@ -8146,6 +9026,7 @@
     },
     {
       "docs_anchor": "docs/VOICE.md#realtime-proxy",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -8214,6 +9095,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -8267,6 +9158,7 @@
       "output_policy": "bounded",
       "path": "voice proxy",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage the realtime proxy process.",
       "tombstone": null,
@@ -8275,6 +9167,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8346,6 +9239,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -8399,17 +9302,18 @@
       "output_policy": "foreground",
       "path": "voice proxy run",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "proxy",
       "summary": "Run the realtime proxy.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8478,6 +9382,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -8554,17 +9468,18 @@
       "output_policy": "foreground",
       "path": "voice proxy bridge",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "proxy",
       "summary": "Run the Mini-to-Dark audio bridge.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8636,6 +9551,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -8689,17 +9614,18 @@
       "output_policy": "bounded",
       "path": "voice benchmark",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Benchmark an end-to-end voice session.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/VOICE.md#profiles",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -8768,6 +9694,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -8821,6 +9757,7 @@
       "output_policy": "bounded",
       "path": "voice profiles",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Inspect voice profiles.",
       "tombstone": null,
@@ -8829,6 +9766,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -8900,6 +9838,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -8953,17 +9901,18 @@
       "output_policy": "bounded",
       "path": "voice profiles list",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "List voice profiles.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9035,6 +9984,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -9088,17 +10047,18 @@
       "output_policy": "bounded",
       "path": "voice profiles validate",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Validate the profile selected by --profile.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/VOICE.md#speech-to-speech-sidecar",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -9167,6 +10127,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -9220,6 +10190,7 @@
       "output_policy": "bounded",
       "path": "voice sidecar",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage the speech-to-speech sidecar.",
       "tombstone": null,
@@ -9228,6 +10199,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9296,6 +10268,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -9352,17 +10334,18 @@
       "output_policy": "bounded",
       "path": "voice sidecar validate",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Validate a sidecar manifest.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9434,6 +10417,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -9487,17 +10480,18 @@
       "output_policy": "bounded",
       "path": "voice sidecar command",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Render a sidecar command.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -9569,6 +10563,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -9632,17 +10636,18 @@
       "output_policy": "bounded",
       "path": "voice sidecar compose",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "audio",
       "summary": "Render sidecar compose configuration.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -9708,6 +10713,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -9764,6 +10779,7 @@
       "output_policy": "bounded",
       "path": "voice up",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -9775,6 +10791,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -9840,6 +10857,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -9896,6 +10923,7 @@
       "output_policy": "bounded",
       "path": "voice down",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -9907,6 +10935,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -9972,6 +11001,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10028,6 +11067,7 @@
       "output_policy": "bounded",
       "path": "voice run",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10039,6 +11079,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10104,6 +11145,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10160,6 +11211,7 @@
       "output_policy": "bounded",
       "path": "voice bridge",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10171,6 +11223,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10236,6 +11289,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10292,6 +11355,7 @@
       "output_policy": "bounded",
       "path": "voice start",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10303,6 +11367,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10368,6 +11433,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10424,6 +11499,7 @@
       "output_policy": "bounded",
       "path": "voice stop",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed voice command.",
       "tombstone": {
@@ -10435,6 +11511,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#harness",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10500,6 +11577,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10556,6 +11643,7 @@
       "output_policy": "bounded",
       "path": "harness",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage harness integration.",
       "tombstone": null,
@@ -10564,6 +11652,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#harness",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10632,6 +11721,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -10685,6 +11784,7 @@
       "output_policy": "bounded",
       "path": "harness sync",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Synchronize harness configuration",
       "tombstone": null,
@@ -10693,6 +11793,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -10761,6 +11862,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -10837,6 +11948,34 @@
       "output_policy": "bounded",
       "path": "harness sync openclaw",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "config",
+          "base_url",
+          "api_key_env",
+          "out",
+          "overwrite",
+          "restart",
+          "skills",
+          "skill_dir",
+          "voice",
+          "voice_realtime_url",
+          "voice_model",
+          "voice_consult_model",
+          "voice_consult_thinking_level",
+          "voice_consult_bootstrap_context_mode",
+          "voice_api_key_env",
+          "dry_run",
+          "timeout_seconds"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "openclaw_sync"
+      },
       "resource_role": "gateway",
       "summary": "Synchronize harness configuration for OpenClaw.",
       "tombstone": null,
@@ -10848,6 +11987,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#harness",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -10916,6 +12056,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -10969,6 +12119,7 @@
       "output_policy": "bounded",
       "path": "harness restart",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Restart the harness",
       "tombstone": null,
@@ -10977,6 +12128,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -11045,6 +12197,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -11121,6 +12283,19 @@
       "output_policy": "bounded",
       "path": "harness restart openclaw",
       "recovery_capable": true,
+      "remote_operation": {
+        "allowed_arguments": [
+          "dry_run",
+          "timeout_seconds"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "openclaw_gateway_restart"
+      },
       "resource_role": "gateway",
       "summary": "Restart the harness for OpenClaw.",
       "tombstone": null,
@@ -11132,7 +12307,8 @@
       "visible": true
     },
     {
-      "docs_anchor": "docs/CLI.md#mcp",
+      "docs_anchor": "docs/CLI.md#harness",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11198,6 +12374,314 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "harness status",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Show harness status",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.harness:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "harness status openclaw",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "timeout_seconds",
+          "max_output_bytes"
+        ],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "openclaw_gateway_status"
+      },
+      "resource_role": "gateway",
+      "summary": "Show harness status for OpenClaw.",
+      "tombstone": null,
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#mcp",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -11267,6 +12751,7 @@
       "output_policy": "bounded",
       "path": "mcp",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Expose bounded MCP management tools.",
       "tombstone": {
@@ -11278,6 +12763,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -11346,6 +12832,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -11415,6 +12911,14 @@
       "output_policy": "protocol",
       "path": "mcp serve",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "mcp-bridge",
+        "positional_arguments": [],
+        "tool": null
+      },
       "resource_role": "operator",
       "summary": "Run the MCP management server.",
       "tombstone": null,
@@ -11426,6 +12930,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -11497,6 +13002,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -11563,6 +13078,14 @@
       "output_policy": "bounded",
       "path": "mcp tools",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "mcp-bridge",
+        "positional_arguments": [],
+        "tool": null
+      },
       "resource_role": "operator",
       "summary": "List bounded MCP tools.",
       "tombstone": null,
@@ -11574,6 +13097,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11639,6 +13163,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -11708,6 +13242,7 @@
       "output_policy": "bounded",
       "path": "mcp list-tools",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed MCP tool-listing command.",
       "tombstone": {
@@ -11719,6 +13254,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#controller",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -11787,6 +13323,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -11840,6 +13386,7 @@
       "output_policy": "bounded",
       "path": "controller",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Manage the private controller service.",
       "tombstone": null,
@@ -11848,6 +13395,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -11919,6 +13467,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -11985,17 +13543,18 @@
       "output_policy": "foreground",
       "path": "controller serve",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": "controller",
       "summary": "Run the private controller.",
       "tombstone": null,
       "transports": [
-        "local",
-        "controller"
+        "local"
       ],
       "visible": true
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",
@@ -12067,6 +13626,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -12120,6 +13689,14 @@
       "output_policy": "bounded",
       "path": "controller status",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "controller-status",
+        "positional_arguments": [],
+        "tool": null
+      },
       "resource_role": "controller",
       "summary": "Probe controller health.",
       "tombstone": null,
@@ -12131,6 +13708,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md#host",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -12199,6 +13777,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -12252,6 +13840,7 @@
       "output_policy": "bounded",
       "path": "host",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Inspect and repair declared host operations.",
       "tombstone": null,
@@ -12260,10 +13849,163 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.host:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "host status",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_summary"
+      },
+      "resource_role": "host",
+      "summary": "Show structured host status.",
+      "tombstone": null,
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.gpus:main",
@@ -12331,6 +14073,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -12384,6 +14136,14 @@
       "output_policy": "bounded",
       "path": "host gpus",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "gpu_inventory"
+      },
       "resource_role": "host",
       "summary": "Show GPU inventory.",
       "tombstone": null,
@@ -12395,10 +14155,10 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.host:main",
@@ -12466,6 +14226,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -12519,6 +14289,14 @@
       "output_policy": "bounded",
       "path": "host doctor",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_summary"
+      },
       "resource_role": "host",
       "summary": "Diagnose host configuration.",
       "tombstone": null,
@@ -12530,10 +14308,12 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [
+        "windows"
+      ],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.host:main",
@@ -12598,6 +14378,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -12674,6 +14464,24 @@
       "output_policy": "bounded",
       "path": "host wsl-config",
       "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "memory",
+          "swap",
+          "revert",
+          "force",
+          "dry_run"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "wsl-config"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_manage"
+      },
       "resource_role": "host",
       "summary": "Render or update WSL configuration.",
       "tombstone": null,
@@ -12685,10 +14493,13 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [
+        "windows",
+        "macos"
+      ],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.host:main",
@@ -12753,6 +14564,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -12829,6 +14650,20 @@
       "output_policy": "bounded",
       "path": "host restart-docker",
       "recovery_capable": true,
+      "remote_operation": {
+        "allowed_arguments": [
+          "dry_run"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "restart-docker"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_manage"
+      },
       "resource_role": "host",
       "summary": "Restart Docker Desktop.",
       "tombstone": null,
@@ -12841,10 +14676,12 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [
+        "windows"
+      ],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.host:main",
@@ -12909,6 +14746,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -12985,6 +14832,20 @@
       "output_policy": "bounded",
       "path": "host reset-wsl",
       "recovery_capable": true,
+      "remote_operation": {
+        "allowed_arguments": [
+          "dry_run"
+        ],
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "action": "reset-wsl"
+        },
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "host_manage"
+      },
       "resource_role": "host",
       "summary": "Reset WSL.",
       "tombstone": null,
@@ -12997,8 +14858,11 @@
     },
     {
       "docs_anchor": "docs/CLI.md#doctor",
-      "execution_policy": "offline",
-      "execution_runtime_roles": [],
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native"
+      ],
       "gpu_role_required": false,
       "handler": "anvil_serving.doctor:main",
       "mutation_class": "read",
@@ -13065,6 +14929,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -13118,14 +14992,26 @@
       "output_policy": "bounded",
       "path": "doctor",
       "recovery_capable": false,
-      "resource_role": null,
-      "summary": "Check local dependencies and configured health.",
+      "remote_operation": {
+        "allowed_arguments": [],
+        "confirmed_arguments": {},
+        "fixed_arguments": {},
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "doctor_summary"
+      },
+      "resource_role": "host",
+      "summary": "Check dependencies and configured health.",
       "tombstone": null,
-      "transports": [],
+      "transports": [
+        "local",
+        "controller"
+      ],
       "visible": true
     },
     {
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/CLI.md#topology",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13191,6 +15077,580 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Inspect and resolve deployment topology.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#topology",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.topology_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology show",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Show a validated topology summary.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#topology",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.topology_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology validate",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Validate a topology offline.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md#topology",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.topology_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "topology resolve",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Resolve one canonical command against a topology.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13247,6 +15707,7 @@
       "output_policy": "bounded",
       "path": "serve",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13258,6 +15719,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13323,6 +15785,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13379,6 +15851,7 @@
       "output_policy": "bounded",
       "path": "deploy",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13390,6 +15863,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13455,6 +15929,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13511,6 +15995,7 @@
       "output_policy": "bounded",
       "path": "multiplexer",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13522,6 +16007,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13587,6 +16073,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13643,6 +16139,7 @@
       "output_policy": "bounded",
       "path": "cache-prune",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13654,6 +16151,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13719,6 +16217,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13775,6 +16283,7 @@
       "output_policy": "bounded",
       "path": "score",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13786,6 +16295,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13851,6 +16361,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -13907,6 +16427,7 @@
       "output_policy": "bounded",
       "path": "profile",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -13918,6 +16439,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -13983,6 +16505,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14039,6 +16571,7 @@
       "output_policy": "bounded",
       "path": "preflight",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14050,6 +16583,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -14115,6 +16649,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14171,6 +16715,7 @@
       "output_policy": "bounded",
       "path": "benchmark",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14182,6 +16727,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -14247,6 +16793,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14303,6 +16859,7 @@
       "output_policy": "bounded",
       "path": "external-bench",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14314,6 +16871,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -14379,6 +16937,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14435,6 +17003,7 @@
       "output_policy": "bounded",
       "path": "calibrate",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14446,6 +17015,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -14511,6 +17081,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14567,6 +17147,7 @@
       "output_policy": "bounded",
       "path": "gpus",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14578,6 +17159,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -14643,6 +17225,16 @@
           "summary": "Execution transport.",
           "tombstone": null,
           "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
         },
         {
           "flags": [
@@ -14699,6 +17291,7 @@
       "output_policy": "bounded",
       "path": "voice-sidecar",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14710,6 +17303,7 @@
     },
     {
       "docs_anchor": "docs/CLI.md",
+      "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
@@ -14778,6 +17372,16 @@
         },
         {
           "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--experimental-model-workload"
           ],
           "output_policy": null,
@@ -14831,6 +17435,7 @@
       "output_policy": "bounded",
       "path": "onboard",
       "recovery_capable": false,
+      "remote_operation": null,
       "resource_role": null,
       "summary": "Removed command.",
       "tombstone": {
@@ -14841,5 +17446,5 @@
       "visible": false
     }
   ],
-  "schema_version": 1
+  "schema_version": 2
 }

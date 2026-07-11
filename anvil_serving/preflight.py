@@ -144,9 +144,16 @@ def resolve_api_key(api_key_env=None):
     return None
 
 def main(argv=None, *, prog="anvil-serving eval preflight"):
-    ap = argparse.ArgumentParser(prog=prog)
-    ap.add_argument("--base-url", required=True)
-    ap.add_argument("--model", required=True)
+    ap = argparse.ArgumentParser(
+        prog=prog,
+        description="Run correctness gates against a direct endpoint or a serves-manifest tier.",
+    )
+    endpoint = ap.add_argument_group("direct endpoint input")
+    endpoint.add_argument("--base-url", help="OpenAI-compatible endpoint base URL")
+    endpoint.add_argument("--model", help="served model id")
+    manifest = ap.add_argument_group("serves manifest input")
+    manifest.add_argument("--manifest", help="serves manifest TOML (used with --tier)")
+    manifest.add_argument("--tier", help="serve name in the manifest; fills endpoint and model")
     ap.add_argument("--api-key-env", default=None,
                     help="read the bearer token from this environment variable")
     ap.add_argument("--needle-ctx", type=int, default=128000)
@@ -159,6 +166,16 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
                          "reasoning via 'reasoning effort', not the chat template) -> they just "
                          "need adequate max_tokens; the correctness tests already use >=256.")
     a = ap.parse_args(argv)
+    from .eval import resolve_endpoint_target
+    try:
+        a.base_url, a.model, _selected = resolve_endpoint_target(
+            tier=a.tier,
+            manifest=a.manifest,
+            base_url=a.base_url,
+            model=a.model,
+        )
+    except (OSError, ValueError) as exc:
+        ap.error(str(exc))
     api_key = resolve_api_key(a.api_key_env)
     ctk = {"enable_thinking": False} if a.no_thinking else None
     tests = [

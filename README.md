@@ -138,7 +138,7 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | `anvil-serving serves` | Manage local model serves through Docker Compose. |
 | `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and inspect recorded serve recipes (`recipe`). |
 | `anvil-serving serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
-| `anvil-serving init` | Generate a consistent local bring-up from scratch. |
+| `anvil-serving init` | Generate a consistent local bring-up and generic offline topology. |
 | `anvil-serving eval preflight` | Correctness-check a model endpoint before trusting it. |
 | `anvil-serving eval benchmark run` | Replay representative traffic and measure capacity. |
 | `anvil-serving eval benchmark external` | Import and compare external inference benchmark priors. |
@@ -146,6 +146,7 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | `anvil-serving models cache prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |
 | `anvil-serving doctor` | Preflight the environment a router deploy depends on (Python, Docker, Compose, GPU runtime). |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings (memory caps, mmap gotchas). |
+| `anvil-serving host status` | Inspect a local or topology-targeted host through its authenticated controller. |
 
 **Quality loop** — the measurements behind the routing profile:
 
@@ -161,6 +162,8 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | Command | Purpose |
 |---------|---------|
 | `anvil-serving harness sync openclaw` | Render OpenClaw model config from live router presets. |
+| `anvil-serving harness status openclaw` | Read bounded OpenClaw gateway status from its declared owner. |
+| `anvil-serving topology show|validate|resolve` | Inspect and resolve deployment ownership offline. |
 | `anvil-serving mcp serve` | Expose status, route probes, voice lifecycle, OpenClaw sync, preflight, and benchmark probes as stdio MCP tools. |
 | `anvil-serving mcp tools` | Print the MCP tool catalog as JSON. |
 | `anvil-serving controller` | Expose the same MCP tool contract over a token-authenticated private/tailnet HTTP controller. |

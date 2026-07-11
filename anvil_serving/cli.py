@@ -4,9 +4,11 @@ from __future__ import annotations
 import contextlib
 import difflib
 import io
+import os
 import sys
+import uuid
 from importlib import metadata as importlib_metadata
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from . import __version__
@@ -23,11 +25,22 @@ from .operator_output import (
     classify_command_policy,
     enforce_command_policy,
     error_envelope,
+    render_human,
     render_json,
     success_envelope,
 )
 from .targets import CommandSpec, ExecutionPlan, TargetResolutionError, resolve_execution_plan
 from .topology import TopologyValidationError, load_topology
+from .transports import (
+    DEFAULT_TIMEOUT_SECONDS,
+    MAX_TIMEOUT_SECONDS,
+    ControllerTransport,
+    Operation,
+    SSHRecoveryTransport,
+    TransportError as AdapterTransportError,
+    TransportResult,
+    execute_plan,
+)
 
 
 MIN_PYTHON = (3, 11)
@@ -66,6 +79,7 @@ _HANDLER_PROGS = {
     "anvil_serving.router.serve": "anvil-serving router run",
     "anvil_serving.router_manage": "anvil-serving router",
     "anvil_serving.serves": "anvil-serving serves",
+    "anvil_serving.topology_cli": "anvil-serving topology",
     "anvil_serving.voice.cli": "anvil-serving voice",
     "anvil_serving.voice_sidecar": "anvil-serving voice-sidecar",
 }
@@ -79,6 +93,7 @@ class _ResolutionOptions:
     command_runtime: str | None = None
     target: str | None = None
     transport: str = "auto"
+    allow_ssh_fallback: bool = False
     experimental_model_workload: bool = False
 
     @property
@@ -92,7 +107,7 @@ class _ResolutionOptions:
                 self.command_runtime,
                 self.target,
             )
-        ) or self.transport != "auto" or self.experimental_model_workload
+        ) or self.transport != "auto" or self.allow_ssh_fallback or self.experimental_model_workload
 
 
 class _ResolutionOptionError(ValueError):
@@ -159,6 +174,8 @@ def _print_help() -> None:
     print("  anvil-serving --version")
     print()
     print("Global options:")
+    print("  %-20s %s" % ("--command-manifest", "Print the machine-readable command manifest and exit."))
+    print("  %-20s %s" % ("-V, --version", "Print the installed version and exit."))
     for option in COMMAND_TREE.global_options:
         print("  %-20s %s" % (", ".join(option.flags), option.summary))
     print()
@@ -281,7 +298,12 @@ def _unknown_command(token: str, path: Sequence[CommandNode], siblings: Sequence
         assert match is not None
         suggestion = match.tombstone.replacement if match.tombstone else match.name
         print("Did you mean '%s'?" % suggestion, file=sys.stderr)
-    print("Run 'anvil-serving --help' to see available commands.", file=sys.stderr)
+    help_path = " ".join(node.name for node in path)
+    help_command = "anvil-serving%s --help" % ((" " + help_path) if help_path else "")
+    print("Run '%s' to see available %s." % (
+        help_command,
+        "actions" if path else "commands",
+    ), file=sys.stderr)
     return 2
 
 
@@ -339,6 +361,7 @@ def _extract_resolution_options(
         "command_runtime": None,
         "target": None,
         "transport": "auto",
+        "allow_ssh_fallback": False,
         "experimental_model_workload": False,
     }
     forwarded: list[str] = []
@@ -363,6 +386,12 @@ def _extract_resolution_options(
             raise _ResolutionOptionError(
                 "--experimental-model-workload does not accept a value"
             )
+        if token == "--allow-ssh-fallback":
+            values["allow_ssh_fallback"] = True
+            index += 1
+            continue
+        if token.startswith("--allow-ssh-fallback="):
+            raise _ResolutionOptionError("--allow-ssh-fallback does not accept a value")
 
         flag, separator, inline_value = token.partition("=")
         attribute = _RESOLUTION_VALUE_OPTIONS.get(flag)
@@ -391,6 +420,7 @@ def _command_spec(path: Sequence[CommandNode]) -> CommandSpec:
         resource_role=node.resource_role,
         supported_transports=node.transports,
         execution_runtime_roles=node.execution_runtime_roles,
+        execution_host_os=node.execution_host_os,
         mutation_class=node.mutation_class,
         recovery_capable=node.recovery_capable,
         gpu_role_required=node.gpu_role_required,
@@ -413,7 +443,11 @@ def _resolve_dispatch_plan(
         raise _ResolutionOptionError(
             f"{_command_name(path)} does not support target-resolution options"
         )
-    topology = load_topology(options.topology)
+    if options.allow_ssh_fallback and not command.recovery_capable:
+        raise _ResolutionOptionError(
+            f"{_command_name(path)} is not recovery-capable; drop --allow-ssh-fallback"
+        )
+    topology = load_topology(options.topology, options.topology_overlay)
     return resolve_execution_plan(
         topology,
         command,
@@ -448,8 +482,317 @@ def command_policy(path: Sequence[CommandNode], argv: Sequence[str]):
     )
 
 
+def _remote_scalar(flag: str, value: str, schema: Mapping[str, object]) -> object:
+    schema_type = schema.get("type")
+    types = schema_type if isinstance(schema_type, list) else [schema_type]
+    try:
+        if "integer" in types:
+            return int(value)
+        if "number" in types:
+            return float(value)
+    except ValueError:
+        raise UsageError(f"{flag} requires a numeric value") from None
+    return value
+
+
+def _remote_arguments(
+    node: CommandNode,
+    rest: Sequence[str],
+    *,
+    confirmed: bool,
+) -> dict[str, object]:
+    """Parse CLI arguments through the declared MCP schema without dispatch."""
+    remote = node.remote_operation
+    if remote is None or remote.mode != "tool" or remote.tool is None:
+        raise UsageError("command has no typed controller operation")
+    from . import mcp
+
+    tool = mcp.TOOLS.get(remote.tool)
+    if tool is None:
+        raise UsageError(f"declared controller tool {remote.tool!r} is unavailable")
+    schema = tool["inputSchema"]
+    properties = schema.get("properties", {})
+    arguments = dict(remote.fixed_arguments)
+    positional: list[str] = []
+    index = 0
+    after_separator = False
+    while index < len(rest):
+        token = rest[index]
+        if token == "--":
+            after_separator = True
+            index += 1
+            continue
+        if after_separator or not token.startswith("-"):
+            positional.append(token)
+            index += 1
+            continue
+        flag, separator, inline = token.partition("=")
+        field = flag[2:].replace("-", "_") if flag.startswith("--") else ""
+        field_schema = properties.get(field)
+        if (
+            not field
+            or not isinstance(field_schema, Mapping)
+            or (remote.allowed_arguments and field not in remote.allowed_arguments)
+        ):
+            raise UsageError(
+                f"{flag} is not supported for remote {node.name}; use focused help"
+            )
+
+        if field in arguments:
+            raise UsageError(f"{flag} is fixed by the canonical command path")
+        schema_type = field_schema.get("type")
+        types = schema_type if isinstance(schema_type, list) else [schema_type]
+        if "boolean" in types:
+            if separator:
+                raise UsageError(f"{flag} does not accept a value")
+            arguments[field] = True
+            index += 1
+            continue
+        if separator:
+            raw_value = inline
+        else:
+            index += 1
+            if index >= len(rest) or rest[index].startswith("-"):
+                raise UsageError(f"{flag} requires a value")
+            raw_value = rest[index]
+        if not raw_value:
+            raise UsageError(f"{flag} requires a value")
+        if "array" in types:
+            item_schema = field_schema.get("items", {"type": "string"})
+            if not isinstance(item_schema, Mapping):
+                raise UsageError(f"{flag} has an invalid remote schema")
+            values = arguments.setdefault(field, [])
+            assert isinstance(values, list)
+            values.append(_remote_scalar(flag, raw_value, item_schema))
+        else:
+            arguments[field] = _remote_scalar(flag, raw_value, field_schema)
+        index += 1
+
+    if positional:
+        fields = remote.positional_arguments
+        if not fields:
+            raise UsageError("remote command does not accept positional arguments")
+        if len(fields) == 1:
+            field = fields[0]
+            field_schema = properties.get(field, {})
+            types = field_schema.get("type")
+            types = types if isinstance(types, list) else [types]
+            if "array" in types:
+                arguments[field] = positional
+            elif len(positional) == 1:
+                arguments[field] = positional[0]
+            else:
+                raise UsageError(f"remote command accepts one positional {field}")
+        elif len(positional) == len(fields):
+            arguments.update(zip(fields, positional, strict=True))
+        else:
+            raise UsageError("remote command positional arguments are incomplete")
+    if confirmed:
+        arguments.update(remote.confirmed_arguments)
+        if "confirm" in properties and "confirm" not in arguments:
+            arguments["confirm"] = True
+        if "dry_run" in properties and "dry_run" not in arguments:
+            arguments["dry_run"] = False
+    return mcp.validate_tool_arguments(remote.tool, arguments)
+
+
+def _reconcile_remote_mutation(
+    controller: ControllerTransport,
+    key: str,
+    original: AdapterTransportError,
+) -> TransportResult:
+    try:
+        status_result = controller.operation_status(key)
+    except AdapterTransportError as status_error:
+        raise PartialResultError(
+            "remote mutation outcome is ambiguous and status reconciliation failed",
+            code="remote_mutation_ambiguous",
+            details={
+                "idempotency_key": key,
+                "dispatch_error": original.as_dict(),
+                "status_error": status_error.as_dict(),
+            },
+        ) from None
+    status = status_result.data.get("status")
+    if status == "succeeded":
+        return status_result
+    if status == "failed":
+        raise OperatorError(
+            "remote mutation failed after dispatch",
+            code="remote_mutation_failed",
+            details={"idempotency_key": key, "status": dict(status_result.data)},
+        )
+    raise PartialResultError(
+        "remote mutation outcome requires operator reconciliation",
+        code="remote_mutation_pending",
+        details={
+            "idempotency_key": key,
+            "status": dict(status_result.data),
+            "dispatch_error": original.as_dict(),
+        },
+    )
+
+
+def _dispatch_remote_tool(
+    path: Sequence[CommandNode],
+    rest: Sequence[str],
+    plan: ExecutionPlan,
+    *,
+    confirmed: bool,
+    output_options: OutputOptions,
+    execution_meta: dict[str, object] | None,
+    allow_ssh_fallback: bool = False,
+) -> int:
+    node = path[-1]
+    remote = node.remote_operation
+    assert remote is not None and remote.mode == "tool" and remote.tool is not None
+    arguments = _remote_arguments(node, rest, confirmed=confirmed)
+    if plan.transport == "ssh" and arguments.get("dry_run") is True:
+        data = {
+            "operation": plan.command.name,
+            "transport": "ssh",
+            "data": {"dry_run": True, "adapter": plan.command.name},
+            "response_bytes": 0,
+        }
+        if execution_meta is not None:
+            execution_meta["data"] = data
+        if not output_options.json_mode:
+            rendered = render_human(
+                success_envelope(_command_name(path), plan, data, warnings=plan.warnings),
+                options=output_options,
+            )
+            if rendered.stdout:
+                print(rendered.stdout, end="")
+        return 0
+    controller = None
+    if plan.transport == "controller":
+        if not plan.transport_endpoint or not plan.transport_auth_env:
+            raise TransportError(
+                "resolved controller transport is missing endpoint or token configuration",
+                code="controller_transport_incomplete",
+            )
+        controller = ControllerTransport(
+            plan.transport_endpoint,
+            auth_env=plan.transport_auth_env,
+            allowed_operations=plan.transport_allowed_operations,
+            timeout_seconds=_remote_transport_timeout(arguments),
+        )
+    ssh = _ssh_recovery_transport(plan) if plan.transport == "ssh" or allow_ssh_fallback else None
+    operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
+    ssh_operation = Operation(plan.command.name, {})
+    idempotency_key = (
+        "cli-" + uuid.uuid4().hex
+        if confirmed and node.mutation_class == "mutate"
+        else None
+    )
+    try:
+        result = execute_plan(
+            plan,
+            operation,
+            controller=controller,
+            ssh=ssh,
+            ssh_operation=ssh_operation,
+            allow_ssh_fallback=allow_ssh_fallback,
+            idempotency_key=idempotency_key,
+        )
+    except AdapterTransportError as exc:
+        if execution_meta is not None and exc.code.startswith("ssh_"):
+            context = plan.as_dict()
+            context["transport"] = "ssh"
+            execution_meta["plan"] = context
+        if (
+            plan.transport == "controller"
+            and controller is not None
+            and idempotency_key is not None
+            and exc.may_have_executed
+            and not exc.code.startswith("ssh_")
+        ):
+            result = _reconcile_remote_mutation(controller, idempotency_key, exc)
+        else:
+            raise TransportError(str(exc), code=exc.code, details=exc.as_dict()) from None
+    data = result.as_dict()
+    result_context: ExecutionPlan | Mapping[str, object] = plan
+    if result.transport != plan.transport:
+        context = plan.as_dict()
+        context["transport"] = result.transport
+        result_context = context
+    if execution_meta is not None:
+        execution_meta["data"] = data
+        execution_meta["plan"] = result_context
+    if not output_options.json_mode:
+        rendered = render_human(
+            success_envelope(_command_name(path), result_context, data, warnings=plan.warnings),
+            options=output_options,
+        )
+        if rendered.stdout:
+            print(rendered.stdout, end="")
+        if rendered.stderr:
+            print(rendered.stderr, end="", file=sys.stderr)
+    return 0
+
+
+def _remote_transport_timeout(arguments: Mapping[str, object]) -> float:
+    """Keep the HTTP deadline outside the bounded remote workload deadline."""
+    workload_timeout = arguments.get("timeout_seconds")
+    if isinstance(workload_timeout, (int, float)) and not isinstance(workload_timeout, bool):
+        return min(MAX_TIMEOUT_SECONDS, max(60.0, float(workload_timeout) + 5.0))
+    return max(60.0, DEFAULT_TIMEOUT_SECONDS)
+
+
+def _ssh_recovery_transport(plan: ExecutionPlan) -> SSHRecoveryTransport:
+    adapter = {
+        "harness-restart-openclaw": (
+            "anvil-serving", "harness", "restart", "openclaw", "--confirm",
+        ),
+        "host-restart-docker": (
+            "anvil-serving", "host", "restart-docker", "--confirm",
+        ),
+        "host-reset-wsl": (
+            "anvil-serving", "host", "reset-wsl", "--confirm",
+        ),
+    }.get(plan.command.name)
+    if adapter is None:
+        raise TransportError(
+            "no fixed SSH recovery adapter is declared for this operation",
+            code="ssh_operation_not_allowed",
+        )
+    selected = plan.transport == "ssh"
+    endpoint = plan.transport_endpoint if selected else plan.recovery_transport_endpoint
+    transport_id = plan.transport_id if selected else plan.recovery_transport_id
+    fingerprint = (
+        plan.transport_host_key_fingerprint if selected else plan.recovery_host_key_fingerprint
+    )
+    known_hosts = (
+        plan.transport_known_hosts_path if selected else plan.recovery_known_hosts_path
+    )
+    identity_file = (os.environ.get("ANVIL_SSH_IDENTITY_FILE") or "").strip()
+    if not endpoint or not fingerprint or not known_hosts:
+        raise TransportError(
+            "resolved SSH recovery transport is missing endpoint or host verification metadata",
+            code="ssh_transport_incomplete",
+        )
+    if not identity_file:
+        raise TransportError(
+            "ANVIL_SSH_IDENTITY_FILE must name the private key for SSH recovery",
+            code="ssh_identity_missing",
+        )
+    try:
+        return SSHRecoveryTransport(
+            endpoint,
+            adapters={plan.command.name: adapter},
+            known_hosts_path=os.path.expanduser(known_hosts),
+            host_key_fingerprint=fingerprint,
+            identity_file=os.path.expanduser(identity_file),
+            transport_id=transport_id,
+            timeout_seconds=60,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise TransportError(str(exc), code="ssh_transport_invalid") from None
+
+
 def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> bool:
-    mutation_gate = node.mutation_class == "mutate" and any(
+    has_conditional_gate = any(option.requires_confirmation for option in node.options)
+    mutation_gate = node.mutation_class == "mutate" and not has_conditional_gate and any(
         "--confirm" in option.flags for option in node.options
     )
     option_gate = any(
@@ -479,6 +822,8 @@ def _confirm(
     forwarded = tuple(
         token for token in policy_args if not (declares_confirmation and token == "--confirm")
     ) + tuple(leaf_args)
+    if "--help" in leaf_args or "-h" in leaf_args:
+        return forwarded, False
     if explicit:
         return forwarded, True
     if "--dry-run" in policy_args:
@@ -541,12 +886,87 @@ def _dispatch(
         policy = command_policy(path, rest)
         enforce_command_policy(policy, json_mode=output_options.json_mode)
         rest, confirmed = _confirm(path, rest, json_mode=output_options.json_mode)
+        if path[0].name == "topology":
+            from . import topology_cli
+
+            data = topology_cli.run([*_handler_argv(path), *rest])
+            if node.name == "resolve":
+                context: Mapping[str, object] = data
+            else:
+                context = {
+                    "command": f"topology-{node.name}",
+                    "topology": data.get("topology"),
+                    "overlay": data.get("overlay"),
+                }
+            if data.get("valid") is False:
+                error = UsageError(
+                    "topology validation failed",
+                    code="invalid_topology",
+                    details={"errors": data.get("errors", [])},
+                )
+                if execution_meta is not None:
+                    execution_meta["plan"] = context
+                    execution_meta["error"] = error
+                if not output_options.json_mode:
+                    rendered = render_human(
+                        error_envelope(_command_name(path), context, error),
+                        options=output_options,
+                    )
+                    if rendered.stderr:
+                        print(rendered.stderr, end="", file=sys.stderr)
+                return error.exit_code
+            if execution_meta is not None:
+                execution_meta["plan"] = context
+                execution_meta["data"] = data
+            if not output_options.json_mode:
+                rendered = render_human(
+                    success_envelope(_command_name(path), context, data),
+                    options=output_options,
+                )
+                if rendered.stdout:
+                    print(rendered.stdout, end="")
+            return 0
         resolution_options, rest = _extract_resolution_options(rest)
         plan = _resolve_dispatch_plan(path, resolution_options)
         if plan is not None and execution_meta is not None:
             execution_meta["plan"] = plan
             execution_meta["warnings"] = tuple(plan.warnings)
-        if plan is not None and plan.transport != "local":
+        controller_probe = (
+            plan is not None
+            and plan.command.name == "controller-status"
+            and plan.transport in {"local", "controller"}
+        )
+        if controller_probe:
+            assert plan is not None
+            if any(
+                token == "--url" or token.startswith("--url=")
+                for token in rest
+            ):
+                raise UsageError(
+                    "controller status --url cannot be combined with topology resolution"
+                )
+            endpoint = plan.transport_endpoint or plan.resource_endpoint
+            if not endpoint:
+                raise UsageError("resolved controller status has no controller endpoint")
+            rest = (*rest, "--url", endpoint)
+            if plan.transport_auth_env:
+                rest = (*rest, "--auth-token-env", plan.transport_auth_env)
+        elif (
+            plan is not None
+            and plan.transport in {"controller", "ssh"}
+            and node.remote_operation is not None
+            and node.remote_operation.mode == "tool"
+        ):
+            return _dispatch_remote_tool(
+                path,
+                rest,
+                plan,
+                confirmed=confirmed,
+                output_options=output_options,
+                execution_meta=execution_meta,
+                allow_ssh_fallback=resolution_options.allow_ssh_fallback,
+            )
+        elif plan is not None and plan.transport != "local":
             raise TransportError(
                 "remote CLI dispatch is not implemented; use the MCP/controller "
                 "operation surface for non-local execution",
@@ -571,6 +991,13 @@ def _dispatch(
         if not output_options.json_mode:
             for warning in plan.warnings:
                 print(warning, file=sys.stderr)
+            if controller_probe:
+                rendered = render_human(
+                    success_envelope(_command_name(path), plan, None),
+                    options=output_options,
+                )
+                if rendered.stdout:
+                    print(rendered.stdout, end="")
     handler = node.handler.resolve()
     prefix = _handler_argv(path)
     with guard.confirmation_scope(confirmed):
@@ -593,7 +1020,18 @@ def _main(
         _print_help()
         return 0
     if argv[0] in ("-V", "--version"):
+        if len(argv) != 1:
+            print("anvil-serving: --version does not accept command arguments", file=sys.stderr)
+            return 2
         print("anvil-serving %s" % _installed_version())
+        return 0
+    if argv[0] == "--command-manifest":
+        if len(argv) != 1:
+            print("anvil-serving: --command-manifest does not accept command arguments", file=sys.stderr)
+            return 2
+        from .command_tree import render_manifest
+
+        sys.stdout.write(render_manifest().decode("utf-8"))
         return 0
     path, rest, unknown, siblings = _resolve(argv)
     if unknown is not None:
@@ -651,7 +1089,8 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     warnings = list(execution_meta.get("warnings", ()))
     warnings.extend(line for line in stderr.getvalue().splitlines() if line)
     if rc == 0:
-        envelope = success_envelope(command, context, stdout.getvalue(), warnings=warnings)
+        data = execution_meta.get("data", stdout.getvalue())
+        envelope = success_envelope(command, context, data, warnings=warnings)
     else:
         error = execution_meta.get("error")
         if not isinstance(error, OperatorError):
@@ -696,8 +1135,11 @@ def _move_leading_resolution_options(argv: Sequence[str]) -> tuple[str, ...]:
                 leading.append(argv[index])
             index += 1
             continue
-        if token == "--experimental-model-workload" or token.startswith(
-            "--experimental-model-workload="
+        if (
+            token == "--experimental-model-workload"
+            or token.startswith("--experimental-model-workload=")
+            or token == "--allow-ssh-fallback"
+            or token.startswith("--allow-ssh-fallback=")
         ):
             leading.append(token)
             index += 1

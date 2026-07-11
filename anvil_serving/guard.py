@@ -149,6 +149,11 @@ def confirmation_scope(authorized):
         _CONFIRMATION_STATE.authorized = previous
 
 
+def confirmation_authorized() -> bool:
+    """Return whether the current dispatcher scope authorized a mutation."""
+    return bool(getattr(_CONFIRMATION_STATE, "authorized", False))
+
+
 def confirm(prompt, *, force=False, assume_yes=False, _input=input):
     """Interactive [y/N] gate. ``force``/``assume_yes`` short-circuit to True
     (--force = "I understand I'm overriding a floor"; --yes = "don't prompt").

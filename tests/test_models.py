@@ -8,8 +8,7 @@ stay on --dry-run). No real docker, no network.
 import pytest
 import json
 
-from anvil_serving import cli
-from anvil_serving import models
+from anvil_serving import cache_prune, cli, guard, models
 
 
 # --------------------------------------------------------------------------- #
@@ -232,6 +231,30 @@ def test_models_cache_prune_help_uses_canonical_usage(capsys):
     assert "usage: anvil-serving models cache prune" in out
     assert "--mixture" in out
     assert "--dry-run" in out
+
+
+def test_models_cache_prune_only_confirms_execute_and_propagates_authorization(
+    monkeypatch, capsys
+):
+    seen = []
+
+    def fake_prune(argv, **_kwargs):
+        seen.append((list(argv), guard.confirmation_authorized()))
+        return 0
+
+    monkeypatch.setattr(cache_prune, "main", fake_prune)
+
+    assert cli.main(["models", "cache", "prune"]) == 0
+    assert seen == [([], False)]
+
+    assert cli.main(["models", "cache", "prune", "--execute"]) == 3
+    assert "confirmation required" in capsys.readouterr().err
+    assert seen == [([], False)]
+
+    assert cli.main([
+        "models", "cache", "prune", "--execute", "--confirm"
+    ]) == 0
+    assert seen[-1] == (["--execute"], True)
 
 
 def test_models_score_help_uses_canonical_usage(capsys):

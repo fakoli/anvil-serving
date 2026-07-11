@@ -99,6 +99,13 @@ def test_confirm_eof_is_no():
     assert guard.confirm("do it?", _input=eof) is False
 
 
+def test_confirmation_scope_is_observable_and_restored():
+    assert guard.confirmation_authorized() is False
+    with guard.confirmation_scope(True):
+        assert guard.confirmation_authorized() is True
+    assert guard.confirmation_authorized() is False
+
+
 # ---- backups ------------------------------------------------------------------
 
 def test_backup_numbering_from_max_not_count(tmp_path):
