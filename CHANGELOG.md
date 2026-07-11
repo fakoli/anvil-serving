@@ -12,7 +12,10 @@ All notable changes to this project are documented here. The format is based on
   fakoli-plugins session-evals `suite.json`) through the existing deterministic bakeoff
   check engine (text checks + tool-call validation) against the target endpoint. Per-eval
   checks and failures land in the standard evidence JSON under `suites.<suite name>`;
-  malformed specs are rejected before any request is sent. Requires `--bakeoff`.
+  `--suite-file` alone runs only the external suite (built-in suites opt in via `--suite`).
+  Malformed specs are rejected before any request is sent — including vacuous checks
+  (typo'd assertion keys, empty needles) that would otherwise pass on any output, per
+  the no-self-verification rule. Requires `--bakeoff`.
 - **Operator CLI v2 production closure (M4)** - adds a manifest-generated
   complete command index and tombstone table, a deterministic active-reference
   audit with checked-in numeric inventories, and aligned operator skills across
