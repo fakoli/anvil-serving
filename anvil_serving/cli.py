@@ -7,9 +7,9 @@ import io
 import os
 import sys
 import uuid
+from dataclasses import dataclass, replace
 from importlib import metadata as importlib_metadata
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 
 from . import __version__
 from . import guard
@@ -136,6 +136,12 @@ def _visible(nodes: Sequence[CommandNode]) -> tuple[CommandNode, ...]:
     return tuple(node for node in nodes if node.visible)
 
 
+def _walk_nodes(nodes: Sequence[CommandNode]):
+    for node in nodes:
+        yield node
+        yield from _walk_nodes(node.children)
+
+
 def _find(nodes: Sequence[CommandNode], name: str) -> CommandNode | None:
     return next((node for node in nodes if node.name == name), None)
 
@@ -214,7 +220,23 @@ def _print_focused_help(path: Sequence[CommandNode]) -> None:
         print("Actions:")
         for child in children:
             print("  %-15s %s" % (child.name, child.summary))
-    options = COMMAND_TREE.global_options + node.options
+    supports_resolution = node.execution_policy == "resource-owner" or any(
+        descendant.execution_policy == "resource-owner"
+        for descendant in _walk_nodes(node.children)
+    )
+    global_options = COMMAND_TREE.global_options
+    if not supports_resolution:
+        resolution_flags = {
+            *_RESOLUTION_VALUE_OPTIONS,
+            "--experimental-model-workload",
+            "--allow-ssh-fallback",
+        }
+        global_options = tuple(
+            option
+            for option in global_options
+            if not resolution_flags.intersection(option.flags)
+        )
+    options = global_options + node.options
     if options:
         print()
         print("Options:")
@@ -272,7 +294,11 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
     ]
     global_options = COMMAND_TREE.global_options
     if node.execution_policy != "resource-owner":
-        resolution_flags = {*_RESOLUTION_VALUE_OPTIONS, "--experimental-model-workload"}
+        resolution_flags = {
+            *_RESOLUTION_VALUE_OPTIONS,
+            "--experimental-model-workload",
+            "--allow-ssh-fallback",
+        }
         global_options = tuple(
             option
             for option in global_options
@@ -448,7 +474,7 @@ def _resolve_dispatch_plan(
             f"{_command_name(path)} is not recovery-capable; drop --allow-ssh-fallback"
         )
     topology = load_topology(options.topology, options.topology_overlay)
-    return resolve_execution_plan(
+    plan = resolve_execution_plan(
         topology,
         command,
         target=options.target,
@@ -458,6 +484,59 @@ def _resolve_dispatch_plan(
         overlay=options.topology_overlay,
         experimental_model_workload=options.experimental_model_workload,
     )
+    for role in path[-1].coowned_resource_roles:
+        related = resolve_execution_plan(
+            topology,
+            replace(command, resource_role=role),
+            target=options.target,
+            transport=options.transport,
+            command_host=options.command_host,
+            command_runtime=options.command_runtime,
+            overlay=options.topology_overlay,
+            experimental_model_workload=options.experimental_model_workload,
+        )
+        primary_identity = (
+            plan.resource_host.id,
+            plan.resource_runtime.id,
+            plan.execution_host.id,
+            plan.execution_runtime.id,
+        )
+        related_identity = (
+            related.resource_host.id,
+            related.resource_runtime.id,
+            related.execution_host.id,
+            related.execution_runtime.id,
+        )
+        if related_identity != primary_identity:
+            raise SafetyError(
+                "operation requires co-owned resources on one execution host",
+                code="split_resource_ownership",
+                details={
+                    "primary_role": command.resource_role,
+                    "primary_host": plan.resource_host.id,
+                    "related_role": role,
+                    "related_host": related.resource_host.id,
+                },
+            )
+    return plan
+
+
+def _resolution_options_argv(options: _ResolutionOptions) -> tuple[str, ...]:
+    """Reconstruct dispatcher-owned options for an explicitly opted-in handler."""
+    if not options.requested:
+        return ()
+    values = (
+        ("--topology", options.topology),
+        ("--topology-overlay", options.topology_overlay),
+        ("--command-host", options.command_host),
+        ("--command-runtime", options.command_runtime),
+        ("--target", options.target),
+        ("--transport", options.transport),
+    )
+    argv = [token for flag, value in values if value is not None for token in (flag, value)]
+    if options.experimental_model_workload:
+        argv.append("--experimental-model-workload")
+    return tuple(argv)
 
 
 def _active_option_policies(path: Sequence[CommandNode], rest: Sequence[str]) -> tuple[str, ...]:
@@ -882,6 +961,7 @@ def _dispatch(
     if node.handler is None:
         _print_focused_help(path)
         return 0
+    resolution_options = _ResolutionOptions()
     try:
         policy = command_policy(path, rest)
         enforce_command_policy(policy, json_mode=output_options.json_mode)
@@ -1000,6 +1080,8 @@ def _dispatch(
                     print(rendered.stdout, end="")
     handler = node.handler.resolve()
     prefix = _handler_argv(path)
+    if node.handler.forward_resolution_options:
+        rest = (*rest, *_resolution_options_argv(resolution_options))
     with guard.confirmation_scope(confirmed):
         result = handler([*prefix, *rest])
     return 0 if result is None else int(result)

@@ -1014,6 +1014,21 @@ def test_toml_loading_accepts_valid_pathlike_values(tmp_path):
     assert result.topology.id == "pathlike"
 
 
+def test_toml_loading_expands_user_home_paths(tmp_path, monkeypatch):
+    home = tmp_path / "operator-home"
+    source = home / ".anvil-serving" / "operator-topology.toml"
+    source.parent.mkdir(parents=True)
+    source.write_text('schema_version = 1\nid = "home-path"\n', encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+
+    result = load_topology_result("~/.anvil-serving/operator-topology.toml")
+
+    assert result.ok
+    assert result.topology is not None
+    assert result.topology.id == "home-path"
+
+
 def test_toml_loading_returns_a_structured_read_error_for_malformed_source_paths():
     result = load_topology_result("invalid\x00-topology.toml")
 
