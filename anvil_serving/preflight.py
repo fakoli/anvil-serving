@@ -143,7 +143,7 @@ def resolve_api_key(api_key_env=None):
         return os.environ.get(api_key_env)
     return None
 
-def main(argv=None, *, prog="anvil-serving preflight"):
+def main(argv=None, *, prog="anvil-serving eval preflight"):
     ap = argparse.ArgumentParser(prog=prog)
     ap.add_argument("--base-url", required=True)
     ap.add_argument("--model", required=True)

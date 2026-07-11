@@ -87,7 +87,7 @@ __all__ = [
     "PRESETS",
     "Preset",
     "models_payload",
-    # T012 — `anvil-serving serve`: config -> per-tier backends -> front door
+    # T012 - `anvil-serving router run`: config -> per-tier backends -> front door
     "serve_config",
     "build_server",
     "build_backends",

@@ -7,7 +7,7 @@ per-tier backends** so NO real upstream network is touched, issue one request
 over ``http.client``, assert the streamed SSE, and tear the server down.
 
 Coverage:
-  * (a) ``serve --help`` exits 0 and documents ``--config``.
+  * (a) retired top-level ``serve`` forms return the canonical tombstone.
   * (b) ``configs/example.toml`` -> a running front door; one request streams a
         correct response, and routing actually composes (a ``chat`` request lands
         on ``fast-local``; a ``planning`` request is gated to ``heavy-local`` in
@@ -133,16 +133,17 @@ def _local_only_backends() -> Dict[str, StaticBackend]:
 
 
 # --------------------------------------------------------------------------- #
-# (a) serve --help
+# (a) retired top-level serve tombstone
 # --------------------------------------------------------------------------- #
-def test_serve_help_exits_zero_and_mentions_config(capsys):
-    # argparse --help raises SystemExit(0) after printing usage.
-    with pytest.raises(SystemExit) as exc:
-        cli.main(["serve", "--help"])
-    assert exc.value.code == 0
-    out = capsys.readouterr().out
-    assert "--config" in out
-    assert "serve" in out
+def test_retired_serve_help_returns_tombstone(capsys):
+    rc = cli.main(["serve", "--help"])
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "anvil-serving: `serve` was removed; use `router run` instead. "
+        "See docs/CLI.md#migration-from-legacy-commands.\n"
+    )
 
 
 def test_serve_subcommand_listed_in_top_level_help(capsys):
@@ -151,11 +152,15 @@ def test_serve_subcommand_listed_in_top_level_help(capsys):
     assert "serve" in capsys.readouterr().out
 
 
-def test_serve_requires_config(capsys):
-    # Missing the required --config: argparse exits non-zero (usage error).
-    with pytest.raises(SystemExit) as exc:
-        cli.main(["serve"])
-    assert exc.value.code != 0
+def test_retired_serve_without_arguments_returns_tombstone(capsys):
+    rc = cli.main(["serve"])
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "anvil-serving: `serve` was removed; use `router run` instead. "
+        "See docs/CLI.md#migration-from-legacy-commands.\n"
+    )
 
 
 # --------------------------------------------------------------------------- #
