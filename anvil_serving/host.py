@@ -33,6 +33,7 @@ from . import guard
 MIN_WINDOWS_RESERVE_GB = 10
 # The doctor's RECOMMENDED reserve (more generous - room for AV scans / Windows Update / cache spikes).
 RECOMMENDED_WINDOWS_RESERVE_GB = 14
+DEFAULT_PROBE_TIMEOUT_SECONDS = 15
 
 
 # --------------------------------------------------------------------------- #
@@ -59,25 +60,35 @@ def _host_total_gb(_run=subprocess.run):
     return None
 
 
-def _wsl_vm_memory_gb(_run=subprocess.run):
+def _wsl_vm_memory_gb(_run=subprocess.run, timeout=DEFAULT_PROBE_TIMEOUT_SECONDS):
     """The WSL/docker VM's current memory cap (docker info MemTotal), or None. On WSL2 this reflects
     the `.wslconfig` memory the docker-desktop distro actually booted with."""
     try:
-        r = _run(["docker", "info", "--format", "{{.MemTotal}}"], capture_output=True, text=True)
+        r = _run(
+            ["docker", "info", "--format", "{{.MemTotal}}"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
         if r.returncode == 0:
             val = int((r.stdout or "").strip()) / (1024 ** 3)
             return val if val > 0 else None   # 0 => docker/WSL not up yet
-    except (OSError, ValueError):
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         pass
     return None
 
 
-def _gpus(_run=subprocess.run):
+def _gpus(_run=subprocess.run, timeout=DEFAULT_PROBE_TIMEOUT_SECONDS):
     """[(index, name, used_gb, total_gb)] from nvidia-smi, or []."""
     try:
-        r = _run(["nvidia-smi", "--query-gpu=index,name,memory.used,memory.total",
-                  "--format=csv,noheader,nounits"], capture_output=True, text=True)
-    except OSError:
+        r = _run(
+            ["nvidia-smi", "--query-gpu=index,name,memory.used,memory.total",
+             "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired):
         return []
     out = []
     for line in (r.stdout or "").splitlines():
@@ -394,8 +405,22 @@ def cmd_restart_docker(force=False, dry_run=False, _run=subprocess.run, _input=i
             print("could not launch Docker Desktop (PowerShell unavailable).", file=sys.stderr)
             return 1
     else:  # darwin
-        _run(["osascript", "-e", 'quit app "Docker Desktop"'], capture_output=True, text=True)
-        _run(["open", "-a", "Docker"])
+        try:
+            _run(
+                ["osascript", "-e", 'quit app "Docker Desktop"'],
+                capture_output=True,
+                text=True,
+                timeout=DEFAULT_PROBE_TIMEOUT_SECONDS,
+            )
+            launched = _run(
+                ["open", "-a", "Docker"], timeout=DEFAULT_PROBE_TIMEOUT_SECONDS
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            print("could not restart Docker Desktop within the host operation timeout.", file=sys.stderr)
+            return 1
+        if launched.returncode != 0:
+            print("could not launch Docker Desktop with the macOS open command.", file=sys.stderr)
+            return 1
     print("Docker Desktop restarting - the engine + unless-stopped containers take ~1-2 min to return.")
     print("  verify with:  anvil-serving router status   and   anvil-serving serves status")
     return 0

@@ -577,6 +577,7 @@ def test_cli_remote_router_restart_dispatches_typed_operation(
         {
             "auth_env": "ANVIL_CONTROLLER_TOKEN",
             "allowed_operations": ("router-restart",),
+            "timeout_seconds": 60.0,
         },
     )
     assert seen["execute_kwargs"]["idempotency_key"].startswith("cli-")
@@ -735,6 +736,12 @@ def test_cli_remote_eval_dispatches_confirmed_typed_probe(tmp_path, monkeypatch)
         "confirm": True,
     }
     assert seen["key"].startswith("cli-")
+
+
+def test_remote_transport_timeout_covers_declared_workload_deadline():
+    assert cli._remote_transport_timeout({}) == 60.0
+    assert cli._remote_transport_timeout({"timeout_seconds": 300}) == 305.0
+    assert cli._remote_transport_timeout({"timeout_seconds": 7200}) == 7205.0
 
 
 def test_cli_remote_eval_rejects_operator_manifest_before_transport(

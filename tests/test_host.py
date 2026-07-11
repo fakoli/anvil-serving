@@ -5,6 +5,7 @@ on any OS with no docker, no WSL, no prompts.
 """
 import os
 import json
+import subprocess
 import types
 
 import pytest
@@ -194,6 +195,27 @@ def test_restart_docker_force_kills_and_relaunches(monkeypatch):
     assert any("Start-Process" in c for c in flat)                            # relaunches Docker Desktop
 
 
+def test_restart_docker_macos_timeout_returns_failure(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "darwin")
+
+    def timeout(argv, **kwargs):
+        assert kwargs["timeout"] == host.DEFAULT_PROBE_TIMEOUT_SECONDS
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    assert host.cmd_restart_docker(force=True, _run=timeout) == 1
+
+
+def test_restart_docker_macos_launch_failure_is_not_success(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "darwin")
+    calls = []
+
+    def run(argv, **_kwargs):
+        calls.append(argv)
+        return proc(1 if argv[0] == "open" else 0)
+
+    assert host.cmd_restart_docker(force=True, _run=run) == 1
+
+
 # ---- _kill_process: locale-independent status parsing ------------------------
 
 def test_kill_process_parses_status_tokens():
@@ -296,6 +318,15 @@ def test_host_status_prints_structured_summary(monkeypatch, capsys):
     monkeypatch.setattr(host, "host_summary", lambda **_kwargs: {"mutates": False, "checks": []})
     assert host.cmd_status() == 0
     assert json.loads(capsys.readouterr().out) == {"checks": [], "mutates": False}
+
+
+def test_host_status_probes_are_time_bounded():
+    def timeout(argv, **kwargs):
+        assert kwargs["timeout"] == host.DEFAULT_PROBE_TIMEOUT_SECONDS
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    assert host._wsl_vm_memory_gb(_run=timeout) is None
+    assert host._gpus(_run=timeout) == []
 
 
 # ---- cmd_doctor --------------------------------------------------------------

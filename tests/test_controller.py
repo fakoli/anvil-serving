@@ -957,6 +957,18 @@ def test_jsonrpc_falsey_non_object_params_are_rejected_and_not_called():
     assert calls == []
 
 
+def test_deep_json_parse_failure_stays_a_structured_client_error(monkeypatch):
+    monkeypatch.setattr(
+        controller,
+        "_strict_json_loads",
+        lambda _value: (_ for _ in ()).throw(RecursionError("too deep")),
+    )
+    with running_controller() as (host, port):
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", body={})
+    assert status == 400
+    assert body["error"]["code"] == "invalid_json"
+
+
 def test_controller_cli_dispatch(monkeypatch):
     from anvil_serving import controller as controller_mod
 

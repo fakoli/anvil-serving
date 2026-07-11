@@ -32,6 +32,8 @@ from .operator_output import (
 from .targets import CommandSpec, ExecutionPlan, TargetResolutionError, resolve_execution_plan
 from .topology import TopologyValidationError, load_topology
 from .transports import (
+    DEFAULT_TIMEOUT_SECONDS,
+    MAX_TIMEOUT_SECONDS,
     ControllerTransport,
     Operation,
     SSHRecoveryTransport,
@@ -673,6 +675,7 @@ def _dispatch_remote_tool(
             plan.transport_endpoint,
             auth_env=plan.transport_auth_env,
             allowed_operations=plan.transport_allowed_operations,
+            timeout_seconds=_remote_transport_timeout(arguments),
         )
     ssh = _ssh_recovery_transport(plan) if plan.transport == "ssh" or allow_ssh_fallback else None
     operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
@@ -726,6 +729,14 @@ def _dispatch_remote_tool(
         if rendered.stderr:
             print(rendered.stderr, end="", file=sys.stderr)
     return 0
+
+
+def _remote_transport_timeout(arguments: Mapping[str, object]) -> float:
+    """Keep the HTTP deadline outside the bounded remote workload deadline."""
+    workload_timeout = arguments.get("timeout_seconds")
+    if isinstance(workload_timeout, (int, float)) and not isinstance(workload_timeout, bool):
+        return min(MAX_TIMEOUT_SECONDS, max(60.0, float(workload_timeout) + 5.0))
+    return max(60.0, DEFAULT_TIMEOUT_SECONDS)
 
 
 def _ssh_recovery_transport(plan: ExecutionPlan) -> SSHRecoveryTransport:

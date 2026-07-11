@@ -402,6 +402,11 @@ def load_topology_result(
         if overlay_error is not None:
             return TopologyValidationResult(None, (overlay_error,))
         assert overlay is not None
+        overlay_errors: list[TopologyError] = []
+        overlay = _snapshot_topology_data(overlay, overlay_errors)
+        if overlay_errors:
+            return TopologyValidationResult(None, tuple(overlay_errors))
+        assert overlay is not None
         data = _merge_topology_overlay(data, overlay)
     return validate_topology(data)
 

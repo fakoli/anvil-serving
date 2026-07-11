@@ -1552,6 +1552,24 @@ def test_voice_manage_bad_action_and_bad_config(tmp_path):
     assert missing["error"]["code"] == "bad_config"
 
 
+def test_host_manage_rejects_action_specific_arguments_in_preview():
+    env = mcp.call_tool(
+        "host_manage",
+        {"action": "restart-docker", "memory": 80, "dry_run": True},
+    )
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_capture_is_bounded_without_holding_output_in_memory():
+    rc, stdout, stderr = mcp._capture(
+        lambda: (print("x" * (mcp._MAX_CAPTURE_CHARS + 100)), 0)[1]
+    )
+    assert rc == 0
+    assert len(stdout) == mcp._MAX_CAPTURE_CHARS
+    assert stderr == ""
+
+
 def test_voice_manage_schema_exposes_action_enum():
     tool = next(item for item in mcp.list_tools() if item["name"] == "voice_manage")
     assert tool["inputSchema"]["properties"]["action"]["enum"] == ["up", "down", "start", "stop"]

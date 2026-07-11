@@ -191,6 +191,18 @@ def test_partial_overlay_merges_records_by_id(tmp_path):
     assert topology.host("fakoli-dark").os == "windows"
 
 
+def test_overlay_depth_is_bounded_before_recursive_merge(tmp_path):
+    source = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
+    overlay = tmp_path / "deep-overlay.toml"
+    overlay.write_text(
+        "[" + ".".join(f"level{i}" for i in range(70)) + "]\nvalue = 1\n",
+        encoding="utf-8",
+    )
+    result = load_topology_result(source, overlay)
+    assert result.ok is False
+    assert any(error.code == "depth" for error in result.errors)
+
+
 @pytest.mark.parametrize(
     "mutate",
     [

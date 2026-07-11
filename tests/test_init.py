@@ -113,6 +113,21 @@ def test_init_backs_up_existing_operator_topology(tmp_path):
     assert load_topology(topology_path).id == "local-starter"
 
 
+def test_invalid_topology_input_cannot_partially_rewrite_existing_files(tmp_path):
+    out_dir = tmp_path / "onboard"
+    out_dir.mkdir()
+    originals = {}
+    for name in ("docker-compose.yml", "router.toml", "operator-topology.toml"):
+        path = out_dir / name
+        path.write_text(f"original {name}\n", encoding="utf-8")
+        originals[name] = path.read_text(encoding="utf-8")
+    with pytest.raises(init.InitError):
+        init.run(model="/w/model", out_dir=str(out_dir), port=0, _run=_run_missing)
+    for name, expected in originals.items():
+        assert (out_dir / name).read_text(encoding="utf-8") == expected
+    assert list(out_dir.glob("*.anvil.bak.*")) == []
+
+
 def test_render_starter_topology_does_not_read_ambient_identity(monkeypatch):
     def forbidden(*_args, **_kwargs):
         raise AssertionError("ambient identity must not be inspected")

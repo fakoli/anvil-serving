@@ -198,6 +198,11 @@ def run(model=None, gpu="0", catalog_dir="./model-library", out_dir=".",
     if _run is not None:
         render_kwargs["_run"] = _run
     eng = engine or _deploy._infer_engine(model_path)
+    topology_text = render_starter_topology(port=port)
+    try:
+        parse_topology(tomllib.loads(topology_text))
+    except (tomllib.TOMLDecodeError, TopologyValidationError) as exc:
+        raise InitError(f"could not generate a valid starter topology ({exc})") from exc
 
     os.makedirs(out_dir, exist_ok=True)
     compose_out = os.path.join(out_dir, "docker-compose.yml")
@@ -240,15 +245,11 @@ def run(model=None, gpu="0", catalog_dir="./model-library", out_dir=".",
     with open(router_out, "w", encoding="utf-8") as f:
         f.write(router_text)
 
-    topology_text = render_starter_topology(port=port)
     try:
-        # Validate the exact generated document before replacing any existing
-        # operator topology.
-        parse_topology(tomllib.loads(topology_text))
         with open(topology_out, "w", encoding="utf-8") as f:
             f.write(topology_text)
-    except (OSError, tomllib.TOMLDecodeError, TopologyValidationError) as exc:
-        raise InitError(f"could not write a valid starter topology ({exc})") from exc
+    except OSError as exc:
+        raise InitError(f"could not write the starter topology ({exc})") from exc
 
     return {
         "model_path": model_path, "served_name": served, "tier_id": tid,

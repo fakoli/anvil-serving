@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import contextlib
 import argparse
-import io
 import json
 import math
 import os
@@ -51,6 +50,7 @@ _MAX_ERROR_BODY_BYTES = 4096
 _MAX_ARGUMENT_BYTES = 1024 * 1024
 _MAX_CONTEXT_BYTES = 16 * 1024
 _MAX_CONTEXT_STRING = 1024
+_MAX_CAPTURE_CHARS = 1024 * 1024
 _MAX_SCHEMA_STRING = 262144
 _MAX_SCHEMA_ITEMS = 1000
 _RAW_COMMAND_KEYS = frozenset({"argv", "command", "command_payload", "payload", "shell", "stdin"})
@@ -145,10 +145,15 @@ def _redact_error_details(value: Any) -> Any:
 
 
 def _capture(fn: Callable[[], int]) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        rc = fn()
-    return rc, out.getvalue(), err.getvalue()
+    with (
+        tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as out,
+        tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as err,
+    ):
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            rc = fn()
+        out.seek(0)
+        err.seek(0)
+        return rc, out.read(_MAX_CAPTURE_CHARS), err.read(_MAX_CAPTURE_CHARS)
 
 
 def _redact_secret(value: Any, token: str) -> Any:
@@ -1589,10 +1594,10 @@ def tool_host_manage(args: dict) -> dict:
         "revert": revert,
         "force": force,
     }
-    if dry_run or not confirm:
-        return _ok({"applied": False, "dry_run": True, "target": target})
     if action != "wsl-config" and any(key in args for key in ("memory", "swap", "revert", "force")):
         raise ToolError("bad_argument", "memory, swap, revert, and force apply only to wsl-config")
+    if dry_run or not confirm:
+        return _ok({"applied": False, "dry_run": True, "target": target})
     if action == "wsl-config":
         rc, stdout, stderr = _capture(lambda: host.cmd_wsl_config(
             memory_gb=memory or None,
@@ -2423,7 +2428,8 @@ def _validate_schema_value(value: Any, schema: Mapping[str, Any], field: str) ->
         if len(value) > int(schema.get("maxLength", _MAX_SCHEMA_STRING)):
             raise ToolError("bad_argument", f"{field!r} exceeds its length limit")
         if "enum" in schema and value not in schema["enum"]:
-            raise ToolError("bad_argument", f"{field!r} must be one of {schema['enum']!r}")
+            code = "bad_action" if field == "action" else "bad_argument"
+            raise ToolError(code, f"{field!r} must be one of {schema['enum']!r}")
     if isinstance(value, int) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
             raise ToolError("bad_argument", f"{field!r} must be at least {schema['minimum']}")
@@ -2483,10 +2489,7 @@ def _validate_tool_arguments(name: str, arguments: Mapping[str, Any]) -> dict[st
         raise ToolError("missing_argument", "missing required tool argument", {"fields": missing})
     for field, value in arguments.items():
         if field in properties and not (name == "workflow_packet_validate" and field == "packet"):
-            field_schema = properties[field]
-            if "enum" in field_schema:
-                field_schema = {key: item for key, item in field_schema.items() if key != "enum"}
-            _validate_schema_value(value, field_schema, field)
+            _validate_schema_value(value, properties[field], field)
     return dict(arguments)
 
 

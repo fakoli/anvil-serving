@@ -1297,7 +1297,7 @@ def make_handler(
             raw = b"".join(chunks)
             try:
                 obj = _strict_json_loads(raw.decode("utf-8"))
-            except (UnicodeDecodeError, ValueError) as exc:
+            except (UnicodeDecodeError, ValueError, RecursionError) as exc:
                 raise ControllerError(
                     "invalid_json",
                     "request body must be valid UTF-8 JSON",
