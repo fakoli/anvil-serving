@@ -22,6 +22,7 @@ before a disruptive action + a --force for autonomous runs. stdlib-only; subproc
 dependency-injected so tests run with no docker, no WSL, no prompts.
 """
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -32,6 +33,7 @@ from . import guard
 MIN_WINDOWS_RESERVE_GB = 10
 # The doctor's RECOMMENDED reserve (more generous - room for AV scans / Windows Update / cache spikes).
 RECOMMENDED_WINDOWS_RESERVE_GB = 14
+DEFAULT_PROBE_TIMEOUT_SECONDS = 15
 
 
 # --------------------------------------------------------------------------- #
@@ -58,25 +60,35 @@ def _host_total_gb(_run=subprocess.run):
     return None
 
 
-def _wsl_vm_memory_gb(_run=subprocess.run):
+def _wsl_vm_memory_gb(_run=subprocess.run, timeout=DEFAULT_PROBE_TIMEOUT_SECONDS):
     """The WSL/docker VM's current memory cap (docker info MemTotal), or None. On WSL2 this reflects
     the `.wslconfig` memory the docker-desktop distro actually booted with."""
     try:
-        r = _run(["docker", "info", "--format", "{{.MemTotal}}"], capture_output=True, text=True)
+        r = _run(
+            ["docker", "info", "--format", "{{.MemTotal}}"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
         if r.returncode == 0:
             val = int((r.stdout or "").strip()) / (1024 ** 3)
             return val if val > 0 else None   # 0 => docker/WSL not up yet
-    except (OSError, ValueError):
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         pass
     return None
 
 
-def _gpus(_run=subprocess.run):
+def _gpus(_run=subprocess.run, timeout=DEFAULT_PROBE_TIMEOUT_SECONDS):
     """[(index, name, used_gb, total_gb)] from nvidia-smi, or []."""
     try:
-        r = _run(["nvidia-smi", "--query-gpu=index,name,memory.used,memory.total",
-                  "--format=csv,noheader,nounits"], capture_output=True, text=True)
-    except OSError:
+        r = _run(
+            ["nvidia-smi", "--query-gpu=index,name,memory.used,memory.total",
+             "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired):
         return []
     out = []
     for line in (r.stdout or "").splitlines():
@@ -280,6 +292,11 @@ def cmd_doctor(_run=subprocess.run):
     return 0
 
 
+def cmd_status(_run=subprocess.run):
+    print(json.dumps(host_summary(_run=_run), indent=2, sort_keys=True))
+    return 0
+
+
 def _confirm(prompt, force, _input):
     # Delegates to the shared gate (guard.confirm) — same [y/N] + EOF->No contract.
     return guard.confirm(prompt, force=force, _input=_input)
@@ -361,13 +378,17 @@ def cmd_wsl_config(memory_gb=None, swap_gb=None, revert=False, force=False, dry_
     return 0
 
 
-def cmd_restart_docker(force=False, _run=subprocess.run, _input=input):
+def cmd_restart_docker(force=False, dry_run=False, _run=subprocess.run, _input=input):
     """Restart Docker Desktop so the WSL backend re-reads `.wslconfig`. This is the RIGHT lever:
     `wsl --shutdown` does NOT cycle the docker-desktop distro and, hammered in a loop, wedges WSL."""
     if sys.platform not in ("win32", "darwin"):
         print("host restart-docker targets Docker Desktop (Windows/macOS); on %s use your service "
               "manager (e.g. systemctl restart docker)." % sys.platform, file=sys.stderr)
         return 2
+    if dry_run:
+        print(json.dumps({"dry_run": True, "action": "restart-docker", "platform": sys.platform},
+                         sort_keys=True))
+        return 0
     if not _confirm("Restart Docker Desktop? This stops the engine + all containers briefly "
                     "(unless-stopped ones auto-restart).", force, _input):
         print("aborted (no --force / declined).")
@@ -384,14 +405,28 @@ def cmd_restart_docker(force=False, _run=subprocess.run, _input=input):
             print("could not launch Docker Desktop (PowerShell unavailable).", file=sys.stderr)
             return 1
     else:  # darwin
-        _run(["osascript", "-e", 'quit app "Docker Desktop"'], capture_output=True, text=True)
-        _run(["open", "-a", "Docker"])
+        try:
+            _run(
+                ["osascript", "-e", 'quit app "Docker Desktop"'],
+                capture_output=True,
+                text=True,
+                timeout=DEFAULT_PROBE_TIMEOUT_SECONDS,
+            )
+            launched = _run(
+                ["open", "-a", "Docker"], timeout=DEFAULT_PROBE_TIMEOUT_SECONDS
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            print("could not restart Docker Desktop within the host operation timeout.", file=sys.stderr)
+            return 1
+        if launched.returncode != 0:
+            print("could not launch Docker Desktop with the macOS open command.", file=sys.stderr)
+            return 1
     print("Docker Desktop restarting - the engine + unless-stopped containers take ~1-2 min to return.")
     print("  verify with:  anvil-serving router status   and   anvil-serving serves status")
     return 0
 
 
-def cmd_reset_wsl(force=False, _run=subprocess.run, _input=input):
+def cmd_reset_wsl(force=False, dry_run=False, _run=subprocess.run, _input=input):
     """Un-wedge a HUNG WSL2 subsystem (`wsl` commands time out, Docker Desktop can't start, hundreds of
     stuck `wsl.exe` pile up). Codifies the manual Task-Manager 'End task on vmmemWSL' recovery
     (2026-07-04): force-kill the WSL VM's backing process + the hung `wsl.exe` front-ends, then restart
@@ -401,6 +436,10 @@ def cmd_reset_wsl(force=False, _run=subprocess.run, _input=input):
     if sys.platform != "win32":
         print("host reset-wsl un-wedges a hung WSL2 subsystem (Windows only).", file=sys.stderr)
         return 2
+    if dry_run:
+        print(json.dumps({"dry_run": True, "action": "reset-wsl", "platform": sys.platform},
+                         sort_keys=True))
+        return 0
     if not _confirm("Reset the WSL subsystem? Force-kills the WSL VM (vmmemWSL) + hung wsl.exe, then "
                     "restarts Docker Desktop (engine + all containers cycle; unless-stopped auto-restart).",
                     force, _input):
@@ -440,6 +479,7 @@ def _build_parser():
         prog="anvil-serving host",
         description="Own the host (WSL / Docker Desktop) config, with backup/revert + safe caps.")
     sub = p.add_subparsers(dest="action", required=True)
+    sub.add_parser("status", help="show structured host status")
     sub.add_parser("doctor", help="inspect + recommend safe WSL memory")
 
     wsl = sub.add_parser("wsl-config", help="edit .wslconfig memory/swap settings")
@@ -451,9 +491,11 @@ def _build_parser():
 
     restart = sub.add_parser("restart-docker", help="restart Docker Desktop to apply host changes")
     restart.add_argument("--force", action="store_true", help="skip the confirm prompt.")
+    restart.add_argument("--dry-run", action="store_true", help="show the restart plan only.")
 
     reset = sub.add_parser("reset-wsl", help="reset a wedged WSL subsystem")
     reset.add_argument("--force", action="store_true", help="skip the confirm prompt.")
+    reset.add_argument("--dry-run", action="store_true", help="show the reset plan only.")
     return p
 
 
@@ -462,15 +504,17 @@ def main(argv=None):
     p = _build_parser()
     a = p.parse_args(argv)
 
+    if a.action == "status":
+        return cmd_status()
     if a.action == "doctor":
         return cmd_doctor()
     if a.action == "wsl-config":
         return cmd_wsl_config(memory_gb=a.memory, swap_gb=a.swap, revert=a.revert,
                               force=a.force, dry_run=a.dry_run)
     if a.action == "restart-docker":
-        return cmd_restart_docker(force=a.force)
+        return cmd_restart_docker(force=a.force, dry_run=a.dry_run)
     if a.action == "reset-wsl":
-        return cmd_reset_wsl(force=a.force)
+        return cmd_reset_wsl(force=a.force, dry_run=a.dry_run)
     return 2
 
 

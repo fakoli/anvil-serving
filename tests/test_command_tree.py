@@ -24,7 +24,7 @@ def test_manifest_is_checked_in_and_matches_deterministic_regeneration():
 
 def test_manifest_is_byte_stable():
     assert render_manifest() == render_manifest()
-    assert manifest_data()["schema_version"] == 1
+    assert manifest_data()["schema_version"] == 2
 
 
 def test_manifest_records_recursive_paths_metadata_and_tombstones():
@@ -38,12 +38,41 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["mcp"]["handler"] is None
     assert records["mcp"]["tombstone"]["replacement"] == "mcp serve"
     assert records["mcp serve"]["handler"] == "anvil_serving.mcp:main"
+    assert records["router status"]["remote_operation"]["tool"] == "router_status"
+    assert records["eval preflight"]["mutation_class"] == "mutate"
+    assert records["eval preflight"]["remote_operation"]["confirmed_arguments"] == {"confirm": True}
+    assert records["eval benchmark run"]["remote_operation"]["tool"] == "benchmark_probe"
+    assert records["eval benchmark external export"]["mutation_class"] == "mutate"
+    assert records["harness sync openclaw"]["remote_operation"]["tool"] == "openclaw_sync"
+    assert records["harness restart openclaw"]["recovery_capable"] is True
+    assert records["host wsl-config"]["execution_host_os"] == ["windows"]
+    assert records["host restart-docker"]["execution_host_os"] == ["windows", "macos"]
+    assert records["host reset-wsl"]["execution_host_os"] == ["windows"]
+    assert records["host status"]["remote_operation"]["tool"] == "host_summary"
+    assert records["doctor"]["remote_operation"]["tool"] == "doctor_summary"
+    assert {"topology show", "topology validate", "topology resolve"} <= records.keys()
+    assert records["harness status openclaw"]["remote_operation"] == {
+        "mode": "tool",
+        "tool": "openclaw_gateway_status",
+        "fixed_arguments": {},
+        "confirmed_arguments": {},
+        "allowed_arguments": ["timeout_seconds", "max_output_bytes"],
+        "positional_arguments": [],
+    }
+    assert all(
+        "--dry-run" not in option["flags"]
+        for path in ("eval bootstrap", "eval calibrate", "eval benchmark external import")
+        for option in records[path]["options"]
+    )
+    assert records["router run"]["remote_operation"] is None
+    assert records["controller status"]["remote_operation"]["mode"] == "controller-status"
     global_flags = {
         flag
         for option in records["controller status"]["options"]
         for flag in option["flags"]
     }
     assert "--experimental-model-workload" in global_flags
+    assert "--allow-ssh-fallback" in global_flags
 
 
 def test_duplicate_paths_fail_validation():

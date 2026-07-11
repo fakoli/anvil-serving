@@ -32,6 +32,8 @@ import json
 import argparse
 import shutil
 
+from . import guard
+
 
 def classify_rows(rows, mixture):
     """Pure core: classify discover()-shaped rows into a prune plan dict.
@@ -306,7 +308,7 @@ def main(argv=None, scan=_default_scan, *, prog="anvil-serving models cache prun
         return 0
     mixture = {m.strip() for m in args.mixture.split(",") if m.strip()}
     # Gate 1: real deletion needs BOTH --execute AND --yes.
-    if args.execute and not args.yes:
+    if args.execute and not (args.yes or guard.confirmation_authorized()):
         print("refusing to delete without --yes (this DELETES directories)")
         return 2
     # Gate 2 (checked BEFORE any scan): a broad wipe -- --execute with

@@ -7,7 +7,9 @@ import contextlib
 import http.client
 import io
 import json
+import os
 import socket
+import tempfile
 import threading
 import time
 
@@ -27,16 +29,18 @@ CONTEXT = {
 @contextlib.contextmanager
 def running_controller(**kwargs):
     kwargs.setdefault("allow_unauthenticated_loopback", True)
-    httpd = controller.make_server("127.0.0.1", 0, **kwargs)
-    host, port = httpd.server_address[:2]
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    try:
-        yield host, port
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-        thread.join(timeout=5)
+    with tempfile.TemporaryDirectory(prefix="anvil-controller-test-") as temp_dir:
+        kwargs.setdefault("idempotency_db_path", os.path.join(temp_dir, "operations.sqlite3"))
+        httpd = controller.make_server("127.0.0.1", 0, **kwargs)
+        host, port = httpd.server_address[:2]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield host, port
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=5)
 
 
 def _request(host, port, method, path, body=None, headers=None, content_type="application/json"):
@@ -146,32 +150,146 @@ def test_controller_cli_rejects_unauthenticated_loopback_flag():
 
 
 def test_controller_status_uses_bounded_authenticated_health_probe(monkeypatch, capsys):
-    seen = {}
+    seen = []
 
     class Response:
+        def __init__(self, payload):
+            self.payload = payload
+
         def __enter__(self):
             return self
 
         def __exit__(self, *_args):
             return False
 
-        def read(self):
-            return b'{"service":"anvil-serving-controller","status":"ok"}'
+        def read(self, limit):
+            assert limit == controller.DEFAULT_STATUS_MAX_RESPONSE_BYTES + 1
+            return self.payload
 
     def open_status(request, timeout):
-        seen["url"] = request.full_url
-        seen["authorization"] = request.get_header("Authorization")
-        seen["timeout"] = timeout
-        return Response()
+        seen.append(
+            {
+                "url": request.full_url,
+                "authorization": request.get_header("Authorization"),
+                "timeout": timeout,
+            }
+        )
+        if request.full_url.endswith("/health"):
+            return Response(b'{"service":"anvil-serving-controller","status":"ok"}')
+        return Response(b'{"tools":[{"name":"router_status"},{"name":"host_summary"}]}')
 
     monkeypatch.setenv("ANVIL_CONTROLLER_TOKEN", TOKEN)
     assert controller.status("http://127.0.0.1:8765", timeout=1.25, _open=open_status) == 0
-    assert seen == {
-        "url": "http://127.0.0.1:8765/health",
-        "authorization": "Bearer " + TOKEN,
-        "timeout": 1.25,
+    assert seen == [
+        {
+            "url": "http://127.0.0.1:8765/health",
+            "authorization": "Bearer " + TOKEN,
+            "timeout": 1.25,
+        },
+        {
+            "url": "http://127.0.0.1:8765/tools/list",
+            "authorization": "Bearer " + TOKEN,
+            "timeout": 1.25,
+        },
+    ]
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {
+        "status": "ok",
+        "service": "anvil-serving-controller",
+        "capabilities": {
+            "tool_count": 2,
+            "tools": ["host_summary", "router_status"],
+        },
     }
-    assert json.loads(capsys.readouterr().out)["status"] == "ok"
+
+
+def test_controller_status_requires_token_before_network(capsys):
+    def fail_open(*_args, **_kwargs):
+        pytest.fail("status attempted network access without a token")
+
+    assert controller.status(environment={}, _open=fail_open) == 3
+    assert "ANVIL_CONTROLLER_TOKEN" in capsys.readouterr().err
+
+
+def test_controller_status_rejects_missing_capability(monkeypatch, capsys):
+    class Response:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _limit):
+            return self.payload
+
+    def open_status(request, timeout):
+        assert timeout == 5.0
+        if request.full_url.endswith("/health"):
+            return Response(b'{"service":"anvil-serving-controller","status":"ok"}')
+        return Response(b'{"tools":[{"name":"host_summary"}]}')
+
+    monkeypatch.setenv("ANVIL_CONTROLLER_TOKEN", TOKEN)
+    assert (
+        controller.status(
+            required_operations=("router-status",),
+            _open=open_status,
+        )
+        == 1
+    )
+    assert "router_status" in capsys.readouterr().err
+
+
+def test_controller_allowlist_filters_catalog_and_dispatch():
+    calls = []
+
+    def fake_list_tools():
+        return [
+            {"name": "router_status", "inputSchema": {"type": "object"}},
+            {"name": "host_summary", "inputSchema": {"type": "object"}},
+        ]
+
+    def fake_call_tool(name, arguments=None):
+        calls.append((name, arguments))
+        return {"ok": True, "data": {}}
+
+    with running_controller(
+        list_tools_func=fake_list_tools,
+        call_tool_func=fake_call_tool,
+        allowed_operations=("host-summary",),
+    ) as (host, port):
+        status, _, body, _ = _request(host, port, "GET", "/tools/list")
+        assert status == 200
+        assert [tool["name"] for tool in body["tools"]] == ["host_summary"]
+
+        status, _, body, _ = _request(
+            host,
+            port,
+            "POST",
+            "/tools/call",
+            body={"name": "router_status", "arguments": {}},
+        )
+        assert status == 400
+        assert body["error"]["code"] == "unknown_tool"
+    assert calls == []
+
+
+def test_controller_allowlist_maps_canonical_commands_to_shared_tools():
+    tools = [
+        {"name": "router_manage", "inputSchema": {"type": "object"}},
+        {"name": "host_summary", "inputSchema": {"type": "object"}},
+    ]
+
+    with running_controller(
+        list_tools_func=lambda: tools,
+        allowed_operations=("router-up", "controller-status"),
+    ) as (host, port):
+        status, _, body, _ = _request(host, port, "GET", "/tools/list")
+
+    assert status == 200
+    assert [tool["name"] for tool in body["tools"]] == ["router_manage"]
 
 
 def test_controller_serve_restores_python_unauthenticated_loopback_parameter():
@@ -841,6 +959,18 @@ def test_jsonrpc_falsey_non_object_params_are_rejected_and_not_called():
             assert body["error"]["code"] == -32602
             assert body["error"]["message"] == "params must be an object"
     assert calls == []
+
+
+def test_deep_json_parse_failure_stays_a_structured_client_error(monkeypatch):
+    monkeypatch.setattr(
+        controller,
+        "_strict_json_loads",
+        lambda _value: (_ for _ in ()).throw(RecursionError("too deep")),
+    )
+    with running_controller() as (host, port):
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", body={})
+    assert status == 400
+    assert body["error"]["code"] == "invalid_json"
 
 
 def test_controller_cli_dispatch(monkeypatch):

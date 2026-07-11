@@ -31,7 +31,7 @@ import urllib.request
 
 
 DEFAULT_TIMEOUT_SECONDS = 10.0
-MAX_TIMEOUT_SECONDS = 60.0
+MAX_TIMEOUT_SECONDS = 7260.0
 DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024
 MAX_RESPONSE_BYTES = 1024 * 1024
 
@@ -179,12 +179,17 @@ class Operation:
 
     name: str
     arguments: Mapping[str, object]
+    tool_name: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not _OPERATION_RE.fullmatch(self.name):
             raise ValueError("operation name must be a declared identifier")
         if not isinstance(self.arguments, Mapping):
             raise ValueError("operation arguments must be an object")
+        if self.tool_name is not None and (
+            not isinstance(self.tool_name, str) or not _OPERATION_RE.fullmatch(self.tool_name)
+        ):
+            raise ValueError("operation tool name must be a declared identifier")
         arguments = dict(self.arguments)
         _validate_arguments(arguments)
         object.__setattr__(self, "arguments", MappingProxyType(arguments))
@@ -258,7 +263,7 @@ class LocalTransport:
         self.max_response_bytes = _bounded_response_bytes(max_response_bytes)
 
     def execute(self, operation: Operation) -> TransportResult:
-        handler = self._handlers.get(_mcp_operation_name(operation.name))
+        handler = self._handlers.get(operation.tool_name or _mcp_operation_name(operation.name))
         if handler is None:
             # Keep injected, non-MCP handlers compatible with their declared
             # operation names while preferring the MCP catalog spelling.
@@ -371,7 +376,7 @@ class ControllerTransport:
             else _bounded_response_bytes(max_response_bytes)
         )
         payload: dict[str, object] = {
-            "name": _mcp_operation_name(operation.name),
+            "name": operation.tool_name or _mcp_operation_name(operation.name),
             "arguments": dict(operation.arguments),
         }
         if idempotency_key is not None:
@@ -728,6 +733,7 @@ def execute_plan(
     local: Optional[LocalTransport] = None,
     controller: Optional[ControllerTransport] = None,
     ssh: Optional[SSHRecoveryTransport] = None,
+    ssh_operation: Optional[Operation] = None,
     allow_ssh_fallback: bool = False,
     idempotency_key: Optional[str] = None,
 ) -> TransportResult:
@@ -738,6 +744,13 @@ def execute_plan(
             "operation_plan_mismatch",
             "operation does not match the resolved execution plan",
             details={"operation": operation.name},
+        )
+    ssh_operation = ssh_operation or operation
+    if ssh_operation.name != operation.name:
+        raise TransportError(
+            "operation_plan_mismatch",
+            "SSH recovery operation does not match the selected operation",
+            details={"operation": operation.name, "ssh_operation": ssh_operation.name},
         )
     selected = getattr(plan, "transport", None)
     if selected == "local":
@@ -782,14 +795,14 @@ def execute_plan(
                     "ssh_transport_missing", "SSH recovery adapter is not configured"
                 ) from None
             _validate_ssh_plan_binding(plan, ssh, endpoint_attribute="recovery_transport_endpoint")
-            return ssh.execute(operation)
+            return ssh.execute(ssh_operation)
     if selected == "ssh":
         if ssh is None:
             raise TransportError("ssh_transport_missing", "SSH recovery adapter is not configured")
         if not getattr(command, "recovery_capable", False):
             raise TransportError("ssh_operation_not_allowed", "operation is not recovery-capable")
         _validate_ssh_plan_binding(plan, ssh, endpoint_attribute="transport_endpoint")
-        return ssh.execute(operation)
+        return ssh.execute(ssh_operation)
     raise TransportError(
         "unsupported_transport",
         "execution plan requires an unsupported transport",

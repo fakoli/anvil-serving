@@ -2,6 +2,8 @@
 resolution (genericity:T007). `nvidia-smi` is injected via `_run`, so these
 run with no GPU and no `nvidia-smi` on PATH.
 """
+import subprocess
+
 from anvil_serving import gpus
 
 CSV = (
@@ -46,6 +48,14 @@ def test_list_gpus_parses_csv():
 
 def test_list_gpus_empty_when_nvidia_smi_missing():
     assert gpus.list_gpus(_run=_run_missing) == []
+
+
+def test_list_gpus_query_is_time_bounded():
+    def timeout(argv, **kwargs):
+        assert kwargs["timeout"] == gpus.DEFAULT_QUERY_TIMEOUT_SECONDS
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    assert gpus.list_gpus(_run=timeout) == []
 
 
 def test_list_gpus_empty_on_any_error():

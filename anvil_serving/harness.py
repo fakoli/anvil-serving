@@ -58,6 +58,7 @@ _GATEWAY_HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _GATEWAY_USER_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 DEFAULT_TRANSPORT_TIMEOUT_SECONDS = 120
+DEFAULT_STATUS_MAX_OUTPUT_BYTES = 64 * 1024
 _REMOTE_RESTART_COMMAND = 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"'
 _DEFAULT_OPENCLAW_CONFIG_PATH = "~/.openclaw/openclaw.json"
 DEFAULT_ANVIL_VOICE_REALTIME_URL = "ws://127.0.0.1:8765/v1/realtime"
@@ -505,6 +506,7 @@ def _ssh_options(timeout_seconds):
     connect_timeout = max(1, min(int(timeout_seconds), 60))
     return [
         "-o", "BatchMode=yes",
+        "-o", "StrictHostKeyChecking=yes",
         "-o", "ConnectTimeout=%d" % connect_timeout,
         "-o", "ServerAliveInterval=5",
         "-o", "ServerAliveCountMax=1",
@@ -721,9 +723,87 @@ def _restart_openclaw_gateway(host, user, *, timeout_seconds=DEFAULT_TRANSPORT_T
 
 
 def cmd_restart_openclaw(gateway_host=None, gateway_user=None,
-                         timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS, _run=subprocess.run):
+                         timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                         dry_run=False, _run=subprocess.run):
+    if dry_run:
+        if gateway_host:
+            try:
+                target = _ssh_target(gateway_host, gateway_user)
+                timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
+            except ValueError as exc:
+                print(str(exc), file=sys.stderr)
+                return 2
+            argv = ["ssh", *_ssh_options(timeout_seconds), "--", target, _REMOTE_RESTART_COMMAND]
+        else:
+            argv = ["openclaw", "gateway", "restart"]
+        print(json.dumps({"dry_run": True, "command": argv}, sort_keys=True))
+        return 0
     return _restart_openclaw_gateway(gateway_host, gateway_user,
                                      timeout_seconds=timeout_seconds, _run=_run)
+
+
+def openclaw_gateway_status(*, timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                            max_output_bytes=DEFAULT_STATUS_MAX_OUTPUT_BYTES,
+                            _run=subprocess.run):
+    """Return bounded local OpenClaw gateway status without shell execution."""
+    timeout_seconds = _normalize_timeout_seconds(timeout_seconds)
+    if isinstance(max_output_bytes, bool) or not isinstance(max_output_bytes, int):
+        raise ValueError("max_output_bytes must be an integer")
+    if not 1024 <= max_output_bytes <= 1024 * 1024:
+        raise ValueError("max_output_bytes must be between 1024 and 1048576")
+    argv = ["openclaw", "gateway", "status", "--json"]
+    with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
+        try:
+            proc = _run(argv, stdout=stdout_file, stderr=stderr_file, timeout=timeout_seconds)
+        except FileNotFoundError as exc:
+            return {"ok": False, "command": argv, "returncode": None, "error": str(exc)}
+        except subprocess.TimeoutExpired:
+            return {
+                "ok": False,
+                "command": argv,
+                "returncode": None,
+                "error": "OpenClaw gateway status timed out",
+            }
+        stdout_file.seek(0)
+        stderr_file.seek(0)
+        stdout_raw = stdout_file.read(max_output_bytes + 1)
+        stderr_raw = stderr_file.read(max_output_bytes + 1)
+    stdout = stdout_raw[:max_output_bytes].decode("utf-8", "replace")
+    stderr = stderr_raw[:max_output_bytes].decode("utf-8", "replace")
+    result = {
+        "ok": proc.returncode == 0,
+        "command": argv,
+        "returncode": proc.returncode,
+        "stdout": stdout,
+        "stderr": stderr,
+        "stdout_truncated": len(stdout_raw) > max_output_bytes,
+        "stderr_truncated": len(stderr_raw) > max_output_bytes,
+    }
+    if stdout and not result["stdout_truncated"]:
+        try:
+            parsed = json.loads(stdout)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, dict):
+            result["status"] = parsed
+    return result
+
+
+def cmd_status_openclaw(timeout_seconds=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                        max_output_bytes=DEFAULT_STATUS_MAX_OUTPUT_BYTES,
+                        _run=subprocess.run):
+    try:
+        result = openclaw_gateway_status(
+            timeout_seconds=timeout_seconds,
+            max_output_bytes=max_output_bytes,
+            _run=_run,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    stream = sys.stdout if result["ok"] else sys.stderr
+    print(json.dumps(result, indent=2, sort_keys=True), file=stream)
+    return 0 if result["ok"] else 1
 
 
 def openclaw_sync_preview(config_path, *, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
@@ -941,6 +1021,8 @@ def _build_parser():
                       help="with --voice: OpenClaw bootstrap context mode for forced agent consults (default: %(default)s to skip workspace bootstrap files).")
     sync.add_argument("--voice-api-key-env",
                       help="with --voice: env var name for the Anvil Voice bearer token; omitted for loopback.")
+    sync.add_argument("--dry-run", action="store_true",
+                      help="render and validate the sync without writing or restarting.")
 
     restart_action = actions.add_parser("restart", help="restart the gateway so it picks up config changes")
     restart_targets = restart_action.add_subparsers(dest="harness", required=True)
@@ -949,6 +1031,8 @@ def _build_parser():
     restart.add_argument("--gateway-user", help="ssh user for --gateway-host.")
     restart.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
                          help="bound each subprocess call (default: %(default)s).")
+    restart.add_argument("--dry-run", action="store_true",
+                         help="show the fixed restart command without running it.")
     for flag in (
         "--api-key-env",
         "--base-url",
@@ -965,6 +1049,14 @@ def _build_parser():
         restart.add_argument(flag, help=argparse.SUPPRESS)
     for flag in ("--overwrite", "--skills", "--voice"):
         restart.add_argument(flag, action="store_true", help=argparse.SUPPRESS)
+
+    status_action = actions.add_parser("status", help="show bounded gateway status")
+    status_targets = status_action.add_subparsers(dest="harness", required=True)
+    status = status_targets.add_parser("openclaw", help="show bounded OpenClaw gateway status")
+    status.add_argument("--timeout-seconds", type=int, default=DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
+                        help="bound the status subprocess (default: %(default)s).")
+    status.add_argument("--max-output-bytes", type=int, default=DEFAULT_STATUS_MAX_OUTPUT_BYTES,
+                        help="bound stdout and stderr reads (default: %(default)s).")
     return p
 
 
@@ -1003,7 +1095,13 @@ def main(argv=None):
                   "sync)." % ", ".join(stray), file=sys.stderr)
             return 2
         return cmd_restart_openclaw(gateway_host=a.gateway_host, gateway_user=a.gateway_user,
-                                    timeout_seconds=a.timeout_seconds)
+                                    timeout_seconds=a.timeout_seconds, dry_run=a.dry_run)
+
+    if a.action == "status" and a.harness == "openclaw":
+        return cmd_status_openclaw(
+            timeout_seconds=a.timeout_seconds,
+            max_output_bytes=a.max_output_bytes,
+        )
 
     if a.action == "sync" and a.harness == "openclaw":
         if not a.config:
@@ -1012,6 +1110,30 @@ def main(argv=None):
         if a.skill_dir and not a.skills:
             print("--skill-dir requires --skills", file=sys.stderr)
             return 2
+        if a.dry_run:
+            try:
+                preview = openclaw_sync_preview(
+                    a.config,
+                    base_url=a.base_url,
+                    api_key_env=a.api_key_env,
+                    skills=a.skills,
+                    skill_dir=a.skill_dir,
+                    voice=a.voice,
+                    voice_realtime_url=a.voice_realtime_url,
+                    voice_model=a.voice_model,
+                    voice_consult_model=a.voice_consult_model,
+                    voice_consult_thinking_level=a.voice_consult_thinking_level,
+                    voice_consult_bootstrap_context_mode=(
+                        a.voice_consult_bootstrap_context_mode
+                    ),
+                    voice_api_key_env=a.voice_api_key_env,
+                )
+            except (OSError, ValueError) as exc:
+                print(str(exc), file=sys.stderr)
+                return 2
+            print(json.dumps({"applied": False, "dry_run": True, "preview": preview},
+                             indent=2, sort_keys=True))
+            return 0
         # A stdout-only sync isn't applied to the gateway's config file, so restarting would just
         # reload the OLD config and falsely report success. Require an APPLIED target for --restart.
         if a.restart and not a.gateway_host and _is_stdout_out(a.out):

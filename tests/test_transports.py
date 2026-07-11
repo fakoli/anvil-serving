@@ -141,6 +141,36 @@ def test_controller_transport_uses_env_token_and_redacts_response():
     assert TOKEN not in json.dumps(result.as_dict())
 
 
+def test_controller_transport_uses_typed_tool_alias_without_changing_allowlist_name():
+    seen = {}
+
+    def opener(request, timeout):
+        seen["payload"] = json.loads(request.data)
+        return Response(b'{"ok":true,"data":{}}')
+
+    transport = transports.ControllerTransport(
+        "http://100.64.0.10:8765",
+        auth_env="ANVIL_CONTROLLER_TOKEN",
+        allowed_operations=["router-up"],
+        environment={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        opener=opener,
+    )
+
+    result = transport.execute(
+        transports.Operation(
+            "router-up",
+            {"action": "up", "dry_run": True},
+            tool_name="router_manage",
+        )
+    )
+
+    assert result.operation == "router-up"
+    assert seen["payload"] == {
+        "name": "router_manage",
+        "arguments": {"action": "up", "dry_run": True},
+    }
+
+
 @pytest.mark.parametrize(
     "endpoint",
     [

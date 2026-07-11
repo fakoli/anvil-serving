@@ -13,12 +13,14 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-MANIFEST_SCHEMA_VERSION = 1
+MANIFEST_SCHEMA_VERSION = 2
 MANIFEST_PATH = Path(__file__).resolve().parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
 _MUTATION_CLASSES = frozenset({"read", "mutate", "process"})
 _TRANSPORTS = frozenset({"local", "controller", "ssh"})
 _EXECUTION_POLICIES = frozenset({"offline", "resource-owner"})
 _OUTPUT_POLICIES = frozenset({"bounded", "foreground", "protocol", "follow"})
+_REMOTE_MODES = frozenset({"tool", "controller-status", "mcp-bridge"})
+_HOST_OSES = frozenset({"linux", "macos", "windows"})
 
 
 class CommandTreeError(ValueError):
@@ -77,6 +79,24 @@ class CommandOption:
 
 
 @dataclass(frozen=True)
+class RemoteOperation:
+    """Typed controller behavior for one canonical command leaf."""
+
+    mode: str = "tool"
+    tool: str | None = None
+    fixed_arguments: tuple[tuple[str, object], ...] = field(default_factory=tuple)
+    confirmed_arguments: tuple[tuple[str, object], ...] = field(default_factory=tuple)
+    allowed_arguments: tuple[str, ...] = field(default_factory=tuple)
+    positional_arguments: tuple[str, ...] = field(default_factory=tuple)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "fixed_arguments", tuple(self.fixed_arguments))
+        object.__setattr__(self, "confirmed_arguments", tuple(self.confirmed_arguments))
+        object.__setattr__(self, "allowed_arguments", tuple(self.allowed_arguments))
+        object.__setattr__(self, "positional_arguments", tuple(self.positional_arguments))
+
+
+@dataclass(frozen=True)
 class CommandNode:
     """One path segment in the public command tree."""
 
@@ -88,6 +108,7 @@ class CommandNode:
     resource_role: str | None = None
     transports: tuple[str, ...] = field(default_factory=tuple)
     execution_runtime_roles: tuple[str, ...] = field(default_factory=tuple)
+    execution_host_os: tuple[str, ...] = field(default_factory=tuple)
     mutation_class: str = "read"
     recovery_capable: bool = False
     gpu_role_required: bool = False
@@ -97,12 +118,14 @@ class CommandNode:
     tombstone: Tombstone | None = None
     visible: bool = True
     group: str | None = None
+    remote_operation: RemoteOperation | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "children", tuple(self.children))
         object.__setattr__(self, "options", tuple(self.options))
         object.__setattr__(self, "transports", tuple(self.transports))
         object.__setattr__(self, "execution_runtime_roles", tuple(self.execution_runtime_roles))
+        object.__setattr__(self, "execution_host_os", tuple(self.execution_host_os))
 
 
 @dataclass(frozen=True)
@@ -163,6 +186,25 @@ def _future_handler() -> HandlerRef:
     return HandlerRef("anvil_serving.command_tree", "_deferred_handler")
 
 
+def _remote(
+    tool: str | None = None,
+    *,
+    mode: str = "tool",
+    fixed: Iterable[tuple[str, object]] = (),
+    confirmed: Iterable[tuple[str, object]] = (),
+    allowed: Iterable[str] = (),
+    positionals: Iterable[str] = (),
+) -> RemoteOperation:
+    return RemoteOperation(
+        mode=mode,
+        tool=tool,
+        fixed_arguments=tuple(fixed),
+        confirmed_arguments=tuple(confirmed),
+        allowed_arguments=tuple(allowed),
+        positional_arguments=tuple(positionals),
+    )
+
+
 def _node(
     name: str,
     summary: str,
@@ -173,6 +215,7 @@ def _node(
     resource_role: str | None = None,
     transports: tuple[str, ...] = (),
     execution_runtime_roles: tuple[str, ...] = (),
+    execution_host_os: tuple[str, ...] = (),
     mutation_class: str = "read",
     recovery_capable: bool = False,
     gpu_role_required: bool = False,
@@ -182,6 +225,7 @@ def _node(
     tombstone: Tombstone | None = None,
     visible: bool = True,
     group: str | None = None,
+    remote_operation: RemoteOperation | None = None,
 ) -> CommandNode:
     return CommandNode(
         name=name,
@@ -192,6 +236,7 @@ def _node(
         resource_role=resource_role,
         transports=transports,
         execution_runtime_roles=execution_runtime_roles,
+        execution_host_os=execution_host_os,
         mutation_class=mutation_class,
         recovery_capable=recovery_capable,
         gpu_role_required=gpu_role_required,
@@ -201,6 +246,7 @@ def _node(
         tombstone=tombstone,
         visible=visible,
         group=group,
+        remote_operation=remote_operation,
     )
 
 
@@ -218,6 +264,10 @@ def _resource_node(
     handler_attribute: str = "main",
     output_policy: str = "bounded",
     docs_anchor: str = "docs/CLI.md",
+    remote_operation: RemoteOperation | None = None,
+    execution_runtime_roles: tuple[str, ...] = ("native", "docker"),
+    execution_host_os: tuple[str, ...] = (),
+    group: str | None = None,
 ) -> CommandNode:
     return _node(
         name,
@@ -228,8 +278,17 @@ def _resource_node(
             argv_prefix=argv_prefix,
         ) if module else _future_handler(),
         resource_role=role,
-        transports=("local", "controller", "ssh") if recovery else ("local", "controller"),
-        execution_runtime_roles=("native", "docker"),
+        transports=(
+            ("local", "controller", "ssh")
+            if recovery and remote_operation is not None
+            else ("local", "ssh")
+            if recovery
+            else ("local", "controller")
+            if remote_operation is not None
+            else ("local",)
+        ),
+        execution_runtime_roles=execution_runtime_roles,
+        execution_host_os=execution_host_os,
         mutation_class=mutation,
         recovery_capable=recovery,
         gpu_role_required=gpu,
@@ -237,6 +296,8 @@ def _resource_node(
         output_policy=output_policy,
         options=options,
         docs_anchor=docs_anchor,
+        remote_operation=remote_operation,
+        group=group,
     )
 
 
@@ -247,6 +308,7 @@ GLOBAL_OPTIONS = (
     _option("--command-runtime", summary="Declared command runtime.", value_name="runtime:ID"),
     _option("--target", summary="Explicit resource-owner target.", value_name="host:ID|host-role:ROLE"),
     _option("--transport", summary="Execution transport.", value_name="auto|local|controller|ssh"),
+    _option("--allow-ssh-fallback", summary="Allow verified SSH recovery after a proven pre-dispatch controller failure."),
     _option(
         "--experimental-model-workload",
         summary="Allow a topology-permitted experimental model workload on a model-free host.",
@@ -280,27 +342,60 @@ def build_command_tree() -> CommandTree:
                 _option("--port", summary="Router bind port.", value_name="PORT"),
             )),
             *(
-                _resource_node(action, summary, "anvil_serving.router_manage", role="router", mutation="mutate", options=confirm_options)
+                _resource_node(
+                    action,
+                    summary,
+                    "anvil_serving.router_manage",
+                    role="router",
+                    mutation="mutate",
+                    options=confirm_options,
+                    remote_operation=_remote(
+                        "router_manage",
+                        fixed=(("action", action),),
+                        allowed=(
+                            ("compose", "service", "env_file", "dry_run")
+                            if action == "up"
+                            else ("compose", "service", "dry_run")
+                            if action == "down"
+                            else ("container", "dry_run", "no_verify")
+                        ),
+                    ),
+                )
                 for action, summary in (
                     ("up", "Start the deployed router."), ("down", "Stop the deployed router."),
                     ("restart", "Restart the deployed router."), ("reload", "Reload router configuration."),
-                    ("promote", "Promote a reviewed router configuration."),
                 )
             ),
-            _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router"),
-            _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),)),
+            _resource_node(
+                "promote",
+                "Promote a reviewed router configuration.",
+                "anvil_serving.router_manage",
+                role="router",
+                mutation="mutate",
+                options=confirm_options,
+                remote_operation=_remote(
+                    "router_promote",
+                    confirmed=(("human_approved", True),),
+                    allowed=(
+                        "container", "dry_run", "profile", "config", "cfg_volume",
+                        "image", "profile_dest", "config_dest", "no_reload",
+                    ),
+                ),
+            ),
+            _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router", remote_operation=_remote("router_status", allowed=("container",))),
+            _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),), remote_operation=_remote("router_logs", allowed=("container", "tail", "since", "follow"))),
             _resource_node("token", "Inspect the router token state.", "anvil_serving.router_manage", role="router", options=(_option("--reveal", summary="Reveal the local token after confirmation.", requires_confirmation=True), _option("--confirm", summary="Confirm token reveal."))),
         ),
         docs_anchor="docs/CLI.md#router",
     )
     serves_actions = (
         _resource_node("render", "Render a model serve definition.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=action_options),
-        _resource_node("up", "Start manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--compose", summary="Use an ad-hoc compose file.", value_name="PATH"), _option("--recreate", summary="Recreate an existing container."))),
-        _resource_node("down", "Stop manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option,)),
-        _resource_node("rm", "Remove a model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option)),
-        _resource_node("adopt", "Adopt an existing model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option)),
-        _resource_node("status", "Show model serve status.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option,)),
-        _resource_node("logs", "Read bounded model serve logs.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, _option("--tail", summary="Number of trailing lines.", value_name="N|all"), _option("--since", summary="Only logs since a timestamp or duration.", value_name="TIME"), _option("--follow", summary="Follow log output.", output_policy="follow"))),
+        _resource_node("up", "Start manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--compose", summary="Use an ad-hoc compose file.", value_name="PATH"), _option("--recreate", summary="Recreate an existing container.")), remote_operation=_remote("serves_manage", fixed=(("action", "up"),), positionals=("names",))),
+        _resource_node("down", "Stop manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option,), remote_operation=_remote("serves_manage", fixed=(("action", "down"),), positionals=("names",))),
+        _resource_node("rm", "Remove a model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "rm"),), positionals=("names",))),
+        _resource_node("adopt", "Adopt an existing model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "adopt"),), positionals=("names",))),
+        _resource_node("status", "Show model serve status.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option,), remote_operation=_remote("serves_status", positionals=("names",))),
+        _resource_node("logs", "Read bounded model serve logs.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, _option("--tail", summary="Number of trailing lines.", value_name="N|all"), _option("--since", summary="Only logs since a timestamp or duration.", value_name="TIME"), _option("--follow", summary="Follow log output.", output_policy="follow")), remote_operation=_remote("serves_logs", positionals=("names",))),
         _resource_node("multiplex", "Run the single-resident model multiplexer.", "anvil_serving.multiplexer", role="model-serve", mutation="process", gpu=True, argv_prefix=(), output_policy="foreground"),
     )
     serves = _node("serves", "Manage local model serve lifecycle.", children=serves_actions, docs_anchor="docs/CLI.md#serves")
@@ -315,7 +410,7 @@ def build_command_tree() -> CommandTree:
                 _resource_node("show", "Show one recorded serve recipe.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "show")),
             ), docs_anchor="docs/CLI.md#models-recipes"),
             _node("cache", "Manage model cache storage.", children=(
-                _resource_node("prune", "Plan or prune the model cache.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options),
+                _resource_node("prune", "Plan or prune the model cache.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options + (_option("--execute", summary="Delete the planned cache candidates.", requires_confirmation=True),)),
             ), docs_anchor="docs/CLI.md#models-cache-prune"),
             _node(
                 "recipe",
@@ -330,13 +425,19 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor="docs/CLI.md#models",
     )
+    external_remote_tools = {
+        "sources": "external_bench_sources",
+        "list": "external_bench_list",
+        "report": "external_bench_report",
+        "compare": "external_bench_compare",
+    }
     external_actions = tuple(
-        _resource_node(action, summary, "anvil_serving.external_benchmarks.cli", role="evaluation", mutation=mutation, options=action_options if mutation == "mutate" else (), argv_prefix=(action,))
+        _resource_node(action, summary, "anvil_serving.external_benchmarks.cli", role="evaluation", mutation=mutation, argv_prefix=(action,), remote_operation=(_remote(external_remote_tools[action]) if action in external_remote_tools else None))
         for action, summary, mutation in (
             ("init", "Initialize benchmark evidence storage.", "mutate"), ("sources", "List benchmark sources.", "read"),
             ("fetch", "Fetch and import benchmark evidence.", "mutate"), ("import", "Import saved benchmark evidence.", "mutate"),
             ("list", "List normalized benchmark evidence.", "read"), ("report", "Render a benchmark report.", "read"),
-            ("export", "Export benchmark evidence.", "read"), ("compare", "Compare local benchmark evidence.", "read"),
+            ("export", "Export benchmark evidence.", "mutate"), ("compare", "Compare local benchmark evidence.", "read"),
         )
     )
     notebook = _node(
@@ -359,12 +460,28 @@ def build_command_tree() -> CommandTree:
         "eval", "Run quality evaluation workflows.",
         children=(
             _resource_node("usage", "Analyze recorded usage.", "anvil_serving.profile", role="evaluation", argv_prefix=()),
-            _resource_node("preflight", "Preflight an endpoint.", "anvil_serving.preflight", role="evaluation", argv_prefix=()),
+            _resource_node(
+                "preflight", "Preflight an endpoint.", "anvil_serving.preflight",
+                role="evaluation", mutation="mutate", argv_prefix=(),
+                options=(_option("--confirm", summary="Confirm the live evaluation workload."),),
+                remote_operation=_remote(
+                    "preflight_probe", confirmed=(("confirm", True),),
+                    allowed=("base_url", "model", "api_key_env", "needle_ctx", "tool_batch", "no_thinking", "timeout_seconds"),
+                ),
+            ),
             _resource_node("planning", "Run planning evaluation.", "anvil_serving.eval", role="evaluation"),
-            _resource_node("bootstrap", "Bootstrap a quality profile.", "anvil_serving.eval", role="evaluation", mutation="mutate", options=action_options),
-            _resource_node("calibrate", "Calibrate a reviewable quality profile.", "anvil_serving.calibrate", role="evaluation", mutation="mutate", options=action_options, argv_prefix=()),
+            _resource_node("bootstrap", "Bootstrap a quality profile.", "anvil_serving.eval", role="evaluation", mutation="mutate"),
+            _resource_node("calibrate", "Calibrate a reviewable quality profile.", "anvil_serving.calibrate", role="evaluation", mutation="mutate", argv_prefix=()),
             _node("benchmark", "Run or import benchmark evidence.", children=(
-                _resource_node("run", "Run an endpoint benchmark.", "anvil_serving.benchmark", role="evaluation", argv_prefix=()),
+                _resource_node(
+                    "run", "Run an endpoint benchmark.", "anvil_serving.benchmark",
+                    role="evaluation", mutation="mutate", argv_prefix=(),
+                    options=(_option("--confirm", summary="Confirm the live evaluation workload."),),
+                    remote_operation=_remote(
+                        "benchmark_probe", confirmed=(("confirm", True),),
+                        allowed=("base_url", "model", "api_key_env", "requests", "concurrency", "max_tokens", "ctx_tokens", "no_thinking", "timeout_seconds"),
+                    ),
+                ),
                 _node("external", "Manage external benchmark evidence.", children=(*external_actions, notebook), docs_anchor="docs/CLI.md#eval-benchmark-external"),
             ), docs_anchor="docs/CLI.md#eval-benchmark"),
         ),
@@ -374,8 +491,8 @@ def build_command_tree() -> CommandTree:
         "voice", "Manage audio and realtime proxy operations.",
         children=(
             _node("audio", "Manage Dark-owned STT/TTS lifecycle.", children=(
-                _resource_node("up", "Start audio serves.", "anvil_serving.voice.cli", role="audio", mutation="mutate", options=confirm_options, argv_prefix=("up",)),
-                _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="audio", mutation="mutate", options=confirm_options, argv_prefix=("down",)),
+                _resource_node("up", "Start audio serves.", "anvil_serving.voice.cli", role="audio", mutation="mutate", options=confirm_options, argv_prefix=("up",), remote_operation=_remote("voice_manage", fixed=(("action", "up"),))),
+                _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="audio", mutation="mutate", options=confirm_options, argv_prefix=("down",), remote_operation=_remote("voice_manage", fixed=(("action", "down"),))),
             ), docs_anchor="docs/VOICE.md#audio-lifecycle"),
             _node("proxy", "Manage the realtime proxy process.", children=(
                 _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="proxy", mutation="process", argv_prefix=("run",), output_policy="foreground"),
@@ -398,26 +515,73 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor="docs/VOICE.md",
     )
+    harness_operations = (
+        ("sync", "Synchronize harness configuration", "mutate", False, _remote(
+            "openclaw_sync", confirmed=(("confirm", True),),
+            allowed=(
+                "config", "base_url", "api_key_env", "out", "overwrite",
+                "restart", "skills", "skill_dir", "voice", "voice_realtime_url", "voice_model",
+                "voice_consult_model", "voice_consult_thinking_level",
+                "voice_consult_bootstrap_context_mode", "voice_api_key_env", "dry_run",
+                "timeout_seconds",
+            ),
+        )),
+        ("restart", "Restart the harness", "mutate", True, _remote(
+            "openclaw_gateway_restart", confirmed=(("confirm", True),),
+            allowed=("dry_run", "timeout_seconds"),
+        )),
+        ("status", "Show harness status", "read", False, _remote(
+            "openclaw_gateway_status", allowed=("timeout_seconds", "max_output_bytes"),
+        )),
+    )
     harness = _node("harness", "Manage harness integration.", children=tuple(
-        _node(action, summary, children=(_resource_node("openclaw", f"{summary} for OpenClaw.", "anvil_serving.harness", role="gateway", mutation=mutation, recovery=action == "restart", options=confirm_options if mutation == "mutate" else ()),), docs_anchor="docs/CLI.md#harness")
-        for action, summary, mutation in (("sync", "Synchronize harness configuration", "mutate"), ("restart", "Restart the harness", "mutate"))
+        _node(action, summary, children=(_resource_node(
+            "openclaw", f"{summary} for OpenClaw.", "anvil_serving.harness", role="gateway",
+            mutation=mutation, recovery=recovery,
+            options=confirm_options if mutation == "mutate" else (),
+            remote_operation=remote_operation,
+        ),), docs_anchor="docs/CLI.md#harness")
+        for action, summary, mutation, recovery, remote_operation in harness_operations
     ), docs_anchor="docs/CLI.md#harness")
     mcp = _node("mcp", "Expose bounded MCP management tools.", children=(
-        _resource_node("serve", "Run the MCP management server.", "anvil_serving.mcp", role="operator", argv_prefix=(), output_policy="protocol"),
-        _resource_node("tools", "List bounded MCP tools.", "anvil_serving.mcp", role="operator", argv_prefix=("list-tools",)),
+        _resource_node("serve", "Run the MCP management server.", "anvil_serving.mcp", role="operator", argv_prefix=(), output_policy="protocol", remote_operation=_remote(mode="mcp-bridge")),
+        _resource_node("tools", "List bounded MCP tools.", "anvil_serving.mcp", role="operator", argv_prefix=("list-tools",), remote_operation=_remote(mode="mcp-bridge")),
         _node("list-tools", "Removed MCP tool-listing command.", tombstone=removed("mcp tools"), visible=False),
     ), options=(_removed_option("--list-tools", replacement="mcp tools"),), tombstone=removed("mcp serve"), docs_anchor="docs/CLI.md#mcp")
     controller = _node("controller", "Manage the private controller service.", children=(
         _resource_node("serve", "Run the private controller.", "anvil_serving.controller", role="controller", mutation="process", options=(_removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),), output_policy="foreground"),
-        _resource_node("status", "Probe controller health.", "anvil_serving.controller", role="controller"),
+        _resource_node("status", "Probe controller health.", "anvil_serving.controller", role="controller", remote_operation=_remote(mode="controller-status")),
     ), docs_anchor="docs/CLI.md#controller")
-    host = _node("host", "Inspect and repair declared host operations.", children=(
-        _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=()),
-        *(
-            _resource_node(action, summary, "anvil_serving.host", role="host", mutation=mutation, recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options if mutation == "mutate" else ())
-            for action, summary, mutation in (("doctor", "Diagnose host configuration.", "read"), ("wsl-config", "Render or update WSL configuration.", "mutate"), ("restart-docker", "Restart Docker Desktop.", "mutate"), ("reset-wsl", "Reset WSL.", "mutate"))
-        ),
-    ), docs_anchor="docs/CLI.md#host")
+    host_read_actions = (
+        _resource_node("status", "Show structured host status.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
+        _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("gpu_inventory")),
+        _resource_node("doctor", "Diagnose host configuration.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
+    )
+    host_repairs = tuple(
+        _resource_node(
+            action, summary, "anvil_serving.host", role="host", mutation="mutate",
+            recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options,
+            execution_runtime_roles=("native",), execution_host_os=host_os,
+            remote_operation=_remote(
+                "host_manage", fixed=(("action", action),), confirmed=(("confirm", True),),
+                allowed=allowed,
+            ),
+        )
+        for action, summary, host_os, allowed in (
+            ("wsl-config", "Render or update WSL configuration.", ("windows",), ("memory", "swap", "revert", "force", "dry_run")),
+            ("restart-docker", "Restart Docker Desktop.", ("windows", "macos"), ("dry_run",)),
+            ("reset-wsl", "Reset WSL.", ("windows",), ("dry_run",)),
+        )
+    )
+    host = _node("host", "Inspect and repair declared host operations.", children=(*host_read_actions, *host_repairs), docs_anchor="docs/CLI.md#host")
+    topology = _node("topology", "Inspect and resolve deployment topology.", children=tuple(
+        _node(action, summary, handler=_handler("anvil_serving.topology_cli", argv_prefix=(action,)), docs_anchor="docs/CLI.md#topology")
+        for action, summary in (
+            ("show", "Show a validated topology summary."),
+            ("validate", "Validate a topology offline."),
+            ("resolve", "Resolve one canonical command against a topology."),
+        )
+    ), docs_anchor="docs/CLI.md#topology")
 
     tree = CommandTree(
         nodes=(
@@ -431,7 +595,8 @@ def build_command_tree() -> CommandTree:
             _node("mcp", mcp.summary, children=mcp.children, options=mcp.options, handler=mcp.handler, docs_anchor=mcp.docs_anchor, tombstone=mcp.tombstone, visible=mcp.visible, group="Control plane & integrations"),
             _node("controller", controller.summary, children=controller.children, docs_anchor=controller.docs_anchor, group="Control plane & integrations"),
             _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
-            _node("doctor", "Check local dependencies and configured health.", handler=_handler("anvil_serving.doctor"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
+            _resource_node("doctor", "Check dependencies and configured health.", "anvil_serving.doctor", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("doctor_summary"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
+            _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Control plane & integrations"),
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
                 ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),
@@ -532,13 +697,42 @@ def _validate_policy(node: CommandNode, label: str) -> None:
     if len(transports) != len(node.transports) or not transports <= _TRANSPORTS:
         raise CommandTreeError(f"command {label!r} has invalid transports")
     if node.execution_policy == "offline":
-        if node.resource_role or node.transports or node.execution_runtime_roles or node.recovery_capable or node.gpu_role_required:
+        if node.resource_role or node.transports or node.execution_runtime_roles or node.execution_host_os or node.recovery_capable or node.gpu_role_required or node.remote_operation:
             raise CommandTreeError(f"offline command {label!r} must not declare execution metadata")
         return
     if not node.resource_role or not node.transports or not node.execution_runtime_roles:
         raise CommandTreeError(f"resource-owner command {label!r} requires resource, transport, and runtime metadata")
+    if len(set(node.execution_host_os)) != len(node.execution_host_os) or not set(node.execution_host_os) <= _HOST_OSES:
+        raise CommandTreeError(f"command {label!r} has invalid execution host OS metadata")
     if node.recovery_capable and "ssh" not in transports:
         raise CommandTreeError(f"recovery-capable command {label!r} requires ssh transport")
+    if ("controller" in transports) != (node.remote_operation is not None):
+        raise CommandTreeError(
+            f"command {label!r} must pair controller transport with a remote operation"
+        )
+    remote = node.remote_operation
+    if remote is None:
+        return
+    if remote.mode not in _REMOTE_MODES:
+        raise CommandTreeError(f"command {label!r} has an invalid remote operation mode")
+    if remote.mode == "tool" and not remote.tool:
+        raise CommandTreeError(f"command {label!r} requires a controller tool")
+    if remote.mode != "tool" and remote.tool is not None:
+        raise CommandTreeError(f"command {label!r} special remote mode cannot declare a tool")
+    fixed_names = [name for name, _value in remote.fixed_arguments]
+    confirmed_names = [name for name, _value in remote.confirmed_arguments]
+    if len(fixed_names) != len(set(fixed_names)) or any(not name for name in fixed_names):
+        raise CommandTreeError(f"command {label!r} has invalid fixed remote arguments")
+    if (
+        len(confirmed_names) != len(set(confirmed_names))
+        or any(not name for name in confirmed_names)
+        or set(fixed_names) & set(confirmed_names)
+    ):
+        raise CommandTreeError(f"command {label!r} has invalid confirmed remote arguments")
+    if len(remote.allowed_arguments) != len(set(remote.allowed_arguments)):
+        raise CommandTreeError(f"command {label!r} has duplicate allowed remote arguments")
+    if len(remote.positional_arguments) != len(set(remote.positional_arguments)):
+        raise CommandTreeError(f"command {label!r} has duplicate remote positional arguments")
 
 
 def manifest_data(tree: CommandTree = COMMAND_TREE) -> dict[str, object]:
@@ -563,9 +757,11 @@ def _manifest_records(nodes: tuple[CommandNode, ...], parent: tuple[str, ...], i
             "resource_role": node.resource_role,
             "transports": list(node.transports),
             "execution_runtime_roles": list(node.execution_runtime_roles),
+            "execution_host_os": list(node.execution_host_os),
             "recovery_capable": node.recovery_capable,
             "gpu_role_required": node.gpu_role_required,
             "handler": node.handler.name if node.handler else None,
+            "remote_operation": _remote_operation_data(node.remote_operation),
             "tombstone": _tombstone_data(node.tombstone),
             "docs_anchor": node.docs_anchor,
         }
@@ -580,6 +776,19 @@ def _option_data(option: CommandOption) -> dict[str, object]:
         "tombstone": _tombstone_data(option.tombstone),
         "output_policy": option.output_policy,
         "requires_confirmation": option.requires_confirmation,
+    }
+
+
+def _remote_operation_data(remote: RemoteOperation | None) -> dict[str, object] | None:
+    if remote is None:
+        return None
+    return {
+        "mode": remote.mode,
+        "tool": remote.tool,
+        "fixed_arguments": dict(remote.fixed_arguments),
+        "confirmed_arguments": dict(remote.confirmed_arguments),
+        "allowed_arguments": list(remote.allowed_arguments),
+        "positional_arguments": list(remote.positional_arguments),
     }
 
 

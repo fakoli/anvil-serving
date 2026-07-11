@@ -140,6 +140,19 @@ def test_confirmation_value_is_rejected_before_handler_resolution(monkeypatch, c
     assert "--confirm does not accept a value" in capsys.readouterr().err
 
 
+def test_eval_workload_requires_confirmation_and_strips_it_from_leaf(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: calls.append(argv) or 0)
+
+    args = ["eval", "preflight", "--base-url", "http://127.0.0.1:8000/v1", "--model", "m"]
+    assert cli.main(args) == 3
+    assert "confirmation required" in capsys.readouterr().err
+    assert calls == []
+
+    assert cli.main([*args, "--confirm"]) == 0
+    assert calls == [["--base-url", "http://127.0.0.1:8000/v1", "--model", "m"]]
+
+
 @pytest.mark.parametrize(
     "argv",
     [
@@ -246,7 +259,7 @@ def test_json_preserves_local_execution_context(monkeypatch, capsys):
             recovery_transport_endpoint=None,
             recovery_host_key_fingerprint=None,
             recovery_known_hosts_path=None,
-            resource_endpoint=None,
+            resource_endpoint="http://127.0.0.1:9000",
             gpu_role=None,
             selected_target=None,
             capacity=guard.CapacityDecision(
