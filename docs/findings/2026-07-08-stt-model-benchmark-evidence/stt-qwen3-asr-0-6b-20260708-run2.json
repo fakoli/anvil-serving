@@ -1,0 +1,20 @@
+{
+  "hypothesis": "The quick brown fox jumps over the lazy dog.",
+  "identity": {
+    "candidate": "stt-qwen3-asr-0-6b",
+    "profile": "dark-audio",
+    "stt": {
+      "base_url": "http://100.87.34.66:39100/v1",
+      "model": "qwen3-asr-0.6b"
+    }
+  },
+  "latency_ms": 196.36,
+  "reference_text": "the quick brown fox jumps over the lazy dog",
+  "sample": {
+    "bytes": 92058,
+    "sample_rate": 16000
+  },
+  "schema_version": "voice-stt-benchmark/v1",
+  "wer": 0.2222,
+  "wer_normalized": 0.0
+}
