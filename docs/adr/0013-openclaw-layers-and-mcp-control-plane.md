@@ -84,7 +84,7 @@ adapter package, not the router core.
 
 ### Layer 2: anvil router data plane
 
-The router remains the product's request path: `anvil-serving serve` exposes the Anthropic Messages
+The router remains the product's request path: `anvil-serving router run` exposes the Anthropic Messages
 and OpenAI-compatible front doors, resolves intent presets, filters/ranks tiers through policy,
 verifies local output, runs fallback, streams responses, and writes the decision log.
 
@@ -98,7 +98,7 @@ that actually sees the model response.
 
 ### Layer 3: MCP control plane
 
-Add an `anvil-serving mcp` server as the structured operational surface. It should expose tools that
+Add an `anvil-serving mcp serve` server as the structured operational surface. It should expose tools that
 wrap the existing typed management verbs and their underlying library functions, for example:
 
 - inspect router, serve, GPU, and gateway status;

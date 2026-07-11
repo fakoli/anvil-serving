@@ -724,7 +724,7 @@ def validate_manifest(data: dict) -> None:
     # U2-a: defense in depth. `make_ws_server`'s own F2 guard already refuses
     # to BIND a non-loopback host with no token at server-construction time,
     # but that only protects a process that actually gets as far as calling
-    # `make_ws_server` (e.g. `anvil-serving voice run`) -- a manifest with a
+    # `make_ws_server` (e.g. `anvil-serving voice proxy run`) -- a manifest with a
     # non-loopback `realtime_host` and no `realtime_token_env` would still
     # pass `load_manifest`/`validate_manifest` cleanly, describe as "OK", and
     # only fail much later (or in a caller that never reaches make_ws_server

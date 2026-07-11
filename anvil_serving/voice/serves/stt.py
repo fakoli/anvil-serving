@@ -8,7 +8,7 @@ binary/container itself is declared in a `serves.toml` manifest entry (NOT in
 this file, NOT run here) -- see :mod:`anvil_serving.voice.serves._common` for
 the shared delegation-to-``anvil_serving.serves`` lifecycle plumbing.
 
-``anvil-serving voice up``/``down`` construct an :class:`STTServe` from the
+``anvil-serving voice audio up``/``down`` construct an :class:`STTServe` from the
 voice manifest's ``[voice.stt]`` table (``base_url``/``model``) and call
 :meth:`STTServe.bring_up`/:meth:`STTServe.tear_down` -- no raw ``docker run``
 in the operator path.

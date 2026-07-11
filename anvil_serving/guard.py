@@ -30,13 +30,16 @@ Doctrine (the parts that are policy, not just helpers):
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import os
 import shutil
+import threading
 import time
 
 
 _MODEL_WORKLOADS = frozenset({"model", "llm", "stt", "tts", "experimental-model"})
+_CONFIRMATION_STATE = threading.local()
 
 
 @dataclass(frozen=True)
@@ -135,12 +138,23 @@ def evaluate_capacity_policy(
 # --------------------------------------------------------------------------- #
 # gate
 # --------------------------------------------------------------------------- #
+@contextmanager
+def confirmation_scope(authorized):
+    """Authorize nested mutation guards for one dispatcher call only."""
+    previous = getattr(_CONFIRMATION_STATE, "authorized", False)
+    _CONFIRMATION_STATE.authorized = bool(authorized)
+    try:
+        yield
+    finally:
+        _CONFIRMATION_STATE.authorized = previous
+
+
 def confirm(prompt, *, force=False, assume_yes=False, _input=input):
     """Interactive [y/N] gate. ``force``/``assume_yes`` short-circuit to True
     (--force = "I understand I'm overriding a floor"; --yes = "don't prompt").
     EOF (no TTY, e.g. piped/automation without --yes) answers **No** — the
     fail-safe direction for a mutation gate."""
-    if force or assume_yes:
+    if force or assume_yes or getattr(_CONFIRMATION_STATE, "authorized", False):
         return True
     try:
         return (_input(prompt + " [y/N] ") or "").strip().lower() in ("y", "yes")

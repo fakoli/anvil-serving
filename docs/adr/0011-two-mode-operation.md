@@ -39,7 +39,7 @@ field. Phased so Phase 1 ships with the agentic config literally untouched:
 
 - **Phase 1 (near-zero code, maximal isolation):** two config files — the current agentic config
   stays its own **untouched** file; a new `configs/flexibility.toml`. A thin
-  `anvil-serving serve --mode agentic|flexibility` (and `ANVIL_MODE`) resolves to the config path.
+  `anvil-serving router run --mode agentic|flexibility` (and `ANVIL_MODE`) resolves to the config path.
   anvil already loads by config path (`ANVIL_CONFIG`), so this is a resolver + docs, no serving-path
   change. Ships both modes immediately.
 - **Phase 2 (observability + one source of truth, additive):** stamp the active mode into

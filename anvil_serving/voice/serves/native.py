@@ -3,7 +3,7 @@
 `managed` voice serves delegate to :mod:`anvil_serving.serves` and Docker.
 Some hosts intentionally own STT/TTS as native processes instead, so this
 module provides the narrow process lifecycle used by
-``anvil-serving voice up/down``: start a trusted manifest command in the
+``anvil-serving voice audio up/down``: start a trusted manifest command in the
 background, write a PID file, probe the OpenAI-compatible ``/models`` endpoint,
 and stop the PID it started.
 

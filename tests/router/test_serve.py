@@ -644,7 +644,7 @@ def test_serve_mode_flexibility_binds_flexibility_tiers():
 def test_cli_serve_unknown_mode_errors_clearly(capsys):
     """`serve --mode nonsense` -> argparse rejects the invalid choice (non-zero)."""
     with pytest.raises(SystemExit) as exc:
-        cli.main(["serve", "--mode", "nonsense"])
+        cli.main(["router", "run", "--mode", "nonsense"])
     assert exc.value.code != 0
     err = capsys.readouterr().err
     assert "nonsense" in err
@@ -654,7 +654,7 @@ def test_cli_serve_unknown_mode_errors_clearly(capsys):
 
 def test_cli_serve_config_and_mode_are_mutually_exclusive(capsys):
     with pytest.raises(SystemExit) as exc:
-        cli.main(["serve", "--config", str(_AGENTIC_CONFIG), "--mode", "agentic"])
+        cli.main(["router", "run", "--config", str(_AGENTIC_CONFIG), "--mode", "agentic"])
     assert exc.value.code != 0
     assert "not allowed with" in capsys.readouterr().err.lower()
 
@@ -666,7 +666,7 @@ def test_cli_serve_bare_with_no_selector_is_usage_error(monkeypatch, capsys):
     monkeypatch.delenv("ANVIL_MODE", raising=False)
     monkeypatch.delenv("ANVIL_MODES_CONFIG", raising=False)
     with pytest.raises(SystemExit) as exc:
-        cli.main(["serve"])
+        cli.main(["router", "run"])
     assert exc.value.code != 0
     err = capsys.readouterr().err
     assert "--config" in err and "--mode" in err
@@ -679,16 +679,14 @@ def test_cli_serve_whitespace_config_is_usage_error(monkeypatch, capsys):
     monkeypatch.delenv("ANVIL_MODE", raising=False)
     monkeypatch.delenv("ANVIL_MODES_CONFIG", raising=False)
     with pytest.raises(SystemExit) as exc:
-        cli.main(["serve", "--config", "   "])
+        cli.main(["router", "run", "--config", "   "])
     assert exc.value.code != 0
     err = capsys.readouterr().err
     assert "--config" in err and "--mode" in err
 
 
-def test_cli_serve_help_documents_mode_and_config(capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli.main(["serve", "--help"])
-    assert exc.value.code == 0
+def test_cli_router_run_help_documents_mode_and_config(capsys):
+    assert cli.main(["router", "run", "--help"]) == 0
     out = capsys.readouterr().out
     assert "--mode" in out and "--config" in out
     assert "ANVIL_MODE" in out

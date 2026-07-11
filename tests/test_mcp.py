@@ -2695,7 +2695,7 @@ def test_mcp_help_documents_modes(capsys):
     else:  # pragma: no cover - argparse should exit for help
         raise AssertionError("mcp --help did not exit")
     out = capsys.readouterr().out
-    assert "anvil-serving mcp" in out
+    assert "anvil-serving mcp serve" in out
     assert "--list-tools" in out
     assert "--controller-url" in out
     assert "--auth-env" in out
@@ -2705,7 +2705,7 @@ def test_mcp_parse_errors_return_usage_code(capsys):
     rc = mcp.main(["--controller-url"])
     assert rc == 2
     err = capsys.readouterr().err
-    assert "usage: anvil-serving mcp" in err
+    assert "usage: anvil-serving mcp serve" in err
 
 
 def test_mcp_list_tools_positional_alias_still_works(capsys):
@@ -2724,5 +2724,5 @@ def test_cli_dispatches_mcp(monkeypatch):
         return 0
 
     monkeypatch.setattr(mcp, "main", fake_main)
-    assert cli.main(["mcp", "--list-tools"]) == 0
-    assert seen["argv"] == ["--list-tools"]
+    assert cli.main(["mcp", "tools"]) == 0
+    assert seen["argv"] == ["list-tools"]

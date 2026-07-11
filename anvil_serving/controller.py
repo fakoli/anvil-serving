@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 import urllib.parse
+import urllib.request
 import uuid
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -39,6 +40,7 @@ DEFAULT_PORT = 8765
 DEFAULT_AUTH_TOKEN_ENV = "ANVIL_CONTROLLER_TOKEN"
 DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 DEFAULT_READ_TIMEOUT_SECONDS = 30.0
+DEFAULT_STATUS_URL = "http://127.0.0.1:8765"
 
 _MAX_BODY_BYTES = int(
     os.environ.get("ANVIL_CONTROLLER_MAX_BODY_BYTES", str(DEFAULT_MAX_BODY_BYTES))
@@ -1907,12 +1909,35 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="allow a public or wildcard bind; still requires --auth-token-env to be set",
     )
-    serve_parser.add_argument(
-        "--allow-unauthenticated-loopback",
-        action="store_true",
-        help="development only: allow loopback binds without ANVIL_CONTROLLER_TOKEN",
-    )
+    status_parser = subparsers.add_parser("status", help="probe controller health")
+    status_parser.add_argument("--url", default=DEFAULT_STATUS_URL)
+    status_parser.add_argument("--auth-token-env", default=DEFAULT_AUTH_TOKEN_ENV)
+    status_parser.add_argument("--timeout", type=float, default=5.0)
     return parser
+
+
+def status(
+    url: str = DEFAULT_STATUS_URL,
+    *,
+    auth_token_env: str = DEFAULT_AUTH_TOKEN_ENV,
+    timeout: float = 5.0,
+    _open=urllib.request.urlopen,
+) -> int:
+    """Probe the bounded controller health endpoint."""
+    endpoint = url.rstrip("/") + "/health"
+    headers = {}
+    token = os.environ.get(auth_token_env, "").strip()
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    request = urllib.request.Request(endpoint, headers=headers)
+    try:
+        with _open(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError) as exc:
+        print("controller status: %s" % exc, file=sys.stderr)
+        return 1
+    print(json.dumps(payload, sort_keys=True))
+    return 0
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -1929,7 +1954,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 port=args.port,
                 auth_token_env=args.auth_token_env,
                 allow_public_bind=args.allow_public_bind,
-                allow_unauthenticated_loopback=args.allow_unauthenticated_loopback,
+                allow_unauthenticated_loopback=False,
             )
         except ControllerError as exc:
             print(
@@ -1946,6 +1971,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 file=sys.stderr,
             )
             return 2
+    if args.command == "status":
+        return status(
+            args.url,
+            auth_token_env=args.auth_token_env,
+            timeout=args.timeout,
+        )
     parser.print_help(sys.stderr)
     return 2
 

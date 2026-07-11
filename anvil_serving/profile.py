@@ -1,4 +1,4 @@
-"""`anvil-serving profile` — turn your Claude Code logs into a usage baseline + sizing inputs."""
+"""`anvil-serving eval usage` - turn your Claude Code logs into a usage baseline + sizing inputs."""
 import os
 import argparse
 import subprocess
@@ -7,7 +7,7 @@ from . import config
 HERE = os.path.dirname(__file__)
 
 def main(argv):
-    ap = argparse.ArgumentParser(prog="anvil-serving profile")
+    ap = argparse.ArgumentParser(prog="anvil-serving eval usage")
     ap.add_argument("--logs-dir", default=config.claude_logs_dir(),
                     help="Claude Code session logs (default ~/.claude/projects)")
     ap.add_argument("--out-dir", default=os.getcwd())

@@ -3,7 +3,10 @@ Python-version guard (`anvil_serving.cli._check_python_version`) and the
 `calibrate` verb (the operator entry to the guarded write-back batch, T006).
 """
 import json
+import re
+import shlex
 import socket
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +17,19 @@ from anvil_serving import host
 from anvil_serving import benchmark, multiplexer, preflight
 from anvil_serving import router_manage
 from anvil_serving import serves
+from anvil_serving.command_tree import COMMAND_TREE, CommandNode, CommandOption, HandlerRef
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _active_cli_document_paths():
+    yield _REPO_ROOT / "README.md"
+    for directory in ("docs", "examples"):
+        for path in sorted((_REPO_ROOT / directory).rglob("*.md")):
+            relative = path.relative_to(_REPO_ROOT)
+            if "archive" not in relative.parts and "findings" not in relative.parts:
+                yield path
 
 
 def test_python_version_guard_blocks_old_interpreter():
@@ -51,11 +67,44 @@ def test_top_level_help_groups_commands_and_shows_examples(capsys):
         "Quality loop:",
         "Control plane & integrations:",
         "Voice:",
+        "Global options:",
+        "anvil-serving --version",
+        "router run",
+        "eval preflight",
         "anvil-serving serves status",
         "http://127.0.0.1:30000/v1",
-        "Docs: docs/CLI.md",
+        "https://fakoli.github.io/anvil-serving/CLI/",
     ):
         assert token in out
+
+
+def test_root_help_examples_execute_on_canonical_paths(capsys):
+    assert cli.main(["--help"]) == 0
+    out = capsys.readouterr().out
+    examples = out.split("Examples:\n", 1)[1].split("\nDocs:", 1)[0]
+    commands = [
+        shlex.split(line.strip())[1:]
+        for line in examples.splitlines()
+        if line.startswith("  anvil-serving ")
+    ]
+
+    assert commands
+    for command in commands:
+        assert cli.main([*command, "--help"]) == 0
+        assert "usage:" in capsys.readouterr().out.lower()
+
+
+@pytest.mark.parametrize("flag", ["-V", "--version"])
+def test_top_level_version_reports_installed_version(flag, capsys):
+    rc = cli.main([flag])
+    assert rc == 0
+    assert capsys.readouterr().out == "anvil-serving %s\n" % cli.__version__
+
+
+def test_top_level_version_reads_installed_metadata(monkeypatch, capsys):
+    monkeypatch.setattr(cli.importlib_metadata, "version", lambda name: "9.8.7+installed")
+    assert cli.main(["--version"]) == 0
+    assert capsys.readouterr().out == "anvil-serving 9.8.7+installed\n"
 
 
 def test_top_level_help_hides_compatibility_aliases(capsys):
@@ -69,7 +118,7 @@ def test_top_level_help_hides_compatibility_aliases(capsys):
     ]
     for hidden in ("onboard", "voice-sidecar", "cache-prune", "score", "deploy", "external-bench"):
         assert hidden not in command_lines
-    for visible in ("init", "voice", "models", "serves", "benchmark", "multiplexer"):
+    for visible in ("init", "voice", "models", "serves", "eval", "router"):
         assert visible in command_lines
 
 
@@ -97,42 +146,397 @@ def test_unknown_command_suggests_init_for_onboard_typo(capsys):
     assert "Did you mean 'onboard'?" not in err
 
 
-def test_init_and_onboard_dispatch_to_same_module(monkeypatch):
-    from anvil_serving import init as init_mod
-
-    calls = []
-    monkeypatch.setattr(init_mod, "main", lambda argv: calls.append(list(argv)) or 0)
-
-    assert cli.main(["init", "--dry-run"]) == 0
-    assert cli.main(["onboard", "--detect-only"]) == 0
-    assert calls == [["--dry-run"], ["--detect-only"]]
+def test_unknown_nested_command_remains_a_refusal(capsys):
+    assert cli.main(["eval", "benchmrk"]) == 2
+    err = capsys.readouterr().err
+    assert "unknown command: eval benchmrk" in err
+    assert "Did you mean 'benchmark'?" in err
 
 
-def test_onboard_alias_is_quiet(capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli.main(["onboard", "--help"])
-    assert exc.value.code == 0
-    assert "compatibility alias" not in capsys.readouterr().err
+def test_removed_path_refuses_without_resolving_a_legacy_tail(capsys):
+    assert cli.main(["external-bench", "lissst"]) == 2
+    err = capsys.readouterr().err
+    assert "`external-bench` was removed" in err
+    assert "`eval benchmark external`" in err
 
 
 @pytest.mark.parametrize(
-    ("argv", "replacement", "usage"),
+    ("argv", "replacement"),
     [
-        (["voice-sidecar", "--help"], "voice sidecar", "usage: anvil-serving voice sidecar"),
-        (["cache-prune", "--help"], "models cache prune", "usage: anvil-serving models cache prune"),
-        (["score", "--help"], "models score", "usage: anvil-serving models score"),
-        (["deploy", "--help"], "serves render", "usage: anvil-serving serves render"),
-        (["external-bench", "--help"], "benchmark external", "usage: anvil-serving benchmark external"),
+        (["onboard", "--help"], "init"),
+        (["voice-sidecar", "--help"], "voice sidecar"),
+        (["cache-prune", "--help"], "models cache prune"),
+        (["score", "--help"], "models score"),
+        (["deploy", "--help"], "serves render"),
+        (["external-bench", "--help"], "eval benchmark external"),
     ],
 )
-def test_deprecated_root_aliases_emit_canonical_guidance(argv, replacement, usage, capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli.main(argv)
-    assert exc.value.code == 0
+def test_removed_root_paths_emit_only_migration_guidance(argv, replacement, capsys):
+    assert cli.main(argv) == 2
     captured = capsys.readouterr()
-    assert "compatibility alias" in captured.err
+    assert captured.out == ""
+    assert "was removed" in captured.err
+    assert f"`{replacement}`" in captured.err
+    assert "docs/CLI.md#migration-from-legacy-commands" in captured.err
+
+
+@pytest.mark.parametrize(
+    ("argv", "replacement"),
+    [
+        (["serve"], "router run"),
+        (["deploy"], "serves render"),
+        (["multiplexer"], "serves multiplex"),
+        (["cache-prune"], "models cache prune"),
+        (["score"], "models score"),
+        (["profile"], "eval usage"),
+        (["preflight"], "eval preflight"),
+        (["benchmark"], "eval benchmark run"),
+        (["external-bench"], "eval benchmark external"),
+        (["calibrate"], "eval calibrate"),
+        (["gpus"], "host gpus"),
+        (["models", "recipe", "list"], "models recipes list"),
+        (["models", "recipe", "show"], "models recipes show"),
+        (["voice-sidecar"], "voice sidecar"),
+        (["voice", "up"], "voice audio up"),
+        (["voice", "down"], "voice audio down"),
+        (["voice", "run"], "voice proxy run"),
+        (["voice", "bridge"], "voice proxy bridge"),
+        (["voice", "start"], "voice audio up"),
+        (["voice", "stop"], "voice audio down"),
+        (["onboard"], "init"),
+        (["mcp"], "mcp serve"),
+        (["mcp", "list-tools"], "mcp tools"),
+        (["mcp", "--list-tools"], "mcp tools"),
+        (
+            ["controller", "serve", "--allow-unauthenticated-loopback"],
+            "Configure the token named by --auth-token-env",
+        ),
+    ],
+)
+def test_removed_forms_refuse_without_resolving_a_handler(monkeypatch, capsys, argv, replacement):
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved removed path handler: {self.name}"),
+    )
+
+    assert cli.main(argv) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
     assert replacement in captured.err
-    assert usage in captured.out
+    assert "docs/CLI.md#migration-from-legacy-commands" in captured.err
+
+
+def test_mcp_canonical_paths_dispatch_while_removed_forms_refuse(monkeypatch, capsys):
+    from anvil_serving import mcp
+
+    calls = []
+    monkeypatch.setattr(mcp, "main", lambda argv: calls.append(argv) or 0)
+
+    assert cli.main(["mcp", "tools"]) == 0
+    assert cli.main(["mcp", "serve"]) == 0
+    assert cli.main(["mcp"]) == 2
+    assert cli.main(["mcp", "--list-tools"]) == 2
+    assert cli.main(["mcp", "list-tools"]) == 2
+    captured = capsys.readouterr()
+    assert calls == [["list-tools"], []]
+    assert captured.out == ""
+    assert "`mcp` was removed; use `mcp serve`" in captured.err
+    assert "`mcp --list-tools` was removed; use `mcp tools`" in captured.err
+    assert "`mcp list-tools` was removed; use `mcp tools`" in captured.err
+
+
+def test_removed_path_json_emits_one_structured_error_envelope(capsys):
+    assert cli.main(["deploy", "--json"]) == 2
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert captured.err == ""
+    assert payload["ok"] is False
+    assert set(payload) == {"ok", "command", "context", "data", "warnings", "error"}
+    assert payload["error"]["class"] == "usage"
+    assert payload["error"]["details"]["replacement"] == "serves render"
+    assert payload["error"]["details"]["docs_anchor"] == "docs/CLI.md#migration-from-legacy-commands"
+
+
+def test_global_json_wraps_root_and_nested_dispatch(capsys):
+    assert cli.main(["--json", "--help"]) == 0
+    root = json.loads(capsys.readouterr().out)
+    assert root["ok"] is True
+    assert "anvil-serving - quality-gated" in root["data"]
+
+    assert cli.main(["mcp", "tools", "--json"]) == 0
+    nested = json.loads(capsys.readouterr().out)
+    assert nested["ok"] is True
+    assert "router_status" in nested["data"]
+
+
+def test_incompatible_global_verbosity_exits_usage_without_dispatch(monkeypatch, capsys):
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: pytest.fail("handler resolved"))
+    assert cli.main(["controller", "status", "--quiet", "--verbose"]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "cannot be used together" in captured.err
+
+
+def test_incompatible_json_globals_emit_only_usage_envelope(capsys):
+    assert cli.main(["--json", "--quiet", "--verbose", "controller", "status"]) == 2
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert json.loads(captured.out)["error"]["class"] == "usage"
+
+
+def test_json_mutation_never_prompts_and_requires_confirmation(monkeypatch, capsys):
+    monkeypatch.setattr("builtins.input", lambda _prompt: pytest.fail("prompted in JSON mode"))
+    monkeypatch.setattr(HandlerRef, "resolve", lambda self: pytest.fail("handler resolved"))
+    assert cli.main(["router", "up", "--json"]) == 3
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert captured.err == ""
+    assert payload["error"]["class"] == "safety"
+    assert "--confirm" in payload["error"]["message"]
+
+
+@pytest.mark.parametrize("policy", ["foreground", "protocol"])
+def test_declarative_command_policy_classifies_synthetic_commands(policy):
+    node = CommandNode("synthetic", "Synthetic command.", output_policy=policy)
+    assert cli.command_policy((node,), ()).classification == policy
+
+
+def test_declarative_command_policy_classifies_active_follow_option():
+    follow = CommandOption(("--follow",), "Follow output.", output_policy="follow")
+    node = CommandNode("synthetic", "Synthetic command.", options=(follow,))
+    assert cli.command_policy((node,), ("--follow",)).classification == "follow"
+
+
+@pytest.mark.parametrize(
+    ("argv", "classification"),
+    [
+        (["router", "run", "--json"], "foreground"),
+        (["serves", "multiplex", "--json"], "foreground"),
+        (["voice", "proxy", "run", "--json"], "foreground"),
+        (["controller", "serve", "--json"], "foreground"),
+        (["mcp", "serve", "--json"], "protocol"),
+        (["router", "logs", "--follow", "--json"], "follow"),
+        (["serves", "logs", "--json", "--follow"], "follow"),
+    ],
+)
+def test_real_unbounded_commands_refuse_json_before_handler_resolution(
+    monkeypatch, capsys, argv, classification
+):
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved unbounded handler: {self.name}"),
+    )
+
+    assert cli.main(argv) == 2
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    payload = json.loads(captured.out)
+    assert payload["error"]["class"] == "usage"
+    assert classification in payload["error"]["message"]
+
+
+def test_bounded_logs_json_still_dispatches(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: calls.append(argv) or 0,
+    )
+
+    assert cli.main(["router", "logs", "--tail", "5", "--json"]) == 0
+    assert calls == [["logs", "--tail", "5"]]
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--experimental-model-workload=x", "controller", "status"],
+        ["controller", "status", "--experimental-model-workload=x"],
+    ],
+)
+def test_malformed_experimental_override_is_order_independent_and_pre_dispatch(
+    monkeypatch, capsys, argv
+):
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved malformed-option handler: {self.name}"),
+    )
+
+    assert cli.main(argv) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "--experimental-model-workload does not accept a value" in captured.err
+
+
+def _write_capacity_topology(
+    tmp_path: Path,
+    *,
+    owner: str = "mini",
+    workload: str = "experimental-model",
+    allow_model_workloads: bool = False,
+    allow_experimental_model_workloads: bool = False,
+) -> Path:
+    topology = tmp_path / f"{owner}-{workload}.toml"
+    topology.write_text(
+        f"""\
+schema_version = 1
+id = "synthetic-cli-capacity"
+command_host = "host:operator"
+command_runtime = "runtime:operator-native"
+
+[[capacity_policies]]
+id = "owner-capacity"
+allow_model_workloads = {str(allow_model_workloads).lower()}
+allow_experimental_model_workloads = {str(allow_experimental_model_workloads).lower()}
+
+[[hosts]]
+id = "operator"
+roles = ["operator"]
+address = "127.0.0.1"
+
+[[hosts]]
+id = "{owner}"
+roles = ["controller"]
+address = "192.0.2.20"
+capacity_policy = "owner-capacity"
+
+[[runtimes]]
+id = "operator-native"
+host = "operator"
+role = "native"
+
+[[runtimes]]
+id = "owner-native"
+host = "{owner}"
+role = "native"
+
+[[resources]]
+id = "controller-service"
+role = "controller"
+host = "{owner}"
+runtime = "owner-native"
+workload = "{workload}"
+
+[[transports]]
+id = "owner-controller"
+kind = "controller"
+host = "{owner}"
+runtime = "owner-native"
+endpoint = "http://192.0.2.20:8766"
+auth_env = "ANVIL_CONTROLLER_TOKEN"
+allowed_operations = ["controller-status"]
+""",
+        encoding="utf-8",
+    )
+    return topology
+
+
+@pytest.mark.parametrize("experimental_flag", [False, True])
+def test_cli_rejects_mini_model_workload_without_topology_permission_before_launch(
+    tmp_path, monkeypatch, capsys, experimental_flag
+):
+    topology = _write_capacity_topology(tmp_path, workload="llm")
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved handler after capacity refusal: {self.name}"),
+    )
+    argv = ["controller", "status", "--topology", str(topology)]
+    if experimental_flag:
+        argv.append("--experimental-model-workload")
+
+    assert cli.main(argv) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "capacity policy" in captured.err
+
+
+def test_cli_rejects_topology_only_mini_override_before_launch(tmp_path, monkeypatch, capsys):
+    topology = _write_capacity_topology(
+        tmp_path, allow_experimental_model_workloads=True
+    )
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved handler after capacity refusal: {self.name}"),
+    )
+
+    assert cli.main(["controller", "status", "--topology", str(topology)]) == 3
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "pass --experimental-model-workload" in captured.err
+
+
+def test_cli_allows_capacity_override_but_refuses_unimplemented_remote_dispatch(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_capacity_topology(
+        tmp_path, allow_experimental_model_workloads=True
+    )
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved remote handler: {self.name}"),
+    )
+
+    assert cli.main(
+        [
+            "controller",
+            "status",
+            "--topology",
+            str(topology),
+            "--experimental-model-workload",
+        ]
+    ) == 4
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "remote CLI dispatch is not implemented" in captured.err
+
+
+def test_cli_remote_dark_owner_refuses_before_local_handler(tmp_path, monkeypatch, capsys):
+    topology = _write_capacity_topology(
+        tmp_path,
+        owner="dark",
+        workload="llm",
+        allow_model_workloads=True,
+    )
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved remote handler: {self.name}"),
+    )
+
+    assert cli.main(["controller", "status", "--topology", str(topology)]) == 4
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "remote CLI dispatch is not implemented" in captured.err
+
+
+def test_experimental_override_cannot_make_a_removed_path_callable(
+    tmp_path, monkeypatch, capsys
+):
+    topology = _write_capacity_topology(
+        tmp_path, allow_experimental_model_workloads=True
+    )
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: pytest.fail(f"resolved removed path handler: {self.name}"),
+    )
+
+    assert cli.main(
+        [
+            "serve",
+            "--topology",
+            str(topology),
+            "--experimental-model-workload",
+        ]
+    ) == 2
+    assert "`serve` was removed" in capsys.readouterr().err
 
 
 def test_focused_action_help_for_operational_verbs(capsys):
@@ -161,14 +565,14 @@ def test_focused_action_help_for_operational_verbs(capsys):
         preflight.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving preflight" in out
+    assert "usage: anvil-serving eval preflight" in out
     assert "--base-url" in out
 
     with pytest.raises(SystemExit) as exc:
         multiplexer.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving multiplexer" in out
+    assert "usage: anvil-serving serves multiplex" in out
     assert "--ram-cap-gb" in out
 
     with pytest.raises(SystemExit) as exc:
@@ -182,9 +586,25 @@ def test_focused_action_help_for_operational_verbs(capsys):
         benchmark.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving benchmark" in out
+    assert "usage: anvil-serving eval benchmark run" in out
     assert "--base-url" in out
     assert "external" in out
+
+
+def test_serves_help_explains_each_action(capsys):
+    with pytest.raises(SystemExit) as exc:
+        serves.main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    for token in (
+        "Show docker and health state",
+        "verify they stay stopped",
+        "explicit confirmation",
+        "externally-started serves",
+        "streaming docker logs",
+        "Render tuned compose",
+    ):
+        assert token in out
 
 
 def test_focused_action_help_includes_action_specific_flags(capsys):
@@ -214,10 +634,65 @@ def test_focused_action_help_includes_action_specific_flags(capsys):
         assert token in out
 
 
-def test_top_level_command_registry_is_dispatch_registry():
-    assert sorted(cli.COMMAND_BY_NAME) == sorted(item["name"] for item in cli.COMMANDS)
-    for item in cli.COMMANDS:
-        assert callable(item["handler"])
+def _visible_paths(nodes=COMMAND_TREE.nodes, prefix=()):
+    for node in nodes:
+        path = prefix + (node.name,)
+        if node.visible:
+            yield path
+        yield from _visible_paths(node.children, path)
+
+
+@pytest.mark.parametrize("command", list(_visible_paths()))
+def test_every_visible_command_path_exposes_help(command, capsys):
+    rc = cli.main([*command, "--help"])
+    assert rc == 0
+    assert "usage:" in capsys.readouterr().out.lower()
+
+
+def test_cli_reference_indexes_the_live_canonical_surface():
+    text = (_REPO_ROOT / "docs" / "CLI.md").read_text(encoding="utf-8")
+    assert "# CLI Reference" in text
+    for path in _visible_paths():
+        nodes = COMMAND_TREE.nodes
+        for segment in path:
+            current = next(item for item in nodes if item.name == segment)
+            nodes = current.children
+        assert current.docs_anchor.startswith("docs/")
+
+
+def test_active_cli_docs_do_not_advertise_tombstoned_mcp_forms():
+    bare_mcp = re.compile(r"\banvil-serving mcp\b(?!\s+(?:serve|tools)\b)")
+    legacy_tools = re.compile(r"\bmcp\s+(?:--list-tools|list-tools)\b")
+
+    for path in _active_cli_document_paths():
+        text = path.read_text(encoding="utf-8")
+        if path == _REPO_ROOT / "docs" / "CLI.md":
+            text, separator, _ = text.partition("## Migration from legacy commands")
+            assert separator
+        relative = path.relative_to(_REPO_ROOT)
+        assert bare_mcp.search(text) is None, relative
+        assert legacy_tools.search(text) is None, relative
+
+
+def test_cli_consolidation_inventory_records_production_polish_audit():
+    text = (Path(__file__).parents[1] / "docs" / "CLI-CONSOLIDATION-INVENTORY.md").read_text(
+        encoding="utf-8"
+    )
+    assert "49 zero-context diff hunks" in text
+    for path in (
+        "CHANGELOG.md",
+        "README.md",
+        "anvil_serving/cli.py",
+        "anvil_serving/serves.py",
+        "anvil_serving/voice/cli.py",
+        "docs/CLI-CONSOLIDATION-INVENTORY.md",
+        "docs/CLI.md",
+        "docs/VOICE.md",
+        "tests/test_cli.py",
+        "tests/voice/test_voice_cli.py",
+    ):
+        assert "`%s`" % path in text
+    assert "convert these to tombstone tests" in text
 
 
 # --------------------------------------------------------------------------- #
@@ -449,6 +924,7 @@ def test_calibrate_dispatches_through_cli(tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr(calibrate_mod, "run_live", lambda **k: calls.append(k) or None)
     rc = cli.main([
+        "eval",
         "calibrate",
         "--config", _write_config(tmp_path),
         "--out", str(tmp_path / "c.json"),

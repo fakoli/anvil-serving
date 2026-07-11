@@ -32,7 +32,7 @@ Every snapshot stores the raw file path, source URL or import path, fetch/import
 ## Initialize A Store
 
 ```bash
-anvil-serving benchmark external init --db .anvil/benchmarks.sqlite
+anvil-serving eval benchmark external init --db .anvil/benchmarks.sqlite
 ```
 
 This creates a local SQLite store with tables for sources, raw snapshots, normalized benchmark rows, serve fingerprints, and comparison records.
@@ -40,7 +40,7 @@ This creates a local SQLite store with tables for sources, raw snapshots, normal
 ## Import A Saved Snapshot
 
 ```bash
-anvil-serving benchmark external import \
+anvil-serving eval benchmark external import \
   --source millstone \
   --file tests/fixtures/external_benchmarks/millstone_sample.json \
   --db .anvil/benchmarks.sqlite
@@ -49,7 +49,7 @@ anvil-serving benchmark external import \
 For `rtx6kpro`, save a raw JSON artifact first, then import that file:
 
 ```bash
-anvil-serving benchmark external import \
+anvil-serving eval benchmark external import \
   --source rtx6kpro \
   --file tests/fixtures/external_benchmarks/rtx6kpro_qwen_vllm_mtp.json \
   --db .anvil/benchmarks.sqlite
@@ -60,7 +60,7 @@ The raw snapshot is copied under `.anvil/external-benchmarks/raw/` when the DB l
 ## Fetch A Live Snapshot
 
 ```bash
-anvil-serving benchmark external fetch \
+anvil-serving eval benchmark external fetch \
   --source millstone \
   --url https://example.com/millstone-snapshot.html \
   --db .anvil/benchmarks.sqlite
@@ -69,7 +69,7 @@ anvil-serving benchmark external fetch \
 For `rtx6kpro`, fetch individual raw GitHub JSON files rather than repository or wiki pages:
 
 ```bash
-anvil-serving benchmark external fetch \
+anvil-serving eval benchmark external fetch \
   --source rtx6kpro \
   --url https://raw.githubusercontent.com/local-inference-lab/rtx6kpro/master/benchmarks/inference-throughput/vllm_awq_mtp.json \
   --db .anvil/benchmarks.sqlite
@@ -80,7 +80,7 @@ Use fetch mode only when you explicitly want live network access. Tests and fixt
 ## List RTX PRO 6000 Rows
 
 ```bash
-anvil-serving benchmark external list \
+anvil-serving eval benchmark external list \
   --gpu "RTX PRO 6000" \
   --top 20 \
   --db .anvil/benchmarks.sqlite
@@ -98,7 +98,7 @@ RTX 5090 variants map to `rtx_5090_32gb`.
 ## Generate A Markdown Report
 
 ```bash
-anvil-serving benchmark external report \
+anvil-serving eval benchmark external report \
   --gpu "RTX PRO 6000" \
   --format markdown \
   --db .anvil/benchmarks.sqlite
@@ -116,7 +116,7 @@ turn latency, or promotion safety.
 The practical workflow is:
 
 1. Start from the current local baseline in `configs/serve-recipes.toml`.
-2. Use `anvil-serving benchmark external sources` and `anvil-serving benchmark external
+2. Use `anvil-serving eval benchmark external sources` and `anvil-serving eval benchmark external
    report` to find advisory throughput or TTFT priors for the same GPU family.
 3. Mark any candidate that needs a model download, cache deletion, new image, new
    port, cloud API usage, or current-serve disruption as human-gated.
@@ -131,7 +131,7 @@ from local measurement or an external advisory source.
 ## Export Rows
 
 ```bash
-anvil-serving benchmark external export \
+anvil-serving eval benchmark external export \
   --format json \
   --out external-benchmarks.json \
   --db .anvil/benchmarks.sqlite
@@ -142,7 +142,7 @@ The export contains normalized benchmark rows with their source and snapshot met
 ## Compare A Local Anvil Run
 
 ```bash
-anvil-serving benchmark external compare \
+anvil-serving eval benchmark external compare \
   --local tests/fixtures/external_benchmarks/local_benchmark_sample.json \
   --gpu "RTX PRO 6000" \
   --db .anvil/benchmarks.sqlite
@@ -191,10 +191,10 @@ requires a human-approved `router_promote` result before any packet can claim
 
 ## Local Benchmark JSON
 
-`anvil-serving benchmark` keeps its existing console output. For comparison workflows, pass `--json-out`:
+`anvil-serving eval benchmark run` keeps its existing console output. For comparison workflows, pass `--json-out`:
 
 ```bash
-anvil-serving benchmark \
+anvil-serving eval benchmark run \
   --base-url http://127.0.0.1:30000/v1 \
   --model local-specialist \
   --burst 20 \

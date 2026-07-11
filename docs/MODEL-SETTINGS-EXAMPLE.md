@@ -86,6 +86,6 @@ concurrency=4); net end-to-end latency still improved in every trial. Full metho
 1. Edit the `docker-compose.yml` server flags and/or the sampling params above.
 2. Recreate the container with the updated compose file (`docker compose up -d --force-recreate`).
 3. Watch: `docker logs -f sglang` → "ready to roll"; `curl http://127.0.0.1:30000/health` → 200.
-4. Validate: `anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model qwen35-awq-local`
+4. Validate: `anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model qwen35-awq-local`
    — pass `--no-thinking` (injects `chat_template_kwargs:{enable_thinking:false}`) so the model
    returns actual content rather than timing out on the thinking budget.

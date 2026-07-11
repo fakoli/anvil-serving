@@ -681,7 +681,7 @@ def build_recipe(a, summary, *, capture=None, hardware=None):
     gpu = hardware(gpu_uuid) if gpu_uuid else {}
 
     recipe = {"model": a.recipe_model or a.model, "status": a.recipe_status}
-    recipe["source"] = "measured via anvil-serving benchmark (%s)" % summary.get("run_id", "")
+    recipe["source"] = "measured via anvil-serving eval benchmark run (%s)" % summary.get("run_id", "")
 
     hardware_block = {}
     if gpu.get("gpu"): hardware_block["gpu"] = gpu["gpu"]
@@ -740,15 +740,20 @@ def emit_recipe(a, summary, *, capture=None, hardware=None, append=None):
         print("recorded serve recipe for %s -> %s" % (recipe["model"], a.recipe_out))
     return recipe
 
-def main(argv=None, *, prog="anvil-serving benchmark"):
+def main(argv=None, *, prog="anvil-serving eval benchmark run"):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "external":
         from .external_benchmarks import cli as external_bench
-        return external_bench.main(argv[1:], prog="%s external" % prog)
+        return external_bench.main(
+            argv[1:], prog="anvil-serving eval benchmark external"
+        )
 
     ap = argparse.ArgumentParser(
         prog=prog,
-        epilog="Subcommands: external (import, report, and compare external benchmark priors).",
+        epilog=(
+            "Related command: anvil-serving eval benchmark external "
+            "(import, report, and compare external benchmark priors)."
+        ),
     )
     ap.add_argument("--base-url", required=True); ap.add_argument("--model", required=True)
     ap.add_argument("--api-key-env", default=None,

@@ -30,10 +30,10 @@ candidate run and render the comparison:
 
 ```bash
 # append a bakeoff run (alongside --evidence-out)
-anvil-serving benchmark --bakeoff --candidate-id C --config-id CFG \n  --notebook .anvil/benchmarks.sqlite --notebook-task fast-tier --notebook-hardware rtx4090
+anvil-serving eval benchmark run --bakeoff --candidate-id C --config-id CFG \n  --notebook .anvil/benchmarks.sqlite --notebook-task fast-tier --notebook-hardware rtx4090
 
 # render the candidate matrix + rubric + win/lose/hold determination
-anvil-serving benchmark external notebook render --task fast-tier --hardware rtx4090 --baseline current
+anvil-serving eval benchmark external notebook render --task fast-tier --hardware rtx4090 --baseline current
 ```
 
 The rubric weights and hard gates live in

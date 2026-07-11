@@ -120,6 +120,39 @@ class OutputOptions:
 
 
 @dataclass(frozen=True)
+class CommandPolicy:
+    """Output behavior declared by a command or an active command option."""
+
+    classification: str = "bounded"
+
+    def __post_init__(self) -> None:
+        if self.classification not in {"bounded", "foreground", "protocol", "follow"}:
+            raise UsageError(f"unknown command output policy: {self.classification}")
+
+    @property
+    def json_compatible(self) -> bool:
+        return self.classification == "bounded"
+
+
+def classify_command_policy(
+    declared: str = "bounded", *, option_policies: Sequence[str | None] = ()
+) -> CommandPolicy:
+    """Classify a declaration, allowing an active option such as follow to win."""
+    active = [policy for policy in option_policies if policy is not None]
+    return CommandPolicy(active[-1] if active else declared)
+
+
+def enforce_command_policy(policy: CommandPolicy, *, json_mode: bool) -> None:
+    """Refuse output modes that cannot be wrapped in one CLI JSON envelope."""
+    if json_mode and not policy.json_compatible:
+        raise UsageError(
+            f"--json is incompatible with {policy.classification} command output",
+            code="json_output_incompatible",
+            details={"policy": policy.classification},
+        )
+
+
+@dataclass(frozen=True)
 class HumanOutput:
     """Separated primary and diagnostic streams for a human CLI invocation."""
 
