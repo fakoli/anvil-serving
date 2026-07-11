@@ -62,6 +62,7 @@ def test_load_manifest_parses_up_into_argv_list(tmp_path):
     assert (s["name"], s["container"], s["port"]) == ("fast", "vllm-gptoss", 30001)
     assert s["health"] == "/health"  # defaulted
     mdir = os.path.dirname(os.path.abspath(path))
+    assert s["_manifest_dir"] == mdir
     assert s["up"] == ["bash", mdir + "/serve.sh"]  # shlex-split argv list, not a string
 
 
@@ -85,7 +86,56 @@ def test_load_manifest_rejects_missing_required_fields(tmp_path):
         serves.load_manifest(path)
     msg = str(exc.value)
     assert "container" in msg and "port" in msg and "model/served_name" in msg
-    assert "engine" in msg
+
+
+@pytest.mark.parametrize(
+    ("container", "up", "expected"),
+    [
+        ("sglang", "docker compose -f old.yml up -d sglang", "sglang"),
+        ("vllm-old-model", "docker compose -f old.yml up -d vllm", "vllm"),
+        ("llamacpp-old-model", "bash serve-llamacpp.sh", "llamacpp"),
+        ("custom-container", "custom-launcher --port 30000", "sglang"),
+        ("custom-container", "custom-launcher --model vllm", "sglang"),
+    ],
+)
+def test_load_manifest_infers_pre_engine_entries(tmp_path, container, up, expected):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "legacy"
+        container = "{container}"
+        port = 30000
+        model = "legacy-local"
+        up = "{up}"
+    """)
+    (serve,) = serves.load_manifest(path)
+    assert serve["engine"] == expected
+
+
+def test_load_manifest_rejects_conflicting_legacy_engine_markers(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "legacy"
+        container = "vllm-old-model"
+        port = 30000
+        model = "legacy-local"
+        up = "docker compose -f old.yml up -d sglang"
+    """)
+    with pytest.raises(ValueError, match="conflicting legacy engine markers"):
+        serves.load_manifest(path)
+
+
+@pytest.mark.parametrize("engine", ["", "unknown", "VLLM "])
+def test_load_manifest_rejects_malformed_explicit_engine(tmp_path, engine):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "bad"
+        container = "vllm-model"
+        port = 30000
+        model = "bad-local"
+        engine = "{engine}"
+    """)
+    with pytest.raises(ValueError, match="engine must be one of"):
+        serves.load_manifest(path)
 
 
 def test_load_manifest_normalizes_llamacpp_alias_and_served_name(tmp_path):
@@ -152,6 +202,61 @@ def test_cmd_up_loads_manifest_adjacent_dotenv_without_overriding_shell(tmp_path
     assert serves.cmd_up([serve], [], _run=run) == 0
     assert captured_env["HF_TOKEN"] == "shell-token"
     assert captured_env["GEPARD_DATABASE_URL"] == "postgresql://example"
+
+
+def test_manifest_dotenv_isolation_survives_repeated_loads_and_object_churn(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    config_home = tmp_path / "config"
+    home.mkdir()
+    config_home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+    monkeypatch.delenv("DEPLOYMENT_SECRET", raising=False)
+
+    records = []
+    for name in ("alpha", "beta"):
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / ".env").write_text(
+            f"DEPLOYMENT_SECRET={name}-secret\n", encoding="utf-8"
+        )
+        path = _manifest(directory, f"""
+            [[serve]]
+            name = "{name}"
+            container = "vllm-{name}"
+            port = 30000
+            model = "{name}-local"
+        """)
+        records.append((name, path))
+
+    for _ in range(100):
+        loaded = [serves.load_manifest(path)[0] for _name, path in records]
+        assert serves._serve_env(loaded[0])["DEPLOYMENT_SECRET"] == "alpha-secret"
+        assert serves._serve_env(loaded[1])["DEPLOYMENT_SECRET"] == "beta-secret"
+        junk = [{"value": value} for value in range(200)]
+        assert junk[-1]["value"] == 199
+
+    assert not hasattr(serves, "_SERVE_MANIFEST_DIRS")
+
+
+def test_manifest_dotenv_shell_value_wins_without_printing_secret(tmp_path, monkeypatch, capsys):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "secure"
+        container = "vllm-secure"
+        port = 30000
+        model = "secure-local"
+    """)
+    (tmp_path / ".env").write_text(
+        "DEPLOYMENT_SECRET=manifest-secret\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("DEPLOYMENT_SECRET", "shell-secret")
+    (serve,) = serves.load_manifest(path)
+    assert serves._serve_env(serve)["DEPLOYMENT_SECRET"] == "shell-secret"
+    captured = capsys.readouterr()
+    assert "manifest-secret" not in captured.out + captured.err
+    assert "shell-secret" not in captured.out + captured.err
 
 
 def test_cmd_up_loads_home_dotenv_as_fallback(tmp_path, monkeypatch):
