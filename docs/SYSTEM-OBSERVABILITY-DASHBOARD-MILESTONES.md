@@ -171,6 +171,9 @@ inspection for current state and recent trends.
   adversarial pass also caught and fixed a duplicated `serve` dispatch token
   and eliminated dashboard refreshes that bypassed the retained sampling
   cadence.
+- All milestone member tests pass together (`234 passed`). The final
+  repository-wide gate passes (`3317 passed, 2 skipped`), along with Ruff,
+  strict documentation, Markdown links, and the full CLI-reference audit.
 
 ## Milestone 4 — Benchmark evidence and v0.11 acceptance
 
