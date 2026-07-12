@@ -6,8 +6,32 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.12.0] - 2026-07-11
+
+The first packaged release since v0.7.3 completes the operator CLI v2 transition,
+adds the full read-only system observability dashboard and benchmark telemetry
+pipeline, and makes externally authored deterministic eval suites a supported
+benchmark input. It also includes the v0.10.0 tagged source checkpoint and the
+v0.11.0 untagged source checkpoint.
+
 ### Added
 
+- **Read-only system observability dashboard and benchmark context.** Adds
+  capability-aware Windows, WSL/Docker, NVIDIA, container, service-health,
+  remote-controller, and macOS collectors; a low-overhead local web dashboard
+  with bounded tiered retention, pressure/loading/freshness indicators, and
+  explicit sampling gaps; and programmatic benchmark capture sessions with
+  compressed raw evidence outside Git, sanitized findings, retained-session
+  comparison, and strict CPU/RSS/disk/GPU overhead gates. Target validation
+  passed at 0.3051% average host CPU / 38,699,008-byte peak RSS in normal mode
+  and 0.1513% / 39,501,824 bytes in benchmark mode, with zero dashboard-process
+  capture writes, zero GPU allocation, and a 0.35% controlled benchmark effect.
+- **Qwen3.5-122B-A10B-NVFP4 heavy-tier candidate evidence.** Publishes the
+  131K-context RTX PRO 6000 evaluation and keeps the candidate experimental
+  pending the documented tool-calling and quality gates; it is not
+  auto-promoted by this release.
 - **`eval benchmark run --suite-file`** — runs externally-authored eval specs (e.g. the
   fakoli-plugins session-evals `suite.json`) through the existing deterministic bakeoff
   check engine (text checks + tool-call validation) against the target endpoint. Per-eval
@@ -24,7 +48,7 @@ All notable changes to this project are documented here. The format is based on
   commands; compatibility forms remain only in explicit migration/tombstone
   evidence. Parent command groups now reject action-specific flags when the
   required child action is missing instead of printing help and returning
-  success. This unreleased work does not publish a version, tag, or package.
+  success.
 - **Hermetic Markdown link guard** - checks relative targets in every
   Git-tracked Markdown file using the same Python-Markdown/Pymdown parser
   family as MkDocs, ignores external URLs and rendered code examples, and now
@@ -125,6 +149,9 @@ All notable changes to this project are documented here. The format is based on
 
 ## [0.11.0] - 2026-07-06
 
+> Source checkpoint on `main`; not tagged or published as a package. Its changes
+> are included in v0.12.0.
+
 ### Added
 
 - **OpenClaw MCP control plane and split-host controller transport.** Added `anvil-serving mcp`
@@ -194,10 +221,10 @@ All notable changes to this project are documented here. The format is based on
   ignores operator `ANVIL_CLOUD_CLASSES`; arbitrary `--out --restart` syncs are rejected unless the
   output is the real local OpenClaw config path.
 
-## [0.10.0] - 2026-07-04
+## [0.10.0] - 2026-07-06
 
-> Package version on main only. The latest Git tag in `origin` is still `v0.7.3`;
-> compare `[Unreleased]` for all main-line changes after that tag.
+> Tagged source checkpoint, but not published as a GitHub release or package.
+> Its changes are included in v0.12.0.
 
 ### Added
 
@@ -776,7 +803,9 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/fakoli/anvil-serving/compare/v0.10.0...v0.12.0
+[0.10.0]: https://github.com/fakoli/anvil-serving/compare/v0.7.3...v0.10.0
 [0.7.3]: https://github.com/fakoli/anvil-serving/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/fakoli/anvil-serving/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/fakoli/anvil-serving/compare/v0.7.0...v0.7.1
