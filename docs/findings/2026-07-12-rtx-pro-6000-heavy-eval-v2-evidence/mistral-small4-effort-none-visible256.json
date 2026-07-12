@@ -1,0 +1,661 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "Mercury_7175875",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "Mercury_407327",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "MCAS_2006_9_44",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39032/v1",
+    "candidate_id": "mistral-small4-119b-a6b-nvfp4",
+    "config_id": "vllm-nightly-nvfp4-fp8kv-131k-seq5-evalv2-effort-none",
+    "model": "mistral-small4-119b-a6b-nvfp4",
+    "started_at": "2026-07-12T11:53:22Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T115322Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-arc-challenge-5-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A planet's rotation speed increases after a meteorite impact. This means the planet is spinning faster on its axis.\n\n2. **Effect on planetary days**: The rotation speed of a planet determines the length of its day. If the planet rotates faster, the time it takes to complete one rotation (a day) decreases. Therefore, the planetary days will become shorter.\n\n3. **Evaluating the options**:\n   - **A. Planetary density will decrease**: The impact might change the planet's mass or volume, but density is not directly related to rotation speed. This is unlikely to be the primary effect.\n   - **B. Planetary years will become longer**: A year is determined by the planet's orbit around its star, not its rotation speed. This is unrelated to the given scenario.\n   - **C. Planetary days will become shorter**: This directly follows from the increased rotation speed. Faster rotation means shorter days.\n   - **D. Planetary gravity will become stronger**: Gravity depends on the planet's mass and radius, not its rotation speed. The impact might change these, but the most immediate and likely effect is on day length.\n\n4. **Conclusion**: The",
+              "content_excerpt": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A planet's rotation speed increases after a meteorite impact. This means the planet is spinning faster on its axis.\n\n2. **E",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2196.7198848724365,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 343
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A planet's rotation speed increases after a meteorite impact. This means the planet is spinning faster on its axis.\n\n2. **Effect on planetary days**: The rotation speed of a planet determines the length of its day. If the planet rotates faster, each day (one full rotation) will take less time. Therefore, planetary days will become shorter.\n\n3. **Evaluating the options**:\n   - **A. Planetary density will decrease**: The density of the planet is related to its mass and volume. A meteorite impact might add mass, but it doesn't necessarily decrease density. This is unlikely to be the most direct effect.\n   - **B. Planetary years will become longer**: A year is determined by the planet's orbit around its star, not its rotation speed. The impact doesn't directly affect the orbital period, so this is incorrect.\n   - **C. Planetary days will become shorter**: This directly relates to the increased rotation speed, making this the most likely effect.\n   - **D. Planetary gravity will become stronger**: Gravity depends on the planet's mass and radius. While the impact might add mass, the effect on gravity isn't as direct or",
+              "content_excerpt": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A planet's rotation speed increases after a meteorite impact. This means the planet is spinning faster on its axis.\n\n2. **E",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2013.0159854888916,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 343
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's reason through this question step by step:\n\n1. **Understanding the scenario**: A planet's rotation speed increases after a meteorite impact. This means the planet is spinning faster on its axis.\n\n2. **Effect on planetary days**: If the planet rotates faster, the time it takes to complete one full rotation (a day) will decrease. This is because a day is defined by the time it takes for the planet to rotate once on its axis.\n\n3. **Evaluating the options**:\n   - **A. Planetary density will decrease**: The density of the planet is unlikely to change significantly due to a meteorite impact. Density is a measure of mass per unit volume, and a meteorite impact would not drastically alter the planet's mass or volume.\n   - **B. Planetary years will become longer**: A year is determined by the planet's orbit around its star, not its rotation speed. The impact does not affect the orbital period, so the length of a year would remain unchanged.\n   - **C. Planetary days will become shorter**: This aligns with the reasoning above. A faster rotation means shorter days.\n   - **D. Planetary gravity will become stronger**: Gravity is primarily determined by the planet's mass and radius. A",
+              "content_excerpt": "Let's reason through this question step by step:\n\n1. **Understanding the scenario**: A planet's rotation speed increases after a meteorite impact. This means the planet is spinning faster on its axis.",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2014.251947402954,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 343
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "Mercury_7175875",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze each option in the context of engineers testing building models under earthquake conditions:\n\nA. buildings will be built faster \u2013 While testing might lead to improved construction methods, the primary goal of earthquake testing is not to speed up construction. This is unlikely to be the main result.\n\nB. buildings will be made safer \u2013 This makes sense. Testing building models under earthquake conditions helps engineers understand structural weaknesses and improve designs to better withstand earthquakes, ultimately making buildings safer.\n\nC. designs will look nicer \u2013 Aesthetics are usually not the focus of structural engineering tests, especially under earthquake conditions. Safety and functionality are prioritized over appearance.\n\nD. materials will be cheaper \u2013 While cost efficiency is a consideration in engineering, the primary goal of earthquake testing is safety and structural integrity, not reducing material costs.\n\nThe most likely result of testing building models under earthquake conditions is to improve building safety.\n\nFINAL=B",
+              "content_excerpt": "Let's analyze each option in the context of engineers testing building models under earthquake conditions:\n\nA. buildings will be built faster \u2013 While testing might lead to improved construction method",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1462.7749919891357,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 182,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 259
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze each option in the context of engineers testing building models under earthquake conditions:\n\nA. buildings will be built faster \u2013 While testing might lead to more efficient construction methods, the primary goal of earthquake testing is not to speed up construction. This is unlikely to be the main result.\n\nB. buildings will be made safer \u2013 Earthquake testing is specifically aimed at evaluating how structures withstand seismic forces. The most likely outcome is that engineers will use the test results to improve designs, making buildings safer against earthquakes.\n\nC. designs will look nicer \u2013 Aesthetics are usually a secondary consideration in structural engineering, especially in earthquake-prone areas where safety is the priority. This is not the most likely result.\n\nD. materials will be cheaper \u2013 While cost efficiency is a factor in engineering, the primary focus of earthquake testing is safety and structural integrity, not reducing material costs.\n\nThe most logical and likely result of earthquake testing is that buildings will be made safer.\n\nFINAL=B",
+              "content_excerpt": "Let's analyze each option in the context of engineers testing building models under earthquake conditions:\n\nA. buildings will be built faster \u2013 While testing might lead to more efficient construction ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1576.916217803955,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 197,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 274
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze each option in the context of engineers testing building models under earthquake conditions:\n\nA. buildings will be built faster \u2013 While testing might lead to more efficient construction methods, the primary goal of earthquake testing is not speed. This is unlikely to be the main result.\n\nB. buildings will be made safer \u2013 Earthquake testing is specifically done to evaluate how buildings withstand seismic forces. The most likely outcome is improved safety through better designs and materials.\n\nC. designs will look nicer \u2013 Aesthetics are usually not the focus of structural earthquake testing. Safety and functionality take priority.\n\nD. materials will be cheaper \u2013 While cost efficiency might be a secondary consideration, the primary goal is safety, not reducing material costs.\n\nThe most logical and likely result of earthquake testing is that buildings will be made safer.\n\nFINAL=B",
+              "content_excerpt": "Let's analyze each option in the context of engineers testing building models under earthquake conditions:\n\nA. buildings will be built faster \u2013 While testing might lead to more efficient construction ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1327.2743225097656,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 166,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 243
+              }
+            }
+          ],
+          "id": "Mercury_SC_409171",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze each option to determine which step signals the beginning of photosynthesis:\n\n1. **Option A: Chemical energy is absorbed through roots.**\n   - Roots absorb water and minerals, not chemical energy. Chemical energy is produced later in photosynthesis, so this is not the beginning.\n\n2. **Option B: Light energy is converted to chemical energy.**\n   - This is a key part of photosynthesis, but it occurs after light energy has been captured, so it is not the very first step.\n\n3. **Option C: Chlorophyll in the leaf captures light energy.**\n   - Chlorophyll is the pigment that absorbs light energy from the sun, which is the very first step in photosynthesis. This is the correct answer.\n\n4. **Option D: Sunlight is converted into chlorophyll.**\n   - Chlorophyll is not made from sunlight; it is a pigment that absorbs sunlight. This option is incorrect.\n\nThe correct answer is **C**, as the process begins when chlorophyll captures light energy.\n\nFINAL=C",
+              "content_excerpt": "Let's analyze each option to determine which step signals the beginning of photosynthesis:\n\n1. **Option A: Chemical energy is absorbed through roots.**\n   - Roots absorb water and minerals, not chemic",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1603.888750076294,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 202,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 279
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze each option to determine which step signals the beginning of photosynthesis.\n\nPhotosynthesis is the process by which plants convert light energy into chemical energy stored in glucose. The process begins when light energy is captured by chlorophyll in the leaves.\n\n- **Option A**: \"Chemical energy is absorbed through roots.\"\n  This is incorrect because roots absorb water and minerals, not chemical energy. Chemical energy is produced later in photosynthesis.\n\n- **Option B**: \"Light energy is converted to chemical energy.\"\n  This is a key part of photosynthesis, but it is not the beginning step. The conversion happens after light energy is captured.\n\n- **Option C**: \"Chlorophyll in the leaf captures light energy.\"\n  This is correct. The first step of photosynthesis is the absorption of light energy by chlorophyll in the leaves.\n\n- **Option D**: \"Sunlight is converted into chlorophyll.\"\n  This is incorrect because chlorophyll is a molecule that captures light, but sunlight is not converted into chlorophyll itself.\n\nThe correct answer is **C**, as it describes the initial step where light energy is captured, signaling the beginning of photosynthesis.\n\nFINAL=C",
+              "content_excerpt": "Let's analyze each option to determine which step signals the beginning of photosynthesis.\n\nPhotosynthesis is the process by which plants convert light energy into chemical energy stored in glucose. T",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1805.6457042694092,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 226,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 303
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze each option to determine which step signals the beginning of photosynthesis:\n\n1. **Option A: Chemical energy is absorbed through roots.**\n   - This is incorrect because photosynthesis primarily involves the conversion of light energy, not the absorption of chemical energy through roots. Roots absorb water and minerals, not energy for photosynthesis.\n\n2. **Option B: Light energy is converted to chemical energy.**\n   - This is a key part of photosynthesis, but it is not the *beginning* step. The process starts before this conversion occurs.\n\n3. **Option C: Chlorophyll in the leaf captures light energy.**\n   - This is correct. The process of photosynthesis begins when chlorophyll in the leaf absorbs light energy from the sun. This is the first step in the photosynthetic process.\n\n4. **Option D: Sunlight is converted into chlorophyll.**\n   - This is incorrect because chlorophyll is a molecule that exists in the leaf and captures light; it is not created from sunlight itself.\n\nThe correct answer is **C**, as the beginning of photosynthesis is marked by chlorophyll capturing light energy.\n\nFINAL=C",
+              "content_excerpt": "Let's analyze each option to determine which step signals the beginning of photosynthesis:\n\n1. **Option A: Chemical energy is absorbed through roots.**\n   - This is incorrect because photosynthesis pr",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1754.2262077331543,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 219,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 296
+              }
+            }
+          ],
+          "id": "Mercury_SC_408547",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A physicist is conducting ramp-jump trials with a test car. The speed of the car is increased by 20 mph between trials.\n\n2. **Key terms**:\n   - **Control**: A variable that is kept constant to ensure a fair test.\n   - **Hypothesis statement**: A proposed explanation or prediction that is tested in an experiment.\n   - **Dependent variable**: The variable that is measured or observed in response to changes in the independent variable.\n   - **Independent variable**: The variable that is deliberately changed or manipulated by the experimenter.\n\n3. **Applying the terms to the scenario**:\n   - The physicist is **changing the speed of the car** (increasing it by 20 mph between trials). This is the variable being manipulated.\n   - The speed of the car is the **independent variable** because it is the factor being changed to observe its effect on the car's jump performance (the dependent variable).\n   - The dependent variable would be something like the distance of the jump or the time in the air, which is measured as a result of the speed change.\n   - The control would be other factors kept constant, like the ramp",
+              "content_excerpt": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A physicist is conducting ramp-jump trials with a test car. The speed of the car is increased by 20 mph between trials.\n\n2.",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2007.4713230133057,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 76,
+                "prompt_tokens_details": null,
+                "total_tokens": 332
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A physicist is conducting ramp-jump trials with a test car. Between trials, the speed of the car is increased by 20 mph. The question asks what is being changed in this scenario.\n\n2. **Key terms**:\n   - **Control**: A variable that is kept constant to ensure a fair test.\n   - **Hypothesis statement**: A proposed explanation or prediction that is tested in an experiment.\n   - **Dependent variable**: The variable that is measured or observed in response to changes in the independent variable.\n   - **Independent variable**: The variable that is deliberately changed or manipulated by the experimenter to observe its effect.\n\n3. **Identifying what is being changed**:\n   - The speed of the car is being increased by 20 mph between trials. This is a deliberate change made by the physicist to observe its effect on the car's performance (e.g., distance jumped).\n   - Therefore, the speed is the **independent variable** because it is the variable being manipulated to test its effect.\n\n4. **Eliminating other options**:\n   - **A. the control**: The control would be variables kept constant (e.g., ramp height, car weight",
+              "content_excerpt": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A physicist is conducting ramp-jump trials with a test car. Between trials, the speed of the car is increased by 20 mph. Th",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2003.5910606384277,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 76,
+                "prompt_tokens_details": null,
+                "total_tokens": 332
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A physicist is conducting ramp-jump trials with a test car. Between trials, the speed of the car is increased by 20 mph. The question asks what is being changed in this experiment.\n\n2. **Key terms**:\n   - **Control**: A variable that is kept constant to ensure a fair test.\n   - **Hypothesis statement**: A proposed explanation or prediction that is tested in an experiment.\n   - **Dependent variable**: The variable that is measured or observed in response to changes in the independent variable.\n   - **Independent variable**: The variable that is deliberately changed or manipulated by the experimenter to observe its effect.\n\n3. **Applying the terms to the scenario**:\n   - The speed of the car is being increased by 20 mph between trials. This is the variable that the physicist is deliberately changing to see how it affects the car's ramp-jump performance.\n   - The dependent variable would be something like the distance of the jump or the success of the jump, which is measured in response to the speed change.\n   - The control would be other factors kept constant, such as the ramp angle, car weight, or environmental conditions.\n   - The",
+              "content_excerpt": "Let's analyze the question step-by-step:\n\n1. **Understanding the scenario**: A physicist is conducting ramp-jump trials with a test car. Between trials, the speed of the car is increased by 20 mph. Th",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2009.279727935791,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 76,
+                "prompt_tokens_details": null,
+                "total_tokens": 332
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "Mercury_407327",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the problem step-by-step:\n\n1. **Understanding the scenario**:\n   - Two objects of different masses (1 kg and 5 kg) are falling on the Moon.\n   - They fall a total distance of 2 m, and we are asked about their state after falling 1 m (halfway).\n\n2. **Key concepts to consider**:\n   - **Potential Energy (PE)**: PE = mgh, where m is mass, g is gravitational acceleration, and h is height.\n   - **Kinetic Energy (KE)**: KE = \u00bdmv\u00b2, where v is velocity.\n   - On the Moon, gravitational acceleration (g) is about 1/6th of Earth's (approximately 1.62 m/s\u00b2).\n\n3. **Analyzing potential energy change**:\n   - Both objects fall 1 m, so the change in height (\u0394h) is 1 m.\n   - The change in potential energy is \u0394PE = mg\u0394h.\n   - For the 1 kg object: \u0394PE = 1 kg * g * 1 m = g.\n   - For the 5 kg object: \u0394PE = 5 kg * g * 1 m = 5g.\n   - Thus",
+              "content_excerpt": "Let's analyze the problem step-by-step:\n\n1. **Understanding the scenario**:\n   - Two objects of different masses (1 kg and 5 kg) are falling on the Moon.\n   - They fall a total distance of 2 m, and we",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2043.644666671753,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 350
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the problem step-by-step:\n\n1. **Given:**\n   - Two objects with masses 1 kg and 5 kg.\n   - Both fall 2 meters on the Moon.\n   - We are asked about their state after falling 1 meter.\n\n2. **Key concepts:**\n   - On the Moon, gravity is about 1/6th of Earth's gravity, but the exact value isn't needed here because the question is about energy changes relative to the fall.\n   - Potential energy depends on mass, height, and gravitational acceleration.\n   - Kinetic energy depends on mass and velocity squared.\n   - As objects fall, potential energy decreases and kinetic energy increases (assuming no air resistance).\n\n3. **Analyze each option:**\n\n   - **A. Each lost kinetic energy.**\n     This is incorrect because as objects fall, they gain speed, so kinetic energy increases, not decreases.\n\n   - **B. Each gained the same potential energy.**\n     Potential energy depends on mass and height. Since the masses are different (1 kg vs 5 kg), the potential energy lost will differ. So this is incorrect.\n\n   - **C. Each lost the same potential energy.**\n     Again, potential energy lost depends on mass and height change. Since mass differs",
+              "content_excerpt": "Let's analyze the problem step-by-step:\n\n1. **Given:**\n   - Two objects with masses 1 kg and 5 kg.\n   - Both fall 2 meters on the Moon.\n   - We are asked about their state after falling 1 meter.\n\n2. *",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2012.5222206115723,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 350
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the problem step-by-step:\n\n1. **Given:**\n   - Two objects with masses 1 kg and 5 kg.\n   - Both fall 2 meters on the Moon.\n   - We are asked about their state after falling 1 meter.\n\n2. **Key concepts:**\n   - **Potential Energy (PE):** PE = mgh, where m is mass, g is gravitational acceleration, and h is height.\n   - **Kinetic Energy (KE):** KE = 1/2 mv^2, related to motion.\n   - On the Moon, gravity is about 1/6th of Earth's gravity, but the exact value is not needed here because it cancels out in comparisons.\n\n3. **After falling 1 meter:**\n   - Both objects have lost some potential energy because their height decreased.\n   - The potential energy lost is mgh, where h = 1 m.\n   - Since g and h are the same for both, the potential energy lost depends on mass.\n   - Therefore, the 5 kg object loses more potential energy than the 1 kg object.\n\n4. **Checking the options:**\n\n   - **A. Each lost kinetic energy.**\n     No, they are falling, so they are gaining kinetic energy",
+              "content_excerpt": "Let's analyze the problem step-by-step:\n\n1. **Given:**\n   - Two objects with masses 1 kg and 5 kg.\n   - Both fall 2 meters on the Moon.\n   - We are asked about their state after falling 1 meter.\n\n2. *",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 2029.5965671539307,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 350
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "MCAS_2006_9_44",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-arc-challenge-5-repeated.suite.json",
+      "status": "failed",
+      "work_class": "basic-independent-multiple-choice-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "none",
+    "control_status": "requested_unverified",
+    "mode": "default",
+    "reasoning_effort": "none",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 27905.284881591797
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

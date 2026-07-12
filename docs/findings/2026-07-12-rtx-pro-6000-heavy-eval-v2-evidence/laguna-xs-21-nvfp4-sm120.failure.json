@@ -1,0 +1,57 @@
+{
+  "schema": "anvil-serving.candidate-failure.v1",
+  "date": "2026-07-12",
+  "candidate": "poolside/Laguna-XS-2.1-NVFP4",
+  "revision": "07133fb3df1cc3111478e24ee71a823a598c8c2f",
+  "hardware": "NVIDIA RTX PRO 6000 Blackwell 96 GB (sm_120)",
+  "status": "rejected_tested_recipes",
+  "evidence_limit": "Healthy-but-semantically-wrong response bodies and preflight JSON were not retained before container recreation. Those observations are operator-reported and incomplete; retained logs substantiate only the startup and forced-runner failures.",
+  "attempts": [
+    {
+      "engine": "vllm 0.23.1rc1.dev531+ga65f93fb2",
+      "configuration": "262144 context, five sequences, FP8 KV, FlashInfer attention",
+      "health": 200,
+      "preflight_default": "0/4",
+      "preflight_no_thinking": "2/4; structured JSON and 20-way tool batch failed",
+      "evidence_status": "operator-observed-incomplete",
+      "failure": "corrupted visible output; tool batch 0/20"
+    },
+    {
+      "engine": "vllm 0.23.1rc1.dev531+ga65f93fb2",
+      "configuration": "FP8 KV skipped on layers 0-39; 131072 context",
+      "health": null,
+      "evidence_status": "retained-bounded-log",
+      "failure": "startup did not progress beyond CUDA graph/cache profiling"
+    },
+    {
+      "engine": "vllm 0.23.1rc1.dev531+ga65f93fb2",
+      "configuration": "FP8 KV skipped on layers 0-39; 262144 context",
+      "health": null,
+      "evidence_status": "operator-observed-incomplete",
+      "failure": "startup reportedly did not progress beyond CUDA graph/cache profiling"
+    },
+    {
+      "engine": "sglang dev-cu13-laguna-xs-2-1",
+      "configuration": "262144 context, five running requests, explicit checkpoint chat template, FlashInfer attention, SWARadixCache",
+      "health": 200,
+      "preflight_no_thinking": "2/4; 131072 needle empty; tool batch 0/20",
+      "evidence_status": "operator-observed-incomplete",
+      "failure": "repetitive or unrelated visible output despite successful service health"
+    },
+    {
+      "engine": "sglang dev-cu13-laguna-xs-2-1",
+      "configuration": "forced trtllm_mha attention",
+      "health": null,
+      "evidence_status": "operator-observed-incomplete",
+      "failure": "ValueError: TRTLLM MHA prefill supports Blackwell SM100 only in this build"
+    },
+    {
+      "engine": "sglang dev-cu13-laguna-xs-2-1",
+      "configuration": "forced flashinfer_trtllm MoE runner; FlashInfer attention",
+      "health": null,
+      "evidence_status": "retained-bounded-log",
+      "failure": "warmup AssertionError: layer.routing_method_type is not None"
+    }
+  ],
+  "decision": "Do not rank or promote Laguna XS 2.1 NVFP4 from these recipes on RTX PRO 6000 sm_120."
+}

@@ -1,0 +1,65 @@
+{
+  "suite": "hf-mmlu-pro-10-repeated",
+  "date": "2026-07-12",
+  "work_class": "independent-multidomain-reasoning-sanity",
+  "source": {
+    "dataset": "TIGER-Lab/MMLU-Pro",
+    "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+    "config": "default",
+    "split": "validation",
+    "rows": [5, 10, 15, 20, 25, 30, 35, 40, 45, 65],
+    "url": "https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro"
+  },
+  "evals": [
+    {
+      "id": "mmlu-pro-5-health",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nWhich of the following is the body cavity that contains the pituitary gland?\nA. Ventral\nB. Dorsal\nC. Buccal\nD. Thoracic\nE. Pericardial\nF. Abdominal\nG. Spinal\nH. Pelvic\nI. Pleural\nJ. Cranial",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*J\\b"}]
+    },
+    {
+      "id": "mmlu-pro-10-physics",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nSay the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the telescope gather than your eye?\nA. 1000 times more\nB. 50 times more\nC. 5000 times more\nD. 500 times more\nE. 10000 times more\nF. 20000 times more\nG. 2000 times more\nH. 100 times more\nI. 10 times more\nJ. N/A",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*E\\b"}]
+    },
+    {
+      "id": "mmlu-pro-15-business",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nIn contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of ___________, which allow campaigns to facilitate the company in achieving _________.\nA. Boycotts, Buyalls, Blockchain technology, Increased Sales\nB. Buycotts, Boycotts, Digital technology, Decreased Sales\nC. Boycotts, Buycotts, Digital technology, Decreased Sales\nD. Buycotts, Boycotts, Blockchain technology, Charitable donations\nE. Boycotts, Buyalls, Blockchain technology, Charitable donations\nF. Boycotts, Buycotts, Digital technology, Increased Sales\nG. Buycotts, Boycotts, Digital technology, Increased Sales\nH. Boycotts, Buycotts, Physical technology, Increased Sales\nI. Buycotts, Buyalls, Blockchain technology, Charitable donations\nJ. Boycotts, Buycotts, Blockchain technology, Decreased Sales",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*F\\b"}]
+    },
+    {
+      "id": "mmlu-pro-20-biology",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nWhich of the following represents an accurate statement concerning arthropods?\nA. They possess an exoskeleton composed primarily of peptidoglycan.\nB. They possess an open circulatory system with a dorsal heart.\nC. They are members of a biologically unsuccessful phylum incapable of exploiting diverse habitats and nutrition sources.\nD. They lack paired, jointed appendages.\nE. N/A\nF. N/A\nG. N/A\nH. N/A\nI. N/A\nJ. N/A",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*B\\b"}]
+    },
+    {
+      "id": "mmlu-pro-25-chemistry",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nPredict the number of lines in the EPR spectrum of a solution of 13C-labelled methyl radical (13CH3 radical), assuming the lines do not overlap.\nA. 10\nB. 8\nC. 4\nD. 20\nE. 12\nF. 3\nG. 16\nH. 5\nI. 24\nJ. 6",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*B\\b"}]
+    },
+    {
+      "id": "mmlu-pro-30-computer-science",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nA pipelined RISC machine has registers R0 through R7 and supports ADD Rs1, Rs2, Rd and MUL Rs1, Rs2, Rd. An operation normally takes one cycle; however, an operation takes two cycles if it produces a result required by the immediately following operation. Consider AB + ABC + BC, where A, B, C are in R0, R1, R2 and those registers must not be modified. What is the minimum number of clock cycles required?\nA. 10\nB. 6\nC. 9\nD. 5\nE. 12\nF. 4\nG. 7\nH. 8\nI. N/A\nJ. N/A",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*B\\b"}]
+    },
+    {
+      "id": "mmlu-pro-35-economics",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nFor a stationary autoregressive process, shocks will\nA. Never occur\nB. Persist indefinitely\nC. Cause a permanent change in the trend\nD. Grow exponentially\nE. Only affect the next period\nF. Eventually die away\nG. Cause the process to become non-stationary\nH. Immediately disappear\nI. Lead to a cyclical pattern\nJ. Be balanced out by subsequent shocks",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*F\\b"}]
+    },
+    {
+      "id": "mmlu-pro-40-engineering",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nA point pole has a strength of 4 pi times 10^-4 weber. The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it will be\nA. 25 N\nB. 12.5 N\nC. 15 N\nD. 10 N\nE. 7.5 N\nF. 20 N\nG. 5 N\nH. 3.75 N\nI. N/A\nJ. N/A",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*C\\b"}]
+    },
+    {
+      "id": "mmlu-pro-45-philosophy",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nWhich formula of propositional logic best symbolizes: Turtles live long lives and are happy creatures, unless they are injured.\nA. (L and H) iff I\nB. (L and H) or I\nC. L and (H or I)\nD. L and (H implies R)\nE. N/A\nF. N/A\nG. N/A\nH. N/A\nI. N/A\nJ. N/A",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*B\\b"}]
+    },
+    {
+      "id": "mmlu-pro-65-law",
+      "prompt": "Reason through this ten-option question, then finish with FINAL=<letter>.\n\nWhat is the judge ad hoc?\nA. The president of the ICJ\nB. A temporary judge appointed for a specific period\nC. A judge each party always nominates in every contentious case\nD. The ICJ bench member with a casting vote\nE. A judge nominated by the parties irrespective of nationality\nF. A judge who decides admissibility before the ICJ\nG. A judge appointed by the UN Security Council\nH. A surrogate if a judge is disqualified or dies\nI. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc\nJ. N/A",
+      "checks": [{"name": "answer", "matches_regex": "\\bFINAL\\s*=\\s*I\\b"}]
+    }
+  ]
+}

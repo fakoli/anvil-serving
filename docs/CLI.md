@@ -369,14 +369,46 @@ before sending the live workload, and controller execution accepts direct endpoi
 | `--ctx-tokens` / `--max-tokens` | `0` / `64` | Fixed context (0 samples the measured distribution) / generation length. |
 | `--max-model-len` / `--margin` | `0` (auto) / `1024` | Clamp sampled ctx under the serve's window. |
 | `--api-key-env` / `--no-thinking` | — / off | Bearer token env-var name / disable hidden reasoning for thinking-by-default models. |
+| `--thinking-mode` / `--reasoning-effort` | default / — | Select Qwen/Nemotron-style `enable_thinking` control or the OpenAI-compatible reasoning-effort mechanism used by GPT-OSS and Mistral. Conflicting mechanisms are rejected. |
+| `--visible-answer-tokens` / `--reasoning-headroom-tokens` | `256` / `0` | For repaired quality evals, record a visible-answer allocation and reasoning headroom separately; their sum is sent as the endpoint's single `max_tokens` cap (maximum 65,536 tokens per completion). |
+| `--eval-repetitions` / `--eval-min-pass-rate` | `1` / `1.0` | Repeat each built-in intelligence or external-suite item and aggregate it against an explicit stability threshold; repetitions are capped at 20. |
 | `--timeout` / `--timeout-seconds` | `900` | Equivalent request-timeout spellings; the typed controller contract uses `--timeout-seconds`. |
 | `--json-out` | — | Machine-readable summary for `eval benchmark external compare`. |
 | `--recipe-out`, `--recipe-from-container`, `--recipe-intent`, `--recipe-mode`, `--recipe-status`, `--recipe-model` | — | Record a reproducible `[[recipe]]` block for the live serve (read back with `models recipes`). |
-| `--suite-file SPECS_JSON` | — | With `--bakeoff`: run an externally-authored eval suite (e.g. a session-evals `suite.json`) through the deterministic check engine; results land in the evidence JSON under `suites.<suite name>`. Runs only the external suite unless `--suite` also selects built-ins. See [Benchmark results](BENCHMARKS.md). |
+| `--suite-file SPECS_JSON` | — | With `--bakeoff`: run an externally-authored eval suite through deterministic text/regex and tool checks. Repaired specs may declare `visible_answer_tokens` plus `reasoning_headroom_tokens`; legacy `max_tokens` remains supported but cannot be mixed with those fields. Runs only the external suite unless `--suite` also selects built-ins. See [Benchmark results](BENCHMARKS.md). |
 
 ```bash
 anvil-serving eval benchmark run --base-url http://127.0.0.1:30001/v1 --model local --burst 20 --no-thinking --confirm
 ```
+
+For cross-model reasoning comparisons, use one control mechanism per model,
+equal visible-answer allocations, explicit reasoning headroom, and repeated
+attempts. Evidence records the full visible answer, finish reason, reasoning
+field/size/token metadata when reported, the per-attempt budget, and classified
+budget-exhaustion failures:
+
+```bash
+anvil-serving eval benchmark run --confirm --bakeoff \
+  --base-url http://127.0.0.1:30002/v1 --model heavy-candidate \
+  --candidate-id heavy-candidate --config-id reasoning-high-v2 \
+  --suite-file tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json \
+  --reasoning-effort high \
+  --visible-answer-tokens 256 --reasoning-headroom-tokens 2048 \
+  --eval-repetitions 3 --eval-min-pass-rate 0.66 \
+  --evidence-out evidence.json
+```
+
+The two allocations are an evidence contract, not a server-side partition:
+OpenAI-compatible chat endpoints expose one total completion cap. A run using a
+legacy per-item `max_tokens` is marked `legacy_total_budget=true` and should not
+be mixed into a repaired cross-model comparison.
+
+The work plan is bounded before the first request: at most 100 external evals,
+500 aggregate attempts, and 2,000,000 requested quality tokens. External
+`matches_regex` validators are limited to a 512-character conservative subset
+of literals, anchors, boundaries, non-repeated character classes, `\s*`, and
+the final-marker `[*]*`; grouping, alternation, wildcards, and general
+quantifiers are rejected.
 
 > **Importable entrypoints.** `preflight` and `benchmark` are dispatched through their module
 > `main()` functions like the rest of the CLI. They remain deliberately self-contained enough for

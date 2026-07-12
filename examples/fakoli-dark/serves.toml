@@ -310,3 +310,21 @@ model = "nemotron3-super-120b-a12b-nvfp4"
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-super-120b"
+
+[[serve]]
+name = "cand-laguna-xs-21-nvfp4"
+container = "vllm-cand-laguna-xs-21-nvfp4"
+port = 39034
+model = "laguna-xs-2.1-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-laguna-xs-21-nvfp4"
+
+[[serve]]
+name = "cand-laguna-xs-21-nvfp4-sglang"
+container = "sglang-cand-laguna-xs-21-nvfp4"
+port = 39035
+model = "laguna-xs-2.1-nvfp4-sglang"
+engine = "sglang"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-laguna-xs-21-nvfp4-sglang"
