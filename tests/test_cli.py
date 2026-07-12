@@ -2,6 +2,7 @@
 Python-version guard (`anvil_serving.cli._check_python_version`) and the
 `calibrate` verb (the operator entry to the guarded write-back batch, T006).
 """
+
 import json
 import re
 import shlex
@@ -47,6 +48,17 @@ def test_python_version_guard_blocks_even_older_interpreter():
 def test_python_version_guard_allows_supported_interpreter():
     assert cli._check_python_version((3, 11, 0)) is None
     assert cli._check_python_version((3, 13, 0)) is None
+
+
+def test_dashboard_serve_help_is_supported_and_read_only(capsys):
+    rc = cli.main(["dashboard", "serve", "--help"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "packaged local dashboard" in out
+    assert "--host" in out
+    assert "--port" in out
+    for forbidden in ("--start", "--stop", "--restart", "--configure"):
+        assert forbidden not in out
 
 
 def test_python_version_guard_blocks_main_under_simulated_old_interpreter(monkeypatch, capsys):
@@ -275,7 +287,9 @@ def test_removed_path_json_emits_one_structured_error_envelope(capsys):
     assert set(payload) == {"ok", "command", "context", "data", "warnings", "error"}
     assert payload["error"]["class"] == "usage"
     assert payload["error"]["details"]["replacement"] == "serves render"
-    assert payload["error"]["details"]["docs_anchor"] == "docs/CLI.md#migration-from-legacy-commands"
+    assert (
+        payload["error"]["details"]["docs_anchor"] == "docs/CLI.md#migration-from-legacy-commands"
+    )
 
 
 def test_global_json_wraps_root_and_nested_dispatch(capsys):
@@ -358,9 +372,7 @@ def test_real_unbounded_commands_refuse_json_before_handler_resolution(
     assert classification in payload["error"]["message"]
 
 
-def test_mcp_serve_json_refusal_happens_before_protocol_handler_startup(
-    monkeypatch, capsys
-):
+def test_mcp_serve_json_refusal_happens_before_protocol_handler_startup(monkeypatch, capsys):
     from anvil_serving import mcp
 
     monkeypatch.setattr(
@@ -529,9 +541,7 @@ allowed_operations = ["{operation}"]
     return topology
 
 
-def test_cli_remote_router_restart_dispatches_typed_operation(
-    tmp_path, monkeypatch, capsys
-):
+def test_cli_remote_router_restart_dispatches_typed_operation(tmp_path, monkeypatch, capsys):
     topology = _write_remote_router_topology(tmp_path, "router-restart")
     seen = {}
 
@@ -553,16 +563,21 @@ def test_cli_remote_router_restart_dispatches_typed_operation(
         lambda self: pytest.fail("remote router dispatch imported the local handler"),
     )
 
-    assert cli.main([
-        "router",
-        "restart",
-        "--topology",
-        str(topology),
-        "--confirm",
-        "--container",
-        "router-prod",
-        "--no-verify",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "router",
+                "restart",
+                "--topology",
+                str(topology),
+                "--confirm",
+                "--container",
+                "router-prod",
+                "--no-verify",
+            ]
+        )
+        == 0
+    )
     operation = seen["operation"]
     assert operation.name == "router-restart"
     assert operation.tool_name == "router_manage"
@@ -595,20 +610,23 @@ def test_cli_remote_router_rejects_untyped_arguments_before_transport(
         lambda *_args, **_kwargs: pytest.fail("invalid arguments reached transport"),
     )
 
-    assert cli.main([
-        "router",
-        "status",
-        "--topology",
-        str(topology),
-        "--shell",
-        "whoami",
-    ]) == 2
+    assert (
+        cli.main(
+            [
+                "router",
+                "status",
+                "--topology",
+                str(topology),
+                "--shell",
+                "whoami",
+            ]
+        )
+        == 2
+    )
     assert "not supported for remote status" in capsys.readouterr().err
 
 
-def test_cli_remote_router_dry_run_never_generates_mutation_idempotency(
-    tmp_path, monkeypatch
-):
+def test_cli_remote_router_dry_run_never_generates_mutation_idempotency(tmp_path, monkeypatch):
     topology = _write_remote_router_topology(tmp_path, "router-restart")
     seen = {}
 
@@ -619,22 +637,25 @@ def test_cli_remote_router_dry_run_never_generates_mutation_idempotency(
 
     monkeypatch.setattr(cli, "execute_plan", fake_execute)
 
-    assert cli.main([
-        "router",
-        "restart",
-        "--topology",
-        str(topology),
-        "--dry-run",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "router",
+                "restart",
+                "--topology",
+                str(topology),
+                "--dry-run",
+            ]
+        )
+        == 0
+    )
     assert seen == {
         "arguments": {"action": "restart", "dry_run": True},
         "idempotency_key": None,
     }
 
 
-def test_cli_remote_router_reconciles_ambiguous_confirmed_mutation(
-    tmp_path, monkeypatch, capsys
-):
+def test_cli_remote_router_reconciles_ambiguous_confirmed_mutation(tmp_path, monkeypatch, capsys):
     topology = _write_remote_router_topology(tmp_path, "router-restart")
     seen = {}
 
@@ -661,13 +682,18 @@ def test_cli_remote_router_reconciles_ambiguous_confirmed_mutation(
     monkeypatch.setattr(cli, "ControllerTransport", FakeController)
     monkeypatch.setattr(cli, "execute_plan", ambiguous)
 
-    assert cli.main([
-        "router",
-        "restart",
-        "--topology",
-        str(topology),
-        "--confirm",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "router",
+                "restart",
+                "--topology",
+                str(topology),
+                "--confirm",
+            ]
+        )
+        == 0
+    )
     assert seen["dispatch_key"] == seen["status_key"]
     assert seen["status_key"].startswith("cli-")
     assert "operation-status" in capsys.readouterr().out
@@ -688,13 +714,18 @@ def test_cli_remote_router_json_preserves_structured_result_and_context(
         ),
     )
 
-    assert cli.main([
-        "--json",
-        "router",
-        "status",
-        "--topology",
-        str(topology),
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "--json",
+                "router",
+                "status",
+                "--topology",
+                str(topology),
+            ]
+        )
+        == 0
+    )
     payload = json.loads(capsys.readouterr().out)
     assert payload["context"]["execution_host"] == "dark"
     assert payload["context"]["transport"] == "controller"
@@ -722,11 +753,26 @@ def test_cli_remote_eval_dispatches_confirmed_typed_probe(tmp_path, monkeypatch)
         lambda self: pytest.fail("remote eval imported the local handler"),
     )
 
-    assert cli.main([
-        "eval", "preflight", "--topology", str(topology), "--confirm",
-        "--base-url", "http://127.0.0.1:8000/v1", "--model", "served",
-        "--needle-ctx", "4096", "--timeout-seconds", "60",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "eval",
+                "preflight",
+                "--topology",
+                str(topology),
+                "--confirm",
+                "--base-url",
+                "http://127.0.0.1:8000/v1",
+                "--model",
+                "served",
+                "--needle-ctx",
+                "4096",
+                "--timeout-seconds",
+                "60",
+            ]
+        )
+        == 0
+    )
     assert seen["operation"].name == "eval-preflight"
     assert seen["operation"].tool_name == "preflight_probe"
     assert dict(seen["operation"].arguments) == {
@@ -745,9 +791,7 @@ def test_remote_transport_timeout_covers_declared_workload_deadline():
     assert cli._remote_transport_timeout({"timeout_seconds": 7200}) == 7205.0
 
 
-def test_cli_remote_eval_rejects_operator_manifest_before_transport(
-    tmp_path, monkeypatch, capsys
-):
+def test_cli_remote_eval_rejects_operator_manifest_before_transport(tmp_path, monkeypatch, capsys):
     topology = _write_remote_router_topology(tmp_path, "eval-preflight")
     text = topology.read_text(encoding="utf-8")
     text = text.replace('roles = ["router"]', 'roles = ["evaluation"]')
@@ -759,10 +803,22 @@ def test_cli_remote_eval_rejects_operator_manifest_before_transport(
         lambda *_args, **_kwargs: pytest.fail("manifest argument reached transport"),
     )
 
-    assert cli.main([
-        "eval", "preflight", "--topology", str(topology), "--confirm",
-        "--manifest", "serves.toml", "--tier", "fast",
-    ]) == 2
+    assert (
+        cli.main(
+            [
+                "eval",
+                "preflight",
+                "--topology",
+                str(topology),
+                "--confirm",
+                "--manifest",
+                "serves.toml",
+                "--tier",
+                "fast",
+            ]
+        )
+        == 2
+    )
     assert "not supported for remote preflight" in capsys.readouterr().err
 
 
@@ -773,8 +829,7 @@ def test_cli_remote_eval_rejects_operator_manifest_before_transport(
             ["harness", "sync", "openclaw"],
             "harness-sync-openclaw",
             "openclaw_sync",
-            {"config": "router.toml", "out": "openclaw.json", "confirm": True,
-             "dry_run": False},
+            {"config": "router.toml", "out": "openclaw.json", "confirm": True, "dry_run": False},
         ),
         (
             ["harness", "restart", "openclaw"],
@@ -847,9 +902,7 @@ known_hosts_path = "{known_hosts_toml}"
     return known_hosts
 
 
-def test_cli_harness_restart_ssh_fallback_is_explicit_and_fixed(
-    tmp_path, monkeypatch, capsys
-):
+def test_cli_harness_restart_ssh_fallback_is_explicit_and_fixed(tmp_path, monkeypatch, capsys):
     operation = "harness-restart-openclaw"
     topology = _write_remote_router_topology(tmp_path, operation)
     text = topology.read_text(encoding="utf-8")
@@ -867,9 +920,7 @@ def test_cli_harness_restart_ssh_fallback_is_explicit_and_fixed(
             self.endpoint = endpoint
 
         def execute(self, *_args, **_kwargs):
-            raise cli.AdapterTransportError(
-                "controller_connect_failed", "refused before dispatch"
-            )
+            raise cli.AdapterTransportError("controller_connect_failed", "refused before dispatch")
 
     class FakeSSH:
         def __init__(self, endpoint, **kwargs):
@@ -887,10 +938,20 @@ def test_cli_harness_restart_ssh_fallback_is_explicit_and_fixed(
     monkeypatch.setattr(cli, "ControllerTransport", FakeController)
     monkeypatch.setattr(cli, "SSHRecoveryTransport", FakeSSH)
 
-    assert cli.main([
-        "harness", "restart", "openclaw", "--topology", str(topology),
-        "--allow-ssh-fallback", "--confirm",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "harness",
+                "restart",
+                "openclaw",
+                "--topology",
+                str(topology),
+                "--allow-ssh-fallback",
+                "--confirm",
+            ]
+        )
+        == 0
+    )
     assert seen["adapters"] == {
         operation: ("anvil-serving", "harness", "restart", "openclaw", "--confirm")
     }
@@ -912,10 +973,22 @@ def test_cli_rejects_ssh_fallback_for_non_recovery_operation(tmp_path, capsys, l
 
 def test_topology_resolve_json_is_structured_and_contextual(capsys):
     topology = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
-    assert cli.main([
-        "--json", "topology", "resolve", "--topology", str(topology),
-        "--command", "host status", "--target", "host:fakoli-mini",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "--json",
+                "topology",
+                "resolve",
+                "--topology",
+                str(topology),
+                "--command",
+                "host status",
+                "--target",
+                "host:fakoli-mini",
+            ]
+        )
+        == 0
+    )
     payload = json.loads(capsys.readouterr().out)
     assert payload["ok"] is True
     assert payload["context"]["execution_host"] == "fakoli-mini"
@@ -927,12 +1000,7 @@ def test_topology_resolve_json_is_structured_and_contextual(capsys):
 def test_voice_audio_dispatch_resolves_coowned_dark_resources_and_forwards_context(
     monkeypatch, capsys
 ):
-    topology = (
-        Path(__file__).parent.parent
-        / "examples"
-        / "fakoli-dark"
-        / "operator-topology.toml"
-    )
+    topology = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
     seen = []
     monkeypatch.setattr(
         HandlerRef,
@@ -940,47 +1008,58 @@ def test_voice_audio_dispatch_resolves_coowned_dark_resources_and_forwards_conte
         lambda self: lambda argv: seen.append(argv) or 0,
     )
 
-    assert cli.main([
-        "voice",
-        "audio",
-        "up",
-        "--topology",
-        str(topology),
-        "--command-host",
-        "host:fakoli-dark",
-        "--command-runtime",
-        "runtime:dark-docker",
-        "--dry-run",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "voice",
+                "audio",
+                "up",
+                "--topology",
+                str(topology),
+                "--command-host",
+                "host:fakoli-dark",
+                "--command-runtime",
+                "runtime:dark-docker",
+                "--dry-run",
+            ]
+        )
+        == 0
+    )
 
-    assert seen == [[
-        "audio",
-        "up",
-        "--dry-run",
-        "--topology",
-        str(topology),
-        "--command-host",
-        "host:fakoli-dark",
-        "--command-runtime",
-        "runtime:dark-docker",
-        "--transport",
-        "auto",
-    ]]
+    assert seen == [
+        [
+            "audio",
+            "up",
+            "--dry-run",
+            "--topology",
+            str(topology),
+            "--command-host",
+            "host:fakoli-dark",
+            "--command-runtime",
+            "runtime:dark-docker",
+            "--transport",
+            "auto",
+        ]
+    ]
     assert capsys.readouterr().err == ""
 
 
 def test_voice_benchmark_json_includes_resolved_proxy_context(monkeypatch, capsys):
-    topology = (
-        Path(__file__).parent.parent
-        / "examples"
-        / "fakoli-dark"
-        / "operator-topology.toml"
-    )
+    topology = Path(__file__).parent.parent / "examples" / "fakoli-dark" / "operator-topology.toml"
     monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: 0)
 
-    assert cli.main([
-        "voice", "benchmark", "--topology", str(topology), "--json",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "voice",
+                "benchmark",
+                "--topology",
+                str(topology),
+                "--json",
+            ]
+        )
+        == 0
+    )
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["context"]["resource"] == "mini-realtime-proxy"
@@ -1016,21 +1095,26 @@ def test_cli_remote_host_repair_is_typed_and_os_checked(tmp_path, monkeypatch, c
         "resolve",
         lambda self: pytest.fail("remote host repair imported the local handler"),
     )
-    assert cli.main([
-        "host", "wsl-config", "--topology", str(topology), "--confirm", "--memory", "80"
-    ]) == 0
+    assert (
+        cli.main(["host", "wsl-config", "--topology", str(topology), "--confirm", "--memory", "80"])
+        == 0
+    )
     assert seen["plan"].execution_host.os == "windows"
     assert seen["operation"].tool_name == "host_manage"
     assert dict(seen["operation"].arguments) == {
-        "action": "wsl-config", "memory": 80, "confirm": True, "dry_run": False,
+        "action": "wsl-config",
+        "memory": 80,
+        "confirm": True,
+        "dry_run": False,
     }
     assert seen["key"].startswith("cli-")
 
     text = topology.read_text(encoding="utf-8").replace('os = "windows"', 'os = "macos"')
     topology.write_text(text, encoding="utf-8")
-    assert cli.main([
-        "host", "wsl-config", "--topology", str(topology), "--confirm", "--memory", "80"
-    ]) == 3
+    assert (
+        cli.main(["host", "wsl-config", "--topology", str(topology), "--confirm", "--memory", "80"])
+        == 3
+    )
     assert "does not support host OS" in capsys.readouterr().err
 
 
@@ -1051,10 +1135,21 @@ def test_cli_explicit_ssh_restart_dry_run_needs_no_identity_or_process(
         lambda *_args, **_kwargs: pytest.fail("SSH dry-run constructed a process adapter"),
     )
 
-    assert cli.main([
-        "harness", "restart", "openclaw", "--topology", str(topology),
-        "--transport", "ssh", "--dry-run",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "harness",
+                "restart",
+                "openclaw",
+                "--topology",
+                str(topology),
+                "--transport",
+                "ssh",
+                "--dry-run",
+            ]
+        )
+        == 0
+    )
     output = capsys.readouterr().out
     assert "transport=ssh" in output
     assert '"dry_run": true' in output
@@ -1081,9 +1176,7 @@ def test_cli_rejects_mini_model_workload_without_topology_permission_before_laun
 
 
 def test_cli_rejects_topology_only_mini_override_before_launch(tmp_path, monkeypatch, capsys):
-    topology = _write_capacity_topology(
-        tmp_path, allow_experimental_model_workloads=True
-    )
+    topology = _write_capacity_topology(tmp_path, allow_experimental_model_workloads=True)
     monkeypatch.setattr(
         HandlerRef,
         "resolve",
@@ -1096,33 +1189,34 @@ def test_cli_rejects_topology_only_mini_override_before_launch(tmp_path, monkeyp
     assert "pass --experimental-model-workload" in captured.err
 
 
-def test_cli_allows_capacity_override_and_probes_resolved_controller(
-    tmp_path, monkeypatch, capsys
-):
-    topology = _write_capacity_topology(
-        tmp_path, allow_experimental_model_workloads=True
-    )
+def test_cli_allows_capacity_override_and_probes_resolved_controller(tmp_path, monkeypatch, capsys):
+    topology = _write_capacity_topology(tmp_path, allow_experimental_model_workloads=True)
     seen = []
     monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: seen.append(argv) or 0)
 
-    assert cli.main(
-        [
-            "controller",
-            "status",
-            "--topology",
-            str(topology),
-            "--experimental-model-workload",
-        ]
-    ) == 0
+    assert (
+        cli.main(
+            [
+                "controller",
+                "status",
+                "--topology",
+                str(topology),
+                "--experimental-model-workload",
+            ]
+        )
+        == 0
+    )
     captured = capsys.readouterr()
     assert "transport=controller" in captured.out
-    assert seen == [[
-        "status",
-        "--url",
-        "http://192.0.2.20:8766",
-        "--auth-token-env",
-        "ANVIL_CONTROLLER_TOKEN",
-    ]]
+    assert seen == [
+        [
+            "status",
+            "--url",
+            "http://192.0.2.20:8766",
+            "--auth-token-env",
+            "ANVIL_CONTROLLER_TOKEN",
+        ]
+    ]
 
 
 def test_cli_remote_dark_owner_probes_resolved_controller(tmp_path, monkeypatch, capsys):
@@ -1146,26 +1240,25 @@ def test_cli_remote_dark_owner_probes_resolved_controller(tmp_path, monkeypatch,
     ]
 
 
-def test_experimental_override_cannot_make_a_removed_path_callable(
-    tmp_path, monkeypatch, capsys
-):
-    topology = _write_capacity_topology(
-        tmp_path, allow_experimental_model_workloads=True
-    )
+def test_experimental_override_cannot_make_a_removed_path_callable(tmp_path, monkeypatch, capsys):
+    topology = _write_capacity_topology(tmp_path, allow_experimental_model_workloads=True)
     monkeypatch.setattr(
         HandlerRef,
         "resolve",
         lambda self: pytest.fail(f"resolved removed path handler: {self.name}"),
     )
 
-    assert cli.main(
-        [
-            "serve",
-            "--topology",
-            str(topology),
-            "--experimental-model-workload",
-        ]
-    ) == 2
+    assert (
+        cli.main(
+            [
+                "serve",
+                "--topology",
+                str(topology),
+                "--experimental-model-workload",
+            ]
+        )
+        == 2
+    )
     assert "`serve` was removed" in capsys.readouterr().err
 
 
@@ -1247,18 +1340,37 @@ def test_focused_action_help_includes_action_specific_flags(capsys):
         router_manage.main(["promote", "--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for token in ("--profile", "--config", "--container", "--cfg-volume", "--image",
-                  "--profile-dest", "--config-dest", "--no-reload"):
+    for token in (
+        "--profile",
+        "--config",
+        "--container",
+        "--cfg-volume",
+        "--image",
+        "--profile-dest",
+        "--config-dest",
+        "--no-reload",
+    ):
         assert token in out
 
     with pytest.raises(SystemExit) as exc:
         harness.main(["sync", "openclaw", "--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for token in ("--config", "--out", "--base-url", "--api-key-env",
-                  "--gateway-host", "--gateway-path", "--overwrite", "--restart",
-                  "--skills", "--skill-dir", "--voice", "--voice-consult-model",
-                  "--voice-consult-thinking-level"):
+    for token in (
+        "--config",
+        "--out",
+        "--base-url",
+        "--api-key-env",
+        "--gateway-host",
+        "--gateway-path",
+        "--overwrite",
+        "--restart",
+        "--skills",
+        "--skill-dir",
+        "--voice",
+        "--voice-consult-model",
+        "--voice-consult-thinking-level",
+    ):
         assert token in out
 
     with pytest.raises(SystemExit) as exc:
@@ -1357,7 +1469,9 @@ planning = ["fast-local"]
 
 # A LOCAL + CLOUD topology: the verb must pass BOTH to run_live (cloud filtering
 # is run_live's job, not the verb's).
-_LOCAL_AND_CLOUD_CONFIG = _LOCAL_TIER_CONFIG + """
+_LOCAL_AND_CLOUD_CONFIG = (
+    _LOCAL_TIER_CONFIG
+    + """
 [[router.tiers]]
 id            = "cloud"
 base_url      = "https://api.anthropic.com"
@@ -1368,6 +1482,7 @@ privacy       = "cloud"
 tool_support  = true
 auth_env      = "ANTHROPIC_API_KEY"
 """
+)
 
 
 def _write_config(tmp_path, body=_LOCAL_TIER_CONFIG):
@@ -1378,6 +1493,7 @@ def _write_config(tmp_path, body=_LOCAL_TIER_CONFIG):
 
 def _block_network(monkeypatch):
     """Fail hard if any socket is opened — proves the guard refuses before dialing."""
+
     def boom(*a, **k):  # pragma: no cover - must never fire
         raise AssertionError("calibrate attempted a network connection")
 
@@ -1386,8 +1502,12 @@ def _block_network(monkeypatch):
 
 
 def _clear_mode_env(monkeypatch):
-    for var in ("ANVIL_MODE", "ANVIL_MODES_CONFIG", "ANVIL_CONFIG_AGENTIC",
-                "ANVIL_CONFIG_FLEXIBILITY"):
+    for var in (
+        "ANVIL_MODE",
+        "ANVIL_MODES_CONFIG",
+        "ANVIL_CONFIG_AGENTIC",
+        "ANVIL_CONFIG_FLEXIBILITY",
+    ):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -1397,8 +1517,14 @@ def test_calibrate_help_documents_verb_and_flags(capsys):
         calibrate_mod.main(["--help"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    for token in ("--config", "--mode", "--out", "--endpoint",
-                  "--i-understand-this-calls-real-tiers", "--eval-data"):
+    for token in (
+        "--config",
+        "--mode",
+        "--out",
+        "--endpoint",
+        "--i-understand-this-calls-real-tiers",
+        "--eval-data",
+    ):
         assert token in out, token
     # The verb's purpose is described (guarded, reviewable candidate, no auto-promote).
     assert "candidate" in out.lower()
@@ -1423,12 +1549,17 @@ def test_calibrate_refuses_without_confirmation(tmp_path, monkeypatch, capsys):
     _clear_mode_env(monkeypatch)
     _block_network(monkeypatch)
     out = tmp_path / "candidate.json"
-    rc = calibrate_mod.main([
-        "--config", _write_config(tmp_path),
-        "--out", str(out),
-        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
-        # deliberately NO --i-understand-this-calls-real-tiers
-    ])
+    rc = calibrate_mod.main(
+        [
+            "--config",
+            _write_config(tmp_path),
+            "--out",
+            str(out),
+            "--endpoint",
+            "fast-local=http://127.0.0.1:30001/v1",
+            # deliberately NO --i-understand-this-calls-real-tiers
+        ]
+    )
     assert rc == 2
     assert not out.exists()  # nothing written, nothing measured
     assert "not configured to run" in capsys.readouterr().err
@@ -1440,12 +1571,16 @@ def test_calibrate_refuses_without_endpoints(tmp_path, monkeypatch, capsys):
     _clear_mode_env(monkeypatch)
     _block_network(monkeypatch)
     out = tmp_path / "candidate.json"
-    rc = calibrate_mod.main([
-        "--config", _write_config(tmp_path),
-        "--out", str(out),
-        "--i-understand-this-calls-real-tiers",
-        # deliberately NO --endpoint
-    ])
+    rc = calibrate_mod.main(
+        [
+            "--config",
+            _write_config(tmp_path),
+            "--out",
+            str(out),
+            "--i-understand-this-calls-real-tiers",
+            # deliberately NO --endpoint
+        ]
+    )
     assert rc == 2
     assert not out.exists()
     assert "not configured to run" in capsys.readouterr().err
@@ -1455,12 +1590,17 @@ def test_calibrate_malformed_endpoint_is_a_clean_error(tmp_path, monkeypatch, ca
     """A bad --endpoint spec is a clean exit 2, not a traceback."""
     _clear_mode_env(monkeypatch)
     _block_network(monkeypatch)
-    rc = calibrate_mod.main([
-        "--config", _write_config(tmp_path),
-        "--out", str(tmp_path / "c.json"),
-        "--endpoint", "no-equals-sign",
-        "--i-understand-this-calls-real-tiers",
-    ])
+    rc = calibrate_mod.main(
+        [
+            "--config",
+            _write_config(tmp_path),
+            "--out",
+            str(tmp_path / "c.json"),
+            "--endpoint",
+            "no-equals-sign",
+            "--i-understand-this-calls-real-tiers",
+        ]
+    )
     assert rc == 2
     assert "TIER=URL" in capsys.readouterr().err
 
@@ -1482,20 +1622,30 @@ def test_calibrate_wires_run_live_and_prints_promote(tmp_path, monkeypatch, caps
         seen.update(kwargs)
         # A real run_live writes the candidate; mimic that so the summary path runs.
         kwargs["out_path"].write_text(
-            json.dumps({"schema": "x", "mode": "live",
-                        "entries": [{"tier_id": "fast-local", "work_class": "planning"}]}),
+            json.dumps(
+                {
+                    "schema": "x",
+                    "mode": "live",
+                    "entries": [{"tier_id": "fast-local", "work_class": "planning"}],
+                }
+            ),
             encoding="utf-8",
         )
         return None  # the verb ignores the return; it works off the written file
 
     monkeypatch.setattr(calibrate_mod, "run_live", fake_run_live)
 
-    rc = calibrate_mod.main([
-        "--config", cfg_path,
-        "--out", str(out),
-        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
-        "--i-understand-this-calls-real-tiers",
-    ])
+    rc = calibrate_mod.main(
+        [
+            "--config",
+            cfg_path,
+            "--out",
+            str(out),
+            "--endpoint",
+            "fast-local=http://127.0.0.1:30001/v1",
+            "--i-understand-this-calls-real-tiers",
+        ]
+    )
     assert rc == 0
 
     # The guard args reached run_live intact, with the config's tiers (BOTH the
@@ -1524,12 +1674,17 @@ def test_calibrate_rejects_missing_out_dir_before_running_batch(tmp_path, monkey
     _clear_mode_env(monkeypatch)
     called = []
     monkeypatch.setattr(calibrate_mod, "run_live", lambda **k: called.append(k))
-    rc = calibrate_mod.main([
-        "--config", _write_config(tmp_path),
-        "--out", str(tmp_path / "nope" / "candidate.json"),  # 'nope' dir does not exist
-        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
-        "--i-understand-this-calls-real-tiers",
-    ])
+    rc = calibrate_mod.main(
+        [
+            "--config",
+            _write_config(tmp_path),
+            "--out",
+            str(tmp_path / "nope" / "candidate.json"),  # 'nope' dir does not exist
+            "--endpoint",
+            "fast-local=http://127.0.0.1:30001/v1",
+            "--i-understand-this-calls-real-tiers",
+        ]
+    )
     assert rc == 2
     assert called == []  # the batch never ran — no measurement work lost
     assert "output directory does not exist" in capsys.readouterr().err
@@ -1541,13 +1696,19 @@ def test_calibrate_rejects_missing_eval_data_dir(tmp_path, monkeypatch, capsys):
     _clear_mode_env(monkeypatch)
     called = []
     monkeypatch.setattr(calibrate_mod, "run_live", lambda **k: called.append(k))
-    rc = calibrate_mod.main([
-        "--config", _write_config(tmp_path),
-        "--out", str(tmp_path / "candidate.json"),
-        "--eval-data", str(tmp_path / "no-such-fixtures"),  # missing dir
-        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
-        "--i-understand-this-calls-real-tiers",
-    ])
+    rc = calibrate_mod.main(
+        [
+            "--config",
+            _write_config(tmp_path),
+            "--out",
+            str(tmp_path / "candidate.json"),
+            "--eval-data",
+            str(tmp_path / "no-such-fixtures"),  # missing dir
+            "--endpoint",
+            "fast-local=http://127.0.0.1:30001/v1",
+            "--i-understand-this-calls-real-tiers",
+        ]
+    )
     assert rc == 2
     assert called == []
     assert "eval-data directory does not exist" in capsys.readouterr().err
@@ -1558,14 +1719,19 @@ def test_calibrate_dispatches_through_cli(tmp_path, monkeypatch):
     _clear_mode_env(monkeypatch)
     calls = []
     monkeypatch.setattr(calibrate_mod, "run_live", lambda **k: calls.append(k) or None)
-    rc = cli.main([
-        "eval",
-        "calibrate",
-        "--config", _write_config(tmp_path),
-        "--out", str(tmp_path / "c.json"),
-        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
-        "--i-understand-this-calls-real-tiers",
-    ])
+    rc = cli.main(
+        [
+            "eval",
+            "calibrate",
+            "--config",
+            _write_config(tmp_path),
+            "--out",
+            str(tmp_path / "c.json"),
+            "--endpoint",
+            "fast-local=http://127.0.0.1:30001/v1",
+            "--i-understand-this-calls-real-tiers",
+        ]
+    )
     assert rc == 0
     assert len(calls) == 1
 
@@ -1576,20 +1742,31 @@ def test_calibrate_forwards_max_tokens_when_set(tmp_path, monkeypatch):
     seen = {}
     monkeypatch.setattr(calibrate_mod, "run_live", lambda **k: seen.update(k) or None)
 
-    calibrate_mod.main([
-        "--config", _write_config(tmp_path),
-        "--out", str(tmp_path / "c.json"),
-        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
-        "--i-understand-this-calls-real-tiers",
-        "--max-tokens", "8192",
-    ])
+    calibrate_mod.main(
+        [
+            "--config",
+            _write_config(tmp_path),
+            "--out",
+            str(tmp_path / "c.json"),
+            "--endpoint",
+            "fast-local=http://127.0.0.1:30001/v1",
+            "--i-understand-this-calls-real-tiers",
+            "--max-tokens",
+            "8192",
+        ]
+    )
     assert seen["max_tokens"] == 8192
 
     seen.clear()
-    calibrate_mod.main([
-        "--config", _write_config(tmp_path),
-        "--out", str(tmp_path / "c.json"),
-        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
-        "--i-understand-this-calls-real-tiers",
-    ])
+    calibrate_mod.main(
+        [
+            "--config",
+            _write_config(tmp_path),
+            "--out",
+            str(tmp_path / "c.json"),
+            "--endpoint",
+            "fast-local=http://127.0.0.1:30001/v1",
+            "--i-understand-this-calls-real-tiers",
+        ]
+    )
     assert "max_tokens" not in seen  # unset -> run_live's own default applies
