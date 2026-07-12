@@ -1,0 +1,808 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 8192,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 1,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39031/v1",
+    "candidate_id": "thinkingcap-qwen36-27b-fp8",
+    "config_id": "vllm-fp8-fp8kv-262k-thinking-headroom8192-calibration",
+    "model": "thinkingcap-qwen36-27b-fp8",
+    "started_at": "2026-07-12T17:18:57Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T171857Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.experiment.yml#cand-thinkingcap-qwen36-fp8",
+    "serve_command": "anvil-serving serves up cand-thinkingcap-qwen36-fp8 --manifest examples/fakoli-dark/serves.toml --recreate --confirm"
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland is located at the base of the brain, housed within the sella turcica of the sphenoid bone. The brain and its associated structures are contained within the **cranial cavity**, which is a subdivision of the dorsal body cavity. While the dorsal cavity (Option B) is technically correct as a broader category, the cranial cavity (Option J) is the specific and most accurate answer.\n\nFINAL=J",
+              "content_excerpt": "\n\nThe pituitary gland is located at the base of the brain, housed within the sella turcica of the sphenoid bone. The brain and its associated structures are contained within the **cranial cavity**, wh",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7693.819761276245,
+              "reasoning_chars": 2168,
+              "reasoning_excerpt": "The user wants to identify the body cavity containing the pituitary gland from a list of ten options.\n\n1.  **Identify the location of the pituitary gland:** The pituitary gland is located at the base ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 650,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 745
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nThe pituitary gland is located at the base of the brain, housed within the sella turcica of the sphenoid bone. The brain and its associated structures are contained within the **cranial cavity**, which is a subdivision of the dorsal body cavity. While the dorsal cavity (Option B) is technically correct as a broader category, the cranial cavity (Option J) is the specific and most accurate answer.\n\nFINAL=J",
+          "content_excerpt": "\n\nThe pituitary gland is located at the base of the brain, housed within the sella turcica of the sphenoid bone. The brain and its associated structures are contained within the **cranial cavity**, wh",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-5-health",
+          "latency_ms": 7693.819761276245,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 2168,
+          "reasoning_excerpt": "The user wants to identify the body cavity containing the pituitary gland from a list of ten options.\n\n1.  **Identify the location of the pituitary gland:** The pituitary gland is located at the base ",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 650,
+            "prompt_tokens": 95,
+            "prompt_tokens_details": null,
+            "total_tokens": 745
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nTo determine how much more light the telescope can gather compared to the human eye, we need to compare their light-gathering areas. The light-gathering power of an optical instrument is proportional to the area of its aperture, which for a circular opening is given by $A = \\pi r^2$ or $A \\propto d^2$ (where $d$ is the diameter).\n\n1. **Convert diameters to the same unit:**\n   - Pupil diameter = 5 mm\n   - Telescope aperture = 50 cm = 500 mm\n\n2. **Find the ratio of the diameters:**\n   $\\frac{d_{\\text{telescope}}}{d_{\\text{eye}}} = \\frac{500 \\text{ mm}}{5 \\text{ mm}} = 100$\n\n3. **Square the ratio to find the area (light-gathering) ratio:**\n   $\\left(100\\right)^2 = 10,000$\n\nThe telescope gathers 10,000 times more light than the unaided eye.\n\nFINAL=E",
+              "content_excerpt": "\n\nTo determine how much more light the telescope can gather compared to the human eye, we need to compare their light-gathering areas. The light-gathering power of an optical instrument is proportiona",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7080.359697341919,
+              "reasoning_chars": 1188,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Pupil diameter: 5 mm\n   - Telescope aperture diameter: 50 cm\n   - Question: How much more light can the telescope gather than the eye?\n   -",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 677,
+                "prompt_tokens": 155,
+                "prompt_tokens_details": null,
+                "total_tokens": 832
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nTo determine how much more light the telescope can gather compared to the human eye, we need to compare their light-gathering areas. The light-gathering power of an optical instrument is proportional to the area of its aperture, which for a circular opening is given by $A = \\pi r^2$ or $A \\propto d^2$ (where $d$ is the diameter).\n\n1. **Convert diameters to the same unit:**\n   - Pupil diameter = 5 mm\n   - Telescope aperture = 50 cm = 500 mm\n\n2. **Find the ratio of the diameters:**\n   $\\frac{d_{\\text{telescope}}}{d_{\\text{eye}}} = \\frac{500 \\text{ mm}}{5 \\text{ mm}} = 100$\n\n3. **Square the ratio to find the area (light-gathering) ratio:**\n   $\\left(100\\right)^2 = 10,000$\n\nThe telescope gathers 10,000 times more light than the unaided eye.\n\nFINAL=E",
+          "content_excerpt": "\n\nTo determine how much more light the telescope can gather compared to the human eye, we need to compare their light-gathering areas. The light-gathering power of an optical instrument is proportiona",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-10-physics",
+          "latency_ms": 7080.359697341919,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 1188,
+          "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Pupil diameter: 5 mm\n   - Telescope aperture diameter: 50 cm\n   - Question: How much more light can the telescope gather than the eye?\n   -",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 677,
+            "prompt_tokens": 155,
+            "prompt_tokens_details": null,
+            "total_tokens": 832
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLet's break down the sentence logically, blank by blank:\n\n1. **First & Second Blanks:** The sentence sets up a contrast between two types of consumer campaigns. One punishes negative behavior, while the other rewards positive behavior. The standard marketing/CSR terms for these are **boycotts** (refusing to buy to penalize) and **buycotts** (choosing to buy to reward/support). Therefore, the first blank should be \"Boycotts\" and the second \"Buycotts\".\n\n2. **Third Blank:** What has amplified the reach and effectiveness of modern consumer campaigns? **Digital technology** (social media, online platforms, mobile apps) has been widely documented as the primary driver behind the rapid organization and scaling of both boycotts and buycotts. Blockchain is too niche, and physical technology doesn't fit the context.\n\n3. **Fourth Blank:** Since buycotts reward favorable corporate behavior, the intended and typical outcome for participating companies is **Increased Sales** (along with enhanced brand loyalty and market share). \"Decreased sales\" or \"charitable donations\" contradict the premise of rewarding companies.\n\nPutting it together: `Boycotts, Buycotts, Digital technology, Increased Sales` matches **Option F**.\n\nFINAL=F",
+              "content_excerpt": "\n\nLet's break down the sentence logically, blank by blank:\n\n1. **First & Second Blanks:** The sentence sets up a contrast between two types of consumer campaigns. One punishes negative behavior, while",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12481.714010238647,
+              "reasoning_chars": 3276,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - The question is a fill-in-the-blank style with four blanks.\n   - Structure: \"In contrast to _______, _______ aim to reward favourable b",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1107,
+                "prompt_tokens": 228,
+                "prompt_tokens_details": null,
+                "total_tokens": 1335
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nLet's break down the sentence logically, blank by blank:\n\n1. **First & Second Blanks:** The sentence sets up a contrast between two types of consumer campaigns. One punishes negative behavior, while the other rewards positive behavior. The standard marketing/CSR terms for these are **boycotts** (refusing to buy to penalize) and **buycotts** (choosing to buy to reward/support). Therefore, the first blank should be \"Boycotts\" and the second \"Buycotts\".\n\n2. **Third Blank:** What has amplified the reach and effectiveness of modern consumer campaigns? **Digital technology** (social media, online platforms, mobile apps) has been widely documented as the primary driver behind the rapid organization and scaling of both boycotts and buycotts. Blockchain is too niche, and physical technology doesn't fit the context.\n\n3. **Fourth Blank:** Since buycotts reward favorable corporate behavior, the intended and typical outcome for participating companies is **Increased Sales** (along with enhanced brand loyalty and market share). \"Decreased sales\" or \"charitable donations\" contradict the premise of rewarding companies.\n\nPutting it together: `Boycotts, Buycotts, Digital technology, Increased Sales` matches **Option F**.\n\nFINAL=F",
+          "content_excerpt": "\n\nLet's break down the sentence logically, blank by blank:\n\n1. **First & Second Blanks:** The sentence sets up a contrast between two types of consumer campaigns. One punishes negative behavior, while",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-15-business",
+          "latency_ms": 12481.714010238647,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 3276,
+          "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - The question is a fill-in-the-blank style with four blanks.\n   - Structure: \"In contrast to _______, _______ aim to reward favourable b",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 1107,
+            "prompt_tokens": 228,
+            "prompt_tokens_details": null,
+            "total_tokens": 1335
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe correct answer is B. Arthropods are characterized by an open circulatory system in which hemolymph is pumped by a dorsal heart into body cavities (hemocoel) to bathe the organs directly. \n\n- Option A is incorrect because arthropod exoskeletons are primarily made of chitin and proteins, not peptidoglycan (which is characteristic of bacteria).\n- Option C is incorrect because arthropods are the most diverse and biologically successful animal phylum, occupying nearly every habitat on Earth.\n- Option D is incorrect because the defining feature of arthropods is the presence of paired, jointed appendages.\n\nFINAL=B",
+              "content_excerpt": "\n\nThe correct answer is B. Arthropods are characterized by an open circulatory system in which hemolymph is pumped by a dorsal heart into body cavities (hemocoel) to bathe the organs directly. \n\n- Opt",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5493.055105209351,
+              "reasoning_chars": 1464,
+              "reasoning_excerpt": "The user wants to identify the correct statement about arthropods from the given options.\n\n1.  **Analyze Option A:** \"They possess an exoskeleton composed primarily of peptidoglycan.\"\n    *   Arthropo",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 518,
+                "prompt_tokens": 136,
+                "prompt_tokens_details": null,
+                "total_tokens": 654
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nThe correct answer is B. Arthropods are characterized by an open circulatory system in which hemolymph is pumped by a dorsal heart into body cavities (hemocoel) to bathe the organs directly. \n\n- Option A is incorrect because arthropod exoskeletons are primarily made of chitin and proteins, not peptidoglycan (which is characteristic of bacteria).\n- Option C is incorrect because arthropods are the most diverse and biologically successful animal phylum, occupying nearly every habitat on Earth.\n- Option D is incorrect because the defining feature of arthropods is the presence of paired, jointed appendages.\n\nFINAL=B",
+          "content_excerpt": "\n\nThe correct answer is B. Arthropods are characterized by an open circulatory system in which hemolymph is pumped by a dorsal heart into body cavities (hemocoel) to bathe the organs directly. \n\n- Opt",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-20-biology",
+          "latency_ms": 5493.055105209351,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 1464,
+          "reasoning_excerpt": "The user wants to identify the correct statement about arthropods from the given options.\n\n1.  **Analyze Option A:** \"They possess an exoskeleton composed primarily of peptidoglycan.\"\n    *   Arthropo",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 518,
+            "prompt_tokens": 136,
+            "prompt_tokens_details": null,
+            "total_tokens": 654
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe EPR spectrum of a radical is split by magnetic nuclei via hyperfine coupling. For a set of `n` equivalent nuclei with nuclear spin `I`, the number of lines produced is `2nI + 1`. When multiple sets of non-equivalent nuclei are present, the total number of lines is the product of the splittings from each set.\n\nFor the ¹³CH₃• radical:\n- There are **3 equivalent ¹H nuclei** (I = 1/2), which split the signal into `2(3)(1/2) + 1 = 4` lines.\n- There is **1 ¹³C nucleus** (I = 1/2), which splits each of those lines into `2(1)(1/2) + 1 = 2` lines.\n\nSince the hyperfine coupling constants for ¹H and ¹³C are different and we assume no overlap, the total number of distinct lines is `4 × 2 = 8`.\n\nFINAL=B",
+              "content_excerpt": "\n\nThe EPR spectrum of a radical is split by magnetic nuclei via hyperfine coupling. For a set of `n` equivalent nuclei with nuclear spin `I`, the number of lines produced is `2nI + 1`. When multiple s",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 18948.83155822754,
+              "reasoning_chars": 4584,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Predict the number of lines in the EPR spectrum of a solution of 13C-labelled methyl radical (13CH3 radical), assuming th",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1795,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 1910
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nThe EPR spectrum of a radical is split by magnetic nuclei via hyperfine coupling. For a set of `n` equivalent nuclei with nuclear spin `I`, the number of lines produced is `2nI + 1`. When multiple sets of non-equivalent nuclei are present, the total number of lines is the product of the splittings from each set.\n\nFor the ¹³CH₃• radical:\n- There are **3 equivalent ¹H nuclei** (I = 1/2), which split the signal into `2(3)(1/2) + 1 = 4` lines.\n- There is **1 ¹³C nucleus** (I = 1/2), which splits each of those lines into `2(1)(1/2) + 1 = 2` lines.\n\nSince the hyperfine coupling constants for ¹H and ¹³C are different and we assume no overlap, the total number of distinct lines is `4 × 2 = 8`.\n\nFINAL=B",
+          "content_excerpt": "\n\nThe EPR spectrum of a radical is split by magnetic nuclei via hyperfine coupling. For a set of `n` equivalent nuclei with nuclear spin `I`, the number of lines produced is `2nI + 1`. When multiple s",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-25-chemistry",
+          "latency_ms": 18948.83155822754,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 4584,
+          "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Predict the number of lines in the EPR spectrum of a solution of 13C-labelled methyl radical (13CH3 radical), assuming th",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 1795,
+            "prompt_tokens": 115,
+            "prompt_tokens_details": null,
+            "total_tokens": 1910
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nTo determine the minimum number of clock cycles, we analyze the required operations, their dependencies, and how to schedule them to minimize pipeline stalls.\n\n1. **Identify Required Operations:**\n   The expression `AB + ABC + BC` requires:\n   - `T1 = A * B` (MUL)\n   - `T2 = T1 * C` (MUL) → computes `ABC`\n   - `T3 = B * C` (MUL)\n   - `T4 = T1 + T2` (ADD) → computes `AB + ABC`\n   - `T5 = T4 + T3` (ADD) → final result\n   Total: **5 instructions** (3 MULs, 2 ADDs). Registers R0, R1, R2 hold A, B, C and cannot be overwritten, so we use R3-R6 for intermediates.\n\n2. **Map Dependencies:**\n   - `T2` depends on `T1`\n   - `T4` depends on `T1` and `T2`\n   - `T5` depends on `T4` and `T3`\n   This forms a dependency chain: `T1 → T2 → T4 → T5`, with `T3 → T5` branching in.\n\n3. **Schedule to Minimize Consecutive Dependencies:**\n   The machine takes 2 cycles for an instruction if its result is used by the *immediately following* instruction. Otherwise, it takes 1 cycle. To minimize total cycles, we must order the instructions to break as many consecutive dependencies as possible.\n   - The strict chain `T1 → T2 → T4 → T5` has 3 dependencies.\n   - We can insert the independent `T3` between `T2` and `T4` to break one link in the chain.\n   - Optimal sequence: `T1, T2, T3, T4, T5`\n   - Check consecutive dependencies:\n     - `T1 → T2`: Yes (T1 takes 2 cycles)\n     - `T2 → T3`: No (T2 takes 1 cycle)\n     - `T3 → T4`: No (T3 takes 1 cycle)\n     - `T4 → T5`: Yes (T4 takes 2 cycles)\n     - `T5`: Last instruction (takes 1 cycle)\n\n4. **Calculate Total Cycles:**\n   `2 + 1 + 1 + 2 + 1 = 7 cycles`\n\nNo other ordering can reduce consecutive dependencies below 2, as `T3` can only break one link in the 4-node dependency chain. Thus, 7 is the absolute minimum.\n\nFINAL=G",
+              "content_excerpt": "\n\nTo determine the minimum number of clock cycles, we analyze the required operations, their dependencies, and how to schedule them to minimize pipeline stalls.\n\n1. **Identify Required Operations:**\n ",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 67895.30563354492,
+              "reasoning_chars": 16124,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Architecture:** Pipelined RISC machine\n   - **Registers:** R0-R7\n   - **Instructions:** `ADD Rs1, Rs2, Rd` and `MUL Rs1, Rs2, Rd`\n   - **",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 6316,
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 6494
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nTo determine the minimum number of clock cycles, we analyze the required operations, their dependencies, and how to schedule them to minimize pipeline stalls.\n\n1. **Identify Required Operations:**\n   The expression `AB + ABC + BC` requires:\n   - `T1 = A * B` (MUL)\n   - `T2 = T1 * C` (MUL) → computes `ABC`\n   - `T3 = B * C` (MUL)\n   - `T4 = T1 + T2` (ADD) → computes `AB + ABC`\n   - `T5 = T4 + T3` (ADD) → final result\n   Total: **5 instructions** (3 MULs, 2 ADDs). Registers R0, R1, R2 hold A, B, C and cannot be overwritten, so we use R3-R6 for intermediates.\n\n2. **Map Dependencies:**\n   - `T2` depends on `T1`\n   - `T4` depends on `T1` and `T2`\n   - `T5` depends on `T4` and `T3`\n   This forms a dependency chain: `T1 → T2 → T4 → T5`, with `T3 → T5` branching in.\n\n3. **Schedule to Minimize Consecutive Dependencies:**\n   The machine takes 2 cycles for an instruction if its result is used by the *immediately following* instruction. Otherwise, it takes 1 cycle. To minimize total cycles, we must order the instructions to break as many consecutive dependencies as possible.\n   - The strict chain `T1 → T2 → T4 → T5` has 3 dependencies.\n   - We can insert the independent `T3` between `T2` and `T4` to break one link in the chain.\n   - Optimal sequence: `T1, T2, T3, T4, T5`\n   - Check consecutive dependencies:\n     - `T1 → T2`: Yes (T1 takes 2 cycles)\n     - `T2 → T3`: No (T2 takes 1 cycle)\n     - `T3 → T4`: No (T3 takes 1 cycle)\n     - `T4 → T5`: Yes (T4 takes 2 cycles)\n     - `T5`: Last instruction (takes 1 cycle)\n\n4. **Calculate Total Cycles:**\n   `2 + 1 + 1 + 2 + 1 = 7 cycles`\n\nNo other ordering can reduce consecutive dependencies below 2, as `T3` can only break one link in the 4-node dependency chain. Thus, 7 is the absolute minimum.\n\nFINAL=G",
+          "content_excerpt": "\n\nTo determine the minimum number of clock cycles, we analyze the required operations, their dependencies, and how to schedule them to minimize pipeline stalls.\n\n1. **Identify Required Operations:**\n ",
+          "error": "answer",
+          "failure_class": "deterministic_check_failed",
+          "finish_reason": "stop",
+          "id": "mmlu-pro-30-computer-science",
+          "latency_ms": 67895.30563354492,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 16124,
+          "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Architecture:** Pipelined RISC machine\n   - **Registers:** R0-R7\n   - **Instructions:** `ADD Rs1, Rs2, Rd` and `MUL Rs1, Rs2, Rd`\n   - **",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 6316,
+            "prompt_tokens": 178,
+            "prompt_tokens_details": null,
+            "total_tokens": 6494
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a stationary autoregressive (AR) process, the key defining feature is that the process reverts to its long-run mean over time. Mathematically, this means the absolute values of the roots of the characteristic equation lie outside the unit circle, ensuring that the impulse response function decays toward zero. \n\nWhen a shock (innovation/error term) hits a stationary AR process, it affects the current value and propagates into future periods, but its influence diminishes geometrically over time. It does not persist forever (which would indicate a unit root/non-stationarity), nor does it vanish instantly or grow explosively. Instead, the effect gradually fades, meaning the shock **eventually dies away**.\n\nFINAL=F",
+              "content_excerpt": "\n\nIn a stationary autoregressive (AR) process, the key defining feature is that the process reverts to its long-run mean over time. Mathematically, this means the absolute values of the roots of the c",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7841.071605682373,
+              "reasoning_chars": 2287,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** For a stationary autoregressive process, shocks will...\n   - **Options:** A through J\n   - **Task:** Reason through the q",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 677,
+                "prompt_tokens": 108,
+                "prompt_tokens_details": null,
+                "total_tokens": 785
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nIn a stationary autoregressive (AR) process, the key defining feature is that the process reverts to its long-run mean over time. Mathematically, this means the absolute values of the roots of the characteristic equation lie outside the unit circle, ensuring that the impulse response function decays toward zero. \n\nWhen a shock (innovation/error term) hits a stationary AR process, it affects the current value and propagates into future periods, but its influence diminishes geometrically over time. It does not persist forever (which would indicate a unit root/non-stationarity), nor does it vanish instantly or grow explosively. Instead, the effect gradually fades, meaning the shock **eventually dies away**.\n\nFINAL=F",
+          "content_excerpt": "\n\nIn a stationary autoregressive (AR) process, the key defining feature is that the process reverts to its long-run mean over time. Mathematically, this means the absolute values of the roots of the c",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-35-economics",
+          "latency_ms": 7841.071605682373,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 2287,
+          "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** For a stationary autoregressive process, shocks will...\n   - **Options:** A through J\n   - **Task:** Reason through the q",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 677,
+            "prompt_tokens": 108,
+            "prompt_tokens_details": null,
+            "total_tokens": 785
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nTo find the force between two magnetic poles, we use Coulomb's law for magnetism in SI units. When pole strengths are given in Webers (Wb), the formula is:\n\n$$F = \\frac{1}{4\\pi\\mu_0} \\frac{m_1 m_2}{r^2}$$\n\n**Given:**\n- $m_1 = 4\\pi \\times 10^{-4} \\text{ Wb}$\n- $m_2 = 4\\pi \\times 1.5 \\times 10^{-4} \\text{ Wb} = 6\\pi \\times 10^{-4} \\text{ Wb}$\n- $r = 10 \\text{ cm} = 0.1 \\text{ m}$\n- $\\mu_0 = 4\\pi \\times 10^{-7} \\text{ T}\\cdot\\text{m/A}$\n\n**Step-by-step Calculation:**\n1. Calculate the product of the pole strengths:\n   $$m_1 m_2 = (4\\pi \\times 10^{-4}) \\times (6\\pi \\times 10^{-4}) = 24\\pi^2 \\times 10^{-8} \\text{ Wb}^2$$\n\n2. Calculate the denominator constant $4\\pi\\mu_0$:\n   $$4\\pi\\mu_0 = 4\\pi \\times (4\\pi \\times 10^{-7}) = 16\\pi^2 \\times 10^{-7}$$\n\n3. Substitute into the force formula:\n   $$F = \\frac{24\\pi^2 \\times 10^{-8}}{(16\\pi^2 \\times 10^{-7}) \\times (0.1)^2}$$\n   $$F = \\frac{24\\pi^2 \\times 10^{-8}}{16\\pi^2 \\times 10^{-7} \\times 10^{-2}}$$\n   $$F = \\frac{24}{16} \\times \\frac{10^{-8}}{10^{-9}} = 1.5 \\times 10 = 15 \\text{ N}$$\n\nThe calculated force is exactly 15 N, which corresponds to option C.\n\nFINAL=C",
+              "content_excerpt": "\n\nTo find the force between two magnetic poles, we use Coulomb's law for magnetism in SI units. When pole strengths are given in Webers (Wb), the formula is:\n\n$$F = \\frac{1}{4\\pi\\mu_0} \\frac{m_1 m_2}{",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 27655.118465423584,
+              "reasoning_chars": 4791,
+              "reasoning_excerpt": "The user wants to solve a physics problem about the force between two magnetic poles.\n\n**Given:**\n- Strength of first pole, $m_1 = 4\\pi \\times 10^{-4}$ Wb (Weber)\n- Strength of second pole, $m_2 = 4\\p",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2819,
+                "prompt_tokens": 149,
+                "prompt_tokens_details": null,
+                "total_tokens": 2968
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nTo find the force between two magnetic poles, we use Coulomb's law for magnetism in SI units. When pole strengths are given in Webers (Wb), the formula is:\n\n$$F = \\frac{1}{4\\pi\\mu_0} \\frac{m_1 m_2}{r^2}$$\n\n**Given:**\n- $m_1 = 4\\pi \\times 10^{-4} \\text{ Wb}$\n- $m_2 = 4\\pi \\times 1.5 \\times 10^{-4} \\text{ Wb} = 6\\pi \\times 10^{-4} \\text{ Wb}$\n- $r = 10 \\text{ cm} = 0.1 \\text{ m}$\n- $\\mu_0 = 4\\pi \\times 10^{-7} \\text{ T}\\cdot\\text{m/A}$\n\n**Step-by-step Calculation:**\n1. Calculate the product of the pole strengths:\n   $$m_1 m_2 = (4\\pi \\times 10^{-4}) \\times (6\\pi \\times 10^{-4}) = 24\\pi^2 \\times 10^{-8} \\text{ Wb}^2$$\n\n2. Calculate the denominator constant $4\\pi\\mu_0$:\n   $$4\\pi\\mu_0 = 4\\pi \\times (4\\pi \\times 10^{-7}) = 16\\pi^2 \\times 10^{-7}$$\n\n3. Substitute into the force formula:\n   $$F = \\frac{24\\pi^2 \\times 10^{-8}}{(16\\pi^2 \\times 10^{-7}) \\times (0.1)^2}$$\n   $$F = \\frac{24\\pi^2 \\times 10^{-8}}{16\\pi^2 \\times 10^{-7} \\times 10^{-2}}$$\n   $$F = \\frac{24}{16} \\times \\frac{10^{-8}}{10^{-9}} = 1.5 \\times 10 = 15 \\text{ N}$$\n\nThe calculated force is exactly 15 N, which corresponds to option C.\n\nFINAL=C",
+          "content_excerpt": "\n\nTo find the force between two magnetic poles, we use Coulomb's law for magnetism in SI units. When pole strengths are given in Webers (Wb), the formula is:\n\n$$F = \\frac{1}{4\\pi\\mu_0} \\frac{m_1 m_2}{",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-40-engineering",
+          "latency_ms": 27655.118465423584,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 4791,
+          "reasoning_excerpt": "The user wants to solve a physics problem about the force between two magnetic poles.\n\n**Given:**\n- Strength of first pole, $m_1 = 4\\pi \\times 10^{-4}$ Wb (Weber)\n- Strength of second pole, $m_2 = 4\\p",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 2819,
+            "prompt_tokens": 149,
+            "prompt_tokens_details": null,
+            "total_tokens": 2968
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nTo determine the correct symbolic translation, let's break down the sentence into its logical components:\n\n1. **Identify the atomic propositions:**\n   - `L`: Turtles live long lives\n   - `H`: Turtles are happy creatures\n   - `I`: Turtles are injured\n\n2. **Analyze the logical structure:**\n   The sentence has the form: `\"(P and Q), unless R\"`, where `P = L`, `Q = H`, and `R = I`.\n   In propositional logic, the connective **\"unless\"** is standardly translated as a material disjunction (`∨`). The phrase `\"A unless B\"` is logically equivalent to `\"A ∨ B\"` (or equivalently, `¬B → A`).\n\n3. **Apply the translation:**\n   - Group the first part: `(L ∧ H)`\n   - Apply \"unless\" as `∨`: `(L ∧ H) ∨ I`\n\n4. **Match with the options:**\n   - A. `(L ∧ H) ↔ I` (Incorrect: uses biconditional)\n   - B. `(L ∧ H) ∨ I` (Correct: matches our translation)\n   - C. `L ∧ (H ∨ I)` (Incorrect: changes the grouping/scope)\n   - D. `L ∧ (H → R)` (Incorrect: introduces unrelated `R` and wrong structure)\n\nTherefore, option B correctly captures the logical form of the statement.\n\nFINAL=B",
+              "content_excerpt": "\n\nTo determine the correct symbolic translation, let's break down the sentence into its logical components:\n\n1. **Identify the atomic propositions:**\n   - `L`: Turtles live long lives\n   - `H`: Turtle",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10216.138362884521,
+              "reasoning_chars": 1938,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Which formula of propositional logic best symbolizes: \"Turtles live long lives and are happy creatures, unless they are i",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 922,
+                "prompt_tokens": 120,
+                "prompt_tokens_details": null,
+                "total_tokens": 1042
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nTo determine the correct symbolic translation, let's break down the sentence into its logical components:\n\n1. **Identify the atomic propositions:**\n   - `L`: Turtles live long lives\n   - `H`: Turtles are happy creatures\n   - `I`: Turtles are injured\n\n2. **Analyze the logical structure:**\n   The sentence has the form: `\"(P and Q), unless R\"`, where `P = L`, `Q = H`, and `R = I`.\n   In propositional logic, the connective **\"unless\"** is standardly translated as a material disjunction (`∨`). The phrase `\"A unless B\"` is logically equivalent to `\"A ∨ B\"` (or equivalently, `¬B → A`).\n\n3. **Apply the translation:**\n   - Group the first part: `(L ∧ H)`\n   - Apply \"unless\" as `∨`: `(L ∧ H) ∨ I`\n\n4. **Match with the options:**\n   - A. `(L ∧ H) ↔ I` (Incorrect: uses biconditional)\n   - B. `(L ∧ H) ∨ I` (Correct: matches our translation)\n   - C. `L ∧ (H ∨ I)` (Incorrect: changes the grouping/scope)\n   - D. `L ∧ (H → R)` (Incorrect: introduces unrelated `R` and wrong structure)\n\nTherefore, option B correctly captures the logical form of the statement.\n\nFINAL=B",
+          "content_excerpt": "\n\nTo determine the correct symbolic translation, let's break down the sentence into its logical components:\n\n1. **Identify the atomic propositions:**\n   - `L`: Turtles live long lives\n   - `H`: Turtle",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-45-philosophy",
+          "latency_ms": 10216.138362884521,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 1938,
+          "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Which formula of propositional logic best symbolizes: \"Turtles live long lives and are happy creatures, unless they are i",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 922,
+            "prompt_tokens": 120,
+            "prompt_tokens_details": null,
+            "total_tokens": 1042
+          },
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 8448,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe concept of a **judge ad hoc** is specifically defined in Article 31 of the Statute of the International Court of Justice (ICJ). The ICJ normally sits with 15 permanent judges. However, to ensure that each party to a dispute feels its legal perspective is adequately represented, the Statute provides that if a party does not already have a judge of its nationality on the bench, it may appoint a person to sit as a judge ad hoc solely for that particular case. This judge participates fully in the deliberations and voting for that case only.\n\nEvaluating the options:\n- A, D, F, G, H describe roles or procedures that do not match the judge ad hoc system.\n- B is too vague and misses the case-specific and nationality-based criteria.\n- C is incorrect because nomination only occurs if the party lacks a national judge on the bench.\n- E is incorrect because nationality is a key factor.\n- **I** accurately captures the statutory rule: a party without a national judge may nominate a judge ad hoc specifically for that case.\n\nFINAL=I",
+              "content_excerpt": "\n\nThe concept of a **judge ad hoc** is specifically defined in Article 31 of the Statute of the International Court of Justice (ICJ). The ICJ normally sits with 15 permanent judges. However, to ensure",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 9070.992469787598,
+              "reasoning_chars": 2378,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** What is the judge ad hoc?\n   - **Options:** A through J\n   - **Task:** Reason through the options, then output FINAL=<let",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 814,
+                "prompt_tokens": 161,
+                "prompt_tokens_details": null,
+                "total_tokens": 975
+              }
+            }
+          ],
+          "budget": {
+            "legacy_total_budget": false,
+            "max_completion_tokens": 8448,
+            "reasoning_headroom_tokens": 8192,
+            "visible_answer_tokens": 256
+          },
+          "content": "\n\nThe concept of a **judge ad hoc** is specifically defined in Article 31 of the Statute of the International Court of Justice (ICJ). The ICJ normally sits with 15 permanent judges. However, to ensure that each party to a dispute feels its legal perspective is adequately represented, the Statute provides that if a party does not already have a judge of its nationality on the bench, it may appoint a person to sit as a judge ad hoc solely for that particular case. This judge participates fully in the deliberations and voting for that case only.\n\nEvaluating the options:\n- A, D, F, G, H describe roles or procedures that do not match the judge ad hoc system.\n- B is too vague and misses the case-specific and nationality-based criteria.\n- C is incorrect because nomination only occurs if the party lacks a national judge on the bench.\n- E is incorrect because nationality is a key factor.\n- **I** accurately captures the statutory rule: a party without a national judge may nominate a judge ad hoc specifically for that case.\n\nFINAL=I",
+          "content_excerpt": "\n\nThe concept of a **judge ad hoc** is specifically defined in Article 31 of the Statute of the International Court of Justice (ICJ). The ICJ normally sits with 15 permanent judges. However, to ensure",
+          "failure_class": null,
+          "finish_reason": "stop",
+          "id": "mmlu-pro-65-law",
+          "latency_ms": 9070.992469787598,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reasoning_chars": 2378,
+          "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** What is the judge ad hoc?\n   - **Options:** A through J\n   - **Task:** Reason through the options, then output FINAL=<let",
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "usage": {
+            "completion_tokens": 814,
+            "prompt_tokens": 161,
+            "prompt_tokens_details": null,
+            "total_tokens": 975
+          },
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+      "source_sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+      "status": "failed",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 174406.0800075531
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
