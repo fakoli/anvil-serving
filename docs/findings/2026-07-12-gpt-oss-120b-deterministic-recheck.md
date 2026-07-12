@@ -92,7 +92,35 @@ response budget is larger. It establishes that hidden-reasoning headroom
 materially changes the score, while also confirming that the suite's literal
 contracts remain demanding after content appears.
 
-## Conclusion
+## Original built-in eval rerun
+
+The pre-`--suite-file` bakeoff was also rerun unchanged with its original
+`chat,context,tool,session,intelligence` selection and 131,072-token context
+target. Clean raw artifact:
+[original-bakeoff-clean.json](2026-07-12-gpt-oss-original-eval-rerun-evidence/original-bakeoff-clean.json).
+
+| Original built-in section | Result |
+|---|---|
+| 131K context probe | pass |
+| OpenAI tool-call smoke | pass |
+| Multi-turn session recall | pass |
+| Unified-diff intelligence check | pass |
+| Parallel timeout-triage intelligence check | **fail: empty visible content** |
+
+The same original recipe passed both intelligence checks on 2026-07-11. In
+this clean rerun, a direct probe of the failed case showed `content: null`, all
+256 completion tokens in the reasoning channel, and `finish_reason: length`.
+See the bounded
+[probe summary](2026-07-12-gpt-oss-original-eval-rerun-evidence/timeout-triage-budget-probe-summary.json).
+The context timing was prefix-cache-warm and is not a comparable performance
+measurement.
+
+This means the newer external suite did not introduce the entire problem. The
+older built-in intelligence eval also hard-codes a 256-token response budget
+without a GPT-OSS reasoning-effort control, so its quality result can change
+from pass to empty-answer failure as native reasoning consumes that budget.
+
+## Operator conclusion
 
 **Operator assessment: the current cross-model `--suite-file` eval protocol is
 broken and its Qwen, Nemotron, and GPT-OSS scores must not be used to rank or

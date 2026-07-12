@@ -1,0 +1,24 @@
+{
+  "schema": "anvil-serving.manual-probe-summary/v1",
+  "model": "gpt-oss-120b",
+  "endpoint": "http://127.0.0.1:30002/v1",
+  "eval": "original built-in intelligence/parallel_timeout_triage",
+  "request": {
+    "max_tokens": 256,
+    "thinking_mode": "default"
+  },
+  "response": {
+    "finish_reason": "length",
+    "content_is_null": true,
+    "reasoning_present": true,
+    "reasoning_length_chars": 911,
+    "prompt_tokens": 126,
+    "completion_tokens": 256,
+    "total_tokens": 382
+  },
+  "limitations": [
+    "This is a manually materialized summary of a direct live response, not the full raw response body.",
+    "Character counts are not token counts.",
+    "The built-in bakeoff evidence schema does not currently retain finish_reason or reasoning-channel metadata."
+  ]
+}
