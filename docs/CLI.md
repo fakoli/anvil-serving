@@ -180,6 +180,9 @@ focused `--help`.
 | `topology show` | Show a validated topology summary. | `read` / `bounded` | - |
 | `topology validate` | Validate a topology offline. | `read` / `bounded` | - |
 | `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | - |
+| `collectors` | Configure and inspect optional read-only collector adapters. | `read` / `bounded` | - |
+| `dashboard` | Serve the read-only system observability dashboard. | `read` / `bounded` | - |
+| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-env` |
 <!-- END GENERATED CLI MANIFEST INDEX -->
 
 ---
@@ -507,6 +510,46 @@ it, `reclaim` frees it. Both are Windows/WSL2-only and exit with a clear message
 With `--topology`, host actions resolve a declared `host` resource. Use `--target host:ID` when a
 topology contains more than one host resource. OS/runtime compatibility is checked before local or
 controller dispatch, so a Windows-only action cannot execute on Fakoli Mini/macOS.
+
+### `collectors`
+
+```bash
+anvil-serving collectors configure --name NAME --endpoint URL --capability ID [--auth-env ENV] [--output PATH]
+anvil-serving collectors validate --config PATH
+anvil-serving collectors capabilities [--config PATH]
+anvil-serving collectors inspect --config PATH [--timeout SECONDS]
+```
+
+Optional adapters use the bounded `anvil-json-v1` capability document and are never required for
+ordinary inference. Configuration and capability reporting are offline. `inspect` performs one
+read-only request and never installs, starts, stops, or manages an exporter or collector service.
+
+Endpoints must use an explicit loopback, RFC1918, tailnet/CGNAT, or IPv6 ULA address. Public IPs,
+hostnames, URL credentials, redirects, proxies, query strings, and fragments are refused. A
+non-loopback endpoint requires `--auth-env`; only the environment-variable name is retained, and
+the resolved bearer token is redacted from errors and output. Adapter failure is returned as a
+degraded capability and does not alter routing or inference.
+
+The inspected endpoint must return this bounded JSON capability document; no Prometheus scrape or
+service-management protocol is implied:
+
+```json
+{"status":"ok","capabilities":["gpu-process-memory","gpu-container-attribution"]}
+```
+
+### `dashboard serve`
+
+```bash
+anvil-serving dashboard serve
+anvil-serving dashboard serve --host 127.0.0.1 --port 8766
+```
+
+Serves a packaged, read-only single page for host, WSL/Docker boundary, GPU,
+container, and configured service telemetry. The default URL is
+`http://127.0.0.1:8766/`; no Node.js process or frontend build service is
+required. The page exposes no lifecycle or configuration controls. A
+non-loopback private/tailnet bind requires `--auth-env` naming a populated
+bearer-token environment variable.
 
 ### `topology`
 

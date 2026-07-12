@@ -73,6 +73,7 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
 # wheel so classify.py can load it at runtime from an installed package.
 "anvil_serving.router" = ["*.json"]
 "anvil_serving" = ["py.typed"]
+"anvil_serving.observability.dashboard.static" = ["*.html"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
