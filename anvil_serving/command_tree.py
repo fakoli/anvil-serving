@@ -493,6 +493,27 @@ def build_command_tree() -> CommandTree:
                         allowed=("base_url", "model", "api_key_env", "requests", "concurrency", "max_tokens", "ctx_tokens", "no_thinking", "timeout_seconds"),
                     ),
                 ),
+                _node(
+                    "evidence",
+                    "Inspect retained local benchmark evidence.",
+                    children=tuple(
+                        _node(
+                            action,
+                            summary,
+                            handler=_handler(
+                                "anvil_serving.benchmark_evidence",
+                                argv_prefix=(action,),
+                            ),
+                            docs_anchor="docs/CLI.md#eval-benchmark-evidence",
+                        )
+                        for action, summary in (
+                            ("list", "List retained local benchmark artifacts."),
+                            ("show", "Show a normalized benchmark artifact summary."),
+                            ("compare", "Compare artifacts and flag workload mismatches."),
+                        )
+                    ),
+                    docs_anchor="docs/CLI.md#eval-benchmark-evidence",
+                ),
                 _node("external", "Manage external benchmark evidence.", children=(*external_actions, notebook), docs_anchor="docs/CLI.md#eval-benchmark-external"),
             ), docs_anchor="docs/CLI.md#eval-benchmark"),
         ),

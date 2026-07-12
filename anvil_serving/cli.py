@@ -62,6 +62,7 @@ _RESOLUTION_VALUE_OPTIONS = {
 }
 _HANDLER_PROGS = {
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
+    "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",
     "anvil_serving.calibrate": "anvil-serving eval calibrate",
     "anvil_serving.controller": "anvil-serving controller",
     "anvil_serving.collectors": "anvil-serving collectors",
