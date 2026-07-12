@@ -168,6 +168,19 @@ engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d heavy-qwen35-122b"
 
+# Single-PRO-6000 MXFP4/Marlin comparison candidate. This is the previously proven
+# flexibility-mode checkpoint expanded to 131K for a local throughput + deterministic
+# session-eval A/B. It shares the Heavy GPU and is never started with `heavy` or another
+# PRO-6000 candidate resident.
+[[serve]]
+name = "heavy-qwen35-122b-mxfp4"
+container = "vllm-qwen35-122b"
+port = 30004
+model = "qwen35-122b-mxfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.flexibility.yml up -d qwen35-122b"
+
 # ── 2026-07-10 Blackwell local-model bakeoff CANDIDATES (evaluation, NOT promoted) ──
 # 5090-track (:39020-21) coexist with live heavy; PRO-6000-track (:39022-24) share the
 # card with GPT-OSS heavy — stop `heavy` before bringing any of those up. None of these

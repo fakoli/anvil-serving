@@ -1,0 +1,31 @@
+# Loopback-only router configuration for the Qwen3.5-122B MXFP4 benchmark window.
+#
+# This is an evaluation topology, not a promoted routing policy. It lets the router and
+# observability dashboard remain available while the standard direct-endpoint benchmark
+# and the externally authored deterministic eval suite measure the candidate itself.
+
+[router]
+mapping_version = "2026-07-12.qwen35-122b-mxfp4-benchmark"
+verify_local_min = true
+
+[[router.tiers]]
+id            = "heavy-mxfp4-candidate"
+base_url      = "http://127.0.0.1:30004/v1"
+model         = "qwen35-122b-mxfp4"
+dialect       = "openai"
+context_limit = 131072
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_MXFP4_KEY"
+engine        = "vllm"
+quantization  = "mxfp4-marlin-w4a16"
+timeout       = 900.0
+extra_body    = { chat_template_kwargs = { enable_thinking = false } }
+
+[router.presets]
+chat         = ["heavy-mxfp4-candidate"]
+chat-fast    = ["heavy-mxfp4-candidate"]
+quick-edit   = ["heavy-mxfp4-candidate"]
+review       = ["heavy-mxfp4-candidate"]
+planning     = ["heavy-mxfp4-candidate"]
+long-context = ["heavy-mxfp4-candidate"]

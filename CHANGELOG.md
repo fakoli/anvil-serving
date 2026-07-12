@@ -6,7 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- **Lower-noise observability dashboard for desktop and tailnet phones.** The
+  read-only dashboard now separates grouped Windows, Fast/Heavy GPU, shared
+  graphics memory, WSL, and Docker graphs from a bounded searchable probe
+  explorer; pairs current readings with known capacities; exposes observed
+  minima/maxima; and serves an unauthenticated shell that can accept a bearer
+  token while keeping telemetry APIs authenticated when configured.
+- **Qwen3.5-122B-A10B-MXFP4 RTX PRO 6000 recipe and evidence.** Adds a pinned
+  131K-context vLLM/Marlin candidate serve plus dated standard-throughput and
+  deterministic planning-eval artifacts. The measured candidate remains
+  experimental and explicitly unpromoted because it was slower than the prior
+  NVFP4 result and passed only one of five planning evals.
 
 ## [0.12.0] - 2026-07-11
 

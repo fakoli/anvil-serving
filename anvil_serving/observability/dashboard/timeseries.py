@@ -16,6 +16,7 @@ CORE_SIGNALS: dict[str, tuple[str, ...]] = {
     "gpu-utilization": ("gpu.utilization",),
     "dedicated-vram": ("gpu.memory.used",),
     "shared-gpu-memory": ("gpu.memory.shared.used",),
+    "wsl-docker-cpu": ("boundary.cpu.utilization",),
     "disk": ("host.disk.throughput",),
     "network": ("host.network.throughput",),
 }

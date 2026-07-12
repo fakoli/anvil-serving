@@ -108,13 +108,22 @@ def test_supported_dashboard_serves_current_history_and_interpretation_read_only
     indicators = json.loads(payloads["/v1/indicators"])["data"]
     assert metrics["sample_count"] == 11
     assert series["retained_bytes"] == store.total_bytes
-    assert set(series["signals"]) >= {"cpu", "physical-memory", "gpu-utilization"}
+    assert set(series["signals"]) >= {
+        "cpu",
+        "physical-memory",
+        "gpu-utilization",
+        "wsl-docker-cpu",
+    }
     assert indicators["model_loading"]["phase"] == "vram-resident"
-    assert "Recent pressure curves" in html
+    assert "System graphs" in html
     assert "Model loading transition" in html
     assert "series[0]" not in html
-    assert ".flatMap" in html
-    assert "<button" not in html.lower()
+    assert "Object.entries(body.data.signals)" in html
+    assert html.lower().count("<button") == 3
+    assert ">connect</button>" in html.lower()
+    assert 'data-tab="overview"' in html.lower()
+    assert 'data-tab="probes"' in html.lower()
+    assert 'id="probe-search"' in html.lower()
     assert not any(action in html.lower() for action in ("/start", "/stop", "/restart"))
 
 
