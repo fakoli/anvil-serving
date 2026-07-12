@@ -53,11 +53,13 @@ _SECRET_TEXT_PATTERNS = (
     re.compile(r"(?i)\b((?:authorization|x-api-key)\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+"),
     re.compile(
         r"(?i)\b((?:access[_-]?key|api[_-]?key|client[_-]?secret|private[_-]?key|"
-        r"secret[_-]?access[_-]?key|session[_-]?token)\s*[:=]\s*)[^\s,;]+"
+        r"password|passphrase|secret[_-]?access[_-]?key|session[_-]?token|token)"
+        r"\s*[:=]\s*)[^\s,;]+"
     ),
     re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
     re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{8,}\b"),
     re.compile(r"\bhf_[A-Za-z0-9]{8,}\b"),
+    re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"),
 )
 _REDACTED = "<redacted>"
 
