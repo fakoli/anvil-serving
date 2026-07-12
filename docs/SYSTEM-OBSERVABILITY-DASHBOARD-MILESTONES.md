@@ -119,7 +119,7 @@ capabilities.
   serialized.
 - All milestone member tests pass together (`79 passed`), including the
   controller transport and collector CLI gates. The repository-wide gate
-  passes (`3292 passed, 2 skipped`).
+  passes (`3293 passed, 2 skipped`).
 - The independent adversarial pass covered fail-closed authentication and
   host identity, malformed and duplicate capability requests, bounded samples
   and response sizes, stale/future remote timestamps, read-only HTTP methods,
