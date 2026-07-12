@@ -141,10 +141,17 @@ def _loading_values(samples: list[Mapping[str, Any]]) -> dict[str, float]:
         "gpu.memory.shared.used": "shared_gpu_memory",
         "gpu.memory.used": "dedicated_vram",
     }
+    gpu_hosts = {
+        sample.get("host_id")
+        for sample in samples
+        if sample.get("metric") in {"gpu.memory.shared.used", "gpu.memory.used"}
+    }
     output: dict[str, float] = {}
     for sample in samples:
         key = metrics.get(sample.get("metric"))
         value = sample.get("value")
+        if key == "host_memory" and gpu_hosts and sample.get("host_id") not in gpu_hosts:
+            continue
         if key and _number(value) and sample.get("capability_status", "ok") == "ok":
             output[key] = output.get(key, 0) + float(value)
     return output
