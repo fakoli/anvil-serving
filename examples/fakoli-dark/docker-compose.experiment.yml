@@ -1062,6 +1062,92 @@ services:
       --host 0.0.0.0 --port 39033
       ${CAND_NEMOTRON_SUPER_EXTRA_ARGS:-}
 
+  # Current official NVFP4 challenger (33B total / 3B active MoE) for the
+  # RTX PRO 6000 Heavy bakeoff. Poolside documents vLLM 0.21+ support and
+  # requires 0.22+ for NVFP4 + fp8-KV correctness, so this intentionally uses
+  # the same post-0.22 nightly image as the other recent Heavy candidates.
+  cand-laguna-xs-21-nvfp4:
+    image: ${CAND_LAGUNA_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    container_name: vllm-cand-laguna-xs-21-nvfp4
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39034:39034"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve poolside/Laguna-XS-2.1-NVFP4
+      --revision ${CAND_LAGUNA_XS_REVISION:-07133fb3df1cc3111478e24ee71a823a598c8c2f}
+      --served-model-name laguna-xs-2.1-nvfp4
+      --trust-remote-code
+      --language-model-only
+      --reasoning-parser poolside_v1
+      --enable-auto-tool-choice
+      --tool-call-parser poolside_v1
+      --default-chat-template-kwargs '{"enable_thinking":false}'
+      --no-enable-prefix-caching
+      --kv-cache-dtype fp8
+      --max-model-len ${CAND_LAGUNA_XS_MAX_MODEL_LEN:-262144}
+      --max-num-seqs ${CAND_LAGUNA_XS_MAX_NUM_SEQS:-5}
+      --gpu-memory-utilization 0.92
+      --host 0.0.0.0 --port 39034
+      ${CAND_LAGUNA_XS_EXTRA_ARGS:-}
+
+  # Same pinned Laguna checkpoint through the model-specific SGLang CUDA 13
+  # image. This is the RadixAttention/continuous-batching A/B against vLLM,
+  # not a second model candidate. Poolside's SGLang cookbook identifies this
+  # image as containing the merged Laguna shared-expert and DFlash fixes.
+  cand-laguna-xs-21-nvfp4-sglang:
+    image: ${CAND_LAGUNA_SGLANG_IMAGE:-lmsysorg/sglang@sha256:0261d11a9bf5ef8041d68d55f0bac3f3375330e21353245e23ef461ffbe57da5}
+    container_name: sglang-cand-laguna-xs-21-nvfp4
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39035:39035"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    command: >
+      python3 -m sglang.launch_server
+      --model-path poolside/Laguna-XS-2.1-NVFP4
+      --revision ${CAND_LAGUNA_XS_REVISION:-07133fb3df1cc3111478e24ee71a823a598c8c2f}
+      --served-model-name laguna-xs-2.1-nvfp4-sglang
+      --chat-template /root/.cache/huggingface/hub/models--poolside--Laguna-XS-2.1-NVFP4/snapshots/${CAND_LAGUNA_XS_REVISION:-07133fb3df1cc3111478e24ee71a823a598c8c2f}/chat_template.jinja
+      --reasoning-parser poolside_v1
+      --tool-call-parser poolside_v1
+      --trust-remote-code
+      --context-length ${CAND_LAGUNA_XS_MAX_MODEL_LEN:-262144}
+      --max-running-requests ${CAND_LAGUNA_XS_MAX_NUM_SEQS:-5}
+      --mem-fraction-static 0.92
+      --host 0.0.0.0 --port 39035
+      ${CAND_LAGUNA_SGLANG_EXTRA_ARGS:-}
+
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache
 volumes:

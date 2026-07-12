@@ -1,0 +1,1208 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 2048,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-15-business",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.3333333333333333,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-25-chemistry",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-40-engineering",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-45-philosophy",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39032/v1",
+    "candidate_id": "mistral-small4-119b-a6b-nvfp4",
+    "config_id": "vllm-nightly-nvfp4-fp8kv-131k-seq5-evalv2-mmlu-high-headroom2048",
+    "model": "mistral-small4-119b-a6b-nvfp4",
+    "started_at": "2026-07-12T12:01:38Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T120138Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The pituitary gland is located at the base of the brain within the sella turcica, which is part of the cranial cavity. The cranial cavity is a subdivision of the dorsal cavity, but it is the specific cavity that contains the pituitary gland.\n\n**FINAL=J**",
+              "content_excerpt": "The pituitary gland is located at the base of the brain within the sella turcica, which is part of the cranial cavity. The cranial cavity is a subdivision of the dorsal cavity, but it is the specific ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7449.338912963867,
+              "reasoning_chars": 3993,
+              "reasoning_excerpt": "Okay, let's tackle this question step by step. The question is asking which body cavity contains the pituitary gland. First, I need to recall where the pituitary gland is located in the body.\n\nFrom my",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 910,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 1005
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The pituitary gland is located at the base of the brain within the sella turcica, which is part of the cranial cavity. The cranial cavity is a subdivision of the dorsal cavity, but it is the most specific and accurate answer among the options provided.\n\nFINAL=J",
+              "content_excerpt": "The pituitary gland is located at the base of the brain within the sella turcica, which is part of the cranial cavity. The cranial cavity is a subdivision of the dorsal cavity, but it is the most spec",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7490.550756454468,
+              "reasoning_chars": 4080,
+              "reasoning_excerpt": "Okay, let's tackle this question step by step. The question is asking which body cavity contains the pituitary gland. First, I need to recall where the pituitary gland is located in the body.\n\nFrom wh",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 932,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 1027
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The pituitary gland is located at the base of the brain within the **cranial cavity**, which is part of the **dorsal body cavity**. Among the given options, the most specific and correct answer is:\n\nFINAL=J",
+              "content_excerpt": "The pituitary gland is located at the base of the brain within the **cranial cavity**, which is part of the **dorsal body cavity**. Among the given options, the most specific and correct answer is:\n\nF",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6958.295822143555,
+              "reasoning_chars": 3844,
+              "reasoning_excerpt": "Okay, let's tackle this question step by step. The question is asking which body cavity contains the pituitary gland. First, I need to recall where the pituitary gland is located in the body.\n\nFrom my",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 869,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 964
+              }
+            }
+          ],
+          "id": "mmlu-pro-5-health",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine how much more light a telescope with a 50 cm aperture can gather compared to the human eye with a pupil diameter of 5 mm, we need to compare the areas of their respective apertures. The area of a circle is given by the formula \\( \\pi r^2 \\), where \\( r \\) is the radius. Since the diameter is twice the radius, we can use the diameter directly in our calculations.\n\nFirst, convert the diameters to the same units:\n- The pupil diameter of the eye is 5 mm, which is 0.5 cm.\n- The telescope aperture diameter is 50 cm.\n\nNext, calculate the ratio of the diameters:\n\\[ \\text{Ratio of diameters} = \\frac{50 \\text{ cm}}{0.5 \\text{ cm}} = 100 \\]\n\nThe ratio of the areas (and thus the light-gathering power) is the square of the ratio of the diameters:\n\\[ \\text{Ratio of areas} = 100^2 = 10,000 \\]\n\nTherefore, the telescope can gather 10,000 times more light than the eye.\n\nFINAL=E",
+              "content_excerpt": "To determine how much more light a telescope with a 50 cm aperture can gather compared to the human eye with a pupil diameter of 5 mm, we need to compare the areas of their respective apertures. The a",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 9229.095697402954,
+              "reasoning_chars": 2846,
+              "reasoning_excerpt": "Okay, so I need to figure out how much more light a telescope with a 50 cm aperture can gather compared to the human eye, which has a pupil diameter of 5 mm. Hmm, I remember that the amount of light a",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1138,
+                "prompt_tokens": 158,
+                "prompt_tokens_details": null,
+                "total_tokens": 1296
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine how much more light the telescope can gather compared to the eye, we compare the areas of their apertures. The area of a circle is given by the formula \\( \\pi r^2 \\), where \\( r \\) is the radius.\n\n1. Convert the diameters to the same unit:\n   - Eye's pupil diameter: 5 mm = 0.5 cm\n   - Telescope's aperture diameter: 50 cm\n\n2. Calculate the radii:\n   - Eye's pupil radius: \\( \\frac{0.5 \\text{ cm}}{2} = 0.25 \\text{ cm} \\)\n   - Telescope's aperture radius: \\( \\frac{50 \\text{ cm}}{2} = 25 \\text{ cm} \\)\n\n3. Calculate the areas:\n   - Eye's pupil area: \\( \\pi (0.25 \\text{ cm})^2 = \\pi \\times 0.0625 \\text{ cm}^2 \\approx 0.1963 \\text{ cm}^2 \\)\n   - Telescope's aperture area: \\( \\pi (25 \\text{ cm})^2 = \\pi \\times 625 \\text{ cm}^2 \\approx 1963.5 \\text{ cm}^2 \\)\n\n4. Compare the areas:\n   - Ratio of areas: \\( \\frac{1963.5 \\text{ cm}^2}{0.1963 \\text{ cm}^2} \\approx 10,000 \\)\n\nAlternatively, since the area scales with the square of the diameter, the ratio of the areas is \\( \\left(\\frac{D_{\\text{telescope}}}{D_{\\text{eye}}}\\right)^2 \\):\n   - \\( \\frac{50 \\text{ cm}}{0.5 \\text{ cm}} = 100 \\)\n   - \\( 100^2 = 10,000 \\)\n\nTherefore, the telescope can gather 10,000 times more light than the eye.\n\nFINAL=E",
+              "content_excerpt": "To determine how much more light the telescope can gather compared to the eye, we compare the areas of their apertures. The area of a circle is given by the formula \\( \\pi r^2 \\), where \\( r \\) is the",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10299.870729446411,
+              "reasoning_chars": 2438,
+              "reasoning_excerpt": "Okay, so I need to figure out how much more light a telescope with a 50 cm aperture can gather compared to an eye with a 5 mm pupil. Hmm, I remember that the amount of light a telescope can gather is ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1272,
+                "prompt_tokens": 158,
+                "prompt_tokens_details": null,
+                "total_tokens": 1430
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine how much more light the telescope can gather compared to the human eye, we compare the areas of their apertures. The area of a circle is given by \\( A = \\pi r^2 \\), where \\( r \\) is the radius.\n\n1. **Convert diameters to the same unit:**\n   - Eye pupil diameter: 5 mm = 0.5 cm\n   - Telescope aperture diameter: 50 cm\n\n2. **Calculate the radii:**\n   - Eye radius: \\( 0.5 \\, \\text{cm} / 2 = 0.25 \\, \\text{cm} \\)\n   - Telescope radius: \\( 50 \\, \\text{cm} / 2 = 25 \\, \\text{cm} \\)\n\n3. **Calculate the areas:**\n   - Eye area: \\( \\pi (0.25)^2 = \\pi \\times 0.0625 \\approx 0.1963 \\, \\text{cm}^2 \\)\n   - Telescope area: \\( \\pi (25)^2 = \\pi \\times 625 \\approx 1963.5 \\, \\text{cm}^2 \\)\n\n4. **Find the ratio of the areas:**\n   - Ratio = \\( \\frac{1963.5}{0.1963} \\approx 10000 \\)\n\nAlternatively, since area scales with the square of the diameter:\n- Ratio of diameters = \\( \\frac{50 \\, \\text{cm}}{0.5 \\, \\text{cm}} = 100 \\)\n- Ratio of areas = \\( 100^2 = 10000 \\)\n\nThus, the telescope can gather **10000 times more light** than the human eye.\n\nFINAL=E",
+              "content_excerpt": "To determine how much more light the telescope can gather compared to the human eye, we compare the areas of their apertures. The area of a circle is given by \\( A = \\pi r^2 \\), where \\( r \\) is the r",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8297.608375549316,
+              "reasoning_chars": 2121,
+              "reasoning_excerpt": "Okay, so I need to figure out how much more light a telescope with a 50 cm aperture can gather compared to the human eye, which has a pupil diameter of 5 mm. Hmm, I remember that the amount of light a",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1028,
+                "prompt_tokens": 158,
+                "prompt_tokens_details": null,
+                "total_tokens": 1186
+              }
+            }
+          ],
+          "id": "mmlu-pro-10-physics",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18871.76513671875,
+              "reasoning_chars": 10162,
+              "reasoning_excerpt": "Okay, let's tackle this question step by step. First, I need to understand what the sentence is saying and then figure out which options fit correctly.\n\nThe sentence is: \"In contrast to _______, _____",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 248,
+                "prompt_tokens_details": null,
+                "total_tokens": 2552
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18871.35910987854,
+              "reasoning_chars": 10485,
+              "reasoning_excerpt": "Okay, let's tackle this question step by step. First, I need to understand what the sentence is saying and then figure out which options fit logically.\n\nThe sentence is:\n\"In contrast to _______, _____",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 248,
+                "prompt_tokens_details": null,
+                "total_tokens": 2552
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "In contrast to **boycotts**, **buycotts** aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of **digital technology**, which allow campaigns to facilitate the company in achieving **increased sales**.\n\nFINAL=F",
+              "content_excerpt": "In contrast to **boycotts**, **buycotts** aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of **digital technology**, which allow camp",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 9029.009103775024,
+              "reasoning_chars": 4802,
+              "reasoning_excerpt": "Okay, let's tackle this question step by step. First, I need to understand what the sentence is saying and then figure out which options fit correctly.\n\nThe sentence structure is:\n\"In contrast to ____",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1112,
+                "prompt_tokens": 248,
+                "prompt_tokens_details": null,
+                "total_tokens": 1360
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-15-business",
+          "pass_count": 1,
+          "pass_rate": 0.3333333333333333,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze each option step-by-step:\n\n- **A**: Incorrect. Arthropods have an exoskeleton made of **chitin**, not peptidoglycan (which is found in bacterial cell walls).\n- **B**: Correct. Arthropods possess an **open circulatory system** with a **dorsal heart** that pumps hemolymph into the body cavity.\n- **C**: Incorrect. Arthropods are one of the **most successful phyla**, thriving in diverse habitats and utilizing varied nutrition sources.\n- **D**: Incorrect. Arthropods are **defined by their paired, jointed appendages** (e.g., legs, antennae, claws).\n- **E\u2013J**: Marked as N/A (not applicable), so they are not valid options.\n\nThe accurate statement is **B**.\n\nFINAL=B",
+              "content_excerpt": "Let's analyze each option step-by-step:\n\n- **A**: Incorrect. Arthropods have an exoskeleton made of **chitin**, not peptidoglycan (which is found in bacterial cell walls).\n- **B**: Correct. Arthropods",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5586.6522789001465,
+              "reasoning_chars": 2216,
+              "reasoning_excerpt": "Okay, let's tackle this question about arthropods. The user wants me to reason through each option and then provide the final answer with the letter. First, I need to recall what I know about arthropo",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 696,
+                "prompt_tokens": 132,
+                "prompt_tokens_details": null,
+                "total_tokens": 828
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze each option:\n\n- **A**: Incorrect. Arthropods have an exoskeleton made of **chitin**, not peptidoglycan (which is found in bacterial cell walls).\n- **B**: Correct. Arthropods possess an **open circulatory system** with a **dorsal heart** that pumps hemolymph through the body cavity.\n- **C**: Incorrect. Arthropods are one of the **most successful phyla**, with vast diversity in habitats and nutrition sources.\n- **D**: Incorrect. Arthropods are defined by **paired, jointed appendages** (e.g., legs, antennae).\n- **E\u2013J**: Marked as N/A, so they are not valid options.\n\n**FINAL=B**",
+              "content_excerpt": "Let's analyze each option:\n\n- **A**: Incorrect. Arthropods have an exoskeleton made of **chitin**, not peptidoglycan (which is found in bacterial cell walls).\n- **B**: Correct. Arthropods possess an *",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4492.069244384766,
+              "reasoning_chars": 1714,
+              "reasoning_excerpt": "Okay, let's tackle this question about arthropods. The user wants me to reason through each option and then pick the correct one. First, I need to recall what I know about arthropods. Arthropods are a",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 562,
+                "prompt_tokens": 132,
+                "prompt_tokens_details": null,
+                "total_tokens": 694
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "B",
+              "content_excerpt": "B",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 3558.32576751709,
+              "reasoning_chars": 1915,
+              "reasoning_excerpt": "Okay, let's tackle this question about arthropods. First, I need to recall what I know about arthropods. Arthropods are a large phylum of invertebrate animals that include insects, arachnids, crustace",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 446,
+                "prompt_tokens": 132,
+                "prompt_tokens_details": null,
+                "total_tokens": 578
+              }
+            }
+          ],
+          "id": "mmlu-pro-20-biology",
+          "pass_count": 2,
+          "pass_rate": 0.6666666666666666,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18820.485830307007,
+              "reasoning_chars": 8458,
+              "reasoning_excerpt": "Okay, so I need to figure out the number of lines in the EPR spectrum of a 13C-labeled methyl radical, which is 13CH3. Hmm, EPR spectroscopy... right, Electron Paramagnetic Resonance. So, this is abou",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 118,
+                "prompt_tokens_details": null,
+                "total_tokens": 2422
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18797.20973968506,
+              "reasoning_chars": 8692,
+              "reasoning_excerpt": "Okay, so I need to figure out the number of lines in the EPR spectrum for a 13C-labeled methyl radical, which is 13CH3. Hmm, EPR stands for Electron Paramagnetic Resonance, right? So this is about the",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 118,
+                "prompt_tokens_details": null,
+                "total_tokens": 2422
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18799.80230331421,
+              "reasoning_chars": 8963,
+              "reasoning_excerpt": "Okay, so I need to figure out the number of lines in the EPR spectrum of a 13C-labeled methyl radical, which is 13CH3. Hmm, EPR spectroscopy... right, Electron Paramagnetic Resonance. So, this is abou",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 118,
+                "prompt_tokens_details": null,
+                "total_tokens": 2422
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-25-chemistry",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18852.703332901,
+              "reasoning_chars": 9635,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem step by step. So, we have a pipelined RISC machine with registers R0 to R7. The operations are ADD and MUL, each taking one cycle normally, but if an operati",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 182,
+                "prompt_tokens_details": null,
+                "total_tokens": 2486
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18855.391263961792,
+              "reasoning_chars": 8824,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem step by step. So, we have a pipelined RISC machine with registers R0 to R7. The operations are ADD and MUL, each normally taking one cycle, but if an operati",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 182,
+                "prompt_tokens_details": null,
+                "total_tokens": 2486
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18882.78341293335,
+              "reasoning_chars": 8470,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem step by step. So, we have a pipelined RISC machine with registers R0 to R7. The operations are ADD and MUL, each taking one cycle normally, but if an operati",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 182,
+                "prompt_tokens_details": null,
+                "total_tokens": 2486
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-30-computer-science",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "For a stationary autoregressive process, the effect of a shock diminishes over time due to the properties of stationarity, which require the autoregressive coefficients to be less than 1 in absolute value. This ensures that the impact of any given shock eventually fades, rather than persisting indefinitely or causing permanent changes.\n\n**Final=F**",
+              "content_excerpt": "For a stationary autoregressive process, the effect of a shock diminishes over time due to the properties of stationarity, which require the autoregressive coefficients to be less than 1 in absolute v",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10528.266668319702,
+              "reasoning_chars": 5448,
+              "reasoning_excerpt": "Okay, so I need to figure out this question about a stationary autoregressive process and what happens to shocks. Let me start by recalling what an autoregressive process is. From what I remember, an ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1300,
+                "prompt_tokens": 114,
+                "prompt_tokens_details": null,
+                "total_tokens": 1414
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "For a stationary autoregressive process, the effect of a shock diminishes over time due to the mean-reverting nature of the process. This means that while a shock affects the current and subsequent values, its influence eventually fades away.\n\n**Final=F**",
+              "content_excerpt": "For a stationary autoregressive process, the effect of a shock diminishes over time due to the mean-reverting nature of the process. This means that while a shock affects the current and subsequent va",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 9262.266635894775,
+              "reasoning_chars": 4756,
+              "reasoning_excerpt": "Okay, so I need to figure out this question about a stationary autoregressive process and what happens to shocks. Let me start by recalling what an autoregressive process is. From what I remember, an ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1148,
+                "prompt_tokens": 114,
+                "prompt_tokens_details": null,
+                "total_tokens": 1262
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "For a stationary autoregressive process, shocks will:\n\nA. Never occur\nB. Persist indefinitely\nC. Cause a permanent change in the trend\nD. Grow exponentially\nE. Only affect the next period\nF. Eventually die away\nG. Cause the process to become non-stationary\nH. Immediately disappear\nI. Lead to a cyclical pattern\nJ. Be balanced out by subsequent shocks\n\n**Reasoning:**\n- A stationary AR process requires the autoregressive coefficient to satisfy |\u03c6| < 1, ensuring that the effect of shocks diminishes over time.\n- Shocks do not persist indefinitely (B), grow exponentially (D), or cause permanent changes (C) because stationarity prevents explosive behavior or trends.\n- Shocks do not immediately disappear (H) or only affect the next period (E); their influence propagates but decays.\n- The process remains stationary (G is incorrect), and cyclical patterns (I) depend on \u03c6 but are not the defining effect of shocks.\n- While shocks are mean-zero and balanced over time (J), the question focuses on the trajectory of a single shock, which fades.\n\n**Final Answer:** F",
+              "content_excerpt": "For a stationary autoregressive process, shocks will:\n\nA. Never occur\nB. Persist indefinitely\nC. Cause a permanent change in the trend\nD. Grow exponentially\nE. Only affect the next period\nF. Eventuall",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 9293.412446975708,
+              "reasoning_chars": 3788,
+              "reasoning_excerpt": "Okay, so I need to figure out this question about a stationary autoregressive process and what happens to shocks. Let me start by recalling what an autoregressive process is. From what I remember, an ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1151,
+                "prompt_tokens": 114,
+                "prompt_tokens_details": null,
+                "total_tokens": 1265
+              }
+            }
+          ],
+          "id": "mmlu-pro-35-economics",
+          "pass_count": 2,
+          "pass_rate": 0.6666666666666666,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18813.372135162354,
+              "reasoning_chars": 7598,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem. So, we have two point poles here. The first one has a strength of 4\u03c0 \u00d7 10^-4 weber. Then there's another point pole with strength 4\u03c0 \u00d7 1.5 \u00d7 10^-4 weber, wh",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 153,
+                "prompt_tokens_details": null,
+                "total_tokens": 2457
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18847.199201583862,
+              "reasoning_chars": 5278,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem. So, we have two point poles, right? One has a strength of 4\u03c0 \u00d7 10^-4 weber, and the other is 4\u03c0 \u00d7 1.5 \u00d7 10^-4 weber. They're placed 10 cm apart, and we need",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 153,
+                "prompt_tokens_details": null,
+                "total_tokens": 2457
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18813.59553337097,
+              "reasoning_chars": 6372,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem. So, we have two point poles here. The first one has a strength of 4\u03c0 \u00d7 10^-4 weber. The second one is 4\u03c0 \u00d7 1.5 \u00d7 10^-4 weber, and they're placed 10 cm apart",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 153,
+                "prompt_tokens_details": null,
+                "total_tokens": 2457
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-40-engineering",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18781.30602836609,
+              "reasoning_chars": 8038,
+              "reasoning_excerpt": "Okay, let's try to figure out this propositional logic problem. The question is asking which formula best symbolizes the statement: \"Turtles live long lives and are happy creatures, unless they are in",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 121,
+                "prompt_tokens_details": null,
+                "total_tokens": 2425
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18775.309801101685,
+              "reasoning_chars": 9170,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem. So, the question is asking which formula of propositional logic best symbolizes the statement: \"Turtles live long lives and are happy creatures, unless they",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 121,
+                "prompt_tokens_details": null,
+                "total_tokens": 2425
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 18770.745038986206,
+              "reasoning_chars": 7900,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem. So, the question is asking which formula of propositional logic best symbolizes the statement: \"Turtles live long lives and are happy creatures, unless they",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2304,
+                "prompt_tokens": 121,
+                "prompt_tokens_details": null,
+                "total_tokens": 2425
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-45-philosophy",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The correct answer is:\n\nI. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc\n\nFINAL=I",
+              "content_excerpt": "The correct answer is:\n\nI. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc\n\nFINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6551.257848739624,
+              "reasoning_chars": 3418,
+              "reasoning_excerpt": "Okay, let's tackle this question about the judge ad hoc in the context of the International Court of Justice (ICJ). First, I need to recall what I know about the ICJ and its judges.\n\nThe ICJ is the pr",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 812,
+                "prompt_tokens": 167,
+                "prompt_tokens_details": null,
+                "total_tokens": 979
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The correct answer is:\n\nI. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc\n\nFINAL=I",
+              "content_excerpt": "The correct answer is:\n\nI. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc\n\nFINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6232.0427894592285,
+              "reasoning_chars": 3318,
+              "reasoning_excerpt": "Okay, let's tackle this question about the judge ad hoc in the context of the International Court of Justice (ICJ). First, I need to understand what a judge ad hoc is. From what I recall, the ICJ is t",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 774,
+                "prompt_tokens": 167,
+                "prompt_tokens_details": null,
+                "total_tokens": 941
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The correct answer is:\n\nI. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc\n\nFINAL=I",
+              "content_excerpt": "The correct answer is:\n\nI. If a party before the ICJ has no national sitting as judge, it may nominate someone solely for that case as judge ad hoc\n\nFINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6888.268947601318,
+              "reasoning_chars": 3619,
+              "reasoning_excerpt": "Okay, let's tackle this question about the judge ad hoc in the context of the International Court of Justice (ICJ). First, I need to understand what a judge ad hoc is. From what I recall, the ICJ is t",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 851,
+                "prompt_tokens": 167,
+                "prompt_tokens_details": null,
+                "total_tokens": 1018
+              }
+            }
+          ],
+          "id": "mmlu-pro-65-law",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+      "status": "failed",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "high",
+    "control_status": "requested_unverified",
+    "mode": "default",
+    "reasoning_effort": "high",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 384738.64674568176
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

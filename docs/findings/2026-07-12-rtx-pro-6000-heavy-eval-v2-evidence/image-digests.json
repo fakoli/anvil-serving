@@ -1,0 +1,15 @@
+{
+  "observed_date": "2026-07-12",
+  "images": [
+    {
+      "engine": "vLLM 0.23.1rc1.dev531+ga65f93fb2",
+      "reference": "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e",
+      "image_id": "sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+    },
+    {
+      "engine": "SGLang dev-cu13-laguna-xs-2-1",
+      "reference": "lmsysorg/sglang@sha256:0261d11a9bf5ef8041d68d55f0bac3f3375330e21353245e23ef461ffbe57da5",
+      "image_id": "sha256:0261d11a9bf5ef8041d68d55f0bac3f3375330e21353245e23ef461ffbe57da5"
+    }
+  ]
+}
