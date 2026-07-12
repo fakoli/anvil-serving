@@ -119,6 +119,30 @@ capacity candidate but stays unpromoted pending a pinned stable engine and
 broader quality calibration. See the
 [dated recheck and raw artifacts](findings/2026-07-12-nemotron-puzzle-recheck.md).
 
+### GPT-OSS-120B deterministic-eval control (2026-07-12)
+
+The production GPT-OSS-120B Heavy serve passed full preflight, including the
+128K needle and 20/20 tool calls. Its conventional short 8K run measured 29.87
+aggregate output tok/s and 655.67 ms TTFT p50; the established 183.2 tok/s
+controlled long-generation result remains the meaningful decode baseline.
+
+On the exact 256–384-token planning suite, GPT-OSS scored **0/5**, but four
+cases returned no visible answer: native hidden reasoning consumed the entire
+completion budget and ended with `finish_reason: length`. A diagnostic copy
+that changed only the cap to 2,048 produced visible content for all five cases
+and scored **1/5**. Therefore the exact-cap GPT-OSS score is not a valid model
+quality comparison. `--suite-file` comparisons involving reasoning-channel
+models need model-aware reasoning headroom or explicit reasoning-effort control
+and should retain finish-reason/reasoning metadata. See the
+[dated control and raw artifacts](findings/2026-07-12-gpt-oss-120b-deterministic-recheck.md).
+
+**Current operator verdict: this cross-model eval protocol is broken.** Do not
+use the reported Qwen 1/5, Nemotron 0/5, or GPT-OSS 0/5 results for model
+ranking or promotion until reasoning controls, visible-answer budgets, and
+finish-reason/reasoning metadata are made comparable. This verdict applies to
+the protocol around `--suite-file`; it does not imply that deterministic text
+checks over valid visible answers are themselves nonfunctional.
+
 ## OpenClaw interaction and voice evidence
 
 The focused Dark-host STT smoke benchmark used one clean 16 kHz utterance and
