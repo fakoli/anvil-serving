@@ -118,6 +118,10 @@ focused `--help`.
 | `eval calibrate` | Calibrate a reviewable quality profile. | `mutate` / `bounded` | - |
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark run` | Run an endpoint benchmark. | `mutate` / `bounded` | `--confirm` |
+| `eval benchmark evidence` | Inspect retained local benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark evidence list` | List retained local benchmark artifacts. | `read` / `bounded` | - |
+| `eval benchmark evidence show` | Show a normalized benchmark artifact summary. | `read` / `bounded` | - |
+| `eval benchmark evidence compare` | Compare artifacts and flag workload mismatches. | `read` / `bounded` | - |
 | `eval benchmark external` | Manage external benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark external init` | Initialize benchmark evidence storage. | `mutate` / `bounded` | - |
 | `eval benchmark external sources` | List benchmark sources. | `read` / `bounded` | - |
@@ -358,6 +362,7 @@ anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local 
 
 ```
 anvil-serving eval benchmark run (--base-url URL --model ID | --tier NAME [--manifest PATH]) --confirm [flags]
+anvil-serving eval benchmark evidence {list|show|compare} [flags]
 anvil-serving eval benchmark external {init|sources|fetch|import|list|report|export|compare} [flags]
 ```
 
@@ -417,6 +422,45 @@ quantifiers are rejected.
 > `main()` functions like the rest of the CLI. They remain deliberately self-contained enough for
 > direct script-style checks from a checkout, but the supported operator path is the
 > `anvil-serving eval preflight` / `anvil-serving eval benchmark run` command surface after `pip install -e .`.
+
+### `eval benchmark evidence`
+
+Read retained local benchmark JSON through a bounded, prompt-free summary
+instead of writing one-off file searches or JSON extraction commands:
+
+```bash
+anvil-serving eval benchmark evidence list \
+  --root docs/findings \
+  --model thinkingcap \
+  --suite mmlu \
+  --limit 20
+
+anvil-serving eval benchmark evidence show \
+  docs/findings/2026-07-12-qwen36-protocol-v2-evidence/thinkingcap-mmlu-thinking-headroom4096.json \
+  --format json
+
+anvil-serving eval benchmark evidence compare \
+  docs/findings/2026-07-12-qwen36-27b-heavy-bakeoff-evidence/thinkingcap-concurrency1.json \
+  docs/findings/2026-07-12-qwen36-27b-heavy-bakeoff-evidence/thinkingcap-concurrency5.json
+```
+
+`list` recursively discovers recognized capacity, protocol-v2 quality, and MTP
+A/B artifacts. It can filter by model/candidate/config substring, suite, or
+artifact kind. `show` normalizes one artifact without returning prompts, full
+model output, reasoning text, or arbitrary stored command/method text. `compare` reports normalized rows and sets
+`comparable=false` when material workload fields differ, including context,
+concurrency, protocol version, repetition count, visible-answer allocation, or
+reasoning headroom. Missing controls or provenance also make a comparison
+non-comparable: unknown is never treated as equal. Quality comparisons require
+an immutable SHA-256 for every suite, and malformed counts, budgets, or control
+combinations fail closed. Engine, recipe, and method differences are reported
+separately as implementation provenance; they do not by themselves mean the
+workload differs. For speculative-decoding A/B artifacts, the method hash is
+workload identity and a mismatch is blocking. Invalid numeric values and unknown
+thinking/control modes are rejected as comparison evidence. A non-comparable comparison exits non-zero by default;
+`--allow-mismatch` acknowledges it for exploratory reporting. Use `--format
+json` for a directly parseable result; null fields are omitted, and output,
+directory traversal, and file reads are bounded.
 
 ### `eval benchmark external`
 
