@@ -146,6 +146,26 @@ The evidence JSON includes identity, source recipe, timing, context targets, too
 score inputs, and a `failures` list. Failed sub-checks stay in the same artifact as successful
 checks so the final scoring pass can compare partial candidates without rerunning a loaded model.
 
+For reasoning-capable cross-model evals, use the protocol-v2 controls rather
+than a shared undifferentiated completion cap. Select either `--thinking-mode`
+for chat-template-controlled families or `--reasoning-effort` for GPT-OSS and
+Mistral-style APIs, then specify an equal `--visible-answer-tokens` allocation
+and model-appropriate `--reasoning-headroom-tokens`. Their sum is sent as the
+single API `max_tokens` limit. `--eval-repetitions` and
+`--eval-min-pass-rate` turn one-shot checks into explicit stability evidence.
+The evaluator rejects oversized plans before sending requests: 100 external
+items, 20 repetitions per item, 500 aggregate attempts, 65,536 tokens per
+completion, and 2,000,000 requested quality tokens are the hard ceilings.
+
+Each quality attempt retains full visible content, `finish_reason`, bounded
+reasoning-channel evidence, token usage, its budget allocation, and a failure
+class. A blank answer caused by hidden reasoning reaching `finish_reason=length`
+is therefore `reasoning_budget_exhausted`, not an ordinary model-quality miss.
+Use validated `matches_regex` checks for harmless formatting variation (for
+example `\bFINAL\s*=\s*D\b\s*$`) while keeping grading deterministic and
+independent of the candidate model. The accepted regex subset is deliberately
+small and excludes grouping, alternation, wildcards, and general quantifiers.
+
 For the full Fast-tier bakeoff loop, pair that loaded-endpoint artifact with a
 voice benchmark artifact and an explicit restoration check:
 

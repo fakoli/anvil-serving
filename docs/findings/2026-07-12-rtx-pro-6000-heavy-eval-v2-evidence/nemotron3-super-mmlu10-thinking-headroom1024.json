@@ -1,0 +1,1173 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 1024,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-40-engineering",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39033/v1",
+    "candidate_id": "nemotron3-super-120b-a12b-nvfp4",
+    "config_id": "vllm-nightly-nvfp4-fp8kv-131k-seq5-evalv2-mmlu-thinking-headroom1024",
+    "model": "nemotron3-super-120b-a12b-nvfp4",
+    "started_at": "2026-07-12T12:13:15Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T121315Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland sits in the sella turcica of the sphenoid bone, which is part of the cranial cavity that houses the brain. Therefore, the correct body cavity is the cranial cavity.\n\nFINAL=J",
+              "content_excerpt": "\n\nThe pituitary gland sits in the sella turcica of the sphenoid bone, which is part of the cranial cavity that houses the brain. Therefore, the correct body cavity is the cranial cavity.\n\nFINAL=J",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3965.4693603515625,
+              "reasoning_chars": 694,
+              "reasoning_excerpt": "We need to answer: \"Which of the following is the body cavity that contains the pituitary gland?\" Options: A. Ventral, B. Dorsal, C. Buccal, D. Thoracic, E. Pericardial, F. Abdominal, G. Spinal, H. Pe",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 233,
+                "prompt_tokens": 96,
+                "prompt_tokens_details": null,
+                "total_tokens": 329
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, which is a depression within the cranial cavity. Therefore, the body cavity that contains the pituitary gland is the cranial cavity.\n\nFINAL=J",
+              "content_excerpt": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, which is a depression within the cranial cavity. Therefore, the body cavity that contains the pituitary gland is the ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4122.866153717041,
+              "reasoning_chars": 1101,
+              "reasoning_excerpt": "We need to answer: \"Which of the following is the body cavity that contains the pituitary gland?\" Options: A. Ventral, B. Dorsal, C. Buccal, D. Thoracic, E. Pericardial, F. Abdominal, G. Spinal, H. Pe",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 330,
+                "prompt_tokens": 96,
+                "prompt_tokens_details": null,
+                "total_tokens": 426
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, which is a depression within the skull. This location places it inside the cranial cavity, the space that houses the brain. None of the other listed cavities (ventral, dorsal, buccal, thoracic, pericardial, abdominal, spinal, pelvic, pleural) contain the pituitary gland.\n\n**Answer:** J. Cranial  \n\nFINAL=J",
+              "content_excerpt": "\n\nThe pituitary gland (hypophysis) sits in the sella turcica of the sphenoid bone, which is a depression within the skull. This location places it inside the cranial cavity, the space that houses the ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4036.1475944519043,
+              "reasoning_chars": 877,
+              "reasoning_excerpt": "We need to answer: \"Which of the following is the body cavity that contains the pituitary gland?\" Options: A. Ventral, B. Dorsal, C. Buccal, D. Thoracic, E. Pericardial, F. Abdominal, G. Spinal, H. Pe",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 325,
+                "prompt_tokens": 96,
+                "prompt_tokens_details": null,
+                "total_tokens": 421
+              }
+            }
+          ],
+          "id": "mmlu-pro-5-health",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe light\u2011gathering ability of an optical system scales with the area of its aperture, which is proportional to the square of its diameter.\n\n- Pupil diameter: \\(5\\text{ mm} = 0.5\\text{ cm}\\)\n- Telescope aperture: \\(50\\text{ cm}\\)\n\nRatio of diameters: \\(\\frac{50\\text{ cm}}{0.5\\text{ cm}} = 100\\)\n\nRatio of areas (light gathering): \\(100^2 = 10{,}000\\)\n\nThus the telescope gathers **10,000 times** more light than the eye.\n\n**Answer: E**\n\nFINAL=E",
+              "content_excerpt": "\n\nThe light\u2011gathering ability of an optical system scales with the area of its aperture, which is proportional to the square of its diameter.\n\n- Pupil diameter: \\(5\\text{ mm} = 0.5\\text{ cm}\\)\n- Teles",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4110.853672027588,
+              "reasoning_chars": 549,
+              "reasoning_excerpt": "We need to parse: Pupil diameter 5 mm, telescope aperture 50 cm. Light gathering power proportional to area (diameter^2). So ratio = (D_telescope / D_eye)^2.\n\nGiven D_eye = 5 mm = 0.5 cm? Actually 5 m",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 325,
+                "prompt_tokens": 159,
+                "prompt_tokens_details": null,
+                "total_tokens": 484
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe light\u2011gathering power of an optical system is proportional to the area of its aperture, which scales with the square of the diameter.\n\n- Eye pupil diameter: \\(5\\text{ mm}=0.5\\text{ cm}\\)\n- Telescope aperture diameter: \\(50\\text{ cm}\\)\n\nRatio of diameters: \\(\\frac{50}{0.5}=100\\).\n\nSince area \u221d (diameter)\u00b2, the ratio of areas (and thus light gathered) is \\(100^{2}=10{,}000\\).\n\nTherefore, the telescope gathers **10,000 times more light** than the eye.\n\n**Answer:** E  \n\nFINAL=E",
+              "content_excerpt": "\n\nThe light\u2011gathering power of an optical system is proportional to the area of its aperture, which scales with the square of the diameter.\n\n- Eye pupil diameter: \\(5\\text{ mm}=0.5\\text{ cm}\\)\n- Teles",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5038.233518600464,
+              "reasoning_chars": 891,
+              "reasoning_excerpt": "We need to parse: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the telescope gather than your eye?\" So we need to compu",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 407,
+                "prompt_tokens": 159,
+                "prompt_tokens_details": null,
+                "total_tokens": 566
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe light\u2011gathering power scales with the area of the aperture, which is proportional to the square of the diameter.\n\n- Pupil diameter: 5\u202fmm = 0.5\u202fcm  \n- Telescope aperture: 50\u202fcm  \n\nRatio = (50\u202fcm)\u00b2 / (0.5\u202fcm)\u00b2 = 2500 / 0.25 = 10\u202f000.\n\nThus the telescope gathers 10\u202f000 times more light than the eye.\n\n**Answer: E**  \n\nFINAL=E",
+              "content_excerpt": "\n\nThe light\u2011gathering power scales with the area of the aperture, which is proportional to the square of the diameter.\n\n- Pupil diameter: 5\u202fmm = 0.5\u202fcm  \n- Telescope aperture: 50\u202fcm  \n\nRatio = (50\u202fcm)",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4794.780254364014,
+              "reasoning_chars": 676,
+              "reasoning_excerpt": "We need to parse: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the telescope gather than your eye?\" The light gathering",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 385,
+                "prompt_tokens": 159,
+                "prompt_tokens_details": null,
+                "total_tokens": 544
+              }
+            }
+          ],
+          "id": "mmlu-pro-10-physics",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nFINAL=F",
+              "content_excerpt": "\n\nFINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10050.981760025024,
+              "reasoning_chars": 3685,
+              "reasoning_excerpt": "We need to parse the question: \"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of ___________, which",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 811,
+                "prompt_tokens": 249,
+                "prompt_tokens_details": null,
+                "total_tokens": 1060
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nFINAL=F",
+              "content_excerpt": "\n\nFINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12191.293954849243,
+              "reasoning_chars": 4625,
+              "reasoning_excerpt": "We need to parse the question: \"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of ___________, which",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 987,
+                "prompt_tokens": 249,
+                "prompt_tokens_details": null,
+                "total_tokens": 1236
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nFINAL=F",
+              "content_excerpt": "\n\nFINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11514.613628387451,
+              "reasoning_chars": 4449,
+              "reasoning_excerpt": "We need to parse the question: \"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the use of ___________, which",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 929,
+                "prompt_tokens": 249,
+                "prompt_tokens_details": null,
+                "total_tokens": 1178
+              }
+            }
+          ],
+          "id": "mmlu-pro-15-business",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe exoskeleton of arthropods is made of chitin and proteins, not peptidoglycan, so option A is incorrect. Arthropods do have an open circulatory system with a dorsal heart, making option B correct. They are highly successful and diverse, occupying many habitats and nutritional niches, so option C is false. By definition, arthropods possess paired, jointed appendages, so option D is false. Therefore, the accurate statement is option B.\n\nFINAL=B",
+              "content_excerpt": "\n\nThe exoskeleton of arthropods is made of chitin and proteins, not peptidoglycan, so option A is incorrect. Arthropods do have an open circulatory system with a dorsal heart, making option B correct.",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4914.863586425781,
+              "reasoning_chars": 1217,
+              "reasoning_excerpt": "We need to answer a multiple choice about arthropods. The question: \"Which of the following represents an accurate statement concerning arthropods?\" Options: A, B, C, D, E-J are N/A (presumably not ap",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 388,
+                "prompt_tokens": 133,
+                "prompt_tokens_details": null,
+                "total_tokens": 521
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe correct statement about arthropods is that they have an open circulatory system with a dorsal heart. Their exoskeleton is made of chitin and protein, not peptidoglycan; they are a highly successful, diverse phylum; and they possess paired, jointed appendages.\n\nFINAL=B",
+              "content_excerpt": "\n\nThe correct statement about arthropods is that they have an open circulatory system with a dorsal heart. Their exoskeleton is made of chitin and protein, not peptidoglycan; they are a highly success",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4522.92799949646,
+              "reasoning_chars": 1282,
+              "reasoning_excerpt": "We need to answer a multiple choice about arthropods. The question: \"Which of the following represents an accurate statement concerning arthropods?\" Options: A, B, C, D, and then E-J are N/A (presumab",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 359,
+                "prompt_tokens": 133,
+                "prompt_tokens_details": null,
+                "total_tokens": 492
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe exoskeleton of arthropods is made of chitin and proteins, not peptidoglycan, so option A is incorrect. Arthropods do have an open circulatory system in which hemolymph is pumped by a dorsal heart, making option B correct. Arthropods are highly successful and diverse, occupying many habitats and utilizing varied nutrition sources, so option C is false. By definition, arthropods possess paired, jointed appendages, so option D is false. Therefore, the accurate statement is option B.\n\nFINAL=B",
+              "content_excerpt": "\n\nThe exoskeleton of arthropods is made of chitin and proteins, not peptidoglycan, so option A is incorrect. Arthropods do have an open circulatory system in which hemolymph is pumped by a dorsal hear",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5157.156229019165,
+              "reasoning_chars": 1261,
+              "reasoning_excerpt": "We need to answer a multiple choice about arthropods. The question: \"Which of the following represents an accurate statement concerning arthropods?\" Options: A, B, C, D, and then E-J are N/A (presumab",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 410,
+                "prompt_tokens": 133,
+                "prompt_tokens_details": null,
+                "total_tokens": 543
+              }
+            }
+          ],
+          "id": "mmlu-pro-20-biology",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe methyl radical (\u00b7CH\u2083) has three equivalent protons (each I\u202f=\u202f\u00bd) and, when the carbon is \u00b9\u00b3C\u2011labelled, one carbon nucleus (also I\u202f=\u202f\u00bd).  \n\n- For n equivalent I\u202f=\u202f\u00bd nuclei, the hyperfine pattern gives n\u202f+\u202f1 lines.  \n  With three equivalent protons: 3\u202f+\u202f1\u202f=\u202f4 lines (a quartet, intensity 1\u202f:\u202f3\u202f:\u202f3\u202f:\u202f1).  \n- The \u00b9\u00b3C nucleus (I\u202f=\u202f\u00bd) splits each of those lines into 2I\u202f+\u202f1\u202f=\u202f2 lines (a doublet), provided its coupling constant is different from that of the protons and the lines do not overlap.\n\nTotal number of lines = (lines from protons) \u00d7 (lines from \u00b9\u00b3C) = 4\u202f\u00d7\u202f2\u202f=\u202f8.\n\nThus, the EPR spectrum of a solution of \u00b9\u00b3CH\u2083 radical will show 8 distinct lines.\n\n**Answer: B**  \nFINAL=B",
+              "content_excerpt": "\n\nThe methyl radical (\u00b7CH\u2083) has three equivalent protons (each I\u202f=\u202f\u00bd) and, when the carbon is \u00b9\u00b3C\u2011labelled, one carbon nucleus (also I\u202f=\u202f\u00bd).  \n\n- For n equivalent I\u202f=\u202f\u00bd nuclei, the hyperfine pattern g",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11554.882287979126,
+              "reasoning_chars": 2625,
+              "reasoning_excerpt": "We need to parse the question: \"Predict the number of lines in the EPR spectrum of a solution of 13C-labelled methyl radical (13CH3 radical), assuming the lines do not overlap.\"\n\nWe need to consider h",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 917,
+                "prompt_tokens": 119,
+                "prompt_tokens_details": null,
+                "total_tokens": 1036
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe methyl radical (\u00b7CH\u2083) has three equivalent protons (each I\u202f=\u202f\u00bd). For n equivalent nuclei of spin I, the number of hyperfine lines is 2nI\u202f+\u202f1.  \n- For the three protons: 2\u00b73\u00b7\u00bd\u202f+\u202f1\u202f=\u202f3\u202f+\u202f1\u202f=\u202f4 lines (a 1:3:3:1 quartet).  \n- The \u00b9\u00b3C nucleus (I\u202f=\u202f\u00bd, n\u202f=\u202f1) gives 2\u00b71\u00b7\u00bd\u202f+\u202f1\u202f=\u202f1\u202f+\u202f1\u202f=\u202f2 lines (a doublet).  \n\nSince the proton and carbon couplings are independent and non\u2011overlapping, the total number of lines is the product: 4\u202f\u00d7\u202f2\u202f=\u202f8.\n\nThus the EPR spectrum of \u00b9\u00b3CH\u2083\u00b7 will show 8 lines.\n\nFINAL = B",
+              "content_excerpt": "\n\nThe methyl radical (\u00b7CH\u2083) has three equivalent protons (each I\u202f=\u202f\u00bd). For n equivalent nuclei of spin I, the number of hyperfine lines is 2nI\u202f+\u202f1.  \n- For the three protons: 2\u00b73\u00b7\u00bd\u202f+\u202f1\u202f=\u202f3\u202f+\u202f1\u202f=\u202f4 lin",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12695.088148117065,
+              "reasoning_chars": 2800,
+              "reasoning_excerpt": "We need to parse the question: \"Predict the number of lines in the EPR spectrum of a solution of 13C-labelled methyl radical (13CH3 radical), assuming the lines do not overlap.\"\n\nWe need to consider h",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1021,
+                "prompt_tokens": 119,
+                "prompt_tokens_details": null,
+                "total_tokens": 1140
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe methyl radical has three equivalent protons (each I\u202f=\u202f\u00bd) giving a (n\u202f+\u202f1)\u202f=\u202f4\u2011line quartet from the protons. The single \u00b9\u00b3C nucleus (I\u202f=\u202f\u00bd) splits each of those lines into a doublet (2I\u202f+\u202f1\u202f=\u202f2). The total number of non\u2011overlapping lines is the product: 4\u202f\u00d7\u202f2\u202f=\u202f8.\n\nFINAL=B",
+              "content_excerpt": "\n\nThe methyl radical has three equivalent protons (each I\u202f=\u202f\u00bd) giving a (n\u202f+\u202f1)\u202f=\u202f4\u2011line quartet from the protons. The single \u00b9\u00b3C nucleus (I\u202f=\u202f\u00bd) splits each of those lines into a doublet (2I\u202f+\u202f1\u202f=\u202f2)",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 9088.4690284729,
+              "reasoning_chars": 2285,
+              "reasoning_excerpt": "We need to parse the question: \"Predict the number of lines in the EPR spectrum of a solution of 13C-labelled methyl radical (13CH3 radical), assuming the lines do not overlap.\"\n\nWe need to consider h",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 727,
+                "prompt_tokens": 119,
+                "prompt_tokens_details": null,
+                "total_tokens": 846
+              }
+            }
+          ],
+          "id": "mmlu-pro-25-chemistry",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 15963.114500045776,
+              "reasoning_chars": 4884,
+              "reasoning_excerpt": "We need to parse the problem: A pipelined RISC machine with registers R0 through R7. Supports ADD Rs1, Rs2, Rd and MUL Rs1, Rs2, Rd. An operation normally takes one cycle; however, an operation takes ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 183,
+                "prompt_tokens_details": null,
+                "total_tokens": 1463
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 15955.015420913696,
+              "reasoning_chars": 5627,
+              "reasoning_excerpt": "We need to parse the problem: pipelined RISC machine with registers R0 through R7. Supports ADD Rs1, Rs2, Rd and MUL Rs1, Rs2, Rd. An operation normally takes one cycle; however, an operation takes tw",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 183,
+                "prompt_tokens_details": null,
+                "total_tokens": 1463
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 15948.829650878906,
+              "reasoning_chars": 4958,
+              "reasoning_excerpt": "We need to parse the problem: A pipelined RISC machine with registers R0 through R7. Supports ADD Rs1, Rs2, Rd and MUL Rs1, Rs2, Rd. An operation normally takes one cycle; however, an operation takes ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 183,
+                "prompt_tokens_details": null,
+                "total_tokens": 1463
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-30-computer-science",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nFINAL=<F>",
+              "content_excerpt": "\n\nFINAL=<F>",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 4918.851613998413,
+              "reasoning_chars": 1585,
+              "reasoning_excerpt": "We need to parse the question: \"For a stationary autoregressive process, shocks will ______\". Options: A-J.\n\nWe need to think about what a stationary AR process is. Typically, an AR(p) process: X_t = ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 386,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 501
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nF\n\nFINAL=F",
+              "content_excerpt": "\n\nF\n\nFINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3723.496198654175,
+              "reasoning_chars": 1146,
+              "reasoning_excerpt": "We need to parse the question: \"For a stationary autoregressive process, shocks will ______\". Options: A-J.\n\nWe need to think about what a stationary AR process is: AR(p) process: X_t = c + \u03a3 \u03c6_i X_{t",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 292,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 407
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nFINAL=F",
+              "content_excerpt": "\n\nFINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5241.549253463745,
+              "reasoning_chars": 1841,
+              "reasoning_excerpt": "We need to parse the question: \"For a stationary autoregressive process, shocks will ______\". Options: A-J.\n\nWe need to think about what a stationary AR process is, and what effect a shock (i.e., an i",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 411,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 526
+              }
+            }
+          ],
+          "id": "mmlu-pro-35-economics",
+          "pass_count": 2,
+          "pass_rate": 0.6666666666666666,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 16033.639907836914,
+              "reasoning_chars": 3180,
+              "reasoning_excerpt": "We need to parse the question: \"A point pole has a strength of 4 pi times 10^-4 weber. The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it will be\". So we hav",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 154,
+                "prompt_tokens_details": null,
+                "total_tokens": 1434
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 15946.481943130493,
+              "reasoning_chars": 2616,
+              "reasoning_excerpt": "We need to parse the question: \"A point pole has a strength of 4 pi times 10^-4 weber. The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it will be\". So we hav",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 154,
+                "prompt_tokens_details": null,
+                "total_tokens": 1434
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 15954.5419216156,
+              "reasoning_chars": 2803,
+              "reasoning_excerpt": "We need to parse the question: \"A point pole has a strength of 4 pi times 10^-4 weber. The force in newtons on a point pole of 4 pi times 1.5 times 10^-4 weber placed 10 cm from it will be\". So we hav",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 154,
+                "prompt_tokens_details": null,
+                "total_tokens": 1434
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-40-engineering",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe statement \u201cTurtles live long lives and are happy creatures, unless they are injured\u201d means that if a turtle is **not** injured, then it both lives a long life and is happy. In propositional logic this is:\n\n\\[\n\\neg I \\rightarrow (L \\land H)\n\\]\n\nwhich is logically equivalent to:\n\n\\[\nI \\lor (L \\land H)\n\\]\n\nThus the formula that best captures the meaning is \u201c(L and H) or I\u201d, which corresponds to option **B**.\n\nFINAL=B",
+              "content_excerpt": "\n\nThe statement \u201cTurtles live long lives and are happy creatures, unless they are injured\u201d means that if a turtle is **not** injured, then it both lives a long life and is happy. In propositional logi",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6787.131786346436,
+              "reasoning_chars": 1587,
+              "reasoning_excerpt": "We need to parse the question: \"Which formula of propositional logic best symbolizes: Turtles live long lives and are happy creatures, unless they are injured.\"\n\nWe have propositional variables: L = t",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 537,
+                "prompt_tokens": 122,
+                "prompt_tokens_details": null,
+                "total_tokens": 659
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nFINAL=B",
+              "content_excerpt": "\n\nFINAL=B",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8888.28444480896,
+              "reasoning_chars": 2439,
+              "reasoning_excerpt": "We need to parse the question: \"Which formula of propositional logic best symbolizes: Turtles live long lives and are happy creatures, unless they are injured.\"\n\nWe have options: A: (L and H) iff I; B",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 707,
+                "prompt_tokens": 122,
+                "prompt_tokens_details": null,
+                "total_tokens": 829
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe sentence \u201cTurtles live long lives and are happy creatures, unless they are injured\u201d can be parsed as:  \n- Let \\(L\\) = \u201cturtles live long lives\u201d,  \n- \\(H\\) = \u201cturtles are happy creatures\u201d,  \n- \\(I\\) = \u201cturtles are injured\u201d.  \n\nThe conjunctive claim \u201cturtles live long lives and are happy creatures\u201d is \\(L \\land H\\).  \nThe English connective \u201cunless\u201d means \u201cif not \u2026 then \u2026\u201d, i.e. \\(P\\) unless \\(Q\\) is logically equivalent to \\(\\neg Q \\rightarrow P\\), which is equivalent to \\(P \\lor Q\\).  \n\nThus \u201c\\(L \\land H\\) unless \\(I\\)\u201d translates to \\((L \\land H) \\lor I\\).  \n\nAmong the given options, this matches option **B**: \\((L \\text{ and } H) \\text{ or } I\\).\n\n**FINAL=B**",
+              "content_excerpt": "\n\nThe sentence \u201cTurtles live long lives and are happy creatures, unless they are injured\u201d can be parsed as:  \n- Let \\(L\\) = \u201cturtles live long lives\u201d,  \n- \\(H\\) = \u201cturtles are happy creatures\u201d,  \n- \\(",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10621.267080307007,
+              "reasoning_chars": 2217,
+              "reasoning_excerpt": "We need to parse the question: \"Which formula of propositional logic best symbolizes: Turtles live long lives and are happy creatures, unless they are injured.\"\n\nWe have options: A: (L and H) iff I; B",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 844,
+                "prompt_tokens": 122,
+                "prompt_tokens_details": null,
+                "total_tokens": 966
+              }
+            }
+          ],
+          "id": "mmlu-pro-45-philosophy",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe term \u201cjudge ad hoc\u201d in the International Court of Justice refers to a judge appointed by a party to a case when that party does not already have a judge of its nationality sitting on the Court. The judge ad hoc serves only for that particular case and enjoys the same powers as the regular judges. This matches option I.\n\n**FINAL=I**",
+              "content_excerpt": "\n\nThe term \u201cjudge ad hoc\u201d in the International Court of Justice refers to a judge appointed by a party to a case when that party does not already have a judge of its nationality sitting on the Court. ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3330.0487995147705,
+              "reasoning_chars": 763,
+              "reasoning_excerpt": "We need to answer a multiple choice about \"judge ad hoc\" in the context of the International Court of Justice (ICJ). The question: \"What is the judge ad hoc?\" Options A-J. The correct answer is I: \"If",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 258,
+                "prompt_tokens": 168,
+                "prompt_tokens_details": null,
+                "total_tokens": 426
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nFINAL=I",
+              "content_excerpt": "\n\nFINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7758.898973464966,
+              "reasoning_chars": 2540,
+              "reasoning_excerpt": "We need to answer a multiple choice about \"judge ad hoc\" in the context of the International Court of Justice (ICJ). The question: \"What is the judge ad hoc?\" Options A-J. We need to select the correc",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 617,
+                "prompt_tokens": 168,
+                "prompt_tokens_details": null,
+                "total_tokens": 785
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe judge ad hoc in the International Court of Justice is appointed by a party that does not have a judge of its nationality on the bench, to sit solely for that particular case. This matches option I.\n\nFINAL=I",
+              "content_excerpt": "\n\nThe judge ad hoc in the International Court of Justice is appointed by a party that does not have a judge of its nationality on the bench, to sit solely for that particular case. This matches option",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6052.483081817627,
+              "reasoning_chars": 1811,
+              "reasoning_excerpt": "We need to answer a multiple choice about \"judge ad hoc\" in the context of the International Court of Justice (ICJ). The question: \"What is the judge ad hoc?\" Options A-J. We need to reason and then o",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 482,
+                "prompt_tokens": 168,
+                "prompt_tokens_details": null,
+                "total_tokens": 650
+              }
+            }
+          ],
+          "id": "mmlu-pro-65-law",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+      "status": "failed",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 260910.49194335938
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

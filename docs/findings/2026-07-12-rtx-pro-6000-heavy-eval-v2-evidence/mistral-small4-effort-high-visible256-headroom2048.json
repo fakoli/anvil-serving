@@ -1,0 +1,621 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 2048,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:39032/v1",
+    "candidate_id": "mistral-small4-119b-a6b-nvfp4",
+    "config_id": "vllm-nightly-nvfp4-fp8kv-131k-seq5-evalv2-effort-high-headroom2048",
+    "model": "mistral-small4-119b-a6b-nvfp4",
+    "started_at": "2026-07-12T11:56:42Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T115642Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-arc-challenge-5-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine the most likely effect of a planet rotating faster after a meteorite impact, we consider the principles of angular momentum and the definitions of planetary rotation and orbital periods.\n\n1. **Angular Momentum Conservation**: The total angular momentum of a system is conserved unless acted upon by an external torque. A meteorite impact can transfer angular momentum to the planet, increasing its rotational speed (\u03c9).\n\n2. **Effect on Day Length**: The rotation period (T) of a planet is inversely proportional to its angular velocity (\u03c9), given by \\( T = \\frac{2\\pi}{\\omega} \\). If the planet's rotation speed increases, the time for one rotation (a day) decreases, making days shorter.\n\n3. **Orbital Period (Year)**: The length of a year depends on the planet's orbital period around its star, determined by Kepler's third law. A meteorite impact does not significantly alter the planet's orbit, so the year length remains unchanged.\n\n4. **Density and Gravity**: Density depends on mass and volume. A meteorite impact adds mass, but the volume change is negligible, so density is unlikely to decrease. Surface gravity depends on mass and radius. While the impact adds mass, the increased rotation could slightly increase the equatorial radius, potentially reducing surface gravity, but this effect is minor compared to the direct impact on day length.\n\nGiven these considerations, the most likely effect of a planet rotating faster after a meteorite impact is that **planetary days will become shorter**.\n\nFINAL=C",
+              "content_excerpt": "To determine the most likely effect of a planet rotating faster after a meteorite impact, we consider the principles of angular momentum and the definitions of planetary rotation and orbital periods.\n",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11103.179216384888,
+              "reasoning_chars": 5024,
+              "reasoning_excerpt": "Okay, let's see. The question is about an astronomer observing that a planet rotates faster after a meteorite impact. We need to figure out the most likely effect from the options given.\n\nFirst, I nee",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1360,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 1447
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine the most likely effect of a planet rotating faster after a meteorite impact, we need to consider the relationship between rotation speed and the properties of the planet.\n\n1. **Understanding Rotation and Day Length**: The rotation speed of a planet is directly related to the length of its day. If a planet rotates faster, the time it takes to complete one rotation (a day) decreases. This is a direct consequence of the increased angular velocity.\n\n2. **Evaluating the Options**:\n   - **Option A: Planetary density will decrease.** While a faster rotation could cause the planet to bulge at the equator, increasing its volume and thus decreasing its density, this is a secondary effect and not the most immediate or likely effect.\n   - **Option B: Planetary years will become longer.** The length of a year is determined by the planet's orbital period around its star, which is not significantly affected by a meteorite impact.\n   - **Option C: Planetary days will become shorter.** This is a direct consequence of the increased rotation speed. If the planet rotates faster, the day length decreases.\n   - **Option D: Planetary gravity will become stronger.** The surface gravity of a planet is determined by its mass and radius. A meteorite impact is unlikely to significantly change these parameters, and the increased rotation speed would actually cause a slight decrease in surface gravity at the equator due to the increased equatorial radius.\n\nGiven the direct relationship between rotation speed and day length, the most likely effect of a planet rotating faster after a meteorite impact is that the planetary days will become shorter.\n\nFINAL=C",
+              "content_excerpt": "To determine the most likely effect of a planet rotating faster after a meteorite impact, we need to consider the relationship between rotation speed and the properties of the planet.\n\n1. **Understand",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12455.05690574646,
+              "reasoning_chars": 5809,
+              "reasoning_excerpt": "Okay, let's see. The question is about an astronomer observing that a planet rotates faster after a meteorite impact. We need to figure out the most likely effect from the options given.\n\nFirst, I nee",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1542,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 1629
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine the most likely effect of a planet rotating faster after a meteorite impact, consider the following:\n\n- **Rotation speed and day length**: The rotation speed of a planet is directly related to the length of its day. If a planet rotates faster, it completes a full rotation in less time, resulting in shorter days. This is a direct consequence of the relationship between rotational speed and the time it takes to complete one rotation.\n\n- **Other options**:\n  - **Planetary density (A)**: Density is mass divided by volume. A meteorite impact might add mass, but it is unlikely to significantly change the planet's density, as the added material would likely have a similar density to the planet itself.\n  - **Planetary years (B)**: A year is determined by the planet's orbital period around its star, which is unrelated to its rotation speed. A meteorite impact would not significantly alter the orbital period.\n  - **Planetary gravity (D)**: Gravity depends on the planet's mass and radius. While a meteorite impact could add mass, the change in gravity would be negligible compared to the effect on day length.\n\nGiven this reasoning, the most likely effect of a planet rotating faster after a meteorite impact is that **planetary days will become shorter**.\n\nFINAL=C",
+              "content_excerpt": "To determine the most likely effect of a planet rotating faster after a meteorite impact, consider the following:\n\n- **Rotation speed and day length**: The rotation speed of a planet is directly relat",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6910.371780395508,
+              "reasoning_chars": 2806,
+              "reasoning_excerpt": "Okay, let's see. The question is about an astronomer observing that a planet rotates faster after a meteorite impact. We need to figure out the most likely effect from the options given.\n\nFirst, I nee",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 865,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 952
+              }
+            }
+          ],
+          "id": "Mercury_7175875",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "Engineers test building models under earthquake conditions primarily to assess structural integrity and identify weaknesses. The goal is to improve building safety by making necessary adjustments to the design. Therefore, the most likely result is that buildings will be made safer.\n\nFINAL=B",
+              "content_excerpt": "Engineers test building models under earthquake conditions primarily to assess structural integrity and identify weaknesses. The goal is to improve building safety by making necessary adjustments to t",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2857.50412940979,
+              "reasoning_chars": 1614,
+              "reasoning_excerpt": "Okay, let's see. The question is about engineers testing building models under earthquake conditions. I need to figure out the most likely result from the options given.\n\nFirst, I should think about w",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 364,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 441
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The engineers are testing building models under earthquake conditions to evaluate structural integrity and resilience. The primary goal of such tests is to identify weaknesses and improve designs to withstand seismic activity.\n\n- **A. buildings will be built faster** \u2013 While efficiency might improve, speed isn't the main focus of earthquake testing.\n- **B. buildings will be made safer** \u2013 This directly aligns with the purpose of earthquake testing, as the aim is to enhance structural safety.\n- **C. designs will look nicer** \u2013 Aesthetics are secondary to safety in structural engineering.\n- **D. materials will be cheaper** \u2013 Cost reduction may be a secondary consideration, but safety is the priority.\n\n**FINAL=B**",
+              "content_excerpt": "The engineers are testing building models under earthquake conditions to evaluate structural integrity and resilience. The primary goal of such tests is to identify weaknesses and improve designs to w",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3766.662359237671,
+              "reasoning_chars": 1754,
+              "reasoning_excerpt": "Okay, let's see. The question is about engineers testing building models under earthquake conditions. They want to know the most likely result. The options are A to D.\n\nFirst, I need to think about wh",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 477,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 554
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The primary goal of testing building models under earthquake conditions is to evaluate structural integrity and improve safety. Therefore, the most likely result is:\n\nFINAL=B",
+              "content_excerpt": "The primary goal of testing building models under earthquake conditions is to evaluate structural integrity and improve safety. Therefore, the most likely result is:\n\nFINAL=B",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2743.671655654907,
+              "reasoning_chars": 1654,
+              "reasoning_excerpt": "Okay, so the question is about engineers testing building models under earthquake conditions. They want to know the most likely result from the options given. Let me think through this step by step.\n\n",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 349,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 426
+              }
+            }
+          ],
+          "id": "Mercury_SC_409171",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The beginning of photosynthesis is signaled when **chlorophyll in the leaf captures light energy**, as this is the first step that initiates the process by absorbing sunlight, which is then converted into chemical energy.\n\n**FINAL=C**",
+              "content_excerpt": "The beginning of photosynthesis is signaled when **chlorophyll in the leaf captures light energy**, as this is the first step that initiates the process by absorbing sunlight, which is then converted ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3961.193561553955,
+              "reasoning_chars": 2288,
+              "reasoning_excerpt": "Okay, let's see. The question is asking which step signals the beginning of photosynthesis. I need to go through each option and think about what happens in photosynthesis.\n\nFirst, I remember that pho",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 501,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 578
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The beginning of photosynthesis is marked by the absorption of light energy by chlorophyll in the leaf. This is the initial step where light energy is captured to start the process.\n\n**Final=C**",
+              "content_excerpt": "The beginning of photosynthesis is marked by the absorption of light energy by chlorophyll in the leaf. This is the initial step where light energy is captured to start the process.\n\n**Final=C**",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2399.3782997131348,
+              "reasoning_chars": 1428,
+              "reasoning_excerpt": "Okay, let's see. The question is asking which step signals the beginning of photosynthesis. I need to remember how photosynthesis works. Photosynthesis is the process where plants convert light energy",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 307,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 384
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "The beginning of photosynthesis is signaled when chlorophyll in the leaf captures light energy. This is the first step in the process, as it initiates the conversion of light energy into chemical energy.\n\n**FINAL=C**",
+              "content_excerpt": "The beginning of photosynthesis is signaled when chlorophyll in the leaf captures light energy. This is the first step in the process, as it initiates the conversion of light energy into chemical ener",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2785.447120666504,
+              "reasoning_chars": 1612,
+              "reasoning_excerpt": "Okay, let's see. The question is asking which step signals the beginning of photosynthesis. I need to remember how photosynthesis works. Photosynthesis is the process by which plants convert light ene",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 354,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 431
+              }
+            }
+          ],
+          "id": "Mercury_SC_408547",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine what is being changed in the experiment, let's analyze the terms:\n\n- **Control**: This refers to the standard or baseline conditions that are kept constant to ensure a fair test. It is not what is being changed.\n- **Hypothesis statement**: This is a proposed explanation for a phenomenon, not something that is altered during the experiment.\n- **Dependent variable**: This is the outcome that is measured or observed as a result of changes to the independent variable. It is not what is being changed.\n- **Independent variable**: This is the variable that the experimenter changes or manipulates to test its effects. In this case, the physicist is increasing the car's speed by 20 mph between trials, which is the variable being changed.\n\nSince the physicist is altering the speed of the car, the independent variable is what is being changed.\n\nFINAL=D",
+              "content_excerpt": "To determine what is being changed in the experiment, let's analyze the terms:\n\n- **Control**: This refers to the standard or baseline conditions that are kept constant to ensure a fair test. It is no",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3169.5847511291504,
+              "reasoning_chars": 1094,
+              "reasoning_excerpt": "Okay, let's see. The question is about a physicist increasing a test car's speed by 20 mph between ramp-jump trials. They want to know what is being changed here.\n\nFirst, I need to recall what each te",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 401,
+                "prompt_tokens": 76,
+                "prompt_tokens_details": null,
+                "total_tokens": 477
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine what is being changed in the experiment, let's analyze the key terms:\n\n- **Independent variable**: The variable that the experimenter intentionally changes to observe its effect.\n- **Dependent variable**: The variable that is measured or observed in response to changes in the independent variable.\n- **Control**: The standard or baseline conditions that are kept constant for comparison.\n- **Hypothesis statement**: A proposed explanation or prediction that is not directly changed during the experiment.\n\nIn this scenario, the physicist is **increasing the car's speed by 20 mph between trials**. This means the speed is being manipulated to test its effect on the ramp jump (e.g., distance traveled). Therefore, the speed is the **independent variable** because it is the factor being changed by the experimenter.\n\nThe dependent variable would be the outcome being measured (e.g., how far the car jumps), the control would be other unchanged factors (e.g., ramp angle, car weight), and the hypothesis statement is a prediction, not something being altered.\n\n**FINAL=D**",
+              "content_excerpt": "To determine what is being changed in the experiment, let's analyze the key terms:\n\n- **Independent variable**: The variable that the experimenter intentionally changes to observe its effect.\n- **Depe",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3776.1199474334717,
+              "reasoning_chars": 1303,
+              "reasoning_excerpt": "Okay, let's see. The question is about a physicist increasing a test car's speed by 20 mph between ramp-jump trials. They're asking what is being changed here. The options are A. the control, B. the h",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 477,
+                "prompt_tokens": 76,
+                "prompt_tokens_details": null,
+                "total_tokens": 553
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's break this down step by step:\n\n1. **Independent Variable**: This is the variable that the experimenter intentionally changes to observe its effect. In this case, the physicist is altering the car's speed by 20 mph between trials. This is a deliberate change to test how speed affects the ramp jump.\n\n2. **Dependent Variable**: This is the outcome that is measured or observed in response to changes in the independent variable. Here, it might be the distance of the jump or the time in the air, but the question is about what is being changed, not what is being measured.\n\n3. **Control**: These are the variables that are kept constant to ensure a fair test. The question does not mention keeping other factors constant, so this is not the answer.\n\n4. **Hypothesis Statement**: This is a proposed explanation or prediction, not something that is physically changed during the experiment.\n\nSince the physicist is actively changing the speed of the car, this is the **independent variable**.\n\nFINAL=D",
+              "content_excerpt": "Let's break this down step by step:\n\n1. **Independent Variable**: This is the variable that the experimenter intentionally changes to observe its effect. In this case, the physicist is altering the ca",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3809.527635574341,
+              "reasoning_chars": 1353,
+              "reasoning_excerpt": "Okay, let's see. The question is about a physicist increasing a test car's speed by 20 mph between ramp-jump trials. They want to know what is being changed here. The options are A. the control, B. th",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 481,
+                "prompt_tokens": 76,
+                "prompt_tokens_details": null,
+                "total_tokens": 557
+              }
+            }
+          ],
+          "id": "Mercury_407327",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine which statement best describes the energy of the two objects after falling 1 meter on the Moon, we need to analyze the changes in potential energy (PE) and kinetic energy (KE).\n\n1. **Understanding Potential Energy (PE) and Kinetic Energy (KE):**\n   - Potential energy is given by \\( PE = mgh \\), where \\( m \\) is the mass, \\( g \\) is the acceleration due to gravity, and \\( h \\) is the height.\n   - Kinetic energy is given by \\( KE = \\frac{1}{2}mv^2 \\), where \\( m \\) is the mass and \\( v \\) is the velocity.\n\n2. **Energy Conversion:**\n   - As an object falls, it loses potential energy and gains kinetic energy. The change in potential energy is converted into kinetic energy.\n   - The change in potential energy when an object falls a distance \\( d \\) is \\( \\Delta PE = mgd \\).\n\n3. **Applying to the Problem:**\n   - Both objects fall 1 meter, so the change in potential energy for each object is \\( \\Delta PE = mg \\times 1 \\) meter.\n   - The kinetic energy gained by each object is equal to the potential energy lost, so \\( KE = mg \\times 1 \\) meter.\n\n4. **Maximum Kinetic Energy:**\n   - The maximum kinetic energy is achieved when the object has fallen the full 2 meters, so \\( KE_{\\text{max}} = mg \\times 2 \\) meters.\n   - After falling 1 meter, the kinetic energy gained is \\( KE = mg \\times 1 \\) meter, which is half of the maximum kinetic energy.\n\n5. **Evaluating the Options:**\n   - **Option A:** Each lost kinetic energy. This is incorrect because the objects are gaining kinetic energy as they fall.\n   - **Option B:** Each gained the same potential energy. This is incorrect because potential energy is decreasing as the objects fall.\n   - **Option C:** Each lost the same potential energy. This is incorrect because the potential energy lost is proportional to the mass, so the 5 kg object loses more potential energy than the 1 kg object.\n   - **Option D:** Each gained half of its maximum kinetic energy. This is correct because the kinetic energy gained after falling 1 meter is half of the maximum kinetic energy gained after falling 2 meters.\n\nTherefore, the correct answer is:\n\nFINAL=D",
+              "content_excerpt": "To determine which statement best describes the energy of the two objects after falling 1 meter on the Moon, we need to analyze the changes in potential energy (PE) and kinetic energy (KE).\n\n1. **Unde",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12808.049440383911,
+              "reasoning_chars": 4035,
+              "reasoning_excerpt": "Okay, let's try to figure out this physics problem. So, we have a 1 kg and a 5 kg object falling 2 meters on the Moon. The question is asking which statement best describes both after they've fallen 1",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1580,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1674
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "Let's analyze the problem step-by-step:\n\n1. **Initial Conditions**: Both objects are dropped from rest, so their initial kinetic energy is zero. They fall under the Moon's gravity, which is constant for both objects.\n\n2. **Potential Energy (PE)**: The gravitational potential energy is given by \\( PE = mgh \\), where \\( m \\) is the mass, \\( g \\) is the acceleration due to gravity on the Moon, and \\( h \\) is the height. As the objects fall, their height decreases, so their potential energy decreases.\n\n3. **Kinetic Energy (KE)**: The kinetic energy is given by \\( KE = \\frac{1}{2}mv^2 \\). As the objects fall, they gain speed, and thus kinetic energy increases.\n\n4. **Energy Conversion**: The potential energy lost by the objects is converted into kinetic energy. After falling 1 meter, the potential energy lost is \\( mgh \\) where \\( h = 1 \\) meter. The maximum potential energy lost occurs when they fall the full 2 meters, which is \\( mg \\times 2 \\).\n\n5. **Kinetic Energy at 1 Meter**: At 1 meter, the kinetic energy gained is \\( mg \\times 1 \\). The maximum kinetic energy, when they fall 2 meters, is \\( mg \\times 2 \\). Therefore, the kinetic energy at 1 meter is half of the maximum kinetic energy.\n\n6. **Comparison of Objects**: The 1 kg and 5 kg objects both lose potential energy proportional to their mass, but the kinetic energy gained at 1 meter is also proportional to their mass. Thus, each object gains half of its maximum kinetic energy.\n\nGiven the analysis, the correct answer is:\n\nFINAL=D",
+              "content_excerpt": "Let's analyze the problem step-by-step:\n\n1. **Initial Conditions**: Both objects are dropped from rest, so their initial kinetic energy is zero. They fall under the Moon's gravity, which is constant f",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 13026.875257492065,
+              "reasoning_chars": 5058,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem. So, we have a 1 kg object and a 5 kg object falling 2 meters on the Moon. The question is asking what happens after they've fallen 1 meter. The options are ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1610,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1704
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 2304,
+                "reasoning_headroom_tokens": 2048,
+                "visible_answer_tokens": 256
+              },
+              "content": "To determine the correct answer, we need to analyze the changes in kinetic and potential energy for both objects as they fall on the Moon.\n\n1. **Potential Energy (PE) and Kinetic Energy (KE) Relationship:**\n   - Potential energy is given by \\( PE = mgh \\), where \\( m \\) is the mass, \\( g \\) is the gravitational acceleration, and \\( h \\) is the height.\n   - Kinetic energy is given by \\( KE = \\frac{1}{2}mv^2 \\).\n\n2. **Initial Conditions:**\n   - Both objects start from rest, so their initial kinetic energy is zero.\n   - The initial potential energy for each object is \\( PE_{\\text{initial}} = mgh_{\\text{initial}} \\).\n\n3. **After Falling 1 Meter:**\n   - The height of each object after falling 1 meter is \\( h_{\\text{initial}} - 1 \\) meters.\n   - The potential energy lost by each object is \\( \\Delta PE = mg \\cdot 1 \\) meters.\n   - The kinetic energy gained by each object is equal to the potential energy lost, \\( \\Delta KE = mg \\cdot 1 \\) meters.\n\n4. **Maximum Kinetic Energy:**\n   - The maximum kinetic energy is achieved when the objects fall the full 2 meters.\n   - For the 1 kg object, the maximum kinetic energy is \\( KE_{\\text{max, 1kg}} = 1 \\cdot g \\cdot 2 \\) meters.\n   - For the 5 kg object, the maximum kinetic energy is \\( KE_{\\text{max, 5kg}} = 5 \\cdot g \\cdot 2 \\) meters.\n\n5. **Kinetic Energy After Falling 1 Meter:**\n   - For the 1 kg object, the kinetic energy after falling 1 meter is \\( KE_{1m, 1kg} = 1 \\cdot g \\cdot 1 \\) meters, which is half of its maximum kinetic energy.\n   - For the 5 kg object, the kinetic energy after falling 1 meter is \\( KE_{1m, 5kg} = 5 \\cdot g \\cdot 1 \\) meters, which is also half of its maximum kinetic energy.\n\n6. **Conclusion:**\n   - Each object gains half of its maximum kinetic energy after falling 1 meter.\n\nTherefore, the correct answer is:\n\nFINAL=D",
+              "content_excerpt": "To determine the correct answer, we need to analyze the changes in kinetic and potential energy for both objects as they fall on the Moon.\n\n1. **Potential Energy (PE) and Kinetic Energy (KE) Relations",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11848.501682281494,
+              "reasoning_chars": 3600,
+              "reasoning_excerpt": "Okay, let's try to figure out this problem. So, we have a 1 kg object and a 5 kg object falling 2 meters on the Moon. The question is asking what best describes both after falling 1 meter. The options",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1465,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1559
+              }
+            }
+          ],
+          "id": "MCAS_2006_9_44",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-arc-challenge-5-repeated.suite.json",
+      "status": "passed",
+      "work_class": "basic-independent-multiple-choice-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "high",
+    "control_status": "requested_unverified",
+    "mode": "default",
+    "reasoning_effort": "high",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 97460.13355255127
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

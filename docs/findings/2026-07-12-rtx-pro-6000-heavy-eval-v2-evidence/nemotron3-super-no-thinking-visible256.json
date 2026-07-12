@@ -1,0 +1,664 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "Mercury_7175875",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "Mercury_SC_408547",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.3333333333333333,
+      "suite": "hf-arc-challenge-5-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "MCAS_2006_9_44",
+      "failure_classes": [
+        "visible_answer_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39033/v1",
+    "candidate_id": "nemotron3-super-120b-a12b-nvfp4",
+    "config_id": "vllm-nightly-nvfp4-fp8kv-131k-seq5-evalv2-no-thinking-visible256",
+    "model": "nemotron3-super-120b-a12b-nvfp4",
+    "started_at": "2026-07-12T11:46:35Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T114635Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-arc-challenge-5-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "We are given a scenario: a planet rotates faster after a meteorite impact. The question asks: which is the most likely effect?\n\nLet\u2019s analyze each option in the context of increased rotational speed.\n\n**Key concept**: The rotation period of a planet determines the length of its day. If the planet rotates faster, it completes one full rotation in less time. Therefore, the length of a day decreases.\n\nNow evaluate each choice:\n\n- **A. Planetary density will decrease.**  \n  Density is mass divided by volume. A meteorite impact adds mass (the meteorite) and may cause some disruption, but it does not necessarily decrease density. In fact, adding mass could increase density if volume doesn\u2019t increase proportionally. More importantly, rotational speed does not directly affect density. So this is unlikely.\n\n- **B. Planetary years will become longer.**  \n  A \"year\" is the time it takes for the planet to orbit the sun. This depends on the planet\u2019s orbital radius and the star\u2019s mass (via Kepler\u2019s laws). The rotation speed (spin) of the planet does not affect its orbital period. So a faster rotation does not make the year longer. This is incorrect.\n\n- **C. Planetary days will become shorter.**  ",
+              "content_excerpt": "We are given a scenario: a planet rotates faster after a meteorite impact. The question asks: which is the most likely effect?\n\nLet\u2019s analyze each option in the context of increased rotational speed.\n",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 3255.188465118408,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 88,
+                "prompt_tokens_details": null,
+                "total_tokens": 344
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "We are given a scenario: an astronomer observes that a planet rotates faster after a meteorite impact. The question asks: which is the most likely effect?\n\nLet\u2019s break this down.\n\n- The planet\u2019s rotation rate increases: it spins faster.\n- Rotation period (the time for one full spin) is the length of a day.\n- If it rotates faster, the day becomes shorter.\n\nNow let\u2019s evaluate each option:\n\nA. Planetary density will decrease.  \n- Density depends on mass and volume. A meteorite impact adds mass (the meteorite\u2019s mass) and may cause some disruption, but unless the planet expands significantly or loses mass, density is unlikely to decrease. In fact, adding mass without a proportional increase in volume would increase density slightly. So this is unlikely.\n\nB. Planetary years will become longer.  \n- A \u201cyear\u201d is the orbital period around the star. This depends on the planet\u2019s orbital radius and the star\u2019s mass (via Kepler\u2019s third law). A meteorite impact might slightly alter the orbit if it imparts a significant impulse, but the effect on the orbital period would be minimal unless the impact is enormous. More importantly, the question specifies the planet rotates faster \u2014 that\u2019s about spin, not orbit.",
+              "content_excerpt": "We are given a scenario: an astronomer observes that a planet rotates faster after a meteorite impact. The question asks: which is the most likely effect?\n\nLet\u2019s break this down.\n\n- The planet\u2019s rotat",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 3074.132204055786,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 88,
+                "prompt_tokens_details": null,
+                "total_tokens": 344
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "We are given a scenario: a planet rotates faster after a meteorite impact. The question asks: which is the most likely effect?\n\nLet\u2019s analyze the options:\n\n- **A. Planetary density will decrease.**  \n  Density is mass divided by volume. A meteorite impact adds mass to the planet (assuming the meteorite sticks), so mass increases. Volume might increase slightly if the impact causes deformation or ejecta, but generally, the planet\u2019s size doesn\u2019t change much. So density would likely increase or stay roughly the same, not decrease. So A is unlikely.\n\n- **B. Planetary years will become longer.**  \n  A \"year\" is the time it takes the planet to orbit the sun. This depends on the planet\u2019s orbital radius and the mass of the sun (via Kepler\u2019s third law). A meteorite impact on the planet does not significantly change its orbit unless it\u2019s a huge impact that alters velocity \u2014 but even then, the effect on orbital period is usually small unless it\u2019s a major perturbation. The question says the planet rotates faster \u2014 that\u2019s about spin, not orbit. So the year (orbital period) is unlikely to change significantly, and certainly not necessarily become longer. So B is not the best answer.\n\n-",
+              "content_excerpt": "We are given a scenario: a planet rotates faster after a meteorite impact. The question asks: which is the most likely effect?\n\nLet\u2019s analyze the options:\n\n- **A. Planetary density will decrease.**  \n",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 3064.168930053711,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 88,
+                "prompt_tokens_details": null,
+                "total_tokens": 344
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "Mercury_7175875",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "The question asks about the most likely result of engineers testing building models under earthquake conditions. The purpose of such testing is to evaluate how structures respond to seismic forces, identify weaknesses, and improve their ability to withstand earthquakes. This directly contributes to enhancing the safety of buildings in real-world seismic events.\n\n- Option A (buildings will be built faster) is not a direct outcome of testing; testing may even slow down the process due to analysis and redesign.\n- Option B (buildings will be made safer) aligns with the goal of earthquake testing: to improve structural integrity and protect occupants.\n- Option C (designs will look nicer) is unrelated to functional testing under seismic conditions.\n- Option D (materials will be cheaper) is not guaranteed; safer designs may sometimes require more expensive materials or techniques.\n\nThus, the most likely and intended result is that buildings will be made safer.\n\nFINAL=B",
+              "content_excerpt": "The question asks about the most likely result of engineers testing building models under earthquake conditions. The purpose of such testing is to evaluate how structures respond to seismic forces, id",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2222.8522300720215,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 184,
+                "prompt_tokens": 78,
+                "prompt_tokens_details": null,
+                "total_tokens": 262
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "The question asks about the most likely result of engineers testing building models under earthquake conditions. The purpose of such testing is to evaluate how structures respond to seismic forces, identify weaknesses, and improve their ability to withstand earthquakes. This directly contributes to enhancing the safety of buildings in real-world seismic events.\n\n- Option A (buildings will be built faster) is not a direct outcome of testing; testing may even slow down the process due to analysis and redesign.\n- Option B (buildings will be made safer) aligns with the goal of earthquake testing: to improve structural integrity and protect lives.\n- Option C (designs will look nicer) is unrelated to seismic performance; aesthetics are not the focus of such tests.\n- Option D (materials will be cheaper) is not guaranteed; safer designs might use more or higher-quality materials, potentially increasing cost.\n\nThus, the most likely and intended result is that buildings will be made safer.\n\n**FINAL=B**",
+              "content_excerpt": "The question asks about the most likely result of engineers testing building models under earthquake conditions. The purpose of such testing is to evaluate how structures respond to seismic forces, id",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2345.1929092407227,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 195,
+                "prompt_tokens": 78,
+                "prompt_tokens_details": null,
+                "total_tokens": 273
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "The question asks about the most likely result of engineers testing building models under earthquake conditions. The purpose of such testing is to evaluate how structures respond to seismic forces, identify weaknesses, and improve their ability to withstand earthquakes. This directly contributes to enhancing the safety of buildings in real-world seismic events.\n\n- Option A (buildings will be built faster) is not a direct outcome of testing; testing may even slow down the process due to analysis and redesign.\n- Option B (buildings will be made safer) aligns with the goal of earthquake engineering: to improve structural integrity and protect lives.\n- Option C (designs will look nicer) is unrelated to functional testing under stress conditions.\n- Option D (materials will be cheaper) is not guaranteed; safer designs may sometimes use more expensive materials or techniques.\n\nThus, the most likely and intended result is that buildings will be made safer.\n\nFINAL=B",
+              "content_excerpt": "The question asks about the most likely result of engineers testing building models under earthquake conditions. The purpose of such testing is to evaluate how structures respond to seismic forces, id",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2222.2259044647217,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 184,
+                "prompt_tokens": 78,
+                "prompt_tokens_details": null,
+                "total_tokens": 262
+              }
+            }
+          ],
+          "id": "Mercury_SC_409171",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "The question asks: *Which step signals the beginning of photosynthesis?*\n\nLet\u2019s analyze each option:\n\n- **A. Chemical energy is absorbed through roots.**  \n  This is incorrect. Roots absorb water and minerals, not chemical energy. Photosynthesis does not begin with energy absorption through roots.\n\n- **B. Light energy is converted to chemical energy.**  \n  This describes the overall outcome of the light-dependent reactions, but it is not the *first step*. The conversion of light to chemical energy happens *after* light is captured.\n\n- **C. Chlorophyll in the leaf captures light energy.**  \n  This is the correct initial step. Photosynthesis begins when chlorophyll (and other pigments) in the thylakoid membranes of chloroplasts absorb photons of light. This absorption excites electrons, initiating the light-dependent reactions. Without this capture, no energy conversion can occur.\n\n- **D. Sunlight is converted into chlorophyll.**  \n  This is nonsensical. Chlorophyll is a pigment synthesized by the plant; it is not produced from sunlight. Sunlight does not \u201cconvert into\u201d chlorophyll.\n\nThus, the very first event that signals the start of photosynthesis is the **capture of light energy by chlorophyll**.\n\n**Answer: C**\n\nFINAL",
+              "content_excerpt": "The question asks: *Which step signals the beginning of photosynthesis?*\n\nLet\u2019s analyze each option:\n\n- **A. Chemical energy is absorbed through roots.**  \n  This is incorrect. Roots absorb water and ",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 3061.701774597168,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 78,
+                "prompt_tokens_details": null,
+                "total_tokens": 334
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe beginning of photosynthesis involves the absorption of light energy by the pigment chlorophyll located in the thylakoid membranes of chloroplasts in leaf cells. This capture of photons excites electrons, initiating the light\u2011dependent reactions that subsequently convert light energy into chemical energy. Options A and D describe incorrect processes, and B describes the overall outcome rather than the initial step. Therefore",
+              "content_excerpt": "\n\nThe beginning of photosynthesis involves the absorption of light energy by the pigment chlorophyll located in the thylakoid membranes of chloroplasts in leaf cells. This capture of photons excites e",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 3061.7570877075195,
+              "reasoning_chars": 915,
+              "reasoning_excerpt": "We need to answer a multiple-choice about photosynthesis: \"Which step signals the beginning of photosynthesis?\" Options:\n\nA. Chemical energy is absorbed through roots. (No, roots absorb water and mine",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 78,
+                "prompt_tokens_details": null,
+                "total_tokens": 334
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe beginning of photosynthesis is marked by the absorption of light energy by chlorophyll in the leaf, which initiates the light-dependent reactions.\n\nFINAL=C",
+              "content_excerpt": "\n\nThe beginning of photosynthesis is marked by the absorption of light energy by chlorophyll in the leaf, which initiates the light-dependent reactions.\n\nFINAL=C",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2000.1749992370605,
+              "reasoning_chars": 662,
+              "reasoning_excerpt": "We need to answer a multiple choice about photosynthesis: \"Which step signals the beginning of photosynthesis?\" Options:\n\nA. Chemical energy is absorbed through roots. (No, roots absorb water and mine",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 163,
+                "prompt_tokens": 78,
+                "prompt_tokens_details": null,
+                "total_tokens": 241
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "Mercury_SC_408547",
+          "pass_count": 1,
+          "pass_rate": 0.3333333333333333,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nFINAL=D",
+              "content_excerpt": "\n\nFINAL=D",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2606.4226627349854,
+              "reasoning_chars": 994,
+              "reasoning_excerpt": "We need to parse the question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\" The answer choices: A. the control, B. the hypothesis statement, C.",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 214,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 291
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "The physicist is changing the car's speed, which is the factor being manipulated to observe its effect on the outcome (likely the jump distance or height). In an experiment, the variable that is deliberately changed is the independent variable.\n\nThus, the correct answer is D.\n\nFINAL=D",
+              "content_excerpt": "The physicist is changing the car's speed, which is the factor being manipulated to observe its effect on the outcome (likely the jump distance or height). In an experiment, the variable that is delib",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 783.7440967559814,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 58,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 135
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe physicist is deliberately changing the car's speed to observe its effect on the jump outcome. In an experiment, the variable that is intentionally manipulated is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nThe physicist is deliberately changing the car's speed to observe its effect on the jump outcome. In an experiment, the variable that is intentionally manipulated is the independent variable.\n\nFINAL",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2713.8824462890625,
+              "reasoning_chars": 920,
+              "reasoning_excerpt": "We need to parse the question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\" The answer choices: A. the control, B. the hypothesis statement, C.",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 225,
+                "prompt_tokens": 77,
+                "prompt_tokens_details": null,
+                "total_tokens": 302
+              }
+            }
+          ],
+          "id": "Mercury_407327",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "We are given:  \n- A 1 kg and a 5 kg object fall 2 m on the Moon.  \n- We are to evaluate their state **after falling 1 m** (i.e., halfway through the fall).  \n- The question asks: **Which best describes both after falling 1 m?**\n\nLet\u2019s analyze the physics.\n\n### Key concepts:\n- On the Moon, gravity is weaker than on Earth, but **still constant** near the surface (uniform gravitational field).  \n- So, acceleration due to gravity, $ g_{\\text{moon}} $, is constant (about 1.6 m/s\u00b2, but we don\u2019t need the value).  \n- When an object falls, it loses gravitational potential energy (PE) and gains kinetic energy (KE).  \n- In the absence of air resistance (which we assume on the Moon), **mechanical energy is conserved**:  \n  $$\n  \\Delta PE + \\Delta KE = 0 \\quad \\Rightarrow \\quad \\Delta KE = -\\Delta PE\n  $$\n\n### Define:\n- Let the initial height be $ h = 2 $ m above some reference.  \n- After falling 1 m, the height is $ h",
+              "content_excerpt": "We are given:  \n- A 1 kg and a 5 kg object fall 2 m on the Moon.  \n- We are to evaluate their state **after falling 1 m** (i.e., halfway through the fall).  \n- The question asks: **Which best describe",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 3077.4569511413574,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 351
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "We are given a multiple-choice question about two objects (1 kg and 5 kg) falling on the Moon, and we are to determine what is true about both after falling 1 m (out of a total fall of 2 m).\n\nLet\u2019s analyze the physics:\n\n- The Moon has lower gravity than Earth, but the key point is that **gravitational acceleration is constant** near the surface (assuming uniform field), and **independent of mass**.\n- So both objects, regardless of mass, experience the same acceleration due to gravity on the Moon: $ g_{\\text{moon}} \\approx 1.6 \\, \\text{m/s}^2 $.\n- They start from rest (implied by \"fall\"), so initial velocity = 0.\n- After falling a distance $ h = 1 \\, \\text{m} $, we can compute changes in potential and kinetic energy.\n\n### Gravitational Potential Energy:\nChange in gravitational potential energy:  \n$$\n\\Delta U = -mg\\Delta h\n$$\nSince they fall downward, $ \\Delta h = -1 \\, \\text{m} $ (if up is positive), so:\n$$\n\\Delta U = -mg(-1) = +mg \\quad \\text{(wait, careful)}\n$$\n\n",
+              "content_excerpt": "We are given a multiple-choice question about two objects (1 kg and 5 kg) falling on the Moon, and we are to determine what is true about both after falling 1 m (out of a total fall of 2 m).\n\nLet\u2019s an",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 3077.990770339966,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 351
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 256,
+                "reasoning_headroom_tokens": 0,
+                "visible_answer_tokens": 256
+              },
+              "content": "We are given:  \n- A 1 kg and a 5 kg object fall 2 m on the Moon.  \n- We are to evaluate their state **after falling 1 m** (i.e., halfway through the fall).  \n- The question asks: *Which best describes both after falling 1 m?*\n\nLet\u2019s analyze the physics.\n\n### Key concepts:\n- On the Moon, gravity is weaker than on Earth, but **still constant** near the surface (we assume uniform gravitational field).  \n- When an object falls, it loses gravitational potential energy (U = mgh) and gains kinetic energy (K = \u00bdmv\u00b2).  \n- In the absence of air resistance (which we assume on the Moon), **mechanical energy is conserved**:  \n  \\[\n  \\Delta U + \\Delta K = 0 \\quad \\Rightarrow \\quad \\Delta K = -\\Delta U\n  \\]\n- So, as the object falls, **potential energy decreases**, and **kinetic energy increases** by the same amount.\n\n### After falling 1 m:\n- The change in height is \u0394h = -1 m (downward).  \n- Change in potential energy:  \n  \\[\n ",
+              "content_excerpt": "We are given:  \n- A 1 kg and a 5 kg object fall 2 m on the Moon.  \n- We are to evaluate their state **after falling 1 m** (i.e., halfway through the fall).  \n- The question asks: *Which best describes",
+              "error": "answer",
+              "failure_class": "visible_answer_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 3089.7765159606934,
+              "reasoning_chars": 0,
+              "reasoning_excerpt": "",
+              "reasoning_field": null,
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 256,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 351
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "MCAS_2006_9_44",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-arc-challenge-5-repeated.suite.json",
+      "status": "failed",
+      "work_class": "basic-independent-multiple-choice-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": false
+    },
+    "control_status": "requested_unverified",
+    "mode": "disabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 39682.636976242065
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

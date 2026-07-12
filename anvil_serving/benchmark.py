@@ -15,8 +15,11 @@ Usage:
   python3 benchmark.py --base-url ... --model ... --burst 20 --shared-prefix-tokens 8000 --ctx-tokens 64000
 """
 import argparse
+import hashlib
 import json
+import math
 import os
+import re
 import time
 import random
 import statistics
@@ -79,7 +82,7 @@ def make_prompt(shared_prefix, ctx_tokens, uniq, max_prompt_tokens=None,
     filler = "".join(lines)[:max(0, char_budget)]
     return shared_prefix + "\n" + filler + tail
 
-def build_body(model, prompt, max_tokens, chat_template_kwargs=None):
+def build_body(model, prompt, max_tokens, chat_template_kwargs=None, reasoning_effort=None):
     body = {"model": model, "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens, "temperature": 0.0, "stream": True,
             "stream_options": {"include_usage": True}}
@@ -89,6 +92,8 @@ def build_body(model, prompt, max_tokens, chat_template_kwargs=None):
     # 0 tok/s with TTFT==E2E).
     if chat_template_kwargs:
         body["chat_template_kwargs"] = chat_template_kwargs
+    if reasoning_effort is not None:
+        body["reasoning_effort"] = reasoning_effort
     return body
 
 def parse_csv(values, default=None):
@@ -187,6 +192,44 @@ def _message_text(message):
     content = message.get("content") if isinstance(message, dict) else ""
     return content if isinstance(content, str) else ""
 
+def response_observation(response):
+    """Extract visible and reasoning-channel evidence from one chat response.
+
+    OpenAI-compatible engines currently expose parsed reasoning as either
+    ``message.reasoning`` or ``message.reasoning_content``. Keep the field name
+    so an absent channel cannot be confused with an empty channel, and retain
+    the full visible answer because deterministic checks operate on that text.
+    """
+    choices = response.get("choices") if isinstance(response, dict) else None
+    choice = choices[0] if isinstance(choices, list) and choices else {}
+    choice = choice if isinstance(choice, dict) else {}
+    message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
+    content = _message_text(message)
+    reasoning_field = None
+    reasoning = ""
+    for field in ("reasoning", "reasoning_content"):
+        value = message.get(field)
+        if isinstance(value, str):
+            if reasoning_field is None:
+                reasoning_field = field
+            if value:
+                reasoning_field = field
+                reasoning = value
+                break
+    usage = response.get("usage") if isinstance(response, dict) else None
+    details = usage.get("completion_tokens_details") if isinstance(usage, dict) else None
+    reasoning_tokens = details.get("reasoning_tokens") if isinstance(details, dict) else None
+    return {
+        "content": content,
+        "content_excerpt": content[:200],
+        "finish_reason": choice.get("finish_reason"),
+        "reasoning_field": reasoning_field,
+        "reasoning_chars": len(reasoning),
+        "reasoning_excerpt": reasoning[:200] if reasoning else "",
+        "reasoning_tokens": reasoning_tokens,
+        "usage": usage,
+    }
+
 def validate_function_tool_call(message, expected_name, required_args):
     """Return a schema/usefulness result for one OpenAI-compatible tool call."""
     tool_calls = message.get("tool_calls") if isinstance(message, dict) else None
@@ -233,7 +276,68 @@ def validate_function_tool_call(message, expected_name, required_args):
 
     return {"valid": True, "error": None, "arguments": args}
 
-_CHECK_KEYS = ("contains", "contains_all", "contains_any")
+_CHECK_KEYS = ("contains", "contains_all", "contains_any", "matches_regex")
+_MAX_CHECK_REGEX_CHARS = 512
+_MAX_EVAL_REPETITIONS = 20
+_MAX_QUALITY_COMPLETION_TOKENS = 65536
+_MAX_SUITE_EVALS = 100
+_MAX_TOTAL_EVAL_ATTEMPTS = 500
+_MAX_TOTAL_QUALITY_TOKENS = 2000000
+
+def _compile_safe_check_regex(pattern):
+    """Compile the bounded, linear-time-ish regex subset used by eval checks.
+
+    Python's stdlib regex engine has no search timeout. Externally-authored
+    suites therefore cannot use grouping, alternation, wildcard repetition,
+    or general quantifiers: all can create catastrophic backtracking over a
+    retained model answer. The supported subset is intentionally enough for
+    deterministic markers (anchors, boundaries, character classes, literals,
+    and ``\\s*`` between fields). Anything more expressive should be a purpose-
+    built validator rather than executable regex from a suite file.
+    """
+    if len(pattern) > _MAX_CHECK_REGEX_CHARS:
+        raise ValueError("matches_regex exceeds %d characters" % _MAX_CHECK_REGEX_CHARS)
+    i = 0
+    in_character_class = False
+    while i < len(pattern):
+        char = pattern[i]
+        if char == "\\":
+            i += 2
+            continue
+        if char == "[":
+            if in_character_class:
+                raise ValueError("matches_regex has a nested character class")
+            in_character_class = True
+            i += 1
+            continue
+        if char == "]":
+            if not in_character_class:
+                raise ValueError("matches_regex has an unmatched character-class close")
+            in_character_class = False
+            i += 1
+            continue
+        if in_character_class:
+            i += 1
+            continue
+        if char in "()|{}+?" or char == ".":
+            raise ValueError("matches_regex uses an unsafe regex construct")
+        if char == "*" and pattern[max(0, i - 2):i] != r"\s":
+            # The sole repeated class supports optional Markdown emphasis on a
+            # final answer marker. General repeated classes are unnecessary for
+            # deterministic grading and can compose into expensive backtracking.
+            if pattern[max(0, i - 3):i] != "[*]":
+                raise ValueError(
+                    "matches_regex only permits repetition as \\s* or [*]*"
+                )
+        i += 1
+    if in_character_class:
+        raise ValueError("matches_regex has an unterminated character class")
+    if r"\s*\s*" in pattern:
+        raise ValueError("matches_regex cannot repeat adjacent whitespace wildcards")
+    try:
+        return re.compile(pattern, flags=re.IGNORECASE)
+    except re.error as exc:
+        raise ValueError("invalid matches_regex: %s" % exc) from exc
 
 def _validate_spec_check(where, check):
     """Reject any check shape evaluate_text_checks would silently default-pass.
@@ -251,15 +355,25 @@ def _validate_spec_check(where, check):
     keys = [k for k in _CHECK_KEYS if k in check]
     if len(keys) != 1:
         raise ValueError(
-            "%s: check %r needs exactly one of contains/contains_all/contains_any"
+            "%s: check %r needs exactly one of "
+            "contains/contains_all/contains_any/matches_regex"
             % (where, check["name"])
         )
     value = check[keys[0]]
-    if keys[0] == "contains":
+    if keys[0] in {"contains", "matches_regex"}:
         if not isinstance(value, str) or not value:
             raise ValueError(
-                "%s: check %r: contains must be a non-empty string" % (where, check["name"])
+                "%s: check %r: %s must be a non-empty string"
+                % (where, check["name"], keys[0])
             )
+        if keys[0] == "matches_regex":
+            try:
+                _compile_safe_check_regex(value)
+            except ValueError as exc:
+                raise ValueError(
+                    "%s: check %r: %s"
+                    % (where, check["name"], exc)
+                ) from exc
     elif (not isinstance(value, list) or not value
           or not all(isinstance(item, str) and item for item in value)):
         raise ValueError(
@@ -272,15 +386,17 @@ def load_suite_spec(path):
 
     Spec shape (deliberately compatible with the session-evals plugin's suite.json;
     its eval_emit.py validates the same constraints on emit):
-    {suite, date?, work_class?, evals: [{id, prompt|messages, max_tokens?, tools?,
+    {suite, date?, work_class?, evals: [{id, prompt|messages, max_tokens?,
+    visible_answer_tokens?, reasoning_headroom_tokens?, tools?,
     expect_tool?: {name, required_args}, checks?: [{name, contains|contains_all|
-    contains_any}]}]} — checks use evaluate_text_checks semantics, expect_tool uses
+    contains_any|matches_regex}]}]} — checks use evaluate_text_checks semantics, expect_tool uses
     validate_function_tool_call. A malformed spec is an operator error (loud, before
     any request is sent), never benchmark evidence — so every shape the runtime
     would trip over (or worse, silently default-pass) is rejected here.
     """
-    with open(os.path.expanduser(path), encoding="utf-8") as f:
-        spec = json.load(f)
+    with open(os.path.expanduser(path), "rb") as f:
+        source_bytes = f.read()
+    spec = json.loads(source_bytes.decode("utf-8"))
     if not isinstance(spec, dict):
         raise ValueError("suite file must be a JSON object")
     suite = spec.get("suite")
@@ -289,6 +405,8 @@ def load_suite_spec(path):
     evals = spec.get("evals")
     if not isinstance(evals, list) or not evals:
         raise ValueError("suite file needs a non-empty 'evals' list")
+    if len(evals) > _MAX_SUITE_EVALS:
+        raise ValueError("suite file cannot contain more than %d evals" % _MAX_SUITE_EVALS)
     seen_ids = set()
     for i, item in enumerate(evals):
         if not isinstance(item, dict) or not item.get("id"):
@@ -307,8 +425,39 @@ def load_suite_spec(path):
         max_tokens = item.get("max_tokens")
         if max_tokens is not None and (
                 isinstance(max_tokens, bool) or not isinstance(max_tokens, int)
-                or max_tokens <= 0):
-            raise ValueError("%s: max_tokens must be a positive integer" % where)
+                or not 0 < max_tokens <= _MAX_QUALITY_COMPLETION_TOKENS):
+            raise ValueError(
+                "%s: max_tokens must be an integer from 1 through %d"
+                % (where, _MAX_QUALITY_COMPLETION_TOKENS)
+            )
+        visible_tokens = item.get("visible_answer_tokens")
+        reasoning_tokens = item.get("reasoning_headroom_tokens")
+        if max_tokens is not None and (visible_tokens is not None or reasoning_tokens is not None):
+            raise ValueError(
+                "%s: max_tokens cannot be combined with visible_answer_tokens or "
+                "reasoning_headroom_tokens" % where
+            )
+        if visible_tokens is not None and (
+                isinstance(visible_tokens, bool) or not isinstance(visible_tokens, int)
+                or not 0 < visible_tokens <= _MAX_QUALITY_COMPLETION_TOKENS):
+            raise ValueError(
+                "%s: visible_answer_tokens must be an integer from 1 through %d"
+                % (where, _MAX_QUALITY_COMPLETION_TOKENS)
+            )
+        if reasoning_tokens is not None and (
+                isinstance(reasoning_tokens, bool) or not isinstance(reasoning_tokens, int)
+                or not 0 <= reasoning_tokens <= _MAX_QUALITY_COMPLETION_TOKENS):
+            raise ValueError(
+                "%s: reasoning_headroom_tokens must be an integer from 0 through %d"
+                % (where, _MAX_QUALITY_COMPLETION_TOKENS)
+            )
+        if (visible_tokens is not None or reasoning_tokens is not None) and (
+                (visible_tokens or 256) + (reasoning_tokens or 0)
+                > _MAX_QUALITY_COMPLETION_TOKENS):
+            raise ValueError(
+                "%s: visible-answer plus reasoning-headroom allocation exceeds %d"
+                % (where, _MAX_QUALITY_COMPLETION_TOKENS)
+            )
         if item.get("tools") is not None and not isinstance(item["tools"], list):
             raise ValueError("%s: tools must be a list" % where)
         checks = item.get("checks")
@@ -336,6 +485,7 @@ def load_suite_spec(path):
         # an eval that asserts nothing proves nothing — reject it up front
         if not checks and not expect:
             raise ValueError("%s: needs 'checks' or 'expect_tool'" % where)
+    spec["_source_sha256"] = hashlib.sha256(source_bytes).hexdigest()
     return spec
 
 def evaluate_text_checks(content, checks):
@@ -350,6 +500,8 @@ def evaluate_text_checks(content, checks):
             ok = all(item.lower() in normalized for item in check["contains_all"])
         elif "contains_any" in check:
             ok = any(item.lower() in normalized for item in check["contains_any"])
+        elif "matches_regex" in check:
+            ok = _compile_safe_check_regex(check["matches_regex"]).search(content) is not None
         results.append({"name": check["name"], "passed": ok})
     return results
 
@@ -366,14 +518,139 @@ def resolve_thinking_settings(args):
     else:
         kwargs = None
 
-    return kwargs, {
+    reasoning_effort = getattr(args, "reasoning_effort", None)
+    if reasoning_effort is not None:
+        kwargs = None
+        mechanism = "reasoning_effort"
+        requested = reasoning_effort
+    elif kwargs is not None:
+        mechanism = "chat_template_kwargs"
+        requested = kwargs
+    elif mode == "unsupported":
+        mechanism = "unsupported"
+        requested = None
+    else:
+        mechanism = "none"
+        requested = None
+
+    return kwargs, reasoning_effort, {
         "mode": mode,
         "chat_template_kwargs": kwargs,
+        "reasoning_effort": reasoning_effort,
+        "control_mechanism": mechanism,
+        "control_requested": requested,
+        "control_status": "requested_unverified" if requested is not None else mechanism,
         "unsupported": mode == "unsupported",
     }
 
+def _request_control_kwargs(chat_template_kwargs, reasoning_effort):
+    """Build call kwargs without passing a new optional key to legacy fakes."""
+    kwargs = {"chat_template_kwargs": chat_template_kwargs}
+    if reasoning_effort is not None:
+        kwargs["reasoning_effort"] = reasoning_effort
+    return kwargs
+
+def eval_budget(item, args, *, default_visible=256):
+    """Resolve a quality-eval completion allocation.
+
+    OpenAI-compatible APIs expose one total completion cap. The repaired
+    protocol therefore records a visible-answer target and explicit reasoning
+    headroom separately, then sends their sum. This is an allocation contract,
+    not a claim that the engine hard-partitions the two channels.
+    """
+    if item.get("max_tokens") is not None:
+        return {
+            "visible_answer_tokens": None,
+            "reasoning_headroom_tokens": None,
+            "max_completion_tokens": int(item["max_tokens"]),
+            "legacy_total_budget": True,
+        }
+    visible = item.get("visible_answer_tokens")
+    if visible is None:
+        visible = getattr(args, "visible_answer_tokens", default_visible)
+    headroom = item.get("reasoning_headroom_tokens")
+    if headroom is None:
+        headroom = getattr(args, "reasoning_headroom_tokens", 0)
+    resolved = {
+        "visible_answer_tokens": int(visible),
+        "reasoning_headroom_tokens": int(headroom),
+        "max_completion_tokens": int(visible) + int(headroom),
+        "legacy_total_budget": False,
+    }
+    if not 0 < resolved["visible_answer_tokens"] <= _MAX_QUALITY_COMPLETION_TOKENS:
+        raise ValueError("resolved visible-answer allocation is outside the safe range")
+    if not 0 <= resolved["reasoning_headroom_tokens"] <= _MAX_QUALITY_COMPLETION_TOKENS:
+        raise ValueError("resolved reasoning-headroom allocation is outside the safe range")
+    if resolved["max_completion_tokens"] > _MAX_QUALITY_COMPLETION_TOKENS:
+        raise ValueError(
+            "resolved visible-answer plus reasoning-headroom allocation exceeds %d"
+            % _MAX_QUALITY_COMPLETION_TOKENS
+        )
+    return resolved
+
+def validate_eval_work_plan(args, suite_spec):
+    """Reject a quality plan whose aggregate requests or retained output can explode."""
+    selected = parse_csv(args.suite, default=[] if suite_spec else ["chat"])
+    budgets = []
+    if "intelligence" in selected:
+        budgets.extend(eval_budget({}, args) for _ in INTELLIGENCE_PROMPTS)
+    if suite_spec:
+        budgets.extend(eval_budget(item, args) for item in suite_spec["evals"])
+    attempt_count = len(budgets) * args.eval_repetitions
+    if attempt_count > _MAX_TOTAL_EVAL_ATTEMPTS:
+        raise ValueError(
+            "quality plan exceeds %d total attempts" % _MAX_TOTAL_EVAL_ATTEMPTS
+        )
+    requested_tokens = sum(item["max_completion_tokens"] for item in budgets)
+    requested_tokens *= args.eval_repetitions
+    if requested_tokens > _MAX_TOTAL_QUALITY_TOKENS:
+        raise ValueError(
+            "quality plan exceeds %d requested completion tokens"
+            % _MAX_TOTAL_QUALITY_TOKENS
+        )
+
+def _failure_class(observation, *, checks_passed):
+    if checks_passed:
+        return None
+    has_visible_content = bool(observation["content"].strip())
+    if (not has_visible_content and observation["finish_reason"] == "length"
+            and (observation["reasoning_chars"] or observation["reasoning_tokens"])):
+        return "reasoning_budget_exhausted"
+    if (has_visible_content and observation["finish_reason"] == "length"
+            and (observation["reasoning_chars"] or observation["reasoning_tokens"])):
+        return "completion_budget_exhausted_after_visible_output"
+    if has_visible_content and observation["finish_reason"] == "length":
+        return "visible_answer_budget_exhausted"
+    if not has_visible_content:
+        return "visible_answer_missing"
+    return "deterministic_check_failed"
+
+def _aggregate_attempts(check, attempts, min_pass_rate):
+    passed = sum(1 for attempt in attempts if attempt.get("status") == "passed")
+    pass_rate = passed / len(attempts) if attempts else 0.0
+    check.update({
+        "attempts": attempts,
+        "pass_count": passed,
+        "attempt_count": len(attempts),
+        "pass_rate": pass_rate,
+        "required_pass_rate": min_pass_rate,
+        "status": "passed" if pass_rate >= min_pass_rate else "failed",
+    })
+    if len(attempts) == 1:
+        # Preserve the v1 convenience fields while the richer attempt record is
+        # adopted by notebook/report consumers.
+        for key in (
+            "latency_ms", "text_checks", "content", "content_excerpt",
+            "finish_reason", "reasoning_field", "reasoning_chars",
+            "reasoning_excerpt", "reasoning_tokens", "usage", "budget",
+            "failure_class", "tool_call", "error",
+        ):
+            if key in attempts[0]:
+                check[key] = attempts[0][key]
+    return check
+
 def post_chat(base, model, key, messages, max_tokens=128, timeout=120,
-              tools=None, chat_template_kwargs=None):
+              tools=None, chat_template_kwargs=None, reasoning_effort=None):
     """Non-streaming OpenAI-compatible chat call for smoke/tool probes."""
     url = base.rstrip("/") + "/chat/completions"
     body = {
@@ -388,6 +665,8 @@ def post_chat(base, model, key, messages, max_tokens=128, timeout=120,
         body["tool_choice"] = "auto"
     if chat_template_kwargs:
         body["chat_template_kwargs"] = chat_template_kwargs
+    if reasoning_effort is not None:
+        body["reasoning_effort"] = reasoning_effort
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = "Bearer " + key
@@ -435,9 +714,12 @@ def resolve_api_key(api_key_env=None):
         return os.environ.get(api_key_env)
     return None
 
-def stream_chat(base, model, prompt, key, max_tokens, timeout=900, chat_template_kwargs=None):
+def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
+                chat_template_kwargs=None, reasoning_effort=None):
     url = base.rstrip("/") + "/chat/completions"
-    body = build_body(model, prompt, max_tokens, chat_template_kwargs)
+    body = build_body(
+        model, prompt, max_tokens, chat_template_kwargs, reasoning_effort
+    )
     headers = {"Content-Type": "application/json"}
     if key: headers["Authorization"] = "Bearer " + key
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
@@ -509,7 +791,8 @@ def run_bakeoff(a, api_key):
     context_targets = parse_context_targets(a.context_targets)
     max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, api_key)
     cap = ctx_cap(max_model_len, a.max_tokens, a.margin)
-    ctk, thinking_section = resolve_thinking_settings(a)
+    ctk, reasoning_effort, thinking_section = resolve_thinking_settings(a)
+    control_kwargs = _request_control_kwargs(ctk, reasoning_effort)
     failures = []
     chat_results = []
     context_results = []
@@ -538,7 +821,7 @@ def run_bakeoff(a, api_key):
             try:
                 result = stream_chat(
                     a.base_url, a.model, prompt, api_key, a.max_tokens,
-                    timeout=a.timeout, chat_template_kwargs=ctk,
+                    timeout=a.timeout, **control_kwargs,
                 )
                 row.update({
                     "status": "passed",
@@ -581,7 +864,7 @@ def run_bakeoff(a, api_key):
                 max_tokens=128,
                 timeout=a.timeout,
                 tools=[BAKEOFF_TOOL],
-                chat_template_kwargs=ctk,
+                **control_kwargs,
             )
             messages = _choice_messages(result.get("response", {}))
             validations = [
@@ -620,7 +903,7 @@ def run_bakeoff(a, api_key):
                 SESSION_RECALL_PROMPT,
                 max_tokens=64,
                 timeout=a.timeout,
-                chat_template_kwargs=ctk,
+                **control_kwargs,
             )
             messages = _choice_messages(result.get("response", {}))
             content = _message_text(messages[0]) if messages else ""
@@ -648,35 +931,56 @@ def run_bakeoff(a, api_key):
                 "status": "pending",
                 "validator": "deterministic_text_checks",
             }
-            try:
-                result = post_chat(
-                    a.base_url,
-                    a.model,
-                    api_key,
-                    [{"role": "user", "content": spec["prompt"]}],
-                    max_tokens=256,
-                    timeout=a.timeout,
-                    chat_template_kwargs=ctk,
-                )
-                messages = _choice_messages(result.get("response", {}))
-                content = _message_text(messages[0]) if messages else ""
-                text_checks = evaluate_text_checks(content, spec["checks"])
-                passed = all(item["passed"] for item in text_checks)
-                check.update({
-                    "status": "passed" if passed else "failed",
-                    "latency_ms": result["latency_s"] * 1000.0,
-                    "text_checks": text_checks,
-                    "content_excerpt": content[:200],
-                })
-                if not passed:
-                    failures.append({
-                        "suite": "intelligence",
-                        "prompt_id": spec["id"],
-                        "error": "deterministic text checks failed",
+            budget = eval_budget({}, a)
+            attempts = []
+            for attempt_index in range(a.eval_repetitions):
+                try:
+                    result = post_chat(
+                        a.base_url,
+                        a.model,
+                        api_key,
+                        [{"role": "user", "content": spec["prompt"]}],
+                        max_tokens=budget["max_completion_tokens"],
+                        timeout=a.timeout,
+                        **control_kwargs,
+                    )
+                    observation = response_observation(result.get("response", {}))
+                    text_checks = evaluate_text_checks(observation["content"], spec["checks"])
+                    passed = all(item["passed"] for item in text_checks)
+                    attempts.append({
+                        "attempt": attempt_index + 1,
+                        "status": "passed" if passed else "failed",
+                        "latency_ms": result["latency_s"] * 1000.0,
+                        "text_checks": text_checks,
+                        "budget": budget,
+                        "failure_class": _failure_class(
+                            observation, checks_passed=passed
+                        ),
+                        **observation,
                     })
-            except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
-                check.update({"status": "failed", "error": str(exc)})
-                failures.append({"suite": "intelligence", "prompt_id": spec["id"], "error": str(exc)})
+                except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
+                    attempts.append({
+                        "attempt": attempt_index + 1,
+                        "status": "failed",
+                        "error": str(exc),
+                        "failure_class": "request_error",
+                        "budget": budget,
+                    })
+            _aggregate_attempts(check, attempts, a.eval_min_pass_rate)
+            if check["status"] != "passed":
+                failure_classes = sorted({
+                    attempt.get("failure_class") for attempt in attempts
+                    if attempt.get("failure_class")
+                })
+                if not check.get("error"):
+                    check["error"] = "pass rate below threshold"
+                failures.append({
+                    "suite": "intelligence",
+                    "prompt_id": spec["id"],
+                    "error": check["error"],
+                    "failure_classes": failure_classes,
+                    "pass_rate": check["pass_rate"],
+                })
             checks.append(check)
         intelligence_section = {
             "status": "passed" if checks and all(c["status"] == "passed" for c in checks) else "failed",
@@ -700,67 +1004,98 @@ def run_bakeoff(a, api_key):
                 "status": "pending",
                 "validator": "+".join(validators),
             }
-            try:
-                request_messages = item.get("messages") or [
-                    {"role": "user", "content": item["prompt"]}
-                ]
-                result = post_chat(
-                    a.base_url,
-                    a.model,
-                    api_key,
-                    request_messages,
-                    max_tokens=int(item.get("max_tokens") or 256),
-                    timeout=a.timeout,
-                    tools=item.get("tools"),
-                    chat_template_kwargs=ctk,
-                )
-                messages = _choice_messages(result.get("response", {}))
-                content = _message_text(messages[0]) if messages else ""
-                text_checks = evaluate_text_checks(content, item.get("checks") or [])
-                errors = [c["name"] for c in text_checks if not c["passed"]]
-                check.update({
-                    "latency_ms": result["latency_s"] * 1000.0,
-                    "text_checks": text_checks,
-                    "content_excerpt": content[:200],
-                })
-                expect = item.get("expect_tool")
-                if expect:
-                    validations = [
-                        validate_function_tool_call(
-                            message, expect["name"], expect.get("required_args") or {}
-                        )
-                        for message in messages
-                    ]
-                    valid = [v for v in validations if v["valid"]]
-                    check["tool_call"] = {
-                        "valid": bool(valid),
-                        "arguments": valid[0]["arguments"] if valid else None,
-                        "validation_errors": [v["error"] for v in validations if v["error"]],
+            request_messages = item.get("messages") or [
+                {"role": "user", "content": item["prompt"]}
+            ]
+            budget = eval_budget(item, a)
+            attempts = []
+            for attempt_index in range(a.eval_repetitions):
+                try:
+                    result = post_chat(
+                        a.base_url,
+                        a.model,
+                        api_key,
+                        request_messages,
+                        max_tokens=budget["max_completion_tokens"],
+                        timeout=a.timeout,
+                        tools=item.get("tools"),
+                        **control_kwargs,
+                    )
+                    response = result.get("response", {})
+                    messages = _choice_messages(response)
+                    observation = response_observation(response)
+                    text_checks = evaluate_text_checks(
+                        observation["content"], item.get("checks") or []
+                    )
+                    errors = [c["name"] for c in text_checks if not c["passed"]]
+                    attempt = {
+                        "attempt": attempt_index + 1,
+                        "latency_ms": result["latency_s"] * 1000.0,
+                        "text_checks": text_checks,
+                        "budget": budget,
+                        **observation,
                     }
-                    if not valid:
-                        errors.extend(
-                            check["tool_call"]["validation_errors"]
-                            or ["response did not include tool_calls"]
-                        )
-                check["status"] = "passed" if not errors else "failed"
-                if errors:
-                    check["error"] = "; ".join(errors)
-                    failures.append({
-                        "suite": spec["suite"],
-                        "eval_id": item["id"],
-                        "error": check["error"],
+                    tool_failed = False
+                    expect = item.get("expect_tool")
+                    if expect:
+                        validations = [
+                            validate_function_tool_call(
+                                message, expect["name"], expect.get("required_args") or {}
+                            )
+                            for message in messages
+                        ]
+                        valid = [value for value in validations if value["valid"]]
+                        attempt["tool_call"] = {
+                            "valid": bool(valid),
+                            "arguments": valid[0]["arguments"] if valid else None,
+                            "validation_errors": [
+                                value["error"] for value in validations if value["error"]
+                            ],
+                        }
+                        if not valid:
+                            tool_failed = True
+                            errors.extend(
+                                attempt["tool_call"]["validation_errors"]
+                                or ["response did not include tool_calls"]
+                            )
+                    passed = not errors
+                    attempt["status"] = "passed" if passed else "failed"
+                    failure_class = _failure_class(observation, checks_passed=passed)
+                    if tool_failed and failure_class in {
+                            "deterministic_check_failed", "visible_answer_missing"}:
+                        failure_class = "tool_call_failed"
+                    attempt["failure_class"] = failure_class
+                    if errors:
+                        attempt["error"] = "; ".join(errors)
+                    attempts.append(attempt)
+                except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
+                    attempts.append({
+                        "attempt": attempt_index + 1,
+                        "status": "failed",
+                        "error": str(exc),
+                        "failure_class": "request_error",
+                        "budget": budget,
                     })
-            except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
-                check.update({"status": "failed", "error": str(exc)})
+            _aggregate_attempts(check, attempts, a.eval_min_pass_rate)
+            if check["status"] != "passed":
+                failure_classes = sorted({
+                    attempt.get("failure_class") for attempt in attempts
+                    if attempt.get("failure_class")
+                })
+                if not check.get("error"):
+                    check["error"] = "pass rate below threshold"
                 failures.append({
                     "suite": spec["suite"],
                     "eval_id": item["id"],
-                    "error": str(exc),
+                    "error": check["error"],
+                    "failure_classes": failure_classes,
+                    "pass_rate": check["pass_rate"],
                 })
             checks.append(check)
         external_suites[spec["suite"]] = {
             "status": "passed" if all(c["status"] == "passed" for c in checks) else "failed",
             "source": a.suite_file,
+            "source_sha256": spec["_source_sha256"],
             "date": spec.get("date"),
             "work_class": spec.get("work_class"),
             "checks": checks,
@@ -811,6 +1146,20 @@ def run_bakeoff(a, api_key):
             "context_targets": context_targets,
             "requests_per_context": 1,
             "endpoint_already_loaded": True,
+        },
+        "evaluation_protocol": {
+            "version": 2,
+            "repetitions": a.eval_repetitions,
+            "minimum_pass_rate": a.eval_min_pass_rate,
+            "visible_answer_tokens": a.visible_answer_tokens,
+            "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
+            "budget_semantics": (
+                "visible_answer_tokens plus reasoning_headroom_tokens are sent as one "
+                "max_tokens cap; the endpoint does not hard-partition the channels"
+            ),
+            "records_full_visible_answer": True,
+            "records_finish_reason": True,
+            "records_reasoning_channel_metadata": True,
         },
         "timing": {
             "wall_ms": wall_ms,
@@ -1004,6 +1353,20 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
                          "disabled maps to chat_template_kwargs={'enable_thinking': False}; "
                          "enabled maps to {'enable_thinking': True}; unsupported records that "
                          "the serve has no supported thinking control.")
+    ap.add_argument("--reasoning-effort", choices=("none", "minimal", "low", "medium", "high"),
+                    default=None,
+                    help="send the OpenAI-compatible reasoning_effort field for model families "
+                         "that do not use chat_template_kwargs (for example GPT-OSS or Mistral). "
+                         "Cannot be combined with --no-thinking or an explicit thinking mode.")
+    ap.add_argument("--visible-answer-tokens", type=int, default=256,
+                    help="visible-answer allocation for repaired quality evals (default %(default)s)")
+    ap.add_argument("--reasoning-headroom-tokens", type=int, default=0,
+                    help="reasoning headroom added to the visible-answer allocation for repaired "
+                         "quality evals (default %(default)s)")
+    ap.add_argument("--eval-repetitions", type=int, default=1,
+                    help="repeat each intelligence/external eval this many times (default %(default)s)")
+    ap.add_argument("--eval-min-pass-rate", type=float, default=1.0,
+                    help="minimum repeated-attempt pass rate for an eval to pass (default %(default)s)")
     ap.add_argument("--json-out", default=None,
                     help="write a machine-readable JSON summary for benchmark external compare")
     # --- GENERATE a serve recipe as a side effect of benchmarking a live serve ------
@@ -1076,12 +1439,40 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
         ap.error(str(exc))
     api_key = resolve_api_key(a.api_key_env)
 
+    if not 0 < a.visible_answer_tokens <= _MAX_QUALITY_COMPLETION_TOKENS:
+        ap.error(
+            "--visible-answer-tokens must be from 1 through %d"
+            % _MAX_QUALITY_COMPLETION_TOKENS
+        )
+    if not 0 <= a.reasoning_headroom_tokens <= _MAX_QUALITY_COMPLETION_TOKENS:
+        ap.error(
+            "--reasoning-headroom-tokens must be from 0 through %d"
+            % _MAX_QUALITY_COMPLETION_TOKENS
+        )
+    if (a.visible_answer_tokens + a.reasoning_headroom_tokens
+            > _MAX_QUALITY_COMPLETION_TOKENS):
+        ap.error(
+            "visible-answer plus reasoning-headroom allocation cannot exceed %d"
+            % _MAX_QUALITY_COMPLETION_TOKENS
+        )
+    if not 0 < a.eval_repetitions <= _MAX_EVAL_REPETITIONS:
+        ap.error("--eval-repetitions must be from 1 through %d" % _MAX_EVAL_REPETITIONS)
+    if not math.isfinite(a.eval_min_pass_rate) or not 0 < a.eval_min_pass_rate <= 1:
+        ap.error("--eval-min-pass-rate must be greater than 0 and at most 1")
+    explicit_thinking = a.no_thinking or a.thinking_mode not in (None, "default")
+    if a.reasoning_effort is not None and explicit_thinking:
+        ap.error(
+            "--reasoning-effort cannot be combined with --no-thinking or an explicit "
+            "--thinking-mode"
+        )
+
     if a.suite_file and not a.bakeoff:
         ap.error("--suite-file requires --bakeoff (it runs through the bakeoff evidence engine)")
 
     if a.bakeoff:
         if not a.candidate_id or not a.config_id:
             ap.error("--bakeoff requires --candidate-id and --config-id")
+        a.suite_spec = None
         if a.suite_file:
             # validate BEFORE any request is sent: a malformed spec is an operator
             # error (exit 2 + message), never partial evidence.
@@ -1089,12 +1480,17 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
                 a.suite_spec = load_suite_spec(a.suite_file)
             except (OSError, ValueError) as exc:
                 ap.error("--suite-file: %s" % exc)
+        try:
+            validate_eval_work_plan(a, a.suite_spec)
+        except ValueError as exc:
+            ap.error(str(exc))
         return run_bakeoff(a, api_key)
 
     # Resolve the serve's context window: explicit flag wins; else best-effort probe /v1/models.
     max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, api_key)
     cap = ctx_cap(max_model_len, a.max_tokens, a.margin)
-    ctk, thinking = resolve_thinking_settings(a)
+    ctk, reasoning_effort, thinking = resolve_thinking_settings(a)
+    control_kwargs = _request_control_kwargs(ctk, reasoning_effort)
 
     shared = (FILLER % (0, 0)) * max(1, int(a.shared_prefix_tokens * 0.75) // 6)
     n = a.burst if a.burst else a.requests
@@ -1106,6 +1502,8 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
 
     capnote = f" max_model_len={max_model_len}(ctx<={cap})" if cap is not None else ""
     thinknote = "" if thinking["mode"] == "default" else f" thinking={thinking['mode']}"
+    if reasoning_effort is not None:
+        thinknote += f" reasoning_effort={reasoning_effort}"
     print(f"BENCH {a.base_url} model={a.model}  n={n} concurrency={conc} "
           f"{'BURST(shared-prefix)' if a.burst else 'mixed'} max_tokens={a.max_tokens}{capnote}{thinknote}")
     started_at = time.time()
@@ -1113,7 +1511,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
     results = []
     with ThreadPoolExecutor(max_workers=conc) as ex:
         futs = [ex.submit(stream_chat, a.base_url, a.model, p, api_key, a.max_tokens,
-                          chat_template_kwargs=ctk) for p in jobs]
+                          **control_kwargs) for p in jobs]
         for f in as_completed(futs):
             try: results.append(f.result())
             except Exception as e: print("  req error:", e)
@@ -1142,6 +1540,7 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
             "shared_prefix_burst": bool(a.burst),
             "no_thinking": bool(a.no_thinking),
             "thinking_mode": thinking["mode"],
+            "reasoning_effort": reasoning_effort,
         },
         "metrics": {
             "ttft_p50_ms": pctile(ttfts, 50) * 1000.0,
