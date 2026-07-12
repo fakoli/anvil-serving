@@ -10,6 +10,7 @@ They are not routing-quality truth. Anvil's local work-class evals and quality p
 
 Supported source adapters:
 
+- `llmrequirements`: machine-readable model/build recipe priors from `llmrequirements.com/data/db.json`.
 - `millstone`: Millstone AI LLM inference benchmark snapshots.
 - `rtx6kpro`: `local-inference-lab/rtx6kpro` RTX PRO 6000 Blackwell community inference-throughput JSON artifacts.
 
@@ -24,6 +25,13 @@ The `rtx6kpro` v1 adapter is intentionally narrower. It imports individual raw J
 - `models/glm5.1/benchmarks/**/decode-matrix.json`
 
 It does not crawl the whole GitHub repository or wiki, and it does not ingest Markdown, CSV, quality benchmarks, hardware/network/power benchmarks, or prose as routing truth. Non-JSON imports still store the raw snapshot and mark parsing `failed` with a message pointing users to the machine-readable JSON artifacts.
+
+The `llmrequirements` adapter reproduces the site's Q4 fit and parameter-bucket
+speed estimates from its JSON database. These are editorial recipe priors, not
+per-model measurements. The normalized row preserves the site's ratings,
+benchmark claims, source links, fit estimate, and build record in
+`raw_metrics_json`; its methodology warning explicitly prevents treating the
+row as promotion-quality evidence.
 
 Import mode is the foundation for tests and reproducible comparisons. It never needs network access.
 
@@ -72,6 +80,16 @@ For `rtx6kpro`, fetch individual raw GitHub JSON files rather than repository or
 anvil-serving eval benchmark external fetch \
   --source rtx6kpro \
   --url https://raw.githubusercontent.com/local-inference-lab/rtx6kpro/master/benchmarks/inference-throughput/vllm_awq_mtp.json \
+  --db .anvil/benchmarks.sqlite
+```
+
+For the llmrequirements recipe database, fetch the machine-readable data file,
+not the dynamically rendered picker page:
+
+```bash
+anvil-serving eval benchmark external fetch \
+  --source llmrequirements \
+  --url https://llmrequirements.com/data/db.json \
   --db .anvil/benchmarks.sqlite
 ```
 
@@ -222,6 +240,7 @@ The fingerprint hash is stored with comparison records so an engine, quant, pars
 
 - External benchmarks are advisory only. They never silently become quality gates.
 - Millstone is parsed from snapshots, not from a guaranteed API contract.
+- `llmrequirements` rows are Q4 build-bucket estimates. They do not identify an engine or prove per-model throughput, concurrency, or quality.
 - `rtx6kpro` v1 supports individual JSON artifacts only. Whole-repo crawling, wiki ingestion, quality CSVs such as GPQA/GSM8K/HardMath, and hardware/network/power benchmarks are out of scope until Anvil has separate schemas for those priors.
 - HTML and Markdown parsing is table-oriented. Highly irregular pages may require saving a cleaner snapshot or adding source-specific extraction logic.
 - Methodology fields are best-effort. If a source does not report prompt cache, speculative decoding, tokenizer details, or sampling settings, Anvil reports that as a comparison caveat.

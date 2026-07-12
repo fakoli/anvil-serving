@@ -1,0 +1,26 @@
+{
+  "base_url": "http://127.0.0.1:39032/v1",
+  "completed": 5,
+  "concurrency": 5,
+  "context_tokens": 8192,
+  "max_context_tokens": 131072,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 2458.49609375,
+    "e2e_p95_ms": 2458.7137699127197,
+    "output_tokens": 165,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 67.04298503609407,
+    "ttft_p50_ms": 1846.6088771820068,
+    "ttft_p95_ms": 1863.7826442718506
+  },
+  "model": "mistral-small4-119b-a6b-nvfp4",
+  "requests": 5,
+  "run_id": "benchmark-20260712T110337Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "shared_prefix_burst": false,
+    "thinking_mode": "unsupported"
+  }
+}

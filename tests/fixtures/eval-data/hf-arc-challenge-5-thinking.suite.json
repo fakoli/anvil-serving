@@ -1,0 +1,44 @@
+{
+  "suite": "hf-arc-challenge-5-thinking",
+  "date": "2026-07-12",
+  "work_class": "basic-independent-multiple-choice-reasoning-sanity",
+  "source": {
+    "dataset": "allenai/ai2_arc",
+    "config": "ARC-Challenge",
+    "split": "test",
+    "rows": [0, 1, 2, 3, 4],
+    "url": "https://datasets-server.huggingface.co/rows?dataset=allenai/ai2_arc&config=ARC-Challenge&split=test&offset=0&length=5"
+  },
+  "evals": [
+    {
+      "id": "Mercury_7175875",
+      "prompt": "Reason through this multiple-choice science question, then finish with FINAL=<letter>.\n\nAn astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect?\nA. Planetary density will decrease.\nB. Planetary years will become longer.\nC. Planetary days will become shorter.\nD. Planetary gravity will become stronger.",
+      "max_tokens": 1024,
+      "checks": [{"name": "answer", "contains": "FINAL=C"}]
+    },
+    {
+      "id": "Mercury_SC_409171",
+      "prompt": "Reason through this multiple-choice science question, then finish with FINAL=<letter>.\n\nEngineers test several building models under earthquake conditions. What is the most likely result?\nA. buildings will be built faster\nB. buildings will be made safer\nC. designs will look nicer\nD. materials will be cheaper",
+      "max_tokens": 1024,
+      "checks": [{"name": "answer", "contains": "FINAL=B"}]
+    },
+    {
+      "id": "Mercury_SC_408547",
+      "prompt": "Reason through this multiple-choice science question, then finish with FINAL=<letter>.\n\nWhich step signals the beginning of photosynthesis?\nA. Chemical energy is absorbed through roots.\nB. Light energy is converted to chemical energy.\nC. Chlorophyll in the leaf captures light energy.\nD. Sunlight is converted into chlorophyll.",
+      "max_tokens": 1024,
+      "checks": [{"name": "answer", "contains": "FINAL=C"}]
+    },
+    {
+      "id": "Mercury_407327",
+      "prompt": "Reason through this multiple-choice science question, then finish with FINAL=<letter>.\n\nA physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\nA. the control\nB. the hypothesis statement\nC. the dependent variable\nD. the independent variable",
+      "max_tokens": 1024,
+      "checks": [{"name": "answer", "contains": "FINAL=D"}]
+    },
+    {
+      "id": "MCAS_2006_9_44",
+      "prompt": "Reason through this multiple-choice science question, then finish with FINAL=<letter>.\n\nA 1 kg and a 5 kg object fall 2 m on the Moon. Which best describes both after falling 1 m?\nA. Each lost kinetic energy.\nB. Each gained the same potential energy.\nC. Each lost the same potential energy.\nD. Each gained half of its maximum kinetic energy.",
+      "max_tokens": 1024,
+      "checks": [{"name": "answer", "contains": "FINAL=D"}]
+    }
+  ]
+}

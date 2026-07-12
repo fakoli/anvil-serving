@@ -1,0 +1,232 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "failures": [
+    {
+      "error": "python-stdlib; bounded-retention; external-evidence; degraded-capability",
+      "eval_id": "low-overhead-dashboard-architecture",
+      "suite": "milestone-execution"
+    },
+    {
+      "error": "ordered-chain",
+      "eval_id": "milestone-dependency-order",
+      "suite": "milestone-execution"
+    },
+    {
+      "error": "reject-incomplete; capture-proof; strict-reapply",
+      "eval_id": "proof-buffer-recovery",
+      "suite": "milestone-execution"
+    },
+    {
+      "error": "persist-resume; reuse-pr",
+      "eval_id": "resumable-ci-monitor",
+      "suite": "milestone-execution"
+    },
+    {
+      "error": "preserve-untracked",
+      "eval_id": "local-remote-main-reconciliation",
+      "suite": "milestone-execution"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39027/v1",
+    "candidate_id": "qwen36-27b-nvfp4-mtp-baseline",
+    "config_id": "vllm-nightly-nvfp4-mtp3-262k",
+    "model": "qwen36-27b-nvfp4-mtp",
+    "started_at": "2026-07-12T09:02:19Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T090219Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "milestone-execution": {
+      "checks": [
+        {
+          "content_excerpt": "This design prioritizes **zero-dependency deployment**, **sub-second latency**, and **minimal memory footprint** (<50MB RAM total). It avoids heavy agents (like Datadog/Prometheus exporters) and compl",
+          "error": "python-stdlib; bounded-retention; external-evidence; degraded-capability",
+          "id": "low-overhead-dashboard-architecture",
+          "latency_ms": 5180.649280548096,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "python-stdlib",
+              "passed": false
+            },
+            {
+              "name": "bounded-retention",
+              "passed": false
+            },
+            {
+              "name": "external-evidence",
+              "passed": false
+            },
+            {
+              "name": "degraded-capability",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "To determine the correct order, we must analyze the data flow and dependencies between the four tasks. The goal is to create a pipeline where the output (evidence) of one task serves as the input or c",
+          "error": "ordered-chain",
+          "id": "milestone-dependency-order",
+          "latency_ms": 3267.085552215576,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "ordered-chain",
+              "passed": false
+            },
+            {
+              "name": "artifact-boundary",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "To recover from this state while preserving review integrity and adhering to a fail-closed principle, you must treat the missing evidence as a critical audit failure, not a transient glitch. Since the",
+          "error": "reject-incomplete; capture-proof; strict-reapply",
+          "id": "proof-buffer-recovery",
+          "latency_ms": 3752.7096271514893,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "reject-incomplete",
+              "passed": false
+            },
+            {
+              "name": "capture-proof",
+              "passed": false
+            },
+            {
+              "name": "strict-reapply",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "To design a safe, resumable workflow that handles the 20-second timeout while respecting the 30-minute CI polling window, we must decouple the **stateful operations** (creating PRs, polling CI) from t",
+          "error": "persist-resume; reuse-pr",
+          "id": "resumable-ci-monitor",
+          "latency_ms": 4111.707448959351,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "timeout-alignment",
+              "passed": true
+            },
+            {
+              "name": "persist-resume",
+              "passed": false
+            },
+            {
+              "name": "reuse-pr",
+              "passed": false
+            },
+            {
+              "name": "no-ci-bypass",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "To reconcile the local `main` branch with `origin/main` while preserving the local history and ensuring the final state matches the remote, we must address the divergence caused by the two different m",
+          "error": "preserve-untracked",
+          "id": "local-remote-main-reconciliation",
+          "latency_ms": 3918.034076690674,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "backup-first",
+              "passed": true
+            },
+            {
+              "name": "remote-target",
+              "passed": true
+            },
+            {
+              "name": "preserve-untracked",
+              "passed": false
+            },
+            {
+              "name": "verify-identical",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "docs\\findings\\2026-07-12-qwen35-122b-mxfp4-evidence\\planning-milestone-execution.suite.json",
+      "status": "failed",
+      "work_class": "planning"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 20258.033514022827
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

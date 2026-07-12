@@ -1,0 +1,26 @@
+{
+  "base_url": "http://127.0.0.1:39030/v1",
+  "completed": 5,
+  "concurrency": 5,
+  "context_tokens": 8192,
+  "max_context_tokens": 262144,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 6306.771993637085,
+    "e2e_p95_ms": 6376.17301940918,
+    "output_tokens": 53,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 8.310506228211011,
+    "ttft_p50_ms": 5683.023452758789,
+    "ttft_p95_ms": 6011.404514312744
+  },
+  "model": "qwen36-27b-fp8",
+  "requests": 5,
+  "run_id": "benchmark-20260712T094626Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": true,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  }
+}

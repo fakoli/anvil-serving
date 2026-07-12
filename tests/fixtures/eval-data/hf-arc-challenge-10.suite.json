@@ -1,0 +1,75 @@
+{
+  "suite": "hf-arc-challenge-10",
+  "date": "2026-07-12",
+  "work_class": "basic-independent-multiple-choice-sanity",
+  "source": {
+    "dataset": "allenai/ai2_arc",
+    "config": "ARC-Challenge",
+    "split": "test",
+    "offset": 0,
+    "length": 10,
+    "url": "https://datasets-server.huggingface.co/rows?dataset=allenai/ai2_arc&config=ARC-Challenge&split=test&offset=0&length=10"
+  },
+  "evals": [
+    {
+      "id": "Mercury_7175875",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nAn astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect of this increase in rotation?\nA. Planetary density will decrease.\nB. Planetary years will become longer.\nC. Planetary days will become shorter.\nD. Planetary gravity will become stronger.",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=C"}]
+    },
+    {
+      "id": "Mercury_SC_409171",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nA group of engineers wanted to know how different building designs would respond during an earthquake. They made several models of buildings and tested each for its ability to withstand earthquake conditions. Which will most likely result from testing different building designs?\nA. buildings will be built faster\nB. buildings will be made safer\nC. building designs will look nicer\nD. building materials will be cheaper",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=B"}]
+    },
+    {
+      "id": "Mercury_SC_408547",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nThe end result in the process of photosynthesis is the production of sugar and oxygen. Which step signals the beginning of photosynthesis?\nA. Chemical energy is absorbed through the roots.\nB. Light energy is converted to chemical energy.\nC. Chlorophyll in the leaf captures light energy.\nD. Sunlight is converted into chlorophyll.",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=C"}]
+    },
+    {
+      "id": "Mercury_407327",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nA physicist wants to determine the speed a car must reach to jump over a ramp. The physicist conducts three trials. In trials two and three, the speed of the car is increased by 20 miles per hour. What is the physicist investigating when he changes the speed?\nA. the control\nB. the hypothesis statement\nC. the dependent (responding) variable\nD. the independent (manipulated) variable",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=D"}]
+    },
+    {
+      "id": "MCAS_2006_9_44",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nAn astronaut drops a 1.0 kg object and a 5.0 kg object on the Moon. Both objects fall a total distance of 2.0 m vertically. Which best describes the objects after they have fallen 1.0 m?\nA. They have each lost kinetic energy.\nB. They have each gained the same amount of potential energy.\nC. They have each lost the same amount of potential energy.\nD. They have each gained one-half of their maximum kinetic energy.",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=D"}]
+    },
+    {
+      "id": "Mercury_7270393",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nDevil facial tumor disease passes through bites and is caused by parasites. The parasites cause cancerous tumors that spread throughout an infected animal's body and kill it. What is the best description?\nA. a non-infectious, cell-cycle disease\nB. an infectious, cell-cycle disease\nC. a non-infectious, chronic disease\nD. an infectious, chronic disease",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=B"}]
+    },
+    {
+      "id": "MCAS_2014_5_7",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nA small mammal in the western United States lives in rock piles. During summer it places grasses and seeds in protected places in the rocks. What is the most likely reason?\nA. to prepare for migration before winter\nB. to provide warmth during winter\nC. to store food to eat over winter\nD. to protect the grasses and seeds from decay",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=C"}]
+    },
+    {
+      "id": "Mercury_7086660",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nPetrified palm trees are found in sedimentary rock near glaciers. Their presence most likely provides evidence for which statement?\nA. There was once more water in the area.\nB. The area was once grassland.\nC. The climate in the area was once tropical.\nD. There are active faults in the area.",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=C"}]
+    },
+    {
+      "id": "Mercury_7168805",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nFarmers hunted all hawks around their ranches because hawks preyed on chickens. What would most likely happen next?\nA. The chicken population would go down.\nB. Populations of mice and rats would increase.\nC. Another bird of prey would replace the hawk.\nD. The chickens would have a lower rate of disease.",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=B"}]
+    },
+    {
+      "id": "MCAS_2003_8_11",
+      "prompt": "Answer this multiple-choice science question. Return only FINAL=<letter>.\n\nCopper is an element used in electrical wires. What is the smallest unit of copper that still maintains the characteristics of copper?\nA. the atom\nB. the electron\nC. the nucleus\nD. the proton",
+      "max_tokens": 32,
+      "checks": [{"name": "answer", "contains": "FINAL=A"}]
+    }
+  ]
+}

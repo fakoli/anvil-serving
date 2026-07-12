@@ -874,14 +874,193 @@ services:
       --reasoning-parser qwen3
       --enable-auto-tool-choice
       --tool-call-parser qwen3_coder
-      --speculative-config '{"method":"qwen3_5_mtp","num_speculative_tokens":${CAND_QWEN36_MTP_TOKENS:-3}}'
+      --speculative-config '{"method":"mtp","num_speculative_tokens":${CAND_QWEN36_MTP_TOKENS:-3}}'
       --no-enable-prefix-caching
       --kv-cache-dtype fp8
       --max-model-len ${CAND_QWEN36_MAX_MODEL_LEN:-262144}
-      --max-num-seqs 2
+      --max-num-seqs ${CAND_QWEN36_MAX_NUM_SEQS:-5}
       --gpu-memory-utilization 0.92
       --host 0.0.0.0 --port 39027
       ${CAND_QWEN36_EXTRA_ARGS:-}
+
+  # Official FP8 and ThinkingCap FP8 comparison candidates for the same Heavy
+  # card and native context. Both keep the MTP head and admit five concurrent
+  # sessions; they remain direct evaluation endpoints, never router tiers.
+  cand-qwen36-fp8:
+    image: ${BAKEOFF_NIGHTLY_VLLM_IMAGE:-vllm/vllm-openai:nightly}
+    container_name: vllm-cand-qwen36-fp8
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39030:39030"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      # Nightly currently auto-selects CUTLASS for Qwen3.6 FP8, then still
+      # invokes a DeepGEMM warmup that asserts "Unknown recipe" on sm_120.
+      VLLM_USE_DEEP_GEMM: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve Qwen/Qwen3.6-27B-FP8
+      --served-model-name qwen36-27b-fp8
+      --trust-remote-code
+      --language-model-only
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --speculative-config '{"method":"mtp","num_speculative_tokens":${CAND_QWEN36_FP8_MTP_TOKENS:-3}}'
+      --no-enable-prefix-caching
+      --kv-cache-dtype fp8
+      --max-model-len ${CAND_QWEN36_FP8_MAX_MODEL_LEN:-262144}
+      --max-num-seqs ${CAND_QWEN36_FP8_MAX_NUM_SEQS:-5}
+      --gpu-memory-utilization 0.92
+      --host 0.0.0.0 --port 39030
+      ${CAND_QWEN36_FP8_EXTRA_ARGS:-}
+
+  cand-thinkingcap-qwen36-fp8:
+    image: ${BAKEOFF_NIGHTLY_VLLM_IMAGE:-vllm/vllm-openai:nightly}
+    container_name: vllm-cand-thinkingcap-qwen36-fp8
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39031:39031"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      VLLM_USE_DEEP_GEMM: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve bottlecapai/ThinkingCap-Qwen3.6-27B-FP8
+      --served-model-name thinkingcap-qwen36-27b-fp8
+      --trust-remote-code
+      --language-model-only
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --speculative-config '{"method":"mtp","num_speculative_tokens":${CAND_THINKINGCAP_MTP_TOKENS:-3}}'
+      --no-enable-prefix-caching
+      --kv-cache-dtype fp8
+      --max-model-len ${CAND_THINKINGCAP_MAX_MODEL_LEN:-262144}
+      --max-num-seqs ${CAND_THINKINGCAP_MAX_NUM_SEQS:-5}
+      --gpu-memory-utilization 0.92
+      --host 0.0.0.0 --port 39031
+      ${CAND_THINKINGCAP_EXTRA_ARGS:-}
+
+  # Heavy intelligence challengers: official single-card NVFP4 checkpoints.
+  # They share the RTX PRO 6000 with every other Heavy serve and are evaluated
+  # one at a time through the managed serves manifest.
+  cand-mistral-small4-119b-nvfp4:
+    image: ${BAKEOFF_NIGHTLY_VLLM_IMAGE:-vllm/vllm-openai:nightly}
+    container_name: vllm-cand-mistral-small4-119b-nvfp4
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39032:39032"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve mistralai/Mistral-Small-4-119B-2603-NVFP4
+      --revision ${CAND_MISTRAL_SMALL4_REVISION:-d57a94c74a961e1f9b489b8b3e792923ca29149b}
+      --served-model-name mistral-small4-119b-a6b-nvfp4
+      --trust-remote-code
+      --language-model-only
+      --attention-backend TRITON_MLA
+      --reasoning-parser mistral
+      --enable-auto-tool-choice
+      --tool-call-parser mistral
+      --no-enable-prefix-caching
+      --kv-cache-dtype fp8
+      --max-model-len ${CAND_MISTRAL_SMALL4_MAX_MODEL_LEN:-131072}
+      --max-num-batched-tokens 16384
+      --max-num-seqs ${CAND_MISTRAL_SMALL4_MAX_NUM_SEQS:-5}
+      --gpu-memory-utilization 0.95
+      --host 0.0.0.0 --port 39032
+      ${CAND_MISTRAL_SMALL4_EXTRA_ARGS:-}
+
+  cand-nemotron3-super-120b:
+    image: ${BAKEOFF_NIGHTLY_VLLM_IMAGE:-vllm/vllm-openai:nightly}
+    container_name: vllm-cand-nemotron3-super-120b
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39033:39033"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+      - "./super_v3_reasoning_parser.py:/opt/super_v3_reasoning_parser.py:ro"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4
+      --revision ${CAND_NEMOTRON_SUPER_REVISION:-4f0cf9daaeb7a4d5e23f80a00e7ed15f0e03caf6}
+      --served-model-name nemotron3-super-120b-a12b-nvfp4
+      --trust-remote-code
+      --language-model-only
+      --kv-cache-dtype fp8
+      --mamba-ssm-cache-dtype float16
+      --reasoning-parser-plugin /opt/super_v3_reasoning_parser.py
+      --reasoning-parser super_v3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --no-enable-prefix-caching
+      --max-model-len ${CAND_NEMOTRON_SUPER_MAX_MODEL_LEN:-131072}
+      --max-num-seqs ${CAND_NEMOTRON_SUPER_MAX_NUM_SEQS:-5}
+      --gpu-memory-utilization 0.95
+      --host 0.0.0.0 --port 39033
+      ${CAND_NEMOTRON_SUPER_EXTRA_ARGS:-}
 
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache
