@@ -8,8 +8,9 @@ import time
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from importlib.resources import files
+
 from ..api import TelemetryRegistry, build_default_registry, create_server
-from ..retention import RetentionStore
+from ..retention import NORMAL_PROFILE, RetentionStore, SamplingProfile
 from .indicators import build_indicators
 from .history import BenchmarkHistory, bounded_history
 from .timeseries import retained_timeseries
@@ -144,9 +145,16 @@ def _refresh_freshness(sample: Mapping[str, object], now: datetime) -> dict[str,
 class DashboardSampler:
     """Collect core and costly capability groups at their approved normal cadence."""
 
-    def __init__(self, registry: TelemetryRegistry, retention: RetentionStore) -> None:
+    def __init__(
+        self,
+        registry: TelemetryRegistry,
+        retention: RetentionStore,
+        *,
+        profile: SamplingProfile = NORMAL_PROFILE,
+    ) -> None:
         self.registry = registry
         self.retention = retention
+        self.profile = profile
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -166,8 +174,16 @@ class DashboardSampler:
     def _run(self) -> None:
         capabilities = set(self.registry.capabilities)
         groups = (
-            (tuple(sorted(capabilities & _CORE_CAPABILITIES)), 2.0, "core"),
-            (tuple(sorted(capabilities - _CORE_CAPABILITIES)), 5.0, "costly"),
+            (
+                tuple(sorted(capabilities & _CORE_CAPABILITIES)),
+                self.profile.core_seconds,
+                "core",
+            ),
+            (
+                tuple(sorted(capabilities - _CORE_CAPABILITIES)),
+                self.profile.costly_seconds,
+                "costly",
+            ),
         )
         deadlines = {name: 0.0 for _, _, name in groups}
         while not self._stop.is_set():
