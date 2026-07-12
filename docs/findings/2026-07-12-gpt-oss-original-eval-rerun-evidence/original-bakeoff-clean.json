@@ -1,0 +1,169 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": [
+      {
+        "attempted_context_tokens": 129984,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 129984,
+        "e2e_ms": 1036.5574359893799,
+        "estimated_prompt_tokens": 129984,
+        "output_tokens": 0,
+        "status": "passed",
+        "target_tokens": 131072,
+        "ttft_ms": 1036.5562438964844,
+        "usage": {
+          "completion_tokens": 64,
+          "prompt_tokens": 96833,
+          "total_tokens": 96897
+        }
+      }
+    ]
+  },
+  "failures": [
+    {
+      "error": "deterministic text checks failed",
+      "prompt_id": "parallel_timeout_triage",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:30002/v1",
+    "candidate_id": "gpt-oss-120b-baseline",
+    "config_id": "vllm-production-131k-original-eval-clean",
+    "model": "gpt-oss-120b",
+    "started_at": "2026-07-12T08:06:16Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "```diff\n--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 674.8988628387451,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": true
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 1482.417345046997,
+        "status": "failed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": false
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": false
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260712T080616Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 1036.5574359893799,
+    "intelligence_pass_rate": 0.5,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "default",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 1036.5562438964844,
+    "usable_context_tokens": 131072,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      131072
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "RIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 293.4246063232422,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 1036.5574359893799,
+      "e2e_p95_ms": 1036.5574359893799,
+      "output_tokens": 0,
+      "ttft_p50_ms": 1036.5562438964844,
+      "ttft_p95_ms": 1036.5562438964844
+    },
+    "wall_ms": 3906.445026397705
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 342.9698944091797,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

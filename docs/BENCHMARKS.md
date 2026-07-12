@@ -143,6 +143,13 @@ finish-reason/reasoning metadata are made comparable. This verdict applies to
 the protocol around `--suite-file`; it does not imply that deterministic text
 checks over valid visible answers are themselves nonfunctional.
 
+The original built-in GPT-OSS bakeoff was rerun as a control. Its 131K context,
+tool, session, and unified-diff checks passed, but the timeout-triage
+intelligence case returned no visible answer after spending its full 256-token
+budget in native reasoning. The older eval is therefore narrower and mostly
+functional, but its intelligence score has the same missing reasoning-control
+problem and is not currently stable promotion evidence.
+
 ## OpenClaw interaction and voice evidence
 
 The focused Dark-host STT smoke benchmark used one clean 16 kHz utterance and
