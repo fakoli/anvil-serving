@@ -11,7 +11,7 @@ from anvil_serving.observability.api import (
     run_server_in_thread,
 )
 from anvil_serving.observability.dashboard.app import DashboardSampler, create_dashboard_server
-from anvil_serving.observability.retention import RetentionStore
+from anvil_serving.observability.retention import BENCHMARK_PROFILE, RetentionStore
 from anvil_serving.observability.schema import CapabilityStatus, TelemetrySample
 
 
@@ -146,3 +146,12 @@ def test_sampler_separates_core_and_costly_cadences_into_retention() -> None:
     frames = store.frames()
     assert {frame.snapshot["sampling_group"] for frame in frames} == {"core", "costly"}
     assert {frame.expected_interval_seconds for frame in frames} == {2, 5}
+
+    benchmark_store = RetentionStore()
+    benchmark_sampler = DashboardSampler(registry, benchmark_store, profile=BENCHMARK_PROFILE)
+    benchmark_sampler.start()
+    deadline = time.monotonic() + 2
+    while len(benchmark_store.frames()) < 2 and time.monotonic() < deadline:
+        time.sleep(0.01)
+    benchmark_sampler.stop()
+    assert {frame.expected_interval_seconds for frame in benchmark_store.frames()} == {1, 2}
