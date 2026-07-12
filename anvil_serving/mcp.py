@@ -1796,6 +1796,18 @@ def tool_gpu_inventory(args: dict) -> dict:
     return _ok({"gpus": gpus.list_gpus()})
 
 
+def tool_observability_collect(args: dict) -> dict:
+    from .observability.api import controller_collect
+
+    capabilities = args.get("capabilities")
+    if not isinstance(capabilities, list) or not capabilities:
+        raise ToolError("bad_argument", "capabilities must be a non-empty array")
+    try:
+        return _ok(controller_collect(capabilities))
+    except (TypeError, ValueError) as exc:
+        raise ToolError("bad_argument", str(exc)) from exc
+
+
 def tool_host_manage(args: dict) -> dict:
     from . import host
 
@@ -2903,6 +2915,17 @@ TOOLS: Dict[str, dict] = {
         "description": "Return the local NVIDIA GPU inventory with stable UUIDs.",
         "inputSchema": _schema({}),
         "handler": tool_gpu_inventory,
+    },
+    "observability_collect": {
+        "description": "Collect bounded structured telemetry from declared local capabilities.",
+        "inputSchema": _schema({
+            "capabilities": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {"type": "string", "maxLength": 80},
+            },
+        }, required=["capabilities"]),
+        "handler": tool_observability_collect,
     },
     "host_manage": {
         "description": "Preview or run a bounded host repair operation on the controller host.",
