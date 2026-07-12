@@ -136,6 +136,13 @@ models need model-aware reasoning headroom or explicit reasoning-effort control
 and should retain finish-reason/reasoning metadata. See the
 [dated control and raw artifacts](findings/2026-07-12-gpt-oss-120b-deterministic-recheck.md).
 
+**Current operator verdict: this cross-model eval protocol is broken.** Do not
+use the reported Qwen 1/5, Nemotron 0/5, or GPT-OSS 0/5 results for model
+ranking or promotion until reasoning controls, visible-answer budgets, and
+finish-reason/reasoning metadata are made comparable. This verdict applies to
+the protocol around `--suite-file`; it does not imply that deterministic text
+checks over valid visible answers are themselves nonfunctional.
+
 ## OpenClaw interaction and voice evidence
 
 The focused Dark-host STT smoke benchmark used one clean 16 kHz utterance and

@@ -94,6 +94,12 @@ contracts remain demanding after content appears.
 
 ## Conclusion
 
+**Operator assessment: the current cross-model `--suite-file` eval protocol is
+broken and its Qwen, Nemotron, and GPT-OSS scores must not be used to rank or
+promote models.** The deterministic text-check engine still evaluates the
+visible text it receives, but the surrounding protocol does not provide
+comparable reasoning controls or answer budgets across model families.
+
 There is extra eval behavior to account for. The new suite path needs a
 model-aware reasoning budget or explicit `reasoning_effort` control before its
 scores can compare GPT-OSS fairly with models whose thinking can be disabled.
