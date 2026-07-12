@@ -30,6 +30,8 @@ from .status import prepare_sample
 
 
 Probe = Callable[[], Sequence[TelemetrySample]]
+JsonRoute = Callable[[], Mapping[str, Any]]
+MetricsProvider = Callable[[Sequence[str] | None], Mapping[str, Any]]
 _CAPABILITY = re.compile(r"^[a-z][a-z0-9_-]{0,79}$")
 _MAX_SAMPLES = 10_000
 _MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -85,8 +87,14 @@ class TelemetryRegistry:
             registration = self._registrations.get(capability)
             if registration is None:
                 samples.append(
-                    _failure_sample(now, "unknown-host", "telemetry-registry", capability,
-                                    CapabilityStatus.UNSUPPORTED, "capability is not registered")
+                    _failure_sample(
+                        now,
+                        "unknown-host",
+                        "telemetry-registry",
+                        capability,
+                        CapabilityStatus.UNSUPPORTED,
+                        "capability is not registered",
+                    )
                 )
                 continue
             try:
@@ -101,8 +109,15 @@ class TelemetryRegistry:
                     samples.append(prepare_sample(sample, observed_at=now, secrets=secrets))
             except Exception as exc:
                 samples.append(
-                    _failure_sample(now, registration.host_id, registration.collector_id,
-                                    capability, CapabilityStatus.FAILED, str(exc), secrets=secrets)
+                    _failure_sample(
+                        now,
+                        registration.host_id,
+                        registration.collector_id,
+                        capability,
+                        CapabilityStatus.FAILED,
+                        str(exc),
+                        secrets=secrets,
+                    )
                 )
         payload = {
             "schema_version": SCHEMA_VERSION,
@@ -114,7 +129,10 @@ class TelemetryRegistry:
             "samples": [s.to_dict() for s in samples],
         }
         safe = redact_record(payload, secrets=secrets)
-        if len(json.dumps(safe, separators=(",", ":"), sort_keys=True).encode()) > _MAX_RESPONSE_BYTES:
+        if (
+            len(json.dumps(safe, separators=(",", ":"), sort_keys=True).encode())
+            > _MAX_RESPONSE_BYTES
+        ):
             raise ValueError("telemetry snapshot exceeds 8 MiB")
         return safe
 
@@ -129,18 +147,37 @@ def build_default_registry(
     if platform.system() == "Darwin":
         items.append(ProbeRegistration("host-resources", collect_macos_host, host_id, "macos-host"))
     elif platform.system() == "Windows":
-        items.extend((
-            ProbeRegistration("host-resources", collect_windows_host, host_id, "windows-host"),
-            ProbeRegistration("boundary-resources", collect_wsl_docker_boundaries, host_id, "wsl-docker-boundaries"),
-            ProbeRegistration("shared-gpu-memory", collect_windows_shared_gpu_memory, host_id, "windows-gpu-shared-memory"),
-        ))
+        items.extend(
+            (
+                ProbeRegistration("host-resources", collect_windows_host, host_id, "windows-host"),
+                ProbeRegistration(
+                    "boundary-resources",
+                    collect_wsl_docker_boundaries,
+                    host_id,
+                    "wsl-docker-boundaries",
+                ),
+                ProbeRegistration(
+                    "shared-gpu-memory",
+                    collect_windows_shared_gpu_memory,
+                    host_id,
+                    "windows-gpu-shared-memory",
+                ),
+            )
+        )
     if platform.system() != "Darwin":
-        items.extend((
-            ProbeRegistration("nvidia-gpu", collect_nvidia_gpus, host_id, "nvidia-smi"),
-            ProbeRegistration("containers", collect_containers, host_id, "docker-engine"),
-        ))
+        items.extend(
+            (
+                ProbeRegistration("nvidia-gpu", collect_nvidia_gpus, host_id, "nvidia-smi"),
+                ProbeRegistration("containers", collect_containers, host_id, "docker-engine"),
+            )
+        )
     items.append(
-        ProbeRegistration("service-health", lambda: collect_service_health(service_configuration or {}), host_id, "service-health")
+        ProbeRegistration(
+            "service-health",
+            lambda: collect_service_health(service_configuration or {}),
+            host_id,
+            "service-health",
+        )
     )
     return TelemetryRegistry(items)
 
@@ -156,6 +193,9 @@ def create_server(
     port: int = 0,
     auth_env: str | None = None,
     environment: Mapping[str, str] | None = None,
+    static_routes: Mapping[str, tuple[str, bytes]] | None = None,
+    json_routes: Mapping[str, JsonRoute] | None = None,
+    metrics_provider: MetricsProvider | None = None,
 ) -> ThreadingHTTPServer:
     """Create, but do not start, a bounded read-only telemetry server."""
 
@@ -172,6 +212,18 @@ def create_server(
             raise ValueError("configured API authentication environment is unset")
     if non_loopback and not token:
         raise ValueError("non-loopback telemetry API binds require authentication")
+    assets = dict(static_routes or {})
+    routes = dict(json_routes or {})
+    for route, asset in assets.items():
+        if not isinstance(route, str) or not route.startswith("/"):
+            raise ValueError("static route paths must begin with /")
+        if (
+            not isinstance(asset, tuple)
+            or len(asset) != 2
+            or not isinstance(asset[0], str)
+            or not isinstance(asset[1], bytes)
+        ):
+            raise TypeError("static routes must map paths to (content type, bytes)")
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "AnvilTelemetry/1"
@@ -181,9 +233,28 @@ def create_server(
                 self._json(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "unauthorized"})
                 return
             parsed = urllib.parse.urlparse(self.path)
+            if parsed.path in assets and not parsed.query:
+                content_type, body = assets[parsed.path]
+                self._bytes(HTTPStatus.OK, content_type, body)
+                return
+            if parsed.path in routes and not parsed.query:
+                try:
+                    self._json(HTTPStatus.OK, {"ok": True, "data": routes[parsed.path]()})
+                except Exception as exc:
+                    self._json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"ok": False, "error": str(exc)[:4096]},
+                    )
+                return
             if parsed.path == "/health":
-                self._json(HTTPStatus.OK, {"ok": True, "service": "anvil-serving-observability",
-                                          "capabilities": list(registry.capabilities)})
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "ok": True,
+                        "service": "anvil-serving-observability",
+                        "capabilities": list(registry.capabilities),
+                    },
+                )
                 return
             if parsed.path != "/v1/metrics":
                 self._json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not-found"})
@@ -193,7 +264,12 @@ def create_server(
                 self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "bad-query"})
                 return
             try:
-                payload = registry.snapshot(query.get("capability") or None, secrets=(token,))
+                requested = query.get("capability") or None
+                payload = (
+                    registry.snapshot(requested, secrets=(token,))
+                    if metrics_provider is None
+                    else metrics_provider(requested)
+                )
             except (TypeError, ValueError) as exc:
                 self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
                 return
@@ -203,12 +279,21 @@ def create_server(
             self._json(HTTPStatus.METHOD_NOT_ALLOWED, {"ok": False, "error": "read-only-api"})
 
         def _json(self, status: HTTPStatus, payload: Mapping[str, Any]) -> None:
-            body = json.dumps(redact_record(payload, secrets=(token,)),
-                              separators=(",", ":"), sort_keys=True).encode()
+            body = json.dumps(
+                redact_record(payload, secrets=(token,)), separators=(",", ":"), sort_keys=True
+            ).encode()
+            self._bytes(status, "application/json", body)
+
+        def _bytes(self, status: HTTPStatus, content_type: str, body: bytes) -> None:
             self.send_response(status)
-            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header(
+                "Content-Security-Policy",
+                "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+            )
             self.end_headers()
             self.wfile.write(body)
 
@@ -221,7 +306,9 @@ def create_server(
 
 
 def run_server_in_thread(server: ThreadingHTTPServer) -> threading.Thread:
-    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+    )
     thread.start()
     return thread
 
@@ -239,13 +326,31 @@ def _requested(value: Sequence[str]) -> tuple[str, ...]:
     return result
 
 
-def _failure_sample(now: datetime, host_id: str, collector_id: str, capability: str,
-                    status: CapabilityStatus, detail: str, *, secrets: Sequence[str] = ()) -> TelemetrySample:
-    return prepare_sample(TelemetrySample(
-        metric="collector.status", source_timestamp=now, collection_timestamp=now,
-        host_id=host_id, collector_id=collector_id, capability=capability,
-        capability_status=status, value=None, stale_after_seconds=10.0, detail=detail[:4096],
-    ), secrets=secrets)
+def _failure_sample(
+    now: datetime,
+    host_id: str,
+    collector_id: str,
+    capability: str,
+    status: CapabilityStatus,
+    detail: str,
+    *,
+    secrets: Sequence[str] = (),
+) -> TelemetrySample:
+    return prepare_sample(
+        TelemetrySample(
+            metric="collector.status",
+            source_timestamp=now,
+            collection_timestamp=now,
+            host_id=host_id,
+            collector_id=collector_id,
+            capability=capability,
+            capability_status=status,
+            value=None,
+            stale_after_seconds=10.0,
+            detail=detail[:4096],
+        ),
+        secrets=secrets,
+    )
 
 
 def _validate_bind(host: str) -> bool:
@@ -266,7 +371,11 @@ def _validate_bind(host: str) -> bool:
 
 
 def _authorized(header: str | None, token: str) -> bool:
-    return isinstance(header, str) and header.startswith("Bearer ") and hmac.compare_digest(header[7:], token)
+    return (
+        isinstance(header, str)
+        and header.startswith("Bearer ")
+        and hmac.compare_digest(header[7:], token)
+    )
 
 
 def _timestamp(value: datetime | None) -> datetime:

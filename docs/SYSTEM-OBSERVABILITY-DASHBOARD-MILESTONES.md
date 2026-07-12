@@ -153,6 +153,28 @@ inspection for current state and recent trends.
 - Ordinary history writes stop during benchmark capture.
 - All member task verification commands pass together.
 
+**Completion evidence (2026-07-11):** Complete.
+
+- All four member tasks are accepted with signed Anvil evidence: T011
+  (`EVDBCD6F6F`), T013 (`EV8D4C2F02`), T012 (`EVF1C4E555`), and T015
+  (`EV10DDA877`).
+- The supported `anvil-serving dashboard serve` command was exercised as a
+  real foreground service on `127.0.0.1`. Live probes returned packaged HTML,
+  315 current samples, retained time-series data, and a model-loading phase
+  without exposing a mutation endpoint.
+- The integrated milestone gate covers the approved core/costly sampling
+  cadences, the 250 MiB deterministic retention ceiling, tiered history,
+  visible missing-data gaps, both-GPU series, ownership reliability,
+  freshness, and host/shared/VRAM loading transitions.
+- Desktop (1440×1000) and mobile (430×932) Chromium renders were inspected;
+  the responsive pass corrected mobile value clipping. The independent
+  adversarial pass also caught and fixed a duplicated `serve` dispatch token
+  and eliminated dashboard refreshes that bypassed the retained sampling
+  cadence.
+- All milestone member tests pass together (`234 passed`). The final
+  repository-wide gate passes (`3317 passed, 2 skipped`), along with Ruff,
+  strict documentation, Markdown links, and the full CLI-reference audit.
+
 ## Milestone 4 — Benchmark evidence and v0.11 acceptance
 
 **Outcome:** Anvil benchmarks can capture synchronized system context, retain

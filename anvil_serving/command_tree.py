@@ -636,6 +636,32 @@ def build_command_tree() -> CommandTree:
         handler=_handler("anvil_serving.collectors", argv_prefix=()),
         docs_anchor="docs/CLI.md#collectors",
     )
+    dashboard = _node(
+        "dashboard",
+        "Serve the read-only system observability dashboard.",
+        children=(
+            _resource_node(
+                "serve",
+                "Serve the packaged local dashboard.",
+                "anvil_serving.observability.dashboard.app",
+                role="host",
+                argv_prefix=(),
+                mutation="process",
+                options=(
+                    _option("--host", summary="Explicit bind IP.", value_name="IP"),
+                    _option("--port", summary="Bind port.", value_name="PORT"),
+                    _option(
+                        "--auth-env",
+                        summary="Bearer-token environment variable for authenticated binds.",
+                        value_name="ENV",
+                    ),
+                ),
+                output_policy="foreground",
+                execution_runtime_roles=("native",),
+            ),
+        ),
+        docs_anchor="docs/CLI.md#dashboard",
+    )
 
     tree = CommandTree(
         nodes=(
@@ -652,6 +678,7 @@ def build_command_tree() -> CommandTree:
             _resource_node("doctor", "Check dependencies and configured health.", "anvil_serving.doctor", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("doctor_summary"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
             _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Control plane & integrations"),
             _node("collectors", collectors.summary, handler=collectors.handler, docs_anchor=collectors.docs_anchor, group="Control plane & integrations"),
+            _node("dashboard", dashboard.summary, children=dashboard.children, docs_anchor=dashboard.docs_anchor, group="Local serving tools"),
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
                 ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),
