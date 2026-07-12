@@ -144,6 +144,27 @@ workloads answer different questions.
 
 ## Adding a result
 
+Inventory and compare retained evidence through the supported read-only surface:
+
+```bash
+anvil-serving eval benchmark evidence list --root docs/findings --model MODEL --format json
+anvil-serving eval benchmark evidence show ARTIFACT.json --format json
+anvil-serving eval benchmark evidence compare FIRST.json SECOND.json --format json
+```
+
+This summary surface omits prompts, full responses, reasoning text, and arbitrary
+stored command/method text; bounds recursive scans and artifact sizes; and flags
+material workload differences before displaying rows.
+It replaces ad hoc `find`/`rg` plus JSON extraction for routine evidence
+navigation. Comparison is fail-closed: missing controls or provenance make the
+result non-comparable, and the command exits non-zero unless the operator passes
+`--allow-mismatch` for exploratory reporting. Quality-suite identity requires
+an immutable source SHA-256. Engine, recipe, and method differences are retained
+as separate implementation-provenance warnings so a same-workload cross-model
+comparison remains expressible without hiding how it was served. A speculative
+A/B method hash remains a blocking workload field, and malformed numeric or
+thinking-control values make the artifact invalid for comparison.
+
 Use the durable CLI surfaces for repeatable operations:
 
 ```bash
