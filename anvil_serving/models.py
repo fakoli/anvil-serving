@@ -28,6 +28,8 @@ HERE = os.path.dirname(__file__)
 # the download runs INSIDE it with the named volume mounted at the HF cache.
 DEFAULT_PULL_VOLUME = "vllm-hfcache"
 DEFAULT_PULL_IMAGE = "vllm/vllm-openai:nightly"
+DEFAULT_PULL_TOKEN_ENV = "HF_TOKEN"
+DEFAULT_PULL_TOKEN_FILE = "~/.env"
 # Where the HF cache lives inside the container — the volume is mounted here so
 # downloaded blobs land on native ext4, not a 9P bind mount (gotcha #15).
 HF_CACHE_MOUNTPOINT = "/root/.cache/huggingface"
@@ -65,7 +67,8 @@ def is_real_catalog_entry(entry):
 
 
 def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
-                    revision=None, include=None, exclude=None, token_env=None):
+                    revision=None, include=None, exclude=None,
+                    token_env=DEFAULT_PULL_TOKEN_ENV):
     """Construct the ``docker run …`` argv that downloads ``repo_id`` into the
     NAMED docker ``volume`` by running ``hf download`` INSIDE the container.
 
@@ -76,10 +79,11 @@ def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAG
         container runs ``hf download <repo-id>``, not the vLLM server.
       * Uses the NEW ``hf`` CLI — never the removed ``huggingface-cli`` (deprecated
         and non-functional in huggingface_hub >=1.21).
-      * ``token_env``: name of a host env var holding an HF token. When set, we add
+      * ``token_env``: name of a host env var holding an HF token. By default this
+        is ``HF_TOKEN``. When set, we add
         ``-e HF_TOKEN`` (BY NAME) so docker forwards the value from the child env —
-        the token VALUE never appears on argv. Default: UNauthenticated (unauthenticated
-        HF works on this box; there is no HF_TOKEN in the .env — gotcha #12/CLAUDE.md).
+        the token VALUE never appears on argv. Pass ``None`` only for an explicitly
+        unauthenticated pull.
     """
     argv = ["docker", "run", "--rm",
             "-v", f"{volume}:{HF_CACHE_MOUNTPOINT}"]
@@ -98,8 +102,47 @@ def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAG
     return argv
 
 
+def _dotenv_value(path, name):
+    """Return one variable from a simple dotenv file without logging its value."""
+    expanded = os.path.expanduser(path)
+    try:
+        if not os.path.exists(expanded):
+            return None
+        if not os.path.isfile(expanded):
+            raise ValueError(f"token file {expanded!r} is not a regular file")
+        with open(expanded, encoding="utf-8") as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                if line.startswith("export "):
+                    line = line[len("export "):].lstrip()
+                key, value = line.split("=", 1)
+                if key.strip() != name:
+                    continue
+                value = value.strip()
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                    value = value[1:-1]
+                else:
+                    value = value.split(" #", 1)[0].rstrip()
+                return value or None
+    except FileNotFoundError:
+        # The path can disappear between exists() and open(); treat it like a
+        # missing optional source and fail closed if no environment token exists.
+        return None
+    except ValueError:
+        raise
+    except (OSError, UnicodeError) as exc:
+        raise ValueError(
+            f"could not read token file {expanded!r}: {exc}"
+        ) from exc
+    return None
+
+
 def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
-             revision=None, include=None, exclude=None, token_env=None,
+             revision=None, include=None, exclude=None,
+             token_env=DEFAULT_PULL_TOKEN_ENV,
+             token_file=DEFAULT_PULL_TOKEN_FILE,
              dry_run=False, _run=subprocess.call, _environ=None):
     """Build and (unless ``dry_run``) execute the ``docker run … hf download`` argv.
 
@@ -124,12 +167,22 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
                            include=include, exclude=exclude, token_env=token_env)
 
     child_env = dict(environ)
-    if token_env:
+    if token_env and not dry_run:
         token = environ.get(token_env)
+        if isinstance(token, str):
+            token = token.strip()
+        if not token and token_file:
+            try:
+                token = _dotenv_value(token_file, token_env)
+            except ValueError as exc:
+                print(f"[anvil-serving] {exc}", file=sys.stderr)
+                return 2
         if not token:
-            print(f"[anvil-serving] --token-env {token_env!r} is set but that "
-                  f"environment variable is empty/unset; export it or drop "
-                  f"--token-env to pull unauthenticated.", file=sys.stderr)
+            expanded = os.path.expanduser(token_file) if token_file else None
+            source = f" or add it to {expanded!r}" if expanded else ""
+            print(f"[anvil-serving] token variable {token_env!r} is empty/unset; "
+                  f"export it{source}, or pass --no-token for an explicitly "
+                  f"unauthenticated pull.", file=sys.stderr)
             return 2
         # Map the named var onto HF_TOKEN in the CHILD env only; `-e HF_TOKEN`
         # (added by build_pull_argv) forwards it into the container by reference.
@@ -137,7 +190,8 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
 
     printable = " ".join(shlex.quote(t) for t in argv)
     if dry_run:
-        # Safe to print: the token is passed via env, so it never appears here.
+        # Preview does not need to resolve/read a secret: argv contains only the
+        # variable name (`-e HF_TOKEN`), never its value.
         print(printable)
         return 0
 
@@ -147,7 +201,7 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
     try:
         return _run(argv, env=child_env)
     except OSError as exc:
-        print(f"[anvil-serving] could not run `docker` ({exc}) — is Docker installed, "
+        print(f"[anvil-serving] could not run `docker` ({exc}) - is Docker installed, "
               "on PATH, and running?", file=sys.stderr)
         return 127
 
@@ -252,17 +306,23 @@ def pull_main(argv):
                     help="glob of files to include (passed to `hf download`)")
     ap.add_argument("--exclude", default=None,
                     help="glob of files to exclude (passed to `hf download`)")
-    ap.add_argument("--token-env", default=None, metavar="ENV",
+    ap.add_argument("--token-env", default=DEFAULT_PULL_TOKEN_ENV, metavar="ENV",
                     help="name of an env var holding an HF token; its value is "
                          "forwarded into the container as HF_TOKEN by reference "
-                         "(never inlined on the command line). Default: "
-                         "UNauthenticated (unauthenticated HF works on this box).")
+                         "(never inlined on the command line). If the variable is "
+                         "not exported, it is read from --token-file.")
+    ap.add_argument("--token-file", default=DEFAULT_PULL_TOKEN_FILE, metavar="PATH",
+                    help="dotenv file used when --token-env is not already exported "
+                         "(default: %(default)s)")
+    ap.add_argument("--no-token", action="store_true",
+                    help="pull explicitly without forwarding HF_TOKEN")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the docker command that WOULD run, then exit")
     a = ap.parse_args(argv)
     return run_pull(a.repo_id, volume=a.volume, image=a.image, revision=a.revision,
-                    include=a.include, exclude=a.exclude, token_env=a.token_env,
-                    dry_run=a.dry_run)
+                    include=a.include, exclude=a.exclude,
+                    token_env=None if a.no_token else a.token_env,
+                    token_file=a.token_file, dry_run=a.dry_run)
 
 
 # The serve-recipe registry ships at <repo>/configs/serve-recipes.toml.

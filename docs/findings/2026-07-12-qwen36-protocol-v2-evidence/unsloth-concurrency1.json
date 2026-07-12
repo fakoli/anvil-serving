@@ -1,0 +1,27 @@
+{
+  "base_url": "http://127.0.0.1:39036/v1",
+  "completed": 1,
+  "concurrency": 1,
+  "context_tokens": 8192,
+  "max_context_tokens": 262144,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 1332.0324420928955,
+    "e2e_p95_ms": 1332.0324420928955,
+    "output_tokens": 14,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 10.49724316145023,
+    "ttft_p50_ms": 968.0712223052979,
+    "ttft_p95_ms": 968.0712223052979
+  },
+  "model": "unsloth-qwen36-27b-nvfp4",
+  "requests": 1,
+  "run_id": "benchmark-20260712T190101Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": true,
+    "reasoning_effort": null,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  }
+}

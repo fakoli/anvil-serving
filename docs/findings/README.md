@@ -9,6 +9,7 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-12 | [2026-07-12-qwen36-protocol-v2-comparison.md](2026-07-12-qwen36-protocol-v2-comparison.md) | Repeated protocol-v2 Qwen3.6 comparison, budget audit, Unsloth NVFP4 v0.25 recipe, five-session validation, and selected resident Heavy quality challenger |
 | 2026-07-12 | [2026-07-12-rtx-pro-6000-heavy-eval-v2.md](2026-07-12-rtx-pro-6000-heavy-eval-v2.md) | Repaired repeated ARC/MMLU-Pro Heavy comparison and Laguna NVFP4 vLLM/SGLang sm_120 rejection |
 | 2026-07-12 | [2026-07-12-heavy-intelligence-challengers.md](2026-07-12-heavy-intelligence-challengers.md) | Mistral Small 4 and Nemotron 3 Super single-PRO-6000 Heavy gates, five-session comparison, and selected resident experiment |
 | 2026-07-12 | [2026-07-12-qwen36-27b-heavy-variation-bakeoff.md](2026-07-12-qwen36-27b-heavy-variation-bakeoff.md) | Qwen3.6-27B NVFP4, official FP8, and ThinkingCap FP8 Heavy validation, five-session capacity, and selected resident candidate |

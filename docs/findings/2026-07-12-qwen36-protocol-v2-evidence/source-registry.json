@@ -1,0 +1,35 @@
+{
+  "observed_at": "2026-07-12",
+  "hardware": "NVIDIA RTX PRO 6000 Blackwell 96 GB (sm_120)",
+  "sources": [
+    {
+      "url": "https://huggingface.co/Qwen/Qwen3.6-27B-FP8",
+      "revision": "e89b16ebf1988b3d6befa7de50abc2d76f26eb09",
+      "published_or_updated": "2026-04-24",
+      "evidence_type": "official model card"
+    },
+    {
+      "url": "https://huggingface.co/sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP",
+      "revision": "6f194695406a3bc88a00573187d5b2eecf984a99",
+      "published_or_updated": "2026-04-29",
+      "evidence_type": "community checkpoint card"
+    },
+    {
+      "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.6-27B-FP8",
+      "revision": "e48255afd77b403446332be0f595868337b36591",
+      "published_or_updated": "2026-07-10",
+      "evidence_type": "fine-tune publisher model card"
+    },
+    {
+      "url": "https://www.reddit.com/r/unsloth/comments/1usn545/new_25x_faster_qwen36_nvfp4_unsloth_quants/",
+      "published_or_updated": "2026-07-10",
+      "evidence_type": "publisher announcement and community discussion"
+    },
+    {
+      "url": "https://huggingface.co/unsloth/Qwen3.6-27B-NVFP4",
+      "revision": "ccdaab7e68af2409599b8949a8f2685703c9bae5",
+      "published_or_updated": "2026-07-12",
+      "evidence_type": "publisher model card and vLLM recipe"
+    }
+  ]
+}

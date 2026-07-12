@@ -296,7 +296,8 @@ anvil-serving serves render --model /models/qwen3-32b-nvfp4 --gpu 1 --context 13
 ```
 anvil-serving models sync [--out DIR] [--hf-roots ROOTS] [--model-dirs DIRS]
 anvil-serving models pull REPO_ID [--volume VOL] [--image IMG] [--revision R]
-                                  [--include GLOB] [--exclude GLOB] [--token-env ENV] [--dry-run]
+                                  [--include GLOB] [--exclude GLOB] [--token-env ENV]
+                                  [--token-file PATH | --no-token] [--dry-run]
 anvil-serving models recipes {list|show MODEL} [--registry TOML]
 anvil-serving models cache prune [flags]
 anvil-serving models score [flags]
@@ -305,8 +306,10 @@ anvil-serving models score [flags]
 Model catalog + fetch. `sync` scans HF caches and plain model dirs, pulls model cards, extracts
 serving facts, and writes `cards/` + `INDEX.md` (default out dir `./model-library`). `pull`
 downloads a HF repo into a **named docker volume** (default `vllm-hfcache`) via `hf download`
-inside a container, avoiding the 9P bind-mount tax; `--token-env` forwards an HF token by env-var
-name only. `recipes list`/`recipes show` read the recorded serve-recipe registry (default
+inside a container, avoiding the 9P bind-mount tax. Pulls forward `HF_TOKEN` by name by default:
+an exported value wins, otherwise the command reads it from `~/.env` (override with
+`--token-env` and `--token-file`). The token value is never placed on argv. Use `--no-token`
+only for an explicitly anonymous pull. `recipes list`/`recipes show` read the recorded serve-recipe registry (default
 `configs/serve-recipes.toml`) written by `eval benchmark run --recipe-out`. Cache pruning and model scoring
 are documented in their focused sections below.
 
