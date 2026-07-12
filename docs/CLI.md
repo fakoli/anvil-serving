@@ -181,6 +181,8 @@ focused `--help`.
 | `topology validate` | Validate a topology offline. | `read` / `bounded` | - |
 | `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | - |
 | `collectors` | Configure and inspect optional read-only collector adapters. | `read` / `bounded` | - |
+| `dashboard` | Serve the read-only system observability dashboard. | `read` / `bounded` | - |
+| `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-env` |
 <!-- END GENERATED CLI MANIFEST INDEX -->
 
 ---
