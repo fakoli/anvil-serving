@@ -52,7 +52,7 @@ YaRN extension to 1,010,000; that extension was not enabled or validated here.
 The short independent suite is a pinned ten-row slice of
 `allenai/ai2_arc`, `ARC-Challenge`, test rows 0-9. It uses exact final-answer
 markers, no model judge, and thinking disabled. The fixture is
-[hf-arc-challenge-10.suite.json](../../tests/fixtures/eval-data/hf-arc-challenge-10.suite.json).
+`tests/fixtures/eval-data/hf-arc-challenge-10.suite.json` in the repository.
 
 | Candidate | ARC-Challenge result |
 |---|---:|
