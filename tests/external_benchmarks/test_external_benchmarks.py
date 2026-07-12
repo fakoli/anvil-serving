@@ -18,6 +18,7 @@ from anvil_serving.external_benchmarks.normalize import (
     normalize_model_identity,
 )
 from anvil_serving.external_benchmarks.sources import ADAPTERS
+from anvil_serving.external_benchmarks.sources.llmrequirements import LlmRequirementsAdapter
 from anvil_serving.external_benchmarks.sources.millstone import MillstoneAdapter
 from anvil_serving.external_benchmarks.sources.rtx6kpro import Rtx6kproAdapter
 
@@ -147,6 +148,65 @@ def test_rtx6kpro_source_is_registered_and_cli_source_choice_is_visible(capsys):
     except SystemExit as exc:
         assert exc.code == 0
     assert "rtx6kpro" in capsys.readouterr().out
+
+
+def test_llmrequirements_advisory_source_parses_q4_build_estimate(capsys):
+    assert "llmrequirements" in store.KNOWN_SOURCES
+    assert isinstance(ADAPTERS["llmrequirements"], LlmRequirementsAdapter)
+    result = ADAPTERS["llmrequirements"].parse(
+        (FIXTURES / "llmrequirements_sample.json").read_bytes(),
+        source_url="https://llmrequirements.com/data/db.json",
+    )
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row["model_id_normalized"] == "qwen-3.6-27b-dense"
+    assert row["gpu_model"] == "rtx_pro_6000_blackwell_96gb"
+    assert row["max_context_tokens"] == 262 * 1024
+    assert row["precision"] == "4-bit"
+    assert row["quantization"] == "Q4"
+    assert row["decode_tok_s"] == 85
+    assert row["ttft_ms"] == 28000
+    assert row["concurrency"] == 1
+    assert "not a per-model measured run" in row["methodology_notes"]
+    assert "promotion_quality_evidence remains false" in result.warnings[0]
+
+    try:
+        cli.main(["import", "--help"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    assert "llmrequirements" in capsys.readouterr().out
+
+
+def test_llmrequirements_skips_models_without_identity_or_finite_positive_params():
+    payload = json.loads((FIXTURES / "llmrequirements_sample.json").read_text())
+    payload["models"].extend([
+        {
+            "id": "missing-params",
+            "name": "Missing Params",
+            "modality": "text",
+            "vramMinQ4": 10,
+        },
+        {
+            "id": "missing-active",
+            "name": "Missing Active Params",
+            "type": "moe",
+            "modality": "text",
+            "params": 120,
+            "vramMinQ4": 60,
+        },
+        {
+            "id": "",
+            "name": "Missing ID",
+            "modality": "text",
+            "params": 8,
+            "vramMinQ4": 10,
+        },
+    ])
+    result = LlmRequirementsAdapter().parse(json.dumps(payload).encode())
+    assert [row["source_row_id"] for row in result.rows] == [
+        "rtx-pro-6000-blackwell-96:qwen3-6-27b-dense:q4"
+    ]
+    assert "models=3" in result.warnings[1]
 
 
 def test_rtx6kpro_parser_extracts_qwen_matrix_rows():

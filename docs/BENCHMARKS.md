@@ -88,6 +88,28 @@ and raw evidence: [Blackwell local model bakeoff](findings/2026-07-10-blackwell-
 Baselines measured in the same window: production heavy gpt-oss-120b (all gates pass, 131K,
 intelligence 2/2) and production fast qwen36-35b-a3b (matches its 2026-07-08 promotion profile).
 
+### Qwen3.6-27B Heavy variation bakeoff (2026-07-12)
+
+Three Qwen3.6-27B checkpoints were tested on the single RTX PRO 6000 with
+vLLM nightly, MTP n=3, FP8 KV, a 262K native context limit, and a five-sequence
+admission cap. All three passed full preflight at 131K, the current built-in
+Heavy eval, and 5/5 concurrent request completion. The independent ten-question
+ARC-Challenge slice scored 9/10 for community NVFP4 and 10/10 for both FP8
+variants.
+
+ThinkingCap FP8 is the **selected resident Qwen3.6 Heavy candidate**: in a
+thinking-enabled five-question tie-break it produced 4/5 correct visible finals
+within a 1,024-token budget versus 1/5 for NVFP4, with 6.69 s versus 9.14 s
+median latency. NVFP4 remains faster with thinking disabled (8K TTFT p50
+0.63 s single / 3.22 s at concurrency five, versus ThinkingCap's 1.01 s /
+4.66 s). See the
+[dated finding and raw artifacts](findings/2026-07-12-qwen36-27b-heavy-variation-bakeoff.md).
+
+This changes the recommendation within the Qwen3.6-27B comparison only. The
+selected endpoint remains an unpromoted experiment serve; no production router
+profile changed. The native 262K window was served and 131K was correctness-
+validated. The model-card YaRN extension to 1.01M was not enabled or tested.
+
 ### Qwen3.5-122B MXFP4 follow-up (2026-07-12)
 
 The cached `olka-fi/Qwen3.5-122B-A10B-MXFP4` checkpoint was re-served on the
@@ -149,6 +171,23 @@ intelligence case returned no visible answer after spending its full 256-token
 budget in native reasoning. The older eval is therefore narrower and mostly
 functional, but its intelligence score has the same missing reasoning-control
 problem and is not currently stable promotion evidence.
+
+### Heavy intelligence challengers (2026-07-12)
+
+Two official NVFP4 checkpoints were validated one at a time on the single RTX
+PRO 6000 through vLLM nightly at 131K with a five-sequence admission cap.
+Mistral Small 4 119B completed 5/5 requests at concurrency five and scored 9/10
+on the ARC sanity slice, but failed both built-in intelligence checks on the
+final no-prefix-cache recipe. Nemotron 3 Super 120B completed 5/5, passed every
+built-in Heavy check, and scored 5/5 on the thinking-enabled ARC tie-break.
+
+Nemotron 3 Super is therefore the **best currently validated Heavy experiment**
+and the selected resident direct endpoint, superseding both Nemotron Puzzle's
+capacity-only recommendation and ThinkingCap's Qwen-only selection. It is not
+promoted into the production router. The short ARC slices remain sanity checks,
+not general-quality or promotion evidence, and the served 131K window does not
+validate Nemotron's advertised 1M maximum. See the
+[dated finding and raw artifacts](findings/2026-07-12-heavy-intelligence-challengers.md).
 
 ## OpenClaw interaction and voice evidence
 

@@ -25,7 +25,7 @@
         "voice-up-down": 3
       },
       "canonical_counts": {
-        "eval-benchmark-external": 19,
+        "eval-benchmark-external": 20,
         "eval-benchmark-run": 17,
         "eval-calibrate": 8,
         "eval-preflight": 17,
@@ -97,7 +97,7 @@
         "voice-up-down": 3
       },
       "canonical_counts": {
-        "eval-benchmark-external": 30,
+        "eval-benchmark-external": 31,
         "eval-benchmark-run": 23,
         "eval-calibrate": 18,
         "eval-preflight": 24,
@@ -118,13 +118,13 @@
       },
       "files_by_category": {
         "docs": 41,
-        "examples": 42,
-        "implementation": 141,
+        "examples": 43,
+        "implementation": 142,
         "skills": 4,
-        "tests": 143,
+        "tests": 144,
         "tooling": 25
       },
-      "files_scanned": 396,
+      "files_scanned": 399,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

@@ -1,0 +1,26 @@
+{
+  "base_url": "http://127.0.0.1:39033/v1",
+  "completed": 5,
+  "concurrency": 5,
+  "context_tokens": 8192,
+  "max_context_tokens": 131072,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 3628.591299057007,
+    "e2e_p95_ms": 3810.9984397888184,
+    "output_tokens": 175,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 45.89528322367702,
+    "ttft_p50_ms": 2521.925210952759,
+    "ttft_p95_ms": 3106.8530082702637
+  },
+  "model": "nemotron3-super-120b-a12b-nvfp4",
+  "requests": 5,
+  "run_id": "benchmark-20260712T105729Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": true,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  }
+}
