@@ -40,7 +40,10 @@ nav:
       - Device topologies: DEVICE-TOPOLOGIES.md
       - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
   - Benchmarks & findings:
-      - Benchmark results: BENCHMARKS.md
+      - RTX PRO 6000 benchmark guide: benchmarks/index.md
+      - Model recipes & gotchas: benchmarks/models.md
+      - Methodology & evidence: benchmarks/methodology.md
+      - Result archive: BENCHMARKS.md
       - External benchmarks: EXTERNAL-BENCHMARKS.md
       - Findings index: findings/README.md
   - Integrations:
