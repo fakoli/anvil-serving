@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Anvil System View</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0a0d12;--panel:#111720;--line:#273140;--text:#eef3f8;--muted:#91a0b2;--ok:#52d6a3;--warn:#f5ba64;--bad:#ff7185;--accent:#7aa7ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% -10%,#17253a 0,transparent 34%),var(--bg);color:var(--text);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1500px;margin:auto;padding:28px}.mast{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:22px}.mast h1{font-size:30px;letter-spacing:-.04em;margin:0}.mast p{margin:5px 0 0;color:var(--muted)}#freshness{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.panel{grid-column:span 4;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent),var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-height:190px}.panel.wide{grid-column:span 6}.panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 13px}.rows{display:grid;gap:8px}.row{display:grid;grid-template-columns:minmax(110px,1fr) auto;gap:12px;border-top:1px solid rgba(145,160,178,.13);padding-top:8px}.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.value{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--accent);text-align:right}.state{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:8px}.degraded .state{background:var(--warn)}.failed .state{background:var(--bad)}.empty{color:var(--muted);font-style:italic}.banner{display:none;margin-bottom:14px;padding:11px 14px;border:1px solid #693c45;background:#26151a;color:#ffb7c1;border-radius:8px}@media(max-width:900px){main{padding:18px}.panel,.panel.wide{grid-column:span 12}.mast{align-items:start;gap:18px;flex-direction:column}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="mast"><div><h1>Anvil system view</h1><p>Whole-topology pressure and serving state</p></div><div id="freshness">Connecting…</div></header>
+  <div id="error" class="banner" role="alert"></div>
+  <section class="grid" aria-label="Live system telemetry">
+    <article class="panel wide"><h2>Hosts & memory</h2><div id="hosts" class="rows"></div></article>
+    <article class="panel wide"><h2>WSL & Docker boundary</h2><div id="boundaries" class="rows"></div></article>
+    <article class="panel"><h2>GPU</h2><div id="gpus" class="rows"></div></article>
+    <article class="panel"><h2>Containers</h2><div id="containers" class="rows"></div></article>
+    <article class="panel"><h2>Services & ports</h2><div id="services" class="rows"></div></article>
+  </section>
+</main>
+<script>
+const groups={hosts:s=>s.metric.startsWith('host.'),boundaries:s=>s.metric.startsWith('boundary.'),gpus:s=>s.metric.startsWith('gpu.'),containers:s=>s.metric.startsWith('container.'),services:s=>s.metric.startsWith('service.')};
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function render(id,samples){const root=document.getElementById(id);const rows=samples.filter(groups[id]);if(!rows.length){root.innerHTML='<div class="empty">No configured signal</div>';return}root.innerHTML=rows.slice(0,28).map(s=>{const bad=s.capability_status!=='ok';const failed=['failed','permission-denied'].includes(s.capability_status);const labels=Object.values(s.labels||{}).join(' · ');const name=labels?`${s.metric} · ${labels}`:s.metric;const value=s.value===null?s.capability_status:`${s.value}${s.unit?' '+s.unit:''}`;return `<div class="row ${bad?'degraded':''} ${failed?'failed':''}"><div class="name"><span class="state"></span>${esc(s.host_id)} · ${esc(name)}</div><div class="value">${esc(value)}</div></div>`}).join('')}
+async function refresh(){try{const response=await fetch('/v1/metrics',{cache:'no-store'});if(!response.ok)throw new Error(`metrics HTTP ${response.status}`);const body=await response.json();if(!body.ok)throw new Error(body.error||'metrics unavailable');Object.keys(groups).forEach(k=>render(k,body.data.samples));document.getElementById('freshness').textContent=`Updated ${new Date(body.data.generated_at).toLocaleTimeString()} · ${body.data.degraded_count} degraded`;document.getElementById('error').style.display='none'}catch(error){const banner=document.getElementById('error');banner.textContent=`Telemetry unavailable: ${error.message}`;banner.style.display='block';document.getElementById('freshness').textContent='Connection degraded'}}
+refresh();setInterval(refresh,2000);
+</script>
+</body>
+</html>

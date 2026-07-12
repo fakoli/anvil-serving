@@ -535,6 +535,20 @@ service-management protocol is implied:
 {"status":"ok","capabilities":["gpu-process-memory","gpu-container-attribution"]}
 ```
 
+### `dashboard serve`
+
+```bash
+anvil-serving dashboard serve
+anvil-serving dashboard serve --host 127.0.0.1 --port 8766
+```
+
+Serves a packaged, read-only single page for host, WSL/Docker boundary, GPU,
+container, and configured service telemetry. The default URL is
+`http://127.0.0.1:8766/`; no Node.js process or frontend build service is
+required. The page exposes no lifecycle or configuration controls. A
+non-loopback private/tailnet bind requires `--auth-env` naming a populated
+bearer-token environment variable.
+
 ### `topology`
 
 ```
