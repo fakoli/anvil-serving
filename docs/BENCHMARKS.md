@@ -1,5 +1,11 @@
 # Benchmark results
 
+> **Looking for the maintained decision view?** Start with the
+> [RTX PRO 6000 benchmark guide](benchmarks/index.md), then use the
+> [model recipes and gotchas](benchmarks/models.md) and
+> [methodology](benchmarks/methodology.md). This page remains the chronological
+> result archive, including Fast-tier, voice, and historical rounds.
+
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
 The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-12**.
