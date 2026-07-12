@@ -630,6 +630,12 @@ def build_command_tree() -> CommandTree:
             ("resolve", "Resolve one canonical command against a topology."),
         )
     ), docs_anchor="docs/CLI.md#topology")
+    collectors = _node(
+        "collectors",
+        "Configure and inspect optional read-only collector adapters.",
+        handler=_handler("anvil_serving.collectors", argv_prefix=()),
+        docs_anchor="docs/CLI.md#collectors",
+    )
 
     tree = CommandTree(
         nodes=(
@@ -645,6 +651,7 @@ def build_command_tree() -> CommandTree:
             _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
             _resource_node("doctor", "Check dependencies and configured health.", "anvil_serving.doctor", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("doctor_summary"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
             _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Control plane & integrations"),
+            _node("collectors", collectors.summary, handler=collectors.handler, docs_anchor=collectors.docs_anchor, group="Control plane & integrations"),
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
                 ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),
