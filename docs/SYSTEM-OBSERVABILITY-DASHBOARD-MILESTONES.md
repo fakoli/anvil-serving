@@ -53,6 +53,27 @@ dependencies.
 - The snapshot and logs contain no credentials or tokens.
 - All member task verification commands pass together.
 
+**Completion evidence (2026-07-11):** Complete.
+
+- All seven member tasks are accepted with signed Anvil evidence: T001
+  (`EV48E9883A`), T009 (`EV15198D6A`), T002 (`EV28D816A6`), T004
+  (`EV45C35D36`), T005 (`EV13CA845D`), T006 (`EV7F264423`), and T003
+  (`EVCC1CFAF4`).
+- The fixture-driven integrated snapshot gate covers Windows host pressure,
+  WSL and Docker boundaries, dedicated and shared GPU memory, NVIDIA activity,
+  and per-container resources in one normalized sample set. It also proves
+  healthy zero, unsupported, permission-denied, stale, ambiguous, and failed
+  states remain distinct and that serialized samples and logs are secret-free.
+- All milestone tests pass together (`81 passed`). The repository-wide gate
+  passes (`3241 passed, 2 skipped`), as do Ruff, strict documentation build,
+  Markdown link checking, the full CLI-reference audit, and Windows CLI
+  hygiene scanning.
+- Live unprivileged smoke collection succeeded on Fakoli Dark for Windows host
+  metrics, both NVIDIA GPUs, both Windows non-local/shared-memory adapter
+  counters, 22 Docker containers, and the WSL/Docker boundary. WDDM's
+  unavailable per-process GPU-memory values remain explicit missing data rather
+  than fabricated zeros.
+
 ## Milestone 2 — Whole-topology telemetry service
 
 **Outcome:** Fakoli Dark exposes one structured, authenticated telemetry API
@@ -157,4 +178,3 @@ each packet is satisfied. The last task in the milestone also records or links
 the integrated exit-gate evidence. A later milestone may consume accepted
 artifacts from an earlier milestone, but it must not silently reinterpret or
 replace them.
-
