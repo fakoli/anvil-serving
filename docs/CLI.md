@@ -508,6 +508,32 @@ With `--topology`, host actions resolve a declared `host` resource. Use `--targe
 topology contains more than one host resource. OS/runtime compatibility is checked before local or
 controller dispatch, so a Windows-only action cannot execute on Fakoli Mini/macOS.
 
+### `collectors`
+
+```bash
+anvil-serving collectors configure --name NAME --endpoint URL --capability ID [--auth-env ENV] [--output PATH]
+anvil-serving collectors validate --config PATH
+anvil-serving collectors capabilities [--config PATH]
+anvil-serving collectors inspect --config PATH [--timeout SECONDS]
+```
+
+Optional adapters use the bounded `anvil-json-v1` capability document and are never required for
+ordinary inference. Configuration and capability reporting are offline. `inspect` performs one
+read-only request and never installs, starts, stops, or manages an exporter or collector service.
+
+Endpoints must use an explicit loopback, RFC1918, tailnet/CGNAT, or IPv6 ULA address. Public IPs,
+hostnames, URL credentials, redirects, proxies, query strings, and fragments are refused. A
+non-loopback endpoint requires `--auth-env`; only the environment-variable name is retained, and
+the resolved bearer token is redacted from errors and output. Adapter failure is returned as a
+degraded capability and does not alter routing or inference.
+
+The inspected endpoint must return this bounded JSON capability document; no Prometheus scrape or
+service-management protocol is implied:
+
+```json
+{"status":"ok","capabilities":["gpu-process-memory","gpu-container-attribution"]}
+```
+
 ### `topology`
 
 ```
