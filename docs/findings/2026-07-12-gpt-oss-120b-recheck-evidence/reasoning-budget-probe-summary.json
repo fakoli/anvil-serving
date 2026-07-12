@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.manual-probe-summary/v1",
+  "model": "gpt-oss-120b",
+  "endpoint": "http://127.0.0.1:30002/v1",
+  "prompt_id": "low-overhead-dashboard-architecture",
+  "capture_method": "anvil_serving.benchmark.post_chat with the deterministic suite prompt and text-check engine",
+  "original_cap": {
+    "max_tokens": 384,
+    "finish_reason": "length",
+    "content_is_null": true,
+    "reasoning_present": true,
+    "completion_tokens": 384
+  },
+  "raised_cap": {
+    "max_tokens": 2048,
+    "finish_reason": "length",
+    "content_length_chars": 5613,
+    "reasoning_length_chars": 2266,
+    "completion_tokens": 2048,
+    "text_checks": {
+      "python-stdlib": false,
+      "bounded-retention": true,
+      "external-evidence": false,
+      "degraded-capability": false
+    }
+  },
+  "limitations": [
+    "This is a manually materialized summary of direct live responses, not the full raw response body.",
+    "Character counts are not token counts.",
+    "The benchmark evidence schema does not currently retain finish_reason or reasoning-channel metadata."
+  ]
+}

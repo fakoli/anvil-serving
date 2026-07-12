@@ -1,0 +1,60 @@
+{
+  "suite": "milestone-execution-2048-diagnostic",
+  "date": "2026-07-12",
+  "work_class": "planning",
+  "description": "Diagnostic copy of the milestone-execution suite with only max_tokens raised to 2048 for GPT-OSS hidden-reasoning headroom.",
+  "evals": [
+    {
+      "id": "low-overhead-dashboard-architecture",
+      "prompt": "Design a low-overhead local observability dashboard for one developer on a Windows GPU workstation plus a model-free Mac Mini. It must show host, VM/container, GPU, shared-memory, service, and benchmark context in one webpage. Runtime memory matters more than feature breadth; avoid operational toil and do not require administrator access for the default path. Give the recommended implementation shape, retention strategy, and raw-evidence boundary.",
+      "max_tokens": 2048,
+      "checks": [
+        {"name": "python-stdlib", "contains_any": ["standard library", "stdlib"]},
+        {"name": "bounded-retention", "contains": "bounded"},
+        {"name": "external-evidence", "contains_all": ["raw", "outside git"]},
+        {"name": "degraded-capability", "contains_any": ["unsupported", "degraded", "permission-denied"]}
+      ]
+    },
+    {
+      "id": "milestone-dependency-order",
+      "prompt": "Order these four benchmark-observability tasks so each consumes evidence from the prior task: programmatic capture lifecycle; compressed external artifact plus sanitized manifest; retained-session comparison; complete-path overhead measurement. Explain the dependency logic. End with one line containing only the ordered task names joined by ' -> '.",
+      "max_tokens": 2048,
+      "checks": [
+        {"name": "ordered-chain", "contains": "capture -> artifact -> comparison -> overhead"},
+        {"name": "artifact-boundary", "contains_any": ["outside git", "external"]}
+      ]
+    },
+    {
+      "id": "proof-buffer-recovery",
+      "prompt": "A task's required pytest command exited 0, but strict review reports the command proof missing because the shell did not populate the workflow evidence buffer. The task is already in needs_review. Give a fail-closed recovery sequence that preserves review integrity; do not bypass strict mode or fabricate evidence.",
+      "max_tokens": 2048,
+      "checks": [
+        {"name": "reject-incomplete", "contains": "reject"},
+        {"name": "capture-proof", "contains": "capture-evidence"},
+        {"name": "strict-reapply", "contains_all": ["resubmit", "strict"]}
+      ]
+    },
+    {
+      "id": "resumable-ci-monitor",
+      "prompt": "A ship command opens a pull request and then polls CI for up to 30 minutes, but its outer process runner kills it after 20 seconds. The branch and pull request already exist when the command is restarted. Design a safe resumable workflow that does not create duplicate pull requests and remains fail-closed on CI failures.",
+      "max_tokens": 2048,
+      "checks": [
+        {"name": "timeout-alignment", "contains": "timeout"},
+        {"name": "persist-resume", "contains_all": ["persist", "resume"]},
+        {"name": "reuse-pr", "contains_all": ["existing", "pull request"]},
+        {"name": "no-ci-bypass", "contains_any": ["fail-closed", "do not merge", "not merge"]}
+      ]
+    },
+    {
+      "id": "local-remote-main-reconciliation",
+      "prompt": "A feature branch was merged locally into main before publication. Later, the same feature branch was merged remotely through a pull request, producing a different merge commit. Local main now has equivalent feature content but diverges from origin/main, plus one remote-only test fix. Plan a safe reconciliation that preserves the former local head, avoids discarding an unrelated untracked file, and leaves local main identical to origin/main.",
+      "max_tokens": 2048,
+      "checks": [
+        {"name": "backup-first", "contains": "backup"},
+        {"name": "remote-target", "contains": "origin/main"},
+        {"name": "preserve-untracked", "contains": "untracked"},
+        {"name": "verify-identical", "contains_any": ["diff", "0 0", "identical"]}
+      ]
+    }
+  ]
+}
