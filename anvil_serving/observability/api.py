@@ -31,6 +31,7 @@ from .status import prepare_sample
 
 Probe = Callable[[], Sequence[TelemetrySample]]
 JsonRoute = Callable[[], Mapping[str, Any]]
+QueryRoute = Callable[[Mapping[str, list[str]]], Mapping[str, Any]]
 MetricsProvider = Callable[[Sequence[str] | None], Mapping[str, Any]]
 _CAPABILITY = re.compile(r"^[a-z][a-z0-9_-]{0,79}$")
 _MAX_SAMPLES = 10_000
@@ -196,6 +197,7 @@ def create_server(
     static_routes: Mapping[str, tuple[str, bytes]] | None = None,
     json_routes: Mapping[str, JsonRoute] | None = None,
     metrics_provider: MetricsProvider | None = None,
+    query_routes: Mapping[str, QueryRoute] | None = None,
 ) -> ThreadingHTTPServer:
     """Create, but do not start, a bounded read-only telemetry server."""
 
@@ -214,6 +216,7 @@ def create_server(
         raise ValueError("non-loopback telemetry API binds require authentication")
     assets = dict(static_routes or {})
     routes = dict(json_routes or {})
+    parameterized_routes = dict(query_routes or {})
     for route, asset in assets.items():
         if not isinstance(route, str) or not route.startswith("/"):
             raise ValueError("static route paths must begin with /")
@@ -245,6 +248,16 @@ def create_server(
                         HTTPStatus.SERVICE_UNAVAILABLE,
                         {"ok": False, "error": str(exc)[:4096]},
                     )
+                return
+            if parsed.path in parameterized_routes:
+                try:
+                    query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+                    self._json(
+                        HTTPStatus.OK,
+                        {"ok": True, "data": parameterized_routes[parsed.path](query)},
+                    )
+                except (TypeError, ValueError) as exc:
+                    self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
                 return
             if parsed.path == "/health":
                 self._json(
@@ -282,6 +295,9 @@ def create_server(
             body = json.dumps(
                 redact_record(payload, secrets=(token,)), separators=(",", ":"), sort_keys=True
             ).encode()
+            if len(body) > _MAX_RESPONSE_BYTES:
+                status = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+                body = b'{"error":"response-too-large","ok":false}'
             self._bytes(status, "application/json", body)
 
         def _bytes(self, status: HTTPStatus, content_type: str, body: bytes) -> None:
