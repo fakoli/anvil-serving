@@ -11,6 +11,7 @@ from importlib.resources import files
 from ..api import TelemetryRegistry, build_default_registry, create_server
 from ..retention import RetentionStore
 from .indicators import build_indicators
+from .history import BenchmarkHistory, bounded_history
 from .timeseries import retained_timeseries
 
 
@@ -25,6 +26,7 @@ def create_dashboard_server(
     auth_env: str | None = None,
     environment: Mapping[str, str] | None = None,
     retention: RetentionStore | None = None,
+    benchmark_history: BenchmarkHistory | None = None,
 ):
     """Create a metrics server with the packaged single-page shell."""
 
@@ -33,6 +35,7 @@ def create_dashboard_server(
     )
     history = retention or RetentionStore()
     telemetry = registry or build_default_registry()
+    sessions = benchmark_history or BenchmarkHistory()
 
     def current(capabilities=None):
         return (
@@ -56,7 +59,27 @@ def create_dashboard_server(
             "/v1/indicators": lambda: build_indicators(current(), retention=history),
         },
         metrics_provider=current,
+        query_routes={
+            "/v1/history": lambda _query: {
+                "recent": bounded_history(history),
+                "sessions": sessions.list_sessions(),
+            },
+            "/v1/compare": lambda query: sessions.compare(
+                _one(query, "session"),
+                history,
+                metric=_one(query, "metric"),
+            ),
+        },
     )
+
+
+def _one(query: Mapping[str, list[str]], field: str) -> str:
+    if set(query) - {"session", "metric"}:
+        raise ValueError("history comparison query contains unknown fields")
+    values = query.get(field)
+    if not isinstance(values, list) or len(values) != 1 or not values[0]:
+        raise ValueError(f"history comparison requires one {field}")
+    return values[0]
 
 
 def _latest_snapshot(
