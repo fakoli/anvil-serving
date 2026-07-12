@@ -211,6 +211,25 @@ that observability does not materially distort the measured workload.
   benchmark throughput and latency.
 - All member task verification commands and the full relevant test suite pass.
 
+**Completion evidence (2026-07-11):**
+
+- All milestone tasks passed strict review: T016 `EVAACC806C`, T017
+  `EV0D97115E`, T014 `EVB548D0DF`, and T018 `EVBCC8DE05`.
+- The integrated capture, artifact, history-comparison, and overhead gate passes
+  with all milestone member tests (`27 passed`). The final repository gate is
+  clean (`3344 passed, 2 skipped`), together with Ruff, strict documentation,
+  Markdown-link, and full CLI-reference audit gates.
+- The Fakoli Dark target-path overhead run passed without threshold changes.
+  Normal mode averaged 0.3051 percent host CPU with 38,699,008-byte peak RSS;
+  benchmark mode averaged 0.1513 percent host CPU with 39,501,824-byte peak
+  RSS, zero dashboard-process capture writes, and zero GPU allocation. The
+  controlled collection effect was 0.3529 percent throughput and -0.3516
+  percent latency.
+- The sanitized result is indexed at
+  [the observability overhead finding](findings/2026-07-11-system-observability-overhead.md).
+  Its external raw artifact checksum is
+  `98da7a3426493e6f9aef92c7e663ab8a7ec2a596b0824002a1f0f841022c983e`.
+
 ## Evidence handoff
 
 For each milestone, the executing model should begin with this document, the
