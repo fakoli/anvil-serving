@@ -9,6 +9,7 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-12 | [2026-07-12-qwen35-122b-mxfp4-benchmark.md](2026-07-12-qwen35-122b-mxfp4-benchmark.md) | Single-RTX-PRO-6000 Qwen3.5-122B MXFP4/Marlin throughput and deterministic session-eval result (do not promote) |
 | 2026-07-11 | [2026-07-11-system-observability-overhead.md](2026-07-11-system-observability-overhead.md) | Strict observability overhead and benchmark-effect gate |
 | 2026-07-11 | [2026-07-11-system-observability-artifact-contract.md](2026-07-11-system-observability-artifact-contract.md) | Synthetic contract validation for external raw telemetry and a sanitized manifest |
 | 2026-07-10 | [2026-07-10-blackwell-local-model-bakeoff.md](2026-07-10-blackwell-local-model-bakeoff.md) | RTX PRO 6000 and RTX 5090 local-model bakeoff vs production baselines: Nemotron text/Omni, Gemma 4 31B, Ornith 35B, MiniMax M2.7 REAP, DeepSeek V4 Flash — plus the 2026-07-11 extension (Nemotron Puzzle 75B + Qwen3.6-27B with verified MTP speedups, Qwen3.5-35B and Gemma E4B on llama.cpp) |

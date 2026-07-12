@@ -680,6 +680,81 @@ active_params_b = 10        # MoE: 122B total, ~10B active per token
   mode = "flexibility"
   rationale = "gpt-oss-120b heavy baseline measures 183.2 tok/s (agentic-fast); this 122B-A10B NVFP4 trades single-stream throughput (~38.8 tok/s @8k ctx) for a full 131072-ctx window (8.97x concurrency, 128k needle verified), separated reasoning, and clean tool-calling. Suited to quality/long-context/planning/review, NOT latency-sensitive chat. CANDIDATE only — not promoted to heavy-local."
 
+[[recipe]]
+model = "olka-fi/Qwen3.5-122B-A10B-MXFP4"
+status = "verified"
+source = "measured on fakoli-dark 2026-07-12 — full preflight + standard throughput + deterministic planning suite"
+family = "qwen3.5"
+total_params_b = 122
+active_params_b = 10
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 96
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+  managed_serve = "heavy-qwen35-122b-mxfp4"
+  served_model_name = "qwen35-122b-mxfp4"
+  quantization = "compressed-tensors MXFP4; Marlin W4A16 fallback on sm_120"
+  port = 30004
+  context_tokens = 131072
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--revision 345839ea666a70f5035672f7c88afcba6281921f",
+    "--served-model-name qwen35-122b-mxfp4",
+    "--quantization compressed-tensors",
+    "--kv-cache-dtype fp8",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--trust-remote-code",
+    "--max-model-len 131072",
+    "--max-num-seqs 2",
+    "--gpu-memory-utilization 0.90",
+  ]
+  note = "The compose entrypoint removes the sm_120-incompatible FlashInfer cute_dsl module so vLLM selects MarlinMxFp4LinearKernel and MarlinExperts. This verifies a serving recipe, not routing eligibility."
+
+  [recipe.measured]
+  throughput_single_tok_s = 30.5706
+  ttft_p50_ms = 720.79
+  ttft_p95_ms = 974.40
+  e2e_p50_ms = 1066.43
+  e2e_p95_ms = 1327.91
+  standard_requests = "10/10 completed; 8192 context; max_tokens=256; thinking disabled"
+  preflight = "ALL PASS — smoke, structured JSON, needle@128k (25.8 s), tool batch 20/20"
+  deterministic_planning_eval = "1/5 passed; milestone-execution session-evals suite"
+  vram_used_mib_after_benchmark = 89336
+  caveats = "The Marlin W4A16 path was 21% slower than the prior local NVFP4 result and did not reproduce external llama.cpp MXFP4_MOE speed. FP8 KV remains an accuracy caveat without calibrated scales."
+
+  [recipe.intent]
+  suited = ["benchmark-candidate", "long-context-experiment"]
+  not_suited = ["promoted-heavy", "planning", "review"]
+  mode = "flexibility"
+  rationale = "Serving correctness and 131K context passed, but throughput regressed versus local NVFP4 and deterministic planning passed only 1/5. Keep reproducible for engine/weight A/B; do not promote."
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/Qwen/Qwen3.5-122B-A10B",
+  ]
+  community = [
+    "https://huggingface.co/olka-fi/Qwen3.5-122B-A10B-MXFP4",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1roiyvo/rtx6k_server_450w_qwen35122ba10b_mxfp4_moe/",
+    "https://www.reddit.com/r/LocalLLM/comments/1re8si5/qwen35122ba10b_vs_old_codernext80b_both_at_nvfp4/",
+  ]
+  local = [
+    "docs/findings/2026-07-12-qwen35-122b-mxfp4-benchmark.md",
+    "docs/findings/2026-07-12-qwen35-122b-mxfp4-evidence/standard-throughput.json",
+    "docs/findings/2026-07-12-qwen35-122b-mxfp4-evidence/deterministic-planning-eval.json",
+  ]
+
 # ─── 2026-07-10 Blackwell local-model bakeoff (evidence:
 # docs/findings/2026-07-10-blackwell-local-model-bakeoff.md) ─────────────────
 
