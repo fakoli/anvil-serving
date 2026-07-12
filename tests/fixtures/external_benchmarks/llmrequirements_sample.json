@@ -1,0 +1,32 @@
+{
+  "_lastUpdated": "2026-07-11",
+  "_lastMaterialRelease": "2026-07-11",
+  "models": [
+    {
+      "id": "qwen3-6-27b-dense",
+      "name": "Qwen 3.6 27B (dense)",
+      "family": "Qwen",
+      "params": 27,
+      "type": "dense",
+      "modality": "text",
+      "sizeQ4": 16,
+      "vramMinQ4": 20,
+      "vramComfortQ4": 24,
+      "ratings": {"coding": 5, "agents": 3, "reasoning": 5, "longContext": 5},
+      "benchmarks": {"tb2": 59.3, "swebench_pro": 53.5, "swebench_ver": 77.2},
+      "huggingface": "https://huggingface.co/Qwen/Qwen3.6-27B",
+      "contextK": 262
+    }
+  ],
+  "builds": [
+    {
+      "id": "rtx-pro-6000-blackwell-96",
+      "name": "Single RTX Pro 6000 Blackwell 96 GB build",
+      "memoryGB": 96,
+      "usableMemoryGB": 93,
+      "tps": {"30b": 85},
+      "pp": {"30b": 4100},
+      "ttft100k": {"30b": 28}
+    }
+  ]
+}

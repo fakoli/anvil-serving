@@ -1,0 +1,160 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "failures": [
+    {
+      "error": "answer",
+      "eval_id": "MCAS_2006_9_44",
+      "suite": "hf-arc-challenge-5-thinking"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39031/v1",
+    "candidate_id": "thinkingcap-qwen36-27b-fp8",
+    "config_id": "vllm-nightly-mtp3-fp8kv-262k-seq5",
+    "model": "thinkingcap-qwen36-27b-fp8",
+    "started_at": "2026-07-12T09:53:53Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T095353Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-arc-challenge-5-thinking": {
+      "checks": [
+        {
+          "content_excerpt": "\n\nHere is the step-by-step reasoning:\n\n1.  **Understand the terms:** A planet's **rotation** is its spin on its axis, which determines the length of a **day**. A planet's **revolution** is its orbit a",
+          "id": "Mercury_7175875",
+          "latency_ms": 7745.274782180786,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "\n\nEngineers test building models under earthquake conditions to understand how structures respond to seismic forces. The primary goal of this testing is to identify weaknesses and improve structural i",
+          "id": "Mercury_SC_409171",
+          "latency_ms": 3256.1686038970947,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "\n\nThe correct answer is **C**. Photosynthesis begins when chlorophyll, the green pigment in plant leaves, absorbs light energy from the sun. This captured energy is then used to drive the chemical rea",
+          "id": "Mercury_SC_408547",
+          "latency_ms": 4316.617250442505,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to test its effects. In this scenario, the physicist is intentionally a",
+          "id": "Mercury_407327",
+          "latency_ms": 6693.056344985962,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "\n\nLet's analyze the energy transformations for both objects as they fall:\n\n1. **Energy Conservation:** As objects fall, gravitational potential energy (PE = mgh) is converted into kinetic energy (KE).",
+          "error": "answer",
+          "id": "MCAS_2006_9_44",
+          "latency_ms": 11440.437316894531,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-arc-challenge-5-thinking.suite.json",
+      "status": "failed",
+      "work_class": "basic-independent-multiple-choice-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 33485.820293426514
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

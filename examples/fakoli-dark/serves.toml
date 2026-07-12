@@ -274,3 +274,39 @@ model = "gemma4-e4b-q4-gguf"
 engine = "llamacpp"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-gemma4-e4b-llamacpp"
+
+[[serve]]
+name = "cand-qwen36-fp8"
+container = "vllm-cand-qwen36-fp8"
+port = 39030
+model = "qwen36-27b-fp8"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-qwen36-fp8"
+
+[[serve]]
+name = "cand-thinkingcap-qwen36-fp8"
+container = "vllm-cand-thinkingcap-qwen36-fp8"
+port = 39031
+model = "thinkingcap-qwen36-27b-fp8"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-thinkingcap-qwen36-fp8"
+
+[[serve]]
+name = "cand-mistral-small4-119b-nvfp4"
+container = "vllm-cand-mistral-small4-119b-nvfp4"
+port = 39032
+model = "mistral-small4-119b-a6b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-mistral-small4-119b-nvfp4"
+
+[[serve]]
+name = "cand-nemotron3-super-120b"
+container = "vllm-cand-nemotron3-super-120b"
+port = 39033
+model = "nemotron3-super-120b-a12b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-super-120b"

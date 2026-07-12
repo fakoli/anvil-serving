@@ -1,0 +1,178 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "failures": [
+    {
+      "error": "answer",
+      "eval_id": "Mercury_7175875",
+      "suite": "hf-arc-challenge-5-thinking"
+    },
+    {
+      "error": "answer",
+      "eval_id": "Mercury_SC_408547",
+      "suite": "hf-arc-challenge-5-thinking"
+    },
+    {
+      "error": "answer",
+      "eval_id": "Mercury_407327",
+      "suite": "hf-arc-challenge-5-thinking"
+    },
+    {
+      "error": "answer",
+      "eval_id": "MCAS_2006_9_44",
+      "suite": "hf-arc-challenge-5-thinking"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39027/v1",
+    "candidate_id": "qwen36-27b-nvfp4-mtp",
+    "config_id": "vllm-nightly-mtp3-fp8kv-262k-seq5",
+    "model": "qwen36-27b-nvfp4-mtp",
+    "started_at": "2026-07-12T09:56:30Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T095630Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-arc-challenge-5-thinking": {
+      "checks": [
+        {
+          "content_excerpt": "",
+          "error": "answer",
+          "id": "Mercury_7175875",
+          "latency_ms": 11029.920101165771,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "\n\nTesting building models under earthquake conditions allows engineers to observe how structures respond to seismic forces, identify weak points, and refine their designs. The primary purpose of this ",
+          "id": "Mercury_SC_409171",
+          "latency_ms": 9111.870288848877,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "",
+          "error": "answer",
+          "id": "Mercury_SC_408547",
+          "latency_ms": 9274.70326423645,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "\n\nIn a scientific experiment, variables are categorized based on their role:\n- The",
+          "error": "answer",
+          "id": "Mercury_407327",
+          "latency_ms": 9141.268014907837,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "",
+          "error": "answer",
+          "id": "MCAS_2006_9_44",
+          "latency_ms": 8846.393346786499,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "answer",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-arc-challenge-5-thinking.suite.json",
+      "status": "failed",
+      "work_class": "basic-independent-multiple-choice-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 47442.86799430847
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
