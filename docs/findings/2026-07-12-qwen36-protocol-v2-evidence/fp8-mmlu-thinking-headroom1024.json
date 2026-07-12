@@ -1,0 +1,1264 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 1024,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-5-health",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-10-physics",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-15-business",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-25-chemistry",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-35-economics",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-40-engineering",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-45-philosophy",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-65-law",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39030/v1",
+    "candidate_id": "qwen36-27b-fp8",
+    "config_id": "vllm-fp8-fp8kv-262k-thinking-headroom1024",
+    "model": "qwen36-27b-fp8",
+    "started_at": "2026-07-12T16:56:28Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T165628Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.experiment.yml#cand-qwen36-fp8",
+    "serve_command": "anvil-serving serves up cand-qwen36-fp8 --manifest examples/fakoli-dark/serves.toml --recreate --confirm"
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13878.31997871399,
+              "reasoning_chars": 4876,
+              "reasoning_excerpt": "The user wants to identify the body cavity containing the pituitary gland from a list of ten options.\n\n1.  **Analyze the question:** \"Which of the following is the body cavity that contains the pituit",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 1375
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13773.061037063599,
+              "reasoning_chars": 4876,
+              "reasoning_excerpt": "The user wants to identify the body cavity containing the pituitary gland from a list of ten options.\n\n1.  **Analyze the question:** \"Which of the following is the body cavity that contains the pituit",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 1375
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13979.84790802002,
+              "reasoning_chars": 4876,
+              "reasoning_excerpt": "The user wants to identify the body cavity containing the pituitary gland from a list of ten options.\n\n1.  **Analyze the question:** \"Which of the following is the body cavity that contains the pituit",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 1375
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-5-health",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13182.474374771118,
+              "reasoning_chars": 4020,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 155,
+                "prompt_tokens_details": null,
+                "total_tokens": 1435
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12894.890546798706,
+              "reasoning_chars": 4020,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 155,
+                "prompt_tokens_details": null,
+                "total_tokens": 1435
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13116.642475128174,
+              "reasoning_chars": 4020,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 155,
+                "prompt_tokens_details": null,
+                "total_tokens": 1435
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-10-physics",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14372.268438339233,
+              "reasoning_chars": 5309,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - The user provides a fill-in-the-blank question with 10 options (A-J).\n   - The sentence: \"In contrast to _______, _______ aim to reward",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 228,
+                "prompt_tokens_details": null,
+                "total_tokens": 1508
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14414.334058761597,
+              "reasoning_chars": 5309,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - The user provides a fill-in-the-blank question with 10 options (A-J).\n   - The sentence: \"In contrast to _______, _______ aim to reward",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 228,
+                "prompt_tokens_details": null,
+                "total_tokens": 1508
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14370.48363685608,
+              "reasoning_chars": 5309,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - The user provides a fill-in-the-blank question with 10 options (A-J).\n   - The sentence: \"In contrast to _______, _______ aim to reward",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 228,
+                "prompt_tokens_details": null,
+                "total_tokens": 1508
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-15-business",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLet's evaluate each option based on established arthropod biology:\n\n- **A. They possess an exoskeleton composed primarily of peptidoglycan.** → Incorrect. Arthropod exoskeletons are primarily composed of **chitin** (a polysaccharide) and proteins. Peptidoglycan is a structural component of bacterial cell walls, not animal tissues.\n- **B. They possess an open circulatory system with a dorsal heart.** → Correct. Arthropods typically have an open circulatory system where a tubular, **dorsally located heart** pumps hemolymph into the hemocoel (body cavity), bathing organs directly.\n- **C. They are members of a biologically unsuccessful phylum incapable of exploiting diverse habitats and nutrition sources.** → Incorrect. Arthropoda is the **most diverse and ecologically successful** animal phylum, occupying nearly every terrestrial, freshwater, and marine habitat with highly varied diets.\n- **D. They lack paired, jointed appendages.** → Incorrect. The name \"Arthropoda\" literally means \"jointed feet.\" Paired, jointed appendages are a **defining synapomorphy** of the phylum.\n- **E-J. N/A** → Not applicable.\n\nThe only biologically accurate statement is B.\n\nFINAL=B",
+              "content_excerpt": "\n\nLet's evaluate each option based on established arthropod biology:\n\n- **A. They possess an exoskeleton composed primarily of peptidoglycan.** → Incorrect. Arthropod exoskeletons are primarily compos",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 13333.539009094238,
+              "reasoning_chars": 3882,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which of the following represents an accurate statement concerning arthropods?\"\n   - Options: A, B, C, D, E-J (N/A)\n   - Nee",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1273,
+                "prompt_tokens": 136,
+                "prompt_tokens_details": null,
+                "total_tokens": 1409
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLet's evaluate each option based on established arthropod biology:\n\n- **A. They possess an exoskeleton composed primarily of peptidoglycan.** → Incorrect. Arthropod exoskeletons are primarily composed of **chitin** (a polysaccharide) and proteins. Peptidoglycan is a structural component of bacterial cell walls, not animal tissues.\n- **B. They possess an open circulatory system with a dorsal heart.** → Correct. Arthropods typically have an open circulatory system where a tubular, **dorsally located heart** pumps hemolymph into the hemocoel (body cavity), bathing organs directly.\n- **C. They are members of a biologically unsuccessful phylum incapable of exploiting diverse habitats and nutrition sources.** → Incorrect. Arthropoda is the **most diverse and ecologically successful** animal phylum, occupying nearly every terrestrial, freshwater, and marine habitat with highly varied diets.\n- **D. They lack paired, jointed appendages.** → Incorrect. The name \"Arthropoda\" literally means \"jointed feet.\" Paired, jointed appendages are a **defining synapomorphy** of the phylum.\n- **E-J. N/A** → Not applicable.\n\nThe only biologically accurate statement is B.\n\nFINAL=B",
+              "content_excerpt": "\n\nLet's evaluate each option based on established arthropod biology:\n\n- **A. They possess an exoskeleton composed primarily of peptidoglycan.** → Incorrect. Arthropod exoskeletons are primarily compos",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 13344.062566757202,
+              "reasoning_chars": 3882,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which of the following represents an accurate statement concerning arthropods?\"\n   - Options: A, B, C, D, E-J (N/A)\n   - Nee",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1273,
+                "prompt_tokens": 136,
+                "prompt_tokens_details": null,
+                "total_tokens": 1409
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLet's evaluate each option based on established arthropod biology:\n\n- **A. They possess an exoskeleton composed primarily of peptidoglycan.** → Incorrect. Arthropod exoskeletons are primarily composed of **chitin** (a polysaccharide) and proteins. Peptidoglycan is a structural component of bacterial cell walls, not animal tissues.\n- **B. They possess an open circulatory system with a dorsal heart.** → Correct. Arthropods typically have an open circulatory system where a tubular, **dorsally located heart** pumps hemolymph into the hemocoel (body cavity), bathing organs directly.\n- **C. They are members of a biologically unsuccessful phylum incapable of exploiting diverse habitats and nutrition sources.** → Incorrect. Arthropoda is the **most diverse and ecologically successful** animal phylum, occupying nearly every terrestrial, freshwater, and marine habitat with highly varied diets.\n- **D. They lack paired, jointed appendages.** → Incorrect. The name \"Arthropoda\" literally means \"jointed feet.\" Paired, jointed appendages are a **defining synapomorphy** of the phylum.\n- **E-J. N/A** → Not applicable.\n\nThe only biologically accurate statement is B.\n\nFINAL=B",
+              "content_excerpt": "\n\nLet's evaluate each option based on established arthropod biology:\n\n- **A. They possess an exoskeleton composed primarily of peptidoglycan.** → Incorrect. Arthropod exoskeletons are primarily compos",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 13324.911117553711,
+              "reasoning_chars": 3882,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which of the following represents an accurate statement concerning arthropods?\"\n   - Options: A, B, C, D, E-J (N/A)\n   - Nee",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1273,
+                "prompt_tokens": 136,
+                "prompt_tokens_details": null,
+                "total_tokens": 1409
+              }
+            }
+          ],
+          "id": "mmlu-pro-20-biology",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13416.029691696167,
+              "reasoning_chars": 3855,
+              "reasoning_excerpt": "Here's a thinking process to arrive at the correct answer:\n\n1.  **Analyze the Request:**\n    *   **Subject:** Electron Paramagnetic Resonance (EPR) spectroscopy (also known as Electron Spin Resonance,",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 1395
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13540.886402130127,
+              "reasoning_chars": 3855,
+              "reasoning_excerpt": "Here's a thinking process to arrive at the correct answer:\n\n1.  **Analyze the Request:**\n    *   **Subject:** Electron Paramagnetic Resonance (EPR) spectroscopy (also known as Electron Spin Resonance,",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 1395
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13442.561388015747,
+              "reasoning_chars": 3855,
+              "reasoning_excerpt": "Here's a thinking process to arrive at the correct answer:\n\n1.  **Analyze the Request:**\n    *   **Subject:** Electron Paramagnetic Resonance (EPR) spectroscopy (also known as Electron Spin Resonance,",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 1395
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-25-chemistry",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 15005.311965942383,
+              "reasoning_chars": 4425,
+              "reasoning_excerpt": "Here's a thinking process that leads to the solution:\n\n1.  **Analyze the Problem Statement:**\n\n    *   **Architecture:** Pipelined RISC machine.\n    *   **Registers:** R0 through R7 (8 registers).\n   ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 1458
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14944.413185119629,
+              "reasoning_chars": 4425,
+              "reasoning_excerpt": "Here's a thinking process that leads to the solution:\n\n1.  **Analyze the Problem Statement:**\n\n    *   **Architecture:** Pipelined RISC machine.\n    *   **Registers:** R0 through R7 (8 registers).\n   ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 1458
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 15045.096635818481,
+              "reasoning_chars": 4425,
+              "reasoning_excerpt": "Here's a thinking process that leads to the solution:\n\n1.  **Analyze the Problem Statement:**\n\n    *   **Architecture:** Pipelined RISC machine.\n    *   **Registers:** R0 through R7 (8 registers).\n   ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 1458
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-30-computer-science",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14560.060262680054,
+              "reasoning_chars": 5300,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** For a stationary autoregressive process, shocks will...\n   - **Options:** A through J\n   - **Task:** Reason through the q",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 108,
+                "prompt_tokens_details": null,
+                "total_tokens": 1388
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14577.265739440918,
+              "reasoning_chars": 5300,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** For a stationary autoregressive process, shocks will...\n   - **Options:** A through J\n   - **Task:** Reason through the q",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 108,
+                "prompt_tokens_details": null,
+                "total_tokens": 1388
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14506.795883178711,
+              "reasoning_chars": 5300,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** For a stationary autoregressive process, shocks will...\n   - **Options:** A through J\n   - **Task:** Reason through the q",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 108,
+                "prompt_tokens_details": null,
+                "total_tokens": 1388
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-35-economics",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13004.37068939209,
+              "reasoning_chars": 3076,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Question:** A point pole has a strength of $4\\pi \\times 10^{-4}$ weber. The force in newtons on a point pole of $4\\pi \\times 1.5 \\times 1",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 149,
+                "prompt_tokens_details": null,
+                "total_tokens": 1429
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13093.961238861084,
+              "reasoning_chars": 3076,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Question:** A point pole has a strength of $4\\pi \\times 10^{-4}$ weber. The force in newtons on a point pole of $4\\pi \\times 1.5 \\times 1",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 149,
+                "prompt_tokens_details": null,
+                "total_tokens": 1429
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13047.465085983276,
+              "reasoning_chars": 3076,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Question:** A point pole has a strength of $4\\pi \\times 10^{-4}$ weber. The force in newtons on a point pole of $4\\pi \\times 1.5 \\times 1",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 149,
+                "prompt_tokens_details": null,
+                "total_tokens": 1429
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-40-engineering",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14121.11759185791,
+              "reasoning_chars": 4259,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Which formula of propositional logic best symbolizes: \"Turtles live long lives and are happy creatures, unless they are i",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 120,
+                "prompt_tokens_details": null,
+                "total_tokens": 1400
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14146.427631378174,
+              "reasoning_chars": 4259,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Which formula of propositional logic best symbolizes: \"Turtles live long lives and are happy creatures, unless they are i",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 120,
+                "prompt_tokens_details": null,
+                "total_tokens": 1400
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14102.127075195312,
+              "reasoning_chars": 4259,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Which formula of propositional logic best symbolizes: \"Turtles live long lives and are happy creatures, unless they are i",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 120,
+                "prompt_tokens_details": null,
+                "total_tokens": 1400
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-45-philosophy",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14949.602603912354,
+              "reasoning_chars": 5452,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** What is the judge ad hoc?\n   - **Options:** A through J (10 options)\n   - **Task:** Reason through the options, then outp",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 161,
+                "prompt_tokens_details": null,
+                "total_tokens": 1441
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14790.02070426941,
+              "reasoning_chars": 5452,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** What is the judge ad hoc?\n   - **Options:** A through J (10 options)\n   - **Task:** Reason through the options, then outp",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 161,
+                "prompt_tokens_details": null,
+                "total_tokens": 1441
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14863.207817077637,
+              "reasoning_chars": 5452,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** What is the judge ad hoc?\n   - **Options:** A through J (10 options)\n   - **Task:** Reason through the options, then outp",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 161,
+                "prompt_tokens_details": null,
+                "total_tokens": 1441
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-65-law",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+      "source_sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+      "status": "failed",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 419182.22165107727
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

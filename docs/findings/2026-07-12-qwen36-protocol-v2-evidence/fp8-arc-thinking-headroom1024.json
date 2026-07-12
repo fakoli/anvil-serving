@@ -1,0 +1,666 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 1024,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "Mercury_7175875",
+      "failure_classes": [
+        "completion_budget_exhausted_after_visible_output"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "Mercury_SC_408547",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "MCAS_2006_9_44",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39030/v1",
+    "candidate_id": "qwen36-27b-fp8",
+    "config_id": "vllm-fp8-fp8kv-262k-thinking-headroom1024",
+    "model": "qwen36-27b-fp8",
+    "started_at": "2026-07-12T16:52:43Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T165243Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.experiment.yml#cand-qwen36-fp8",
+    "serve_command": "anvil-serving serves up cand-qwen36-fp8 --manifest examples/fakoli-dark/serves.toml --recreate --confirm"
+  },
+  "suites": {
+    "hf-arc-challenge-5-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe rotation speed of a planet directly determines the length of its day.",
+              "content_excerpt": "\n\nThe rotation speed of a planet directly determines the length of its day.",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 15166.69750213623,
+              "reasoning_chars": 5566,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** An astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect?\n   - **Opt",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 1367
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe rotation speed of a planet directly determines the length of its day.",
+              "content_excerpt": "\n\nThe rotation speed of a planet directly determines the length of its day.",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 15011.58595085144,
+              "reasoning_chars": 5566,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** An astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect?\n   - **Opt",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 1367
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe rotation speed of a planet directly determines the length of its day.",
+              "content_excerpt": "\n\nThe rotation speed of a planet directly determines the length of its day.",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 14996.85001373291,
+              "reasoning_chars": 5566,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** An astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect?\n   - **Opt",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 1367
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "Mercury_7175875",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nEngineers test building models under earthquake conditions to simulate seismic forces and observe how structures respond. The primary purpose of this testing is to identify structural weaknesses, understand failure points, and refine designs to better withstand tremors. This iterative process directly improves structural integrity and occupant protection. While testing might indirectly influence construction timelines, aesthetics, or material efficiency, its core and most direct outcome is enhanced safety.\n\nFINAL=B",
+              "content_excerpt": "\n\nEngineers test building models under earthquake conditions to simulate seismic forces and observe how structures respond. The primary purpose of this testing is to identify structural weaknesses, un",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8681.795835494995,
+              "reasoning_chars": 3118,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Engineers test several building models under earthquake conditions. What is the most likely result?\n   - **Options:** \n  ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 745,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 818
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nEngineers test building models under earthquake conditions to simulate seismic forces and observe how structures respond. The primary purpose of this testing is to identify structural weaknesses, understand failure points, and refine designs to better withstand tremors. This iterative process directly improves structural integrity and occupant protection. While testing might indirectly influence construction timelines, aesthetics, or material efficiency, its core and most direct outcome is enhanced safety.\n\nFINAL=B",
+              "content_excerpt": "\n\nEngineers test building models under earthquake conditions to simulate seismic forces and observe how structures respond. The primary purpose of this testing is to identify structural weaknesses, un",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8520.238399505615,
+              "reasoning_chars": 3118,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Engineers test several building models under earthquake conditions. What is the most likely result?\n   - **Options:** \n  ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 745,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 818
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nEngineers test building models under earthquake conditions to simulate seismic forces and observe how structures respond. The primary purpose of this testing is to identify structural weaknesses, understand failure points, and refine designs to better withstand tremors. This iterative process directly improves structural integrity and occupant protection. While testing might indirectly influence construction timelines, aesthetics, or material efficiency, its core and most direct outcome is enhanced safety.\n\nFINAL=B",
+              "content_excerpt": "\n\nEngineers test building models under earthquake conditions to simulate seismic forces and observe how structures respond. The primary purpose of this testing is to identify structural weaknesses, un",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8994.42982673645,
+              "reasoning_chars": 3118,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Engineers test several building models under earthquake conditions. What is the most likely result?\n   - **Options:** \n  ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 745,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 818
+              }
+            }
+          ],
+          "id": "Mercury_SC_409171",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14145.029544830322,
+              "reasoning_chars": 5694,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which step signals the beginning of photosynthesis?\"\n   - Options:\n     A. Chemical energy is absorbed through roots.\n     B",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 1361
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14170.593976974487,
+              "reasoning_chars": 5694,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which step signals the beginning of photosynthesis?\"\n   - Options:\n     A. Chemical energy is absorbed through roots.\n     B",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 1361
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13959.24973487854,
+              "reasoning_chars": 5694,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which step signals the beginning of photosynthesis?\"\n   - Options:\n     A. Chemical energy is absorbed through roots.\n     B",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 1361
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "Mercury_SC_408547",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to observe its effect. The **dependent variable** is what is measured in response to that change, and **controls** are factors kept constant to ensure a fair test. Since the physicist is intentionally altering the car's speed between trials, speed is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to observe its effect. The **dependent variable** is what is measured i",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12341.883897781372,
+              "reasoning_chars": 4683,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1110,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1183
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to observe its effect. The **dependent variable** is what is measured in response to that change, and **controls** are factors kept constant to ensure a fair test. Since the physicist is intentionally altering the car's speed between trials, speed is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to observe its effect. The **dependent variable** is what is measured i",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12388.880252838135,
+              "reasoning_chars": 4683,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1110,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1183
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to observe its effect. The **dependent variable** is what is measured in response to that change, and **controls** are factors kept constant to ensure a fair test. Since the physicist is intentionally altering the car's speed between trials, speed is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to observe its effect. The **dependent variable** is what is measured i",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12252.94041633606,
+              "reasoning_chars": 4683,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1110,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1183
+              }
+            }
+          ],
+          "id": "Mercury_407327",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14841.270685195923,
+              "reasoning_chars": 4622,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** A 1 kg and a 5 kg object fall 2 m on the Moon. Which best describes both after falling 1 m?\n   - **Options:**\n     A. Eac",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14716.355562210083,
+              "reasoning_chars": 4622,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** A 1 kg and a 5 kg object fall 2 m on the Moon. Which best describes both after falling 1 m?\n   - **Options:**\n     A. Eac",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14829.819202423096,
+              "reasoning_chars": 4622,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** A 1 kg and a 5 kg object fall 2 m on the Moon. Which best describes both after falling 1 m?\n   - **Options:**\n     A. Eac",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "MCAS_2006_9_44",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-arc-challenge-5-repeated.suite.json",
+      "source_sha256": "9e0245df74bd2b428f7ea76eb950870a8732d7971c62baba1d58b4ec7282941c",
+      "status": "failed",
+      "work_class": "basic-independent-multiple-choice-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 195053.6274909973
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

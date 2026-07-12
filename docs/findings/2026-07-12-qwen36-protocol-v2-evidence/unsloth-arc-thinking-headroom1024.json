@@ -1,0 +1,640 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 1024,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "MCAS_2006_9_44",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39036/v1",
+    "candidate_id": "unsloth-qwen36-27b-nvfp4",
+    "config_id": "vllm025-mtp2-fp8kv-262k-thinking-headroom1024",
+    "model": "unsloth-qwen36-27b-nvfp4",
+    "started_at": "2026-07-12T18:38:43Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T183843Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.experiment.yml#cand-unsloth-qwen36-27b-nvfp4",
+    "serve_command": "anvil-serving serves up cand-unsloth-qwen36-27b-nvfp4 --manifest examples/fakoli-dark/serves.toml --recreate --confirm"
+  },
+  "suites": {
+    "hf-arc-challenge-5-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nHere is the step-by-step reasoning:\n\n1. **Understand the relationship between rotation and time:** A planet's \"day\" is defined by the time it takes to complete one full rotation on its axis. \n2. **Analyze the change:** The question states that the planet rotates *faster*. This means the angular velocity increases.\n3. **Determine the effect on time:** If an object spins faster, it takes less time to complete a single revolution. Therefore, the duration of one rotation decreases.\n4. **Evaluate the options:**\n   - **A. Planetary density will decrease:** Density is mass divided by volume. A change in rotation speed does not significantly alter the planet's mass or volume, so density remains largely unchanged.\n   - **B. Planetary years will become longer:** A \"year\" is determined by the planet's orbit around its star, not its axial rotation. Rotation speed does not affect orbital period.\n   - **C. Planetary days will become shorter:** Since the planet completes a rotation in less time, the length of a day decreases. This directly follows from the premise.\n   - **D. Planetary gravity will become stronger:** Gravity is primarily determined by mass and radius. While faster rotation creates a slight centrifugal force that can make *effective* gravity feel slightly weaker at the equator, it does not make the fundamental gravitational pull stronger.\n\nTherefore, the most direct and likely effect is that the length of the day decreases.\n\nFINAL=C",
+              "content_excerpt": "\n\nHere is the step-by-step reasoning:\n\n1. **Understand the relationship between rotation and time:** A planet's \"day\" is defined by the time it takes to complete one full rotation on its axis. \n2. **A",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10347.224473953247,
+              "reasoning_chars": 2224,
+              "reasoning_excerpt": "The user wants me to answer a multiple-choice science question.\n\n**Question Analysis:**\n- Scenario: A planet rotates faster after a meteorite impact.\n- Question: What is the most likely effect?\n- Opti",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 810,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 897
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nHere is the step-by-step reasoning:\n\n1. **Understand the relationship between rotation and time:** A planet's \"day\" is defined by the time it takes to complete one full rotation on its axis. \n2. **Analyze the change:** The question states that the planet rotates *faster*. This means the angular velocity increases.\n3. **Determine the effect on time:** If an object spins faster, it takes less time to complete a single revolution. Therefore, the duration of one rotation decreases.\n4. **Evaluate the options:**\n   - **A. Planetary density will decrease:** Density is mass divided by volume. A change in rotation speed does not significantly alter the planet's mass or volume, so density remains largely unchanged.\n   - **B. Planetary years will become longer:** A \"year\" is determined by the planet's orbit around its star, not its axial rotation. Rotation speed does not affect orbital period.\n   - **C. Planetary days will become shorter:** Since the planet completes a rotation in less time, the length of a day decreases. This directly follows from the premise.\n   - **D. Planetary gravity will become stronger:** Gravity is primarily determined by mass and radius. While faster rotation creates a slight centrifugal force that can make *effective* gravity feel slightly weaker at the equator, it does not make the fundamental gravitational pull stronger.\n\nTherefore, the most direct and likely effect is that the length of the day decreases.\n\nFINAL=C",
+              "content_excerpt": "\n\nHere is the step-by-step reasoning:\n\n1. **Understand the relationship between rotation and time:** A planet's \"day\" is defined by the time it takes to complete one full rotation on its axis. \n2. **A",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 9542.208194732666,
+              "reasoning_chars": 2224,
+              "reasoning_excerpt": "The user wants me to answer a multiple-choice science question.\n\n**Question Analysis:**\n- Scenario: A planet rotates faster after a meteorite impact.\n- Question: What is the most likely effect?\n- Opti",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 810,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 897
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nHere is the step-by-step reasoning:\n\n1. **Understand the relationship between rotation and time:** A planet's \"day\" is defined by the time it takes to complete one full rotation on its axis. \n2. **Analyze the change:** The question states that the planet rotates *faster*. This means the angular velocity increases.\n3. **Determine the effect on time:** If an object spins faster, it takes less time to complete a single revolution. Therefore, the duration of one rotation decreases.\n4. **Evaluate the options:**\n   - **A. Planetary density will decrease:** Density is mass divided by volume. A change in rotation speed does not significantly alter the planet's mass or volume, so density remains largely unchanged.\n   - **B. Planetary years will become longer:** A \"year\" is determined by the planet's orbit around its star, not its axial rotation. Rotation speed does not affect orbital period.\n   - **C. Planetary days will become shorter:** Since the planet completes a rotation in less time, the length of a day decreases. This directly follows from the premise.\n   - **D. Planetary gravity will become stronger:** Gravity is primarily determined by mass and radius. While faster rotation creates a slight centrifugal force that can make *effective* gravity feel slightly weaker at the equator, it does not make the fundamental gravitational pull stronger.\n\nTherefore, the most direct and likely effect is that the length of the day decreases.\n\nFINAL=C",
+              "content_excerpt": "\n\nHere is the step-by-step reasoning:\n\n1. **Understand the relationship between rotation and time:** A planet's \"day\" is defined by the time it takes to complete one full rotation on its axis. \n2. **A",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 9789.5827293396,
+              "reasoning_chars": 2224,
+              "reasoning_excerpt": "The user wants me to answer a multiple-choice science question.\n\n**Question Analysis:**\n- Scenario: A planet rotates faster after a meteorite impact.\n- Question: What is the most likely effect?\n- Opti",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 810,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 897
+              }
+            }
+          ],
+          "id": "Mercury_7175875",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nEngineers test building models under earthquake conditions to understand how structures respond to seismic forces. The primary goal of this testing is to identify weaknesses in the design and improve structural integrity. By learning how buildings might fail or withstand shaking, engineers can modify their designs to better protect occupants and prevent collapse. Therefore, the most direct and likely outcome of this process is that the actual buildings constructed based on these tests will be safer.\n\nFINAL=B",
+              "content_excerpt": "\n\nEngineers test building models under earthquake conditions to understand how structures respond to seismic forces. The primary goal of this testing is to identify weaknesses in the design and improv",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4919.831275939941,
+              "reasoning_chars": 1647,
+              "reasoning_excerpt": "The user wants me to answer a multiple-choice science question.\n\n**Question Analysis:**\n- Context: Engineers test building models under earthquake conditions.\n- Goal: Determine the most likely result ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 422,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 495
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nEngineers test building models under earthquake conditions to understand how structures respond to seismic forces. The primary goal of this testing is to identify weaknesses in the design and improve structural integrity. By learning how buildings might fail or withstand shaking, engineers can modify their designs to better protect occupants and prevent collapse. Therefore, the most direct and likely outcome of this process is that the actual buildings constructed based on these tests will be safer.\n\nFINAL=B",
+              "content_excerpt": "\n\nEngineers test building models under earthquake conditions to understand how structures respond to seismic forces. The primary goal of this testing is to identify weaknesses in the design and improv",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5291.909217834473,
+              "reasoning_chars": 1647,
+              "reasoning_excerpt": "The user wants me to answer a multiple-choice science question.\n\n**Question Analysis:**\n- Context: Engineers test building models under earthquake conditions.\n- Goal: Determine the most likely result ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 422,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 495
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nEngineers test building models under earthquake conditions to understand how structures respond to seismic forces. The primary goal of this testing is to identify weaknesses in the design and improve structural integrity. By learning how buildings might fail or withstand shaking, engineers can modify their designs to better protect occupants and prevent collapse. Therefore, the most direct and likely outcome of this process is that the actual buildings constructed based on these tests will be safer.\n\nFINAL=B",
+              "content_excerpt": "\n\nEngineers test building models under earthquake conditions to understand how structures respond to seismic forces. The primary goal of this testing is to identify weaknesses in the design and improv",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5135.537385940552,
+              "reasoning_chars": 1647,
+              "reasoning_excerpt": "The user wants me to answer a multiple-choice science question.\n\n**Question Analysis:**\n- Context: Engineers test building models under earthquake conditions.\n- Goal: Determine the most likely result ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 422,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 495
+              }
+            }
+          ],
+          "id": "Mercury_SC_409171",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe correct answer is **C**.\n\n**Reasoning:**\nPhotosynthesis is the process by which plants make food. The very first step in this process occurs when light-absorbing pigments, primarily **chlorophyll** located in the chloroplasts of plant cells, **capture light energy** from the sun. This absorption excites electrons and initiates the chemical reactions that eventually convert light energy into chemical energy (glucose). \n\n- Option A is incorrect because roots absorb water and nutrients, not chemical energy for photosynthesis.\n- Option B describes the overall result of the light-dependent reactions, but the process must begin with the capture of light first.\n- Option D is incorrect because sunlight is energy, not a material that can be converted into a molecule like chlorophyll.\n\nFINAL=C",
+              "content_excerpt": "\n\nThe correct answer is **C**.\n\n**Reasoning:**\nPhotosynthesis is the process by which plants make food. The very first step in this process occurs when light-absorbing pigments, primarily **chlorophyl",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8884.737014770508,
+              "reasoning_chars": 2458,
+              "reasoning_excerpt": "The user wants to identify the step that signals the beginning of photosynthesis from the given options.\n\n1.  **Analyze the question:** \"Which step signals the beginning of photosynthesis?\"\n    *   Ph",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 743,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 824
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe correct answer is **C**.\n\n**Reasoning:**\nPhotosynthesis is the process by which plants make food. The very first step in this process occurs when light-absorbing pigments, primarily **chlorophyll** located in the chloroplasts of plant cells, **capture light energy** from the sun. This absorption excites electrons and initiates the chemical reactions that eventually convert light energy into chemical energy (glucose). \n\n- Option A is incorrect because roots absorb water and nutrients, not chemical energy for photosynthesis.\n- Option B describes the overall result of the light-dependent reactions, but the process must begin with the capture of light first.\n- Option D is incorrect because sunlight is energy, not a material that can be converted into a molecule like chlorophyll.\n\nFINAL=C",
+              "content_excerpt": "\n\nThe correct answer is **C**.\n\n**Reasoning:**\nPhotosynthesis is the process by which plants make food. The very first step in this process occurs when light-absorbing pigments, primarily **chlorophyl",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8720.910549163818,
+              "reasoning_chars": 2458,
+              "reasoning_excerpt": "The user wants to identify the step that signals the beginning of photosynthesis from the given options.\n\n1.  **Analyze the question:** \"Which step signals the beginning of photosynthesis?\"\n    *   Ph",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 743,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 824
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe correct answer is **C**.\n\n**Reasoning:**\nPhotosynthesis is the process by which plants make food. The very first step in this process occurs when light-absorbing pigments, primarily **chlorophyll** located in the chloroplasts of plant cells, **capture light energy** from the sun. This absorption excites electrons and initiates the chemical reactions that eventually convert light energy into chemical energy (glucose). \n\n- Option A is incorrect because roots absorb water and nutrients, not chemical energy for photosynthesis.\n- Option B describes the overall result of the light-dependent reactions, but the process must begin with the capture of light first.\n- Option D is incorrect because sunlight is energy, not a material that can be converted into a molecule like chlorophyll.\n\nFINAL=C",
+              "content_excerpt": "\n\nThe correct answer is **C**.\n\n**Reasoning:**\nPhotosynthesis is the process by which plants make food. The very first step in this process occurs when light-absorbing pigments, primarily **chlorophyl",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 8557.815551757812,
+              "reasoning_chars": 2458,
+              "reasoning_excerpt": "The user wants to identify the step that signals the beginning of photosynthesis from the given options.\n\n1.  **Analyze the question:** \"Which step signals the beginning of photosynthesis?\"\n    *   Ph",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 743,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 824
+              }
+            }
+          ],
+          "id": "Mercury_SC_408547",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to test its effect on another variable. Here, the physicist is intentionally altering the car's speed between trials, making speed the manipulated factor. The outcome being measured (such as jump distance or airtime) would be the dependent variable, controls are factors kept constant to ensure a fair test, and the hypothesis is a prediction formulated before the experiment begins. Since the speed is being deliberately changed, it is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to test its effect on another variable. Here, the physicist is intentio",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 13120.513916015625,
+              "reasoning_chars": 4675,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1153,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1226
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to test its effect on another variable. Here, the physicist is intentionally altering the car's speed between trials, making speed the manipulated factor. The outcome being measured (such as jump distance or airtime) would be the dependent variable, controls are factors kept constant to ensure a fair test, and the hypothesis is a prediction formulated before the experiment begins. Since the speed is being deliberately changed, it is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to test its effect on another variable. Here, the physicist is intentio",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12970.882654190063,
+              "reasoning_chars": 4675,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1153,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1226
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to test its effect on another variable. Here, the physicist is intentionally altering the car's speed between trials, making speed the manipulated factor. The outcome being measured (such as jump distance or airtime) would be the dependent variable, controls are factors kept constant to ensure a fair test, and the hypothesis is a prediction formulated before the experiment begins. Since the speed is being deliberately changed, it is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn a scientific experiment, the **independent variable** is the factor that the researcher deliberately manipulates or changes to test its effect on another variable. Here, the physicist is intentio",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 12758.615970611572,
+              "reasoning_chars": 4675,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1153,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1226
+              }
+            }
+          ],
+          "id": "Mercury_407327",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14003.968715667725,
+              "reasoning_chars": 4040,
+              "reasoning_excerpt": "The user wants me to reason through a multiple-choice science question and provide the final answer in a specific format.\n\n**Question Analysis:**\n*   **Objects:** Two objects with masses $m_1 = 1 \\tex",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 14607.146501541138,
+              "reasoning_chars": 4040,
+              "reasoning_excerpt": "The user wants me to reason through a multiple-choice science question and provide the final answer in a specific format.\n\n**Question Analysis:**\n*   **Objects:** Two objects with masses $m_1 = 1 \\tex",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 13939.354658126831,
+              "reasoning_chars": 4040,
+              "reasoning_excerpt": "The user wants me to reason through a multiple-choice science question and provide the final answer in a specific format.\n\n**Question Analysis:**\n*   **Objects:** Two objects with masses $m_1 = 1 \\tex",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "MCAS_2006_9_44",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-arc-challenge-5-repeated.suite.json",
+      "source_sha256": "9e0245df74bd2b428f7ea76eb950870a8732d7971c62baba1d58b4ec7282941c",
+      "status": "failed",
+      "work_class": "basic-independent-multiple-choice-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 152631.7150592804
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

@@ -1,0 +1,1277 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 1024,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-5-health",
+      "failure_classes": [
+        "completion_budget_exhausted_after_visible_output"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-10-physics",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-15-business",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-20-biology",
+      "failure_classes": [
+        "completion_budget_exhausted_after_visible_output"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-25-chemistry",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-35-economics",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-40-engineering",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-45-philosophy",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "mmlu-pro-65-law",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39027/v1",
+    "candidate_id": "qwen36-27b-nvfp4-mtp",
+    "config_id": "vllm-mtp3-fp8kv-262k-thinking-headroom1024",
+    "model": "qwen36-27b-nvfp4-mtp",
+    "started_at": "2026-07-12T16:41:14Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T164114Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.experiment.yml#cand-qwen36-heavy-mtp",
+    "serve_command": "anvil-serving serves up cand-qwen36-heavy-mtp --manifest examples/fakoli-dark/serves.toml --recreate --confirm"
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland is located at the base of the brain, sitting in a bony depression called the sella turcica within the sphenoid bone. In human anatomy, the major body cavities are divided into the dorsal and ventral cavities. The dorsal cavity is further subdivided into the **cranial cavity** (which encloses the brain) and the spinal cavity (which encloses the spinal cord). Since the pituitary gland is an integral part of the brain's anatomical region and is housed within the skull, it resides specifically in the cranial cavity. While the cranial cavity is technically a subdivision of the dorsal cavity, \"Cranial",
+              "content_excerpt": "\n\nThe pituitary gland is located at the base of the brain, sitting in a bony depression called the sella turcica within the sphenoid bone. In human anatomy, the major body cavities are divided into th",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11787.58430480957,
+              "reasoning_chars": 4393,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which of the following is the body cavity that contains the pituitary gland?\"\n   - Options: A. Ventral, B. Dorsal, C. Buccal",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 1375
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland is located at the base of the brain, sitting in a bony depression called the sella turcica within the sphenoid bone. In human anatomy, the major body cavities are divided into the dorsal and ventral cavities. The dorsal cavity is further subdivided into the **cranial cavity** (which encloses the brain) and the spinal cavity (which encloses the spinal cord). Since the pituitary gland is an integral part of the brain's anatomical region and is housed within the skull, it resides specifically in the cranial cavity. While the cranial cavity is technically a subdivision of the dorsal cavity, \"Cranial",
+              "content_excerpt": "\n\nThe pituitary gland is located at the base of the brain, sitting in a bony depression called the sella turcica within the sphenoid bone. In human anatomy, the major body cavities are divided into th",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11291.858673095703,
+              "reasoning_chars": 4393,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which of the following is the body cavity that contains the pituitary gland?\"\n   - Options: A. Ventral, B. Dorsal, C. Buccal",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 1375
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe pituitary gland is located at the base of the brain, sitting in a bony depression called the sella turcica within the sphenoid bone. In human anatomy, the major body cavities are divided into the dorsal and ventral cavities. The dorsal cavity is further subdivided into the **cranial cavity** (which encloses the brain) and the spinal cavity (which encloses the spinal cord). Since the pituitary gland is an integral part of the brain's anatomical region and is housed within the skull, it resides specifically in the cranial cavity. While the cranial cavity is technically a subdivision of the dorsal cavity, \"Cranial",
+              "content_excerpt": "\n\nThe pituitary gland is located at the base of the brain, sitting in a bony depression called the sella turcica within the sphenoid bone. In human anatomy, the major body cavities are divided into th",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11479.610919952393,
+              "reasoning_chars": 4393,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"Which of the following is the body cavity that contains the pituitary gland?\"\n   - Options: A. Ventral, B. Dorsal, C. Buccal",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 95,
+                "prompt_tokens_details": null,
+                "total_tokens": 1375
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-5-health",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 10991.690397262573,
+              "reasoning_chars": 3901,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 155,
+                "prompt_tokens_details": null,
+                "total_tokens": 1435
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 10912.593126296997,
+              "reasoning_chars": 3901,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 155,
+                "prompt_tokens_details": null,
+                "total_tokens": 1435
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 10864.749908447266,
+              "reasoning_chars": 3901,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"Say the pupil of your eye has a diameter of 5 mm and you have a telescope with an aperture of 50 cm. How much more light can the",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 155,
+                "prompt_tokens_details": null,
+                "total_tokens": 1435
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-10-physics",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12492.484331130981,
+              "reasoning_chars": 5426,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - The user provides a fill-in-the-blank question with 10 options (A-J).\n   - The sentence: \"In contrast to _______, _______ aim to reward",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 228,
+                "prompt_tokens_details": null,
+                "total_tokens": 1508
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12478.549480438232,
+              "reasoning_chars": 5426,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - The user provides a fill-in-the-blank question with 10 options (A-J).\n   - The sentence: \"In contrast to _______, _______ aim to reward",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 228,
+                "prompt_tokens_details": null,
+                "total_tokens": 1508
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12759.742736816406,
+              "reasoning_chars": 5426,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - The user provides a fill-in-the-blank question with 10 options (A-J).\n   - The sentence: \"In contrast to _______, _______ aim to reward",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 228,
+                "prompt_tokens_details": null,
+                "total_tokens": 1508
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-15-business",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLet's evaluate each option step-by-step:\n\n* **Option A:** Incorrect. Arthropod exoskeletons are primarily composed of **chitin** and structural proteins, often hardened with calcium carbonate. Peptidoglycan is a polymer characteristic of bacterial cell walls, not arthropods.\n* **Option B:** Correct. Arthropods generally possess an **open circulatory system**, where hemolymph (blood) is pumped by the heart into body cavities (hemocoels) to directly bathe the organs. The heart is typically a tubular structure located in the **dorsal** (",
+              "content_excerpt": "\n\nLet's evaluate each option step-by-step:\n\n* **Option A:** Incorrect. Arthropod exoskeletons are primarily composed of **chitin** and structural proteins, often hardened with calcium carbonate. Pepti",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11578.354120254517,
+              "reasoning_chars": 4614,
+              "reasoning_excerpt": "The user wants to identify the accurate statement about arthropods from the given options.\n\n1.  **Analyze Option A:** \"They possess an exoskeleton composed primarily of peptidoglycan.\"\n    *   Arthrop",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 136,
+                "prompt_tokens_details": null,
+                "total_tokens": 1416
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLet's evaluate each option step-by-step:\n\n* **Option A:** Incorrect. Arthropod exoskeletons are primarily composed of **chitin** and structural proteins, often hardened with calcium carbonate. Peptidoglycan is a polymer characteristic of bacterial cell walls, not arthropods.\n* **Option B:** Correct. Arthropods generally possess an **open circulatory system**, where hemolymph (blood) is pumped by the heart into body cavities (hemocoels) to directly bathe the organs. The heart is typically a tubular structure located in the **dorsal** (",
+              "content_excerpt": "\n\nLet's evaluate each option step-by-step:\n\n* **Option A:** Incorrect. Arthropod exoskeletons are primarily composed of **chitin** and structural proteins, often hardened with calcium carbonate. Pepti",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11551.986694335938,
+              "reasoning_chars": 4614,
+              "reasoning_excerpt": "The user wants to identify the accurate statement about arthropods from the given options.\n\n1.  **Analyze Option A:** \"They possess an exoskeleton composed primarily of peptidoglycan.\"\n    *   Arthrop",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 136,
+                "prompt_tokens_details": null,
+                "total_tokens": 1416
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nLet's evaluate each option step-by-step:\n\n* **Option A:** Incorrect. Arthropod exoskeletons are primarily composed of **chitin** and structural proteins, often hardened with calcium carbonate. Peptidoglycan is a polymer characteristic of bacterial cell walls, not arthropods.\n* **Option B:** Correct. Arthropods generally possess an **open circulatory system**, where hemolymph (blood) is pumped by the heart into body cavities (hemocoels) to directly bathe the organs. The heart is typically a tubular structure located in the **dorsal** (",
+              "content_excerpt": "\n\nLet's evaluate each option step-by-step:\n\n* **Option A:** Incorrect. Arthropod exoskeletons are primarily composed of **chitin** and structural proteins, often hardened with calcium carbonate. Pepti",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11667.506217956543,
+              "reasoning_chars": 4614,
+              "reasoning_excerpt": "The user wants to identify the accurate statement about arthropods from the given options.\n\n1.  **Analyze Option A:** \"They possess an exoskeleton composed primarily of peptidoglycan.\"\n    *   Arthrop",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 136,
+                "prompt_tokens_details": null,
+                "total_tokens": 1416
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-20-biology",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 10974.223375320435,
+              "reasoning_chars": 3877,
+              "reasoning_excerpt": "Here's a thinking process to arrive at the solution:\n\n1.  **Analyze the Request:**\n    *   **Subject:** Electron Paramagnetic Resonance (EPR) spectroscopy (also known as ESR).\n    *   **System:** A so",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 1395
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11220.49331665039,
+              "reasoning_chars": 3877,
+              "reasoning_excerpt": "Here's a thinking process to arrive at the solution:\n\n1.  **Analyze the Request:**\n    *   **Subject:** Electron Paramagnetic Resonance (EPR) spectroscopy (also known as ESR).\n    *   **System:** A so",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 1395
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11105.730772018433,
+              "reasoning_chars": 3877,
+              "reasoning_excerpt": "Here's a thinking process to arrive at the solution:\n\n1.  **Analyze the Request:**\n    *   **Subject:** Electron Paramagnetic Resonance (EPR) spectroscopy (also known as ESR).\n    *   **System:** A so",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 115,
+                "prompt_tokens_details": null,
+                "total_tokens": 1395
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-25-chemistry",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11576.7183303833,
+              "reasoning_chars": 3878,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Problem Statement:**\n\n    *   **Architecture:** Pipelined RISC machine.\n    *   **Registers:** R0 through R7 (8 registers",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 1458
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11624.053239822388,
+              "reasoning_chars": 3878,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Problem Statement:**\n\n    *   **Architecture:** Pipelined RISC machine.\n    *   **Registers:** R0 through R7 (8 registers",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 1458
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11345.22271156311,
+              "reasoning_chars": 3878,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Problem Statement:**\n\n    *   **Architecture:** Pipelined RISC machine.\n    *   **Registers:** R0 through R7 (8 registers",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 1458
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-30-computer-science",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12488.238096237183,
+              "reasoning_chars": 5249,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** \"For a stationary autoregressive process, shocks will\"\n   - **Options:** A through J\n   - **Task:** Reason through the qu",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 108,
+                "prompt_tokens_details": null,
+                "total_tokens": 1388
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12641.491413116455,
+              "reasoning_chars": 5249,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** \"For a stationary autoregressive process, shocks will\"\n   - **Options:** A through J\n   - **Task:** Reason through the qu",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 108,
+                "prompt_tokens_details": null,
+                "total_tokens": 1388
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12739.246368408203,
+              "reasoning_chars": 5249,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** \"For a stationary autoregressive process, shocks will\"\n   - **Options:** A through J\n   - **Task:** Reason through the qu",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 108,
+                "prompt_tokens_details": null,
+                "total_tokens": 1388
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-35-economics",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11433.759450912476,
+              "reasoning_chars": 3778,
+              "reasoning_excerpt": "Here's a thinking process to solve the problem:\n\n1.  **Analyze the Request:**\n    *   **Given:**\n        *   Pole 1 strength ($m_1$) = $4\\pi \\times 10^{-4}$ Wb (Weber).\n        *   Pole 2 strength ($m",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 149,
+                "prompt_tokens_details": null,
+                "total_tokens": 1429
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11709.86533164978,
+              "reasoning_chars": 3778,
+              "reasoning_excerpt": "Here's a thinking process to solve the problem:\n\n1.  **Analyze the Request:**\n    *   **Given:**\n        *   Pole 1 strength ($m_1$) = $4\\pi \\times 10^{-4}$ Wb (Weber).\n        *   Pole 2 strength ($m",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 149,
+                "prompt_tokens_details": null,
+                "total_tokens": 1429
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11535.937786102295,
+              "reasoning_chars": 3778,
+              "reasoning_excerpt": "Here's a thinking process to solve the problem:\n\n1.  **Analyze the Request:**\n    *   **Given:**\n        *   Pole 1 strength ($m_1$) = $4\\pi \\times 10^{-4}$ Wb (Weber).\n        *   Pole 2 strength ($m",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 149,
+                "prompt_tokens_details": null,
+                "total_tokens": 1429
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-40-engineering",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11511.53588294983,
+              "reasoning_chars": 4340,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Which formula of propositional logic best symbolizes: \"Turtles live long lives and are happy creatures, unless they are i",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 120,
+                "prompt_tokens_details": null,
+                "total_tokens": 1400
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11467.201232910156,
+              "reasoning_chars": 4340,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Which formula of propositional logic best symbolizes: \"Turtles live long lives and are happy creatures, unless they are i",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 120,
+                "prompt_tokens_details": null,
+                "total_tokens": 1400
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11513.293266296387,
+              "reasoning_chars": 4340,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Which formula of propositional logic best symbolizes: \"Turtles live long lives and are happy creatures, unless they are i",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 120,
+                "prompt_tokens_details": null,
+                "total_tokens": 1400
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-45-philosophy",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11941.907167434692,
+              "reasoning_chars": 5214,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"What is the judge ad hoc?\"\n   - Options: A through J\n   - Task: Reason through the options, then output the final answer in the ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 161,
+                "prompt_tokens_details": null,
+                "total_tokens": 1441
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 12001.338005065918,
+              "reasoning_chars": 5214,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"What is the judge ad hoc?\"\n   - Options: A through J\n   - Task: Reason through the options, then output the final answer in the ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 161,
+                "prompt_tokens_details": null,
+                "total_tokens": 1441
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11607.61547088623,
+              "reasoning_chars": 5214,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Question: \"What is the judge ad hoc?\"\n   - Options: A through J\n   - Task: Reason through the options, then output the final answer in the ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 161,
+                "prompt_tokens_details": null,
+                "total_tokens": 1441
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "mmlu-pro-65-law",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+      "source_sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+      "status": "failed",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 350334.5260620117
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

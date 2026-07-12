@@ -1,0 +1,653 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_pass_rate": 0.66,
+    "reasoning_headroom_tokens": 1024,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 2,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "Mercury_SC_408547",
+      "failure_classes": [
+        "completion_budget_exhausted_after_visible_output"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    },
+    {
+      "error": "pass rate below threshold",
+      "eval_id": "MCAS_2006_9_44",
+      "failure_classes": [
+        "reasoning_budget_exhausted"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-arc-challenge-5-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39027/v1",
+    "candidate_id": "qwen36-27b-nvfp4-mtp",
+    "config_id": "vllm-mtp3-fp8kv-262k-thinking-headroom1024",
+    "model": "qwen36-27b-nvfp4-mtp",
+    "started_at": "2026-07-12T16:36:52Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T163652Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.experiment.yml#cand-qwen36-heavy-mtp",
+    "serve_command": "anvil-serving serves up cand-qwen36-heavy-mtp --manifest examples/fakoli-dark/serves.toml --recreate --confirm"
+  },
+  "suites": {
+    "hf-arc-challenge-5-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe question focuses on the relationship between a planet's rotation speed and its timekeeping cycles. \n\n- A **day** on a planet is defined by its rotation period (the time it takes to complete one full spin on its axis). If a planet rotates faster, it completes each spin in less time, directly resulting in a **shorter day**.\n- **Option A (Density)** is incorrect because density depends on mass and volume. A meteorite impact adds negligible mass and does not compress or expand the planet enough to change its density.\n- **Option B (Years)** is incorrect because a year is determined by the planet's orbital period around its star, which is independent of its axial rotation speed.\n- **Option D (Gravity)** is incorrect because surface gravity is determined by the planet's mass and radius. Faster rotation actually slightly reduces *apparent* gravity at the equator due to centrifugal force, not strengthens it.\n\nTherefore, the most direct and scientifically accurate effect of increased rotation speed is a shorter day.\n\nFINAL=C",
+              "content_excerpt": "\n\nThe question focuses on the relationship between a planet's rotation speed and its timekeeping cycles. \n\n- A **day** on a planet is defined by its rotation period (the time it takes to complete one ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11566.31350517273,
+              "reasoning_chars": 4522,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** An astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect?\n   - **Opt",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1247,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 1334
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe question focuses on the relationship between a planet's rotation speed and its timekeeping cycles. \n\n- A **day** on a planet is defined by its rotation period (the time it takes to complete one full spin on its axis). If a planet rotates faster, it completes each spin in less time, directly resulting in a **shorter day**.\n- **Option A (Density)** is incorrect because density depends on mass and volume. A meteorite impact adds negligible mass and does not compress or expand the planet enough to change its density.\n- **Option B (Years)** is incorrect because a year is determined by the planet's orbital period around its star, which is independent of its axial rotation speed.\n- **Option D (Gravity)** is incorrect because surface gravity is determined by the planet's mass and radius. Faster rotation actually slightly reduces *apparent* gravity at the equator due to centrifugal force, not strengthens it.\n\nTherefore, the most direct and scientifically accurate effect of increased rotation speed is a shorter day.\n\nFINAL=C",
+              "content_excerpt": "\n\nThe question focuses on the relationship between a planet's rotation speed and its timekeeping cycles. \n\n- A **day** on a planet is defined by its rotation period (the time it takes to complete one ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11111.664772033691,
+              "reasoning_chars": 4522,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** An astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect?\n   - **Opt",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1247,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 1334
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nThe question focuses on the relationship between a planet's rotation speed and its timekeeping cycles. \n\n- A **day** on a planet is defined by its rotation period (the time it takes to complete one full spin on its axis). If a planet rotates faster, it completes each spin in less time, directly resulting in a **shorter day**.\n- **Option A (Density)** is incorrect because density depends on mass and volume. A meteorite impact adds negligible mass and does not compress or expand the planet enough to change its density.\n- **Option B (Years)** is incorrect because a year is determined by the planet's orbital period around its star, which is independent of its axial rotation speed.\n- **Option D (Gravity)** is incorrect because surface gravity is determined by the planet's mass and radius. Faster rotation actually slightly reduces *apparent* gravity at the equator due to centrifugal force, not strengthens it.\n\nTherefore, the most direct and scientifically accurate effect of increased rotation speed is a shorter day.\n\nFINAL=C",
+              "content_excerpt": "\n\nThe question focuses on the relationship between a planet's rotation speed and its timekeeping cycles. \n\n- A **day** on a planet is defined by its rotation period (the time it takes to complete one ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11249.55129623413,
+              "reasoning_chars": 4522,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** An astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect?\n   - **Opt",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1247,
+                "prompt_tokens": 87,
+                "prompt_tokens_details": null,
+                "total_tokens": 1334
+              }
+            }
+          ],
+          "id": "Mercury_7175875",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nTesting building models under earthquake conditions is a standard part of the engineering design process. The primary purpose of these tests is to observe how structures respond to seismic forces, identify weak points, and determine how to reinforce them. By analyzing the results, engineers can modify their designs to better withstand ground shaking, which directly improves structural integrity and protects occupants. While factors like cost, speed, or aesthetics might be considered in broader project planning, they are not the direct or primary outcome of earthquake simulation testing. Therefore, the most logical and direct result is improved safety.\n\nFINAL=B",
+              "content_excerpt": "\n\nTesting building models under earthquake conditions is a standard part of the engineering design process. The primary purpose of these tests is to observe how structures respond to seismic forces, i",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7457.76104927063,
+              "reasoning_chars": 3105,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Engineers test several building models under earthquake conditions. What is the most likely result?\n   - **Options:** \n  ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 766,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 839
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nTesting building models under earthquake conditions is a standard part of the engineering design process. The primary purpose of these tests is to observe how structures respond to seismic forces, identify weak points, and determine how to reinforce them. By analyzing the results, engineers can modify their designs to better withstand ground shaking, which directly improves structural integrity and protects occupants. While factors like cost, speed, or aesthetics might be considered in broader project planning, they are not the direct or primary outcome of earthquake simulation testing. Therefore, the most logical and direct result is improved safety.\n\nFINAL=B",
+              "content_excerpt": "\n\nTesting building models under earthquake conditions is a standard part of the engineering design process. The primary purpose of these tests is to observe how structures respond to seismic forces, i",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7501.36661529541,
+              "reasoning_chars": 3105,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Engineers test several building models under earthquake conditions. What is the most likely result?\n   - **Options:** \n  ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 766,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 839
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nTesting building models under earthquake conditions is a standard part of the engineering design process. The primary purpose of these tests is to observe how structures respond to seismic forces, identify weak points, and determine how to reinforce them. By analyzing the results, engineers can modify their designs to better withstand ground shaking, which directly improves structural integrity and protects occupants. While factors like cost, speed, or aesthetics might be considered in broader project planning, they are not the direct or primary outcome of earthquake simulation testing. Therefore, the most logical and direct result is improved safety.\n\nFINAL=B",
+              "content_excerpt": "\n\nTesting building models under earthquake conditions is a standard part of the engineering design process. The primary purpose of these tests is to observe how structures respond to seismic forces, i",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7542.8338050842285,
+              "reasoning_chars": 3105,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - **Question:** Engineers test several building models under earthquake conditions. What is the most likely result?\n   - **Options:** \n  ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 766,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 839
+              }
+            }
+          ],
+          "id": "Mercury_SC_409171",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nHere is the reasoning to determine the correct answer:\n\n1.  **Analyze the process of photosynthesis:** Photosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods from carbon dioxide and water. It generally involves the conversion of light energy into chemical energy.\n\n2.  **Evaluate Option A:** \"Chemical energy is absorbed through roots.\"\n    *   This is incorrect. Roots absorb water and dissolved minerals (nutrients), but they do not absorb chemical energy to power photosynthesis. The energy source for photosynthesis is the sun, not the soil.\n\n3.  **Evaluate Option D:** \"Sunlight is converted into chlorophyll.\"\n    *   This is scientifically incorrect. Sunlight is a form of energy, while chlorophyll is a pigment (a molecule). Energy cannot be converted directly into a specific molecule like chlorophyll in this context.\n\n4.  **Evaluate Option B:** \"Light energy is converted to chemical energy.\"\n    *   This describes the *overall result* or the *definition* of the light-dependent reactions of photosynthesis. However, for this conversion to happen, the light must first be intercepted.\n\n5.  **Evaluate Option C:** \"Chlorophyll in the leaf captures light energy.\"\n    *   This is the specific initiating event. Photosynthesis begins when photons (light particles) strike the chlorophyll molecules located in the chloroplasts of plant cells. This absorption of light excites electrons, triggering the chemical reactions that",
+              "content_excerpt": "\n\nHere is the reasoning to determine the correct answer:\n\n1.  **Analyze the process of photosynthesis:** Photosynthesis is the process by which green plants and some other organisms use sunlight to sy",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11455.161571502686,
+              "reasoning_chars": 3757,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Request:** The user wants me to reason through a multiple-choice science question about the beginning of photosynthesis a",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 1361
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nHere is the reasoning to determine the correct answer:\n\n1.  **Analyze the process of photosynthesis:** Photosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods from carbon dioxide and water. It generally involves the conversion of light energy into chemical energy.\n\n2.  **Evaluate Option A:** \"Chemical energy is absorbed through roots.\"\n    *   This is incorrect. Roots absorb water and dissolved minerals (nutrients), but they do not absorb chemical energy to power photosynthesis. The energy source for photosynthesis is the sun, not the soil.\n\n3.  **Evaluate Option D:** \"Sunlight is converted into chlorophyll.\"\n    *   This is scientifically incorrect. Sunlight is a form of energy, while chlorophyll is a pigment (a molecule). Energy cannot be converted directly into a specific molecule like chlorophyll in this context.\n\n4.  **Evaluate Option B:** \"Light energy is converted to chemical energy.\"\n    *   This describes the *overall result* or the *definition* of the light-dependent reactions of photosynthesis. However, for this conversion to happen, the light must first be intercepted.\n\n5.  **Evaluate Option C:** \"Chlorophyll in the leaf captures light energy.\"\n    *   This is the specific initiating event. Photosynthesis begins when photons (light particles) strike the chlorophyll molecules located in the chloroplasts of plant cells. This absorption of light excites electrons, triggering the chemical reactions that",
+              "content_excerpt": "\n\nHere is the reasoning to determine the correct answer:\n\n1.  **Analyze the process of photosynthesis:** Photosynthesis is the process by which green plants and some other organisms use sunlight to sy",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11208.062410354614,
+              "reasoning_chars": 3757,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Request:** The user wants me to reason through a multiple-choice science question about the beginning of photosynthesis a",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 1361
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nHere is the reasoning to determine the correct answer:\n\n1.  **Analyze the process of photosynthesis:** Photosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods from carbon dioxide and water. It generally involves the conversion of light energy into chemical energy.\n\n2.  **Evaluate Option A:** \"Chemical energy is absorbed through roots.\"\n    *   This is incorrect. Roots absorb water and dissolved minerals (nutrients), but they do not absorb chemical energy to power photosynthesis. The energy source for photosynthesis is the sun, not the soil.\n\n3.  **Evaluate Option D:** \"Sunlight is converted into chlorophyll.\"\n    *   This is scientifically incorrect. Sunlight is a form of energy, while chlorophyll is a pigment (a molecule). Energy cannot be converted directly into a specific molecule like chlorophyll in this context.\n\n4.  **Evaluate Option B:** \"Light energy is converted to chemical energy.\"\n    *   This describes the *overall result* or the *definition* of the light-dependent reactions of photosynthesis. However, for this conversion to happen, the light must first be intercepted.\n\n5.  **Evaluate Option C:** \"Chlorophyll in the leaf captures light energy.\"\n    *   This is the specific initiating event. Photosynthesis begins when photons (light particles) strike the chlorophyll molecules located in the chloroplasts of plant cells. This absorption of light excites electrons, triggering the chemical reactions that",
+              "content_excerpt": "\n\nHere is the reasoning to determine the correct answer:\n\n1.  **Analyze the process of photosynthesis:** Photosynthesis is the process by which green plants and some other organisms use sunlight to sy",
+              "error": "answer",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 11265.698432922363,
+              "reasoning_chars": 3757,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Request:** The user wants me to reason through a multiple-choice science question about the beginning of photosynthesis a",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 81,
+                "prompt_tokens_details": null,
+                "total_tokens": 1361
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "Mercury_SC_408547",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn experimental design, variables are categorized based on their role:\n- The **independent variable** is the factor that the experimenter deliberately changes or manipulates.\n- The **dependent variable** is the factor that is measured or observed in response to that change.\n- **Controls** are factors kept constant to ensure a fair test.\n- The **hypothesis** is a prediction made before the experiment begins and is not altered during trials.\n\nIn this scenario, the physicist is intentionally changing the car's speed between trials to see how it affects the jump. Because speed is the factor being manipulated by the researcher, it is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn experimental design, variables are categorized based on their role:\n- The **independent variable** is the factor that the experimenter deliberately changes or manipulates.\n- The **dependent varia",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10216.906070709229,
+              "reasoning_chars": 4626,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1197,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1270
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn experimental design, variables are categorized based on their role:\n- The **independent variable** is the factor that the experimenter deliberately changes or manipulates.\n- The **dependent variable** is the factor that is measured or observed in response to that change.\n- **Controls** are factors kept constant to ensure a fair test.\n- The **hypothesis** is a prediction made before the experiment begins and is not altered during trials.\n\nIn this scenario, the physicist is intentionally changing the car's speed between trials to see how it affects the jump. Because speed is the factor being manipulated by the researcher, it is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn experimental design, variables are categorized based on their role:\n- The **independent variable** is the factor that the experimenter deliberately changes or manipulates.\n- The **dependent varia",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10391.7715549469,
+              "reasoning_chars": 4626,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1197,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1270
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "\n\nIn experimental design, variables are categorized based on their role:\n- The **independent variable** is the factor that the experimenter deliberately changes or manipulates.\n- The **dependent variable** is the factor that is measured or observed in response to that change.\n- **Controls** are factors kept constant to ensure a fair test.\n- The **hypothesis** is a prediction made before the experiment begins and is not altered during trials.\n\nIn this scenario, the physicist is intentionally changing the car's speed between trials to see how it affects the jump. Because speed is the factor being manipulated by the researcher, it is the independent variable.\n\nFINAL=D",
+              "content_excerpt": "\n\nIn experimental design, variables are categorized based on their role:\n- The **independent variable** is the factor that the experimenter deliberately changes or manipulates.\n- The **dependent varia",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 10347.116231918335,
+              "reasoning_chars": 4626,
+              "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze the User Input:**\n   - Question: \"A physicist increases a test car's speed by 20 mph between ramp-jump trials. What is being changed?\"\n   - Options: A. the co",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1197,
+                "prompt_tokens": 73,
+                "prompt_tokens_details": null,
+                "total_tokens": 1270
+              }
+            }
+          ],
+          "id": "Mercury_407327",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 0.66,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 11057.075262069702,
+              "reasoning_chars": 4322,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Scenario:**\n    *   **Objects:** Two objects with masses $m_1 = 1 \\text{ kg}$ and $m_2 = 5 \\text{ kg}$.\n    *   **Locatio",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 10830.782175064087,
+              "reasoning_chars": 4322,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Scenario:**\n    *   **Objects:** Two objects with masses $m_1 = 1 \\text{ kg}$ and $m_2 = 5 \\text{ kg}$.\n    *   **Locatio",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_total_budget": false,
+                "max_completion_tokens": 1280,
+                "reasoning_headroom_tokens": 1024,
+                "visible_answer_tokens": 256
+              },
+              "content": "",
+              "content_excerpt": "",
+              "error": "answer",
+              "failure_class": "reasoning_budget_exhausted",
+              "finish_reason": "length",
+              "latency_ms": 10929.683923721313,
+              "reasoning_chars": 4322,
+              "reasoning_excerpt": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Scenario:**\n    *   **Objects:** Two objects with masses $m_1 = 1 \\text{ kg}$ and $m_2 = 5 \\text{ kg}$.\n    *   **Locatio",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1280,
+                "prompt_tokens": 94,
+                "prompt_tokens_details": null,
+                "total_tokens": 1374
+              }
+            }
+          ],
+          "error": "pass rate below threshold",
+          "id": "MCAS_2006_9_44",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 0.66,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "tests/fixtures/eval-data/hf-arc-challenge-5-repeated.suite.json",
+      "source_sha256": "9e0245df74bd2b428f7ea76eb950870a8732d7971c62baba1d58b4ec7282941c",
+      "status": "failed",
+      "work_class": "basic-independent-multiple-choice-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 154166.6338443756
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
