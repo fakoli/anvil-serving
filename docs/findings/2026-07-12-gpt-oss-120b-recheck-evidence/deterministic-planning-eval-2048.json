@@ -1,0 +1,226 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "failures": [
+    {
+      "error": "python-stdlib; external-evidence; degraded-capability",
+      "eval_id": "low-overhead-dashboard-architecture",
+      "suite": "milestone-execution-2048-diagnostic"
+    },
+    {
+      "error": "ordered-chain",
+      "eval_id": "milestone-dependency-order",
+      "suite": "milestone-execution-2048-diagnostic"
+    },
+    {
+      "error": "reject-incomplete; capture-proof; strict-reapply",
+      "eval_id": "proof-buffer-recovery",
+      "suite": "milestone-execution-2048-diagnostic"
+    },
+    {
+      "error": "timeout-alignment; persist-resume; reuse-pr; no-ci-bypass",
+      "eval_id": "resumable-ci-monitor",
+      "suite": "milestone-execution-2048-diagnostic"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:30002/v1",
+    "candidate_id": "gpt-oss-120b-baseline",
+    "config_id": "vllm-0.23.1-mxfp4-131k-suite2048",
+    "model": "gpt-oss-120b",
+    "started_at": "2026-07-12T07:44:19Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T074419Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.yml",
+    "serve_command": "anvil-serving serves up --manifest examples/fakoli-dark/serves.toml heavy --confirm"
+  },
+  "suites": {
+    "milestone-execution-2048-diagnostic": {
+      "checks": [
+        {
+          "content_excerpt": "## Low\u2011overhead \u201cone\u2011page\u2011fits\u2011all\u201d observability dashboard  \n**Target audience:** a single developer who works on a Windows GPU workstation **and** a model\u2011free Mac\u202fMini.  \n**Goal:** see host, VM/con",
+          "error": "python-stdlib; external-evidence; degraded-capability",
+          "id": "low-overhead-dashboard-architecture",
+          "latency_ms": 11334.832668304443,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "python-stdlib",
+              "passed": false
+            },
+            {
+              "name": "bounded-retention",
+              "passed": true
+            },
+            {
+              "name": "external-evidence",
+              "passed": false
+            },
+            {
+              "name": "degraded-capability",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "**Dependency logic**\n\n1. **Programmatic capture lifecycle** \u2013 This is the foundational step. It instruments the system and records raw observability data (traces, metrics, logs) throughout the executi",
+          "error": "ordered-chain",
+          "id": "milestone-dependency-order",
+          "latency_ms": 3035.3970527648926,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "ordered-chain",
+              "passed": false
+            },
+            {
+              "name": "artifact-boundary",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "**Fail\u2011Closed Recovery Sequence \u2013 \u201cProof\u2011Missing\u201d in a Strict\u2011Mode Review**\n\n> **Goal:** Re\u2011establish a verifiable evidence buffer for the task that already sits in `needs_review` **without** disablin",
+          "error": "reject-incomplete; capture-proof; strict-reapply",
+          "id": "proof-buffer-recovery",
+          "latency_ms": 10437.236070632935,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "reject-incomplete",
+              "passed": false
+            },
+            {
+              "name": "capture-proof",
+              "passed": false
+            },
+            {
+              "name": "strict-reapply",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "Below is a **complete, production\u2011ready design** for a \u201cship\u201d command that\n\n* creates a PR **exactly once** (no duplicates even when the command is killed and restarted),\n* **continues** its work afte",
+          "error": "timeout-alignment; persist-resume; reuse-pr; no-ci-bypass",
+          "id": "resumable-ci-monitor",
+          "latency_ms": 11108.067035675049,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "timeout-alignment",
+              "passed": false
+            },
+            {
+              "name": "persist-resume",
+              "passed": false
+            },
+            {
+              "name": "reuse-pr",
+              "passed": false
+            },
+            {
+              "name": "no-ci-bypass",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "Below is a **step\u2011by\u2011step, \u201cfail\u2011safe\u201d recipe** that\n\n* keeps a **named copy of the current (divergent) `main`** \u2013 so you can always go back to the exact state you had before the reconciliation,\n* **d",
+          "id": "local-remote-main-reconciliation",
+          "latency_ms": 11107.093095779419,
+          "status": "passed",
+          "text_checks": [
+            {
+              "name": "backup-first",
+              "passed": true
+            },
+            {
+              "name": "remote-target",
+              "passed": true
+            },
+            {
+              "name": "preserve-untracked",
+              "passed": true
+            },
+            {
+              "name": "verify-identical",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "docs/findings/2026-07-12-gpt-oss-120b-recheck-evidence/planning-milestone-execution-2048.suite.json",
+      "status": "failed",
+      "work_class": "planning"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 47061.68818473816
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
