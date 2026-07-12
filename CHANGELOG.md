@@ -8,11 +8,60 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **`eval benchmark run --suite-file`** — runs externally-authored eval specs (e.g. the
+  fakoli-plugins session-evals `suite.json`) through the existing deterministic bakeoff
+  check engine (text checks + tool-call validation) against the target endpoint. Per-eval
+  checks and failures land in the standard evidence JSON under `suites.<suite name>`;
+  `--suite-file` alone runs only the external suite (built-in suites opt in via `--suite`).
+  Malformed specs are rejected before any request is sent — including vacuous checks
+  (typo'd assertion keys, empty needles) that would otherwise pass on any output, per
+  the no-self-verification rule. Requires `--bakeoff`.
+- **Operator CLI v2 production closure (M4)** - adds a manifest-generated
+  complete command index and tombstone table, a deterministic active-reference
+  audit with checked-in numeric inventories, and aligned operator skills across
+  Codex, Claude Code, OpenClaw, and voice operations. Active docs, examples,
+  configs, parser program names, and agent guidance now use canonical nested
+  commands; compatibility forms remain only in explicit migration/tombstone
+  evidence. Parent command groups now reject action-specific flags when the
+  required child action is missing instead of printing help and returning
+  success. This unreleased work does not publish a version, tag, or package.
+- **Hermetic Markdown link guard** - checks relative targets in every
+  Git-tracked Markdown file using the same Python-Markdown/Pymdown parser
+  family as MkDocs, ignores external URLs and rendered code examples, and now
+  runs beside strict MkDocs in documentation CI. Parser packages stay confined
+  to docs/test extras; untracked worktrees cannot change the scan scope.
+- **Operator CLI v2 voice lifecycle (M3)** — adds canonical
+  `voice audio up|down|status|logs` and
+  `voice proxy run|up|down|restart|status|logs|bridge` surfaces. Audio remains
+  Dark-owned, the persistent Realtime proxy and loopback forwarding bridge
+  remain Mini-owned, and all operational paths resolve topology before local
+  work. MCP/controller parity includes bounded reads, preview/confirm mutation
+  gates, persistent PID/log ownership, per-host command identity checks, and
+  bounded subprocess/process/connection behavior. Legacy module-level voice
+  paths remain removed tombstones.
+- **`host memory` + `host reclaim` — the WSL page-cache watchdog** — promotes the ad-hoc
+  remediation from the 2026-07-10/11 Blackwell bakeoff (repeated 60–90 GB weight streams
+  ballooned the WSL2 VM's page cache to 50–54 GB of 64 GB, starving Windows;
+  `autoMemoryReclaim=gradual` lags load bursts). `host memory` shows host RAM, the WSL VM's
+  used/page-cache/available (`/proc/meminfo` via `wsl`), and GPU VRAM. `host reclaim` runs
+  `sync && echo 3 > /proc/sys/vm/drop_caches` as root inside the distro — confirm-gated
+  per the CLI safety policy (`--confirm`), refusing while a checkpoint is actively streaming
+  (page cache growing > 0.25 GB/s) unless `--force`; `--watch --threshold-gb N [--interval S]` is the
+  foreground watchdog form. Windows/WSL2-guarded with a clear message elsewhere.
+- **Production-polish reconciliation inventory** — records the 49 pre-existing CLI
+  polish hunks, their retain/adapt disposition, their v2 task ownership, and the
+  planned callable-alias-to-tombstone conversion. This preserves the working
+  implementation while keeping its deferred removal work auditable.
+- **Production CLI discovery contract** — root help now documents global `--help`/`--version`
+  flags and the canonical nested workflows, `serves --help` explains every action, and tests lock
+  the help/version surface. Removed module-level voice lifecycle forms fail with a canonical
+  replacement instead of silently dispatching. The CLI and voice references document
+  exit behavior, stdout/stderr conventions, safety gates, and the complete canonical taxonomy.
 - **Bakeoff notebook** — the persistent, comparable record the fast-tier
-  bakeoff report was assembled by hand from. `anvil-serving benchmark
+  bakeoff report was assembled by hand from. `anvil-serving eval benchmark run
   --bakeoff … --notebook DB --notebook-task T --notebook-hardware H` appends
   each run into `bakeoff_runs` (schema: two additive tables `bakeoff_runs`
-  + `bakeoff_verdicts`); `anvil-serving benchmark external notebook
+  + `bakeoff_verdicts`); `anvil-serving eval benchmark external notebook
   add|list|render` records/lists/renders. `render` emits the repeatable form
   of the #181 report — the candidate matrix, a 100-point rubric (encoded as
   data in `external_benchmarks/notebook.py`), and a per-candidate
@@ -55,6 +104,23 @@ All notable changes to this project are documented here. The format is based on
 - **`router restart` / `reload` block ~11s longer** verifying the router
   stays up (crash-loop detection); `--no-verify` restores the old fire-and-
   forget behavior.
+
+### Fixed
+
+- **Serve-manifest upgrade and environment isolation** - manifests generated
+  before the `engine` field was introduced load through deterministic legacy
+  inference while malformed or contradictory engine declarations still fail.
+  Each loaded serve now owns its manifest directory directly, eliminating the
+  unbounded object-ID map and preventing another manifest's `.env` values from
+  leaking into long-lived lifecycle/controller processes.
+- **Container startup follows the canonical CLI.** The Docker image entrypoint
+  now runs `anvil-serving router run`; the removed root `serve` tombstone could
+  not start a container built from current `main`.
+- **Operator CLI v2 adversarial hardening** — non-local topology plans now fail closed before a
+  local handler can run; JSON preserves resolved context, warnings, and classified errors; real
+  leaf parsers provide focused help; `--` boundaries and dry-run confirmation behave correctly;
+  token values require `--reveal --confirm`; and every visible canonical leaf either reaches a real
+  parser or is withheld until implemented. Live documentation now uses canonical command paths.
 
 
 ## [0.11.0] - 2026-07-06

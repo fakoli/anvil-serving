@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONNOUSERSITE: "1"
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -35,6 +39,9 @@ jobs:
       - name: Run tests
         run: python -m pytest tests/ -q
 
+      - name: Verify active CLI references
+        run: python scripts/audit_cli_references.py --check --scope full
+
   lint:
     name: lint (ruff)
     runs-on: ubuntu-latest
@@ -49,8 +56,12 @@ jobs:
         run: ruff check .
 
   build:
-    name: build + wheel smoke
-    runs-on: ubuntu-latest
+    name: build + clean wheel smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -68,13 +79,8 @@ jobs:
       - name: Twine metadata check
         run: python -m twine check dist/*
 
-      - name: Clean-install smoke (fresh venv, wheel + entry point + package data)
-        run: |
-          set -euo pipefail
-          python -m venv /tmp/smoke
-          /tmp/smoke/bin/python -m pip install --upgrade pip
-          /tmp/smoke/bin/python -m pip install dist/*.whl
-          # Proves the wheel ships the package, the console entry point, and the
-          # tier0_keywords.json package-data (serve --help imports the router
-          # chain, which loads that JSON at import time). Non-zero exit fails CI.
-          /tmp/smoke/bin/anvil-serving serve --help
+      - name: Verify active CLI references
+        run: python scripts/audit_cli_references.py --check --scope full
+
+      - name: Clean-install smoke (fresh venv, no deps, canonical entry point, package data)
+        run: python scripts/wheel_smoke.py

@@ -4,7 +4,10 @@ The RouterConfig loader is injected (`_load`) and ssh via `_run`, so these run w
 file, no network, and no ssh.
 """
 import json
+import subprocess
 import types
+
+import pytest
 
 from anvil_serving import harness
 
@@ -518,6 +521,62 @@ def test_restart_local_runs_openclaw_gateway_restart(capsys):
     assert "restarted" in capsys.readouterr().out
 
 
+def test_restart_dry_run_never_launches_process(capsys):
+    rc = harness.cmd_restart_openclaw(
+        dry_run=True,
+        _run=lambda *_args, **_kwargs: pytest.fail("dry-run launched OpenClaw"),
+    )
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "command": ["openclaw", "gateway", "restart"],
+        "dry_run": True,
+    }
+
+
+def test_openclaw_status_is_bounded_and_parses_json():
+    def run(argv, *, stdout, stderr, timeout):
+        stdout.write(b'{"status":"running"}\n')
+        stderr.write(b"note\n")
+        return subprocess.CompletedProcess(argv, 0)
+
+    result = harness.openclaw_gateway_status(_run=run)
+    assert result["ok"] is True
+    assert result["status"] == {"status": "running"}
+    assert result["stdout_truncated"] is False
+    assert result["command"] == ["openclaw", "gateway", "status", "--json"]
+
+
+def test_openclaw_status_truncates_output_and_classifies_timeout():
+    def oversized(argv, *, stdout, stderr, timeout):
+        stdout.write(b"x" * 1100)
+        return subprocess.CompletedProcess(argv, 0)
+
+    result = harness.openclaw_gateway_status(max_output_bytes=1024, _run=oversized)
+    assert result["stdout_truncated"] is True
+    assert len(result["stdout"].encode("utf-8")) == 1024
+    assert "status" not in result
+
+    def timeout(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(["openclaw"], 1)
+
+    result = harness.openclaw_gateway_status(timeout_seconds=1, _run=timeout)
+    assert result["ok"] is False
+    assert "timed out" in result["error"]
+
+
+def test_harness_status_openclaw_dispatches(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        harness,
+        "cmd_status_openclaw",
+        lambda **kwargs: seen.update(kwargs) or 0,
+    )
+    assert harness.main([
+        "status", "openclaw", "--timeout-seconds", "7", "--max-output-bytes", "2048"
+    ]) == 0
+    assert seen == {"timeout_seconds": 7, "max_output_bytes": 2048}
+
+
 def test_restart_remote_over_ssh():
     seen = {}
     def fake(argv, **kw):
@@ -526,7 +585,8 @@ def test_restart_remote_over_ssh():
     rc = harness.cmd_restart_openclaw(gateway_host="mini", gateway_user="sd", _run=fake)
     assert rc == 0
     assert seen["argv"] == [
-        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=60",
+        "ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+        "-o", "ConnectTimeout=60",
         "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
         "--", "sd@mini", harness._REMOTE_RESTART_COMMAND,
     ]

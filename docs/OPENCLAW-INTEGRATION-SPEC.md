@@ -235,9 +235,10 @@ misdeclaration once the real prompt exceeds it.
 ## 2a. OpenClaw realtime voice config (point Talk at Anvil Voice)
 
 The text-router provider above is separate from OpenClaw's realtime voice
-provider registry. For speech-to-speech, run `anvil-serving voice run` on the
-voice host and configure OpenClaw Talk to use provider id `anvil` over the
-Gateway relay:
+provider registry. For speech-to-speech, run the persistent
+`anvil-serving voice proxy up` service on the voice host (or `proxy run` in a
+foreground terminal) and configure OpenClaw Talk to use provider id `anvil`
+over the Gateway relay:
 
 ```jsonc
 // ~/.openclaw/openclaw.json (JSON5)
@@ -268,16 +269,17 @@ The matching anvil-serving side is `examples/voice/openclaw-anvil-voice.toml`.
 In the reference topology, Fakoli Mini runs OpenClaw Gateway plus Anvil Voice
 Realtime/proxy only; its 16 GB RAM is reserved for OpenClaw, Claude Code, and
 Codex. STT/TTS/LLM model serves live off Mini. Use `dark-audio` for Dark-host
-STT/TTS through `anvil-serving voice bridge`, or select
-`mini-dark-audio-proxy` after verifying the Mini-local proxy ports forward to
-Dark audio. `mini-audio` remains an explicit optional same-host/local-audio
+STT/TTS directly, or select `mini-dark-audio-proxy` after starting
+`anvil-serving voice proxy bridge` on Mini and verifying its loopback ports
+forward to Dark audio. `mini-audio` remains an explicit optional same-host/local-audio
 mode, not the normal Talk or benchmark path.
 
 For candidate LLM A/B, keep audio selection in `--profile` and apply a
-candidate overlay to `voice run` or `voice benchmark`:
+candidate overlay to `voice proxy run` or `voice benchmark`:
 
 ```bash
-anvil-serving voice run \
+anvil-serving voice proxy run \
+  --topology ~/.anvil-serving/operator-topology.toml \
   --config examples/voice/openclaw-anvil-voice.toml \
   --profile dark-audio \
   --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml \

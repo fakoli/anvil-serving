@@ -11,9 +11,9 @@ path.
 | Role | Owns | Current Reference Example |
 |---|---|---|
 | Gateway host | OpenClaw gateway, harness runtime, gateway-local restart/apply actions. | Fakoli Mini |
-| Voice host | `anvil-serving voice run`, microphone/speaker path, and Realtime/proxy orchestration. | Fakoli Mini |
+| Voice host | Persistent or foreground Realtime proxy, Mini-local audio forwarding, and microphone/speaker path. | Fakoli Mini |
 | Audio model host | STT/TTS model endpoints and optional private bridge ports. | Fakoli Dark or another non-Mini audio host |
-| Router host | `anvil-serving serve` or deployed router container, router config, token auth, decision logs. | Fakoli Dark |
+| Router host | `anvil-serving router run` or deployed router container, router config, token auth, decision logs. | Fakoli Dark |
 | Serve host | GPU/CPU LLM serves, `serves.toml`, model cache, preflight and benchmark target endpoints. | Fakoli Dark |
 | Controller host | `anvil-serving controller serve` for structured remote operations on the resources it owns. | Usually the router/serve host |
 | Operator client | Codex, Claude Code, OpenClaw, or another tool calling MCP/controller tools. | Any trusted host |
@@ -47,14 +47,14 @@ There are two planes:
 | Plane | Examples | Cross-Device Rule |
 |---|---|---|
 | Data plane | Router front door, STT endpoint, TTS endpoint, model serve endpoint. | The caller's configured `base_url` must be reachable and authenticated if exposed beyond loopback. |
-| Control plane | `anvil-serving mcp`, `anvil-serving controller serve`, guarded lifecycle tools. | The resource-owning host runs the controller; the operator/gateway host bridges to it with `--controller-url` and `--auth-env`. |
+| Control plane | `anvil-serving mcp serve`, `anvil-serving controller serve`, guarded lifecycle tools. | The resource-owning host runs the controller; the operator/gateway host bridges to it with `--controller-url` and `--auth-env`. |
 
 ## Expansion Patterns
 
 ### Add Another Laptop As A Voice Host
 
 Install anvil-serving and the chosen STT/TTS stack on the laptop. If STT/TTS
-run on the same laptop as `voice run`, keep those endpoint URLs on
+run on the same laptop as `voice proxy run`, keep those endpoint URLs on
 `127.0.0.1` and use `lifecycle = "native"` or `lifecycle = "managed"` as
 appropriate.
 
@@ -70,25 +70,24 @@ api_key_env = "ANVIL_ROUTER_TOKEN"
 If STT/TTS are remote from the voice host, set their `base_url` values to the
 remote private addresses and use `lifecycle = "external"` unless the lifecycle
 command is being run on the audio host itself through local CLI or a controller.
-`lifecycle = "native"` starts a process on the host running `voice up`; it is
+`lifecycle = "native"` starts a process on the host running `voice audio up`; it is
 not a remote shell mechanism.
 
-If the audio host's STT/TTS services are intentionally loopback-only, expose
-private bridge ports with the product utility on the audio host:
+For the reference split topology, run the product bridge on Mini. It binds only
+Mini loopback ports and derives the Dark target address and ports from topology:
 
 ```bash
-anvil-serving voice bridge \
-  --listen-host 100.87.34.66 \
-  --stt-listen-port 30110 \
-  --tts-listen-port 30111 \
-  --i-understand-this-exposes-voice-audio
+anvil-serving voice proxy bridge \
+  --topology ~/.anvil-serving/operator-topology.toml \
+  --config examples/voice/openclaw-anvil-voice.toml \
+  --profile mini-dark-audio-proxy
 ```
 
-Then point the voice host manifest profile at those private bridge ports and
-keep the STT/TTS lifecycle as `external`.
-Use a concrete private or tailnet address for `--listen-host`; wildcard binds
-require `--allow-wildcard-listen` and should be reserved for firewall-scoped
-deployments.
+Point the Mini voice profile at `127.0.0.1:30110` and
+`127.0.0.1:30111`, and keep STT/TTS lifecycle `external` there because Dark
+owns the model processes. Non-loopback and wildcard Mini listeners are always
+rejected. Dark target ports still require private reachability and tailnet/LAN
+ACLs.
 
 ### Add Another Laptop As A Router Or Serve Host
 
@@ -110,7 +109,7 @@ Operator clients then bridge to that controller instead of shelling into the
 host:
 
 ```bash
-anvil-serving mcp \
+anvil-serving mcp serve \
   --controller-url http://anvil-gpu.tailnet.example:8766 \
   --auth-env ANVIL_CONTROLLER_TOKEN
 ```

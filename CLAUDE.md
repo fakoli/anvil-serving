@@ -3,18 +3,19 @@
 **What this is:** a network-facing, quality-gated router that fronts the Anthropic and OpenAI APIs
 and routes coding-harness traffic across local and cloud model tiers — with per-request structural
 verification, configured cloud fallback, or clean exhaustion for gateway handoff. Install, run
-`anvil-serving serve`, point your harness at `http://127.0.0.1:8000`, and you get *local where it is
+`anvil-serving router run`, point your harness at `http://127.0.0.1:8000`, and you get *local where it is
 measured safe, explicit escalation where it is not*.
 
 The router is **shipped** on `main`. The source tree is versioned v0.11.0, while published tags and
 package releases can lag `main`. Main includes the OpenClaw MCP/control-plane work:
-`anvil-serving mcp` for same-host stdio MCP and
+`anvil-serving mcp serve` for same-host stdio MCP and
 `anvil-serving controller serve` for split-host operation over a private, token-authenticated
 tailnet transport. v0.7.x added wire fidelity (tools/tool-history forwarding, real SSE streaming,
 sampling params), production hardening, and heavy-tier speculative decoding (ADR-0008). v0.6.0 made
 the router a containerized, token-authed service (ADR-0004); v0.5.0 shipped generic onboarding
 (ADR-0003); v0.4.x shipped advise-and-defer and Docker-Compose-defined serves. The local serving
-tools (`profile`, `models sync`, `serves render` (legacy `deploy`), `preflight`, `benchmark`, `multiplexer`)
+tools (`eval usage`, `models sync`, `serves render`, `eval preflight`,
+`eval benchmark run`, `serves multiplex`)
 ship and right-size the local tiers the router routes across.
 
 Source of truth for product framing: **`README.md`**.
@@ -49,12 +50,12 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 
 ```
 anvil_serving/
-  cli.py               dispatch: profile | models | serves | serve | preflight |
-                                 benchmark | eval | multiplexer | init (alias onboard) |
-                                 doctor | voice | voice sidecar |
+  cli.py               dispatch: models | serves | eval | init | doctor | voice |
                                  router | harness | host | mcp | controller |
-                                 benchmark external | calibrate |
-                                 models cache prune | models score
+                                 eval usage | eval preflight | eval benchmark run |
+                                 eval benchmark external | eval calibrate |
+                                 serves render | serves multiplex |
+                                 models cache prune | models score | voice sidecar
   config.py            cross-platform auto-detect: Claude logs dir, HF cache roots, model dirs
   profile.py           usage percentiles + role split (-> _aggregate_usage.py, _role_split.py)
   models.py            `sync`: scan HF caches, pull cards, extract serving facts, write INDEX.md (-> _sync.py);
@@ -76,7 +77,7 @@ anvil_serving/
   voice/               local realtime voice pipeline prototype and serve helpers
 
   router/              THE MAIN PRODUCT — all shipped
-    serve.py           `anvil-serving serve` entrypoint: config → backends → front door
+    serve.py           `anvil-serving router run` entrypoint: config → backends → front door
     front_door.py      ThreadingHTTPServer accepting Anthropic Messages + OpenAI Chat Completions,
                        binding 127.0.0.1 (never localhost — see gotchas), SSE streaming
     intent.py          PRESETS enum (planning/quick-edit/review/chat/chat-fast/long-context) + resolve()
@@ -118,7 +119,7 @@ templates/   configs/   docs/   examples/fakoli-dark/   plugins/
 4. For streaming on fail-prone classes, **`commit_window`** buffers the local response and
    verifies before forwarding the first byte.
 5. Every decision is written to **`decision_log`**. Measured calibration write-back is guarded and
-   operator-promoted: `anvil-serving calibrate` measures explicitly confirmed local tiers, grades
+   operator-promoted: `anvil-serving eval calibrate` measures explicitly confirmed local tiers, grades
    with the independent Agent-SDK judge, writes a candidate profile, and never auto-promotes it.
    Continuous production sampling is still future work; the deployed router uses the built-in seed
    profile unless `[router].profile_path` points at a reviewed artifact.
@@ -129,23 +130,23 @@ templates/   configs/   docs/   examples/fakoli-dark/   plugins/
 
 ```bash
 pip install -e .               # stdlib-only; no required runtime deps
-anvil-serving serve --config configs/example.toml   # start the router on 127.0.0.1:8000
+anvil-serving router run --config configs/example.toml   # start the router on 127.0.0.1:8000
 anvil-serving --help           # all verbs
 
 # Local serving tools:
-anvil-serving profile --out-dir .
+anvil-serving eval usage --out-dir .
 anvil-serving models sync --out ./model-library
 anvil-serving serves render --model /path/to/model --gpu 1 --context 131072 --served-name local
-anvil-serving preflight --base-url http://127.0.0.1:30000/v1 --model local
-anvil-serving benchmark --base-url http://127.0.0.1:30000/v1 --model local --burst 20
+anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --confirm
+anvil-serving eval benchmark run --base-url http://127.0.0.1:30000/v1 --model local --burst 20 --confirm
 
 # Harness/control-plane operations:
 anvil-serving harness sync openclaw --config configs/example.toml --dry-run
 anvil-serving harness restart openclaw --dry-run
-anvil-serving mcp --list-tools
+anvil-serving mcp tools
 export ANVIL_CONTROLLER_TOKEN="<controller-secret>"
 anvil-serving controller serve --host 100.64.0.10 --auth-token-env ANVIL_CONTROLLER_TOKEN
-anvil-serving mcp --controller-url http://100.64.0.10:8765 --auth-env ANVIL_CONTROLLER_TOKEN
+anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVIL_CONTROLLER_TOKEN
 ```
 
 Point a harness at the router:
@@ -268,10 +269,10 @@ skills/modules/agent configuration — **starting with OpenClaw**.
 2. **Use the product control surface, not hand-edits, for normal operations.** `anvil-serving harness
    sync openclaw` renders the correct OpenClaw provider + agent config from the live router config,
    and `anvil-serving harness restart openclaw` reloads the gateway. For agent/operator workflows,
-   prefer `anvil-serving mcp`; in split-host mode, run `anvil-serving controller serve` on the
+   prefer `anvil-serving mcp serve`; in split-host mode, run `anvil-serving controller serve` on the
    anvil-serving host and bridge from the gateway or operator host with
-   `anvil-serving mcp --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
-3. **Know the MCP verbs and their safety gates.** `anvil-serving mcp --list-tools` exposes
+   `anvil-serving mcp serve --controller-url ... --auth-env ANVIL_CONTROLLER_TOKEN`.
+3. **Know the MCP verbs and their safety gates.** `anvil-serving mcp tools` exposes
    `router_status`, `serves_status`, `doctor_summary`, `route_decision`, `openclaw_sync`,
    `openclaw_gateway_restart`, `preflight_probe`, and `benchmark_probe`. Mutating or expensive
    probes stay dry-run unless `confirm=true`; numeric knobs are bounded; booleans must be real

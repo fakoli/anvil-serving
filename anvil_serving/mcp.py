@@ -3,7 +3,7 @@
 This module exposes a small stdio JSON-RPC server for agent-facing operations
 around ADR-0013: inspect the router/serves/host state, preview/apply OpenClaw
 harness sync, restart the OpenClaw gateway, and run bounded probes. It is a
-control plane only; model traffic still flows through ``anvil-serving serve``.
+control plane only; model traffic still flows through ``anvil-serving router run``.
 
 Runtime dependencies stay stdlib-only. Commands are argv lists, never shell
 strings. Mutating tools require explicit ``confirm: true`` and keep dry-run
@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import contextlib
 import argparse
-import io
 import json
+import math
 import os
 import re
 import socket
@@ -25,9 +25,12 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Mapping
 from typing import Any, Callable, Dict, Iterable, Optional
 
 from . import __version__
+from .command_tree import COMMAND_TREE, CommandNode
+from .operator_output import CONTEXT_FIELDS, context_from_plan, redact
 
 
 SERVER_INFO = {"name": "anvil-serving", "version": __version__}
@@ -44,6 +47,23 @@ _WORKFLOW_RECOMMENDATIONS = {"promote", "do_not_promote", "needs_more_data", "bl
 _WORKFLOW_VOICE_ARTIFACT_KINDS = {"voice-benchmark", "voice-sidecar-render"}
 _WORKFLOW_VOICE_CONTEXT_RE = re.compile(r"(^|[^a-z0-9])(voice|stt|tts|realtime)([^a-z0-9]|$)", re.I)
 _MAX_ERROR_BODY_BYTES = 4096
+_MAX_ARGUMENT_BYTES = 1024 * 1024
+_MAX_CONTEXT_BYTES = 16 * 1024
+_MAX_CONTEXT_STRING = 1024
+_MAX_CAPTURE_CHARS = 1024 * 1024
+_MAX_SCHEMA_STRING = 262144
+_MAX_SCHEMA_ITEMS = 1000
+_RAW_COMMAND_KEYS = frozenset({"argv", "command", "command_payload", "payload", "shell", "stdin"})
+_RAW_SECRET_KEYS = frozenset({"api_key", "authorization", "credential", "password", "private_key", "secret", "token"})
+_RAW_SECRET_AWARE_TOOLS = frozenset({
+    "benchmark_artifact",
+    "benchmark_probe",
+    "decision_summary",
+    "openclaw_sync",
+    "preflight_probe",
+    "route_decision",
+})
+_SECRET_ENV_RE = re.compile(r"(?:^|_)(?:API_KEY|AUTHORIZATION|CREDENTIAL|PASSWORD|PRIVATE_KEY|SECRET|TOKEN)(?:$|_)")
 _LOG_SECRET_PATTERNS = (
     re.compile(r"(?i)\b((?:authorization|x-api-key)\s*[:=]\s*(?:bearer\s+)?)([^\s]+)"),
     re.compile(r'(?i)("(?:authorization|x-api-key)"\s*:\s*"(?:bearer\s+)?)([^"]+)'),
@@ -84,14 +104,56 @@ def _ok(data: dict) -> dict:
 
 
 def _fail(code: str, message: str, details: Optional[dict] = None) -> dict:
-    return {"ok": False, "error": {"code": code, "message": message, "details": details or {}}}
+    return {
+        "ok": False,
+        "error": {
+            "code": code,
+            "message": _redact_text(message),
+            "details": _redact_error_details(details or {}),
+        },
+    }
+
+
+def _environment_secrets() -> tuple[str, ...]:
+    return tuple(
+        value
+        for name, value in os.environ.items()
+        if value and _SECRET_ENV_RE.search(name.upper())
+    )
+
+
+def _redact_text(value: str) -> str:
+    return redact(value, secrets=_environment_secrets())
+
+
+def _redact_error_details(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        safe = {}
+        for key, item in value.items():
+            normalized = str(key).lower().replace("-", "_")
+            safe[str(key)] = (
+                "<redacted>"
+                if normalized in _RAW_SECRET_KEYS or normalized in {"env", "environment", "environ"}
+                else _redact_error_details(item)
+            )
+        return safe
+    if isinstance(value, (list, tuple)):
+        return [_redact_error_details(item) for item in value]
+    if isinstance(value, str):
+        return _redact_text(value)
+    return value
 
 
 def _capture(fn: Callable[[], int]) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        rc = fn()
-    return rc, out.getvalue(), err.getvalue()
+    with (
+        tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as out,
+        tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as err,
+    ):
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            rc = fn()
+        out.seek(0)
+        err.seek(0)
+        return rc, out.read(_MAX_CAPTURE_CHARS), err.read(_MAX_CAPTURE_CHARS)
 
 
 def _redact_secret(value: Any, token: str) -> Any:
@@ -249,6 +311,27 @@ def _bounded_int_arg(args: dict, name: str, default: int, *, min_value: int, max
             {"value": value},
         )
     return value
+
+
+def _bounded_float_arg(
+    args: dict,
+    name: str,
+    default: float,
+    *,
+    min_value: float,
+    max_value: float,
+) -> float:
+    value = args.get(name, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ToolError("bad_argument", "%r must be a number" % name)
+    result = float(value)
+    if not math.isfinite(result) or result < min_value or result > max_value:
+        raise ToolError(
+            "bad_argument",
+            "%r must be between %s and %s" % (name, min_value, max_value),
+            {"value": value},
+        )
+    return result
 
 
 def _is_tailscale_v4(addr: str) -> bool:
@@ -786,7 +869,7 @@ def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
                      service: str = "", env_file: str = "", dry_run: bool = False,
                      profile: str = "", config: str = "", cfg_volume: str = "",
                      image: str = "", profile_dest: str = "", config_dest: str = "",
-                     no_reload: bool = False) -> list[str]:
+                     no_reload: bool = False, no_verify: bool = False) -> list[str]:
     argv = [sys.executable, "-m", "anvil_serving.cli", "router", action]
     if container:
         argv += ["--container", container]
@@ -812,6 +895,8 @@ def _router_cli_argv(action: str, *, container: str = "", compose: str = "",
         argv += ["--config-dest", config_dest]
     if no_reload:
         argv.append("--no-reload")
+    if no_verify:
+        argv.append("--no-verify")
     return argv
 
 
@@ -865,6 +950,7 @@ def tool_router_manage(args: dict) -> dict:
     env_file = _str_arg(args, "env_file", "")
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    no_verify = _arg_bool(args.get("no_verify"), False, name="no_verify")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
     preview = dry_run or not confirm
     argv = _router_cli_argv(
@@ -874,6 +960,7 @@ def tool_router_manage(args: dict) -> dict:
         service=service if action in {"up", "down"} else "",
         env_file=env_file if action == "up" else "",
         dry_run=preview,
+        no_verify=no_verify if action in {"restart", "reload"} else False,
     )
     target = {
         "action": action,
@@ -882,6 +969,7 @@ def tool_router_manage(args: dict) -> dict:
         "service": service if action in {"up", "down"} else None,
         "env_file": env_file or None,
         "timeout_seconds": timeout_seconds,
+        "no_verify": no_verify if action in {"restart", "reload"} else False,
     }
     if preview:
         return _ok({"applied": False, "dry_run": True, "target": target, "command": argv})
@@ -1393,12 +1481,35 @@ def tool_serves_logs(args: dict) -> dict:
     })
 
 
-def _voice_cli_argv(action: str, config: str, *, dry_run: bool = False, profile: str = "") -> list[str]:
-    argv = [sys.executable, "-m", "anvil_serving.cli", "voice", action, "--config", config]
+def _voice_cli_argv(
+    action: str,
+    config: str,
+    *,
+    topology: str,
+    dry_run: bool = False,
+    profile: str = "",
+    ready_timeout: float = 3.0,
+    tail: int = 200,
+) -> list[str]:
+    argv = [
+        sys.executable,
+        "-m",
+        "anvil_serving.cli",
+        "voice",
+        "audio",
+        action,
+        "--config",
+        config,
+    ]
     if profile:
         argv += ["--profile", profile]
+    argv += ["--topology", topology]
     if dry_run:
         argv.append("--dry-run")
+    if action == "status":
+        argv += ["--ready-timeout", str(ready_timeout)]
+    elif action == "logs":
+        argv += ["--tail", str(tail)]
     return argv
 
 
@@ -1454,32 +1565,209 @@ def _voice_manage_plan(config: str, *, profile: str = "") -> dict:
 
 
 def tool_voice_manage(args: dict) -> dict:
+    """Manage Dark-owned STT/TTS only after local topology authorization."""
+    from .topology import load_topology
     from .voice import config as voice_config
+    from .voice import cli as voice_cli
 
     action = _str_arg(args, "action", required=True)
-    if action not in {"up", "down", "start", "stop"}:
-        raise ToolError("bad_action", "action must be one of: up, down, start, stop", {"action": action})
-    normalized = {"start": "up", "stop": "down"}.get(action, action)
+    if action not in {"up", "down", "status", "logs"}:
+        raise ToolError(
+            "bad_action",
+            "action must be one of: up, down, status, logs",
+            {"action": action},
+        )
     config_arg = _str_arg(args, "config", "")
     config = voice_config.resolve_config_path(config_arg or None)
     profile = _str_arg(args, "profile", "")
+    topology_path = _str_arg(args, "topology", "") or os.environ.get(
+        "ANVIL_VOICE_TOPOLOGY", ""
+    ).strip()
+    if not topology_path:
+        raise ToolError(
+            "missing_topology",
+            "set ANVIL_VOICE_TOPOLOGY on the Dark controller or pass topology",
+        )
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 300, min_value=1, max_value=7200)
+    ready_timeout = _bounded_float_arg(
+        args, "ready_timeout", 3.0, min_value=0.1, max_value=60.0
+    )
+    tail = _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000)
     plan = _voice_manage_plan(config, profile=profile)
-    preview = dry_run or not confirm
-    argv = _voice_cli_argv(normalized, config, dry_run=preview, profile=profile)
+    try:
+        topology = load_topology(topology_path)
+        owners = tuple(topology.resource_owner("%s-serve" % kind) for kind in ("stt", "tts"))
+        if owners[0].host != owners[1].host or owners[0].runtime != owners[1].runtime:
+            raise voice_config.ConfigError(
+                "STT and TTS must be co-owned by one host/runtime for audio lifecycle"
+            )
+        cli_args = argparse.Namespace(
+            config=config,
+            profile=profile or None,
+            topology=topology_path,
+            topology_overlay=None,
+            command_host=None,
+            command_runtime=None,
+            target=None,
+            transport="local",
+            experimental_model_workload=False,
+            ready_timeout=ready_timeout,
+            tail=tail,
+            operation_timeout=float(timeout_seconds),
+        )
+        data, targets, error, error_code = voice_cli._resolve_audio_operation(cli_args)
+        if error:
+            raise ToolError(
+                "audio_target_refused",
+                error,
+                {"topology": topology_path, "exit_code": error_code},
+            )
+    except ToolError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise ToolError(
+            "bad_audio_config",
+            "could not resolve Dark audio ownership",
+            {"config": config, "topology": topology_path, "error": str(exc)},
+        )
+    assert data is not None and targets is not None
+    cli_args._resolved_audio = (data, targets)
+    preview = action in {"up", "down"} and (dry_run or not confirm)
+    argv = _voice_cli_argv(
+        action,
+        config,
+        topology=topology_path,
+        dry_run=preview,
+        profile=profile,
+        ready_timeout=ready_timeout,
+        tail=tail,
+    )
     target = {
-        "action": normalized,
+        "action": action,
         "config": config,
         "profile": profile or None,
+        "topology": topology_path,
+        "owners": targets.as_dict(),
         "timeout_seconds": timeout_seconds,
     }
+    if action in {"status", "logs"}:
+        handler = voice_cli.cmd_audio_status if action == "status" else voice_cli.cmd_audio_logs
+        returncode, stdout, stderr = _capture(lambda: handler(cli_args))
+        if returncode != 0:
+            raise ToolError(
+                "command_failed",
+                "voice audio %s failed" % action,
+                {"command": argv, "returncode": returncode, "stderr": stderr},
+            )
+        return _ok({
+            "applied": False,
+            "target": target,
+            "command": argv,
+            "plan": plan,
+            "output": stdout,
+            "stderr": stderr,
+        })
     if preview:
         return _ok({"applied": False, "dry_run": True, "target": target, "command": argv, "plan": plan})
-    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    result = voice_cli.execute_audio_lifecycle(
+        data, action, targets=targets, timeout_seconds=float(timeout_seconds)
+    )
+    if result["returncode"] != 0:
+        raise ToolError(
+            "command_failed",
+            "voice audio lifecycle failed",
+            {"command": argv, "lifecycle": result},
+        )
     applied = any(item.get("lifecycle") != "external" for item in plan.get("audio_serves", []))
-    return _ok({"applied": applied, "dry_run": False, "target": target, "plan": plan, **result})
+    return _ok({
+        "applied": applied,
+        "dry_run": False,
+        "target": target,
+        "command": argv,
+        "plan": plan,
+        "lifecycle": result,
+    })
+
+
+def tool_voice_proxy_manage(args: dict) -> dict:
+    """Manage the persistent Mini proxy process without touching model serves."""
+    from .topology import load_topology
+    from .voice import config as voice_config
+    from .voice.realtime_service import ProxyProcessConfig, RealtimeProxyProcessService
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"up", "down", "restart", "status", "logs"}:
+        raise ToolError(
+            "bad_action",
+            "action must be one of: up, down, restart, status, logs",
+            {"action": action},
+        )
+    config = voice_config.resolve_config_path(_str_arg(args, "config", "") or None)
+    profile = _str_arg(args, "profile", "")
+    topology_path = _str_arg(args, "topology", "") or os.environ.get(
+        "ANVIL_VOICE_TOPOLOGY", ""
+    ).strip()
+    if not topology_path:
+        raise ToolError(
+            "missing_topology",
+            "set ANVIL_VOICE_TOPOLOGY on the Mini controller or pass topology",
+        )
+    try:
+        data = voice_config.load_manifest(config, profile=profile or None)
+        topology = load_topology(topology_path)
+        targets = voice_config.resolve_proxy_targets(
+            topology,
+            operation="voice-proxy-%s" % action,
+            transport="local",
+        )
+    except (OSError, ValueError) as exc:
+        raise ToolError(
+            "bad_proxy_config",
+            "could not resolve Mini proxy configuration",
+            {"config": config, "topology": topology_path, "error": str(exc)},
+        )
+    voice = data["voice"]
+    process = RealtimeProxyProcessService(ProxyProcessConfig(
+        config_path=config,
+        topology_path=topology_path,
+        profile=profile or None,
+        host=voice.get("realtime_host", "127.0.0.1"),
+        port=int(voice.get("realtime_port", 8765)),
+        owner=targets.proxy.resource_host.id,
+        pid_file=_str_arg(args, "pid_file", "") or os.path.join(
+            "~/.anvil-serving/run", "voice-proxy.pid"
+        ),
+        log_file=_str_arg(args, "log_file", "") or os.path.join(
+            "~/.anvil-serving/run", "voice-proxy.log"
+        ),
+        ready_timeout=float(_bounded_int_arg(
+            args, "timeout_seconds", 15, min_value=1, max_value=300
+        )),
+    ))
+    if action == "status":
+        return _ok(process.status())
+    if action == "logs":
+        tail = _bounded_int_arg(args, "tail", 200, min_value=1, max_value=5000)
+        return _ok(process.logs(tail=tail))
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    preview = dry_run or not confirm
+    result = getattr(process, action)(dry_run=preview)
+    result["dry_run"] = preview
+    if preview:
+        result["applied"] = False
+    elif action == "restart":
+        result["applied"] = any(
+            isinstance(step, dict) and bool(step.get("applied"))
+            for step in (result.get("down"), result.get("up"))
+        )
+    else:
+        result["applied"] = bool(
+            result.get("applied", result.get("returncode") == 0)
+        )
+    return _ok(result)
 
 
 def tool_doctor_summary(args: dict) -> dict:
@@ -1498,6 +1786,73 @@ def tool_host_summary(args: dict) -> dict:
     if args:
         raise ToolError("bad_argument", "host_summary does not accept arguments")
     return _ok(host.host_summary())
+
+
+def tool_gpu_inventory(args: dict) -> dict:
+    from . import gpus
+
+    if args:
+        raise ToolError("bad_argument", "gpu_inventory does not accept arguments")
+    return _ok({"gpus": gpus.list_gpus()})
+
+
+def tool_observability_collect(args: dict) -> dict:
+    from .observability.api import controller_collect
+
+    capabilities = args.get("capabilities")
+    if not isinstance(capabilities, list) or not capabilities:
+        raise ToolError("bad_argument", "capabilities must be a non-empty array")
+    try:
+        return _ok(controller_collect(capabilities))
+    except (TypeError, ValueError) as exc:
+        raise ToolError("bad_argument", str(exc)) from exc
+
+
+def tool_host_manage(args: dict) -> dict:
+    from . import host
+
+    action = _str_arg(args, "action", required=True)
+    if action not in {"wsl-config", "restart-docker", "reset-wsl"}:
+        raise ToolError("bad_action", "action must be wsl-config, restart-docker, or reset-wsl")
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    force = _arg_bool(args.get("force"), False, name="force")
+    revert = _arg_bool(args.get("revert"), False, name="revert")
+    memory = _bounded_int_arg(args, "memory", 0, min_value=0, max_value=4096)
+    swap = _bounded_int_arg(args, "swap", 0, min_value=0, max_value=4096)
+    target = {
+        "action": action,
+        "memory": memory or None,
+        "swap": swap if "swap" in args else None,
+        "revert": revert,
+        "force": force,
+    }
+    if action != "wsl-config" and any(key in args for key in ("memory", "swap", "revert", "force")):
+        raise ToolError("bad_argument", "memory, swap, revert, and force apply only to wsl-config")
+    if dry_run or not confirm:
+        return _ok({"applied": False, "dry_run": True, "target": target})
+    if action == "wsl-config":
+        rc, stdout, stderr = _capture(lambda: host.cmd_wsl_config(
+            memory_gb=memory or None,
+            swap_gb=swap if "swap" in args else None,
+            revert=revert,
+            force=force,
+        ))
+    elif action == "restart-docker":
+        rc, stdout, stderr = _capture(lambda: host.cmd_restart_docker(force=True))
+    else:
+        rc, stdout, stderr = _capture(lambda: host.cmd_reset_wsl(force=True))
+    result = {
+        "applied": rc == 0,
+        "dry_run": False,
+        "returncode": rc,
+        "stdout": stdout,
+        "stderr": stderr,
+        "target": target,
+    }
+    if rc != 0:
+        raise ToolError("command_failed", f"host {action} exited with status {rc}", result)
+    return _ok(result)
 
 
 def tool_models_inventory(args: dict) -> dict:
@@ -1861,6 +2216,25 @@ def tool_openclaw_gateway_restart(args: dict) -> dict:
     return _ok(result)
 
 
+def tool_openclaw_gateway_status(args: dict) -> dict:
+    from . import harness
+
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 120, min_value=1, max_value=7200)
+    max_output_bytes = _bounded_int_arg(
+        args, "max_output_bytes", 65536, min_value=1024, max_value=1048576
+    )
+    try:
+        result = harness.openclaw_gateway_status(
+            timeout_seconds=timeout_seconds,
+            max_output_bytes=max_output_bytes,
+        )
+    except ValueError as exc:
+        raise ToolError("bad_argument", str(exc))
+    if not result.get("ok"):
+        raise ToolError("command_failed", "OpenClaw gateway status failed", result)
+    return _ok(result)
+
+
 def tool_preflight_probe(args: dict) -> dict:
     base_url = _safe_probe_url(_str_arg(args, "base_url", required=True))
     model = _str_arg(args, "model", required=True)
@@ -2130,19 +2504,268 @@ def tool_workflow_packet_validate(args: dict) -> dict:
 
 
 def _schema(properties: dict, required: Optional[list[str]] = None) -> dict:
-    return {
+    return _bounded_tool_schema({
         "type": "object",
         "additionalProperties": False,
         "properties": properties,
         "required": required or [],
-    }
+    })
 
 
 def _bounded_integer_schema(minimum: int, maximum: int, default: int) -> dict:
     return {"type": "integer", "minimum": minimum, "maximum": maximum, "default": default}
 
 
+def _bounded_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a recursively bounded copy of the supported JSON-schema subset."""
+
+    bounded = dict(schema)
+    schema_type = bounded.get("type")
+    schema_types = schema_type if isinstance(schema_type, list) else [schema_type]
+    if "string" in schema_types:
+        bounded.setdefault("maxLength", _MAX_SCHEMA_STRING)
+    if "array" in schema_types:
+        bounded.setdefault("maxItems", _MAX_SCHEMA_ITEMS)
+        items = bounded.get("items")
+        if isinstance(items, Mapping):
+            bounded["items"] = _bounded_schema(items)
+    if "object" in schema_types:
+        properties = bounded.get("properties")
+        if isinstance(properties, Mapping):
+            bounded["properties"] = {
+                str(name): _bounded_schema(value)
+                for name, value in properties.items()
+                if isinstance(value, Mapping)
+            }
+    return bounded
+
+
+def _bounded_tool_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
+    bounded = _bounded_schema(schema)
+    bounded["maxProperties"] = len(bounded.get("properties", {}))
+    return bounded
+
+
+def _operation_records(
+    nodes: tuple[CommandNode, ...], parent: tuple[str, ...] = ()
+) -> Iterable[dict[str, Any]]:
+    for node in nodes:
+        path = parent + (node.name,)
+        if node.visible and node.tombstone is None and node.remote_operation is not None:
+            remote = node.remote_operation
+            yield {
+                "name": "-".join(path),
+                "path": " ".join(path),
+                "mode": remote.mode,
+                "tool": remote.tool,
+                "fixed_arguments": dict(remote.fixed_arguments),
+                "confirmed_arguments": dict(remote.confirmed_arguments),
+                "allowed_arguments": list(remote.allowed_arguments),
+                "positional_arguments": list(remote.positional_arguments),
+                "resource_role": node.resource_role,
+                "transports": list(node.transports),
+                "execution_runtime_roles": list(node.execution_runtime_roles),
+                "mutation_class": node.mutation_class,
+                "recovery_capable": node.recovery_capable,
+                "gpu_role_required": node.gpu_role_required,
+                "execution_policy": node.execution_policy,
+                "output_policy": node.output_policy,
+            }
+        yield from _operation_records(node.children, path)
+
+
+def operation_declarations() -> list[dict[str, Any]]:
+    """Return every command-tree operation declared for controller transport."""
+
+    declarations = list(_operation_records(COMMAND_TREE.nodes))
+    missing_tools = sorted(
+        {
+            declaration["tool"]
+            for declaration in declarations
+            if declaration["mode"] == "tool" and declaration["tool"] not in TOOLS
+        }
+    )
+    if missing_tools:
+        raise RuntimeError(
+            "remote command declarations reference missing MCP tools: %s"
+            % ", ".join(missing_tools)
+        )
+    return declarations
+
+
+TARGET_CONTEXT_SCHEMA = _bounded_tool_schema({
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        field: {
+            "type": ["string", "boolean", "integer", "number", "null"],
+            "maxLength": _MAX_CONTEXT_STRING,
+        }
+        for field in CONTEXT_FIELDS
+    },
+})
+
+
+def _serialized_size(value: Any, *, code: str, message: str) -> int:
+    try:
+        return len(json.dumps(value, ensure_ascii=True, separators=(",", ":")).encode("utf-8"))
+    except (TypeError, ValueError) as exc:
+        raise ToolError(code, message, {"error": redact(str(exc))}) from exc
+
+
+def _private_input_kind(value: Any) -> str | None:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            normalized = str(key).lower().replace("-", "_")
+            if normalized in _RAW_COMMAND_KEYS:
+                return "command"
+            if normalized in _RAW_SECRET_KEYS or normalized in {"env", "environment", "environ"}:
+                return "secret"
+            found = _private_input_kind(item)
+            if found:
+                return found
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            found = _private_input_kind(item)
+            if found:
+                return found
+    return None
+
+
+def _validate_schema_value(value: Any, schema: Mapping[str, Any], field: str) -> None:
+    schema_type = schema.get("type")
+    if isinstance(schema_type, list):
+        allowed_types = schema_type
+    else:
+        allowed_types = [schema_type]
+    valid = False
+    for allowed in allowed_types:
+        if allowed == "null" and value is None:
+            valid = True
+        elif allowed == "boolean" and isinstance(value, bool):
+            valid = True
+        elif allowed == "integer" and isinstance(value, int) and not isinstance(value, bool):
+            valid = True
+        elif allowed == "number" and isinstance(value, (int, float)) and not isinstance(value, bool):
+            valid = True
+        elif allowed == "string" and isinstance(value, str):
+            valid = True
+        elif allowed == "array" and isinstance(value, list):
+            valid = True
+        elif allowed == "object" and isinstance(value, Mapping):
+            valid = True
+    if not valid:
+        expected = ", ".join(str(item) for item in allowed_types)
+        raise ToolError("bad_argument", f"{field!r} must have type {expected}")
+    if isinstance(value, str):
+        if len(value) > int(schema.get("maxLength", _MAX_SCHEMA_STRING)):
+            raise ToolError("bad_argument", f"{field!r} exceeds its length limit")
+        if "enum" in schema and value not in schema["enum"]:
+            code = "bad_action" if field == "action" else "bad_argument"
+            raise ToolError(code, f"{field!r} must be one of {schema['enum']!r}")
+    if isinstance(value, int) and not isinstance(value, bool):
+        if "minimum" in schema and value < schema["minimum"]:
+            raise ToolError("bad_argument", f"{field!r} must be at least {schema['minimum']}")
+        if "maximum" in schema and value > schema["maximum"]:
+            raise ToolError("bad_argument", f"{field!r} must be at most {schema['maximum']}")
+    if isinstance(value, list):
+        if len(value) > int(schema.get("maxItems", _MAX_SCHEMA_ITEMS)):
+            raise ToolError("bad_argument", f"{field!r} contains too many items")
+        item_schema = schema.get("items")
+        if isinstance(item_schema, Mapping):
+            for index, item in enumerate(value):
+                _validate_schema_value(item, item_schema, f"{field}[{index}]")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ToolError("bad_argument", f"{field!r} must be a finite number")
+
+
+def _validate_tool_arguments(name: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
+    private_kind = None
+    for field, value in arguments.items():
+        normalized = str(field).lower().replace("-", "_")
+        if normalized in _RAW_COMMAND_KEYS:
+            private_kind = "command"
+            break
+        if normalized in _RAW_SECRET_KEYS or normalized in {"env", "environment", "environ"}:
+            if name in _RAW_SECRET_AWARE_TOOLS:
+                private_kind = "secret"
+                break
+            continue
+        if field not in {"packet", "records"}:
+            private_kind = _private_input_kind(value)
+            if private_kind:
+                break
+    if private_kind == "command":
+        raise ToolError(
+            "raw_command_not_allowed",
+            "raw command payloads are not accepted; use a declared MCP operation",
+        )
+    if private_kind == "secret":
+        raise ToolError(
+            "raw_secret_not_allowed",
+            "raw secrets are not accepted; pass an approved credential environment variable name",
+        )
+    if _serialized_size(
+        arguments,
+        code="bad_arguments",
+        message="tool arguments must contain JSON values",
+    ) > _MAX_ARGUMENT_BYTES:
+        raise ToolError("arguments_too_large", "tool arguments exceed the configured size limit")
+    schema = TOOLS[name]["inputSchema"]
+    properties = schema.get("properties", {})
+    unknown = sorted(set(arguments) - set(properties))
+    guarded_unknown = {"confirm", "dry_run", "execute", "yes"}
+    if unknown and not (name == "cache_prune_plan" and set(unknown) <= guarded_unknown):
+        raise ToolError("bad_argument", "unknown tool argument", {"fields": unknown})
+    missing = [field for field in schema.get("required", []) if field not in arguments]
+    if missing:
+        raise ToolError("missing_argument", "missing required tool argument", {"fields": missing})
+    for field, value in arguments.items():
+        if field in properties and not (name == "workflow_packet_validate" and field == "packet"):
+            _validate_schema_value(value, properties[field], field)
+    return dict(arguments)
+
+
+def validate_tool_arguments(name: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate one typed tool call without dispatching it."""
+    if name not in TOOLS:
+        raise ToolError("unknown_tool", "unknown tool %r" % name)
+    if not isinstance(arguments, Mapping):
+        raise ToolError("bad_arguments", "tool arguments must be an object")
+    return _validate_tool_arguments(name, arguments)
+
+
+def _target_context(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise ToolError("bad_context", "target context must be an object")
+    unknown = sorted(set(value) - set(CONTEXT_FIELDS))
+    if unknown:
+        raise ToolError("bad_context", "target context contains unknown fields", {"fields": unknown})
+    if _serialized_size(
+        value,
+        code="bad_context",
+        message="target context must contain JSON values",
+    ) > _MAX_CONTEXT_BYTES:
+        raise ToolError("context_too_large", "target context exceeds the configured size limit")
+    for field, item in value.items():
+        _validate_schema_value(item, TARGET_CONTEXT_SCHEMA["properties"][field], field)
+    return context_from_plan(value)
+
+
+def tool_operation_contracts(args: dict) -> dict:
+    if args:
+        raise ToolError("bad_argument", "operation_contracts does not accept arguments")
+    return _ok({"operations": operation_declarations()})
+
+
 TOOLS: Dict[str, dict] = {
+    "operation_contracts": {
+        "description": "List command-tree operations declared for bounded controller transport.",
+        "inputSchema": _schema({}),
+        "handler": tool_operation_contracts,
+    },
     "router_status": {
         "description": "Inspect the deployed anvil router container and loopback health.",
         "inputSchema": _schema({"container": {"type": "string"}}),
@@ -2168,6 +2791,7 @@ TOOLS: Dict[str, dict] = {
             "compose": {"type": "string"},
             "service": {"type": "string"},
             "env_file": {"type": "string"},
+            "no_verify": {"type": "boolean"},
             "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},
             "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
@@ -2246,14 +2870,33 @@ TOOLS: Dict[str, dict] = {
     "voice_manage": {
         "description": "Preview or run guarded voice STT/TTS lifecycle actions with optional voice profile selection.",
         "inputSchema": _schema({
-            "action": {"type": "string", "enum": ["up", "down", "start", "stop"]},
+            "action": {"type": "string", "enum": ["up", "down", "status", "logs"]},
             "config": {"type": "string"},
             "profile": {"type": "string"},
+            "topology": {"type": "string"},
+            "ready_timeout": {"type": "number", "minimum": 0.1, "maximum": 60.0, "default": 3.0},
+            "tail": _bounded_integer_schema(1, 5000, 200),
             "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},
             "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
         }, required=["action"]),
         "handler": tool_voice_manage,
+    },
+    "voice_proxy_manage": {
+        "description": "Manage the persistent Mini-owned Realtime proxy process.",
+        "inputSchema": _schema({
+            "action": {"type": "string", "enum": ["up", "down", "restart", "status", "logs"]},
+            "config": {"type": "string"},
+            "profile": {"type": "string"},
+            "topology": {"type": "string"},
+            "pid_file": {"type": "string"},
+            "log_file": {"type": "string"},
+            "tail": _bounded_integer_schema(1, 5000, 200),
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 300, 15),
+        }, required=["action"]),
+        "handler": tool_voice_proxy_manage,
     },
     "doctor_summary": {
         "description": "Run anvil-serving environment checks and return structured results.",
@@ -2267,6 +2910,35 @@ TOOLS: Dict[str, dict] = {
         "description": "Return read-only WSL/Docker/GPU host checks; performs no repair or restart.",
         "inputSchema": _schema({}),
         "handler": tool_host_summary,
+    },
+    "gpu_inventory": {
+        "description": "Return the local NVIDIA GPU inventory with stable UUIDs.",
+        "inputSchema": _schema({}),
+        "handler": tool_gpu_inventory,
+    },
+    "observability_collect": {
+        "description": "Collect bounded structured telemetry from declared local capabilities.",
+        "inputSchema": _schema({
+            "capabilities": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {"type": "string", "maxLength": 80},
+            },
+        }, required=["capabilities"]),
+        "handler": tool_observability_collect,
+    },
+    "host_manage": {
+        "description": "Preview or run a bounded host repair operation on the controller host.",
+        "inputSchema": _schema({
+            "action": {"type": "string"},
+            "memory": {"type": "integer", "minimum": 1, "maximum": 4096},
+            "swap": {"type": "integer", "minimum": 0, "maximum": 4096},
+            "revert": {"type": "boolean"},
+            "force": {"type": "boolean"},
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+        }, required=["action"]),
+        "handler": tool_host_manage,
     },
     "models_inventory": {
         "description": "Read the generated model catalog, or preview/run `models sync` to create it.",
@@ -2343,8 +3015,16 @@ TOOLS: Dict[str, dict] = {
         }),
         "handler": tool_openclaw_gateway_restart,
     },
+    "openclaw_gateway_status": {
+        "description": "Read bounded local OpenClaw gateway status.",
+        "inputSchema": _schema({
+            "timeout_seconds": _bounded_integer_schema(1, 7200, 120),
+            "max_output_bytes": _bounded_integer_schema(1024, 1048576, 65536),
+        }),
+        "handler": tool_openclaw_gateway_status,
+    },
     "preflight_probe": {
-        "description": "Preview or run an anvil-serving preflight command for a model endpoint.",
+        "description": "Preview or run an anvil-serving eval preflight command for a model endpoint.",
         "inputSchema": _schema({
             "base_url": {"type": "string"},
             "model": {"type": "string"},
@@ -2358,7 +3038,7 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_preflight_probe,
     },
     "benchmark_probe": {
-        "description": "Preview or run an anvil-serving benchmark command for a model endpoint.",
+        "description": "Preview or run an anvil-serving eval benchmark run command for a model endpoint.",
         "inputSchema": _schema({
             "base_url": {"type": "string"},
             "model": {"type": "string"},
@@ -2374,7 +3054,7 @@ TOOLS: Dict[str, dict] = {
         "handler": tool_benchmark_probe,
     },
     "benchmark_artifact": {
-        "description": "Preview or run an anvil-serving benchmark and write a validated local JSON artifact.",
+        "description": "Preview or run an anvil-serving eval benchmark run and write a validated local JSON artifact.",
         "inputSchema": _schema({
             "base_url": {"type": "string"},
             "model": {"type": "string"},
@@ -2446,6 +3126,10 @@ def list_tools() -> list[dict]:
         "name": name,
         "description": spec["description"],
         "inputSchema": spec["inputSchema"],
+        "_meta": {
+            "anvil/targetContextSchema": TARGET_CONTEXT_SCHEMA,
+            "anvil/operationContractTool": "operation_contracts",
+        },
     } for name, spec in TOOLS.items()]
 
 
@@ -2457,19 +3141,23 @@ def call_tool(name: str, arguments: Optional[dict] = None) -> dict:
     if not isinstance(arguments, dict):
         return _fail("bad_arguments", "tool arguments must be an object")
     try:
-        return TOOLS[name]["handler"](arguments)
+        validated = validate_tool_arguments(name, arguments)
+        return TOOLS[name]["handler"](validated)
     except ToolError as exc:
         return _fail(exc.code, exc.message, exc.details)
     except Exception as exc:
-        return _fail("internal_error", str(exc))
+        return _fail("internal_error", _redact_text(str(exc)))
 
 
-def _tool_result(envelope: dict) -> dict:
-    return {
+def _tool_result(envelope: dict, *, context: Optional[dict[str, Any]] = None) -> dict:
+    result = {
         "content": [{"type": "text", "text": json.dumps(envelope, sort_keys=True)}],
         "structuredContent": envelope,
         "isError": not envelope.get("ok", False),
     }
+    if context:
+        result["_meta"] = {"anvil/context": context}
+    return result
 
 
 def handle_request(request: dict) -> Optional[dict]:
@@ -2503,7 +3191,8 @@ def handle_request(request: dict) -> Optional[dict]:
                 arguments = {}
             if not isinstance(arguments, dict):
                 raise ToolError("bad_arguments", "tool arguments must be an object")
-            result = _tool_result(call_tool(params.get("name"), arguments))
+            context = _target_context(params.get("context"))
+            result = _tool_result(call_tool(params.get("name"), arguments), context=context)
         else:
             return {
                 "jsonrpc": "2.0",
@@ -2529,6 +3218,41 @@ def handle_proxy_request(request: dict, controller_url: str, token: str) -> Opti
     req_id = request.get("id")
     if req_id is None:
         return _jsonrpc_error(None, -32600, "id must not be null")
+    context: dict[str, Any] = {}
+    if request.get("method") == "tools/call":
+        params = request.get("params", {})
+        if params is None:
+            params = {}
+        if not isinstance(params, dict):
+            return _jsonrpc_error(req_id, -32602, "params must be an object")
+        name = params.get("name")
+        if name not in TOOLS:
+            return _jsonrpc_error(
+                req_id,
+                -32602,
+                "unknown tool %r" % name,
+                {"code": "unknown_tool"},
+            )
+        arguments = params.get("arguments", {})
+        if arguments is None:
+            arguments = {}
+        if not isinstance(arguments, dict):
+            return _jsonrpc_error(
+                req_id,
+                -32602,
+                "tool arguments must be an object",
+                {"code": "bad_arguments"},
+            )
+        try:
+            _validate_tool_arguments(name, arguments)
+            context = _target_context(params.get("context"))
+        except ToolError as exc:
+            return _jsonrpc_error(
+                req_id,
+                -32602,
+                exc.message,
+                {"code": exc.code, **redact(exc.details)},
+            )
     try:
         response = remote_controller_request(controller_url, request, token)
     except ToolError as exc:
@@ -2542,6 +3266,32 @@ def handle_proxy_request(request: dict, controller_url: str, token: str) -> Opti
         )
     if req_id is None:
         return None
+    if request.get("method") == "tools/list":
+        result = response.get("result")
+        remote_tools = result.get("tools") if isinstance(result, dict) else None
+        local_tools = {tool["name"]: tool for tool in list_tools()}
+        if (
+            not isinstance(remote_tools, list)
+            or any(
+                not isinstance(tool, dict)
+                or not isinstance(tool.get("name"), str)
+                or local_tools.get(tool["name"]) != tool
+                for tool in remote_tools
+            )
+        ):
+            return _jsonrpc_error(
+                req_id,
+                -32000,
+                "controller MCP operation contracts are not a valid local subset",
+                {"code": "operation_contract_mismatch"},
+            )
+    elif context:
+        result = response.get("result")
+        if isinstance(result, dict):
+            metadata = result.get("_meta")
+            if not isinstance(metadata, dict):
+                metadata = {}
+            result["_meta"] = {**metadata, "anvil/context": context}
     return response
 
 
@@ -2574,7 +3324,7 @@ def serve_stdio(
 
 def _build_main_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="anvil-serving mcp",
+        prog="anvil-serving mcp serve",
         description=(
             "Run the stdio MCP control plane locally, list available tools, "
             "or proxy MCP tool calls to a token-authenticated controller."

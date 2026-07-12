@@ -30,14 +30,14 @@ classifiers = [
 dependencies = []   # stdlib-only by design; optional extras pull in nothing required
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "Markdown>=3.6", "pymdown-extensions>=10.0"]
 # `voice` extra: ONLY for optionally running the voice-pipeline orchestrator +
 # realtime server locally (anvil_serving/voice/). The STT/TTS engines
 # themselves run OUT-OF-PROCESS as separate serves speaking the OpenAI audio
 # sub-protocols (/v1/audio/transcriptions, /v1/audio/speech) -- see
 # docs/findings/2026-07-04-hf-speech-to-speech-review.md -- so this extra
 # stays deliberately small. Nothing here is required to import
-# anvil_serving.router or run `anvil-serving serve`; the router hot path gains
+# anvil_serving.router or run `anvil-serving router run`; the router hot path gains
 # ZERO new required dependency. Concrete pins land in the unit that wires the
 # orchestrator's audio I/O; the placeholders below just name the expected shape.
 voice = [
@@ -73,6 +73,7 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
 # wheel so classify.py can load it at runtime from an installed package.
 "anvil_serving.router" = ["*.json"]
 "anvil_serving" = ["py.typed"]
+"anvil_serving.observability.dashboard.static" = ["*.html"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

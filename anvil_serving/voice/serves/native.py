@@ -3,7 +3,7 @@
 `managed` voice serves delegate to :mod:`anvil_serving.serves` and Docker.
 Some hosts intentionally own STT/TTS as native processes instead, so this
 module provides the narrow process lifecycle used by
-``anvil-serving voice up/down``: start a trusted manifest command in the
+``anvil-serving voice audio up/down``: start a trusted manifest command in the
 background, write a PID file, probe the OpenAI-compatible ``/models`` endpoint,
 and stop the PID it started.
 
@@ -26,6 +26,7 @@ from ._common import DEFAULT_READY_TIMEOUT, _probe_models_endpoint
 
 DEFAULT_STOP_TIMEOUT = 5.0
 PID_FILE_SCHEMA = "anvil-voice-native/v1"
+MAX_PID_RECORD_BYTES = 64 * 1024
 _SIGKILL = getattr(signal, "SIGKILL", signal.SIGTERM)
 
 
@@ -157,9 +158,13 @@ class NativeServe:
 
     def _read_pid_record(self) -> dict:
         try:
-            text = open(self.pid_file, "r", encoding="utf-8").read().strip()
+            with open(self.pid_file, "rb") as handle:
+                raw = handle.read(MAX_PID_RECORD_BYTES + 1)
         except OSError:
             return {"pid": None, "owned": False, "reason": "missing_pid_file"}
+        if len(raw) > MAX_PID_RECORD_BYTES:
+            return {"pid": None, "owned": False, "reason": "pid_file_too_large"}
+        text = raw.decode("utf-8", errors="replace").strip()
         if text.isdigit():
             return {"pid": int(text), "owned": False, "reason": "legacy_pid_file"}
         try:

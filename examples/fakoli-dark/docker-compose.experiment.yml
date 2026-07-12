@@ -74,6 +74,11 @@ x-fast-llamacpp-common: &fast-llamacpp-common
   image: ${FAST_LLAMA_CPP_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
   volumes:
     - "llamacpp-cache:/root/.cache/llama.cpp"
+    # Current llama.cpp builds resolve -hf downloads into the HF hub cache
+    # layout, NOT ~/.cache/llama.cpp — mount the volume there too, or 20 GB
+    # GGUFs silently land in the container writable layer and die with it
+    # (found the hard way, 2026-07-11).
+    - "llamacpp-cache:/root/.cache/huggingface"
 
 services:
   # Heavy-tier CANDIDATE (evaluation, NOT production): Qwen3.5-122B-A10B-NVFP4 on the RTX PRO 6000
@@ -378,6 +383,7 @@ services:
       --max-num-seqs ${FAST_GEMMA4_MAX_NUM_SEQS:-2}
       --gpu-memory-utilization ${FAST_GEMMA4_GPU_MEMORY_UTILIZATION:-0.88}
       --host 0.0.0.0 --port 39011
+      ${FAST_GEMMA4_EXTRA_ARGS:-}
 
   fast-glm47-flash-sglang:
     <<: *fast-sglang-common
@@ -505,6 +511,377 @@ services:
       --max-num-seqs 2
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39016
+
+  # ── 2026-07-10 Blackwell local-model bakeoff candidates ─────────────────────
+  # Evaluation serves only (never production). 5090-track candidates (:39020-21)
+  # coexist with the live heavy tier; PRO-6000-track candidates (:39022-24) share
+  # the card with GPT-OSS heavy — bring `heavy` DOWN first. All are managed via
+  # `anvil-serving serves up/down <name>` and publish loopback-only.
+  # NGC vllm images int-parse CUDA_VISIBLE_DEVICES (see heavy-qwen35-122b note),
+  # so these pin by PCI_BUS_ID index: GPU0 = RTX 5090, GPU1 = RTX PRO 6000.
+  cand-nemotron3-nano-30b:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-nemotron3-nano-30b
+    restart: "no"
+    ipc: host
+    shm_size: "8gb"
+    ports:
+      - "127.0.0.1:39020:39020"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+      # Official reasoning parser from the model card (nano_v3): without it,
+      # think-text leaks into content and tool-call extraction misfires.
+      - "./nano_v3_reasoning_parser.py:/opt/nano_v3_reasoning_parser.py:ro"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "0"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4
+      --served-model-name nemotron3-nano-30b-a3b-nvfp4
+      --quantization modelopt_fp4
+      --trust-remote-code
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --reasoning-parser-plugin /opt/nano_v3_reasoning_parser.py
+      --reasoning-parser nano_v3
+      --compilation-config '{"cudagraph_mode":"PIECEWISE"}'
+      --mamba-ssm-cache-dtype float16
+      --max-model-len ${CAND_NEMOTRON_MAX_MODEL_LEN:-131072}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.88
+      --host 0.0.0.0 --port 39020
+      ${CAND_NEMOTRON_EXTRA_ARGS:-}
+
+  cand-nemotron3-omni-30b:
+    # Nightly-only: the Omni arch is unsupported on vLLM <=0.19 (NGC 26.04) and the
+    # NGC release-notes hf-overrides masquerade fails on this NVFP4 checkpoint —
+    # both recorded in candidate-nemotron-omni-vllm-nvfp4-loadfailure.failure.json.
+    image: ${CAND_OMNI_VLLM_IMAGE:-vllm/vllm-openai:nightly}
+    container_name: vllm-cand-nemotron3-omni-30b
+    restart: "no"
+    ipc: host
+    shm_size: "8gb"
+    ports:
+      - "127.0.0.1:39021:39021"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "0"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4
+      --served-model-name nemotron3-omni-30b-a3b-nvfp4
+      --trust-remote-code
+      --reasoning-parser nemotron_v3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --compilation-config '{"cudagraph_mode":"PIECEWISE"}'
+      --mamba-ssm-cache-dtype float16
+      --max-model-len ${CAND_OMNI_MAX_MODEL_LEN:-65536}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.88
+      --host 0.0.0.0 --port 39021
+      ${CAND_OMNI_EXTRA_ARGS:-}
+
+  # Gemma 4 31B fallback path after the vLLM 32 GB KV-OOM ladder: official QAT
+  # q4_0 GGUF on llama.cpp, whose iSWA-aware KV cache prices the 50 sliding-window
+  # layers natively — 64k fits on the 5090 where vLLM's legacy runner could not
+  # allocate even 16k.
+  cand-gemma4-31b-llamacpp:
+    <<: *fast-llamacpp-common
+    container_name: llamacpp-cand-gemma4-31b
+    ports:
+      - "127.0.0.1:39025:39025"
+    environment:
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      -hf ${CAND_GEMMA4_GGUF:-google/gemma-4-31B-it-qat-q4_0-gguf}
+      --alias gemma4-31b-it-q4-gguf
+      --host 0.0.0.0 --port 39025
+      -c 65536
+      -ngl 999
+      --jinja
+
+  cand-ornith-35b-fp8:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-ornith-35b-fp8
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39022:39022"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve deepreinforce-ai/Ornith-1.0-35B-FP8
+      --served-model-name ornith-1.0-35b-fp8
+      --kv-cache-dtype fp8
+      --trust-remote-code
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --max-model-len ${CAND_ORNITH_MAX_MODEL_LEN:-131072}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.90
+      --host 0.0.0.0 --port 39022
+
+  cand-minimax-m27-reap:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-minimax-m27-reap
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39023:39023"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve dervig/m51Lab-MiniMax-M2.7-REAP-139B-A10B-NVFP4
+      --served-model-name minimax-m27-reap-139b-nvfp4
+      --kv-cache-dtype fp8
+      --trust-remote-code
+      --enable-auto-tool-choice
+      --tool-call-parser minimax_m2
+      --max-model-len ${CAND_MINIMAX_MAX_MODEL_LEN:-65536}
+      --max-num-seqs 1
+      --gpu-memory-utilization 0.95
+      --host 0.0.0.0 --port 39023
+
+  cand-deepseek-v4-flash:
+    image: ${BAKEOFF_NGC_VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.04-py3}
+    container_name: vllm-cand-deepseek-v4-flash
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39024:39024"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/DeepSeek-V4-Flash-NVFP4
+      --served-model-name deepseek-v4-flash-nvfp4
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8
+      --trust-remote-code
+      --max-model-len ${CAND_DSV4_MAX_MODEL_LEN:-16384}
+      --max-num-seqs 1
+      --gpu-memory-utilization 0.97
+      --host 0.0.0.0 --port 39024
+
+  # ── 2026-07-11 bakeoff extension: llama.cpp Q4_K_M fast-tier candidates ──
+  # Both run on the RTX 5090 (stop `fast` first). llama.cpp pulls the GGUF into
+  # the llamacpp-cache volume on first start via -hf repo:quant.
+  cand-qwen35-35b-llamacpp:
+    <<: *fast-llamacpp-common
+    container_name: llamacpp-cand-qwen35-35b
+    ports:
+      - "127.0.0.1:39028:39028"
+    environment:
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      -hf ${CAND_QWEN35_GGUF:-unsloth/Qwen3.5-35B-A3B-GGUF:Q4_K_M}
+      --alias qwen35-35b-a3b-q4km-gguf
+      --host 0.0.0.0 --port 39028
+      -c 65536
+      -ngl 999
+      --jinja
+      --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0
+      --presence-penalty 1.5
+
+  cand-gemma4-e4b-llamacpp:
+    <<: *fast-llamacpp-common
+    container_name: llamacpp-cand-gemma4-e4b
+    ports:
+      - "127.0.0.1:39029:39029"
+    environment:
+      CUDA_VISIBLE_DEVICES: ${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_CANDIDATE_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    command: >
+      -hf ${CAND_GEMMA4_E4B_GGUF:-unsloth/gemma-4-E4B-it-qat-GGUF:UD-Q4_K_XL}
+      --alias gemma4-e4b-q4-gguf
+      --host 0.0.0.0 --port 39029
+      -c 65536
+      -ngl 999
+      --jinja
+      --temp 1.0 --top-p 0.95 --top-k 64 --min-p 0
+
+  # ── 2026-07-11 bakeoff extension: MTP / speculative-decoding heavy candidates ──
+  # Both target the RTX PRO 6000 (stop `heavy` first) and default to the upstream
+  # nightly image: their Mamba/MTP serve flags postdate vLLM 0.19 (NGC 26.04).
+  cand-nemotron3-puzzle-75b:
+    image: ${BAKEOFF_NIGHTLY_VLLM_IMAGE:-vllm/vllm-openai:nightly}
+    container_name: vllm-cand-nemotron3-puzzle-75b
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39026:39026"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    # Flags per the official model card (With MTP variant); MTP tokens tunable.
+    command: >
+      serve nvidia/NVIDIA-Nemotron-Labs-3-Puzzle-75B-A9B-NVFP4
+      --served-model-name nemotron3-puzzle-75b-nvfp4
+      --trust-remote-code
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --reasoning-parser nemotron_v3
+      --mamba-ssm-cache-dtype float16
+      --speculative-config '{"method":"mtp","num_speculative_tokens":${CAND_PUZZLE_MTP_TOKENS:-3}}'
+      --kv-cache-dtype fp8
+      --max-model-len ${CAND_PUZZLE_MAX_MODEL_LEN:-131072}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.92
+      --host 0.0.0.0 --port 39026
+      ${CAND_PUZZLE_EXTRA_ARGS:-}
+
+  cand-qwen36-heavy-mtp:
+    image: ${BAKEOFF_NIGHTLY_VLLM_IMAGE:-vllm/vllm-openai:nightly}
+    container_name: vllm-cand-qwen36-heavy-mtp
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39027:39027"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    # "Highest-interest Qwen 3.6" heavy experiment: the 27B dense the community
+    # rallied around, as a text-only NVFP4 conversion with the MTP head PRESERVED
+    # (official NVFP4 drops it; community checkpoint — provenance in the source
+    # registry). Plain-dense NVFP4 is the preferred sm_120 shape (gotcha #16/#17);
+    # ~14 GB weights leave a huge fp8-KV pool at the native 262k window.
+    command: >
+      serve sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP
+      --served-model-name qwen36-27b-nvfp4-mtp
+      --trust-remote-code
+      --quantization modelopt
+      --language-model-only
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --speculative-config '{"method":"qwen3_5_mtp","num_speculative_tokens":${CAND_QWEN36_MTP_TOKENS:-3}}'
+      --no-enable-prefix-caching
+      --kv-cache-dtype fp8
+      --max-model-len ${CAND_QWEN36_MAX_MODEL_LEN:-262144}
+      --max-num-seqs 2
+      --gpu-memory-utilization 0.92
+      --host 0.0.0.0 --port 39027
+      ${CAND_QWEN36_EXTRA_ARGS:-}
 
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache

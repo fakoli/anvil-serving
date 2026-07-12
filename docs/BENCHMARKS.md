@@ -2,7 +2,7 @@
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-08**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-11** (incl. the same-day extension round).
 
 ## Read these results correctly
 
@@ -30,19 +30,81 @@ candidate run and render the comparison:
 
 ```bash
 # append a bakeoff run (alongside --evidence-out)
-anvil-serving benchmark --bakeoff --candidate-id C --config-id CFG \n  --notebook .anvil/benchmarks.sqlite --notebook-task fast-tier --notebook-hardware rtx4090
+anvil-serving eval benchmark run --bakeoff --candidate-id C --config-id CFG \n  --notebook .anvil/benchmarks.sqlite --notebook-task fast-tier --notebook-hardware rtx4090
 
 # render the candidate matrix + rubric + win/lose/hold determination
-anvil-serving benchmark external notebook render --task fast-tier --hardware rtx4090 --baseline current
+anvil-serving eval benchmark external notebook render --task fast-tier --hardware rtx4090 --baseline current
 ```
 
 The rubric weights and hard gates live in
 `anvil_serving/external_benchmarks/notebook.py` (pure, self-checked). Runs
 are append-only; the view is latest-per-(candidate, config, task, hardware).
 
+Externally-authored eval suites (e.g. a session-evals `suite.json`) run through the
+same deterministic check engine with `--suite-file`:
+
+```bash
+anvil-serving eval benchmark run --bakeoff --candidate-id C --config-id CFG \
+  --suite-file ~/.anvil-serving/eval-data/2026-07-11-planning-regression/suite.json \
+  --evidence-out evidence.json
+```
+
+The spec shape is `{suite, date, work_class, evals: [{id, prompt|messages, max_tokens?,
+tools?, expect_tool?, checks?}]}`; `checks` use the deterministic text-check semantics and
+`expect_tool` the tool-call validator. Per-eval results land in the evidence JSON under
+`suites.<suite name>`, with failed checks recorded in the top-level `failures` list.
+`--suite-file` alone runs only the external suite; add `--suite chat,tool,...` to run
+built-in suites in the same evidence artifact. Malformed specs — including vacuous
+checks that could never fail (typo'd assertion keys, empty needles) — are rejected
+before any request is sent.
+
 These rows are from the [Fast-tier LLM bakeoff](findings/2026-07-08-fast-tier-llm-bakeoff.md) and its [human-gated promotion record](findings/2026-07-08-fast-tier-promotion.md). The voice artifacts in that bakeoff measure STT, LLM, and TTS stage timing, but their STT hypothesis is empty with WER `1.0`; they are **not** semantic speech-recognition accuracy results. The displayed decode rate is derived from the recorded evidence as `output_tokens * 1000 / (e2e_ms - ttft_ms)`.
 
+## Blackwell candidate bakeoff (2026-07-10)
+
+Six community-shortlisted candidates measured against the production baselines on Fakoli Dark
+(RTX 5090 32 GB fast track; RTX PRO 6000 96 GB heavy track). Full narrative, failure records,
+and raw evidence: [Blackwell local model bakeoff](findings/2026-07-10-blackwell-local-model-bakeoff.md).
+**No production tier changed as a result of this bakeoff.**
+
+| Candidate / tested configuration | Hardware | Context | Preflight | Tool calls | Decode rate | Long-context | Role verdict |
+|---|---|---:|---|---|---:|---|---|
+| MiniMax-M2.7-REAP-139B-A10B, vLLM NGC 26.04 NVFP4, 64K | PRO 6000 | 65,536 | pass (thinking disabled) | pass | 97.2 tok/s | 64K pass (TTFT 14.3 s); no 131K headroom | Best measured heavy candidate of the base round - superseded by Puzzle-75B (extension table below); not promoted (community REAP checkpoint) |
+| Ornith-1.0-35B, vLLM NGC 26.04 FP8, 131K | PRO 6000 | 131,072 | pass (thinking disabled) | pass 20/20 | 29.2 tok/s | 131K pass — needle 11.9 s, fastest 131k full-prefill measured (13.1 s) | Retain as agentic/long-context specialist; not promoted |
+| Nemotron-3-Nano-30B-A3B, vLLM NGC 26.04 NVFP4 + PIECEWISE graphs + nano_v3 parser, 131K | RTX 5090 | 131,072 | ALL PASS | pass | 15.0 tok/s | 131K pass (FULL graphs hang — upstream bug workaround required) | Keep experimental |
+| Nemotron-3-Nano-Omni-30B, vLLM **nightly v0.23** NVFP4, 64K | RTX 5090 | 65,536 | pass in window | pass 20/20 | 27.3 tok/s | 64K pass (TTFT 3.1 s) | Keep experimental; unsupported on vLLM ≤0.19 — watch for stable release |
+| Gemma-4-31B-IT NVFP4, vLLM gemma4-unified, six configs | RTX 5090 | none fit | fail (KV OOM ladder) | — | — | — | Reject under tested configuration (32 GB + WSL2 legacy runner); llama.cpp GGUF / PRO 6000 untested |
+| DeepSeek-V4-Flash NVFP4, NGC + nightly attempts | PRO 6000 | not reached | — | — | — | — | Not enough evidence (engine-version reject; nightly load aborted) |
+
+### Extension round (2026-07-11)
+
+| Candidate / tested configuration | Hardware | Context | Preflight | Tool calls | Decode rate | MTP A/B | Role verdict |
+|---|---|---:|---|---|---:|---|---|
+| Nemotron-Labs-3-Puzzle-75B-A9B NVFP4, vLLM nightly, MTP n=3, 131K | PRO 6000 | 131,072 | ALL PASS | pass 20/20 | 137.0 tok/s (long-gen) | **1.50×** (91.4 → 137.0) | **Best measured candidate for the heavy role; not promoted** (official checkpoint; pin a stable engine first) |
+| Qwen3.6-27B-Text-NVFP4-MTP (community), vLLM nightly, MTP n=3, 262K | PRO 6000 | **262,144 verified** | ALL PASS | pass 20/20 | 95.0 tok/s (long-gen) | 1.36× (69.9 → 95.0) | 262K big-KV experiment validated; community checkpoint; not promoted |
+| Qwen3.5-35B-A3B Q4_K_M, llama.cpp, 64K | RTX 5090 | 65,536 | pass in window | pass 20/20 | ~147 tok/s decode, 178 ms TTFT | untested (draft-mtp) | Strongest fast-tier challenger (intelligence 2/2); not promoted |
+| Gemma-4-E4B-it QAT UD-Q4_K_XL, llama.cpp, 64K | RTX 5090 | 65,536 | pass in window | pass 20/20 | 97.0 tok/s, 61 ms TTFT | — | Low-latency specialist; not promoted (upstream PLE gap open) |
+
+Baselines measured in the same window: production heavy gpt-oss-120b (all gates pass, 131K,
+intelligence 2/2) and production fast qwen36-35b-a3b (matches its 2026-07-08 promotion profile).
+
 ## OpenClaw interaction and voice evidence
+
+The focused Dark-host STT smoke benchmark used one clean 16 kHz utterance and
+therefore establishes latency and basic serving correctness, not broad ASR
+quality. Parakeet remained the default; Qwen3-ASR 0.6B was the only new
+candidate both accurate after provider-prefix post-processing and near the
+experimental warm-latency target. The tested Whisper Turbo vLLM recipes were
+rejected because they repeated a hallucinated phrase. Full methodology and all
+17 raw runs are in the [STT model benchmark](findings/2026-07-08-stt-model-benchmark.md).
+
+| STT candidate / tested configuration | Warm latency | Normalized WER | Outcome |
+|---|---:|---:|---|
+| Parakeet `tdt_ctc-110m`, existing Dark endpoint | 82.62, 89.30 ms | 0.0 | **Current default**; fastest passing configuration. |
+| Qwen3-ASR 0.6B, vLLM | 196.36, 278.98 ms | 0.0 after postprocess | Retain as the next candidate for a future managed evaluation on a larger corpus. |
+| Qwen3-ASR 1.7B, vLLM | 290.59, 223.96 ms | 0.0 | No demonstrated advantage over 0.6B on this sample. |
+| Whisper Large V3 Turbo FP8, vLLM | 730.69, 669.57 ms | 1.0 | Reject tested recipe; repeated hallucinated phrase. |
+| Whisper Large V3 Turbo BF16, vLLM | 642.42, 643.63 ms | 1.0 | Reject tested recipe; bounded decode was faster but still incorrect. |
 
 | Scenario | Scope | Measured result | Interpretation |
 |---|---|---|---|

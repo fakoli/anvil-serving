@@ -47,6 +47,28 @@ def test_tiers_read_from_manifest():
     assert tiers["heavy"]["base_url"] == "http://127.0.0.1:30002/v1"
 
 
+def test_resolve_endpoint_target_supports_manifest_and_direct_inputs(tmp_path):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(
+        '[[serve]]\nname = "fast"\ncontainer = "fast"\nport = 31000\n'
+        'model = "served-fast"\nengine = "vllm"\nup = "docker start fast"\n',
+        encoding="utf-8",
+    )
+    assert ev.resolve_endpoint_target(tier="fast", manifest=str(manifest))[:2] == (
+        "http://127.0.0.1:31000/v1", "served-fast"
+    )
+    assert ev.resolve_endpoint_target(base_url="http://127.0.0.1:8000/v1", model="m")[:2] == (
+        "http://127.0.0.1:8000/v1", "m"
+    )
+
+
+def test_resolve_endpoint_target_rejects_incomplete_modes():
+    with pytest.raises(ValueError, match="--manifest requires --tier"):
+        ev.resolve_endpoint_target(manifest="serves.toml")
+    with pytest.raises(ValueError, match="both --base-url and --model"):
+        ev.resolve_endpoint_target(base_url="http://127.0.0.1:8000/v1")
+
+
 # ---- reachability (lenient) -------------------------------------------------
 
 def test_reachable_true_on_response():

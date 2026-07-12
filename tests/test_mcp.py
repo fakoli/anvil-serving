@@ -15,7 +15,10 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import pytest
+
 from anvil_serving import cli, mcp
+from anvil_serving.command_tree import manifest_data
 
 
 def proc(rc=0, out="", err=""):
@@ -36,6 +39,50 @@ def _manifest(tmp_path, *, up=False):
     if up:
         body += '        up = "docker compose -f {dir}/docker-compose.yml up -d"\n'
     p.write_text(textwrap.dedent(body), encoding="utf-8")
+    return str(p)
+
+
+def _voice_topology(tmp_path):
+    p = tmp_path / "voice-topology.toml"
+    p.write_text(textwrap.dedent("""
+        schema_version = 1
+        id = "voice-test"
+        command_host = "host:dark"
+        command_runtime = "runtime:dark-native"
+
+        [[capacity_policies]]
+        id = "model-capable"
+        allow_model_workloads = true
+
+        [[hosts]]
+        id = "dark"
+        roles = ["audio"]
+        os = "windows"
+        capacity_policy = "model-capable"
+
+        [[runtimes]]
+        id = "dark-native"
+        host = "dark"
+        role = "native"
+
+        [[resources]]
+        id = "dark-stt"
+        role = "stt-serve"
+        host = "dark"
+        runtime = "dark-native"
+        endpoint = "http://127.0.0.1:30010/v1"
+        endpoint_kind = "host-relative-loopback"
+        workload = "stt"
+
+        [[resources]]
+        id = "dark-tts"
+        role = "tts-serve"
+        host = "dark"
+        runtime = "dark-native"
+        endpoint = "http://127.0.0.1:30011/v1"
+        endpoint_kind = "host-relative-loopback"
+        workload = "tts"
+    """), encoding="utf-8")
     return str(p)
 
 
@@ -157,6 +204,8 @@ def test_tools_list_has_json_schemas():
         "voice_manage",
         "doctor_summary",
         "host_summary",
+        "host_manage",
+        "gpu_inventory",
         "models_inventory",
         "cache_prune_plan",
         "route_decision",
@@ -170,12 +219,15 @@ def test_tools_list_has_json_schemas():
         "external_bench_list",
         "external_bench_report",
         "external_bench_compare",
+        "operation_contracts",
     ]:
         assert name in tools
         schema = tools[name]["inputSchema"]
         assert schema["type"] == "object"
         assert schema["additionalProperties"] is False
         assert "properties" in schema
+        assert schema["maxProperties"] == len(schema["properties"])
+        assert tools[name]["_meta"]["anvil/targetContextSchema"] == mcp.TARGET_CONTEXT_SCHEMA
     for name in ("preflight_probe", "benchmark_probe"):
         props = tools[name]["inputSchema"]["properties"]
         assert "api_key" not in props
@@ -206,7 +258,57 @@ def test_tools_list_has_json_schemas():
     assert tools["external_bench_compare"]["inputSchema"]["required"] == ["local"]
     assert tools["external_bench_report"]["inputSchema"]["properties"]["top"]["default"] == 100
     assert tools["host_summary"]["inputSchema"]["properties"] == {}
+    assert tools["host_manage"]["inputSchema"]["required"] == ["action"]
     assert "execute" not in tools["cache_prune_plan"]["inputSchema"]["properties"]
+
+
+def test_operation_contracts_enumerate_every_remote_capable_command():
+    expected = {
+        record["path"].replace(" ", "-")
+        for record in manifest_data()["commands"]
+        if record["visible"]
+        and record["tombstone"] is None
+        and record["handler"] is not None
+        and "controller" in record["transports"]
+    }
+    declarations = mcp.operation_declarations()
+
+    assert {declaration["name"] for declaration in declarations} == expected
+    assert all("controller" in declaration["transports"] for declaration in declarations)
+    assert all(declaration["resource_role"] for declaration in declarations)
+    assert all(
+        declaration["tool"] in mcp.TOOLS
+        for declaration in declarations
+        if declaration["mode"] == "tool"
+    )
+    envelope = mcp.call_tool("operation_contracts")
+    assert envelope == {"ok": True, "data": {"operations": declarations}}
+
+
+def test_mcp_rejects_raw_commands_secrets_and_unbounded_arguments(monkeypatch):
+    monkeypatch.setenv("ANVIL_CONTROLLER_TOKEN", "controller-secret-token")
+    raw_command = mcp.call_tool("router_status", {"command": ["cmd", "/c", "whoami"]})
+    raw_secret = mcp.call_tool("router_status", {"token": "controller-secret-token"})
+    oversized = mcp.call_tool("router_status", {"container": "x" * (mcp._MAX_SCHEMA_STRING + 1)})
+
+    assert raw_command["error"]["code"] == "raw_command_not_allowed"
+    assert raw_secret["error"]["code"] == "bad_argument"
+    assert "controller-secret-token" not in json.dumps(raw_secret)
+    assert oversized["error"]["code"] == "bad_argument"
+
+    monkeypatch.setitem(
+        mcp.TOOLS,
+        "operation_contracts",
+        {
+            **mcp.TOOLS["operation_contracts"],
+            "handler": lambda _args: (_ for _ in ()).throw(
+                RuntimeError("controller-secret-token")
+            ),
+        },
+    )
+    failed = mcp.call_tool("operation_contracts")
+    assert "controller-secret-token" not in json.dumps(failed)
+    assert "<redacted>" in json.dumps(failed)
 
 
 def test_stdio_tools_list_and_call(tmp_path):
@@ -235,6 +337,62 @@ def test_stdio_tools_list_and_call(tmp_path):
     assert envelope["ok"] is True
     assert envelope["data"]["would_run"] is True
     assert isinstance(envelope["data"]["command"], list)
+
+
+def test_stdio_tool_result_carries_fixed_redacted_target_context_metadata():
+    context = {
+        "command": "Bearer context-secret-token",
+        "topology": "fakoli-reference",
+        "execution_host": "dark",
+        "execution_runtime": "dark-native",
+        "resource_host": "dark",
+        "transport": "controller",
+        "controller_endpoint": "http://100.87.34.66:8765",
+    }
+    request = {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "tools/call",
+        "params": {"name": "operation_contracts", "arguments": {}, "context": context},
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio([json.dumps(request) + "\n"], stdout) == 0
+    response = json.loads(stdout.getvalue())
+    metadata = response["result"]["_meta"]["anvil/context"]
+    assert tuple(metadata) == mcp.CONTEXT_FIELDS
+    assert metadata["topology"] == "fakoli-reference"
+    assert metadata["execution_host"] == "dark"
+    assert metadata["command"] == "Bearer <redacted>"
+    assert "context-secret-token" not in stdout.getvalue()
+
+
+def test_stdio_rejects_unbounded_or_unknown_target_context_before_dispatch(monkeypatch):
+    monkeypatch.setitem(
+        mcp.TOOLS,
+        "operation_contracts",
+        {
+            **mcp.TOOLS["operation_contracts"],
+            "handler": lambda _args: pytest.fail("unsafe context reached handler"),
+        },
+    )
+    request = {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "tools/call",
+        "params": {
+            "name": "operation_contracts",
+            "arguments": {},
+            "context": {"authorization": "Bearer context-secret-token"},
+        },
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio([json.dumps(request) + "\n"], stdout) == 0
+    response = json.loads(stdout.getvalue())
+    assert response["error"]["code"] == -32602
+    assert response["error"]["data"]["code"] == "bad_context"
+    assert "context-secret-token" not in stdout.getvalue()
 
 
 def test_serves_status_is_structured(tmp_path):
@@ -344,11 +502,13 @@ def test_router_manage_preview_and_confirmed_reload(monkeypatch):
         "container": "anvil-router",
         "confirm": True,
         "dry_run": False,
+        "no_verify": True,
         "timeout_seconds": 9,
     })
     assert confirmed["ok"] is True
     assert confirmed["data"]["applied"] is True
     assert "--dry-run" not in seen["argv"]
+    assert "--no-verify" in seen["argv"]
     assert seen["argv"][3:5] == ["router", "reload"]
     assert seen["timeout"] == 9
 
@@ -538,6 +698,41 @@ def test_openclaw_sync_preview_uses_harness_logic_and_env_ref(tmp_path):
     assert preview["model_ids"] == ["chat", "chat-fast", "review"]
     # Secret hygiene: config references the env var by name; no literal secret is resolved.
     assert preview["api_key"] == "${ANVIL_ROUTER_TOKEN}"
+
+
+def test_openclaw_gateway_status_is_bounded_and_structured(monkeypatch):
+    from anvil_serving import harness
+
+    seen = {}
+    monkeypatch.setattr(
+        harness,
+        "openclaw_gateway_status",
+        lambda **kwargs: seen.update(kwargs) or {
+            "ok": True,
+            "returncode": 0,
+            "status": {"status": "running"},
+        },
+    )
+    env = mcp.call_tool("openclaw_gateway_status", {
+        "timeout_seconds": 9,
+        "max_output_bytes": 4096,
+    })
+    assert env["ok"] is True
+    assert env["data"]["status"] == {"status": "running"}
+    assert seen == {"timeout_seconds": 9, "max_output_bytes": 4096}
+
+
+def test_openclaw_gateway_status_failure_is_classified(monkeypatch):
+    from anvil_serving import harness
+
+    monkeypatch.setattr(
+        harness,
+        "openclaw_gateway_status",
+        lambda **_kwargs: {"ok": False, "returncode": 1, "stderr": "not running"},
+    )
+    env = mcp.call_tool("openclaw_gateway_status", {})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "command_failed"
 
 
 def test_openclaw_sync_preview_can_include_skills(tmp_path):
@@ -738,6 +933,47 @@ def test_host_summary_tool_is_structured_and_read_only(monkeypatch):
 
 def test_host_summary_rejects_arguments():
     env = mcp.call_tool("host_summary", {"confirm": True})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_host_manage_previews_without_calling_host(monkeypatch):
+    from anvil_serving import host
+
+    monkeypatch.setattr(
+        host,
+        "cmd_wsl_config",
+        lambda **_kwargs: pytest.fail("host preview applied a repair"),
+    )
+    env = mcp.call_tool("host_manage", {
+        "action": "wsl-config", "memory": 80, "confirm": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is False
+    assert env["data"]["target"]["memory"] == 80
+
+
+def test_host_manage_confirmed_restart_uses_noninteractive_gate(monkeypatch):
+    from anvil_serving import host
+
+    seen = {}
+    monkeypatch.setattr(
+        host,
+        "cmd_restart_docker",
+        lambda **kwargs: seen.update(kwargs) or 0,
+    )
+    env = mcp.call_tool("host_manage", {
+        "action": "restart-docker", "confirm": True, "dry_run": False,
+    })
+    assert env["ok"] is True
+    assert env["data"]["applied"] is True
+    assert seen == {"force": True}
+
+
+def test_host_manage_rejects_wsl_arguments_for_restart():
+    env = mcp.call_tool("host_manage", {
+        "action": "restart-docker", "memory": 80, "confirm": True, "dry_run": False,
+    })
     assert env["ok"] is False
     assert env["error"]["code"] == "bad_argument"
 
@@ -1127,14 +1363,17 @@ def test_voice_manage_preview_is_dry_run_argv(tmp_path):
     """), encoding="utf-8")
 
     env = mcp.call_tool("voice_manage", {
-        "action": "start",
+        "action": "up",
         "config": str(config),
+        "topology": _voice_topology(tmp_path),
     })
 
     assert env["ok"] is True
     data = env["data"]
     assert data["applied"] is False
-    assert data["command"][:5] == [sys.executable, "-m", "anvil_serving.cli", "voice", "up"]
+    assert data["command"][:6] == [
+        sys.executable, "-m", "anvil_serving.cli", "voice", "audio", "up"
+    ]
     assert "--dry-run" in data["command"]
     assert data["plan"]["audio_serves"][0]["lifecycle"] == "native"
     assert data["plan"]["audio_serves"][0]["start_command"][:3] == ["python", "-m", "mlx_audio.server"]
@@ -1184,20 +1423,23 @@ def test_voice_manage_accepts_profile_selection(tmp_path):
         "action": "up",
         "config": str(config),
         "profile": "dark-audio",
+        "topology": _voice_topology(tmp_path),
     })
 
     assert env["ok"] is True
     data = env["data"]
-    assert data["command"][:7] == [
+    assert data["command"][:8] == [
         sys.executable,
         "-m",
         "anvil_serving.cli",
         "voice",
+        "audio",
         "up",
         "--config",
         str(config),
     ]
-    assert data["command"][7:9] == ["--profile", "dark-audio"]
+    assert data["command"][8:10] == ["--profile", "dark-audio"]
+    assert data["command"][10:12] == ["--topology", _voice_topology(tmp_path)]
     assert data["plan"]["profile"] == "dark-audio"
     assert data["plan"]["available_profiles"] == ["dark-audio"]
     assert data["plan"]["audio_serves"][0]["lifecycle"] == "external"
@@ -1239,6 +1481,7 @@ def test_voice_manage_profile_does_not_validate_unprofiled_base_first(tmp_path):
         "action": "up",
         "config": str(config),
         "profile": "dark-audio",
+        "topology": _voice_topology(tmp_path),
     })
 
     assert env["ok"] is True
@@ -1268,36 +1511,34 @@ def test_voice_manage_confirmed_action_requires_dry_run_false_to_run(tmp_path, m
         model = "mlx-tts"
         lifecycle = "external"
     """), encoding="utf-8")
-    seen = {}
-
-    def fake_run(argv, **kwargs):
-        seen["argv"] = argv
-        seen["timeout"] = kwargs.get("timeout")
-        return proc(0, "ok\n", "")
-
-    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
-
     preview = mcp.call_tool("voice_manage", {
-        "action": "stop",
+        "action": "down",
         "config": str(config),
+        "topology": _voice_topology(tmp_path),
         "confirm": True,
     })
     assert preview["ok"] is True
     assert preview["data"]["applied"] is False
-    assert seen == {}
 
     applied = mcp.call_tool("voice_manage", {
-        "action": "stop",
+        "action": "down",
         "config": str(config),
+        "topology": _voice_topology(tmp_path),
         "confirm": True,
         "dry_run": False,
         "timeout_seconds": 7,
     })
     assert applied["ok"] is True
     assert applied["data"]["applied"] is False
-    assert seen["argv"][:5] == [sys.executable, "-m", "anvil_serving.cli", "voice", "down"]
-    assert "--dry-run" not in seen["argv"]
-    assert seen["timeout"] == 7
+    assert applied["data"]["command"][:6] == [
+        sys.executable, "-m", "anvil_serving.cli", "voice", "audio", "down"
+    ]
+    assert "--dry-run" not in applied["data"]["command"]
+    assert applied["data"]["target"]["timeout_seconds"] == 7
+    assert all(
+        item["state"] == "external"
+        for item in applied["data"]["lifecycle"]["serves"]
+    )
 
 
 def test_voice_manage_confirmed_native_action_bridges_to_cli(tmp_path, monkeypatch):
@@ -1325,16 +1566,20 @@ def test_voice_manage_confirmed_native_action_bridges_to_cli(tmp_path, monkeypat
     """), encoding="utf-8")
     seen = {}
 
-    def fake_run(argv, **kwargs):
-        seen["argv"] = argv
-        seen["timeout"] = kwargs.get("timeout")
-        return proc(0, "ok\n", "")
+    from anvil_serving.voice import cli as voice_cli
 
-    monkeypatch.setattr(mcp.subprocess, "run", fake_run)
+    def fake_lifecycle(data, action, **kwargs):
+        seen["voice"] = data["voice"]["name"]
+        seen["action"] = action
+        seen["timeout_seconds"] = kwargs["timeout_seconds"]
+        return {"action": action, "dry_run": False, "returncode": 0, "serves": []}
+
+    monkeypatch.setattr(voice_cli, "execute_audio_lifecycle", fake_lifecycle)
 
     applied = mcp.call_tool("voice_manage", {
-        "action": "start",
+        "action": "up",
         "config": str(config),
+        "topology": _voice_topology(tmp_path),
         "confirm": True,
         "dry_run": False,
         "timeout_seconds": 11,
@@ -1342,9 +1587,12 @@ def test_voice_manage_confirmed_native_action_bridges_to_cli(tmp_path, monkeypat
 
     assert applied["ok"] is True
     assert applied["data"]["applied"] is True
-    assert seen["argv"][:5] == [sys.executable, "-m", "anvil_serving.cli", "voice", "up"]
-    assert "--dry-run" not in seen["argv"]
-    assert seen["timeout"] == 11
+    assert applied["data"]["command"][:6] == [
+        sys.executable, "-m", "anvil_serving.cli", "voice", "audio", "up"
+    ]
+    assert "--dry-run" not in applied["data"]["command"]
+    assert applied["data"]["target"]["timeout_seconds"] == 11
+    assert seen == {"voice": "mini", "action": "up", "timeout_seconds": 11.0}
 
 
 def test_voice_manage_bad_action_and_bad_config(tmp_path):
@@ -1355,14 +1603,255 @@ def test_voice_manage_bad_action_and_bad_config(tmp_path):
     missing = mcp.call_tool("voice_manage", {
         "action": "up",
         "config": str(tmp_path / "missing.toml"),
+        "topology": _voice_topology(tmp_path),
     })
     assert missing["ok"] is False
     assert missing["error"]["code"] == "bad_config"
 
 
+def test_voice_manage_requires_topology_before_preview(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANVIL_VOICE_TOPOLOGY", raising=False)
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+        [voice.stt]
+        base_url = "http://127.0.0.1:30010/v1"
+        model = "stt"
+        lifecycle = "external"
+        [voice.tts]
+        base_url = "http://127.0.0.1:30011/v1"
+        model = "tts"
+        lifecycle = "external"
+    """), encoding="utf-8")
+
+    result = mcp.call_tool("voice_manage", {"action": "up", "config": str(config)})
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "missing_topology"
+
+
+def test_voice_manage_refuses_local_execution_when_topology_identity_is_mini(tmp_path):
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+        [voice.stt]
+        base_url = "http://127.0.0.1:30010/v1"
+        model = "stt"
+        lifecycle = "external"
+        [voice.tts]
+        base_url = "http://127.0.0.1:30011/v1"
+        model = "tts"
+        lifecycle = "external"
+    """), encoding="utf-8")
+
+    result = mcp.call_tool("voice_manage", {
+        "action": "up",
+        "config": str(config),
+        "topology": "examples/fakoli-dark/operator-topology.toml",
+    })
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "audio_target_refused"
+
+
+def test_voice_manage_status_and_logs_are_immediate_and_bounded(tmp_path, monkeypatch):
+    from anvil_serving.voice import cli as voice_cli
+
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+        [voice.stt]
+        base_url = "http://127.0.0.1:30010/v1"
+        model = "stt"
+        lifecycle = "external"
+        [voice.tts]
+        base_url = "http://127.0.0.1:30011/v1"
+        model = "tts"
+        lifecycle = "external"
+    """), encoding="utf-8")
+    topology = _voice_topology(tmp_path)
+    monkeypatch.setattr(
+        voice_cli,
+        "cmd_audio_status",
+        lambda args: (print("audio status ok"), 0)[1],
+    )
+    monkeypatch.setattr(
+        voice_cli,
+        "cmd_audio_logs",
+        lambda args: (print("audio logs ok"), 0)[1],
+    )
+
+    status = mcp.call_tool("voice_manage", {
+        "action": "status",
+        "config": str(config),
+        "topology": topology,
+        "ready_timeout": 1.5,
+    })
+    logs = mcp.call_tool("voice_manage", {
+        "action": "logs",
+        "config": str(config),
+        "topology": topology,
+        "tail": 17,
+    })
+
+    assert status["ok"] is True
+    assert status["data"]["applied"] is False
+    assert status["data"]["output"] == "audio status ok\n"
+    assert status["data"]["command"][-2:] == ["--ready-timeout", "1.5"]
+    assert logs["ok"] is True
+    assert logs["data"]["output"] == "audio logs ok\n"
+    assert logs["data"]["command"][-2:] == ["--tail", "17"]
+
+
+def test_voice_manage_rejects_non_finite_ready_timeout(tmp_path):
+    result = mcp.call_tool("voice_manage", {
+        "action": "status",
+        "config": str(tmp_path / "unused.toml"),
+        "topology": _voice_topology(tmp_path),
+        "ready_timeout": float("nan"),
+    })
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "bad_argument"
+
+
+def test_voice_proxy_manage_is_persistent_typed_and_model_free(tmp_path, monkeypatch):
+    from anvil_serving.voice import realtime_service
+
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        name = "mini-proxy"
+        realtime_host = "127.0.0.1"
+        realtime_port = 8765
+
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+
+        [voice.stt]
+        base_url = "http://127.0.0.1:30110/v1"
+        model = "remote-stt"
+        lifecycle = "external"
+
+        [voice.tts]
+        base_url = "http://127.0.0.1:30111/v1"
+        model = "remote-tts"
+        lifecycle = "external"
+    """), encoding="utf-8")
+    topology = Path(__file__).parents[1] / "examples" / "fakoli-dark" / "operator-topology.toml"
+    calls = []
+
+    class FakeProcess:
+        def __init__(self, process_config):
+            calls.append(("init", process_config.owner, process_config.topology_path))
+
+        def status(self):
+            calls.append(("status",))
+            return {"action": "status", "owner": "fakoli-mini", "returncode": 0}
+
+        def up(self, *, dry_run=False):
+            calls.append(("up", dry_run))
+            return {"action": "up", "owner": "fakoli-mini", "returncode": 0}
+
+    monkeypatch.setattr(realtime_service, "RealtimeProxyProcessService", FakeProcess)
+    monkeypatch.setenv("ANVIL_VOICE_TOPOLOGY", str(topology))
+
+    status = mcp.call_tool("voice_proxy_manage", {
+        "action": "status", "config": str(config),
+    })
+    preview = mcp.call_tool("voice_proxy_manage", {
+        "action": "up", "config": str(config),
+    })
+    applied = mcp.call_tool("voice_proxy_manage", {
+        "action": "up", "config": str(config), "confirm": True, "dry_run": False,
+    })
+
+    assert status["ok"] is True
+    assert preview["data"]["dry_run"] is True
+    assert applied["data"]["applied"] is True
+    assert ("up", True) in calls and ("up", False) in calls
+    assert all("audio" not in str(call) for call in calls)
+
+
+def test_voice_proxy_manage_preserves_successful_noop_as_not_applied(tmp_path, monkeypatch):
+    from anvil_serving.voice import realtime_service
+
+    config = tmp_path / "voice.toml"
+    config.write_text(textwrap.dedent("""
+        [voice]
+        realtime_host = "127.0.0.1"
+        realtime_port = 8765
+        [voice.llm]
+        base_url = "http://127.0.0.1:8000/v1"
+        model = "chat"
+        [voice.stt]
+        base_url = "http://127.0.0.1:30110/v1"
+        model = "stt"
+        lifecycle = "external"
+        [voice.tts]
+        base_url = "http://127.0.0.1:30111/v1"
+        model = "tts"
+        lifecycle = "external"
+    """), encoding="utf-8")
+
+    class NoopProcess:
+        def __init__(self, process_config):
+            pass
+
+        def up(self, *, dry_run=False):
+            return {
+                "action": "up",
+                "returncode": 0,
+                "applied": False,
+                "reason": "already_ready",
+            }
+
+    monkeypatch.setattr(realtime_service, "RealtimeProxyProcessService", NoopProcess)
+
+    result = mcp.call_tool("voice_proxy_manage", {
+        "action": "up",
+        "config": str(config),
+        "topology": "examples/fakoli-dark/operator-topology.toml",
+        "confirm": True,
+        "dry_run": False,
+    })
+
+    assert result["ok"] is True
+    assert result["data"]["applied"] is False
+    assert result["data"]["reason"] == "already_ready"
+
+
+def test_host_manage_rejects_action_specific_arguments_in_preview():
+    env = mcp.call_tool(
+        "host_manage",
+        {"action": "restart-docker", "memory": 80, "dry_run": True},
+    )
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+
+
+def test_capture_is_bounded_without_holding_output_in_memory():
+    rc, stdout, stderr = mcp._capture(
+        lambda: (print("x" * (mcp._MAX_CAPTURE_CHARS + 100)), 0)[1]
+    )
+    assert rc == 0
+    assert len(stdout) == mcp._MAX_CAPTURE_CHARS
+    assert stderr == ""
+
+
 def test_voice_manage_schema_exposes_action_enum():
     tool = next(item for item in mcp.list_tools() if item["name"] == "voice_manage")
-    assert tool["inputSchema"]["properties"]["action"]["enum"] == ["up", "down", "start", "stop"]
+    assert tool["inputSchema"]["properties"]["action"]["enum"] == ["up", "down", "status", "logs"]
     assert tool["inputSchema"]["properties"]["profile"]["type"] == "string"
 
 
@@ -1461,7 +1950,8 @@ def test_gateway_restart_is_gated_and_uses_argv_preview():
     assert env["ok"] is True
     assert env["data"]["restarted"] is False
     assert env["data"]["command"] == [
-        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=60",
+        "ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+        "-o", "ConnectTimeout=60",
         "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
         "--", "sd@mini", 'exec "${SHELL:-sh}" -lc "openclaw gateway restart"',
     ]
@@ -2514,7 +3004,11 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
     def fake_remote(controller_url, request, token, **kwargs):
         seen.append((controller_url, token, request))
         if request["method"] == "tools/list":
-            return {"jsonrpc": "2.0", "id": request["id"], "result": {"tools": []}}
+            return {
+                "jsonrpc": "2.0",
+                "id": request["id"],
+                "result": {"tools": mcp.list_tools()},
+            }
         return {
             "jsonrpc": "2.0",
             "id": request["id"],
@@ -2533,7 +3027,14 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/call",
-            "params": {"name": "preflight_probe", "arguments": {"confirm": False}},
+            "params": {
+                "name": "preflight_probe",
+                "arguments": {
+                    "base_url": "http://127.0.0.1:30000/v1",
+                    "model": "local",
+                    "confirm": False,
+                },
+            },
         },
     ]
     stdout = io.StringIO()
@@ -2545,10 +3046,119 @@ def test_stdio_proxy_forwards_tool_methods_and_handles_initialize(monkeypatch):
     ) == 0
     lines = [json.loads(ln) for ln in stdout.getvalue().splitlines()]
     assert lines[0]["result"]["serverInfo"]["name"] == "anvil-serving"
-    assert lines[1]["result"]["tools"] == []
+    assert lines[1]["result"]["tools"] == mcp.list_tools()
     assert lines[2]["result"]["structuredContent"]["data"]["proxied"] is True
     assert [item[2]["method"] for item in seen] == ["tools/list", "tools/call"]
     assert all(item[0] == "http://127.0.0.1:8765" and item[1] == "secret" for item in seen)
+
+
+def test_stdio_proxy_rejects_catalog_drift_and_unsafe_calls_before_forwarding(monkeypatch):
+    seen = []
+
+    def fake_remote(controller_url, request, token, **kwargs):
+        seen.append(request)
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {
+                "tools": [
+                    {
+                        **mcp.list_tools()[0],
+                        "description": "drifted remote contract",
+                    }
+                ]
+            },
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    requests = [
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+                "name": "router_status",
+                "arguments": {"argv": ["cmd", "/c", "whoami"]},
+            },
+        },
+    ]
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps(request) + "\n" for request in requests],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
+    assert responses[0]["error"]["data"]["code"] == "operation_contract_mismatch"
+    assert responses[1]["error"]["data"]["code"] == "raw_command_not_allowed"
+    assert seen == [requests[0]]
+
+
+def test_stdio_proxy_accepts_an_allowlisted_catalog_subset(monkeypatch):
+    subset = [next(tool for tool in mcp.list_tools() if tool["name"] == "host_summary")]
+
+    def fake_remote(controller_url, request, token, **kwargs):
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"tools": subset},
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}) + "\n"],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    assert json.loads(stdout.getvalue())["result"]["tools"] == subset
+
+
+def test_stdio_proxy_preserves_safe_target_context_as_result_metadata(monkeypatch):
+    def fake_remote(controller_url, request, token, **kwargs):
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {
+                "content": [],
+                "structuredContent": {"ok": True, "data": {}},
+                "isError": False,
+            },
+        }
+
+    monkeypatch.setattr(mcp, "remote_controller_request", fake_remote)
+    request = {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+            "name": "operation_contracts",
+            "arguments": {},
+            "context": {
+                "topology": "fakoli-reference",
+                "execution_host": "dark",
+                "execution_runtime": "dark-native",
+                "transport": "controller",
+            },
+        },
+    }
+    stdout = io.StringIO()
+
+    assert mcp.serve_stdio(
+        [json.dumps(request) + "\n"],
+        stdout,
+        controller_url="http://127.0.0.1:8765",
+        controller_token="secret",
+    ) == 0
+    context = json.loads(stdout.getvalue())["result"]["_meta"]["anvil/context"]
+    assert context["topology"] == "fakoli-reference"
+    assert context["execution_host"] == "dark"
+    assert context["transport"] == "controller"
 
 
 def test_stdio_proxy_does_not_forward_notifications_or_null_ids(monkeypatch):
@@ -2695,7 +3305,7 @@ def test_mcp_help_documents_modes(capsys):
     else:  # pragma: no cover - argparse should exit for help
         raise AssertionError("mcp --help did not exit")
     out = capsys.readouterr().out
-    assert "anvil-serving mcp" in out
+    assert "anvil-serving mcp serve" in out
     assert "--list-tools" in out
     assert "--controller-url" in out
     assert "--auth-env" in out
@@ -2705,7 +3315,7 @@ def test_mcp_parse_errors_return_usage_code(capsys):
     rc = mcp.main(["--controller-url"])
     assert rc == 2
     err = capsys.readouterr().err
-    assert "usage: anvil-serving mcp" in err
+    assert "usage: anvil-serving mcp serve" in err
 
 
 def test_mcp_list_tools_positional_alias_still_works(capsys):
@@ -2724,5 +3334,5 @@ def test_cli_dispatches_mcp(monkeypatch):
         return 0
 
     monkeypatch.setattr(mcp, "main", fake_main)
-    assert cli.main(["mcp", "--list-tools"]) == 0
-    assert seen["argv"] == ["--list-tools"]
+    assert cli.main(["mcp", "tools"]) == 0
+    assert seen["argv"] == ["list-tools"]

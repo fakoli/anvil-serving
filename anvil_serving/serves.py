@@ -1,7 +1,7 @@
 """anvil-serving serves — lifecycle for the local model serves
 (status / up / down / rm / adopt).
 
-The router (`anvil-serving serve`) only *connects* to model backends; it never
+The router (`anvil-serving router run`) only *connects* to model backends; it never
 controls their containers. This verb fills that gap: a small, declarative way to
 stop, start, and inspect the GPU-backed model serves — so you can free the cards
 between sessions (`serves down`) and bring them back (`serves up`) without
@@ -79,7 +79,11 @@ _ENGINE_ALIASES = {
 }
 _ENGINES = {"vllm", "sglang", "llamacpp"}
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-_SERVE_MANIFEST_DIRS = {}
+_ENGINE_MARKERS = {
+    "vllm": re.compile(r"(^|[^a-z0-9])vllm([^a-z0-9]|$)"),
+    "sglang": re.compile(r"(^|[^a-z0-9])sglang([^a-z0-9]|$)"),
+    "llamacpp": re.compile(r"(^|[^a-z0-9])llama(?:[._-]?cpp|[._-]server)([^a-z0-9]|$)"),
+}
 
 
 def default_manifest_candidates():
@@ -133,12 +137,61 @@ def _serve_env(s):
     for name, value in _read_dotenv(config_path(".env")).items():
         if name not in shell_names:
             env[name] = value
-    manifest_dir = s.get("_manifest_dir") or _SERVE_MANIFEST_DIRS.get(id(s))
+    manifest_dir = s.get("_manifest_dir")
     if manifest_dir:
         for name, value in _read_dotenv(os.path.join(manifest_dir, ".env")).items():
             if name not in shell_names:
                 env[name] = value
     return env
+
+
+def _legacy_engine(s, up):
+    """Infer engines for manifests generated before the field existed.
+
+    Old generated entries identify their engine through the container name,
+    compose service, module, or launch-script name. An entry with no marker is
+    from the older SGLang-only era. Conflicting markers require an explicit
+    migration instead of guessing which command the operator intended.
+    """
+    candidates = [str(s.get("container") or "")]
+    if up:
+        first = os.path.basename(up[0])
+        candidates.append(first)
+        python_launcher = re.fullmatch(r"python(?:\.exe|[0-9]+(?:\.[0-9]+)?)?", first.casefold())
+        if (first.casefold() in {"bash", "sh"} or python_launcher) and len(up) > 1:
+            candidates.append(os.path.basename(up[1]))
+        candidates.extend(up[index + 1] for index, token in enumerate(up[:-1]) if token == "-m")
+        try:
+            compose_up = up.index("up")
+        except ValueError:
+            pass
+        else:
+            candidates.extend(token for token in up[compose_up + 1:] if not token.startswith("-"))
+
+    markers = {
+        engine
+        for candidate in candidates
+        for engine, pattern in _ENGINE_MARKERS.items()
+        if pattern.search(candidate.casefold())
+    }
+    if len(markers) > 1:
+        raise ValueError(
+            "serve entry has conflicting legacy engine markers "
+            f"{sorted(markers)}; add an explicit engine: {s!r}"
+        )
+    return next(iter(markers), "sglang")
+
+
+def _normalize_engine(s, up):
+    if "engine" not in s:
+        return _legacy_engine(s, up)
+    raw_engine = str(s.get("engine")).lower()
+    engine = _ENGINE_ALIASES.get(raw_engine, raw_engine)
+    if engine not in _ENGINES:
+        raise ValueError(
+            f"serve entry engine must be one of {sorted(_ENGINES)}: {s!r}"
+        )
+    return engine
 
 
 def load_manifest(path):
@@ -157,7 +210,7 @@ def load_manifest(path):
     for raw in data.get("serve", []):
         s = dict(raw)
         missing = [
-            field for field in ("name", "container", "port", "engine")
+            field for field in ("name", "container", "port")
             if field not in s or s.get(field) in ("", None)
         ]
         if not s.get("model") and not s.get("served_name"):
@@ -171,18 +224,14 @@ def load_manifest(path):
             raise ValueError(f"serve entry port must be an integer: {raw!r}")
         s["model"] = s.get("model") or s.get("served_name")
         s["served_name"] = s.get("served_name") or s["model"]
-        engine = _ENGINE_ALIASES.get(str(s["engine"]).lower(), str(s["engine"]).lower())
-        if engine not in _ENGINES:
-            raise ValueError(
-                f"serve entry engine must be one of {sorted(_ENGINES)}: {raw!r}"
-            )
-        s["engine"] = engine
+        up = shlex.split(s["up"]) if s.get("up") else None
+        s["engine"] = _normalize_engine(s, up)
+        s["_manifest_dir"] = mdir
         s.setdefault("health", "/health")
-        if s.get("up"):
+        if up:
             # split the TEMPLATE (forward-slash, no backslashes) then substitute,
             # so a backslashed/spaced {dir} never re-splits.
-            s["up"] = [tok.replace("{dir}", mdir) for tok in shlex.split(s["up"])]
-        _SERVE_MANIFEST_DIRS[id(s)] = mdir
+            s["up"] = [tok.replace("{dir}", mdir) for tok in up]
         serves.append(s)
     return serves
 
@@ -631,28 +680,31 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
 
 _ACTIONS = ("status", "up", "down", "rm", "adopt", "logs", "render")
 
+_ACTION_DESCRIPTIONS = {
+    "status": "Show docker and health state for manifest serves.",
+    "up": "Start manifest serves or an ad-hoc compose service.",
+    "down": "Stop manifest serves and verify they stay stopped.",
+    "rm": "Remove serve containers after explicit confirmation.",
+    "adopt": "Bring externally-started serves under compose management.",
+    "logs": "Show bounded or streaming docker logs for one serve.",
+    "render": "Render tuned compose, manifest, and router-tier configuration.",
+}
+
 
 def _build_parser():
     p = argparse.ArgumentParser(
         prog="anvil-serving serves",
         description="Stop/start/inspect the local GPU model serves declared in a serves manifest.")
-    p.add_argument("action", choices=_ACTIONS)
+    sub = p.add_subparsers(dest="action", required=True)
+    for action in _ACTIONS:
+        sub.add_parser(action, help=_ACTION_DESCRIPTIONS[action], add_help=False)
     return p
 
 
 def _build_action_parser(action):
-    descriptions = {
-        "status": "Show docker and health state for manifest serves.",
-        "up": "Start manifest serves, or bring up services from an ad-hoc compose file.",
-        "down": "Stop manifest serves.",
-        "rm": "Remove serve containers.",
-        "adopt": "Bring externally-started manifest serves under compose management.",
-        "logs": "Show docker logs for one serve.",
-        "render": "Render a tuned compose file, serves manifest entry, and router-tier stub.",
-    }
     p = argparse.ArgumentParser(
         prog="anvil-serving serves %s" % action,
-        description=descriptions[action],
+        description=_ACTION_DESCRIPTIONS[action],
     )
     if action == "logs":
         p.add_argument("names", nargs=1, metavar="NAME",

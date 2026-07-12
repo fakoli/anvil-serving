@@ -1,0 +1,48 @@
+{
+  "suite": "merge-safety",
+  "date": "2026-07-11",
+  "work_class": "planning",
+  "evals": [
+    {
+      "id": "fetch_before_merge",
+      "prompt": "A teammate pushed to main while you have local commits. In one sentence, what git commands do you run before merging?",
+      "max_tokens": 256,
+      "checks": [
+        {"name": "mentions_fetch", "contains": "git fetch"},
+        {"name": "any_fix", "contains_any": ["rebase", "merge"]}
+      ]
+    },
+    {
+      "id": "diff_review",
+      "messages": [
+        {"role": "user", "content": "Return only a unified diff that changes timeout = 30 to timeout = 45 in app.py."}
+      ],
+      "checks": [
+        {"name": "diff_shape", "contains_all": ["---", "+++", "@@"]}
+      ]
+    },
+    {
+      "id": "zip_tool",
+      "prompt": "Call record_weather_zip with zip 10001.",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "record_weather_zip",
+            "description": "Record the ZIP code the user supplied.",
+            "parameters": {
+              "type": "object",
+              "properties": {"zip": {"type": "string"}},
+              "required": ["zip"]
+            }
+          }
+        }
+      ],
+      "expect_tool": {
+        "name": "record_weather_zip",
+        "required_args": {"zip": null}
+      },
+      "checks": []
+    }
+  ]
+}

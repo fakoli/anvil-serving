@@ -1,5 +1,6 @@
 import copy
 import json
+import shlex
 from pathlib import Path
 
 import pytest
@@ -152,10 +153,10 @@ def test_compose_rejects_container_backend_loopback():
         voice_sidecar.compose_service(data)
 
 
-def test_cli_dispatches_voice_sidecar_validate(capsys):
+def test_cli_refuses_removed_voice_sidecar_root(capsys):
     rc = cli.main(["voice-sidecar", "validate", "--config", str(EXAMPLE)])
-    assert rc == 0
-    assert "OK:" in capsys.readouterr().out
+    assert rc == 2
+    assert "was removed; use `voice sidecar`" in capsys.readouterr().err
 
 
 def test_cli_dispatches_nested_voice_sidecar_validate(capsys):
@@ -165,7 +166,7 @@ def test_cli_dispatches_nested_voice_sidecar_validate(capsys):
 
 
 def test_cli_uses_source_checkout_default_config(capsys):
-    rc = cli.main(["voice-sidecar", "validate"])
+    rc = cli.main(["voice", "sidecar", "validate"])
     assert rc == 0
     assert str(EXAMPLE) in capsys.readouterr().out
 
@@ -183,25 +184,25 @@ def test_cli_without_config_explains_missing_installed_default(monkeypatch, caps
 
 
 def test_cli_dispatches_voice_sidecar_command_json(capsys):
-    rc = cli.main(["voice-sidecar", "command", "--config", str(EXAMPLE), "--json"])
+    rc = cli.main(["voice", "sidecar", "command", "--config", str(EXAMPLE), "--json"])
     assert rc == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["argv"][0] == "speech-to-speech"
-    assert "--llm_backend" in payload["argv"]
-    assert "--responses_api_api_key" not in payload["argv"]
+    envelope = json.loads(capsys.readouterr().out)
+    argv = shlex.split(envelope["data"], posix=False)
+    assert argv[0] == "speech-to-speech"
+    assert "--llm_backend" in argv
+    assert "--responses_api_api_key" not in argv
 
 
 def test_nested_voice_sidecar_help_uses_canonical_usage(capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli.main(["voice", "sidecar", "command", "--help"])
-    assert exc.value.code == 0
+    assert cli.main(["voice", "sidecar", "command", "--help"]) == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving voice sidecar command" in out
+    assert "anvil-serving voice sidecar command" in out
 
 
 def test_cli_dispatches_voice_sidecar_command_json_with_auth(capsys):
     rc = cli.main([
-        "voice-sidecar",
+        "voice",
+        "sidecar",
         "command",
         "--config",
         str(EXAMPLE),
@@ -209,11 +210,9 @@ def test_cli_dispatches_voice_sidecar_command_json_with_auth(capsys):
         "--json",
     ])
     assert rc == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert (
-        payload["argv"][payload["argv"].index("--responses_api_api_key") + 1]
-        == "$ANVIL_ROUTER_TOKEN"
-    )
+    envelope = json.loads(capsys.readouterr().out)
+    argv = shlex.split(envelope["data"], posix=False)
+    assert argv[argv.index("--responses_api_api_key") + 1].strip('"') == "$ANVIL_ROUTER_TOKEN"
 
 
 def test_manifest_validation_is_pure():
@@ -229,12 +228,16 @@ def test_voice_ops_skill_uses_existing_verbs_and_scopes_evidence():
         "anvil-serving voice sidecar validate",
         "anvil-serving voice sidecar command",
         "anvil-serving voice sidecar compose",
-        "anvil-serving voice up",
-        "anvil-serving voice down",
-        "anvil-serving voice run",
+        "anvil-serving voice audio up",
+        "voice audio down",
+        "voice audio status",
+        "voice proxy up",
+        "voice proxy run",
+        "voice proxy bridge",
         "anvil-serving voice benchmark",
     ]:
         assert command in text
+    assert "--topology <topology>" in text
     assert "voice-pipeline evidence" in text
     assert "not router work-class promotion evidence" in text
     assert "promotion_quality_evidence: false" in text

@@ -13,6 +13,8 @@ git clone https://github.com/fakoli/anvil-serving
 cd anvil-serving
 python -m pip install -e ".[dev]"
 python -m pytest tests/ -q
+python scripts/audit_cli_references.py --check --scope full
+python scripts/check_markdown_links.py --root .
 ```
 
 The full suite is hermetic and should pass offline on Linux, macOS, and Windows.
@@ -109,8 +111,22 @@ silently change direction and never delete an ADR — supersede it.
   data plane, plus `tests/external_benchmarks/`, `tests/voice/`, and shared `tests/fixtures/`.
 - Run everything: `python -m pytest tests/ -q`. Run a slice while iterating:
   `python -m pytest tests/router/ -q` or `python -m pytest tests/test_mcp.py -q`.
-- CI runs the suite on `{ubuntu, windows}` × `{3.11, 3.12, 3.13}`, plus `ruff check .` and a
-  wheel-build/clean-install smoke test.
+- CI runs the suite on `{ubuntu, windows}` × `{3.11, 3.12, 3.13}`, plus `ruff check .`, the
+  deterministic active-reference audit, strict docs, and a wheel-build/clean-install smoke test
+  on both Windows and Ubuntu. These gates do not read home-directory Anvil state or contact live
+  Docker, SSH, Tailscale, GPU, model, or controller endpoints.
+- To reproduce the package gate, run `python -m build` followed by
+  `python scripts/wheel_smoke.py`. The smoke creates and removes a temporary virtual environment,
+  installs the single wheel with `--no-deps`, verifies required package data, and invokes the
+  installed `anvil-serving router run --help` outside the checkout.
+- Delivery PRs use `.github/PULL_REQUEST_TEMPLATE.md` to record namespaced PRD/task IDs,
+  the exact reviewed Git commit, proof status, implementer/reviewer separation, human apply/merge disposition, and final
+  documentation/adversarial review outcomes. Run the local read-only gate with
+  `python scripts/check_anvil_delivery_gate.py --manifest <delivery.json>`; add
+  `--include-prd cli-consolidation` when closing the legacy task partition. The gate shells out
+  only to supported Anvil JSON commands plus `git rev-parse --verify HEAD`; it never reads or
+  copies Anvil state files directly. Review dispositions must name the exact HEAD; each observed
+  proof must name its full Git commit, which the gate verifies is an ancestor of that HEAD.
 - The OpenClaw plugin has its own `node --test` suite under
   `plugins/openclaw-anvil-intent-router/`; `tests/router/test_keyword_parity.py` guards drift
   between the plugin's classifier data and the Python classifier.
@@ -119,6 +135,8 @@ silently change direction and never delete an ADR — supersede it.
 
 - The docs site builds with MkDocs: `pip install -r requirements-docs.txt && mkdocs build`
   (treat warnings as failures — they usually mean a broken link).
+- Run `python scripts/check_markdown_links.py --root .` to validate relative
+  links across every Git-tracked Markdown file without contacting external URLs.
 - A new page under `docs/` needs a `nav:` entry in `mkdocs.yml`.
 - Doc snippets follow the same hard rules as code: `127.0.0.1` in URLs, env-var names for secrets.
 - Dated evidence snapshots go in `docs/findings/` (and its index); durable reference content goes
@@ -134,9 +152,13 @@ silently change direction and never delete an ADR — supersede it.
 
 1. Branch off `main` (e.g. `fix/...`, `feat/...`, `docs/...`).
 2. Make the change; add or update tests alongside it.
-3. Run `python -m pytest tests/ -q` locally and make sure it is green.
+3. Run `python -m pytest tests/ -q`, `python -m ruff check .`,
+   `python scripts/audit_cli_references.py --check --scope full`,
+   `python scripts/check_markdown_links.py --root .`, and
+   `python -m mkdocs build --strict` locally and make sure they are green.
 4. Open a PR. CI runs the suite across `{ubuntu, windows}` x `{3.11, 3.12, 3.13}`, builds the
-   wheel, and smoke-tests a clean install — it must be green before merge.
+   wheel, and smoke-tests a clean install on both operating systems - it must be green before
+   merge.
 
 Keep PRs focused: one logical change per PR, with a clear description of the *why*. If you are
 unsure whether a change fits the direction, open an issue first.

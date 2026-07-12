@@ -12,15 +12,15 @@
 # Credentials are env var names only; never paste token values here.
 #
 # Use --profile to switch the active audio topology without copying this file:
-#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
-#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile gepard-fast-tts
-#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
-#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile mini-audio  # optional local-audio test only
+#   anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio
+#   anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --config examples/voice/openclaw-anvil-voice.toml --profile gepard-fast-tts
+#   anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --config examples/voice/openclaw-anvil-voice.toml --profile mini-dark-audio-proxy
+#   mini-audio requires a separate lab topology that permits Mini model workloads
 #
 # For live LLM A/B tests, keep the audio topology in --profile and compose the
 # candidate LLM with --candidate-overlay:
 #   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
-#   anvil-serving voice run --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml
+#   anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --config examples/voice/openclaw-anvil-voice.toml --profile dark-audio --candidate-overlay examples/voice/candidates/qwen3-32b-nvfp4.toml
 # Static candidate-* profiles below are retained as LLM-only shortcuts. Use
 # --candidate-overlay when combining a candidate with a different audio
 # topology.

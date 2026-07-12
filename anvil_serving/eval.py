@@ -38,22 +38,45 @@ EVAL_DATA_ROOT = next(
 PLANNING_DIR = os.path.join(EVAL_DATA_ROOT, "2026-06-28-planning-capability")
 
 
-def _tiers():
+def _tiers(manifest=None):
     """tier name -> {base_url, model, port, health, container} from the manifest.
 
     Lets manifest errors propagate (the caller surfaces them) so a broken manifest
     is reported as a parse error, not as "no tiers".
     """
     from . import serves
-    # Deliberately the shipped fakoli-dark topology, NOT `serves.DEFAULT_MANIFEST`
-    # (genericity:T012 repointed that to the CWD's own ./serves.toml, which most
-    # dev/CI working directories don't have) — this eval verb documents and
-    # always targets the reference two-tier setup.
+    # Preserve the shipped reference topology as the compatibility default. An
+    # explicit manifest is the production path for another deployment.
+    manifest_path = manifest or serves.EXAMPLE_MANIFEST
     return {s["name"]: {
                 "base_url": "http://127.0.0.1:%s/v1" % s["port"], "model": s["model"],
                 "port": s["port"], "health": s.get("health", "/health"),
                 "container": s["container"]}
-            for s in serves.load_manifest(serves.EXAMPLE_MANIFEST) if s.get("model")}
+            for s in serves.load_manifest(manifest_path) if s.get("model")}
+
+
+def resolve_endpoint_target(*, tier=None, manifest=None, base_url=None, model=None):
+    """Resolve one eval target from either endpoint or manifest inputs."""
+    if manifest and not tier:
+        raise ValueError("--manifest requires --tier")
+    selected = None
+    if tier:
+        tiers = _tiers(manifest)
+        if tier not in tiers:
+            source = manifest or "the bundled reference manifest"
+            raise ValueError(
+                "unknown tier %r in %s; available tiers: %s"
+                % (tier, source, ", ".join(tiers) or "(none)")
+            )
+        selected = tiers[tier]
+        base_url = base_url or selected["base_url"]
+        model = model or selected["model"]
+    if not base_url or not model:
+        raise ValueError(
+            "choose a manifest target with --tier [--manifest PATH], or provide "
+            "both --base-url and --model"
+        )
+    return base_url, model, selected
 
 
 def _reachable(port, path, _open=urllib.request.urlopen):
@@ -76,7 +99,7 @@ def _run_endpoint_eval(script, a, extra, _call=subprocess.call, _open=urllib.req
     base_url, model = a.base_url, a.model
     if a.tier:
         try:
-            tiers = _tiers()
+            tiers = _tiers(getattr(a, "manifest", None))
         except Exception as e:
             print("cannot read serves manifest: %s" % e, file=sys.stderr)
             return 2
@@ -94,7 +117,7 @@ def _run_endpoint_eval(script, a, extra, _call=subprocess.call, _open=urllib.req
                   % (a.tier, t["container"], base_url, a.tier), file=sys.stderr)
             return 3
     if not base_url or not model:
-        print("need --tier, or both --base-url and --model", file=sys.stderr)
+        print("need --tier [--manifest PATH], or both --base-url and --model", file=sys.stderr)
         return 2
     argv = ["--base-url", base_url, "--model", model] + list(extra)
     return _call([sys.executable, os.path.join(HERE, script)] + argv)
@@ -144,6 +167,8 @@ def main(argv=None):
                             description="%s; unknown flags pass through to %s.py." % (helptext, name))
         sp.add_argument("--tier", help="serve tier from the manifest (e.g. heavy, fast); "
                                        "fills --base-url/--model.")
+        sp.add_argument("--manifest", help="serves manifest TOML used with --tier "
+                                           "(default: bundled reference manifest).")
         sp.add_argument("--base-url", help="override the endpoint base URL "
                                            "(skips the tier reachability gate).")
         sp.add_argument("--model", help="override the served model id.")

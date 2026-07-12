@@ -76,16 +76,16 @@ It reads as a **quality / long-context** tier, **not** a latency-sensitive fast/
 
 ```bash
 # 1. Pull weights into the ext4 docker volume (never a C:/ bind mount)
-anvil-serving models pull nvidia/Qwen3.5-122B-A10B-NVFP4 --volume vllm-hfcache --token-env HF_TOKEN
+anvil-serving models pull nvidia/Qwen3.5-122B-A10B-NVFP4 --volume vllm-hfcache --token-env HF_TOKEN --confirm
 
 # 2. Serve on the RTX PRO 6000 (loopback :39017), managed via anvil-serving serves
-anvil-serving serves up --manifest examples/fakoli-dark/serves.toml heavy-qwen35-122b
+anvil-serving serves --manifest examples/fakoli-dark/serves.toml up heavy-qwen35-122b --confirm
 #    NOTE: the NGC vllm:26.04 image rejects a UUID-form CUDA_VISIBLE_DEVICES (int() parse);
 #    the compose service pins the PRO 6000 by PCI_BUS_ID index (=1) instead.
 
 # 3. Correctness gate
-anvil-serving preflight --base-url http://127.0.0.1:39017/v1 --model qwen35-122b-a10b-nvfp4 \
-  --needle-ctx 128000 --tool-batch 20 --no-thinking
+anvil-serving eval preflight --base-url http://127.0.0.1:39017/v1 --model qwen35-122b-a10b-nvfp4 \
+  --needle-ctx 128000 --tool-batch 20 --no-thinking --confirm
 
 # 4. Bakeoff capture (evidence JSON + append-only notebook row)
 anvil-serving eval benchmark run --bakeoff \
@@ -93,7 +93,8 @@ anvil-serving eval benchmark run --bakeoff \
   --candidate-id qwen35-122b-a10b --config-id vllm-nvfp4-131k \
   --context-targets 131072 --suite chat,context,tool,session,intelligence --thinking-mode disabled \
   --notebook .anvil/benchmarks.sqlite --notebook-task heavy-tier --notebook-hardware rtx6kpro \
-  --evidence-out docs/findings/heavy-tier-bakeoff-evidence/qwen35-122b-a10b-vllm-nvfp4-131k.bakeoff.json
+  --evidence-out docs/findings/heavy-tier-bakeoff-evidence/qwen35-122b-a10b-vllm-nvfp4-131k.bakeoff.json \
+  --confirm
 ```
 
 > Operator note (2026-07-10): the serve start/stop steps in this run used `docker compose` directly rather than
