@@ -6,9 +6,10 @@ requirements and evidence ledger. These milestones provide the larger,
 outcome-oriented context used to execute that work without treating each small
 task as an isolated product objective.
 
-The dashboard remains required scope for v0.11.0. This plan does not authorize
-packaging, release, deployment, or live topology changes. Those actions remain
-human-gated after implementation, verification, and operator testing.
+The dashboard was planned against the v0.11.0 source line and ships in the
+v0.12.0 packaged release. This plan itself did not authorize packaging, release,
+deployment, or live topology changes; those actions remained human-gated after
+implementation, verification, and operator testing.
 
 ## Execution contract
 
