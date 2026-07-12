@@ -55,6 +55,7 @@ def create_dashboard_server(
             "/": ("text/html; charset=utf-8", document),
             "/index.html": ("text/html; charset=utf-8", document),
         },
+        public_static_routes=("/", "/index.html"),
         json_routes={
             "/v1/timeseries": lambda: retained_timeseries(history),
             "/v1/indicators": lambda: build_indicators(current(), retention=history),
