@@ -129,6 +129,7 @@ def test_default_collectors_issue_only_read_only_queries(monkeypatch) -> None:
     monkeypatch.setattr(
         "anvil_serving.observability.probes.wsl_docker._run", fake_run
     )
+    monkeypatch.setattr("platform.system", lambda: "Windows")
 
     samples = collect_wsl_docker_boundaries(host_id="dark", collected_at=NOW)
 
