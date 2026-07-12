@@ -61,6 +61,16 @@ def test_dashboard_serve_help_is_supported_and_read_only(capsys):
         assert forbidden not in out
 
 
+def test_dashboard_serve_dispatch_does_not_duplicate_action(monkeypatch):
+    from anvil_serving.observability.dashboard import app as dashboard_app
+
+    seen = []
+    monkeypatch.setattr(dashboard_app, "main", lambda argv: seen.append(argv) or 0)
+
+    assert cli.main(["dashboard", "serve", "--port", "0"]) == 0
+    assert seen == [["--port", "0"]]
+
+
 def test_python_version_guard_blocks_main_under_simulated_old_interpreter(monkeypatch, capsys):
     monkeypatch.setattr(cli.sys, "version_info", (3, 9, 0))
     rc = cli.main(["--help"])

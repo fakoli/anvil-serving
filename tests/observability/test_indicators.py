@@ -104,3 +104,18 @@ def test_model_loading_transition_distinguishes_shared_to_vram() -> None:
         "shared_gpu_memory": 200.0,
         "dedicated_vram": 500.0,
     }
+
+
+def test_model_loading_excludes_memory_from_non_gpu_hosts() -> None:
+    snapshot = {
+        "samples": [
+            _sample("host.memory.used", 900),
+            {**_sample("host.memory.used", 8000), "host_id": "mini"},
+            _sample("gpu.memory.used", 500),
+        ]
+    }
+
+    loading = build_indicators(snapshot)["model_loading"]
+
+    assert loading["host_memory"] == 900
+    assert loading["dedicated_vram"] == 500

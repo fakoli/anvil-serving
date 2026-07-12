@@ -645,6 +645,7 @@ def build_command_tree() -> CommandTree:
                 "Serve the packaged local dashboard.",
                 "anvil_serving.observability.dashboard.app",
                 role="host",
+                argv_prefix=(),
                 mutation="process",
                 options=(
                     _option("--host", summary="Explicit bind IP.", value_name="IP"),

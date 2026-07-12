@@ -33,6 +33,14 @@ def create_dashboard_server(
     )
     history = retention or RetentionStore()
     telemetry = registry or build_default_registry()
+
+    def current(capabilities=None):
+        return (
+            _latest_snapshot(history, capabilities)
+            if history.frames(0)
+            else telemetry.snapshot(capabilities)
+        )
+
     return create_server(
         telemetry,
         host=host,
@@ -45,9 +53,69 @@ def create_dashboard_server(
         },
         json_routes={
             "/v1/timeseries": lambda: retained_timeseries(history),
-            "/v1/indicators": lambda: build_indicators(telemetry.snapshot(), retention=history),
+            "/v1/indicators": lambda: build_indicators(current(), retention=history),
         },
+        metrics_provider=current,
     )
+
+
+def _latest_snapshot(
+    retention: RetentionStore, capabilities: Sequence[str] | None = None
+) -> dict[str, object]:
+    requested = set(capabilities or ())
+    selected: dict[str, Mapping[str, object]] = {}
+    available: set[str] = set()
+    for frame in reversed(retention.frames(0)):
+        frame_capabilities = frame.snapshot.get("capabilities", [])
+        if isinstance(frame_capabilities, list):
+            available.update(str(item) for item in frame_capabilities)
+            if requested and not requested.intersection(frame_capabilities):
+                continue
+        samples = frame.snapshot.get("samples", [])
+        if not isinstance(samples, list):
+            continue
+        for sample in samples:
+            if not isinstance(sample, Mapping):
+                continue
+            raw_labels = sample.get("labels")
+            labels = raw_labels if isinstance(raw_labels, Mapping) else {}
+            key = repr((sample.get("host_id"), sample.get("metric"), sorted(labels.items())))
+            selected.setdefault(key, sample)
+    now_value = datetime.now(timezone.utc)
+    samples = [_refresh_freshness(sample, now_value) for sample in selected.values()]
+    now = now_value.isoformat(timespec="microseconds").replace("+00:00", "Z")
+    return {
+        "schema_version": 1,
+        "generated_at": now,
+        "capabilities": sorted(requested or available),
+        "available_capabilities": sorted(available),
+        "sample_count": len(samples),
+        "degraded_count": sum(sample.get("capability_status") != "ok" for sample in samples),
+        "samples": samples,
+    }
+
+
+def _refresh_freshness(sample: Mapping[str, object], now: datetime) -> dict[str, object]:
+    result = dict(sample)
+    freshness = sample.get("freshness")
+    source = sample.get("source_timestamp")
+    if not isinstance(freshness, Mapping) or not isinstance(source, str):
+        return result
+    stale_after = freshness.get("stale_after_seconds")
+    if not isinstance(stale_after, (int, float)) or isinstance(stale_after, bool):
+        return result
+    try:
+        source_time = datetime.fromisoformat(source.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return result
+    age = (now - source_time).total_seconds()
+    updated = dict(freshness)
+    updated["age_seconds"] = age
+    updated["is_stale"] = age > stale_after
+    result["freshness"] = updated
+    if updated["is_stale"] and result.get("capability_status") == "ok":
+        result["capability_status"] = "stale"
+    return result
 
 
 class DashboardSampler:

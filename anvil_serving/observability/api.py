@@ -31,6 +31,7 @@ from .status import prepare_sample
 
 Probe = Callable[[], Sequence[TelemetrySample]]
 JsonRoute = Callable[[], Mapping[str, Any]]
+MetricsProvider = Callable[[Sequence[str] | None], Mapping[str, Any]]
 _CAPABILITY = re.compile(r"^[a-z][a-z0-9_-]{0,79}$")
 _MAX_SAMPLES = 10_000
 _MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -194,6 +195,7 @@ def create_server(
     environment: Mapping[str, str] | None = None,
     static_routes: Mapping[str, tuple[str, bytes]] | None = None,
     json_routes: Mapping[str, JsonRoute] | None = None,
+    metrics_provider: MetricsProvider | None = None,
 ) -> ThreadingHTTPServer:
     """Create, but do not start, a bounded read-only telemetry server."""
 
@@ -262,7 +264,12 @@ def create_server(
                 self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "bad-query"})
                 return
             try:
-                payload = registry.snapshot(query.get("capability") or None, secrets=(token,))
+                requested = query.get("capability") or None
+                payload = (
+                    registry.snapshot(requested, secrets=(token,))
+                    if metrics_provider is None
+                    else metrics_provider(requested)
+                )
             except (TypeError, ValueError) as exc:
                 self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
                 return
