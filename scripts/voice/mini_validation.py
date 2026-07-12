@@ -69,6 +69,10 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from anvil_serving import serves as generic_serves  # noqa: E402
+from anvil_serving.observability.macos_primitives import (  # noqa: E402
+    macos_identity_snapshot,
+    macos_memory_snapshot,
+)
 from anvil_serving.voice import benchmark as voice_benchmark  # noqa: E402
 from anvil_serving.voice import config as voice_config  # noqa: E402
 from anvil_serving.voice.stages.tts import TTSStageConfig, stream_speech  # noqa: E402
@@ -153,9 +157,8 @@ def host_identity_snapshot(*, _run: Callable[..., Any] = subprocess.run) -> Dict
     }
     identity["hostname"] = _probe_stdout(["hostname"], _run=_run)
     if sys.platform == "darwin":
-        identity["computer_name"] = _probe_stdout(["scutil", "--get", "ComputerName"], _run=_run)
-        identity["local_host_name"] = _probe_stdout(["scutil", "--get", "LocalHostName"], _run=_run)
-        identity["hardware_model"] = _probe_stdout(["sysctl", "-n", "hw.model"], _run=_run)
+        shared = macos_identity_snapshot(runner=_run)
+        identity.update({key: shared.get(key) for key in identity})
     return identity
 
 
@@ -246,27 +249,9 @@ def host_memory_snapshot(*, _run: Callable[..., Any] = subprocess.run) -> Dict[s
             return snapshot
 
         if sys.platform == "darwin":
-            total_probe = _run_probe(["sysctl", "-n", "hw.memsize"], _run=_run)
-            if not total_probe.get("ok"):
-                raise ValueError(total_probe.get("stderr") or total_probe.get("detail") or "sysctl failed")
-            total = int(str(total_probe.get("stdout", "0")).strip())
-            vm_probe = _run_probe(["vm_stat"], _run=_run)
-            available = None
-            if vm_probe.get("ok"):
-                text = str(vm_probe.get("stdout", ""))
-                page_size_match = re.search(r"page size of (\d+) bytes", text)
-                page_size = int(page_size_match.group(1)) if page_size_match else 4096
-                page_counts: Dict[str, int] = {}
-                for line in text.splitlines():
-                    match = re.match(r"Pages ([^:]+):\s+(\d+)\.", line.strip())
-                    if match:
-                        page_counts[match.group(1).lower()] = int(match.group(2))
-                available_pages = (
-                    page_counts.get("free", 0)
-                    + page_counts.get("inactive", 0)
-                    + page_counts.get("speculative", 0)
-                )
-                available = available_pages * page_size
+            shared = macos_memory_snapshot(runner=_run)
+            total = shared["memory_total_bytes"]
+            available = shared["memory_available_bytes"]
             snapshot.update({
                 "total_gb": _gb(total),
                 "available_gb": _gb(float(available)) if available is not None else None,

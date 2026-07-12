@@ -64,6 +64,7 @@ _HANDLER_PROGS = {
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.calibrate": "anvil-serving eval calibrate",
     "anvil_serving.controller": "anvil-serving controller",
+    "anvil_serving.collectors": "anvil-serving collectors",
     "anvil_serving.doctor": "anvil-serving doctor",
     "anvil_serving.eval": "anvil-serving eval",
     "anvil_serving.external_benchmarks.cli": "anvil-serving eval benchmark external",
