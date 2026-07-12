@@ -49,14 +49,26 @@ anvil-serving eval benchmark run --bakeoff --candidate-id C --config-id CFG \
   --evidence-out evidence.json
 ```
 
-The spec shape is `{suite, date, work_class, evals: [{id, prompt|messages, max_tokens?,
-tools?, expect_tool?, checks?}]}`; `checks` use the deterministic text-check semantics and
+The spec shape is `{suite, date, work_class, evals: [{id, prompt|messages,
+visible_answer_tokens?, reasoning_headroom_tokens?, max_tokens?, tools?,
+expect_tool?, checks?}]}`. New comparisons use the two explicit allocations;
+`max_tokens` is a legacy total cap and cannot be combined with them. `checks`
+use deterministic case-insensitive substring or validated regular-expression semantics and
 `expect_tool` the tool-call validator. Per-eval results land in the evidence JSON under
 `suites.<suite name>`, with failed checks recorded in the top-level `failures` list.
 `--suite-file` alone runs only the external suite; add `--suite chat,tool,...` to run
 built-in suites in the same evidence artifact. Malformed specs — including vacuous
 checks that could never fail (typo'd assertion keys, empty needles) — are rejected
 before any request is sent.
+
+Cross-model reasoning runs should also select the model family's actual control
+(`--thinking-mode` or `--reasoning-effort`), set equal visible-answer allocations,
+record explicit reasoning headroom, and use repeated attempts. Protocol-v2
+artifacts retain the full visible answer, finish reason, reasoning-channel
+metadata, per-attempt budgets, pass rates, and distinct classifications for
+reasoning exhaustion, visible-answer exhaustion, and an ordinary wrong visible
+answer. The API still enforces one combined completion cap; the allocations are
+recorded intent rather than a claim of hard server-side partitioning.
 
 These rows are from the [Fast-tier LLM bakeoff](findings/2026-07-08-fast-tier-llm-bakeoff.md) and its [human-gated promotion record](findings/2026-07-08-fast-tier-promotion.md). The voice artifacts in that bakeoff measure STT, LLM, and TTS stage timing, but their STT hypothesis is empty with WER `1.0`; they are **not** semantic speech-recognition accuracy results. The displayed decode rate is derived from the recorded evidence as `output_tokens * 1000 / (e2e_ms - ttft_ms)`.
 
@@ -158,12 +170,14 @@ models need model-aware reasoning headroom or explicit reasoning-effort control
 and should retain finish-reason/reasoning metadata. See the
 [dated control and raw artifacts](findings/2026-07-12-gpt-oss-120b-deterministic-recheck.md).
 
-**Current operator verdict: this cross-model eval protocol is broken.** Do not
+**Historical operator verdict for these artifacts: the protocol was broken.** Do not
 use the reported Qwen 1/5, Nemotron 0/5, or GPT-OSS 0/5 results for model
-ranking or promotion until reasoning controls, visible-answer budgets, and
-finish-reason/reasoning metadata are made comparable. This verdict applies to
-the protocol around `--suite-file`; it does not imply that deterministic text
-checks over valid visible answers are themselves nonfunctional.
+ranking or promotion. Protocol-v2 support now adds reasoning controls, explicit
+visible/reasoning allocations, finish/reasoning metadata, robust deterministic
+regex checks, failure classification, and repeated runs; only new artifacts
+that actually use those fields are eligible for comparison. This verdict does
+not imply that deterministic checks over valid visible answers are themselves
+nonfunctional.
 
 The original built-in GPT-OSS bakeoff was rerun as a control. Its 131K context,
 tool, session, and unified-diff checks passed, but the timeout-triage
@@ -188,6 +202,24 @@ promoted into the production router. The short ARC slices remain sanity checks,
 not general-quality or promotion evidence, and the served 131K window does not
 validate Nemotron's advertised 1M maximum. See the
 [dated finding and raw artifacts](findings/2026-07-12-heavy-intelligence-challengers.md).
+
+The repaired protocol-v2 rerun strengthens that choice. Across three attempts
+per item, Nemotron with 1,024 reasoning-headroom tokens scored 15/15 on the
+five-item ARC sanity slice and 23/30 attempts with 8/10 stable items on a
+ten-category MMLU-Pro slice. Mistral needed 2,048 headroom tokens to reach
+15/15 ARC and then scored 14/30 with 5/10 stable MMLU-Pro items. Doubling
+Nemotron's headroom to 2,048 did not improve its MMLU-Pro result and added 57
+seconds of wall time. Poolside Laguna XS 2.1 NVFP4 was also tested through
+vLLM and SGLang but rejected on this sm_120 host because neither tested recipe
+produced trustworthy output. See the
+[protocol-v2 finding and raw artifacts](findings/2026-07-12-rtx-pro-6000-heavy-eval-v2.md).
+
+Protocol-v2 external suites are fail-closed and resource-bounded: no more than
+100 evals, 20 repetitions per item, 500 aggregate attempts, 65,536 completion
+tokens per attempt, or 2,000,000 requested quality tokens per run. Regex checks
+accept only a conservative deterministic-marker subset (literals, anchors,
+boundaries, non-repeated character classes, `\s*`, and final-marker `[*]*`),
+not arbitrary Python regexes.
 
 ## OpenClaw interaction and voice evidence
 

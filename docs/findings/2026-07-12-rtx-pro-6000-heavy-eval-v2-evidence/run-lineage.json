@@ -1,0 +1,41 @@
+{
+  "schema": "anvil-serving.external-run-lineage.v1",
+  "date": "2026-07-12",
+  "status": "operator-established-after-run",
+  "limitation": "Protocol-v2 artifacts created in this run predate embedded suite hashes and have null source_recipe fields. This manifest binds the preserved executed suite bytes and operator-recorded serve provenance; it is not equivalent to provenance embedded at generation time.",
+  "engine_image": "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e",
+  "suites": {
+    "hf-arc-challenge-5-repeated": {
+      "executed_spec": "executed-hf-arc-challenge-5-repeated.suite.json",
+      "sha256": "0e25e232841a6646ba8b6b9b538629ce5d1e42ed317a52000ac563f7aa9c06f7",
+      "validator_state": "executed with the preserved unanchored FINAL marker regexes; every published passing output was independently checked to contain the expected marker at the end"
+    },
+    "hf-mmlu-pro-10-repeated": {
+      "executed_spec": "executed-hf-mmlu-pro-10-repeated.suite.json",
+      "sha256": "7e721d947e9c4cbd58700e93fbd8860f889724afd0ce593ac3b9376c2feb5529",
+      "validator_state": "executed with the preserved unanchored FINAL marker regexes; every published passing output was independently checked to contain the expected marker at the end"
+    }
+  },
+  "models": {
+    "mistralai/Mistral-Small-4-119B-2603-NVFP4": {
+      "revision": "d57a94c74a961e1f9b489b8b3e792923ca29149b",
+      "compose_service": "cand-mistral-small4-119b-nvfp4",
+      "artifacts": [
+        "mistral-small4-effort-high-visible256-headroom1024.json",
+        "mistral-small4-effort-high-visible256-headroom2048.json",
+        "mistral-small4-effort-none-visible256.json",
+        "mistral-small4-mmlu10-high-headroom2048.json"
+      ]
+    },
+    "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4": {
+      "revision": "4f0cf9daaeb7a4d5e23f80a00e7ed15f0e03caf6",
+      "compose_service": "cand-nemotron3-super-120b",
+      "artifacts": [
+        "nemotron3-super-mmlu10-thinking-headroom1024.json",
+        "nemotron3-super-mmlu10-thinking-headroom2048.json",
+        "nemotron3-super-no-thinking-visible256.json",
+        "nemotron3-super-thinking-visible256-headroom1024.json"
+      ]
+    }
+  }
+}

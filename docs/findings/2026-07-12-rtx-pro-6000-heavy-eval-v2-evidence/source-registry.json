@@ -1,0 +1,49 @@
+{
+  "schema": "anvil-serving.benchmark-sources.v1",
+  "observed_date": "2026-07-12",
+  "sources": [
+    {
+      "url": "https://huggingface.co/poolside/Laguna-XS-2.1-NVFP4",
+      "published_or_updated": "2026-07-09",
+      "age_class": "current",
+      "evidence_type": "official model card",
+      "hardware_engine_relevance": "NVFP4 Blackwell checkpoint; vLLM and SGLang recipes",
+      "decision_impact": "candidate selection, context, reasoning and engine controls",
+      "revision": "07133fb3df1cc3111478e24ee71a823a598c8c2f"
+    },
+    {
+      "url": "https://recipes.vllm.ai/poolside/Laguna-XS-2.1",
+      "published_or_updated": "2026-07-02",
+      "age_class": "current",
+      "evidence_type": "official engine recipe",
+      "hardware_engine_relevance": "vLLM >=0.22 NVFP4 and FP8-KV requirements",
+      "decision_impact": "vLLM recipe and failure interpretation"
+    },
+    {
+      "url": "https://docs.sglang.io/cookbook/autoregressive/Poolside/Laguna-XS-2.1",
+      "published_or_updated": "observed 2026-07-12",
+      "age_class": "current",
+      "evidence_type": "official engine cookbook",
+      "hardware_engine_relevance": "SGLang image and B300/GB300 backend guidance; not sm_120-verified",
+      "decision_impact": "SGLang/RadixAttention A/B recipe and bounded backend probes"
+    },
+    {
+      "url": "https://huggingface.co/datasets/allenai/ai2_arc",
+      "published_or_updated": "2023-12-21",
+      "age_class": "historical-stable-dataset",
+      "evidence_type": "official dataset",
+      "hardware_engine_relevance": "hardware-independent science reasoning sanity",
+      "decision_impact": "five-item repeated local suite",
+      "revision": "210d026faf9955653af8916fad021475a3f00453"
+    },
+    {
+      "url": "https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro",
+      "published_or_updated": "2026-05-02",
+      "age_class": "aging",
+      "evidence_type": "official dataset",
+      "hardware_engine_relevance": "hardware-independent multidomain quality sanity",
+      "decision_impact": "ten-item repeated local suite",
+      "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be"
+    }
+  ]
+}

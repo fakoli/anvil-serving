@@ -7,6 +7,7 @@ Covers the two dogfooding bugs:
 Pure / no network: we exercise the clamp + body-builder seams directly, and inject a
 fake urlopen for the /v1/models probe.
 """
+import hashlib
 import io
 import json
 import random
@@ -130,6 +131,62 @@ def test_body_has_no_chat_template_kwargs_by_default():
     body = bm.build_body("m", "hi", 64)
     assert "chat_template_kwargs" not in body
     assert body["stream"] is True and body["max_tokens"] == 64
+
+
+def test_reasoning_effort_uses_top_level_openai_field():
+    body = bm.build_body("m", "hi", 640, reasoning_effort="high")
+    assert body["reasoning_effort"] == "high"
+    assert "chat_template_kwargs" not in body
+
+
+def test_deterministic_regex_check_tolerates_harmless_answer_spacing():
+    result = bm.evaluate_text_checks(
+        "The answer is **FINAL = D**.",
+        [{"name": "answer", "matches_regex": r"\bFINAL\s*=\s*D\b"}],
+    )
+    assert result == [{"name": "answer", "passed": True}]
+
+
+def test_final_answer_regex_rejects_conflicting_later_marker():
+    check = {"name": "answer", "matches_regex": r"\bFINAL\s*=\s*B\b[*]*\s*$"}
+    assert bm.evaluate_text_checks("FINAL=B is not correct; FINAL=C", [check]) == [
+        {"name": "answer", "passed": False}
+    ]
+
+
+def test_failure_class_distinguishes_visible_answer_budget_exhaustion():
+    observation = {
+        "content": "partial explanation without a final",
+        "finish_reason": "length",
+        "reasoning_chars": 0,
+        "reasoning_tokens": None,
+    }
+    assert bm._failure_class(observation, checks_passed=False) == (
+        "visible_answer_budget_exhausted"
+    )
+
+    observation["reasoning_chars"] = 400
+    assert bm._failure_class(observation, checks_passed=False) == (
+        "completion_budget_exhausted_after_visible_output"
+    )
+
+
+def test_response_observation_prefers_nonempty_reasoning_alias_and_ignores_whitespace_content():
+    observation = bm.response_observation({
+        "choices": [{
+            "finish_reason": "length",
+            "message": {
+                "content": "  \n",
+                "reasoning": "",
+                "reasoning_content": "actual hidden reasoning",
+            },
+        }],
+    })
+    assert observation["reasoning_field"] == "reasoning_content"
+    assert observation["reasoning_chars"] == len("actual hidden reasoning")
+    assert bm._failure_class(observation, checks_passed=False) == (
+        "reasoning_budget_exhausted"
+    )
 
 
 # ---- bonus: /v1/models auto-detect of max_model_len --------------------------------
@@ -546,11 +603,11 @@ def test_bakeoff_session_intelligence_and_thinking_evidence(monkeypatch, tmp_pat
     assert evidence["intelligence"]["status"] == "passed"
     assert evidence["score_inputs"]["session_recall_passed"] is True
     assert evidence["score_inputs"]["intelligence_pass_rate"] == 1.0
-    assert evidence["thinking"] == {
-        "mode": "disabled",
-        "chat_template_kwargs": {"enable_thinking": False},
-        "unsupported": False,
-    }
+    assert evidence["thinking"]["mode"] == "disabled"
+    assert evidence["thinking"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert evidence["thinking"]["control_mechanism"] == "chat_template_kwargs"
+    assert evidence["thinking"]["control_status"] == "requested_unverified"
+    assert evidence["thinking"]["unsupported"] is False
     assert evidence["failures"] == []
 
 
@@ -570,11 +627,10 @@ def test_bakeoff_thinking_unsupported_is_recorded(tmp_path):
 
     assert rc == 0
     evidence = json.loads(out.read_text(encoding="utf-8"))
-    assert evidence["thinking"] == {
-        "mode": "unsupported",
-        "chat_template_kwargs": None,
-        "unsupported": True,
-    }
+    assert evidence["thinking"]["mode"] == "unsupported"
+    assert evidence["thinking"]["chat_template_kwargs"] is None
+    assert evidence["thinking"]["control_status"] == "unsupported"
+    assert evidence["thinking"]["unsupported"] is True
 
 
 # ---- --suite-file: externally-authored eval specs through the check engine -------
@@ -640,7 +696,8 @@ def test_suite_file_runs_external_evals_into_evidence(monkeypatch, tmp_path):
         return {"latency_s": 0.1, "response": {"choices": [{"message": message}]}}
 
     monkeypatch.setattr(bm, "post_chat", fake_post_chat)
-    out, argv = _suite_main_args(tmp_path, _write_spec(tmp_path, _SUITE_SPEC))
+    spec_path = _write_spec(tmp_path, _SUITE_SPEC)
+    out, argv = _suite_main_args(tmp_path, spec_path)
     rc = bm.main(argv)
 
     assert rc == 0
@@ -649,6 +706,9 @@ def test_suite_file_runs_external_evals_into_evidence(monkeypatch, tmp_path):
     assert section["status"] == "passed"
     assert section["work_class"] == "planning"
     assert section["date"] == "2026-07-11"
+    assert section["source_sha256"] == hashlib.sha256(
+        (tmp_path / "suite.json").read_bytes()
+    ).hexdigest()
     assert [c["status"] for c in section["checks"]] == ["passed", "passed"]
     assert section["checks"][0]["text_checks"] == [
         {"name": "diff_shape", "passed": True},
@@ -708,6 +768,188 @@ def test_suite_file_request_error_is_recorded_per_eval(monkeypatch, tmp_path):
     assert check["error"] == "endpoint down"
 
 
+def test_repaired_suite_classifies_reasoning_budget_exhaustion(monkeypatch, tmp_path):
+    spec = _one_eval(
+        visible_answer_tokens=128,
+        reasoning_headroom_tokens=512,
+    )
+
+    def fake_post_chat(*args, **kwargs):
+        assert kwargs["max_tokens"] == 640
+        assert kwargs["reasoning_effort"] == "high"
+        return {
+            "latency_s": 0.2,
+            "response": {
+                "choices": [{
+                    "finish_reason": "length",
+                    "message": {"content": None, "reasoning": "thinking " * 40},
+                }],
+                "usage": {
+                    "completion_tokens": 640,
+                    "completion_tokens_details": {"reasoning_tokens": 640},
+                },
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "reasoning-exhaustion.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39033/v1",
+        "--model", "reasoner",
+        "--candidate-id", "reasoner",
+        "--config-id", "repaired-v2",
+        "--suite-file", _write_spec(tmp_path, spec),
+        "--reasoning-effort", "high",
+        "--eval-repetitions", "2",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    check = evidence["suites"]["s"]["checks"][0]
+    assert check["status"] == "failed"
+    assert check["pass_count"] == 0
+    assert len(check["attempts"]) == 2
+    for attempt in check["attempts"]:
+        assert attempt["content"] == ""
+        assert attempt["finish_reason"] == "length"
+        assert attempt["reasoning_field"] == "reasoning"
+        assert attempt["reasoning_tokens"] == 640
+        assert attempt["failure_class"] == "reasoning_budget_exhausted"
+        assert attempt["budget"] == {
+            "visible_answer_tokens": 128,
+            "reasoning_headroom_tokens": 512,
+            "max_completion_tokens": 640,
+            "legacy_total_budget": False,
+        }
+    assert evidence["thinking"]["control_mechanism"] == "reasoning_effort"
+    assert evidence["thinking"]["reasoning_effort"] == "high"
+    assert evidence["evaluation_protocol"]["records_finish_reason"] is True
+    assert evidence["failures"][0]["failure_classes"] == ["reasoning_budget_exhausted"]
+
+
+def test_tool_eval_preserves_reasoning_budget_exhaustion_class(monkeypatch, tmp_path):
+    spec = _one_eval(
+        checks=[],
+        tools=[{"type": "function", "function": {"name": "record_result"}}],
+        expect_tool={"name": "record_result", "required_args": {}},
+        visible_answer_tokens=64,
+        reasoning_headroom_tokens=64,
+    )
+
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.1,
+            "response": {
+                "choices": [{
+                    "finish_reason": "length",
+                    "message": {"content": "   ", "reasoning_content": "still thinking"},
+                }],
+                "usage": {"completion_tokens": 128},
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "tool-reasoning-exhaustion.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39033/v1",
+        "--model", "reasoner",
+        "--candidate-id", "reasoner",
+        "--config-id", "repaired-v2",
+        "--suite-file", _write_spec(tmp_path, spec),
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    attempt = json.loads(out.read_text(encoding="utf-8"))["suites"]["s"]["checks"][0]["attempts"][0]
+    assert attempt["tool_call"]["valid"] is False
+    assert attempt["failure_class"] == "reasoning_budget_exhausted"
+
+
+def test_repaired_suite_repeats_and_retains_full_visible_answers(monkeypatch, tmp_path):
+    answers = iter(["x" + "a" * 300, "wrong", "x" + "b" * 300])
+
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.1,
+            "response": {
+                "choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": next(answers)},
+                }]
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "repeated.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:39033/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "repaired-v2",
+        "--suite-file", _write_spec(tmp_path, _one_eval()),
+        "--eval-repetitions", "3",
+        "--eval-min-pass-rate", "0.66",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    check = json.loads(out.read_text(encoding="utf-8"))["suites"]["s"]["checks"][0]
+    assert check["status"] == "passed"
+    assert check["pass_count"] == 2
+    assert check["pass_rate"] == pytest.approx(2 / 3)
+    assert len(check["attempts"][0]["content"]) == 301
+    assert len(check["attempts"][0]["content_excerpt"]) == 200
+    assert [attempt["finish_reason"] for attempt in check["attempts"]] == [
+        "stop", "stop", "stop"
+    ]
+
+
+@pytest.mark.parametrize("extra", [
+    ["--visible-answer-tokens", "0"],
+    ["--visible-answer-tokens", "65537"],
+    ["--reasoning-headroom-tokens", "-1"],
+    ["--reasoning-headroom-tokens", "65537"],
+    ["--visible-answer-tokens", "32769", "--reasoning-headroom-tokens", "32768"],
+    ["--eval-repetitions", "0"],
+    ["--eval-repetitions", "21"],
+    ["--eval-min-pass-rate", "0"],
+    ["--eval-min-pass-rate", "1.1"],
+    ["--reasoning-effort", "high", "--thinking-mode", "enabled"],
+    ["--reasoning-effort", "low", "--no-thinking"],
+])
+def test_repaired_eval_cli_rejects_invalid_or_conflicting_controls(extra):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "--base-url", "http://127.0.0.1:39033/v1",
+            "--model", "candidate",
+            *extra,
+        ])
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("item,extra", [
+    ({"visible_answer_tokens": 65536}, ["--reasoning-headroom-tokens", "1"]),
+    ({"reasoning_headroom_tokens": 65536}, ["--visible-answer-tokens", "1"]),
+])
+def test_cli_rejects_resolved_item_budget_that_exceeds_cap(tmp_path, item, extra):
+    spec_path = _write_spec(tmp_path, _one_eval(**item))
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "--bakeoff",
+            "--base-url", "http://127.0.0.1:39033/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite-file", spec_path,
+            *extra,
+        ])
+    assert exc.value.code == 2
+
+
 def test_suite_file_requires_bakeoff(tmp_path):
     spec_path = _write_spec(tmp_path, _SUITE_SPEC)
     with pytest.raises(SystemExit) as exc:
@@ -738,6 +980,11 @@ def _one_eval(**over):
     _one_eval(max_tokens="64"),                               # max_tokens wrong type
     _one_eval(max_tokens=0),                                  # max_tokens not positive
     _one_eval(max_tokens=True),                               # bool is not an int here
+    _one_eval(max_tokens=64, visible_answer_tokens=32),       # ambiguous total vs allocation
+    _one_eval(visible_answer_tokens=0),                       # visible allocation not positive
+    _one_eval(visible_answer_tokens=True),                    # bool is not an int here
+    _one_eval(reasoning_headroom_tokens=-1),                  # headroom cannot be negative
+    _one_eval(reasoning_headroom_tokens=True),                # bool is not an int here
     _one_eval(tools={"type": "function"}),                    # tools not a list
     _one_eval(checks=None),                                   # asserts nothing
     _one_eval(checks="contains"),                             # checks not a list
@@ -762,6 +1009,12 @@ def test_suite_file_rejects_malformed_specs(tmp_path, spec):
     {"name": "diff_shape", "contains_all": "---"},   # wrong type (str iterates by char)
     {"name": "diff_shape", "contains_all": ["---", 7]},          # non-string element
     {"name": "diff_shape", "contains": "x", "contains_any": ["y"]},  # two assertion keys
+    {"name": "answer", "matches_regex": ""},              # empty regex is vacuous
+    {"name": "answer", "matches_regex": "["},             # invalid regex
+    {"name": "answer", "matches_regex": "(a+)+$"},        # catastrophic backtracking
+    {"name": "answer", "matches_regex": "a|aa"},          # unsafe alternation
+    {"name": "answer", "matches_regex": ".*FINAL"},       # wildcard repetition
+    {"name": "answer", "matches_regex": "x" * 513},       # unbounded pattern size
     {"name": "", "contains": "x"},                   # empty name
 ])
 def test_suite_file_rejects_vacuous_or_broken_checks(tmp_path, check):
@@ -771,6 +1024,43 @@ def test_suite_file_rejects_vacuous_or_broken_checks(tmp_path, check):
     no_failures hard gate). The loader must reject every such shape up front."""
     with pytest.raises(ValueError):
         bm.load_suite_spec(_write_spec(tmp_path, _one_eval(checks=[check])))
+
+
+@pytest.mark.parametrize("overrides", [
+    {"max_tokens": 65537},
+    {"visible_answer_tokens": 65537},
+    {"reasoning_headroom_tokens": 65537},
+    {"visible_answer_tokens": 32769, "reasoning_headroom_tokens": 32768},
+])
+def test_suite_file_rejects_resource_exhausting_budgets(tmp_path, overrides):
+    with pytest.raises(ValueError):
+        bm.load_suite_spec(_write_spec(tmp_path, _one_eval(**overrides)))
+
+
+def test_suite_file_rejects_too_many_evals(tmp_path):
+    spec = dict(_SUITE_SPEC, evals=[
+        dict(_SUITE_SPEC["evals"][0], id="eval-%d" % index)
+        for index in range(101)
+    ])
+    with pytest.raises(ValueError, match="more than 100"):
+        bm.load_suite_spec(_write_spec(tmp_path, spec))
+
+
+def test_cli_rejects_aggregate_quality_token_plan(tmp_path):
+    spec = dict(_SUITE_SPEC, evals=[
+        _one_eval(id="eval-%d" % index, max_tokens=65536)["evals"][0]
+        for index in range(31)
+    ])
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "--bakeoff",
+            "--base-url", "http://127.0.0.1:39033/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite-file", _write_spec(tmp_path, spec),
+        ])
+    assert exc.value.code == 2
 
 
 def test_suite_file_without_suite_flag_runs_only_the_external_suite(monkeypatch, tmp_path):

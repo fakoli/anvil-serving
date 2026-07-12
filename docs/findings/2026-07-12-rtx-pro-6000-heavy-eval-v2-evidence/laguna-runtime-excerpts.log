@@ -1,0 +1,21 @@
+# Bounded excerpts captured from retained Docker logs on 2026-07-12.
+# Earlier healthy-but-semantically-wrong responses were lost on container
+# recreation and are deliberately not represented as raw evidence here.
+
+[vLLM, skip FP8 KV layers 0-39, 131072]
+non-default args: model=poolside/Laguna-XS-2.1-NVFP4 revision=07133fb3df1cc3111478e24ee71a823a598c8c2f max_model_len=131072 max_num_seqs=5 kv_cache_dtype=fp8 kv_cache_dtype_skip_layers=0..39
+Using FLASH_ATTN attention backend
+Model loading took 20.18 GiB memory and 18.326931 seconds
+torch.compile took 30.53 s in total
+Profiling CUDA graph memory: PIECEWISE=4 (largest=8), FULL=3 (largest=4)
+# The retained log ends here; no API-ready event followed.
+
+[SGLang, flashinfer_trtllm MoE runner, 262144]
+Load weight end. elapsed=50.18 s, type=LagunaForCausalLM, quant=compressed-tensors, avail mem=73.41 GB, mem usage=20.32 GB.
+KV Cache is allocated. dtype: torch.bfloat16, #tokens: 406540
+KV Cache is allocated. dtype: torch.bfloat16, #tokens: 508175
+Running FlashInfer autotune ... sm120
+Scheduler hit an exception
+File "compressed_tensors_w4a4_nvfp4_moe.py", line 333, in apply_weights
+  assert layer.routing_method_type is not None
+AssertionError
