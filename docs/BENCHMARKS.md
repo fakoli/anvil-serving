@@ -103,6 +103,22 @@ stable engine. The Qwen MXFP4 recipe is retained only for reproducible engine an
 weight comparisons; the materially different next experiment is llama.cpp with
 the actual MXFP4_MOE GGUF path reported by the external single-card benchmark.
 
+### Nemotron Puzzle deterministic-eval recheck (2026-07-12)
+
+Nemotron Puzzle 75B was reloaded using its pinned checkpoint revision and the
+same vLLM nightly image used in the extension round. Full preflight passed,
+including the 128K needle and 20/20 tool calls. Its conventional 8K benchmark
+reported 15.22 aggregate output tok/s and 458.93 ms TTFT p50, but the model
+generated only 101 tokens across ten requests; the prior controlled 137.0 tok/s
+long-generation measurement remains the useful decode result.
+
+On the same new deterministic planning suite used for Qwen, Nemotron passed
+**0/5** cases versus Qwen's 1/5. This adds no quality-promotion evidence and
+does not change the recommendation: Nemotron remains the best measured Heavy
+capacity candidate but stays unpromoted pending a pinned stable engine and
+broader quality calibration. See the
+[dated recheck and raw artifacts](findings/2026-07-12-nemotron-puzzle-recheck.md).
+
 ## OpenClaw interaction and voice evidence
 
 The focused Dark-host STT smoke benchmark used one clean 16 kHz utterance and

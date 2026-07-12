@@ -1,0 +1,232 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "failures": [
+    {
+      "error": "python-stdlib; bounded-retention; external-evidence; degraded-capability",
+      "eval_id": "low-overhead-dashboard-architecture",
+      "suite": "milestone-execution"
+    },
+    {
+      "error": "ordered-chain",
+      "eval_id": "milestone-dependency-order",
+      "suite": "milestone-execution"
+    },
+    {
+      "error": "reject-incomplete; capture-proof; strict-reapply",
+      "eval_id": "proof-buffer-recovery",
+      "suite": "milestone-execution"
+    },
+    {
+      "error": "timeout-alignment",
+      "eval_id": "resumable-ci-monitor",
+      "suite": "milestone-execution"
+    },
+    {
+      "error": "backup-first",
+      "eval_id": "local-remote-main-reconciliation",
+      "suite": "milestone-execution"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39026/v1",
+    "candidate_id": "nemotron3-puzzle-75b",
+    "config_id": "vllm-0.23.1-mtp3-131k-pinned",
+    "model": "nemotron3-puzzle-75b-nvfp4",
+    "started_at": "2026-07-12T07:25:23Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260712T072523Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 0.0,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "disabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": 0.0,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.experiment.yml",
+    "serve_command": "anvil-serving serves up --manifest examples/fakoli-dark/serves.toml cand-nemotron3-puzzle-75b --confirm"
+  },
+  "suites": {
+    "milestone-execution": {
+      "checks": [
+        {
+          "content_excerpt": "**Design: Low-Overhead Local Observability Dashboard for a Single Developer (Windows GPU Workstation + Mac Mini)**  \n*Goal: One webpage showing host, VM/container, GPU, shared-memory, service, and ben",
+          "error": "python-stdlib; bounded-retention; external-evidence; degraded-capability",
+          "id": "low-overhead-dashboard-architecture",
+          "latency_ms": 3117.6838874816895,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "python-stdlib",
+              "passed": false
+            },
+            {
+              "name": "bounded-retention",
+              "passed": false
+            },
+            {
+              "name": "external-evidence",
+              "passed": false
+            },
+            {
+              "name": "degraded-capability",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "programmatic capture lifecycle -> compressed external artifact plus sanitized manifest -> retained-session comparison -> complete-path overhead measurement\n\nDependency logic:  \n- **Programmatic captur",
+          "error": "ordered-chain",
+          "id": "milestone-dependency-order",
+          "latency_ms": 1893.4571743011475,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "ordered-chain",
+              "passed": false
+            },
+            {
+              "name": "artifact-boundary",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "The scenario describes a situation where:\n\n- A task\u2019s required `pytest` command **exited with code 0** (success),\n- But **strict review** reports that the **command proof is missing** because the **sh",
+          "error": "reject-incomplete; capture-proof; strict-reapply",
+          "id": "proof-buffer-recovery",
+          "latency_ms": 2392.103672027588,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "reject-incomplete",
+              "passed": false
+            },
+            {
+              "name": "capture-proof",
+              "passed": false
+            },
+            {
+              "name": "strict-reapply",
+              "passed": false
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "To design a **safe, resumable workflow** that avoids duplicate pull requests (PRs), remains **fail-closed on CI failures**, and gracefully handles the constraint that the outer process runner kills th",
+          "error": "timeout-alignment",
+          "id": "resumable-ci-monitor",
+          "latency_ms": 2414.547920227051,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "timeout-alignment",
+              "passed": false
+            },
+            {
+              "name": "persist-resume",
+              "passed": true
+            },
+            {
+              "name": "reuse-pr",
+              "passed": true
+            },
+            {
+              "name": "no-ci-bypass",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "content_excerpt": "This is a nuanced Git reconciliation scenario. Let\u2019s break it down carefully and then provide a **safe, step-by-step plan** that satisfies all your constraints:\n\n---\n\n### \u2705 **Problem Summary**\n\nYou ha",
+          "error": "backup-first",
+          "id": "local-remote-main-reconciliation",
+          "latency_ms": 2222.43070602417,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "backup-first",
+              "passed": false
+            },
+            {
+              "name": "remote-target",
+              "passed": true
+            },
+            {
+              "name": "preserve-untracked",
+              "passed": true
+            },
+            {
+              "name": "verify-identical",
+              "passed": true
+            }
+          ],
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "source": "docs/findings/2026-07-12-qwen35-122b-mxfp4-evidence/planning-milestone-execution.suite.json",
+      "status": "failed",
+      "work_class": "planning"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 0.0,
+      "e2e_p95_ms": 0.0,
+      "output_tokens": 0,
+      "ttft_p50_ms": 0.0,
+      "ttft_p95_ms": 0.0
+    },
+    "wall_ms": 12077.249765396118
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}
