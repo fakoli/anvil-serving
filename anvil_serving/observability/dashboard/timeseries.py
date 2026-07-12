@@ -37,6 +37,7 @@ def retained_timeseries(
         series: dict[str, dict[str, Any]] = {}
         known_keys: set[str] = set()
         for frame in frames:
+            frame_group = frame.snapshot.get("sampling_group")
             timestamp = frame.observed_at.isoformat(timespec="microseconds").replace("+00:00", "Z")
             samples = frame.snapshot.get("samples", [])
             present: set[str] = set()
@@ -58,12 +59,15 @@ def retained_timeseries(
                             "unit": sample.get("unit"),
                             "labels": dict(sample.get("labels") or {}),
                             "points": [],
+                            "sampling_group": frame_group,
                         },
                     )
                     if frame.gap and item["points"] and item["points"][-1] is not None:
                         item["points"].append(None)
                     item["points"].append([timestamp, value])
             for key in known_keys - present:
+                if frame_group is not None and series[key].get("sampling_group") != frame_group:
+                    continue
                 points = series[key]["points"]
                 if points and points[-1] is not None:
                     points.append(None)
@@ -71,6 +75,8 @@ def retained_timeseries(
             series.values(),
             key=lambda item: (item["host_id"], item["metric"], str(item["labels"])),
         )
+        for item in output[signal]:
+            item.pop("sampling_group", None)
     return {
         "resolution_seconds": resolution_seconds,
         "retained_bytes": store.total_bytes,
