@@ -195,6 +195,7 @@ def create_server(
     auth_env: str | None = None,
     environment: Mapping[str, str] | None = None,
     static_routes: Mapping[str, tuple[str, bytes]] | None = None,
+    public_static_routes: Sequence[str] = (),
     json_routes: Mapping[str, JsonRoute] | None = None,
     metrics_provider: MetricsProvider | None = None,
     query_routes: Mapping[str, QueryRoute] | None = None,
@@ -215,6 +216,7 @@ def create_server(
     if non_loopback and not token:
         raise ValueError("non-loopback telemetry API binds require authentication")
     assets = dict(static_routes or {})
+    public_assets = frozenset(public_static_routes)
     routes = dict(json_routes or {})
     parameterized_routes = dict(query_routes or {})
     for route, asset in assets.items():
@@ -227,15 +229,23 @@ def create_server(
             or not isinstance(asset[1], bytes)
         ):
             raise TypeError("static routes must map paths to (content type, bytes)")
+    if any(not isinstance(route, str) for route in public_assets):
+        raise TypeError("public static routes must be path strings")
+    if not public_assets.issubset(assets):
+        raise ValueError("public static routes must also exist in static_routes")
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "AnvilTelemetry/1"
 
         def do_GET(self) -> None:
+            parsed = urllib.parse.urlparse(self.path)
+            if parsed.path in public_assets and not parsed.query:
+                content_type, body = assets[parsed.path]
+                self._bytes(HTTPStatus.OK, content_type, body)
+                return
             if token and not _authorized(self.headers.get("Authorization"), token):
                 self._json(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "unauthorized"})
                 return
-            parsed = urllib.parse.urlparse(self.path)
             if parsed.path in assets and not parsed.query:
                 content_type, body = assets[parsed.path]
                 self._bytes(HTTPStatus.OK, content_type, body)

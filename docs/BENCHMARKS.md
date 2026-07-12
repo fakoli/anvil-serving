@@ -2,7 +2,7 @@
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-11** (incl. the same-day extension round).
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-12**.
 
 ## Read these results correctly
 
@@ -87,6 +87,37 @@ and raw evidence: [Blackwell local model bakeoff](findings/2026-07-10-blackwell-
 
 Baselines measured in the same window: production heavy gpt-oss-120b (all gates pass, 131K,
 intelligence 2/2) and production fast qwen36-35b-a3b (matches its 2026-07-08 promotion profile).
+
+### Qwen3.5-122B MXFP4 follow-up (2026-07-12)
+
+The cached `olka-fi/Qwen3.5-122B-A10B-MXFP4` checkpoint was re-served on the
+single RTX PRO 6000 at 131K through vLLM's sm_120 Marlin W4A16 fallback. Full
+preflight passed, but the standard 8K benchmark measured only **30.57 tok/s**
+(TTFT p50 720.79 ms), below the prior local NVFP4 result of 38.8 tok/s. The new
+externally-authored deterministic planning suite passed **1/5** cases. See the
+[dated finding and raw artifacts](findings/2026-07-12-qwen35-122b-mxfp4-benchmark.md).
+
+This result does not change the Heavy recommendation: Nemotron Labs 3 Puzzle
+75B remains the best measured Heavy candidate, still unpromoted pending a pinned
+stable engine. The Qwen MXFP4 recipe is retained only for reproducible engine and
+weight comparisons; the materially different next experiment is llama.cpp with
+the actual MXFP4_MOE GGUF path reported by the external single-card benchmark.
+
+### Nemotron Puzzle deterministic-eval recheck (2026-07-12)
+
+Nemotron Puzzle 75B was reloaded using its pinned checkpoint revision and the
+same vLLM nightly image used in the extension round. Full preflight passed,
+including the 128K needle and 20/20 tool calls. Its conventional 8K benchmark
+reported 15.22 aggregate output tok/s and 458.93 ms TTFT p50, but the model
+generated only 101 tokens across ten requests; the prior controlled 137.0 tok/s
+long-generation measurement remains the useful decode result.
+
+On the same new deterministic planning suite used for Qwen, Nemotron passed
+**0/5** cases versus Qwen's 1/5. This adds no quality-promotion evidence and
+does not change the recommendation: Nemotron remains the best measured Heavy
+capacity candidate but stays unpromoted pending a pinned stable engine and
+broader quality calibration. See the
+[dated recheck and raw artifacts](findings/2026-07-12-nemotron-puzzle-recheck.md).
 
 ## OpenClaw interaction and voice evidence
 

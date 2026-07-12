@@ -10,13 +10,17 @@
 # which forces the working Marlin path. Correctness preflight = ALL PASS (with --no-thinking); see
 # docs/findings/blackwell-sm120-lab-notebook.md.
 #
-#   GPU_UUID=GPU-d0f446cf-... PORT=30004 \
-#     docker compose -f examples/fakoli-dark/docker-compose.flexibility.yml up -d
-#   anvil-serving eval preflight --base-url http://127.0.0.1:30004/v1 --model qwen35-122b --no-thinking --needle-ctx 14000 --confirm
+# The 131K benchmark profile below is informed by the single-RTX-PRO-6000 MXFP4 reports recorded in
+# docs/findings/2026-07-12-qwen35-122b-mxfp4-benchmark.md. The external results are advisory only;
+# this managed recipe remains an evaluation candidate until local preflight and both benchmark paths
+# pass. In particular, this vLLM/Marlin recipe is not assumed to reproduce llama.cpp MXFP4_MOE speed.
+#
+#   anvil-serving serves up --manifest examples/fakoli-dark/serves.toml heavy-qwen35-122b-mxfp4 --confirm
+#   anvil-serving eval preflight --base-url http://127.0.0.1:30004/v1 --model qwen35-122b-mxfp4 --no-thinking --needle-ctx 128000 --confirm
 name: fakoli-flexibility
 services:
   qwen35-122b:
-    image: vllm/vllm-openai:nightly
+    image: ${QWEN35_MXFP4_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
     container_name: vllm-qwen35-122b
     restart: "no"                     # flexibility experiment/validation serve, not a production tier
     ipc: host
@@ -29,6 +33,7 @@ services:
       CUDA_VISIBLE_DEVICES: ${GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
       VLLM_USE_V2_MODEL_RUNNER: "0"   # WSL2 has no UVA (gotcha #14)
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"   # sm_120 `f` suffix (CLAUDE.md gotcha #10)
+      HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
@@ -46,10 +51,11 @@ services:
         rm -rf /usr/local/lib/python*/dist-packages/flashinfer/cute_dsl
         /usr/local/lib/python*/site-packages/flashinfer/cute_dsl 2>/dev/null || true;
         exec vllm serve olka-fi/Qwen3.5-122B-A10B-MXFP4
-        --served-model-name qwen35-122b
+        --revision ${QWEN35_MXFP4_REVISION:-345839ea666a70f5035672f7c88afcba6281921f}
+        --served-model-name qwen35-122b-mxfp4
         --quantization compressed-tensors
         --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder --trust-remote-code
-        --max-model-len ${MAX_MODEL_LEN:-16384} --max-num-seqs ${MAX_NUM_SEQS:-2}
+        --max-model-len ${MAX_MODEL_LEN:-131072} --max-num-seqs ${MAX_NUM_SEQS:-2}
         --gpu-memory-utilization ${GPU_MEM_UTIL:-0.90} --kv-cache-dtype fp8
         --host 0.0.0.0 --port ${PORT:-30004}
 

@@ -1,0 +1,26 @@
+{
+  "base_url": "http://127.0.0.1:39026/v1",
+  "completed": 10,
+  "concurrency": 1,
+  "context_tokens": 8192,
+  "max_context_tokens": 131072,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 661.8869304656982,
+    "e2e_p95_ms": 715.9652709960938,
+    "output_tokens": 101,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 15.217435227254102,
+    "ttft_p50_ms": 458.93120765686035,
+    "ttft_p95_ms": 492.9089546203613
+  },
+  "model": "nemotron3-puzzle-75b-nvfp4",
+  "requests": 10,
+  "run_id": "benchmark-20260712T072457Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  }
+}
