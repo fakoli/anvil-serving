@@ -1,0 +1,1 @@
+"""Benchmark telemetry capture support."""
