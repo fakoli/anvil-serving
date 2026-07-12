@@ -106,6 +106,25 @@ capabilities.
   in the reference topology.
 - All member task verification commands pass together.
 
+**Completion evidence (2026-07-11):** Complete.
+
+- All five member tasks are accepted with signed Anvil evidence: T020
+  (`EV05E23EDB`), T007 (`EVB44164BC`), T008 (`EVEEAA26C5`), T019
+  (`EV7366F078`), and T010 (`EV39C59764`).
+- The integrated API gate exercises one authenticated response containing
+  Fakoli Dark host and WSL/Docker boundary metrics, two distinct GPUs, managed
+  containers, service health, and Fakoli Mini host memory delivered through
+  the authenticated controller contract. It also proves an absent optional
+  adapter remains explicit and non-fatal, and that no authentication token is
+  serialized.
+- All milestone member tests pass together (`79 passed`), including the
+  controller transport and collector CLI gates. The repository-wide gate
+  passes (`3293 passed, 2 skipped`).
+- The independent adversarial pass covered fail-closed authentication and
+  host identity, malformed and duplicate capability requests, bounded samples
+  and response sizes, stale/future remote timestamps, read-only HTTP methods,
+  and Mini's model-free default registry. No merge-blocking finding remained.
+
 ## Milestone 3 — Live operator dashboard
 
 **Outcome:** One supported Anvil CLI command serves the read-only dashboard that
