@@ -30,6 +30,7 @@ from .status import prepare_sample
 
 
 Probe = Callable[[], Sequence[TelemetrySample]]
+JsonRoute = Callable[[], Mapping[str, Any]]
 _CAPABILITY = re.compile(r"^[a-z][a-z0-9_-]{0,79}$")
 _MAX_SAMPLES = 10_000
 _MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -192,6 +193,7 @@ def create_server(
     auth_env: str | None = None,
     environment: Mapping[str, str] | None = None,
     static_routes: Mapping[str, tuple[str, bytes]] | None = None,
+    json_routes: Mapping[str, JsonRoute] | None = None,
 ) -> ThreadingHTTPServer:
     """Create, but do not start, a bounded read-only telemetry server."""
 
@@ -209,6 +211,7 @@ def create_server(
     if non_loopback and not token:
         raise ValueError("non-loopback telemetry API binds require authentication")
     assets = dict(static_routes or {})
+    routes = dict(json_routes or {})
     for route, asset in assets.items():
         if not isinstance(route, str) or not route.startswith("/"):
             raise ValueError("static route paths must begin with /")
@@ -231,6 +234,15 @@ def create_server(
             if parsed.path in assets and not parsed.query:
                 content_type, body = assets[parsed.path]
                 self._bytes(HTTPStatus.OK, content_type, body)
+                return
+            if parsed.path in routes and not parsed.query:
+                try:
+                    self._json(HTTPStatus.OK, {"ok": True, "data": routes[parsed.path]()})
+                except Exception as exc:
+                    self._json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"ok": False, "error": str(exc)[:4096]},
+                    )
                 return
             if parsed.path == "/health":
                 self._json(

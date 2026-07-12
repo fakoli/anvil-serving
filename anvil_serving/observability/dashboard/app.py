@@ -6,6 +6,8 @@ import argparse
 from collections.abc import Mapping, Sequence
 from importlib.resources import files
 from ..api import TelemetryRegistry, build_default_registry, create_server
+from ..retention import RetentionStore
+from .timeseries import retained_timeseries
 
 
 def create_dashboard_server(
@@ -15,12 +17,14 @@ def create_dashboard_server(
     port: int = 8766,
     auth_env: str | None = None,
     environment: Mapping[str, str] | None = None,
+    retention: RetentionStore | None = None,
 ):
     """Create a metrics server with the packaged single-page shell."""
 
     document = (
         files("anvil_serving.observability.dashboard.static").joinpath("index.html").read_bytes()
     )
+    history = retention or RetentionStore()
     return create_server(
         registry or build_default_registry(),
         host=host,
@@ -31,6 +35,7 @@ def create_dashboard_server(
             "/": ("text/html; charset=utf-8", document),
             "/index.html": ("text/html; charset=utf-8", document),
         },
+        json_routes={"/v1/timeseries": lambda: retained_timeseries(history)},
     )
 
 
