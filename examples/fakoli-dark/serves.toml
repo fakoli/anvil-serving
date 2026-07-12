@@ -328,3 +328,12 @@ model = "laguna-xs-2.1-nvfp4-sglang"
 engine = "sglang"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-laguna-xs-21-nvfp4-sglang"
+
+[[serve]]
+name = "cand-unsloth-qwen36-27b-nvfp4"
+container = "vllm-cand-unsloth-qwen36-27b-nvfp4"
+port = 39036
+model = "unsloth-qwen36-27b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-unsloth-qwen36-27b-nvfp4"

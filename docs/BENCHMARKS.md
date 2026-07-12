@@ -214,6 +214,32 @@ vLLM and SGLang but rejected on this sm_120 host because neither tested recipe
 produced trustworthy output. See the
 [protocol-v2 finding and raw artifacts](findings/2026-07-12-rtx-pro-6000-heavy-eval-v2.md).
 
+### Qwen3.6 protocol-v2 comparison and Unsloth NVFP4 follow-up (2026-07-12)
+
+The same repaired repeated ARC and MMLU-Pro slices were run across the community
+NVFP4+MTP checkpoint, official FP8, ThinkingCap FP8, and Unsloth's July 2026
+NVFP4 checkpoint on the single RTX PRO 6000. At the matched 1,024-token
+reasoning-headroom point, ThinkingCap was the strongest Qwen: 5/5 stable ARC
+items and 7/10 stable MMLU-Pro items. The other three Qwen variants were
+dominated by completion-budget exhaustion at that cap, so those constrained
+scores are not intelligence rankings.
+
+A model-specific headroom calibration selected 4,096 tokens for ThinkingCap.
+Its three-repetition confirmation reached **9/10 stable MMLU-Pro items and
+27/30 passing attempts**, while retaining its 15/15 ARC result at 1,024. This
+is the highest stable quality-slice score in the current Heavy round, ahead of
+Nemotron 3 Super's 8/10, but it costs materially more reasoning budget and wall
+time. Nemotron remains the better matched-budget/latency result; ThinkingCap is
+the selected resident direct endpoint when Heavy intelligence is prioritized.
+Neither model is promoted into the router.
+
+The Unsloth checkpoint used its required vLLM 0.25.0 / FlashInfer 0.6.13 /
+CUTLASS DSL 4.5.2 path with native FlashInfer-CUTLASS NVFP4 and embedded MTP.
+It passed full preflight and 5/5 requests at concurrency five, but needed 8,192
+reasoning-headroom tokens to reach a one-pass 9/10 calibration and was slower
+than ThinkingCap's 4K operating point. See the
+[dated finding and raw artifacts](findings/2026-07-12-qwen36-protocol-v2-comparison.md).
+
 Protocol-v2 external suites are fail-closed and resource-bounded: no more than
 100 evals, 20 repetitions per item, 500 aggregate attempts, 65,536 completion
 tokens per attempt, or 2,000,000 requested quality tokens per run. Regex checks

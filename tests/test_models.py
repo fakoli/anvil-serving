@@ -64,9 +64,13 @@ def test_pull_argv_honors_volume_image_revision_include_exclude():
     assert argv[argv.index("--exclude") + 1] == "*.bin"
 
 
-def test_pull_argv_unauthenticated_by_default():
+def test_pull_argv_forwards_hf_token_by_default():
     argv = models.build_pull_argv("openai/gpt-oss-120b")
-    # No token forwarding of any kind by default.
+    assert argv[argv.index("-e") + 1] == "HF_TOKEN"
+
+
+def test_pull_argv_supports_explicit_unauthenticated_pull():
+    argv = models.build_pull_argv("openai/gpt-oss-120b", token_env=None)
     assert "-e" not in argv
     assert "HF_TOKEN" not in argv
 
@@ -87,7 +91,8 @@ def test_pull_argv_token_env_passes_by_name_never_value():
 def test_pull_dry_run_prints_command_and_runs_nothing(capsys):
     called = []
     rc = models.run_pull("openai/gpt-oss-120b", dry_run=True,
-                         _run=lambda *a, **k: called.append((a, k)))
+                         _run=lambda *a, **k: called.append((a, k)),
+                         _environ={"PATH": "/usr/bin"})
     assert rc == 0
     assert called == []  # nothing executed
     out = capsys.readouterr().out
@@ -95,11 +100,12 @@ def test_pull_dry_run_prints_command_and_runs_nothing(capsys):
     assert "-v vllm-hfcache:/root/.cache/huggingface" in out
     assert "--entrypoint hf" in out
     assert "download openai/gpt-oss-120b" in out
+    assert "-e HF_TOKEN" in out
     assert "huggingface-cli" not in out
 
 
-def test_pull_dry_run_via_pull_main_default_unauthenticated(capsys):
-    rc = models.pull_main(["openai/gpt-oss-120b", "--dry-run"])
+def test_pull_dry_run_via_pull_main_explicit_unauthenticated(capsys):
+    rc = models.pull_main(["openai/gpt-oss-120b", "--no-token", "--dry-run"])
     assert rc == 0
     out = capsys.readouterr().out
     assert "-v vllm-hfcache:/root/.cache/huggingface" in out
@@ -132,7 +138,8 @@ def test_pull_execution_shells_out_with_constructed_argv():
         seen["env"] = env
         return 0
 
-    rc = models.run_pull("openai/gpt-oss-120b", _run=fake_run)
+    rc = models.run_pull("openai/gpt-oss-120b", _run=fake_run,
+                         _environ={"HF_TOKEN": "hf_secret"})
     assert rc == 0
     argv = seen["argv"]
     assert argv[:3] == ["docker", "run", "--rm"]
@@ -142,7 +149,8 @@ def test_pull_execution_shells_out_with_constructed_argv():
 
 
 def test_pull_nonzero_docker_exit_surfaces_clean_rc():
-    rc = models.run_pull("openai/gpt-oss-120b", _run=lambda *a, **k: 17)
+    rc = models.run_pull("openai/gpt-oss-120b", _run=lambda *a, **k: 17,
+                         _environ={"HF_TOKEN": "hf_secret"})
     assert rc == 17  # docker failure passed through, not a traceback
 
 
@@ -150,7 +158,8 @@ def test_pull_missing_docker_binary_is_clean_127(capsys):
     def boom(*a, **k):
         raise FileNotFoundError("docker not found")
 
-    rc = models.run_pull("openai/gpt-oss-120b", _run=boom)
+    rc = models.run_pull("openai/gpt-oss-120b", _run=boom,
+                         _environ={"HF_TOKEN": "hf_secret"})
     assert rc == 127
     assert "docker" in capsys.readouterr().err.lower()
 
@@ -161,7 +170,9 @@ def test_pull_rejects_path_like_volume_that_would_reintroduce_9p(capsys):
     (gotcha #15). The named-volume default is the whole point."""
     called = []
     for bad in ("C:/models", "/mnt/d/models", "models\\dir"):
-        rc = models.run_pull("some/repo", volume=bad, _run=lambda *a, **k: called.append(1))
+        rc = models.run_pull("some/repo", volume=bad,
+                             _run=lambda *a, **k: called.append(1),
+                             _environ={"HF_TOKEN": "hf_secret"})
         assert rc == 2
     assert called == []  # never shells out to docker for a path-like volume
     assert "9p" in capsys.readouterr().err.lower()
@@ -190,11 +201,74 @@ def test_pull_token_env_set_but_missing_is_clean_error(capsys):
     called = []
     rc = models.run_pull(
         "some/repo", token_env="MISSING_TOKEN",
-        _run=lambda *a, **k: called.append(1), _environ={"PATH": "/usr/bin"})
+        token_file=None, _run=lambda *a, **k: called.append(1),
+        _environ={"PATH": "/usr/bin"})
     assert rc == 2
     assert called == []  # never shelled out
     err = capsys.readouterr().err
     assert "MISSING_TOKEN" in err
+
+
+def test_pull_unreadable_token_file_is_clean_error(tmp_path, capsys):
+    called = []
+    rc = models.run_pull(
+        "some/repo", token_file=str(tmp_path),
+        _run=lambda *a, **k: called.append(1), _environ={"PATH": "/usr/bin"})
+    assert rc == 2
+    assert called == []
+    err = capsys.readouterr().err
+    assert "not a regular file" in err
+    assert tmp_path.name in err
+
+
+def test_pull_whitespace_exported_token_falls_back_to_dotenv(tmp_path):
+    seen = {}
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("HF_TOKEN=hf_from_file\n", encoding="utf-8")
+
+    def fake_run(argv, env=None):
+        seen["env"] = env
+        return 0
+
+    rc = models.run_pull(
+        "some/repo", token_file=str(dotenv), _run=fake_run,
+        _environ={"HF_TOKEN": "   ", "PATH": "/usr/bin"})
+    assert rc == 0
+    assert seen["env"]["HF_TOKEN"] == "hf_from_file"
+
+
+def test_pull_reads_default_hf_token_from_home_dotenv(tmp_path):
+    seen = {}
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("HF_TOKEN=hf_from_file\n", encoding="utf-8")
+
+    def fake_run(argv, env=None):
+        seen["argv"] = argv
+        seen["env"] = env
+        return 0
+
+    rc = models.run_pull(
+        "some/repo", token_file=str(dotenv), _run=fake_run,
+        _environ={"PATH": "/usr/bin"})
+    assert rc == 0
+    assert seen["env"]["HF_TOKEN"] == "hf_from_file"
+    assert "hf_from_file" not in seen["argv"]
+
+
+def test_pull_exported_token_wins_over_dotenv(tmp_path):
+    seen = {}
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("HF_TOKEN=hf_from_file\n", encoding="utf-8")
+
+    def fake_run(argv, env=None):
+        seen["env"] = env
+        return 0
+
+    rc = models.run_pull(
+        "some/repo", token_file=str(dotenv), _run=fake_run,
+        _environ={"HF_TOKEN": "hf_from_shell", "PATH": "/usr/bin"})
+    assert rc == 0
+    assert seen["env"]["HF_TOKEN"] == "hf_from_shell"
 
 
 # --------------------------------------------------------------------------- #
