@@ -1,0 +1,165 @@
+{
+  "context": {
+    "cap_tokens": 129984,
+    "max_model_len": 131072,
+    "targets": [
+      {
+        "attempted_context_tokens": 129984,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 129984,
+        "e2e_ms": 17504.11868095398,
+        "estimated_prompt_tokens": 129984,
+        "output_tokens": 60,
+        "status": "passed",
+        "target_tokens": 131072,
+        "ttft_ms": 16759.616136550903,
+        "usage": {
+          "completion_tokens": 62,
+          "prompt_tokens": 122176,
+          "total_tokens": 122238
+        }
+      }
+    ]
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:39033/v1",
+    "candidate_id": "nemotron3-super-120b-a12b-nvfp4",
+    "config_id": "vllm-nightly-modelopt-mixed-fp8kv-131k-seq5",
+    "model": "nemotron3-super-120b-a12b-nvfp4",
+    "started_at": "2026-07-12T10:56:49Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "content_excerpt": "--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2",
+        "id": "unified_diff_timeout_edit",
+        "latency_ms": 616.9552803039551,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "diff_shape",
+            "passed": true
+          },
+          {
+            "name": "removes_old_timeout",
+            "passed": true
+          },
+          {
+            "name": "adds_new_timeout",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "content_excerpt": "The total latency (550 + 1800 + 650 = 3000 ms) exceeds the 2500 ms turn timeout, primarily due to the LLM\u2019s 1800 ms response time; a practical fix is to optimize the LLM inference \u2014 e.g., by using a s",
+        "id": "parallel_timeout_triage",
+        "latency_ms": 1297.5656986236572,
+        "status": "passed",
+        "text_checks": [
+          {
+            "name": "identifies_budget_overrun",
+            "passed": true
+          },
+          {
+            "name": "offers_latency_fix",
+            "passed": true
+          }
+        ],
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "passed"
+  },
+  "run_id": "fast-bakeoff-20260712T105649Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 17504.11868095398,
+    "intelligence_pass_rate": 1.0,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 16759.616136550903,
+    "usable_context_tokens": 131072,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      131072
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "content_excerpt": "RIVER-918",
+        "expected": "RIVER-918",
+        "latency_ms": 231.32562637329102,
+        "name": "single_request_multiturn_recall",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 17504.11868095398,
+      "e2e_p95_ms": 17504.11868095398,
+      "output_tokens": 60,
+      "ttft_p50_ms": 16759.616136550903,
+      "ttft_p95_ms": 16759.616136550903
+    },
+    "wall_ms": 20266.58535003662
+  },
+  "tool": {
+    "checks": [
+      {
+        "arguments": {
+          "zip": "98101"
+        },
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "latency_ms": 580.2836418151855,
+        "name": "openai_tool_call_smoke",
+        "status": "passed",
+        "tool_call_count": 1,
+        "valid_tool_call_count": 1,
+        "validation_errors": []
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

@@ -9,6 +9,9 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-12 | [2026-07-12-heavy-intelligence-challengers.md](2026-07-12-heavy-intelligence-challengers.md) | Mistral Small 4 and Nemotron 3 Super single-PRO-6000 Heavy gates, five-session comparison, and selected resident experiment |
+| 2026-07-12 | [2026-07-12-qwen36-27b-heavy-variation-bakeoff.md](2026-07-12-qwen36-27b-heavy-variation-bakeoff.md) | Qwen3.6-27B NVFP4, official FP8, and ThinkingCap FP8 Heavy validation, five-session capacity, and selected resident candidate |
+| 2026-07-12 | [2026-07-12-qwen36-27b-eval-baseline.md](2026-07-12-qwen36-27b-eval-baseline.md) | Qwen3.6-27B NVFP4+MTP current built-in eval baseline and invalid-for-ranking session-derived suite control |
 | 2026-07-12 | [2026-07-12-gpt-oss-120b-deterministic-recheck.md](2026-07-12-gpt-oss-120b-deterministic-recheck.md) | GPT-OSS-120B conventional benchmark and deterministic-eval token-budget control |
 | 2026-07-12 | [2026-07-12-nemotron-puzzle-recheck.md](2026-07-12-nemotron-puzzle-recheck.md) | Nemotron Puzzle 75B Heavy-candidate preflight, standard benchmark, and deterministic session-eval recheck |
 | 2026-07-12 | [2026-07-12-qwen35-122b-mxfp4-benchmark.md](2026-07-12-qwen35-122b-mxfp4-benchmark.md) | Single-RTX-PRO-6000 Qwen3.5-122B MXFP4/Marlin throughput and deterministic session-eval result (do not promote) |

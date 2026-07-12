@@ -15,6 +15,11 @@ from . import schema
 DEFAULT_DB = ".anvil/benchmarks.sqlite"
 
 KNOWN_SOURCES = {
+    "llmrequirements": {
+        "kind": "advisory-model-hardware-recipe-database",
+        "homepage_url": "https://llmrequirements.com/",
+        "notes": "Machine-readable Q4 model/build fit and coarse speed estimates; advisory only.",
+    },
     "millstone": {
         "kind": "llm-inference-benchmark",
         "homepage_url": "https://millstone.ai/",
