@@ -10,7 +10,7 @@ services:
     image: ghcr.io/mudler/parakeet.cpp-server:latest-cuda
     container_name: anvil-voice-stt
     restart: unless-stopped
-    command: ["--model", "tdt_ctc-110m"]
+    command: ["--model", "tdt-0.6b-v3"]
     ports:
       - "127.0.0.1:30010:8080"
       - "${VOICE_AUDIO_PUBLISH:-127.0.0.1}:30110:8080"

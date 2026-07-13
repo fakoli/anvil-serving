@@ -34,7 +34,7 @@ Usage::
 
     python scripts/voice/preflight_stt.py --report
     python scripts/voice/preflight_stt.py \\
-        --candidate name=parakeet,base_url=http://127.0.0.1:30010/v1,model=tdt_ctc-110m,stream=false \\
+        --candidate name=parakeet,base_url=http://127.0.0.1:30010/v1,model=tdt-0.6b-v3,stream=false \\
         --candidate name=vllm-whisper-tiny,base_url=http://127.0.0.1:30015/v1,model=whisper-tiny,stream=false \\
         --sample /path/to/utterance.wav --reference-text "the quick brown fox jumps over the lazy dog"
 """
@@ -91,7 +91,7 @@ DEFAULT_CANDIDATES: List[Dict[str, Any]] = [
     {
         "name": "parakeet.cpp",
         "base_url": "http://127.0.0.1:30010/v1",
-        "model": "tdt_ctc-110m",
+        "model": "tdt-0.6b-v3",
         "container_name": "parakeet-stt",
         "stream": False,
     },

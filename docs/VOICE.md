@@ -124,7 +124,7 @@ protocol = "openai"
 
 [voice.profiles.dark-audio.stt]
 base_url = "http://100.87.34.66:30110/v1"
-model = "tdt_ctc-110m"
+model = "tdt-0.6b-v3"
 lifecycle = "external"
 
 [voice.profiles.dark-audio.tts]

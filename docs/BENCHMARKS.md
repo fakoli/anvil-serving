@@ -269,7 +269,7 @@ rejected because they repeated a hallucinated phrase. Full methodology and all
 
 | STT candidate / tested configuration | Warm latency | Normalized WER | Outcome |
 |---|---:|---:|---|
-| Parakeet `tdt_ctc-110m`, existing Dark endpoint | 82.62, 89.30 ms | 0.0 | **Current default**; fastest passing configuration. |
+| Parakeet `tdt_ctc-110m`, existing Dark endpoint | 82.62, 89.30 ms | 0.0 | Former default (superseded by `tdt-0.6b-v3`, 2026-07-13; numbers measured against the old model); fastest passing configuration. |
 | Qwen3-ASR 0.6B, vLLM | 196.36, 278.98 ms | 0.0 after postprocess | Retain as the next candidate for a future managed evaluation on a larger corpus. |
 | Qwen3-ASR 1.7B, vLLM | 290.59, 223.96 ms | 0.0 | No demonstrated advantage over 0.6B on this sample. |
 | Whisper Large V3 Turbo FP8, vLLM | 730.69, 669.57 ms | 1.0 | Reject tested recipe; repeated hallucinated phrase. |
