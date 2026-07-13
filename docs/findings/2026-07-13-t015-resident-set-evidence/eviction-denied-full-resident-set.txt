@@ -1,0 +1,11 @@
+# captured 2026-07-13T21:36:06Z UTC
+# cmd: anvil-serving serves up comfyui --manifest examples/fakoli-dark/serves.comfyui.toml --evict --dry-run --confirm
+# expectation: on-demand ComfyUI (12288) refused against the full resident set — only evictable is vision (not committed), residents are never evicted.
+
+  eviction refused: gpu_role 'dark-fast' needs 10401 MiB but every evictable reservation combined frees only 0 MiB
+  gpu_role 'dark-fast': capacity 32607 MiB, reserve 4608 MiB, committed 26112 MiB, free 1887 MiB
+  never evicted (residency 'resident'): fast 14336 MiB (resident, running)
+  never evicted (residency 'resident'): embeddings 3200 MiB (resident, running)
+  never evicted (residency 'resident'): reranker 3456 MiB (resident, running)
+  never evicted (residency 'resident'): ocr 5120 MiB (resident, running)
+  no container command was run; the ledger stands

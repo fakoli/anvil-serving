@@ -1,0 +1,24 @@
+# captured 2026-07-13T21:36:06Z UTC
+# POST http://100.87.34.66:8000/v1/embeddings (router front door, authed via ANVIL_ROUTER_TOKEN)
+# model routed by name to purpose-model 'embeddings-local' -> serves.toml embeddings (:30005)
+# HTTP 200
+
+{
+  "http": 200,
+  "model": "qwen3-embedding-0.6b",
+  "object": "list",
+  "embedding_dims": 1024,
+  "embedding_head": [
+    -0.026114,
+    -0.040041,
+    -0.013927,
+    -0.048552,
+    0.036559
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "total_tokens": 10,
+    "completion_tokens": 0,
+    "prompt_tokens_details": null
+  }
+}

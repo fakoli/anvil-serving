@@ -1,0 +1,10 @@
+# captured 2026-07-13T21:35:42Z UTC
+# cmd: anvil-serving serves status --manifest examples/fakoli-dark/serves.voice.toml
+
+SERVE            CONTAINER        PORT   DOCKER    HEALTH
+stt              anvil-voice-stt  30010  running   200
+tts              anvil-voice-tts  30011  running   200
+
+GPU memory (index, used MiB, total MiB):
+  0, 31843, 32607
+  1, 90846, 97887

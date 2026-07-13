@@ -1,0 +1,24 @@
+# captured 2026-07-13T21:35:42Z UTC  (branch: agent/gpu-reservations-t015-live-5090-resident-set-validation)
+# cmd: anvil-serving serves status --manifest examples/fakoli-dark/serves.toml
+
+SERVE            CONTAINER        PORT   DOCKER    HEALTH
+heavy            vllm-thinkingcap-heavy 30002  running   200
+heavy-gptoss-rollback vllm-gptoss120   30002  absent    -
+fast             vllm-gemma4-e4b-fast 30003  running   200
+fast-qwen36-rollback vllm-qwen36      30003  absent    -
+embeddings       vllm-qwen3-embedding 30005  running   200
+reranker         vllm-qwen3-reranker 30006  running   200
+ocr              vllm-paddleocr-vl 30007  running   200
+vision           vllm-qwen3-vl-vision 30008  exited    -
+
+GPU memory (index, used MiB, total MiB):
+  0, 31843, 32607
+  1, 90846, 97887
+
+GPU reservations (ADR-0017, derived from docker state):
+  gpu_role 'dark-fast': capacity 32607 MiB, reserve 4608 MiB, committed 26112 MiB, free 1887 MiB
+    fast 14336 MiB (resident, running)
+    embeddings 3200 MiB (resident, running)
+    reranker 3456 MiB (resident, running)
+    ocr 5120 MiB (resident, running)
+    vision 12288 MiB (evictable, exited) [not committed]

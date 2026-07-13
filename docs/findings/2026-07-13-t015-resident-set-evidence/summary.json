@@ -1,0 +1,77 @@
+{
+  "task": "gpu-reservations:T015",
+  "title": "Live 5090 resident-set validation",
+  "captured_utc": "2026-07-13T21:36Z",
+  "box": "fakoli-dark",
+  "gpu_role": "dark-fast",
+  "lifecycle_via": "anvil-serving serves / voice audio verbs (no raw docker for lifecycle)",
+  "resident_set_healthy": {
+    "fast": {"port": 30003, "vram_mib": 14336, "residency": "resident", "health": 200},
+    "embeddings": {"port": 30005, "vram_mib": 3200, "residency": "resident", "health": 200},
+    "reranker": {"port": 30006, "vram_mib": 3456, "residency": "resident", "health": 200},
+    "ocr": {"port": 30007, "vram_mib": 5120, "residency": "resident", "health": 200},
+    "voice_stt": {"port": 30010, "health": 200},
+    "voice_tts": {"port": 30011, "health": 200}
+  },
+  "ledger": {
+    "capacity_mib": 32607,
+    "reserve_mib": 4608,
+    "committed_mib": 26112,
+    "budget_mib": 27999,
+    "free_mib": 1887,
+    "invariant_committed_le_budget": true
+  },
+  "nvidia_smi": {
+    "memory_total_mib": 32607,
+    "memory_used_mib": 31843,
+    "memory_free_mib": 345,
+    "total_matches_capacity_exactly": true
+  },
+  "reconciliation": {
+    "non_ledger_draw_mib": 5731,
+    "non_ledger_draw_note": "display + voice sidecars; consistent with prior ~5.7 GiB note",
+    "ledger_free_optimistic_mib": 1542,
+    "physical_headroom_mib": 345,
+    "declared_budgets_accurate": true,
+    "budget_correction_needed": false,
+    "manifest_prose_corrected": "serves.toml [[gpu_roles]] HONESTY NOTE updated to T015-measured figures",
+    "fast_target_10240_unreachable": "confirmed (T011): fast stays 14336, reserve 4608"
+  },
+  "voice_ws_handshake": {
+    "target": "ws://127.0.0.1:8765 on fakoli-mini (passwordless ssh)",
+    "status_line": "HTTP/1.1 101 Switching Protocols",
+    "path": "/v1/realtime",
+    "sec_websocket_accept_valid": true,
+    "handshake_ok": true
+  },
+  "embeddings_through_router": {
+    "endpoint": "POST http://100.87.34.66:8000/v1/embeddings",
+    "authed": "ANVIL_ROUTER_TOKEN",
+    "http": 200,
+    "model": "qwen3-embedding-0.6b",
+    "embedding_dims": 1024,
+    "prompt_tokens": 10
+  },
+  "eviction_cycle": {
+    "negative_residents_protected": {
+      "cmd": "serves up comfyui --evict --dry-run (full resident set)",
+      "result": "refused: needs 10401 MiB, evictable frees 0 MiB; no container command run",
+      "side_effects": "none"
+    },
+    "positive_one_cycle": {
+      "gpu_role": "sim-5090 (isolated, trivial alpine containers)",
+      "router_legs": "recorded via injectable transition seam (validated live in T013)",
+      "sequence": [
+        "vision-sim committed (12288, free 7712)",
+        "comfyui-sim denied without --evict (rc=1)",
+        "comfyui-sim admitted with --evict: quiesce+drain vision-sim-tier, stop vision-sim, start comfyui-sim",
+        "restore: down comfyui-sim, up vision-sim, readmit vision-sim-tier"
+      ],
+      "transitions": ["quiesce", "drain(60s)", "readmit"]
+    }
+  },
+  "verification": {
+    "serves_status_voice_exit": 0,
+    "pytest_test_reservations_exit": 0
+  }
+}
