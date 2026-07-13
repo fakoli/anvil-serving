@@ -1,0 +1,52 @@
+{
+    "count": 1,
+    "available": 1,
+    "limit": 5,
+    "records": [
+        {
+            "intent": "-",
+            "work_class": "chat-fast",
+            "requested_tiers": [
+                "fast-local",
+                "heavy-local"
+            ],
+            "served_tier": "fast-local",
+            "fell_back": false,
+            "attempts": [
+                {
+                    "tier_id": "fast-local",
+                    "outcome": "served",
+                    "verifier_passed": true,
+                    "verify_reason": "verify_passed",
+                    "prompt_tokens": 9,
+                    "completion_tokens": 6
+                }
+            ],
+            "total_prompt_tokens": 9,
+            "total_completion_tokens": 6,
+            "cost_usd": 0.0,
+            "mode": "-"
+        }
+    ],
+    "totals": {
+        "fallback_count": 0,
+        "prompt_tokens": 9,
+        "completion_tokens": 6,
+        "cost_usd": 0.0,
+        "served_tiers": {
+            "fast-local": 1
+        },
+        "attempt_outcomes": {
+            "served": 1
+        }
+    },
+    "omitted_fields": [
+        "prompt",
+        "messages",
+        "content",
+        "response",
+        "api_key",
+        "authorization",
+        "token"
+    ]
+}

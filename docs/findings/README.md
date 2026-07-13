@@ -9,6 +9,7 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-13 | [2026-07-13-e4b-fast-router-promotion.md](2026-07-13-e4b-fast-router-promotion.md) | Gemma 4 E4B fast-tier router promotion, profile reseed (calibration pending), and OpenClaw harness lockstep (gpu-reservations:T007) |
 | 2026-07-12 | [2026-07-12-thinkingcap-heavy-promotion.md](2026-07-12-thinkingcap-heavy-promotion.md) | ThinkingCap FP8 model-aware functional/quality gates and guarded Heavy promotion with GPT-OSS rollback |
 | 2026-07-12 | [2026-07-12-green-context-mps-capability.md](2026-07-12-green-context-mps-capability.md) | Read-only Green Context/MPS inspector, successful Docker Desktop prerequisite probe on the RTX 5090, and unexecuted creation plan |
 | 2026-07-12 | [docker-desktop-rtx5090-prerequisite.json](2026-07-12-green-context-mps-capability-evidence/docker-desktop-rtx5090-prerequisite.json) | Raw Docker Desktop CUDA 13.1 prerequisite evidence for the UUID-selected RTX 5090; no context or workload created |
