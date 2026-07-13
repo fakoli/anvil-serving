@@ -1,0 +1,34 @@
+# T015 eviction-cycle verification manifest (evidence artifact, NOT product config).
+# ISOLATED sim gpu_role "sim-5090" carrying two trivial containers (see
+# eviction-sim-compose.yml): the evictable `vision-sim` slot and the `on-demand`
+# `comfyui-sim` acquirer. Capacities are chosen so the acquirer does NOT fit
+# alongside the committed evictable, forcing exactly one eviction — the same
+# admission arithmetic the live dark-fast ledger runs, on a throwaway role so the
+# real serves.cmd_up --evict path executes with no impact on the live 5090.
+[[gpu_roles]]
+id = "sim-5090"
+vram_mib = 20000
+reserve_mib = 0
+
+[[serve]]
+name = "vision-sim"            # evictable stand-in for the real `vision` slot
+container = "vision-sim"
+port = 39900
+model = "vision-sim"
+engine = "vllm"
+gpu_role = "sim-5090"
+vram_mib = 12288
+residency = "evictable"
+router_tier = "vision-sim-tier"
+up = "docker compose -f {dir}/eviction-sim-compose.yml up -d vision-sim"
+
+[[serve]]
+name = "comfyui-sim"          # on-demand stand-in for a ComfyUI image-gen acquisition
+container = "comfyui-sim"
+port = 39901
+model = "comfyui-sim"
+engine = "image"
+gpu_role = "sim-5090"
+vram_mib = 12288
+residency = "on-demand"
+up = "docker compose -f {dir}/eviction-sim-compose.yml up -d comfyui-sim"
