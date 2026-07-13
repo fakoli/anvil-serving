@@ -54,7 +54,8 @@ resource and keep the same gate semantics.
 | Throughput run | `benchmark_probe` for a bounded probe; `benchmark_artifact` when `--json-out` evidence is required | `anvil-serving eval benchmark run --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
 | OpenClaw config sync | `openclaw_sync`, `openclaw_gateway_restart`, `openclaw_gateway_status` | `anvil-serving harness sync openclaw --config <router.toml> ...`; `anvil-serving harness restart openclaw ...`; `anvil-serving harness status openclaw ...` |
 | OpenClaw COLO smoke/eval | Not exposed as MCP yet | `python examples/openclaw/colo_smoke.py --live --gateway-host fakoli-mini --router-base-url http://100.87.34.66:8000/v1 --artifact <file>` |
-| Human-gated promotion | `router_promote` preview; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
+| Profile/config-only router promotion | `router_promote` preview; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
+| Model/endpoint promotion | `serves_promote` executes the canonical dry-run; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` | `anvil-serving serves promote <plan> --manifest <serves.toml> --dry-run`, then repeat with `--confirm` |
 
 Treat missing MCP tools as a product gap, not a reason to scrape Docker output
 or hand-edit remote configs. Use `127.0.0.1` in local URLs.
@@ -834,14 +835,17 @@ and is not automatic.
    - external benchmark priors clearly marked as priors only; and
    - failed or skipped checks listed before any recommendation.
 
-3. Stop with a recommendation:
+3. Stop with a recommendation. Distinguish a profile-only router update from a
+   model/endpoint replacement:
 
    ```text
    Recommendation: promote / do not promote / needs more data.
-   Human gate required before `anvil-serving router promote ...`.
+   Human gate required before `anvil-serving router promote ...` (profile only)
+   or `anvil-serving serves promote ...` (model/endpoint transition).
    ```
 
-4. Preview the promotion through MCP/controller when available:
+4. For a profile/config-only change, preview `router_promote` through the
+   MCP/controller when available:
 
    ```json
    {
@@ -855,8 +859,26 @@ and is not automatic.
    writing. Apply is allowed only with `confirm:true`, `dry_run:false`, and
    `human_approved:true`.
 
-5. Only after explicit human authorization should an operator run the CLI
-   fallback:
+5. For a model or endpoint replacement, preview the complete transaction on
+   the serving host. The preview validates the manifest and shows quiesce,
+   drain, container swap, health/model identity, preflight, router restart, and
+   post-restart readiness in order:
+
+   ```bash
+   anvil-serving serves promote <plan> \
+     --manifest <serves.toml> \
+     --dry-run
+   ```
+
+   The equivalent `serves_promote` MCP call must first use the default dry run.
+   Apply requires all three fields: `confirm:true`, `dry_run:false`, and
+   `human_approved:true`. After an interrupted run, inspect `router
+   transition-status`; use `--resume --confirm` to reassert quiescence and rerun
+   every gate. Use `--rollback --confirm` to restore the declared serve and
+   router pair through the same ordered transaction.
+
+6. Only after explicit human authorization should an operator run the
+   profile-only CLI fallback:
 
    ```bash
    anvil-serving router promote \

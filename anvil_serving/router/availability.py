@@ -35,6 +35,18 @@ from urllib.parse import urlsplit, urlunsplit
 from .config import PRIVACY_LOCAL, RouterConfig, Tier
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _direct_opener():
+    """Return the shared token-safe probe transport policy."""
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), _NoRedirect()
+    ).open
+
+
 @dataclass(frozen=True)
 class AvailabilityResult:
     """One tier's bounded readiness result.
@@ -76,14 +88,14 @@ class HttpHealthAvailability:
         self,
         config: RouterConfig,
         *,
-        opener: Callable[..., object] = urllib.request.urlopen,
+        opener: Optional[Callable[..., object]] = None,
         clock: Callable[[], float] = time.monotonic,
         env: Optional[Mapping[str, str]] = None,
     ) -> None:
         self._probe_interval = config.availability_probe_interval
         self._probe_timeout = config.availability_probe_timeout
         self._probe_max_bytes = config.availability_probe_max_bytes
-        self._opener = opener
+        self._opener = opener if opener is not None else _direct_opener()
         self._clock = clock
         self._env = os.environ if env is None else env
         self._lock = threading.Lock()

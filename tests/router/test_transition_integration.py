@@ -5,7 +5,7 @@ import threading
 
 import pytest
 
-from anvil_serving.router.availability import AlwaysAvailable
+from anvil_serving.router.availability import AlwaysAvailable, AvailabilityResult
 from anvil_serving.router.config import RouterConfig, Tier
 from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
 from anvil_serving.router.serve import RoutingBackend
@@ -119,3 +119,91 @@ def test_direct_stream_close_releases_full_generation_lease():
     assert next(stream) == "HEAVY"
     stream.close()
     assert routing._admission.snapshot("heavy-local").active_requests == 0
+
+
+def test_unadvanced_direct_stream_close_releases_admission_lease():
+    routing = _routing(_TextBackend("HEAVY"), _TextBackend("FAST"))
+    stream = routing.generate(_request())
+    assert routing._admission.snapshot("heavy-local").active_requests == 1
+    stream.close()
+    assert routing._admission.snapshot("heavy-local").active_requests == 0
+
+
+def test_route_decision_never_advertises_a_quiesced_tier():
+    routing = _routing(_TextBackend("HEAVY"), _TextBackend("FAST"))
+    routing.quiesce_tier("heavy-local")
+    with pytest.raises(NoAvailableTierError) as exc:
+        routing.decide(_request("heavy-only"))
+    assert exc.value.kind == "unavailable"
+
+
+def test_guarded_readmit_requires_identity_readiness_configuration():
+    routing = _routing(_TextBackend("HEAVY"), _TextBackend("FAST"))
+    routing.quiesce_tier("heavy-local")
+    result = routing.readmit_tier("heavy-local")
+    assert result["readmitted"] is False
+    assert result["reason"] == "identity_not_configured"
+    assert routing._admission.snapshot("heavy-local").quiesced is True
+
+
+def test_successful_readmit_keeps_the_identity_result_cached():
+    heavy = Tier(
+        **{
+            **_tier("heavy-local", 30002).__dict__,
+            "health_path": "/health",
+            "model_identity": True,
+        }
+    )
+
+    class Ready:
+        def __init__(self):
+            self.invalidated = []
+
+        def invalidate(self, tier_id=None):
+            self.invalidated.append(tier_id)
+
+        def check(self, tier):
+            return AvailabilityResult(
+                True, "ready", "identity_passed", tier.model, tier.model
+            )
+
+    ready = Ready()
+    routing = RoutingBackend(
+        RouterConfig(
+            tiers=(heavy,),
+            presets={"heavy-only": (heavy.id,)},
+            mapping_version="transition-test",
+            verify_local_min=False,
+        ),
+        {heavy.id: _TextBackend("HEAVY")},
+        _Profile(),
+        availability=ready,
+    )
+    routing.quiesce_tier(heavy.id)
+    assert routing.readmit_tier(heavy.id)["readmitted"] is True
+    assert ready.invalidated == [heavy.id, heavy.id]
+
+
+def test_guarded_readmit_rejects_available_without_exact_identity_evidence():
+    heavy = Tier(
+        **{
+            **_tier("heavy-local", 30002).__dict__,
+            "health_path": "/health",
+            "model_identity": True,
+        }
+    )
+    routing = RoutingBackend(
+        RouterConfig(
+            tiers=(heavy,),
+            presets={"heavy-only": (heavy.id,)},
+            mapping_version="transition-test",
+            verify_local_min=False,
+        ),
+        {heavy.id: _TextBackend("HEAVY")},
+        _Profile(),
+        availability=AlwaysAvailable(),
+    )
+    routing.quiesce_tier(heavy.id)
+    result = routing.readmit_tier(heavy.id)
+    assert result["readmitted"] is False
+    assert result["reason"] == "identity_not_verified"

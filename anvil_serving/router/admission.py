@@ -35,6 +35,7 @@ class AdmissionSnapshot:
     state: str
     reason: str
     active_requests: int
+    draining: bool = False
 
     @property
     def quiesced(self) -> bool:
@@ -46,6 +47,7 @@ class AdmissionSnapshot:
             "state": self.state,
             "reason": self.reason,
             "active_requests": self.active_requests,
+            "draining": self.draining,
         }
 
 
@@ -78,6 +80,7 @@ class _TierState:
     quiesced: bool = False
     reason: str = "admitting"
     active_requests: int = 0
+    draining: bool = False
 
 
 class TierAdmission:
@@ -128,6 +131,8 @@ class TierAdmission:
         changed = False
         with self._condition:
             state = self._state(tier_id)
+            if state.draining:
+                raise ValueError("tier drain is in progress")
             if not state.quiesced or state.reason != reason:
                 state.quiesced = True
                 state.reason = reason
@@ -141,6 +146,8 @@ class TierAdmission:
         changed = False
         with self._condition:
             state = self._state(tier_id)
+            if state.draining:
+                raise ValueError("tier drain is in progress")
             if state.quiesced or state.reason != "admitting":
                 state.quiesced = False
                 state.reason = "admitting"
@@ -163,20 +170,33 @@ class TierAdmission:
             state = self._state(tier_id)
             if not state.quiesced:
                 raise ValueError("tier must be quiesced before drain")
-            while state.active_requests:
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    return {
-                        "drained": False,
-                        "timed_out": True,
-                        "snapshot": self._snapshot_locked(tier_id, state).as_dict(),
-                    }
-                self._condition.wait(remaining)
-            return {
-                "drained": True,
-                "timed_out": False,
-                "snapshot": self._snapshot_locked(tier_id, state).as_dict(),
-            }
+            if state.draining:
+                raise ValueError("tier drain is already in progress")
+            state.draining = True
+            try:
+                while state.active_requests:
+                    if not state.quiesced:
+                        raise ValueError("tier was readmitted during drain")
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        state.draining = False
+                        return {
+                            "drained": False,
+                            "timed_out": True,
+                            "snapshot": self._snapshot_locked(tier_id, state).as_dict(),
+                        }
+                    self._condition.wait(remaining)
+                if not state.quiesced:
+                    raise ValueError("tier was readmitted during drain")
+                state.draining = False
+                return {
+                    "drained": True,
+                    "timed_out": False,
+                    "snapshot": self._snapshot_locked(tier_id, state).as_dict(),
+                }
+            finally:
+                state.draining = False
+                self._condition.notify_all()
 
     def snapshot(self, tier_id: str) -> AdmissionSnapshot:
         with self._condition:
@@ -197,4 +217,5 @@ class TierAdmission:
             state="quiesced" if state.quiesced else "admitting",
             reason=state.reason,
             active_requests=state.active_requests,
+            draining=state.draining,
         )

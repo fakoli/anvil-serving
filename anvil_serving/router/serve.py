@@ -56,7 +56,7 @@ import os
 import sys
 import threading
 from http.server import ThreadingHTTPServer
-from typing import Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
+from typing import Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 # RelayBackend now lives in .backends.relay (#46); it is imported (and so
 # re-exported from this module's namespace) here because build_backend_for_tier
@@ -68,7 +68,7 @@ from .availability import (
     AvailabilityResult,
     HttpHealthAvailability,
 )
-from .admission import TierAdmission
+from .admission import AdmissionLease, TierAdmission
 from .backends.cloud import DiscoveryTransport, Transport, discover_single_model
 from .config import (
     ConfigError,
@@ -98,9 +98,58 @@ from .modes import (
     KNOWN_MODES,
     resolve_serve_config,
 )
+
+
 from .policy import Needs, route
 from .profile_store import ProfileStore, default_profile
 from .verify import NonEmptyContent, NotTruncated, ResponseView, default_verifiers
+
+
+class _AdmissionIterator:
+    """Iterator that releases an eager admission lease even if never advanced."""
+
+    def __init__(
+        self,
+        factory: Callable[[], Iterator[str]],
+        lease: AdmissionLease,
+        on_complete: Callable[[], None],
+    ) -> None:
+        self._factory = factory
+        self._lease = lease
+        self._on_complete = on_complete
+        self._inner: Optional[Iterator[str]] = None
+        self._closed = False
+
+    def __iter__(self) -> "_AdmissionIterator":
+        return self
+
+    def __next__(self) -> str:
+        if self._closed:
+            raise StopIteration
+        try:
+            if self._inner is None:
+                self._inner = iter(self._factory())
+            return next(self._inner)
+        except StopIteration:
+            try:
+                self._on_complete()
+            finally:
+                self.close()
+            raise
+        except BaseException:
+            self.close()
+            raise
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            closer = getattr(self._inner, "close", None)
+            if callable(closer):
+                closer()
+        finally:
+            self._lease.release()
 
 
 def _needs_for(request: InternalRequest) -> Needs:
@@ -452,10 +501,8 @@ class RoutingBackend:
         self._availability = (
             availability if availability is not None else AlwaysAvailable()
         )
-        invalidate = getattr(self._availability, "invalidate", None)
         self._admission = admission or TierAdmission(
-            (tier.id for tier in config.tiers),
-            on_state_change=invalidate if callable(invalidate) else None,
+            tier.id for tier in config.tiers
         )
         self._decision_log = DecisionLog()
         # Session-scoped circuit breaker: owned here, shared across all requests,
@@ -682,15 +729,13 @@ class RoutingBackend:
             self._note_selected(available_tiers[0])
             self._thread_local.last_result = None  # cleared; set when stream finishes
 
-            def _allow_wrap() -> Iterator[str]:
-                try:
-                    yield from inner_backend.generate(request)
-                    _fn = getattr(inner_backend, "get_last_structured", None)
-                    self._thread_local.last_result = _fn() if callable(_fn) else None
-                finally:
-                    lease.release()
+            def _complete_allow() -> None:
+                _fn = getattr(inner_backend, "get_last_structured", None)
+                self._thread_local.last_result = _fn() if callable(_fn) else None
 
-            return _allow_wrap()
+            return _AdmissionIterator(
+                lambda: inner_backend.generate(request), lease, _complete_allow
+            )
 
         # allow-with-verify (full chain), OR a local "allow" under the T004
         # minimal-verify safety net (NonEmptyContent/NotTruncated only): both
@@ -815,7 +860,11 @@ class RoutingBackend:
 
     def quiesce_tier(self, tier_id: str, reason: str = "promotion") -> dict:
         self._config.tier(tier_id)
-        return self._admission.quiesce(tier_id, reason).as_dict()
+        snapshot = self._admission.quiesce(tier_id, reason)
+        invalidate = getattr(self._availability, "invalidate", None)
+        if callable(invalidate):
+            invalidate(tier_id)
+        return snapshot.as_dict()
 
     def drain_tier(self, tier_id: str, timeout: float) -> dict:
         self._config.tier(tier_id)
@@ -823,14 +872,29 @@ class RoutingBackend:
 
     def readmit_tier(self, tier_id: str) -> dict:
         tier = self._config.tier(tier_id)
+        if not tier.model_identity or not tier.health_path or not tier.model:
+            return {
+                "readmitted": False,
+                "reason": "identity_not_configured",
+                "status": self.transition_status(tier_id),
+            }
         invalidate = getattr(self._availability, "invalidate", None)
         if callable(invalidate):
             invalidate(tier_id)
         readiness = self._availability.check(tier)
-        if not readiness.available:
+        identity_verified = (
+            readiness.available
+            and readiness.expected_model == tier.model
+            and readiness.observed_model == tier.model
+        )
+        if not identity_verified:
             return {
                 "readmitted": False,
-                "reason": readiness.reason,
+                "reason": (
+                    readiness.reason
+                    if not readiness.available
+                    else "identity_not_verified"
+                ),
                 "status": self.transition_status(tier_id),
             }
         snapshot = self._admission.readmit(tier_id)
@@ -913,8 +977,12 @@ class RoutingBackend:
             raise NoAvailableTierError(decision.work_class, decision.tiers)
 
         availability = self._availability_snapshot(bound_tiers)
+        admission = {
+            tid: self._admission.snapshot(tid) for tid in bound_tiers
+        }
         available_tiers = tuple(
-            tid for tid in bound_tiers if availability[tid].available
+            tid for tid in bound_tiers
+            if availability[tid].available and not admission[tid].quiesced
         )
         if not available_tiers:
             raise NoAvailableTierError(
@@ -955,6 +1023,11 @@ class RoutingBackend:
         ]
         if unavailable:
             reason_parts.append(f"unavailable: {unavailable}")
+        quiesced = [
+            tid for tid in bound_tiers if admission[tid].quiesced
+        ]
+        if quiesced:
+            reason_parts.append(f"quiesced: {quiesced}")
         reason = "; ".join(reason_parts)
 
         return {

@@ -265,7 +265,7 @@ anvil-serving router readmit --tier heavy-local --router-url http://127.0.0.1:80
 ### `serves`
 
 ```
-anvil-serving serves {status|up|down|rm|adopt|logs|render} [NAME ...] [flags]
+anvil-serving serves {status|up|down|rm|adopt|logs|render|promote} [NAME ...] [flags]
 ```
 
 Stop/start/inspect the local GPU model serves declared in a serves manifest.
@@ -288,6 +288,10 @@ Common flags: `--manifest`, `--dry-run`; `rm`/`adopt` also take `--yes`.
 
 ```bash
 anvil-serving serves up heavy --manifest ./serves.toml --dry-run
+anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --dry-run
+anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --confirm
+anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --rollback --confirm
+anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --resume --confirm
 ```
 
 ### `serves render`

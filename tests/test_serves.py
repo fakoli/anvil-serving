@@ -822,6 +822,62 @@ def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
     assert "router promote" in out
 
 
+def test_promotion_topology_rejects_same_port_and_model_on_wrong_host(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    new_path = tmp_path / "new.toml"
+    new_path.write_text(
+        new_path.read_text(encoding="utf-8").replace("127.0.0.1", "10.0.0.9"),
+        encoding="utf-8",
+    )
+    assert serves.cmd_promote(
+        serves.load_manifest(path), serves.load_promotions(path),
+        "heavy-v2", path, dry_run=True,
+    ) == 1
+
+
+def test_promotion_topology_rejects_ipv6_loopback_alias(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    new_path = tmp_path / "new.toml"
+    new_path.write_text(
+        new_path.read_text(encoding="utf-8").replace(
+            "http://127.0.0.1:30002/v1", "http://[::1]:30002/v1"
+        ),
+        encoding="utf-8",
+    )
+    assert serves.cmd_promote(
+        serves.load_manifest(path), serves.load_promotions(path),
+        "heavy-v2", path, dry_run=True,
+    ) == 1
+
+
+def test_promotion_topology_requires_complete_endpoint_alias_coverage(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    for filename, model in (("new.toml", "new-heavy"), ("old.toml", "old-heavy")):
+        config = tmp_path / filename
+        text = config.read_text(encoding="utf-8")
+        alias = """
+[[router.tiers]]
+id = "heavy-alias"
+base_url = "http://127.0.0.1:30002/v1"
+model = "%s"
+dialect = "openai"
+context_limit = 131072
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_HEAVY_KEY"
+health_path = "/health"
+model_identity = true
+""" % model
+        config.write_text(
+            text.replace("[router.presets]", alias + "\n[router.presets]"),
+            encoding="utf-8",
+        )
+    assert serves.cmd_promote(
+        serves.load_manifest(path), serves.load_promotions(path),
+        "heavy-v2", path, dry_run=True,
+    ) == 1
+
+
 def test_cmd_promote_failure_runs_complete_rollback(tmp_path, monkeypatch):
     path = _promotion_manifest(tmp_path)
     managed = serves.load_manifest(path)
@@ -835,6 +891,49 @@ def test_cmd_promote_failure_runs_complete_rollback(tmp_path, monkeypatch):
     monkeypatch.setattr(serves, "_promotion_transition", transition)
     assert serves.cmd_promote(managed, plans, "heavy-v2", path) == 1
     assert calls == [False, True]
+
+
+def test_pre_mutation_admission_uncertainty_does_not_trigger_container_rollback(
+    tmp_path, monkeypatch
+):
+    path = _promotion_manifest(tmp_path)
+    calls = []
+
+    def transition(*args, **kwargs):
+        calls.append(kwargs.get("rollback", False))
+        return 3
+
+    monkeypatch.setattr(serves, "_promotion_transition", transition)
+    assert serves.cmd_promote(
+        serves.load_manifest(path), serves.load_promotions(path), "heavy-v2", path
+    ) == 1
+    assert calls == [False]
+
+
+@pytest.mark.parametrize(("readmit_rc", "expected"), [(0, 2), (1, 3)])
+def test_ambiguous_quiesce_failure_compensates_current_tier(
+    tmp_path, monkeypatch, readmit_rc, expected
+):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    (plan,) = serves.load_promotions(path)
+    actions = []
+
+    monkeypatch.setattr(serves, "_promotion_cli", lambda *a, **k: 0)
+
+    def transition(_plan, action, tier_id, **kwargs):
+        actions.append((action, tier_id))
+        return 1 if action == "quiesce" else readmit_rc
+
+    monkeypatch.setattr(serves, "_promotion_transition_cli", transition)
+    rc = serves._promotion_transition(
+        managed, plan, path, require_candidate=False
+    )
+    assert rc == expected
+    assert actions == [
+        ("quiesce", "heavy-local"),
+        ("readmit", "heavy-local"),
+    ]
 
 
 def test_cmd_promote_runtime_exception_still_runs_rollback(tmp_path, monkeypatch):
@@ -884,6 +983,36 @@ def test_resume_skips_candidate_requirement_for_interrupted_transaction(tmp_path
     assert serves.cmd_promote(managed, plans, "heavy-v2", path, resume=True) == 0
     assert received["resume"] is True
     assert received["require_candidate"] is False
+
+
+@pytest.mark.parametrize(("first_identity", "expect_recreate"), [(True, False), (False, True)])
+def test_resume_reuses_only_running_healthy_exact_identity_target(
+    tmp_path, monkeypatch, first_identity, expect_recreate
+):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    (plan,) = serves.load_promotions(path)
+    up_calls = []
+    identities = iter([first_identity, True])
+
+    monkeypatch.setattr(serves, "_promotion_cli", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "_promotion_transition_cli", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "docker_state", lambda *a, **k: "running")
+    monkeypatch.setattr(
+        serves, "cmd_up", lambda *a, **k: up_calls.append((a, k)) or 0
+    )
+    monkeypatch.setattr(serves, "_health", lambda *a, **k: 200)
+    monkeypatch.setattr(serves, "_await_healthy", lambda *a, **k: True)
+    monkeypatch.setattr(
+        serves, "_serve_identity_ready", lambda *a, **k: next(identities)
+    )
+    monkeypatch.setattr(serves, "_gateway_status", lambda *a, **k: 200)
+
+    assert serves._promotion_transition(
+        managed, plan, path, resume=True, require_candidate=False
+    ) == 0
+    assert bool(up_calls) is expect_recreate
 
 
 def test_cmd_promote_refuses_unhealthy_candidate_without_mutating(tmp_path):

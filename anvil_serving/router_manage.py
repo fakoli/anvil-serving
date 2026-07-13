@@ -27,7 +27,6 @@ the config/profile basic-checks. Docker + HTTP + sleep are dependency-injected
 (`_run`/`_open`/`_sleep`) so tests run with no docker, no network, and no real waiting.
 """
 import argparse
-import ipaddress
 import json
 import os
 import re
@@ -49,6 +48,7 @@ except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3
 # running / absent / error) instead of re-deriving it here.
 from .paths import config_path
 from .serves import docker_state
+from .transports import _is_safe_controller_ip
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -90,12 +90,12 @@ def _safe_router_url(value):
     parsed = urllib.parse.urlsplit(value)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         raise ValueError("router_url must be an HTTP(S) URL")
+    import ipaddress
     try:
         address = ipaddress.ip_address(parsed.hostname)
     except ValueError:
         raise ValueError("router_url must use a literal private IP address") from None
-    cgnat = ipaddress.ip_network("100.64.0.0/10")
-    if not (address.is_loopback or address.is_private or address in cgnat):
+    if not _is_safe_controller_ip(address):
         raise ValueError("router_url must use a loopback, private, or tailnet address")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("router_url must not contain credentials, query, or fragment")

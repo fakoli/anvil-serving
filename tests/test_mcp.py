@@ -3364,15 +3364,26 @@ def test_router_transition_tool_reuses_router_management_client(monkeypatch):
     assert seen["dry_run"] is False
 
 
-def test_serves_promote_tool_is_preview_by_default_and_triple_gated(tmp_path):
+def test_serves_promote_tool_executes_canonical_preview_and_is_triple_gated(
+    tmp_path, monkeypatch
+):
     manifest = tmp_path / "serves.toml"
-    manifest.write_text("", encoding="utf-8")
+    manifest.write_text("validated by subprocess fixture", encoding="utf-8")
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return proc(0, "quiesce -> drain -> swap -> readiness\n", "")
+
+    monkeypatch.setattr(mcp.subprocess, "run", run)
     preview = mcp.call_tool("serves_promote", {
         "manifest": str(manifest), "plan": "heavy-v2",
     })
     assert preview["ok"] is True
     assert preview["data"]["applied"] is False
     assert "--dry-run" in preview["data"]["command"]
+    assert "quiesce -> drain" in preview["data"]["stdout"]
+    assert calls and calls[0][1]["timeout"] == 7200
 
     refused = mcp.call_tool("serves_promote", {
         "manifest": str(manifest), "plan": "heavy-v2",
@@ -3380,3 +3391,38 @@ def test_serves_promote_tool_is_preview_by_default_and_triple_gated(tmp_path):
     })
     assert refused["ok"] is False
     assert refused["error"]["code"] == "human_approval_required"
+
+
+def test_serves_promote_preview_surfaces_manifest_or_plan_validation_failure(
+    tmp_path, monkeypatch
+):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text("", encoding="utf-8")
+
+    def run(argv, **kwargs):
+        return proc(1, "", "promotion plan not found\n")
+
+    monkeypatch.setattr(mcp.subprocess, "run", run)
+    preview = mcp.call_tool("serves_promote", {
+        "manifest": str(manifest), "plan": "missing",
+    })
+    assert preview["ok"] is False
+    assert preview["error"]["code"] == "command_failed"
+
+
+def test_serves_promote_apply_crosses_real_child_confirmation_boundary(tmp_path):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text("", encoding="utf-8")
+    result = mcp.call_tool("serves_promote", {
+        "manifest": str(manifest),
+        "plan": "missing",
+        "confirm": True,
+        "dry_run": False,
+        "human_approved": True,
+        "timeout_seconds": 30,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == "command_failed"
+    details = result["error"]["details"]
+    assert "--confirm" in details["command"]
+    assert "confirmation_required" not in details["stderr"]

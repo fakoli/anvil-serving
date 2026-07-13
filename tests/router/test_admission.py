@@ -64,6 +64,29 @@ def test_drain_waits_for_final_release_and_wakes_promptly():
 
     assert result["drained"] is True
     assert result["timed_out"] is False
+    assert result["snapshot"]["draining"] is False
+
+
+def test_readmit_is_rejected_while_drain_barrier_is_active():
+    admission = TierAdmission(["heavy"])
+    lease = admission.acquire("heavy")
+    assert lease is not None
+    admission.quiesce("heavy")
+    result = {}
+    waiter = threading.Thread(
+        target=lambda: result.update(admission.wait_for_drain("heavy", 1.0))
+    )
+    waiter.start()
+    for _ in range(100):
+        if admission.snapshot("heavy").draining:
+            break
+        time.sleep(0.001)
+    assert admission.snapshot("heavy").draining is True
+    with pytest.raises(ValueError, match="drain is in progress"):
+        admission.readmit("heavy")
+    lease.release()
+    waiter.join(0.5)
+    assert result["drained"] is True
 
 
 def test_drain_timeout_does_not_change_state():
@@ -75,6 +98,7 @@ def test_drain_timeout_does_not_change_state():
     result = admission.wait_for_drain("heavy", 0.01)
 
     assert result["timed_out"] is True
+    assert result["snapshot"]["draining"] is False
     assert admission.snapshot("heavy").state == "quiesced"
     assert admission.snapshot("heavy").active_requests == 1
     lease.release()

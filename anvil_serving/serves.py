@@ -348,12 +348,51 @@ def _validate_promotion_topology(serves, plan):
     if not affected <= forward_ids or not affected <= rollback_ids:
         raise ValueError("affected_tiers contains an unknown router tier")
 
-    def _matches(tier, serve):
+    def _endpoint_hosts(serve):
+        hosts = {
+            "127.0.0.1",
+            "host.docker.internal",
+            str(serve["name"]).casefold(),
+            str(serve["container"]).casefold(),
+        }
+        up = serve.get("up") or []
+        try:
+            up_index = up.index("up")
+        except ValueError:
+            pass
+        else:
+            hosts.update(
+                token.casefold()
+                for token in up[up_index + 1:]
+                if token and not token.startswith("-")
+            )
+        return hosts
+
+    def _owns_endpoint(tier, serve):
         parsed = urlsplit(tier.base_url)
         return (
-            parsed.port == serve["port"]
+            parsed.scheme == "http"
+            and parsed.hostname is not None
+            and parsed.hostname.casefold() in _endpoint_hosts(serve)
+            and parsed.port == serve["port"]
+        )
+
+    def _matches(tier, serve):
+        return (
+            _owns_endpoint(tier, serve)
             and tier.model == serve["served_name"]
             and tier.model_identity
+        )
+
+    forward_owned = {
+        tier.id for tier in forward.tiers if _owns_endpoint(tier, target)
+    }
+    rollback_owned = {
+        tier.id for tier in rollback.tiers if _owns_endpoint(tier, old)
+    }
+    if affected != forward_owned or affected != rollback_owned:
+        raise ValueError(
+            "affected_tiers must exactly cover every tier owned by the managed endpoint"
         )
 
     for tier_id in affected:
@@ -394,6 +433,21 @@ def _promotion_transition_cli(plan, action, tier_id, *, timeout=None, _run=subpr
         argv.append("--confirm")
     print("  gate: %s" % " ".join(argv))
     return _run(argv, text=True).returncode
+
+
+def _compensate_quiesce(plan, tier_ids, *, _run=subprocess.run):
+    """Idempotently readmit every possibly quiesced tier after a refusal."""
+    failed = []
+    for tier_id in dict.fromkeys(tier_ids):
+        if _promotion_transition_cli(plan, "readmit", tier_id, _run=_run) != 0:
+            failed.append(tier_id)
+    if failed:
+        print(
+            "  recovery: admission remains fail-closed for %s; use --resume "
+            "after router readiness recovers" % ", ".join(failed)
+        )
+        return False
+    return True
 
 
 def _serve_identity_ready(serve, *, _open=urllib.request.urlopen, max_bytes=65536):
@@ -513,9 +567,11 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
             plan, "quiesce", tier_id, _run=_run
         ) != 0:
             print("  %s refused: failed to quiesce %s" % (label, tier_id))
-            for prior in quiesced:
-                _promotion_transition_cli(plan, "readmit", prior, _run=_run)
-            return 2
+            # The router may have applied quiescence before its response was
+            # lost. Compensate the current tier as well as earlier successes.
+            return 2 if _compensate_quiesce(
+                plan, [*quiesced, tier_id], _run=_run
+            ) else 3
         quiesced.append(tier_id)
     for tier_id in plan["affected_tiers"]:
         if _promotion_transition_cli(
@@ -523,16 +579,21 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         ) != 0:
             print("  %s refused: drain timed out for %s before container mutation" % (
                 label, tier_id))
-            for prior in quiesced:
-                if _promotion_transition_cli(plan, "readmit", prior, _run=_run) != 0:
-                    print("  recovery: %s remains fail-closed; use --resume after readiness recovers" % prior)
-            return 2
+            return 2 if _compensate_quiesce(
+                plan, quiesced, _run=_run
+            ) else 3
 
     if cmd_down(serves, stop_names, _run=_run) != 0:
         return 1
     target_state = docker_state(target["container"], _run=_run)
-    if resume and target_state == "running":
-        print("  resume: %s is already running; continuing at health gate" % target["name"])
+    reuse_target = (
+        resume
+        and target_state == "running"
+        and _health(target["port"], target["health"], _open=_open) == 200
+        and _serve_identity_ready(target, _open=_open)
+    )
+    if reuse_target:
+        print("  resume: %s is already healthy with exact model identity" % target["name"])
     elif cmd_up(serves, [target["name"]], recreate=True, _run=_run) != 0:
         return 1
     startup_timeout = plan["rollback_startup_timeout"] if rollback else plan["startup_timeout"]
@@ -614,6 +675,11 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
     if rc == 0 or dry_run:
         return rc
     if rc == 2:  # refused before the first mutation; nothing needs restoring
+        return 1
+    if rc == 3:
+        # No container mutation occurred, but the router's admission state is
+        # uncertain. Do not compound that uncertainty with an automatic swap.
+        print("  CRITICAL: pre-mutation admission compensation failed; no containers changed")
         return 1
     if rollback:
         print("  rollback gate failed; restoring the promoted serve and router state")

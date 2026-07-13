@@ -275,6 +275,26 @@ def test_transition_boundary_requires_configured_auth_and_valid_token():
     assert json.loads(raw)["tiers"][0]["expected_model"] == "heavy"
 
 
+def test_transition_status_get_rejects_body_framing_and_closes_connection():
+    backend = _TransitionBackend()
+    with running_server(backend, auth_token=TOKEN) as (host, port):
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        try:
+            conn.request(
+                "GET",
+                "/v1/admin/transition",
+                body=b"smuggled",
+                headers={"Authorization": f"Bearer {TOKEN}"},
+            )
+            response = conn.getresponse()
+            raw = response.read()
+            assert response.status == 400
+            assert response.getheader("Connection") == "close"
+            assert json.loads(raw)["error"]["type"] == "invalid_request"
+        finally:
+            conn.close()
+
+
 def test_transition_mutations_preview_then_apply_and_drain():
     backend = _TransitionBackend()
     headers = {"Authorization": f"Bearer {TOKEN}"}

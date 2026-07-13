@@ -83,6 +83,9 @@ _CONCURRENCY_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(
 # Drain waits must not consume a data-plane request slot.  This small separate
 # pool bounds administrative waits for the single-operator deployment.
 _MANAGEMENT_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(4)
+# Mutations are serialized independently of status reads.  In particular, a
+# readmit cannot race a long drain and invalidate its zero-active barrier.
+_MANAGEMENT_MUTATION_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(1)
 
 #: Maximum bytes to drain from the socket after sending a 413 (or a response
 #: to an oversized GET body) before closing, so the OS can push the response
@@ -280,44 +283,34 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(500, "internal_error", "internal error", dialect=dialect)
                 return
 
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-cache")
-            if chunked:
-                # Reflect the connection intent already computed from the request's
-                # Connection header (RFC 7230 6.1): if the client sent
-                # `Connection: close`, BaseHTTPRequestHandler set
-                # close_connection=True and we must NOT override it back to
-                # keep-alive (that would leave a close-expecting, read-to-EOF
-                # client hanging until its own timeout).
-                self.send_header("Connection",
-                                 "close" if self.close_connection else "keep-alive")
-                self.send_header("Transfer-Encoding", "chunked")
-            else:
-                # HTTP/1.0 has no chunked encoding; the body is close-delimited.
-                self.close_connection = True
-                self.send_header("Connection", "close")
-            self.end_headers()
-
-            # Close-on-error contract (M0): the 200 + headers are already sent, so
-            # a backend exception mid-stream cannot become an error status. It
-            # propagates, the socket closes, and the client sees a truncated
-            # stream (IncompleteRead) rather than a hang. This is intentional;
-            # mid-stream verify/fallback is a later task (T008/T009).
-            # Resolve the optional structured-fields accessor from the backend
-            # BEFORE building the frame iterator.  The accessor is invoked by
-            # dialect.stream() AFTER all deltas are consumed — so it is safe to
-            # pass a bound method reference here; it does not call through yet.
-            # Backends that don't expose get_last_structured (EchoBackend, tests)
-            # get get_structured=None → dialect falls back to hardcoded defaults
-            # (text-path stays byte-identical, regression-safe) (#42 / #52).
-            _get_structured_fn = getattr(backend, "get_last_structured", None)
-            frames = dialect.stream(
-                request,
-                deltas,
-                get_structured=_get_structured_fn if callable(_get_structured_fn) else None,
-            )
+            frames = None
             try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                if chunked:
+                    # Respect the request's Connection intent; BaseHTTPRequestHandler
+                    # already populated close_connection from the request headers.
+                    self.send_header(
+                        "Connection",
+                        "close" if self.close_connection else "keep-alive",
+                    )
+                    self.send_header("Transfer-Encoding", "chunked")
+                else:
+                    self.close_connection = True
+                    self.send_header("Connection", "close")
+                self.end_headers()
+
+                # Build the dialect iterator only after headers, but keep it under
+                # the same cleanup boundary as the eagerly acquired backend stream.
+                _get_structured_fn = getattr(backend, "get_last_structured", None)
+                frames = dialect.stream(
+                    request,
+                    deltas,
+                    get_structured=(
+                        _get_structured_fn if callable(_get_structured_fn) else None
+                    ),
+                )
                 for frame in frames:
                     if not frame:
                         continue  # never emit a zero-length chunk (ends the stream)
@@ -468,6 +461,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         "tier_id": tier_id,
                     })
                     return
+            if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
+                self._error(503, "server_busy", "transition mutation busy")
+                return
             try:
                 if action == "quiesce":
                     fn = getattr(backend, "quiesce_tier")
@@ -488,6 +484,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             except Exception:  # noqa: BLE001 - never expose upstream/container errors
                 self._error(503, "transition_failed", "transition operation failed")
                 return
+            finally:
+                _MANAGEMENT_MUTATION_LIMIT.release()
             self._json(200, {"applied": True, "action": action, "result": result})
 
         # --- routes ----------------------------------------------------------
@@ -498,7 +496,18 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._error(503, "server_busy", "management busy; try again later")
                     return
                 try:
-                    if auth_token is None:
+                    has_body_framing = bool(
+                        self.headers.get_all("Transfer-Encoding")
+                        or self.headers.get_all("Content-Length")
+                    )
+                    if has_body_framing:
+                        self.close_connection = True
+                        self._error(
+                            400,
+                            "invalid_request",
+                            "management GET must not include a body",
+                        )
+                    elif auth_token is None:
                         self._error(404, "not_found", f"no route {route}")
                     elif not self._authenticated():
                         self._error(401, "authentication_error", "invalid or missing API key")

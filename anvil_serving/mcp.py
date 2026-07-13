@@ -1508,14 +1508,19 @@ def tool_serves_promote(args: dict) -> dict:
         argv.append("--resume")
     if not apply_requested:
         argv.append("--dry-run")
+        # Execute the canonical dry-run on the serving host.  This validates
+        # manifest resolution and topology and returns the same ordered plan a
+        # local operator reviews, while remaining non-mutating.
+        result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
         return _ok({
             "applied": False,
             "dry_run": True,
             "human_gate_required": True,
             "manifest": manifest,
             "plan": plan_name,
-            "command": argv,
+            **result,
         })
+    argv.append("--confirm")
     result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
     return _ok({
         "applied": True,

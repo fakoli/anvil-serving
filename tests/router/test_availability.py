@@ -8,6 +8,7 @@ import json
 
 import pytest
 
+import anvil_serving.router.availability as availability_mod
 from anvil_serving.router.availability import (
     AvailabilityResult,
     HttpHealthAvailability,
@@ -302,6 +303,31 @@ def test_identity_readiness_requires_exact_advertised_model_and_is_cached():
         ("http://127.0.0.1:30002/health", None),
         ("http://127.0.0.1:30002/v1/models", "Bearer secret"),
     ]
+
+
+def test_default_identity_transport_disables_proxies_and_redirects(monkeypatch):
+    captured = {}
+
+    class Opener:
+        def open(self, request, timeout):
+            if request.full_url.endswith("/health"):
+                return _Response(200)
+            return _Response(200, b'{"data":[{"id":"heavy-local"}]}')
+
+    def build_opener(*handlers):
+        captured["handlers"] = handlers
+        return Opener()
+
+    monkeypatch.setattr(availability_mod.urllib.request, "build_opener", build_opener)
+    tier = _tier("heavy-local", 30002, model_identity=True)
+    result = HttpHealthAvailability(
+        _config(tier), env={"ANVIL_TEST_KEY": "secret"}
+    ).check(tier)
+    assert result.available is True
+    handlers = captured["handlers"]
+    proxy = next(h for h in handlers if isinstance(h, availability_mod.urllib.request.ProxyHandler))
+    assert proxy.proxies == {}
+    assert any(isinstance(h, availability_mod._NoRedirect) for h in handlers)
 
 
 def test_healthy_wrong_model_fails_closed_without_raw_payload():

@@ -722,7 +722,13 @@ def test_transition_mutation_is_preview_without_confirmation():
 
 
 def test_transition_request_rejects_public_or_credentialed_urls():
-    for url in ("http://8.8.8.8:8000", "http://user:pass@127.0.0.1:8000"):
+    for url in (
+        "http://8.8.8.8:8000",
+        "http://0.0.0.0:8000",
+        "http://169.254.169.254:8000",
+        "http://255.255.255.255:8000",
+        "http://user:pass@127.0.0.1:8000",
+    ):
         try:
             rm.transition_request("status", router_url=url, env={"ANVIL_ROUTER_TOKEN": "x"})
         except ValueError as exc:
