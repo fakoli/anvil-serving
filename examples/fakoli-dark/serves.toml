@@ -59,6 +59,7 @@ port = 30002
 model = "thinkingcap-qwen36-27b-fp8" # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
+groups = ["heavy-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
 
 [[serve]]
@@ -89,6 +90,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 14336
 residency = "resident"
+groups = ["fast-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"
 
 # Opt-in FAST rollback (pre-T006 Qwen3.6-35B-A3B-NVFP4); stop `fast` first because both own
@@ -133,6 +135,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 3200
 residency = "resident"
+groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d embeddings"
 
 [[serve]]
@@ -145,6 +148,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 3456
 residency = "resident"
+groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
 
 # ── OCR serve (gpu-reservations:T011) ──
@@ -174,6 +178,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 5120
 residency = "resident"
+groups = ["llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
 
 # ── Vision serve (gpu-reservations:T013) ──
@@ -207,6 +212,7 @@ gpu_role = "dark-fast"
 vram_mib = 12288
 residency = "evictable"
 router_tier = "vision-local"
+groups = ["llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d vision"
 
 # One guarded operation owns the model swap, functional gate, router update,

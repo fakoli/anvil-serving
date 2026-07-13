@@ -98,12 +98,13 @@ focused `--help`.
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | `--dry-run` |
-| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--compose`<br>`--recreate`<br>`--evict`<br>`--drain-timeout`<br>`--router-url` |
-| `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest` |
+| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--group`<br>`--compose`<br>`--recreate`<br>`--evict`<br>`--drain-timeout`<br>`--router-url` |
+| `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--group` |
 | `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
 | `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
 | `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--rollback`<br>`--resume` |
-| `serves status` | Show model serve status. | `read` / `bounded` | `--manifest` |
+| `serves status` | Show model serve status. | `read` / `bounded` | `--manifest`<br>`--group` |
+| `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | `--manifest` |
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--since`<br>`--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
@@ -265,7 +266,7 @@ anvil-serving router readmit --tier heavy-local --router-url http://127.0.0.1:80
 ### `serves`
 
 ```
-anvil-serving serves {status|up|down|rm|adopt|logs|render|promote} [NAME ...] [flags]
+anvil-serving serves {status|up|down|rm|adopt|logs|groups|render|promote} [NAME ...] [flags]
 ```
 
 Stop/start/inspect the local GPU model serves declared in a serves manifest.
@@ -275,16 +276,49 @@ See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 
 | Action | What it does |
 |--------|--------------|
-| `status` | Docker + `/health` state for every manifest serve. |
+| `status` | Docker + `/health` state for every manifest serve (or, with `--group`/names, just the selected ones — the reservation ledger still spans the whole set). |
 | `up` | Start (restart/unpause/run the manifest `up`); `--recreate` forces a fresh `up`; `up --compose FILE` brings up an ad-hoc compose serve not in the manifest; `--evict` lets an over-budget `on-demand` acquisition stop `evictable` reservations through a drained ADR-0018 transition (`--drain-timeout`, `--router-url`). |
 | `down` | `docker stop` the serves, then re-checks state: a container revived by its restart policy (GPU not actually freed) is a loud warning and exit 1. |
 | `rm` | `docker rm -f`; an unrecognised name is treated literally as a container (evict an experiment squatting a port). **Irreversible, so it prompts `[y/N]` — pass `--yes` in scripts/automation** (no TTY answers No and nothing is removed). |
 | `adopt` | Bring an externally-started manifest serve under compose management (recreates via `docker rm -f` + `up`, so it prompts like `rm`; `--yes` skips). |
 | `logs` | `docker logs` for one serve (`--tail`, `--since`, `--follow`). |
+| `groups` | List the serve groups defined across the manifest set and their member serves (`--json` for tooling). |
 | `render` | Render tuned compose, serves-manifest, and router-tier configuration for a model. |
 | `promote` | Execute the manifest's complete quiesce → drain → Heavy swap → health/identity → direct preflight → router promotion/restart → post-restart readiness transaction. `--rollback` uses the same order; `--resume` reasserts quiescence and reruns every gate while reusing an already healthy target. |
 
-Common flags: `--manifest`, `--dry-run`; `rm`/`adopt` also take `--yes`.
+Common flags: `--manifest`, `--dry-run`; `rm`/`adopt` also take `--yes`;
+`up`/`down`/`status` also take `--group NAME` (repeatable).
+
+**Serve groups (`--group`).** A `[[serve]]` entry may declare an optional
+`groups = ["a", "b"]` list (non-empty strings; a serve may belong to many
+groups; absent = none). `serves up`, `serves down`, and `serves status` take
+`--group NAME` (repeatable) to act on every serve tagged `NAME`, and `serves
+groups` lists the catalog. The reserved group **`all`** selects every serve and
+is never authored on an entry. `--group` composes with positional names (union,
+de-duped by container), and each selected serve is printed before acting (and
+under `--dry-run`).
+
+Group resolution spans the whole **manifest set** — every `serves*.toml` in the
+manifest's directory (default `~/.anvil-serving`, or the `--manifest`'s dir),
+sorted by path, de-duped by container. This lets one group span
+`serves.toml` + `serves.voice.toml` + `serves.comfyui.toml`; when a serve is
+mirrored across files (e.g. the ComfyUI ledger mirrors), the lifecycle-owning
+entry — the one declaring `up` — wins, so the reservation ledger is never
+double-counted. Bringing up a group runs **every member through the same
+ADR-0017 admission path**: an over-budget member is refused with the ledger and
+no container command runs, exactly like a single-serve `up`.
+
+The shipped fakoli-dark example authors: `voice` → stt, tts; `fast-only` →
+fast; `heavy-only` → heavy; `embedding` → embeddings, reranker; `llm-stack` →
+heavy, fast, embeddings, reranker, ocr, vision; `comfy` → comfyui. Experiment
+and candidate serves are intentionally left untagged.
+
+```bash
+anvil-serving serves groups --manifest ./serves.toml
+anvil-serving serves up --group embedding --manifest ./serves.toml
+anvil-serving serves status --group llm-stack --manifest ./serves.toml
+anvil-serving serves down --group voice heavy --manifest ./serves.toml --confirm
+```
 
 **GPU residency reservations (ADR-0017).** A `[[serve]]` entry may declare
 `gpu_role`, `vram_mib`, and `residency`, and the manifest may declare
