@@ -125,6 +125,113 @@ def test_load_manifest_accepts_audio_engine_for_non_llm_serves(tmp_path):
     assert serve["engine"] == "audio"
 
 
+# ---- reservation fields (ADR-0017 GPU residency reservations) ---------------
+
+def test_load_manifest_accepts_and_normalizes_reservation_fields(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "stt"
+        container = "anvil-voice-stt"
+        port = 30010
+        model = "tdt_ctc-110m"
+        engine = "audio"
+        gpu_role = " fast "
+        vram_mib = 3072
+        residency = "Resident"
+    """)
+    (s,) = serves.load_manifest(path)
+    assert s["gpu_role"] == "fast"       # whitespace-normalized
+    assert s["vram_mib"] == 3072
+    assert s["residency"] == "resident"  # case-normalized
+
+
+def test_load_manifest_normalizes_on_demand_residency_spelling(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        residency = "On_Demand"
+    """)
+    (s,) = serves.load_manifest(path)
+    assert s["residency"] == "on-demand"
+
+
+@pytest.mark.parametrize("residency", ['"always"', '"leased"', '""', "3", "true"])
+def test_load_manifest_rejects_invalid_residency_with_clear_error(tmp_path, residency):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        residency = {residency}
+    """)
+    with pytest.raises(
+        ValueError, match=r"residency must be one of .*resident.*evictable.*on-demand"
+    ):
+        serves.load_manifest(path)
+
+
+@pytest.mark.parametrize("vram", ["0", "-512", '"20000"', "true", "1.5"])
+def test_load_manifest_rejects_non_positive_integer_vram_mib(tmp_path, vram):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        vram_mib = {vram}
+    """)
+    with pytest.raises(ValueError, match="vram_mib must be a positive integer"):
+        serves.load_manifest(path)
+
+
+@pytest.mark.parametrize("gpu_role", ['""', '"   "', "5"])
+def test_load_manifest_rejects_empty_or_non_string_gpu_role(tmp_path, gpu_role):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        gpu_role = {gpu_role}
+    """)
+    with pytest.raises(ValueError, match="gpu_role must be a non-empty string"):
+        serves.load_manifest(path)
+
+
+def test_load_manifest_without_reservation_fields_parses_unchanged(tmp_path):
+    """A pre-reservation manifest entry parses to exactly today's dict shape."""
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "fast"
+        container = "vllm-gptoss"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        up = "bash {dir}/serve.sh"
+    """)
+    (s,) = serves.load_manifest(path)
+    mdir = os.path.dirname(os.path.abspath(path))
+    assert s == {
+        "name": "fast",
+        "container": "vllm-gptoss",
+        "port": 30001,
+        "model": "fast-local",
+        "served_name": "fast-local",
+        "engine": "vllm",
+        "_manifest_dir": mdir,
+        "health": "/health",
+        "up": ["bash", mdir + "/serve.sh"],
+    }  # no reservation keys are invented for entries that never declared them
+
+
 def test_load_manifest_rejects_conflicting_legacy_engine_markers(tmp_path):
     path = _manifest(tmp_path, """
         [[serve]]
