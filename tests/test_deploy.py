@@ -362,3 +362,164 @@ def test_deploy_cli_no_facts_no_flag_stays_unchanged(tmp_path, monkeypatch):
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     deploy.main(["--model", "/w/model", "--out", str(out_path), "--no-manifest"])
     assert "enable_thinking" not in out_path.read_text(encoding="utf-8")
+
+
+# ---- engine-enforced reservation budgets (gpu-reservations:T003, ADR-0017 §4) ---
+
+def _roles_manifest(tmp_path):
+    """A serves manifest declaring one [[gpu_roles]] capacity row:
+    32768 MiB capacity - 2768 MiB reserve = 30000 MiB budget."""
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(
+        textwrap.dedent("""
+            [[gpu_roles]]
+            id = "dark-fast"
+            vram_mib = 32768
+            reserve_mib = 2768
+        """),
+        encoding="utf-8",
+    )
+    return manifest
+
+
+def test_deploy_reserved_vllm_compose_derives_gpu_memory_utilization(tmp_path, monkeypatch, capsys):
+    out_path = tmp_path / "compose.yml"
+    manifest = _roles_manifest(tmp_path)
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    rc = deploy.main([
+        "--model", "/w/model", "--out", str(out_path), "--engine", "vllm",
+        "--served-name", "fast-local", "--port", "30001",
+        "--manifest-out", str(manifest),
+        "--gpu-role", "dark-fast", "--vram-mib", "24000", "--residency", "on-demand",
+    ])
+    assert rc == 0
+    compose = out_path.read_text(encoding="utf-8")
+    # 24000 / (32768 - 2768) = 0.8 — the derived value, not the 0.90 default.
+    assert "--gpu-memory-utilization\n      0.8\n" in compose
+    assert "0.9" not in compose
+    err = capsys.readouterr().err
+    assert "derived engine memory fraction 0.8" in err
+    assert "24000 MiB / (32768 - 2768) MiB" in err
+
+
+def test_deploy_reserved_sglang_compose_derives_mem_fraction_static(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    manifest = _roles_manifest(tmp_path)
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    rc = deploy.main([
+        "--model", "/w/model", "--out", str(out_path), "--engine", "sglang",
+        "--manifest-out", str(manifest),
+        "--gpu-role", "dark-fast", "--vram-mib", "15000",
+    ])
+    assert rc == 0
+    # 15000 / 30000 = 0.5 replaces the 0.88 sglang default.
+    compose = out_path.read_text(encoding="utf-8")
+    assert "--mem-fraction-static 0.5" in compose
+    assert "0.88" not in compose
+
+
+def test_deploy_reserved_serve_entry_carries_reservation_fields(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    manifest = _roles_manifest(tmp_path)
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    deploy.main([
+        "--model", "/w/model", "--out", str(out_path), "--engine", "vllm",
+        "--served-name", "fast-local", "--port", "30001",
+        "--manifest-out", str(manifest),
+        "--gpu-role", "dark-fast", "--vram-mib", "24000", "--residency", "on-demand",
+    ])
+    # The appended [[serve]] entry parses back with the reservation attached,
+    # so `serves up` admission (T002) sees exactly what the engine enforces.
+    from anvil_serving import reservations
+    parsed = deploy._serves.load_manifest(str(manifest))
+    assert len(parsed) == 1
+    assert parsed[0]["gpu_role"] == "dark-fast"
+    assert parsed[0]["vram_mib"] == 24000
+    assert parsed[0]["residency"] == "on-demand"
+    reservation = reservations.reservation_of(parsed[0])
+    assert reservation is not None
+    assert reservation.vram_mib == 24000
+    budgets = reservations.budgets_of(parsed)
+    assert budgets["dark-fast"].budget_mib == 30000
+
+
+def test_deploy_without_reservation_renders_unchanged(tmp_path, monkeypatch):
+    reserved_out = tmp_path / "reserved.yml"
+    plain_out = tmp_path / "plain.yml"
+    manifest = _roles_manifest(tmp_path)
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    common = ["--model", "/w/model", "--engine", "vllm", "--served-name", "fast-local",
+              "--port", "30001", "--manifest-out", str(manifest)]
+    deploy.main(common + ["--out", str(plain_out)])
+    deploy.main(common + ["--out", str(reserved_out), "--tier-id", "fast-reserved",
+                          "--gpu-role", "dark-fast", "--vram-mib", "27000"])
+    # No reservation flags -> the pre-T003 default fraction, and NO reservation
+    # fields in the manifest entry (pre-reservation manifests stay unchanged).
+    plain = plain_out.read_text(encoding="utf-8")
+    assert "--gpu-memory-utilization\n      0.9\n" in plain
+    parsed = {s["name"]: s for s in deploy._serves.load_manifest(str(manifest))}
+    assert "gpu_role" not in parsed["fast-local"]
+    assert "vram_mib" not in parsed["fast-local"]
+    assert "residency" not in parsed["fast-local"]
+    # ... while the reserved render derived 27000/30000 = 0.9.
+    assert "--gpu-memory-utilization\n      0.9\n" in reserved_out.read_text(encoding="utf-8")
+    assert parsed["fast-reserved"]["gpu_role"] == "dark-fast"
+
+
+def test_deploy_reservation_without_capacity_row_warns_and_keeps_default(tmp_path, monkeypatch, capsys):
+    out_path = tmp_path / "compose.yml"
+    manifest = tmp_path / "serves.toml"  # does not exist yet: no capacity table
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    rc = deploy.main([
+        "--model", "/w/model", "--out", str(out_path), "--engine", "vllm",
+        "--manifest-out", str(manifest),
+        "--gpu-role", "dark-fast", "--vram-mib", "24000",
+    ])
+    assert rc == 0
+    assert "--gpu-memory-utilization\n      0.9\n" in out_path.read_text(encoding="utf-8")
+    err = capsys.readouterr().err
+    assert "WARNING" in err and "no [[gpu_roles]] capacity row" in err
+    # the declared reservation is still recorded for `serves up` admission.
+    parsed = deploy._serves.load_manifest(str(manifest))
+    assert parsed[0]["gpu_role"] == "dark-fast"
+    assert parsed[0]["vram_mib"] == 24000
+
+
+def test_deploy_reservation_over_budget_fails_before_writing(tmp_path, monkeypatch):
+    out_path = tmp_path / "compose.yml"
+    manifest = _roles_manifest(tmp_path)
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    rc = deploy.main([
+        "--model", "/w/model", "--out", str(out_path),
+        "--manifest-out", str(manifest),
+        "--gpu-role", "dark-fast", "--vram-mib", "30001",   # budget is 30000
+    ])
+    assert rc == 2
+    assert not out_path.exists()
+    # nothing appended either: the manifest still has only the capacity row.
+    assert "[[serve]]" not in manifest.read_text(encoding="utf-8")
+
+
+def test_deploy_reservation_flags_must_come_together(tmp_path, monkeypatch):
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    for partial in (["--gpu-role", "dark-fast"], ["--vram-mib", "1000"]):
+        with pytest.raises(SystemExit) as exc:
+            deploy.main(["--model", "/w/model", "--out", str(tmp_path / "c.yml"),
+                        "--no-manifest"] + partial)
+        assert exc.value.code == 2
+
+
+def test_deploy_reservation_bad_capacity_table_fails_loudly(tmp_path, monkeypatch, capsys):
+    out_path = tmp_path / "compose.yml"
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text(
+        '[[gpu_roles]]\nid = "dark-fast"\nvram_mib = -5\n', encoding="utf-8")
+    monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
+    rc = deploy.main([
+        "--model", "/w/model", "--out", str(out_path),
+        "--manifest-out", str(manifest),
+        "--gpu-role", "dark-fast", "--vram-mib", "1000",
+    ])
+    assert rc == 2
+    assert not out_path.exists()
+    assert "cannot read [[gpu_roles]] capacity" in capsys.readouterr().err
