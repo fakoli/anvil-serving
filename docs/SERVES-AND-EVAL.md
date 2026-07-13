@@ -72,7 +72,8 @@ name = "fast"                 # logical name (also accepted by down/up)
 container = "vllm-gptoss"     # docker container name (== the compose service's container_name)
 port = 30001
 model = "gpt-oss-20b"         # served-model-name (used by `eval`)
-engine = "vllm"               # vllm, sglang, or llamacpp
+engine = "vllm"               # vllm, sglang, llamacpp — or a truthful non-chat-LLM label:
+                              # audio (STT/TTS), embedding, reranker (ADR-0017 §7)
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"   # {dir} = the manifest's dir
 ```
