@@ -175,6 +175,40 @@ def test_reasoning_extra_body_changes_fingerprint():
     assert serve_fingerprint(_fast_tier(extra_body={"reasoning_effort": "low"})) != fp_none
 
 
+def test_reasoning_extra_body_defaults_changes_fingerprint():
+    base = {"id": "heavy-local", "model": "thinkingcap", "base_url": "http://x"}
+    enabled = dict(base, extra_body_defaults={
+        "chat_template_kwargs": {"enable_thinking": True}
+    })
+    disabled = dict(base, extra_body_defaults={
+        "chat_template_kwargs": {"enable_thinking": False}
+    })
+    assert serve_fingerprint(enabled) != serve_fingerprint(disabled)
+    assert identity(enabled)["reasoning"] == enabled["extra_body_defaults"]
+
+
+def test_reasoning_fingerprint_combines_defaults_and_hard_overrides():
+    base = {
+        "id": "heavy-local", "model": "thinkingcap", "base_url": "http://x",
+        "extra_body": {"temperature": 0},
+    }
+    enabled = dict(base, extra_body_defaults={
+        "chat_template_kwargs": {"enable_thinking": True}
+    })
+    disabled = dict(base, extra_body_defaults={
+        "chat_template_kwargs": {"enable_thinking": False}
+    })
+    assert serve_fingerprint(enabled) != serve_fingerprint(disabled)
+    assert identity(enabled)["reasoning"] == {
+        "temperature": 0, "chat_template_kwargs": {"enable_thinking": True}
+    }
+
+    hard_off = dict(enabled, extra_body={
+        "temperature": 0, "chat_template_kwargs": {"enable_thinking": False}
+    })
+    assert serve_fingerprint(hard_off) == serve_fingerprint(disabled)
+
+
 def test_reasoning_extra_body_is_key_order_and_container_insensitive():
     """The reasoning config is content-addressed: a MappingProxyType (as a Tier
     stores it) hashes identically to an equivalent inline dict, and reordering
