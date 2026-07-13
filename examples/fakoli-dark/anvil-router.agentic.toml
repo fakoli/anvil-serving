@@ -42,7 +42,7 @@
 auth_env = "ANVIL_ROUTER_TOKEN"
 
 [router]
-mapping_version = "2026-07-13.fakoli-dark-gemma4-e4b-fast"
+mapping_version = "2026-07-13.fakoli-dark-t011-ocr-fp8-fast"
 # verify_local_min at its default (true): an empty local 200 becomes a 503 so the gateway
 # fails over to native. (v0.7.0 note: tool-call-only replies — empty content + populated
 # tool_calls — correctly PASS this gate; regression-pinned in #94. Tools now actually reach
@@ -60,6 +60,11 @@ profile_path = "/etc/anvil/profile.json"
 id            = "fast-local"
 base_url      = "http://host.docker.internal:30003/v1"
 model         = "gemma4-e4b-it"
+# T011 rebalance (2026-07-13): the serve now runs the pre-quantized
+# leon-se/gemma-4-E4B-it-FP8-Dynamic checkpoint inside a 14336 MiB reservation.
+# Declaring the quantization keeps the serve fingerprint truthful; the profile
+# fast-local rows are re-stamped to this identity in the same promotion.
+quantization  = "fp8"
 dialect       = "openai"
 context_limit = 32768
 privacy       = "local"
@@ -93,6 +98,25 @@ interaction_benchmark_stream_max_tokens = 4352
 interaction_benchmark_max_tokens_by_intent = { planning = 4352 }
 interaction_benchmark_stream_max_tokens_by_intent = { planning = 4352 }
 
+# OCR tier (gpu-reservations:T011): PaddleOCR-VL-1.6 on the 5090 (serves.toml `ocr`,
+# :30007), reached only through the "ocr" intent preset below. A document-parsing VLM,
+# not a coding model: tool_support false keeps tool-carrying work off it, and the
+# 16384-token window matches the serve's --max-model-len. Callers send the page as
+# OpenAI image content plus the task prompt ("OCR:", "Table Recognition:", ...).
+# CAPACITY NOTE: the serve is admission-gated by the dark-fast ledger and does not fit
+# alongside the full T009 resident set (see serves.toml) — while it is down, the router's
+# availability probe marks this tier unavailable and "ocr" requests exhaust cleanly (503).
+[[router.tiers]]
+id            = "ocr-local"
+base_url      = "http://host.docker.internal:30007/v1"
+model         = "paddleocr-vl-1.6"
+dialect       = "openai"
+context_limit = 16384
+privacy       = "local"
+tool_support  = false
+auth_env      = "ANVIL_OCR_LOCAL_KEY"
+health_path   = "/health"
+
 # Purpose-model serves (gpu-reservations:T009/T010, ADR-0017 §7): the always-on Qwen3
 # embedding + reranker serves on the 5090 (serves.toml `embeddings`/`reranker`), routed BY
 # MODEL NAME on POST /v1/embeddings and POST /v1/rerank under the same router token. An
@@ -111,6 +135,8 @@ model    = "qwen3-reranker-0.6b"
 base_url = "http://host.docker.internal:30006/v1"
 
 # heavy-first where quality matters; chat-fast pins to the fast tier first.
+# ocr routes ONLY to the OCR VLM — the text tiers cannot read image content, so
+# there is no meaningful fallback: exhaustion (503) is the correct failure mode.
 [router.presets]
 chat         = ["heavy-local", "fast-local"]
 chat-fast    = ["fast-local", "heavy-local"]
@@ -118,3 +144,4 @@ quick-edit   = ["heavy-local", "fast-local"]
 review       = ["heavy-local"]
 planning     = ["heavy-local"]
 long-context = ["heavy-local"]
+ocr          = ["ocr-local"]
