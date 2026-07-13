@@ -7,10 +7,10 @@
 # Published on Dark loopback (30010/30011) and the tailnet bridge ports
 # (100.87.34.66:30110/30111) that Mini's realtime proxy targets.
 [[serve]]
-name = "stt"                   # parakeet.cpp tdt_ctc-110m (RTX 5090)
+name = "stt"                   # parakeet.cpp tdt-0.6b-v3 (RTX 5090)
 container = "anvil-voice-stt"
 port = 30010
-model = "tdt_ctc-110m"
+model = "tdt-0.6b-v3"
 engine = "audio"
 up = "docker compose -f {dir}/docker-compose.voice-audio.yml up -d stt"
 

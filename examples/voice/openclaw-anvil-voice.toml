@@ -49,7 +49,7 @@ expected_route_tier = "local"
 
 [voice.stt]
 base_url = "http://100.87.34.66:30110/v1"
-model = "tdt_ctc-110m"
+model = "tdt-0.6b-v3"
 stream = false
 response_format = "json"
 timeout = 120.0
@@ -104,7 +104,7 @@ target_sample_rate = 16000
 
 [voice.profiles.dark-audio.stt]
 base_url = "http://100.87.34.66:30110/v1"
-model = "tdt_ctc-110m"
+model = "tdt-0.6b-v3"
 stream = false
 response_format = "json"
 timeout = 120.0
@@ -121,7 +121,7 @@ target_sample_rate = 16000
 
 [voice.profiles.gepard-fast-tts.stt]
 base_url = "http://100.87.34.66:30110/v1"
-model = "tdt_ctc-110m"
+model = "tdt-0.6b-v3"
 stream = false
 response_format = "json"
 timeout = 120.0
@@ -139,7 +139,7 @@ target_sample_rate = 16000
 
 [voice.profiles.mini-dark-audio-proxy.stt]
 base_url = "http://127.0.0.1:30110/v1"
-model = "tdt_ctc-110m"
+model = "tdt-0.6b-v3"
 stream = false
 response_format = "json"
 timeout = 120.0
