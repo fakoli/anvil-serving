@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.0203
+  },
+  "id": "e4b-run-010",
+  "latency": {
+    "llm_ms": 7079.45,
+    "llm_stage_latency_ms": 7079.45,
+    "stt_ms": 55.98,
+    "total_turn_latency_ms": 13801.83,
+    "ttfa_ms": 7197.96,
+    "tts_ms": 6666.39,
+    "turn_latency_ms": 13801.83
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "## Exploring the Concept of Time\n\nTime is one of the most profound and perplexing concepts in human existence. It is the medium through which all events unfold, the framework against which we measure change, growth, and decay. Yet, its nature\u2014whether it is a fundamental constant, a subjective experience, or merely an emergent property of the universe\u2014remains a subject of intense debate across physics, philosophy, and psychology.\n\nHere is an exploration of time from several different perspectives:\n\n---\n\n### \u23f3 The Physical Perspective (Physics)\n\nIn modern physics, particularly in relativity, time is not treated as a separate, absolute entity, but as inextricably linked with space, forming **spacetime**.\n\n#### 1. Newtonian Time (Classical Mechanics)\nFor Isaac Newton, time was **absolute and universal**. Time flowed uniformly and independently of any observer or external process. If you started a clock, it would tick at the same rate everywhere in the universe, regardless of speed or gravity.\n\n#### 2. Einstein's Relativity (Modern Physics)\nAlbert Einstein revolutionized this view.\n\n*   **Special Relativity:** When objects move at very high speeds (approaching the speed of light), time slows down for them relative to a stationary observer. This is **time dilation**. The faster you move through space, the slower you move through time.\n*   **General Relativity:** Gravity warps spacetime. Clocks run slower in stronger gravitational fields. A clock at the bottom of a skyscraper ticks infinitesimally slower than a clock on the top floor.\n\n**The Key Takeaway:** Time is not a steady river; it is a flexible dimension that interacts with matter and energy.\n\n#### 3. Thermodynamics and the Arrow of Time\nWhile the fundamental laws of physics (like Newton's laws or quantum mechanics) are largely **time-symmetric** (meaning they work just as well running forward or backward), the universe as we experience it moves in only one direction: **forward**. This asymmetry is governed by the **Second Law of Thermodynamics**, which states that entropy (disorder) in an isolated system always increases.\n\n*   **The Arrow of Time:** We remember the past but not the future; we see ice melt but never spontaneously form; eggs break but never un-break. All these processes move toward greater entropy. This relentless march toward disorder is what defines the *direction* of time.\n\n---\n\n### \ud83e\udde0 The Subjective Perspective (Psychology & Consciousness)\n\nThe physical measurement of time (seconds, minutes) often clashes with how we *experience* it.\n\n*   **Memory and Retrospection:** Our perception of time is heavily influenced by memory. Periods of novelty or high emotional arousal often feel longer in retrospect, while routine periods seem to fly by.\n*   **Flow State:** Psychologists describe a \"flow state\" (being completely absorbed in an activity) where the perception of time vanishes altogether.\n*   **Cognitive Clocks:** Our brain constantly tracks duration through internal comparison and anticipation. Children, for example, have a different temporal framework than adults because their lifespans are relatively longer compared to their experiences.\n\n**The Key Takeaway:** Our subjective experience of time is fluid, elastic, and dependent on our attention, emotion, and cognitive state.\n\n---\n\n### \ud83c\udf0c The Philosophical Perspective (Metaphysics)\n\nPhilosophy struggles most with the fundamental \"is\" of time. Are we in a flow, or is everything already there?\n\n#### 1. Presentism\nPresentists argue that **only the present moment is real**. The past exists as a memory, and the future exists only as potentiality. Everything else is unreal.\n\n#### 2. Eternalism (The Block Universe)\nThis view, often supported by interpretations of relativity, suggests that **all points in spacetime\u2014past, present, and future\u2014are equally real**. Imagine spacetime as a static, four-dimensional block. Our experience of \"flow\" is merely our consciousness moving along the dimension we label \"time.\" Time is a coordinate, not a river.\n\n#### 3. A-Theory vs. B-Theory\n*   **A-Theorists** (like Presentists) believe that temporal passage is a genuine feature of reality (the future *becomes* the present).\n*   **B-Theorists** (like Eternalists) argue that temporal passage is an illusion; events are simply ordered in relation to each other (Event A is *earlier than* Event B).\n\n---\n\n### \u2728 Summary Table\n\n| Perspective | Key Concept | What is Time? | Implication |\n| :--- | :--- | :--- | :--- |\n| **Newtonian Physics** | Absolute Time | A universal, constant ticking clock. | Time is independent of the universe. |\n| **Relativity** | Spacetime | A flexible dimension interwoven with space. | Time dilates (stretches/contracts) based on motion/gravity. |\n| **Thermodynamics** | Entropy | The unidirectional progression toward disorder. | Defines the *arrow* (direction) of time. |\n| **Psychology** | Subjectivity | A cognitive construct dependent on attention. | Time feels fast when busy, slow when bored. |\n| **Eternalism (Philosophy)** | The Block Universe | A fixed dimension, like space. | Past, present, and future all exist simultaneously. |\n\n**In conclusion, time is not a singular thing.** It is a dimension warped by gravity, an illusion of motion born from entropy, a fundamental coordinate in the fabric of reality, and a subjective rhythm beating within the confines of human consciousness.",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 329.064,
+    "output_bytes": 15795072,
+    "request_count": 100,
+    "source_sample_rate": 24000
+  }
+}

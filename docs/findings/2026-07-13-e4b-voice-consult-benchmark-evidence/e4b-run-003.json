@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.0407
+  },
+  "id": "e4b-run-003",
+  "latency": {
+    "llm_ms": 169.57,
+    "llm_stage_latency_ms": 169.57,
+    "stt_ms": 66.34,
+    "total_turn_latency_ms": 484.83,
+    "ttfa_ms": 318.1,
+    "tts_ms": 248.92,
+    "turn_latency_ms": 484.83
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "Please provide me with the text or question you would like me to assist you with. I am ready to help!",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 6.1101,
+    "output_bytes": 293284,
+    "request_count": 3,
+    "source_sample_rate": 24000
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.0254
+  },
+  "id": "e4b-run-007",
+  "latency": {
+    "llm_ms": 1501.57,
+    "llm_stage_latency_ms": 1501.57,
+    "stt_ms": 74.03,
+    "total_turn_latency_ms": 2958.49,
+    "ttfa_ms": 1672.43,
+    "tts_ms": 1382.88,
+    "turn_latency_ms": 2958.49
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "Here are a few ways I can interpret your request, depending on what you intended:\n\n**1. You provided no prompt, so you're asking me what I am or what I can do.**\n\nIf so, I am a large language model, an AI trained by Google. I can help you with a huge variety of tasks, such as:\n\n* **Answering questions** on almost any topic.\n* **Writing and generating text** (emails, stories, code, essays, etc.).\n* **Summarizing** long articles or documents.\n* **Translating** languages.\n* **Brainstorming** ideas.\n* **Coding** and debugging.\n\n**Please tell me what you need!**\n\n**2. You meant to paste something, but forgot.**\n\nIf you were trying to give me text, a question, a prompt, or an image, please paste it now, and I will do my best to assist you!\n\n**3. You were testing to see how I respond to an empty input.**\n\nIf so, this is my response! Let me know how I can be more helpful.\n\n**How can I help you right now?**",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 54.4484,
+    "output_bytes": 2613524,
+    "request_count": 20,
+    "source_sample_rate": 24000
+  }
+}
