@@ -20,17 +20,20 @@
 # ("dark-fast"). `serves up` admits a reserving serve against vram_mib - reserve_mib before any
 # container command runs; `serves status` prints the derived ledger.
 #   capacity 32607 MiB = nvidia-smi memory.total for GPU-04d3b6e7… (RTX 5090 32 GB).
-#   reserve 6656 MiB   = Windows display/system (~2 GiB) + the always-on voice STT/TTS
+#   reserve 7168 MiB   = Windows display/system (~2 GiB) + the always-on voice STT/TTS
 #                        sidecars (anvil-voice-stt/tts, serves.voice.toml). Those sidecars are
 #                        managed by `voice audio up/down` from a SEPARATE manifest, so this
 #                        ledger cannot see them as reservations — they are budgeted here as
-#                        reserve instead. Observed combined draw 2026-07-13: 6325 MiB.
+#                        reserve instead. Observed non-fast draw drifted 6325 -> ~7090 MiB
+#                        across 2026-07-13 (T006 -> T009: device used minus the fast engine's
+#                        enforced 18432), so T009 raised the reserve 6656 -> 7168 to keep the
+#                        ledger's free figure physically honest.
 # The dark-heavy PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
 # now — adoption is incremental (ADR-0017 consequences).
 [[gpu_roles]]
 id = "dark-fast"
 vram_mib = 32607
-reserve_mib = 6656
+reserve_mib = 7168
 
 [[serve]]
 name = "heavy"                 # heavy quality tier — ThinkingCap Qwen3.6-27B FP8
@@ -86,6 +89,43 @@ model = "qwen36-35b-a3b-nvfp4"
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d fast-qwen36-rollback"
+
+# ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
+# Always-on text-embedding + reranker serves on the multi-tenant 5090, riding the same
+# [[serve]] rails as the LLM tiers: declared `resident` reservations admitted by `serves up`,
+# loopback-only publish by default (set EMBEDDINGS_PUBLISH / RERANKER_PUBLISH to this host's
+# tailnet address for cross-host access). Engine labels are the truthful purpose-model
+# vocabulary ("embedding"/"reranker", extending the "audio" precedent) — these serve pooling
+# endpoints (/v1/embeddings, /rerank), NOT chat completions, so LLM tooling must not target
+# them. Reservations are HONEST-MEASURED (2026-07-13): each instance carries 1.12 GiB bf16
+# weights + a ~1.7 GiB fixed vLLM/WSL2 runtime floor before any KV, so 3200 MiB (embeddings,
+# 2048-token window) and 3456 MiB (reranker, 4096-token window) are the smallest budgets that
+# load with margin. docker-compose.yml enforces them with --gpu-memory-utilization
+# vram_mib / 32607 capacity (0.0981 / 0.1060 — fraction of TOTAL capacity, per the T006
+# deviation note there) — change them together.
+[[serve]]
+name = "embeddings"            # Qwen3-Embedding-0.6B (vLLM pooling runner, RTX 5090)
+container = "vllm-qwen3-embedding"
+port = 30005
+model = "qwen3-embedding-0.6b" # served-model-name (what /v1/embeddings callers send)
+engine = "embedding"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 3200
+residency = "resident"
+up = "docker compose -f {dir}/docker-compose.yml up -d embeddings"
+
+[[serve]]
+name = "reranker"              # Qwen3-Reranker-0.6B (vLLM sequence-classification, RTX 5090)
+container = "vllm-qwen3-reranker"
+port = 30006
+model = "qwen3-reranker-0.6b"  # served-model-name (what /rerank callers send)
+engine = "reranker"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 3456
+residency = "resident"
+up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
 
 # One guarded operation owns the model swap, functional gate, router update,
 # and complete model+router rollback. This single-GPU plan validates the newly

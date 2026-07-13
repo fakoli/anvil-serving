@@ -9,7 +9,7 @@ import types
 
 import pytest
 
-from anvil_serving import serves
+from anvil_serving import reservations, serves
 
 
 def proc(rc=0, out="", err=""):
@@ -123,6 +123,26 @@ def test_load_manifest_accepts_audio_engine_for_non_llm_serves(tmp_path):
     """)
     (serve,) = serves.load_manifest(path)
     assert serve["engine"] == "audio"
+
+
+@pytest.mark.parametrize(
+    ("name", "engine"),
+    [("embeddings", "embedding"), ("reranker", "reranker")],
+)
+def test_load_manifest_accepts_purpose_model_engines(tmp_path, name, engine):
+    # gpu-reservations:T009 — the purpose-model vocabulary (ADR-0017 §7)
+    # extends the "audio" precedent: truthful labels for non-chat-LLM serves.
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "{name}"
+        container = "vllm-qwen3-{name}"
+        port = 30005
+        model = "qwen3-{name}-0.6b"
+        engine = "{engine}"
+        up = "docker compose -f {{dir}}/docker-compose.yml up -d {name}"
+    """)
+    (serve,) = serves.load_manifest(path)
+    assert serve["engine"] == engine
 
 
 # ---- reservation fields (ADR-0017 GPU residency reservations) ---------------
@@ -281,6 +301,35 @@ def test_shipped_fakoli_manifest_is_valid():
     assert by_name["fast-qwen36-35b-a3b"]["engine"] == "vllm"
     assert by_name["fast-glm47-flash-sglang"]["engine"] == "sglang"
     assert by_name["fast-devstral-small2-llamacpp"]["engine"] == "llamacpp"
+
+
+def test_shipped_fakoli_manifest_purpose_model_serves():
+    # gpu-reservations:T009 — the embeddings/reranker serves are resident
+    # ADR-0017 reservations on the multi-tenant 5090 with truthful engine
+    # labels, and the resident set fits the declared dark-fast budget.
+    serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
+    by_name = {s["name"]: s for s in serves_list}
+    emb, rr = by_name["embeddings"], by_name["reranker"]
+    assert emb["engine"] == "embedding"
+    assert rr["engine"] == "reranker"
+    for s in (emb, rr):
+        assert s["gpu_role"] == "dark-fast"
+        assert s["residency"] == "resident"
+        assert s["health"] == "/health"
+    # HONEST-MEASURED budgets (see the manifest comments): weights + the fixed
+    # vLLM/WSL2 runtime floor + the serve's KV window.
+    assert emb["vram_mib"] == 3200
+    assert rr["vram_mib"] == 3456
+    assert emb["port"] == 30005 and emb["model"] == "qwen3-embedding-0.6b"
+    assert rr["port"] == 30006 and rr["model"] == "qwen3-reranker-0.6b"
+    # The full declared dark-fast set (fast + embeddings + reranker) must fit
+    # the role budget — the manifest-level guarantee that `serves up` admits
+    # all three together.
+    budget = reservations.budgets_of(serves_list)["dark-fast"].budget_mib
+    committed = sum(
+        s["vram_mib"] for s in serves_list if s.get("gpu_role") == "dark-fast"
+    )
+    assert committed <= budget, (committed, budget)
 
 
 def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):
