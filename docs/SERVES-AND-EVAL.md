@@ -102,6 +102,52 @@ overrides, the generic experiment service uses the RTX 5090 and a loopback-only 
 point `anvil-serving eval preflight --base-url http://127.0.0.1:{PORT}/v1 --model {SERVED_NAME}`
 at it.
 
+#### Docker Desktop/WSL CUDA validation layers
+
+Do not use the native Windows CUDA toolkit or the default Ubuntu WSL distro as a proxy for the
+runtime inside a Docker serve. They are distinct layers:
+
+1. Native Windows owns the NVIDIA display/compute driver that WSL exposes.
+2. An ordinary WSL distro can inspect the WSL `libcuda` stub and any CUDA runtime installed in that
+   distro, but that result is not container evidence.
+3. The `docker-desktop` WSL VM owns Docker's Linux `dockerd`/`containerd` and GPU passthrough. It is
+   deliberately minimal: `/dev/dxg` and the WSL `libcuda.so` stub may be present while `nvidia-smi`,
+   `nvcc`, `libcudart`, and MPS are absent.
+4. The selected container image supplies `libcudart`, compiler headers/tools, and optional CUDA
+   utilities. Validate their versions and symbols inside that exact, digest-pinned image.
+
+Therefore a CUDA capability claim for a serve or experiment needs both substrate evidence from
+Docker Desktop and image-local evidence from a Compose-managed container pinned by GPU UUID with
+`CUDA_DEVICE_ORDER=PCI_BUS_ID`. Runtime observations stay in evidence artifacts/findings; do not
+write them into stable topology identity.
+
+The read-only Green Context prerequisite recipe is now owned by the Anvil Serving CLI. Preview its
+fully audited command first, then explicitly confirm the one-shot container:
+
+```powershell
+anvil-serving host gpu-sharing probe `
+  --compose-file examples/fakoli-dark/docker-compose.experiment.yml `
+  --gpu-uuid GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 `
+  --dry-run
+
+anvil-serving host gpu-sharing probe `
+  --compose-file examples/fakoli-dark/docker-compose.experiment.yml `
+  --gpu-uuid GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 `
+  --confirm
+```
+
+The underlying profile-gated Compose command remains useful for debugging the product wrapper:
+
+```powershell
+docker compose -f examples/fakoli-dark/docker-compose.experiment.yml `
+  --profile gpu-sharing-probe run --rm --no-deps gpu-sharing-inspect
+```
+
+It compiles in a temporary executable filesystem, queries the UUID-selected RTX 5090 and CUDA
+Runtime/Driver symbols, creates no CUDA context or workload, and removes its own container. Direct
+Compose invocation is a diagnostic fallback; the guarded Anvil Serving verb is the operator
+contract. Context creation is still outside that contract.
+
 ### Fast-tier LLM bakeoff registry
 
 The July 2026 Fast-tier bakeoff is tracked in

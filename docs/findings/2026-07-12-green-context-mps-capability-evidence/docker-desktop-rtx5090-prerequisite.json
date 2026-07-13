@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-07-12T20:08:45-07:00",
+  "operation": "green_context_prerequisite_inspect",
+  "host": "Fakoli-Dark",
+  "substrate": "Docker Desktop WSL2",
+  "compose_project": "fakoli-experiment",
+  "compose_service": "gpu-sharing-inspect",
+  "image": {
+    "reference": "nvidia/cuda@sha256:9cf8694a27722418a1f175d90f85d5afb5a728fd4a9907d7f0565efecfa14d32",
+    "image_id": "sha256:9cf8694a27722418a1f175d90f85d5afb5a728fd4a9907d7f0565efecfa14d32",
+    "created": "2026-01-16T21:28:10.305321645Z",
+    "platform": "linux/amd64"
+  },
+  "command": "docker compose -f examples/fakoli-dark/docker-compose.experiment.yml --profile gpu-sharing-probe run --rm --no-deps gpu-sharing-inspect",
+  "mutated_state": false,
+  "created_context": false,
+  "launched_workload": false,
+  "ok": true,
+  "runtime_version": 13010,
+  "driver_version": 13030,
+  "cuda_visible_devices": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+  "gpu": {
+    "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+    "name": "NVIDIA GeForce RTX 5090",
+    "compute_capability": "12.0",
+    "sm_count": 170,
+    "primary_windows_display_gpu": true
+  },
+  "symbols": {
+    "cudaGreenCtxCreate": true,
+    "cudaDevSmResourceSplitByCount": true,
+    "cudaDeviceGetDevResource": true,
+    "cudaDevResourceGenerateDesc": true,
+    "cudaExecutionCtxStreamCreate": true,
+    "cudaExecutionCtxGetDevResource": true,
+    "cuGreenCtxCreate": true
+  },
+  "cleanup": {
+    "container_removed": true,
+    "unrelated_orphan_containers_removed": false,
+    "image_retained_in_cache": true
+  },
+  "docker_state": {
+    "image_pulled": true,
+    "temporary_container_created": true,
+    "temporary_container_removed": true
+  },
+  "limitations": [
+    "No Green Context, stream, event, allocation, or kernel was created.",
+    "The RTX 5090 is the primary Windows display GPU; mutating or sustained follow-up requires a separate maintenance and rollback gate.",
+    "Symbol and device evidence does not prove Green Context creation succeeds under WSL2."
+  ]
+}
