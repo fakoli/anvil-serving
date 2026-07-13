@@ -412,3 +412,295 @@ def test_voice_audio_up_in_budget_starts_the_serve(tmp_path):
     lifecycle = voice_common.ServeLifecycle("stt", manifest_path=manifest, _run=run)
     assert lifecycle.bring_up() == 0
     assert any(c[:2] == ["docker", "compose"] for c in _mutating_calls(run))
+
+
+# ---- eviction through the ADR-0018 drain (gpu-reservations:T005) --------------
+
+# `fast` is the on-demand LLM tier; `exp` is a routed evictable experiment
+# serve; `stt` is a resident sidecar. With exp (16384) + stt (4096) committed,
+# free is 10240 < fast's 20480 — evicting exp admits fast.
+EVICTION_MANIFEST = """
+    [[gpu_roles]]
+    id = "dark-fast"
+    vram_mib = 32768
+    reserve_mib = 2048
+
+    [[serve]]
+    name = "fast"
+    container = "vllm-fast"
+    port = 30003
+    model = "fast-local"
+    engine = "vllm"
+    gpu_role = "dark-fast"
+    vram_mib = 20480
+    residency = "on-demand"
+    up = "docker compose -f {dir}/compose.yml up -d fast"
+
+    [[serve]]
+    name = "exp"
+    container = "vllm-exp"
+    port = 30040
+    model = "exp-local"
+    engine = "vllm"
+    gpu_role = "dark-fast"
+    vram_mib = 16384
+    residency = "evictable"
+    router_tier = "exp-local"
+    up = "docker compose -f {dir}/compose.yml up -d exp"
+
+    [[serve]]
+    name = "stt"
+    container = "anvil-voice-stt"
+    port = 30010
+    model = "tdt_ctc-110m"
+    engine = "audio"
+    gpu_role = "dark-fast"
+    vram_mib = 4096
+    residency = "resident"
+    up = "docker compose -f {dir}/compose.yml up -d stt"
+"""
+
+# The deficit (10240) exceeds every evictable reservation combined (4096):
+# the rest is held by the `resident` stt, which is never a candidate.
+RESIDENT_HELD_MANIFEST = EVICTION_MANIFEST.replace(
+    'vram_mib = 16384\n    residency = "evictable"',
+    'vram_mib = 4096\n    residency = "evictable"',
+).replace(
+    'vram_mib = 4096\n    residency = "resident"',
+    'vram_mib = 16384\n    residency = "resident"',
+)
+
+
+def _journal_run(states, journal):
+    """_states_run plus an ordered journal of `docker stop` mutations, so a
+    test can prove drain (journaled by the transition seam) precedes stop."""
+    inner = _states_run(states)
+
+    def run(argv, **kwargs):
+        if isinstance(argv, list) and argv[:2] == ["docker", "stop"]:
+            journal.append(("stop", argv[-1]))
+        return inner(argv, **kwargs)
+
+    run.calls = inner.calls
+    return run
+
+
+def _recording_transition(journal, refuse=()):
+    """An ADR-0018 step seam that journals each action (returncode semantics)."""
+    def transition(action, tier_id, timeout=None):
+        journal.append(
+            (action, tier_id) if timeout is None else (action, tier_id, timeout))
+        return 1 if action in refuse else 0
+
+    return transition
+
+
+def test_evict_quiesces_and_drains_the_victims_tier_before_stop(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, EVICTION_MANIFEST))
+    states = {"vllm-exp": "running", "anvil-voice-stt": "running"}
+    journal = []
+    run = _journal_run(states, journal)
+    rc = serves.cmd_up(loaded, ["fast"], evict=True, drain_timeout=7,
+                       _transition=_recording_transition(journal), _run=run)
+    assert rc == 0
+    # The ADR-0018 composition, in order: quiesce, bounded drain, THEN stop.
+    assert journal == [
+        ("quiesce", "exp-local"), ("drain", "exp-local", 7), ("stop", "vllm-exp"),
+    ]
+    assert states["vllm-exp"] == "exited"          # reservation released
+    assert any(c[:2] == ["docker", "compose"] for c in run.calls)  # fast started
+    out = capsys.readouterr().out
+    assert "evict exp" in out
+    assert "stays quiesced" in out                  # readmission is guarded
+
+
+def test_evicting_resident_serves_fails_loudly_with_the_ledger(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, RESIDENT_HELD_MANIFEST))
+    journal = []
+    run = _journal_run(
+        {"vllm-exp": "running", "anvil-voice-stt": "running"}, journal)
+    rc = serves.cmd_up(loaded, ["fast"], evict=True,
+                       _transition=_recording_transition(journal), _run=run)
+    assert rc == 1
+    assert journal == []                    # no transition, no stop
+    assert _mutating_calls(run) == []       # NO container command ran
+    out = capsys.readouterr().out
+    assert "eviction refused" in out
+    assert "every evictable reservation combined frees only 4096 MiB" in out
+    # ... loudly, WITH the ledger and the protected resident reservation:
+    assert "capacity 32768 MiB" in out
+    assert "free 10240 MiB" in out
+    assert "never evicted (residency 'resident'): stt 16384 MiB" in out
+
+
+def test_only_on_demand_requesters_may_evict(tmp_path, capsys):
+    """`embed` is `resident`: even with --evict it may not displace others."""
+    loaded = serves.load_manifest(_manifest(tmp_path, LEDGER_MANIFEST))
+    journal = []
+    run = _journal_run(
+        {"vllm-fast": "running", "anvil-voice-stt": "running"}, journal)
+    rc = serves.cmd_up(loaded, ["embed"], evict=True,
+                       _transition=_recording_transition(journal), _run=run)
+    assert rc == 1
+    assert journal == []
+    assert _mutating_calls(run) == []
+    out = capsys.readouterr().out
+    assert "only `on-demand` requesters may evict" in out
+    assert "embed 8192 MiB" in out
+    assert "capacity 32768 MiB" in out      # the ledger is printed
+
+
+def test_denial_without_evict_flag_is_unchanged_and_hints_at_evict(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, EVICTION_MANIFEST))
+    run = _states_run({"vllm-exp": "running", "anvil-voice-stt": "running"})
+    assert serves.cmd_up(loaded, ["fast"], _run=run) == 1
+    assert _mutating_calls(run) == []
+    out = capsys.readouterr().out
+    assert "reservation denied" in out
+    assert "re-run with --evict to stop evictable serve(s) exp" in out
+
+
+def test_drain_refusal_aborts_eviction_before_any_container_mutation(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, EVICTION_MANIFEST))
+    states = {"vllm-exp": "running", "anvil-voice-stt": "running"}
+    journal = []
+    run = _journal_run(states, journal)
+    rc = serves.cmd_up(loaded, ["fast"], evict=True, drain_timeout=7,
+                       _transition=_recording_transition(journal, refuse=("drain",)),
+                       _run=run)
+    assert rc == 2
+    assert _mutating_calls(run) == []       # the victim was NOT stopped
+    assert states["vllm-exp"] == "running"
+    # ... and the quiesced tier was compensated with a guarded readmit.
+    assert journal == [
+        ("quiesce", "exp-local"), ("drain", "exp-local", 7), ("readmit", "exp-local"),
+    ]
+    assert "drain timed out for exp-local before container mutation" in (
+        capsys.readouterr().out)
+
+
+def test_quiesce_refusal_compensates_and_stops_nothing(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, EVICTION_MANIFEST))
+    journal = []
+    run = _journal_run(
+        {"vllm-exp": "running", "anvil-voice-stt": "running"}, journal)
+    rc = serves.cmd_up(loaded, ["fast"], evict=True,
+                       _transition=_recording_transition(journal, refuse=("quiesce",)),
+                       _run=run)
+    assert rc == 2
+    assert _mutating_calls(run) == []
+    assert journal == [("quiesce", "exp-local"), ("readmit", "exp-local")]
+    assert "failed to quiesce exp-local" in capsys.readouterr().out
+
+
+def test_victim_without_router_tier_is_stopped_directly(tmp_path, capsys):
+    """No `router_tier` -> nothing routes through the router to drain."""
+    loaded = serves.load_manifest(_manifest(
+        tmp_path, EVICTION_MANIFEST.replace('router_tier = "exp-local"\n    ', "")))
+    states = {"vllm-exp": "running", "anvil-voice-stt": "running"}
+    journal = []
+    run = _journal_run(states, journal)
+    rc = serves.cmd_up(loaded, ["fast"], evict=True,
+                       _transition=_recording_transition(journal), _run=run)
+    assert rc == 0
+    assert journal == [("stop", "vllm-exp")]   # no quiesce/drain steps
+    assert "no router_tier declared" in capsys.readouterr().out
+
+
+def test_evict_dry_run_previews_the_transition_without_stopping(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, EVICTION_MANIFEST))
+    journal = []
+    run = _journal_run(
+        {"vllm-exp": "running", "anvil-voice-stt": "running"}, journal)
+    rc = serves.cmd_up(loaded, ["fast"], evict=True, dry_run=True,
+                       _transition=_recording_transition(journal), _run=run)
+    assert rc == 0
+    assert journal == []                    # previewed, not executed
+    assert _mutating_calls(run) == []
+    out = capsys.readouterr().out
+    assert "evict exp: quiesce + drain router tier exp-local" in out
+    assert "up fast" in out                 # the acquisition preview continues
+
+
+def test_evict_rejects_a_non_positive_drain_timeout(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, EVICTION_MANIFEST))
+    run = _states_run({"vllm-exp": "running", "anvil-voice-stt": "running"})
+    assert serves.cmd_up(loaded, ["fast"], evict=True, drain_timeout=0,
+                         _run=run) == 2
+    assert run.calls == []                  # not even a probe ran
+    assert "--drain-timeout" in capsys.readouterr().out
+
+
+def test_plan_eviction_picks_the_fewest_victims_largest_first(tmp_path):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[gpu_roles]]
+        id = "dark-fast"
+        vram_mib = 32768
+        reserve_mib = 2048
+
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30003
+        model = "fast-local"
+        engine = "vllm"
+        gpu_role = "dark-fast"
+        vram_mib = 20480
+        residency = "on-demand"
+
+        [[serve]]
+        name = "exp-small"
+        container = "vllm-exp-small"
+        port = 30041
+        model = "exp-small"
+        engine = "vllm"
+        gpu_role = "dark-fast"
+        vram_mib = 6144
+        residency = "evictable"
+
+        [[serve]]
+        name = "exp-big"
+        container = "vllm-exp-big"
+        port = 30042
+        model = "exp-big"
+        engine = "vllm"
+        gpu_role = "dark-fast"
+        vram_mib = 24576
+        residency = "evictable"
+    """))
+    states = {"vllm-exp-small": "running", "vllm-exp-big": "running"}
+    victims, lines = reservations.plan_eviction(
+        loaded, [s for s in loaded if s["name"] == "fast"],
+        lambda container: states.get(container, "absent"))
+    # deficit 20480 - 0 free: exp-big alone covers it; exp-small survives.
+    assert [v.serve for v in victims] == ["exp-big"]
+    assert any("evict exp-big" in line for line in lines)
+
+
+def test_plan_eviction_is_empty_when_the_targets_already_fit(tmp_path):
+    loaded = serves.load_manifest(_manifest(tmp_path, EVICTION_MANIFEST))
+    victims, lines = reservations.plan_eviction(
+        loaded, [s for s in loaded if s["name"] == "fast"],
+        lambda container: "absent")
+    assert (victims, lines) == ([], [])
+
+
+def test_load_manifest_rejects_blank_router_tier(tmp_path):
+    with pytest.raises(ValueError, match="router_tier must be a non-empty string"):
+        serves.load_manifest(_manifest(tmp_path, """
+            [[serve]]
+            name = "exp"
+            container = "vllm-exp"
+            port = 30040
+            model = "exp-local"
+            engine = "vllm"
+            router_tier = "  "
+        """))
+
+
+def test_vram_types_are_reservations_never_lease():
+    """Packet contract: `GpuReservation` is the VRAM handle; the only *Lease*
+    is the router's request-admission `AdmissionLease` (ADR-0017 terminology)."""
+    assert not [name for name in dir(reservations) if "Lease" in name]
+    assert not [name for name in dir(serves) if "Lease" in name]
+    assert reservations.GpuReservation.__name__ == "GpuReservation"

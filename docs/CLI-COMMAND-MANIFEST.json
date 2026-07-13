@@ -3146,6 +3146,36 @@
           "summary": "Recreate an existing container.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--evict"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Stop evictable reservations via a drained ADR-0018 transition.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--drain-timeout"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded drain wait before an evicted serve is stopped.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--router-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployed router base URL for eviction quiesce/drain.",
+          "tombstone": null,
+          "value_name": "URL"
         }
       ],
       "output_policy": "bounded",
