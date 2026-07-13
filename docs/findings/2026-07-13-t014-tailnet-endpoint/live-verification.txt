@@ -1,0 +1,22 @@
+T014 single tailnet DNS endpoint — live verification
+Captured: 2026-07-13T20:16:41Z  host: fakoli-dark (RTX 5090)
+MagicDNS (tailscale status --json .Self.DNSName): fakoli-dark.tail4378d.ts.net.
+Tailnet IPs: 100.87.34.66 / fd7a:115c:a1e0::8701:2247
+All requests below target http://fakoli-dark.tail4378d.ts.net:8000 (the MagicDNS name), never a raw IP.
+
+== GET /v1/models (authed) ==
+HTTP 200
+== GET /v1/models (no token) ==
+HTTP 401
+
+== GET /healthz (unified route surface) ==
+{"status": "ok", "dialects": ["anthropic", "openai"], "routes": ["/v1/chat/completions", "/v1/decisions", "/v1/embeddings", "/v1/messages", "/v1/rerank", "/v1/route"]}
+
+== POST /v1/embeddings (qwen3-embedding-0.6b) ==
+HTTP 200
+object: list model: qwen3-embedding-0.6b dim: 1024
+embedding[:3]: [0.0365, 0.0477, -0.0116]
+usage: {'prompt_tokens': 6, 'total_tokens': 6, 'completion_tokens': 0, 'prompt_tokens_details': None}
+
+== POST /v1/embeddings (unknown model -> clean 404, names served model) ==
+{"error": {"type": "model_not_found", "message": "unknown embedding model '__unknown__'; this router serves embedding models: 'qwen3-embedding-0.6b'. embedding requests are routed by model name only and never fall through to chat routing."}}
