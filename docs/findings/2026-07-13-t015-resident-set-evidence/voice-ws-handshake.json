@@ -1,0 +1,37 @@
+# captured 2026-07-13T21:36:06Z UTC
+# stdlib WebSocket handshake to ws://127.0.0.1:8765 ON fakoli-mini, over passwordless ssh (no new deps)
+
+{
+  "target": "ws://127.0.0.1:8765 on Fakoli-Mini-2.local",
+  "handshake_ok": true,
+  "successful_path": "/v1/realtime",
+  "attempts": [
+    {
+      "path": "/",
+      "status_line": "HTTP/1.1 404 no route /",
+      "accept_ok": false,
+      "sec_websocket_accept": null,
+      "expected_accept": "bV05kjzElswKHTPvWT4kb5bC5BY=",
+      "upgrade": null,
+      "handshake_ok": false
+    },
+    {
+      "path": "/ws",
+      "status_line": "HTTP/1.1 404 no route /ws",
+      "accept_ok": false,
+      "sec_websocket_accept": null,
+      "expected_accept": "zsmX+zX3YGBBGmHqVJghYDQyA8g=",
+      "upgrade": null,
+      "handshake_ok": false
+    },
+    {
+      "path": "/v1/realtime",
+      "status_line": "HTTP/1.1 101 Switching Protocols",
+      "accept_ok": true,
+      "sec_websocket_accept": "X3wDr7LnHg2MQOF7pNxf149mVb0=",
+      "expected_accept": "X3wDr7LnHg2MQOF7pNxf149mVb0=",
+      "upgrade": "websocket",
+      "handshake_ok": true
+    }
+  ]
+}
