@@ -1201,6 +1201,15 @@ def tool_serves_status(args: dict) -> dict:
     return _ok(serves_mod.status_summary(serves, names))
 
 
+def tool_reservation_status(args: dict) -> dict:
+    from . import serves as serves_mod
+
+    manifest_arg = _str_arg(args, "manifest", "")
+    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
+    serves = _load_serves_for_tool(manifest)
+    return _ok(serves_mod.reservation_summary(serves))
+
+
 def _load_serves_for_tool(manifest: str):
     from . import serves as serves_mod
 
@@ -2951,6 +2960,13 @@ TOOLS: Dict[str, dict] = {
             "names": {"type": "array", "items": {"type": "string"}},
         }),
         "handler": tool_serves_status,
+    },
+    "reservation_status": {
+        "description": "Return the read-only per-gpu_role VRAM reservation ledger (ADR-0017) derived from the serves manifest and docker state.",
+        "inputSchema": _schema({
+            "manifest": {"type": "string"},
+        }),
+        "handler": tool_reservation_status,
     },
     "serves_manage": {
         "description": "Preview or run guarded serve lifecycle actions: up, down, rm, or adopt.",

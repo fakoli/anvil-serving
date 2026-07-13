@@ -814,6 +814,25 @@ def _gpu_lines(_run=subprocess.run):
     return [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
 
 
+def reservation_summary(serves, _run=subprocess.run, _states=None):
+    """Machine-readable per-gpu_role VRAM reservation ledger (ADR-0017, T004).
+
+    The MCP `reservation_status` tool returns exactly this; `serves status`
+    prints the same ledger. `_states` lets callers that already probed docker
+    (cmd_status's serve loop) reuse those observations instead of re-probing.
+    Manifests without `[[gpu_roles]]` yield an empty `gpu_roles` list and run
+    zero docker probes.
+    """
+    budgets = reservations.budgets_of(serves)
+    known = _states or {}
+
+    def state_of(container):
+        return known.get(container) or docker_state(container, _run=_run)
+
+    ledger = reservations.build_ledger(serves, state_of, budgets=budgets)
+    return reservations.ledger_summary(ledger)
+
+
 def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request.urlopen):
     """Machine-readable serve status for MCP/automation.
 
@@ -822,8 +841,10 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
     """
     selected = _select(serves, names or [])
     rows = []
+    states = {}
     for s in selected:
         st = docker_state(s["container"], _run=_run)
+        states[s["container"]] = st
         health = _health(s["port"], s.get("health", "/health"), _open=_open) if st == "running" else None
         rows.append({
             "name": s["name"],
@@ -840,13 +861,19 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
         "serves": rows,
         "selected": [r["name"] for r in rows],
         "gpu_memory_lines": _gpu_lines(_run=_run),
+        # The ledger spans the WHOLE manifest, not just `names`: committed
+        # VRAM on a role comes from every declared serve, so a filtered view
+        # of it would misreport `free`.
+        "reservations": reservation_summary(serves, _run=_run, _states=states),
     }
 
 
 def cmd_status(serves, _run=subprocess.run, _open=urllib.request.urlopen):
     print("%-16s %-16s %-6s %-9s %s" % ("SERVE", "CONTAINER", "PORT", "DOCKER", "HEALTH"))
+    states = {}
     for s in serves:
         st = docker_state(s["container"], _run=_run)
+        states[s["container"]] = st
         health = _health(s["port"], s["health"], _open=_open) if st == "running" else None
         print("%-16s %-16s %-6s %-9s %s" % (
             s["name"], s["container"], s["port"], st, health if health else "-"))
@@ -855,6 +882,22 @@ def cmd_status(serves, _run=subprocess.run, _open=urllib.request.urlopen):
         print("\nGPU memory (index, used MiB, total MiB):")
         for g in gpus:
             print("  " + g)
+    # ADR-0017 reservation ledger (T004): per-gpu_role capacity/reserve/
+    # committed/free plus each declared reservation. Reuses the states probed
+    # above (every manifest serve was just inspected), so this section adds no
+    # docker calls; manifests without [[gpu_roles]] print nothing extra.
+    budgets = reservations.budgets_of(serves)
+    if budgets:
+        ledger = reservations.build_ledger(
+            serves,
+            lambda container: states.get(container) or docker_state(container, _run=_run),
+            budgets=budgets,
+        )
+        print("\nGPU reservations (ADR-0017, derived from docker state):")
+        for _, role_ledger in sorted(ledger.items()):
+            print("  " + role_ledger.describe())
+            for r in role_ledger.reservations:
+                print("    %s%s" % (r.describe(), "" if r.committed else " [not committed]"))
     return 0
 
 
