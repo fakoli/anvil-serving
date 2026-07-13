@@ -342,6 +342,11 @@ def build_command_tree() -> CommandTree:
     confirm_options = action_options + (_option("--confirm", summary="Confirm the guarded mutation."),)
     manifest_option = _option("--manifest", summary="Serve manifest TOML.", value_name="PATH")
     assume_yes_option = _option("--yes", summary="Confirm a direct irreversible leaf operation.")
+    group_option = _option(
+        "--group",
+        summary="Act on every serve tagged NAME across the manifest set (repeatable; 'all' selects every serve).",
+        value_name="NAME",
+    )
 
     router = _node(
         "router", "Manage the deployed router and its lifecycle.",
@@ -433,12 +438,13 @@ def build_command_tree() -> CommandTree:
     )
     serves_actions = (
         _resource_node("render", "Render a model serve definition.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=action_options),
-        _resource_node("up", "Start manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--compose", summary="Use an ad-hoc compose file.", value_name="PATH"), _option("--recreate", summary="Recreate an existing container."), _option("--evict", summary="Stop evictable reservations via a drained ADR-0018 transition."), _option("--drain-timeout", summary="Bounded drain wait before an evicted serve is stopped.", value_name="SECONDS"), _option("--router-url", summary="Deployed router base URL for eviction quiesce/drain.", value_name="URL")), remote_operation=_remote("serves_manage", fixed=(("action", "up"),), positionals=("names",))),
-        _resource_node("down", "Stop manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option,), remote_operation=_remote("serves_manage", fixed=(("action", "down"),), positionals=("names",))),
+        _resource_node("up", "Start manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, group_option, _option("--compose", summary="Use an ad-hoc compose file.", value_name="PATH"), _option("--recreate", summary="Recreate an existing container."), _option("--evict", summary="Stop evictable reservations via a drained ADR-0018 transition."), _option("--drain-timeout", summary="Bounded drain wait before an evicted serve is stopped.", value_name="SECONDS"), _option("--router-url", summary="Deployed router base URL for eviction quiesce/drain.", value_name="URL")), remote_operation=_remote("serves_manage", fixed=(("action", "up"),), positionals=("names",))),
+        _resource_node("down", "Stop manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, group_option), remote_operation=_remote("serves_manage", fixed=(("action", "down"),), positionals=("names",))),
         _resource_node("rm", "Remove a model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "rm"),), positionals=("names",))),
         _resource_node("adopt", "Adopt an existing model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "adopt"),), positionals=("names",))),
         _resource_node("promote", "Promote a staged model recipe with preflight and full rollback.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--rollback", summary="Restore the plan's rollback serve and router state."), _option("--resume", summary="Resume an interrupted promotion.")), remote_operation=_remote("serves_promote", positionals=("plan",), allowed=("manifest", "rollback", "resume", "dry_run"), confirmed=(("human_approved", True),))),
-        _resource_node("status", "Show model serve status.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option,), remote_operation=_remote("serves_status", positionals=("names",))),
+        _resource_node("status", "Show model serve status.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, group_option), remote_operation=_remote("serves_status", positionals=("names",))),
+        _resource_node("groups", "List serve groups across the manifest set and their members.", "anvil_serving.serves", role="model-serve", options=(manifest_option,)),
         _resource_node("logs", "Read bounded model serve logs.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, _option("--tail", summary="Number of trailing lines.", value_name="N|all"), _option("--since", summary="Only logs since a timestamp or duration.", value_name="TIME"), _option("--follow", summary="Follow log output.", output_policy="follow")), remote_operation=_remote("serves_logs", positionals=("names",))),
         _resource_node("multiplex", "Run the single-resident model multiplexer.", "anvil_serving.multiplexer", role="model-serve", mutation="process", gpu=True, argv_prefix=(), output_policy="foreground"),
     )
