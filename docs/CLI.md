@@ -286,6 +286,18 @@ See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 
 Common flags: `--manifest`, `--dry-run`; `rm`/`adopt` also take `--yes`.
 
+**GPU residency reservations (ADR-0017).** A `[[serve]]` entry may declare
+`gpu_role`, `vram_mib`, and `residency`, and the manifest may declare
+`[[gpu_roles]]` capacity rows (`id`, `vram_mib` capacity, `reserve_mib`
+display/system reserve — mirroring the operator topology fields). With both
+present, `up` (including `voice audio up`) acquires the serve's VRAM
+reservation first: an over-budget request prints the per-role ledger
+(capacity/reserve/committed/free plus the offending reservation) and exits 1
+before any container command runs. The ledger derives from running serves
+(docker state) plus the declared fields — there is no state file — so `down`
+releases a reservation simply by stopping the container. Manifests without
+these fields behave exactly as before.
+
 ```bash
 anvil-serving serves up heavy --manifest ./serves.toml --dry-run
 anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --dry-run
