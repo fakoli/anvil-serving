@@ -76,7 +76,37 @@ engine = "vllm"               # vllm, sglang, llamacpp — or a truthful non-cha
                               # audio (STT/TTS), embedding, reranker (ADR-0017 §7),
                               # image (the ComfyUI tenant, gpu-reservations:T012)
 health = "/health"
+groups = ["fast-only", "llm-stack"]  # OPTIONAL: serve groups (see below); absent = none
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"   # {dir} = the manifest's dir
+```
+
+### Serve groups (`--group`)
+
+An optional `groups` list tags a serve into any number of named groups (a serve
+may belong to many; the members are non-empty strings; the reserved name `all`
+must not be authored — it implicitly means every serve). `anvil-serving serves
+{up,down,status} --group NAME` (repeatable) then acts on every serve tagged
+`NAME`, unioning with any positional names, and `anvil-serving serves groups`
+lists the catalog (`--json` for tooling).
+
+Group resolution spans the whole **manifest set** — every `serves*.toml` in the
+manifest's directory, sorted by path, de-duped by container (the lifecycle-owning
+entry that declares `up` wins over a read-only ledger mirror). So `--group voice`
+reaches `stt`/`tts` in `serves.voice.toml` even when `--manifest` points at
+`serves.toml`, and `--group comfy` reaches the ComfyUI tenant in
+`serves.comfyui.toml`. Every member of a group `up` still passes the same
+ADR-0017 reservation admission (an over-budget member is refused with the ledger,
+never bypassed).
+
+The shipped `examples/fakoli-dark` manifests author: `voice` (stt, tts),
+`fast-only` (fast), `heavy-only` (heavy), `embedding` (embeddings, reranker),
+`llm-stack` (heavy, fast, embeddings, reranker, ocr, vision), and `comfy`
+(comfyui). Experiment/candidate serves are deliberately left untagged.
+
+```bash
+anvil-serving serves groups --manifest examples/fakoli-dark/serves.toml
+anvil-serving serves up --group embedding --manifest examples/fakoli-dark/serves.toml
+anvil-serving serves status --group llm-stack --manifest examples/fakoli-dark/serves.toml
 ```
 
 ### Standing up a one-off experiment serve
