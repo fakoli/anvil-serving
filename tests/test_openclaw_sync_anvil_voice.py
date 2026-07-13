@@ -272,7 +272,7 @@ def test_openclaw_anvil_voice_example_manifest_is_valid_and_hygienic():
     assert data["voice"]["llm"]["model"] == "chat-fast"
     assert data["voice"]["llm"]["api_key_env"] == "ANVIL_ROUTER_TOKEN"
     assert data["voice"]["stt"]["base_url"] == "http://100.87.34.66:30110/v1"
-    assert data["voice"]["stt"]["model"] == "tdt_ctc-110m"
+    assert data["voice"]["stt"]["model"] == "tdt-0.6b-v3"
     assert data["voice"]["stt"]["lifecycle"] == "external"
     assert data["voice"]["tts"]["base_url"] == "http://100.87.34.66:30111/v1"
     assert data["voice"]["tts"]["model"] == "kokoro"

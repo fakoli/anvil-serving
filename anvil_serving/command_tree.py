@@ -395,6 +395,37 @@ def build_command_tree() -> CommandTree:
                 ),
             ),
             _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router", remote_operation=_remote("router_status", allowed=("container",))),
+            _resource_node(
+                "transition-status", "Show router tier transition state.",
+                "anvil_serving.router_manage", role="router",
+                options=(
+                    _option("--tier", summary="Optional tier id.", value_name="ID"),
+                    _option("--router-url", summary="Private router base URL.", value_name="URL"),
+                ),
+                remote_operation=_remote(
+                    "router_transition", fixed=(("action", "status"),),
+                    allowed=("tier", "router_url"),
+                ),
+            ),
+            *(
+                _resource_node(
+                    action, summary, "anvil_serving.router_manage", role="router",
+                    mutation="mutate" if action in ("quiesce", "readmit") else "read",
+                    options=(confirm_options if action in ("quiesce", "readmit") else ()) + (
+                        _option("--tier", summary="Tier id.", value_name="ID"),
+                        _option("--router-url", summary="Private router base URL.", value_name="URL"),
+                    ) + ((_option("--timeout", summary="Positive drain timeout.", value_name="SECONDS"),) if action == "drain" else ()),
+                    remote_operation=_remote(
+                        "router_transition", fixed=(("action", action),),
+                        allowed=("tier", "router_url", "timeout", "dry_run"),
+                    ),
+                )
+                for action, summary in (
+                    ("quiesce", "Quiesce one router tier."),
+                    ("drain", "Wait for a quiesced tier to drain."),
+                    ("readmit", "Safely readmit one router tier."),
+                )
+            ),
             _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),), remote_operation=_remote("router_logs", allowed=("container", "tail", "since", "follow"))),
             _resource_node("token", "Inspect the router token state.", "anvil_serving.router_manage", role="router", options=(_option("--reveal", summary="Reveal the local token after confirmation.", requires_confirmation=True), _option("--confirm", summary="Confirm token reveal."))),
         ),
@@ -406,7 +437,7 @@ def build_command_tree() -> CommandTree:
         _resource_node("down", "Stop manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option,), remote_operation=_remote("serves_manage", fixed=(("action", "down"),), positionals=("names",))),
         _resource_node("rm", "Remove a model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "rm"),), positionals=("names",))),
         _resource_node("adopt", "Adopt an existing model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "adopt"),), positionals=("names",))),
-        _resource_node("promote", "Promote a staged model recipe with preflight and full rollback.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--rollback", summary="Restore the plan's rollback serve and router state."), _option("--resume", summary="Resume an interrupted promotion."))),
+        _resource_node("promote", "Promote a staged model recipe with preflight and full rollback.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--rollback", summary="Restore the plan's rollback serve and router state."), _option("--resume", summary="Resume an interrupted promotion.")), remote_operation=_remote("serves_promote", positionals=("plan",), allowed=("manifest", "rollback", "resume", "dry_run"), confirmed=(("human_approved", True),))),
         _resource_node("status", "Show model serve status.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option,), remote_operation=_remote("serves_status", positionals=("names",))),
         _resource_node("logs", "Read bounded model serve logs.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, _option("--tail", summary="Number of trailing lines.", value_name="N|all"), _option("--since", summary="Only logs since a timestamp or duration.", value_name="TIME"), _option("--follow", summary="Follow log output.", output_policy="follow")), remote_operation=_remote("serves_logs", positionals=("names",))),
         _resource_node("multiplex", "Run the single-resident model multiplexer.", "anvil_serving.multiplexer", role="model-serve", mutation="process", gpu=True, argv_prefix=(), output_policy="foreground"),

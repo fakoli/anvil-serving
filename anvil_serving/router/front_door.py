@@ -59,6 +59,7 @@ _ROUTES = {
     "/v1/messages": AnthropicDialect(),
 }
 DECISION_SUMMARY_ENDPOINT = "/v1/decisions"
+TRANSITION_ENDPOINT = "/v1/admin/transition"
 
 # --------------------------------------------------------------------------- #
 # Resource caps (DoS protection)
@@ -78,6 +79,13 @@ MAX_CONCURRENCY: int = int(os.environ.get("ANVIL_MAX_CONCURRENCY", "64"))
 _CONCURRENCY_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(
     MAX_CONCURRENCY
 )
+
+# Drain waits must not consume a data-plane request slot.  This small separate
+# pool bounds administrative waits for the single-operator deployment.
+_MANAGEMENT_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(4)
+# Mutations are serialized independently of status reads.  In particular, a
+# readmit cannot race a long drain and invalidate its zero-active barrier.
+_MANAGEMENT_MUTATION_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(1)
 
 #: Maximum bytes to drain from the socket after sending a 413 (or a response
 #: to an oversized GET body) before closing, so the OS can push the response
@@ -275,44 +283,34 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(500, "internal_error", "internal error", dialect=dialect)
                 return
 
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-cache")
-            if chunked:
-                # Reflect the connection intent already computed from the request's
-                # Connection header (RFC 7230 6.1): if the client sent
-                # `Connection: close`, BaseHTTPRequestHandler set
-                # close_connection=True and we must NOT override it back to
-                # keep-alive (that would leave a close-expecting, read-to-EOF
-                # client hanging until its own timeout).
-                self.send_header("Connection",
-                                 "close" if self.close_connection else "keep-alive")
-                self.send_header("Transfer-Encoding", "chunked")
-            else:
-                # HTTP/1.0 has no chunked encoding; the body is close-delimited.
-                self.close_connection = True
-                self.send_header("Connection", "close")
-            self.end_headers()
-
-            # Close-on-error contract (M0): the 200 + headers are already sent, so
-            # a backend exception mid-stream cannot become an error status. It
-            # propagates, the socket closes, and the client sees a truncated
-            # stream (IncompleteRead) rather than a hang. This is intentional;
-            # mid-stream verify/fallback is a later task (T008/T009).
-            # Resolve the optional structured-fields accessor from the backend
-            # BEFORE building the frame iterator.  The accessor is invoked by
-            # dialect.stream() AFTER all deltas are consumed — so it is safe to
-            # pass a bound method reference here; it does not call through yet.
-            # Backends that don't expose get_last_structured (EchoBackend, tests)
-            # get get_structured=None → dialect falls back to hardcoded defaults
-            # (text-path stays byte-identical, regression-safe) (#42 / #52).
-            _get_structured_fn = getattr(backend, "get_last_structured", None)
-            frames = dialect.stream(
-                request,
-                deltas,
-                get_structured=_get_structured_fn if callable(_get_structured_fn) else None,
-            )
+            frames = None
             try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                if chunked:
+                    # Respect the request's Connection intent; BaseHTTPRequestHandler
+                    # already populated close_connection from the request headers.
+                    self.send_header(
+                        "Connection",
+                        "close" if self.close_connection else "keep-alive",
+                    )
+                    self.send_header("Transfer-Encoding", "chunked")
+                else:
+                    self.close_connection = True
+                    self.send_header("Connection", "close")
+                self.end_headers()
+
+                # Build the dialect iterator only after headers, but keep it under
+                # the same cleanup boundary as the eagerly acquired backend stream.
+                _get_structured_fn = getattr(backend, "get_last_structured", None)
+                frames = dialect.stream(
+                    request,
+                    deltas,
+                    get_structured=(
+                        _get_structured_fn if callable(_get_structured_fn) else None
+                    ),
+                )
                 for frame in frames:
                     if not frame:
                         continue  # never emit a zero-length chunk (ends the stream)
@@ -433,8 +431,93 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
             self._json(200, result)
 
+        def _transition_status(self, tier_id: Optional[str]) -> None:
+            status_fn = getattr(backend, "transition_status", None)
+            if not callable(status_fn):
+                self._error(503, "service_unavailable", "transition management unavailable")
+                return
+            try:
+                self._json(200, status_fn(tier_id))
+            except (KeyError, ValueError):
+                self._error(400, "invalid_transition", "invalid transition request")
+            except Exception:  # noqa: BLE001 - management errors are content-free
+                self._error(503, "transition_failed", "transition operation failed")
+
+        def _handle_transition(self, body: dict) -> None:
+            action = body.get("action")
+            tier_id = body.get("tier_id")
+            if action == "status":
+                self._transition_status(tier_id if isinstance(tier_id, str) else None)
+                return
+            if not isinstance(tier_id, str) or not tier_id:
+                self._error(400, "invalid_transition", "tier_id is required")
+                return
+            if action in ("quiesce", "readmit"):
+                if body.get("confirm") is not True or body.get("dry_run", True) is not False:
+                    self._json(200, {
+                        "applied": False,
+                        "dry_run": True,
+                        "action": action,
+                        "tier_id": tier_id,
+                    })
+                    return
+            if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
+                self._error(503, "server_busy", "transition mutation busy")
+                return
+            try:
+                if action == "quiesce":
+                    fn = getattr(backend, "quiesce_tier")
+                    result = fn(tier_id, str(body.get("reason") or "promotion"))
+                elif action == "drain":
+                    timeout_value = body.get("timeout")
+                    if isinstance(timeout_value, bool) or not isinstance(timeout_value, (int, float)):
+                        raise ValueError("bad timeout")
+                    result = getattr(backend, "drain_tier")(tier_id, float(timeout_value))
+                elif action == "readmit":
+                    result = getattr(backend, "readmit_tier")(tier_id)
+                else:
+                    self._error(400, "invalid_transition", "unsupported transition action")
+                    return
+            except (AttributeError, KeyError, ValueError):
+                self._error(400, "invalid_transition", "invalid transition request")
+                return
+            except Exception:  # noqa: BLE001 - never expose upstream/container errors
+                self._error(503, "transition_failed", "transition operation failed")
+                return
+            finally:
+                _MANAGEMENT_MUTATION_LIMIT.release()
+            self._json(200, {"applied": True, "action": action, "result": result})
+
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
+            route = self.path.split("?", 1)[0].rstrip("/")
+            if route == TRANSITION_ENDPOINT:
+                if not _MANAGEMENT_LIMIT.acquire(blocking=False):
+                    self._error(503, "server_busy", "management busy; try again later")
+                    return
+                try:
+                    has_body_framing = bool(
+                        self.headers.get_all("Transfer-Encoding")
+                        or self.headers.get_all("Content-Length")
+                    )
+                    if has_body_framing:
+                        self.close_connection = True
+                        self._error(
+                            400,
+                            "invalid_request",
+                            "management GET must not include a body",
+                        )
+                    elif auth_token is None:
+                        self._error(404, "not_found", f"no route {route}")
+                    elif not self._authenticated():
+                        self._error(401, "authentication_error", "invalid or missing API key")
+                    else:
+                        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                        raw_tier = (query.get("tier_id") or [None])[0]
+                        self._transition_status(raw_tier)
+                finally:
+                    _MANAGEMENT_LIMIT.release()
+                return
             # Acquire the concurrency semaphore FIRST — before draining any body
             # bytes — so a flood of GETs with large bodies is gated here, not
             # outside the limiter (mirrors do_POST).
@@ -563,6 +646,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 _CONCURRENCY_LIMIT.release()
 
         def do_POST(self) -> None:
+            route = self.path.split("?", 1)[0].rstrip("/")
+            if route == TRANSITION_ENDPOINT:
+                if not _MANAGEMENT_LIMIT.acquire(blocking=False):
+                    self._error(503, "server_busy", "management busy; try again later")
+                    return
+                try:
+                    self._post_inner()
+                finally:
+                    _MANAGEMENT_LIMIT.release()
+                return
             # Acquire the concurrency semaphore before doing any work.  The
             # request line and headers are already parsed by handle_one_request,
             # so we can send a proper 503 if the server is saturated.
@@ -588,6 +681,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # so POST /v1/messages/ routes the same as POST /v1/messages instead
             # of 404ing on the slash.
             path = self.path.split("?", 1)[0].rstrip("/")
+            is_transition = path == TRANSITION_ENDPOINT
 
             # --- Strict framing: gather and validate headers -----------------
             #
@@ -637,6 +731,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     drainable, n,
                 )
                 return
+            if is_transition and auth_token is None:
+                self._fail_framing(404, "not_found", f"no route {path}", drainable, n)
+                return
 
             # --- Route check (establishes dialect for dialect-aware errors) --
             #
@@ -649,7 +746,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             is_route_decision = (path == ROUTE_ENDPOINT)
 
             dialect: Optional[Dialect] = _ROUTES.get(path)
-            if dialect is None and not is_route_decision:
+            if dialect is None and not is_route_decision and not is_transition:
                 # Unknown route — drain body if well-framed to keep the
                 # keep-alive socket in sync, then 404.
                 self._fail_framing(404, "not_found", f"no route {path}",
@@ -720,6 +817,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if not isinstance(body, dict):
                 self._error(400, "invalid_request", "body must be a JSON object",
                             dialect=dialect)
+                return
+
+            if is_transition:
+                self._handle_transition(body)
                 return
 
             # /v1/route: run the routing brain and return the decision;

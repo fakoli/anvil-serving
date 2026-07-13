@@ -9,6 +9,7 @@ import pytest
 
 from anvil_serving import cli
 from anvil_serving import guard
+from anvil_serving import router_manage
 from anvil_serving.command_tree import COMMAND_TREE, CommandNode, HandlerRef
 from anvil_serving.targets import ExecutionPlan
 
@@ -222,6 +223,28 @@ def test_dispatch_confirmation_authorizes_nested_guard_for_one_call(monkeypatch)
     assert cli.main(["serves", "rm", "--confirm"]) == 0
     assert calls == [["rm"]]
     assert not guard.confirm("outside", _input=lambda prompt: "no")
+
+
+def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, capsys):
+    seen = {}
+
+    def transition_request(action, **kwargs):
+        seen.update(action=action, **kwargs)
+        return {"applied": True, "action": action}
+
+    monkeypatch.setattr(router_manage, "transition_request", transition_request)
+
+    assert cli.main([
+        "router", "quiesce", "--tier", "heavy-local",
+        "--router-url", "http://127.0.0.1:18000", "--confirm",
+    ]) == 0
+    assert seen["action"] == "quiesce"
+    assert seen["confirm"] is True
+    assert seen["dry_run"] is False
+    assert json.loads(capsys.readouterr().out) == {
+        "action": "quiesce",
+        "applied": True,
+    }
 
 
 def test_confirmation_after_separator_is_a_leaf_argument_not_authorization(

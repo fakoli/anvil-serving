@@ -126,6 +126,9 @@ class Tier:
     # an unavailable container out of the candidate pool. Absent preserves the
     # pre-readiness behavior with no additional network call.
     health_path: Optional[str] = None
+    # Opt-in exact identity readiness for promotion-managed local tiers.  The
+    # expected name is the existing ``model`` field, keeping one source of truth.
+    model_identity: bool = False
 
 
 @dataclass(frozen=True)
@@ -183,6 +186,7 @@ class RouterConfig:
     # individually bounded by the timeout. Both are additive config fields.
     availability_probe_interval: float = 5.0
     availability_probe_timeout: float = 1.0
+    availability_probe_max_bytes: int = 64 * 1024
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
@@ -478,6 +482,25 @@ def _parse_tier(raw: object) -> Tier:
             )
         health_path = raw_health_path
 
+    raw_model_identity = raw.get("model_identity", False)
+    if not isinstance(raw_model_identity, bool):
+        raise ConfigError(
+            f"tier {tid!r}: model_identity must be a boolean (true/false)"
+        )
+    if raw_model_identity:
+        if privacy != PRIVACY_LOCAL:
+            raise ConfigError(
+                f"tier {tid!r}: model_identity is supported only for local tiers"
+            )
+        if not isinstance(tier_model, str) or not tier_model.strip():
+            raise ConfigError(
+                f"tier {tid!r}: model_identity requires a non-empty model"
+            )
+        if health_path is None:
+            raise ConfigError(
+                f"tier {tid!r}: model_identity requires health_path"
+            )
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -497,6 +520,7 @@ def _parse_tier(raw: object) -> Tier:
         timeout=tier_timeout,
         max_concurrency=tier_max_concurrency,
         health_path=health_path,
+        model_identity=raw_model_identity,
     )
 
 
@@ -670,6 +694,16 @@ def load(path: str) -> RouterConfig:
     availability_probe_timeout = _positive_seconds(
         "availability_probe_timeout", 1.0
     )
+    raw_probe_max_bytes = router.get("availability_probe_max_bytes", 64 * 1024)
+    if (
+        isinstance(raw_probe_max_bytes, bool)
+        or not isinstance(raw_probe_max_bytes, int)
+        or not (256 <= raw_probe_max_bytes <= 1024 * 1024)
+    ):
+        raise ConfigError(
+            f"[router].availability_probe_max_bytes must be an integer from "
+            f"256 through 1048576 in {path}"
+        )
 
     return RouterConfig(
         tiers=tuple(tiers),
@@ -683,4 +717,5 @@ def load(path: str) -> RouterConfig:
         profile_path=profile_path,
         availability_probe_interval=availability_probe_interval,
         availability_probe_timeout=availability_probe_timeout,
+        availability_probe_max_bytes=raw_probe_max_bytes,
     )

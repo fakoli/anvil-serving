@@ -90,6 +90,10 @@ focused `--help`.
 | `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `router promote` | Promote a reviewed router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--validate-only` |
 | `router status` | Show router status. | `read` / `bounded` | - |
+| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
+| `router quiesce` | Quiesce one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
+| `router drain` | Wait for a quiesced tier to drain. | `read` / `bounded` | `--tier`<br>`--router-url`<br>`--timeout` |
+| `router readmit` | Safely readmit one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
@@ -223,7 +227,7 @@ anvil-serving router run --config configs/example.toml
 ### `router`
 
 ```
-anvil-serving router {up|down|restart|reload|status|logs|token|promote} [flags]
+anvil-serving router {up|down|restart|reload|status|transition-status|quiesce|drain|readmit|logs|token|promote} [flags]
 ```
 
 Manages the deployed, containerized router (ADR-0004): lifecycle, bearer token, logs, and the
@@ -238,6 +242,10 @@ then legacy `~/.anvil_env`, then `~/.env` unless `--env-file` is provided.
 | `restart` / `reload` / `status` | Restart the container / restart to reload startup-read config / show container + health status. `restart`/`reload` verify the router STAYS up (~11s settle + consecutive samples, the same crash-loop check `promote` uses); `--no-verify` skips it for rapid iteration. |
 | `logs` / `token` | `docker logs` (`--tail`, `--since`, `--follow`) / inspect whether auth is configured. Token values require `--reveal --confirm`. |
 | `promote` | Validate + write a new profile (and optionally config) into the router's config volume; requires `--profile`; `--no-reload` skips the restart. |
+| `transition-status` | Read router-owned per-tier admission state, active count, readiness reason, and expected/observed model. |
+| `quiesce` | Atomically stop new leases for `--tier`; previews unless `--confirm` is supplied. |
+| `drain` | Wait up to `--timeout` for a previously quiesced tier's active count to reach zero. A timeout exits nonzero and performs no lifecycle mutation. |
+| `readmit` | Invalidate cached readiness and re-open `--tier` only after current health and exact model identity pass; previews unless `--confirm` is supplied. |
 
 Key flags: `--container` (default `anvil-router`), `--compose`, `--service`, `--dry-run`;
 promote-only: `--profile`, `--config`, `--cfg-volume`, `--image`, `--profile-dest`,
@@ -245,6 +253,9 @@ promote-only: `--profile`, `--config`, `--cfg-volume`, `--image`, `--profile-des
 
 ```bash
 anvil-serving router promote --profile ./candidate-profile.json --dry-run
+anvil-serving router quiesce --tier heavy-local --router-url http://127.0.0.1:8000 --confirm
+anvil-serving router drain --tier heavy-local --timeout 120 --router-url http://127.0.0.1:8000
+anvil-serving router readmit --tier heavy-local --router-url http://127.0.0.1:8000 --confirm
 ```
 
 ---
@@ -254,7 +265,7 @@ anvil-serving router promote --profile ./candidate-profile.json --dry-run
 ### `serves`
 
 ```
-anvil-serving serves {status|up|down|rm|adopt|logs|render} [NAME ...] [flags]
+anvil-serving serves {status|up|down|rm|adopt|logs|render|promote} [NAME ...] [flags]
 ```
 
 Stop/start/inspect the local GPU model serves declared in a serves manifest.
@@ -271,11 +282,16 @@ See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 | `adopt` | Bring an externally-started manifest serve under compose management (recreates via `docker rm -f` + `up`, so it prompts like `rm`; `--yes` skips). |
 | `logs` | `docker logs` for one serve (`--tail`, `--since`, `--follow`). |
 | `render` | Render tuned compose, serves-manifest, and router-tier configuration for a model. |
+| `promote` | Execute the manifest's complete quiesce → drain → Heavy swap → health/identity → direct preflight → router promotion/restart → post-restart readiness transaction. `--rollback` uses the same order; `--resume` reasserts quiescence and reruns every gate while reusing an already healthy target. |
 
 Common flags: `--manifest`, `--dry-run`; `rm`/`adopt` also take `--yes`.
 
 ```bash
 anvil-serving serves up heavy --manifest ./serves.toml --dry-run
+anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --dry-run
+anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --confirm
+anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --rollback --confirm
+anvil-serving serves promote thinkingcap-heavy --manifest ./serves.toml --resume --confirm
 ```
 
 ### `serves render`

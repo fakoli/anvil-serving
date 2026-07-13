@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Iterator
 
 from anvil_serving.router.backends import StaticBackend
+from anvil_serving.router.admission import TierAdmission
 from anvil_serving.router.config import RouterConfig, Tier
 from anvil_serving.router.decision_log import DecisionLog
 from anvil_serving.router.fallback import (
@@ -264,6 +265,30 @@ def test_open_local_circuit_does_not_starve_cloud():
     )
     assert result.record.attempts[0].outcome == "skipped-circuit"
     assert result.served_tier == "cloud"  # cloud still reachable under cap=1
+
+
+def test_quiesced_tier_does_not_claim_half_open_probe_slot():
+    config = make_config(make_tier("fast-local", "local"), make_tier("cloud", "cloud"))
+    decision = RoutingDecision(tiers=("fast-local", "cloud"), work_class="chat")
+    breaker = CircuitBreaker(cooldown=0)
+    breaker.record_failure("fast-local")
+    breaker.record_failure("fast-local")
+    admission = TierAdmission(["fast-local", "cloud"])
+    admission.quiesce("fast-local")
+
+    skipped = route_with_fallback(
+        make_request(), decision, config, local_or_cloud(PASSING, PASSING),
+        breaker=breaker, admission_for=admission.acquire,
+    )
+    assert skipped.record.attempts[0].outcome == "skipped-quiesced"
+    assert skipped.served_tier == "cloud"
+
+    admission.readmit("fast-local")
+    recovered = route_with_fallback(
+        make_request(), decision, config, local_or_cloud(PASSING, PASSING),
+        breaker=breaker, admission_for=admission.acquire,
+    )
+    assert recovered.served_tier == "fast-local"
 
 
 def test_injected_response_view_factory_catches_truncation():

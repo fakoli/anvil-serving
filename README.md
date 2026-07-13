@@ -75,6 +75,12 @@ flowchart LR
 Every routed request is logged as a metadata-only decision record — work class, tier attempts,
 verify outcomes, token counts — retrievable from the router's `/v1/decisions` endpoint.
 
+Slow model replacement is coordinated without a cluster scheduler. The guarded promotion
+transaction quiesces only the affected tier, waits for its active generations, keeps an unrelated
+GPU tier resident for policy-approved fallback, and requires the replacement to advertise the
+exact configured model name before it can re-enter rotation. See
+[ADR-0018](docs/adr/0018-router-transition-safety.md).
+
 ## Evaluate Quickly
 
 The only prerequisite is **Python >= 3.11** — the runtime is standard-library only. Docker (and a
