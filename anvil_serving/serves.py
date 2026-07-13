@@ -99,8 +99,10 @@ _ENGINE_ALIASES = {
 # purpose-model serves (text embeddings, cross-encoder reranking): they run on
 # an OpenAI-compatible pooling engine, not a chat LLM, so labeling them "vllm"
 # would invite LLM tooling (preflight, promotion gates) at a /v1 surface that
-# has no chat completions.
-_ENGINES = {"vllm", "sglang", "llamacpp", "audio", "embedding", "reranker"}
+# has no chat completions. "image" (gpu-reservations:T012) labels the ComfyUI
+# image/video-generation tenant the same truthful way: a graph UI + API,
+# no OpenAI-compatible surface at all.
+_ENGINES = {"vllm", "sglang", "llamacpp", "audio", "embedding", "reranker", "image"}
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
 # declared VRAM reservation. "resident" is never evicted, "evictable" may be

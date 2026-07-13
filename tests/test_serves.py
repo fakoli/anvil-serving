@@ -396,6 +396,80 @@ def test_shipped_fakoli_manifest_vision_serve():
     assert resident + vision["vram_mib"] > budget, (resident, vision["vram_mib"], budget)
 
 
+def test_load_manifest_accepts_image_engine(tmp_path):
+    # gpu-reservations:T012 — "image" extends the truthful non-chat-LLM engine
+    # vocabulary (audio/embedding/reranker precedent) for the ComfyUI tenant.
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "comfyui"
+        container = "comfyui"
+        port = 8188
+        model = "comfyui-v0.27.1"
+        engine = "image"
+        up = "docker compose -f {dir}/docker-compose.comfyui.yml up -d comfyui"
+    """)
+    (serve,) = serves.load_manifest(path)
+    assert serve["engine"] == "image"
+
+
+COMFYUI_MANIFEST = os.path.join(
+    os.path.dirname(serves.EXAMPLE_MANIFEST), "serves.comfyui.toml")
+
+
+def test_shipped_comfyui_manifest_on_demand_tenant():
+    # gpu-reservations:T012 — ComfyUI is the dedicated-manifest `on-demand`
+    # tenant (docs/VOICE.md isolation rule: NOT in the shared serves.toml).
+    serves_list = serves.load_manifest(COMFYUI_MANIFEST)
+    by_name = {s["name"]: s for s in serves_list}
+    comfyui = by_name["comfyui"]
+    assert comfyui["engine"] == "image"
+    assert comfyui["gpu_role"] == "dark-fast"
+    assert comfyui["residency"] == "on-demand"
+    assert comfyui["health"] == "/system_stats"
+    assert comfyui["port"] == 8188
+    # The vision-sized slot the F006 design gives the tenant; the compose file
+    # enforces it engine-side with --reserve-vram (change them together).
+    assert comfyui["vram_mib"] == 12288
+    # v0.27.1 pin travels in the label so `serves status` shows what runs.
+    assert comfyui["model"] == "comfyui-v0.27.1"
+    # Own compose project, own compose file — never the shared docker-compose.yml.
+    assert "docker-compose.comfyui.yml" in " ".join(comfyui["up"])
+    # The tenant is the ONLY lifecycle target: every other row is a ledger
+    # mirror and must NOT be startable from this manifest.
+    for name, s in by_name.items():
+        if name != "comfyui":
+            assert not s.get("up"), name
+
+
+def test_shipped_comfyui_manifest_mirrors_main_manifest():
+    # The comfyui manifest re-declares the dark-fast ledger (capacity row +
+    # reservation mirrors) because ADR-0017 ledgers are derived per manifest.
+    # This pin turns the KEEP IN SYNC comment into a checked invariant: a
+    # rebalance of serves.toml that forgets the mirrors fails here instead of
+    # silently letting `serves up comfyui` admit against stale budgets.
+    main_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
+    main = {s["name"]: s for s in main_list}
+    comfy_list = serves.load_manifest(COMFYUI_MANIFEST)
+    comfy = {s["name"]: s for s in comfy_list}
+    main_budget = reservations.budgets_of(main_list)["dark-fast"]
+    comfy_budget = reservations.budgets_of(comfy_list)["dark-fast"]
+    assert (comfy_budget.vram_mib, comfy_budget.reserve_mib) == (
+        main_budget.vram_mib, main_budget.reserve_mib)
+    mirrors = [n for n in comfy if n != "comfyui"]
+    # Every serves.toml dark-fast reservation must be mirrored — a missing
+    # mirror makes comfyui admission blind to that serve's committed VRAM.
+    main_reserved = {
+        n for n, s in main.items()
+        if s.get("gpu_role") == "dark-fast" and isinstance(s.get("vram_mib"), int)
+    }
+    assert set(mirrors) == main_reserved, (sorted(mirrors), sorted(main_reserved))
+    for name in mirrors:
+        for field in ("container", "port", "gpu_role", "vram_mib", "residency"):
+            assert comfy[name].get(field) == main[name].get(field), (name, field)
+        # The eviction drain hook must travel with the vision mirror.
+        assert comfy[name].get("router_tier") == main[name].get("router_tier"), name
+
+
 def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):
     serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
     run = _inspect_returning("absent")
