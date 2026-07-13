@@ -4,7 +4,7 @@
 # "which model containers exist, on which ports". Manage the serves ONLY through
 # `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
 #
-# 2026-07-08 reconcile: heavy = gpt-oss-120b @high (promoted heavy tier, :30002, PRO 6000);
+# 2026-07-12 reconcile: heavy = ThinkingCap Qwen3.6-27B FP8 (promoted heavy tier, :30002, PRO 6000);
 # fast = Qwen3.6-35B-A3B-NVFP4 (:30003, RTX 5090). These back the router tiers in the live
 # config (heavy-local -> :30002, fast-local -> :30003). `{dir}` resolves to this file's dir.
 #
@@ -15,13 +15,22 @@
 # <name>` to force a fresh container.
 
 [[serve]]
-name = "heavy"                 # heavy planning tier — gpt-oss-120b @ reasoning_effort=high
-container = "vllm-gptoss120"
+name = "heavy"                 # heavy quality tier — ThinkingCap Qwen3.6-27B FP8
+container = "vllm-thinkingcap-heavy"
 port = 30002
-model = "gpt-oss-120b"         # served-model-name (used by `anvil-serving eval`)
+model = "thinkingcap-qwen36-27b-fp8" # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
+
+[[serve]]
+name = "heavy-gptoss-rollback" # opt-in rollback; stop `heavy` first because both own :30002
+container = "vllm-gptoss120"
+port = 30002
+model = "gpt-oss-120b"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gptoss-rollback"
 
 [[serve]]
 name = "fast"                  # fast tier — Qwen3.6-35B-A3B-NVFP4 on the RTX 5090
@@ -31,6 +40,51 @@ model = "qwen36-35b-a3b-nvfp4" # served-model-name (used by `anvil-serving eval`
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"
+
+# One guarded operation owns the model swap, functional gate, router update,
+# and complete model+router rollback. This single-GPU plan validates the newly
+# started target in-transaction; a separately resident candidate cannot coexist.
+[[promotion]]
+name = "thinkingcap-heavy"
+target = "heavy"
+rollback = "heavy-gptoss-rollback"
+router_config = "{dir}/anvil-router.live.toml"
+router_profile = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/promotion-profile.json"
+rollback_router_config = "{dir}/anvil-router.gptoss-rollback.toml"
+rollback_router_profile = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/gptoss-rollback-profile.json"
+needle_ctx = 131072
+tool_batch = 20
+startup_timeout = 600
+rollback_startup_timeout = 1200
+poll_interval = 5
+router_health_url = "http://100.87.34.66:8000/healthz"
+
+[[promotion.gate]]
+name = "functional-thinking-disabled"
+checks = "smoke,json,needle,tools"
+thinking_mode = "disabled"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 0
+reasoning_evidence = "forbidden"
+json_out = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/functional-preflight.json"
+
+[[promotion.gate]]
+name = "quality-thinking-enabled-4k"
+checks = "smoke,json"
+thinking_mode = "enabled"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 4096
+reasoning_evidence = "required"
+json_out = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/thinking-preflight-4k.json"
+
+[[promotion.rollback_gate]]
+name = "gptoss-functional"
+checks = "smoke,json,needle,tools"
+thinking_mode = "default"
+reasoning_effort = "high"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 4096
+reasoning_evidence = "required"
 
 # Voice latency A/B candidates. These are opt-in experiment serves, not production tiers:
 # they use separate ports, `restart: "no"` compose services, and do not replace `fast`.

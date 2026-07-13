@@ -2242,14 +2242,36 @@ def tool_preflight_probe(args: dict) -> dict:
     needle_ctx = _bounded_int_arg(args, "needle_ctx", 128000, min_value=1, max_value=262144)
     tool_batch = _bounded_int_arg(args, "tool_batch", 20, min_value=1, max_value=100)
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
+    checks = _str_arg(args, "checks") or "smoke,json,needle,tools"
+    thinking_mode = _str_arg(args, "thinking_mode") or "default"
+    if thinking_mode not in {"default", "enabled", "disabled", "unsupported"}:
+        raise ToolError("bad_argument", "thinking_mode has an unsupported value")
+    reasoning_effort = _str_arg(args, "reasoning_effort")
+    reasoning_evidence = _str_arg(args, "reasoning_evidence") or "any"
+    if reasoning_evidence not in {"any", "required", "forbidden"}:
+        raise ToolError("bad_argument", "reasoning_evidence has an unsupported value")
+    visible_tokens = _bounded_int_arg(
+        args, "visible_answer_tokens", 256, min_value=1, max_value=65536
+    )
+    reasoning_tokens = _bounded_int_arg(
+        args, "reasoning_headroom_tokens", 0, min_value=0, max_value=65536
+    )
+    if visible_tokens + reasoning_tokens > 65536:
+        raise ToolError("bad_argument", "combined completion allocation exceeds 65536")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 1800, min_value=1, max_value=7200)
     argv = [sys.executable, "-m", "anvil_serving.preflight", "--base-url", base_url,
-            "--model", model, "--needle-ctx", str(needle_ctx), "--tool-batch", str(tool_batch)]
+            "--model", model, "--needle-ctx", str(needle_ctx), "--tool-batch", str(tool_batch),
+            "--checks", checks, "--thinking-mode", thinking_mode,
+            "--visible-answer-tokens", str(visible_tokens),
+            "--reasoning-headroom-tokens", str(reasoning_tokens),
+            "--reasoning-evidence", reasoning_evidence]
     if api_key_env:
         argv += ["--api-key-env", api_key_env]
     if no_thinking:
         argv.append("--no-thinking")
+    if reasoning_effort:
+        argv += ["--reasoning-effort", reasoning_effort]
     return _ok(_run_argv(argv, confirm=confirm, timeout=timeout_seconds))
 
 
@@ -3032,6 +3054,12 @@ TOOLS: Dict[str, dict] = {
             "needle_ctx": _bounded_integer_schema(1, 262144, 128000),
             "tool_batch": _bounded_integer_schema(1, 100, 20),
             "no_thinking": {"type": "boolean"},
+            "checks": {"type": "string"},
+            "thinking_mode": {"type": "string", "enum": ["default", "enabled", "disabled", "unsupported"]},
+            "reasoning_effort": {"type": "string"},
+            "reasoning_evidence": {"type": "string", "enum": ["any", "required", "forbidden"]},
+            "visible_answer_tokens": _bounded_integer_schema(1, 65536, 256),
+            "reasoning_headroom_tokens": _bounded_integer_schema(0, 65536, 0),
             "confirm": {"type": "boolean"},
             "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
         }, required=["base_url", "model"]),

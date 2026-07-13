@@ -666,3 +666,197 @@ def test_cmd_up_recreate_rescues_dead_container():
     assert serves.cmd_up(serv, [], recreate=True, _run=run) == 0
     assert ["docker", "rm", "-f", "vllm-gptoss"] in run.calls
     assert ["bash", "serve-fast.sh"] in run.calls
+
+
+# ---- guarded promotion ------------------------------------------------------
+
+def _promotion_manifest(tmp_path):
+    for name in ("new.toml", "new.json", "old.toml", "old.json"):
+        (tmp_path / name).write_text("{}", encoding="utf-8")
+    return _manifest(tmp_path, """
+        [[serve]]
+        name = "candidate"
+        container = "candidate-c"
+        port = 39031
+        model = "candidate-model"
+        engine = "vllm"
+
+        [[serve]]
+        name = "heavy"
+        container = "heavy-c"
+        port = 30002
+        model = "new-heavy"
+        engine = "vllm"
+        up = "docker compose -f {dir}/compose.yml up -d heavy"
+
+        [[serve]]
+        name = "old-heavy"
+        container = "old-heavy-c"
+        port = 30002
+        model = "old-heavy"
+        engine = "vllm"
+        up = "docker compose -f {dir}/compose.yml --profile rollback up -d old-heavy"
+
+        [[promotion]]
+        name = "heavy-v2"
+        candidate = "candidate"
+        target = "heavy"
+        rollback = "old-heavy"
+        router_config = "{dir}/new.toml"
+        router_profile = "{dir}/new.json"
+        rollback_router_config = "{dir}/old.toml"
+        rollback_router_profile = "{dir}/old.json"
+        needle_ctx = 131072
+        tool_batch = 20
+
+        [[promotion.gate]]
+        name = "functional"
+        checks = "smoke,json,needle,tools"
+        thinking_mode = "disabled"
+        visible_answer_tokens = 256
+        reasoning_headroom_tokens = 0
+        reasoning_evidence = "forbidden"
+
+        [[promotion.gate]]
+        name = "quality"
+        checks = "smoke,json"
+        thinking_mode = "enabled"
+        visible_answer_tokens = 256
+        reasoning_headroom_tokens = 4096
+        reasoning_evidence = "required"
+
+        [[promotion.rollback_gate]]
+        name = "rollback"
+        thinking_mode = "unsupported"
+        visible_answer_tokens = 256
+        reasoning_headroom_tokens = 4096
+        reasoning_evidence = "required"
+    """)
+
+
+def test_load_promotions_resolves_complete_router_state(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    (plan,) = serves.load_promotions(path)
+    assert plan["name"] == "heavy-v2"
+    assert plan["target"] == "heavy"
+    assert plan["rollback"] == "old-heavy"
+    assert plan["router_config"] == str(tmp_path / "new.toml")
+    assert plan["rollback_router_profile"] == str(tmp_path / "old.json")
+    assert [gate["name"] for gate in plan["gate"]] == ["functional", "quality"]
+    assert plan["gate"][1]["reasoning_headroom_tokens"] == 4096
+    assert plan["rollback_gate"][0]["thinking_mode"] == "unsupported"
+
+
+def test_load_promotions_resolves_plain_relative_paths_from_manifest(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    text = (tmp_path / "serves.toml").read_text(encoding="utf-8")
+    (tmp_path / "serves.toml").write_text(text.replace("{dir}/new.toml", "new.toml"), encoding="utf-8")
+    (plan,) = serves.load_promotions(path)
+    assert plan["router_config"] == str(tmp_path / "new.toml")
+
+
+def test_load_promotions_rejects_nonpositive_poll_interval(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    text = (tmp_path / "serves.toml").read_text(encoding="utf-8")
+    (tmp_path / "serves.toml").write_text(
+        text.replace("tool_batch = 20", "tool_batch = 20\npoll_interval = 0"),
+        encoding="utf-8",
+    )
+    import pytest
+    with pytest.raises(ValueError, match="poll_interval must be a finite positive"):
+        serves.load_promotions(path)
+
+
+def test_cmd_promote_dry_run_prints_complete_transaction(tmp_path, capsys):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    run = _inspect_returning("exited")
+    assert serves.cmd_promote(
+        managed, plans, "heavy-v2", path, dry_run=True, _run=run
+    ) == 0
+    out = capsys.readouterr().out
+    assert "stop candidate, old-heavy" in out
+    assert "start heavy" in out
+    assert "eval preflight --tier heavy" in out
+    assert "gate functional" in out
+    assert "gate quality" in out
+    assert "--thinking-mode enabled" in out
+    assert "--reasoning-headroom-tokens 4096" in out
+    assert "router promote" in out
+
+
+def test_cmd_promote_failure_runs_complete_rollback(tmp_path, monkeypatch):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    calls = []
+
+    def transition(_serves, _plan, _manifest, **kwargs):
+        calls.append(kwargs.get("rollback", False))
+        return 0 if kwargs.get("rollback") else 1
+
+    monkeypatch.setattr(serves, "_promotion_transition", transition)
+    assert serves.cmd_promote(managed, plans, "heavy-v2", path) == 1
+    assert calls == [False, True]
+
+
+def test_cmd_promote_runtime_exception_still_runs_rollback(tmp_path, monkeypatch):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    calls = []
+
+    def transition(_serves, _plan, _manifest, **kwargs):
+        rollback = kwargs.get("rollback", False)
+        calls.append(rollback)
+        if not rollback:
+            raise TypeError("post-mutation failure")
+        return 0
+
+    monkeypatch.setattr(serves, "_promotion_transition", transition)
+    assert serves.cmd_promote(managed, plans, "heavy-v2", path) == 1
+    assert calls == [False, True]
+
+
+def test_explicit_rollback_failure_restores_promoted_state(tmp_path, monkeypatch):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    calls = []
+
+    def transition(_serves, _plan, _manifest, **kwargs):
+        calls.append((kwargs.get("rollback", False), kwargs.get("require_candidate", True)))
+        return 1 if kwargs.get("rollback") else 0
+
+    monkeypatch.setattr(serves, "_promotion_transition", transition)
+    assert serves.cmd_promote(managed, plans, "heavy-v2", path, rollback=True) == 1
+    assert calls == [(True, True), (False, False)]
+
+
+def test_resume_skips_candidate_requirement_for_interrupted_transaction(tmp_path, monkeypatch):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    received = {}
+
+    def transition(_serves, _plan, _manifest, **kwargs):
+        received.update(kwargs)
+        return 0
+
+    monkeypatch.setattr(serves, "_promotion_transition", transition)
+    assert serves.cmd_promote(managed, plans, "heavy-v2", path, resume=True) == 0
+    assert received["resume"] is True
+    assert received["require_candidate"] is False
+
+
+def test_cmd_promote_refuses_unhealthy_candidate_without_mutating(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    plans = serves.load_promotions(path)
+    run = _inspect_returning("exited")
+    assert serves.cmd_promote(
+        managed, plans, "heavy-v2", path, _run=run,
+        _open=lambda *args, **kwargs: (_ for _ in ()).throw(OSError("down")),
+    ) == 1
+    assert not any(call[:2] == ["docker", "stop"] for call in run.calls)

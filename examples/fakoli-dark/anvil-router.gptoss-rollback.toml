@@ -1,0 +1,52 @@
+# Complete router rollback paired with the managed `heavy-gptoss-rollback` serve.
+# Apply only through `anvil-serving serves promote thinkingcap-heavy --rollback`.
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+
+[router]
+mapping_version = "2026-07-08.fakoli-dark-gptoss-heavy-rollback"
+verify_local_min = true
+profile_path = "/etc/anvil/profile.json"
+
+[[router.tiers]]
+id = "fast-local"
+base_url = "http://host.docker.internal:30003/v1"
+model = "qwen36-35b-a3b-nvfp4"
+dialect = "openai"
+context_limit = 32768
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_FAST_LOCAL_KEY"
+extra_body = { chat_template_kwargs = { enable_thinking = false } }
+
+[router.tiers.params]
+generation_probe_max_tokens = 48
+interaction_benchmark_max_tokens = 192
+interaction_benchmark_stream_max_tokens = 128
+
+[[router.tiers]]
+id = "heavy-local"
+base_url = "http://host.docker.internal:30002/v1"
+model = "gpt-oss-120b"
+dialect = "openai"
+context_limit = 131072
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_HEAVY_LOCAL_KEY"
+extra_body_defaults = { reasoning_effort = "high" }
+
+[router.tiers.params]
+generation_probe_max_tokens = 256
+interaction_benchmark_max_tokens = 1024
+interaction_benchmark_stream_max_tokens = 512
+interaction_benchmark_reasoning_effort = "low"
+interaction_benchmark_max_tokens_by_intent = { planning = 2048 }
+interaction_benchmark_stream_max_tokens_by_intent = { planning = 1024 }
+
+[router.presets]
+chat = ["heavy-local", "fast-local"]
+chat-fast = ["fast-local", "heavy-local"]
+quick-edit = ["heavy-local", "fast-local"]
+review = ["heavy-local"]
+planning = ["heavy-local"]
+long-context = ["heavy-local"]

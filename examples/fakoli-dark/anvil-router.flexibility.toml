@@ -4,7 +4,8 @@
 # The maximum-flexibility counterpart to the agentic config
 # (`anvil-router.agentic.toml`, the captured-live SGLang deploy). Per ADR-0011
 # the router runs exactly ONE mode at a time; this file is the whole tier set +
-# model set + serving config for the FLEXIBILITY mode:
+# model set + serving config for the FLEXIBILITY mode. This alternate router
+# view points at the same two currently managed serves as the live config:
 #
 #   * Agentic mode  -> anvil-router.agentic.toml — SGLang + radix/prefix cache +
 #     NEXTN spec-decode (ADR-0008), cache-friendly agent model set (qwen35-awq).
@@ -35,13 +36,13 @@
 auth_env = "ANVIL_ROUTER_TOKEN"
 
 [router]
-mapping_version = "2026-07-03.flexibility"
+mapping_version = "2026-07-12.flexibility-thinkingcap-heavy"
 # verify_local_min at its default (true): an empty local 200 (e.g. a thinking-by-
 # default model that spent its budget reasoning — gotcha #6/#9) becomes a 503 so
 # the gateway fails over instead of serving empty content.
 verify_local_min = true
 
-# ── Specialized-engine flexibility tier (ADR-0010): gpt-oss-120b via vLLM ──────
+# ── Specialized-engine flexibility tier: ThinkingCap Qwen3.6-27B FP8 via vLLM ─
 # The high-capability single-turn workhorse. `engine`/`quantization`/`params` are
 # additive descriptive metadata (flexibility:T007) — advisory only, NOT forwarded
 # upstream; they document what backs the tier and give the serve fingerprint an
@@ -50,50 +51,43 @@ verify_local_min = true
 # override of the global relay_timeout — raised for the large model's prefill so a
 # slow (but healthy) generation is not spuriously fail-fasted.
 [[router.tiers]]
-id            = "flex-gptoss-120b"
+id            = "flex-thinkingcap-qwen36"
 base_url      = "http://host.docker.internal:30002/v1"
-model         = "gpt-oss-120b"
+model         = "thinkingcap-qwen36-27b-fp8"
 dialect       = "openai"
 context_limit = 131072
 privacy       = "local"
 tool_support  = true
-auth_env      = "ANVIL_FLEX_GPTOSS_KEY"
+auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
 engine        = "vllm"
-quantization  = "mxfp4"
+quantization  = "fp8"
 timeout       = 180.0
-params        = { gpu_memory_utilization = 0.90, max_model_len = 131072, tool_call_parser = "openai" }
-# gpt-oss ignores chat_template_kwargs.enable_thinking (harmony format); its knob
-# is reasoning_effort. extra_body IS merged into the upstream request body.
-extra_body    = { reasoning_effort = "low" }
+params        = { gpu_memory_utilization = 0.92, max_model_len = 262144, max_num_seqs = 5, speculative_tokens = 3, kv_cache_dtype = "fp8", tool_call_parser = "qwen3_coder", reasoning_parser = "qwen3" }
+extra_body    = { chat_template_kwargs = { enable_thinking = true } }
 
-# ── Specialized-engine flexibility tier (ADR-0010): Qwen3.6-27B-NVFP4 via ktransformers ──
-# The concrete ADR-0010 first case and a MEASURED quality win (0.66 vs 0.43,
-# ADR-0011 §Context): a GDN hybrid the batch engines (vLLM/SGLang) can't cache /
-# choke on for MoE-NVFP4 on sm_120 (gotcha #16). ktransformers has a working
-# MoE-NVFP4 path (kt-kernel), fronted by the same RelayBackend with no new backend
-# code. NVFP4 large-prefill was rough (gotcha #10), so keep the per-tier timeout
-# generous and `preflight` the large-prefill path before trusting it.
+# ── Alternate flexibility tier: canonical Fast Qwen3.6-35B-A3B NVFP4 via vLLM ─
+# This is the managed serve actually bound to :30003.
 [[router.tiers]]
-id            = "flex-qwen36-27b"
+id            = "flex-qwen36-35b-a3b"
 base_url      = "http://host.docker.internal:30003/v1"
-model         = "qwen36-27b-nvfp4"
+model         = "qwen36-35b-a3b-nvfp4"
 dialect       = "openai"
-context_limit = 131072
+context_limit = 32768
 privacy       = "local"
 tool_support  = true
-auth_env      = "ANVIL_FLEX_QWEN36_KEY"
-engine        = "ktransformers"
+auth_env      = "ANVIL_FAST_LOCAL_KEY"
+engine        = "vllm"
 quantization  = "nvfp4"
-timeout       = 240.0
-params        = { reasoning_parser = "qwen3", tool_call_parser = "qwen3_coder", trust_remote_code = true }
+timeout       = 180.0
+params        = { gpu_memory_utilization = 0.85, max_model_len = 32768, max_num_seqs = 2, kv_cache_dtype = "fp8", reasoning_parser = "qwen3", tool_call_parser = "qwen3_coder", trust_remote_code = true }
 extra_body    = { chat_template_kwargs = { enable_thinking = false } }
 
 # preset -> ordered candidate tier pool (filter then rank). Flexibility mode is
-# quality-first / single-turn: the high-capability gpt-oss-120b leads, with the
-# measured-quality-win Qwen3.6-27B as the escalation/alternate on every class.
+# quality-first / single-turn: ThinkingCap leads, with the canonical Fast serve
+# as the alternate on every class.
 [router.presets]
-chat         = ["flex-gptoss-120b", "flex-qwen36-27b"]
-quick-edit   = ["flex-gptoss-120b", "flex-qwen36-27b"]
-review       = ["flex-gptoss-120b", "flex-qwen36-27b"]
-planning     = ["flex-gptoss-120b", "flex-qwen36-27b"]
-long-context = ["flex-gptoss-120b", "flex-qwen36-27b"]
+chat         = ["flex-thinkingcap-qwen36", "flex-qwen36-35b-a3b"]
+quick-edit   = ["flex-thinkingcap-qwen36", "flex-qwen36-35b-a3b"]
+review       = ["flex-thinkingcap-qwen36", "flex-qwen36-35b-a3b"]
+planning     = ["flex-thinkingcap-qwen36", "flex-qwen36-35b-a3b"]
+long-context = ["flex-thinkingcap-qwen36", "flex-qwen36-35b-a3b"]

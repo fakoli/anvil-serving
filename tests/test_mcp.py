@@ -1979,7 +1979,10 @@ def test_preflight_and_benchmark_probe_are_argv_not_shell():
     pre = mcp.call_tool("preflight_probe", {
         "base_url": "http://127.0.0.1:30000/v1",
         "model": "local",
-        "no_thinking": True,
+        "thinking_mode": "enabled",
+        "reasoning_evidence": "required",
+        "visible_answer_tokens": 256,
+        "reasoning_headroom_tokens": 4096,
     })
     bench = mcp.call_tool("benchmark_probe", {
         "base_url": "http://127.0.0.1:30000/v1",
@@ -1993,6 +1996,8 @@ def test_preflight_and_benchmark_probe_are_argv_not_shell():
         assert isinstance(cmd, list)
         assert cmd[0]  # sys.executable path
         assert any(str(part).startswith("http://127.0.0.1") for part in cmd)
+    assert "--thinking-mode" in pre["data"]["command"]
+    assert "--reasoning-headroom-tokens" in pre["data"]["command"]
 
 
 def test_benchmark_artifact_tool_is_separate_from_fast_probe():
