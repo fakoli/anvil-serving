@@ -59,11 +59,12 @@ quick-edit   = ["fast-local", "heavy-local"]
 review       = ["heavy-local"]
 planning     = ["heavy-local"]
 long-context = ["heavy-local"]
-# The "ocr" preset is deliberately unmapped here: document OCR needs a
-# VISION-capable tier, and this example's local tiers are text-only. Map it when
-# you run a resident OCR serve (e.g. PaddleOCR-VL on vLLM):
-#   ocr = ["ocr-local"]   # see examples/fakoli-dark/anvil-router.live.toml
-# (or route it to a vision-capable cloud tier — configs/example-with-cloud.toml).
+# The "ocr" and "vision" presets are deliberately unmapped here: both need a
+# VISION-capable tier, and this example's local tiers are text-only. Map them
+# when you run image-capable serves (e.g. PaddleOCR-VL / Qwen3-VL on vLLM):
+#   ocr    = ["ocr-local"]      # see examples/fakoli-dark/anvil-router.live.toml
+#   vision = ["vision-local"]   # see examples/fakoli-dark/anvil-router.live.toml
+# (or route them to a vision-capable cloud tier — configs/example-with-cloud.toml).
 
 # ── Purpose-model serves (optional; ADR-0017 §7) ──
 # Embedding/rerank serves routed BY MODEL NAME on POST /v1/embeddings and

@@ -49,6 +49,12 @@ from .internal import InternalRequest, estimate_tokens
 # — a text-keyword guess at "the caller wants OCR" would misroute ordinary
 # chat), so it is reachable only by naming the "ocr" preset in the wire
 # `model` field.
+# "vision" (gpu-reservations:T013) is the general image-understanding class the
+# `vision` preset (intent.py) maps to: describe/ground/answer questions about a
+# screenshot or photo with a general-purpose VLM tier (e.g. an evictable
+# Qwen3-VL serve). Like "ocr" it is DECLARED-PRESET-ONLY: this module never
+# infers it — image *content* alone is not intent (the ocr preset also carries
+# images), so only the wire `model` field selects it.
 WORK_CLASSES = (
     "chat",
     "chat-fast",
@@ -58,6 +64,7 @@ WORK_CLASSES = (
     "review",
     "long-context",
     "ocr",
+    "vision",
 )
 
 # Above this estimated WORD count a request is "long-context" regardless of what

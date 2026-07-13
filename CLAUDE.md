@@ -80,7 +80,7 @@ anvil_serving/
     serve.py           `anvil-serving router run` entrypoint: config → backends → front door
     front_door.py      ThreadingHTTPServer accepting Anthropic Messages + OpenAI Chat Completions,
                        binding 127.0.0.1 (never localhost — see gotchas), SSE streaming
-    intent.py          PRESETS enum (planning/quick-edit/review/chat/chat-fast/long-context/ocr) + resolve()
+    intent.py          PRESETS enum (planning/quick-edit/review/chat/chat-fast/long-context/ocr/vision) + resolve()
     classify.py        Tier-0 work-class classifier (infers intent from raw payload)
     policy.py          residency-aware routing: hard constraints → profile deny → cost order
     fallback.py        ordered tier walk: serve → verify → escalate; retry cap + circuit breaker
@@ -249,7 +249,7 @@ Cloud credentials go in env vars only — never in config files. The front door 
 
 - **The `model` field is the routing channel.** It's present in both Anthropic Messages and
   OpenAI Chat Completions, forwarded verbatim, and free-form. Named presets in the model
-  field (`planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`) is the right
+  field (`planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`, `vision`) is the right
   wire surface for harnesses that can be configured (Claude Code, Aider, Codex CLI).
 - **Tier-0 classifier is the universal floor.** For harnesses that can't set the model
   field (or don't), `classify.py` infers work-class from the raw payload (token count,
