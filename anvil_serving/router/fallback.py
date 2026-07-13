@@ -351,6 +351,7 @@ def route_with_fallback(
     breaker: Optional[Union[Dict[str, int], CircuitBreaker]] = None,
     response_view_factory: Optional[Callable[[Sequence[str], InternalRequest], object]] = None,
     availability_for: Optional[Callable[[str], object]] = None,
+    admission_for: Optional[Callable[[str], object]] = None,
     verifier_timeout: Optional[float] = None,
     max_buffer_bytes: Optional[int] = _DEFAULT_MAX_BUFFER_BYTES,
     mode: Optional[str] = None,
@@ -495,7 +496,10 @@ def route_with_fallback(
             total_prompt_tokens=total_prompt,
             total_completion_tokens=total_completion,
             fell_back=any(
-                a.outcome in ("fallback", "error", "overflow", "skipped-unavailable")
+                a.outcome in (
+                    "fallback", "error", "overflow", "skipped-unavailable",
+                    "skipped-quiesced",
+                )
                 for a in attempts
             ),
             cost_usd=cost_usd,
@@ -572,25 +576,7 @@ def route_with_fallback(
                 )
                 continue
 
-        # 4. Circuit breaker — skip a tier whose circuit is open. A skip is NOT a
-        #    real attempt: it does NOT consume the retry cap (the finite candidate
-        #    list already bounds the loop), so open LOCAL circuits never starve a
-        #    healthy downstream tier (e.g. cloud) out of the budget.
-        if _is_open(tier_id):
-            f_log = _failures_for_log(tier_id)
-            attempts.append(
-                AttemptRecord(
-                    tier_id=tier_id,
-                    verifier_passed=False,
-                    verify_reason=f"circuit open ({f_log} consecutive failures)",
-                    prompt_tokens=0,
-                    completion_tokens=0,
-                    outcome="skipped-circuit",
-                )
-            )
-            continue
-
-        # 5a. Resolve the tier. An unknown tier id is a CONFIG miss, not a backend
+        # 4. Resolve the tier. An unknown tier id is a CONFIG miss, not a backend
         #     fault: record it (no token charge, no breaker bump, does not consume
         #     the retry cap) and move on — do not misattribute it as an "error".
         try:
@@ -608,7 +594,53 @@ def route_with_fallback(
             )
             continue
 
-        # 5b. Attempt the tier. A raising backend (eager OR mid-stream) is a
+        # 5. Administrative admission is checked before the stateful circuit
+        # breaker.  A half-open breaker check claims a probe slot, so consulting
+        # it for a quiesced tier would wedge that slot until the next cooldown.
+        # A quiesced tier is skipped without spending an attempt or touching
+        # circuit state.
+        lease = None
+        if admission_for is not None:
+            try:
+                lease = admission_for(tier_id)
+            except Exception:  # noqa: BLE001 - admission fails closed
+                lease = None
+            if lease is None:
+                attempts.append(
+                    AttemptRecord(
+                        tier_id=tier_id,
+                        verifier_passed=False,
+                        verify_reason="tier_quiesced",
+                        prompt_tokens=0,
+                        completion_tokens=0,
+                        outcome="skipped-quiesced",
+                    )
+                )
+                continue
+
+        # 6. Circuit breaker — skip a tier whose circuit is open. A skip is NOT
+        #    a real attempt. Release the admission lease because no backend
+        #    generation will own it on this path.
+        if _is_open(tier_id):
+            if lease is not None:
+                release = getattr(lease, "release", None)
+                if callable(release):
+                    release()
+                lease = None
+            f_log = _failures_for_log(tier_id)
+            attempts.append(
+                AttemptRecord(
+                    tier_id=tier_id,
+                    verifier_passed=False,
+                    verify_reason=f"circuit open ({f_log} consecutive failures)",
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    outcome="skipped-circuit",
+                )
+            )
+            continue
+
+        # 7. Attempt the tier. A raising backend (eager OR mid-stream) is a
         #     failed attempt, never a propagated exception.
         #     * Eager faults (backend_for() raises, generate() raises before
         #       yielding) are caught by the outer try/except.
@@ -636,6 +668,11 @@ def route_with_fallback(
             )
             attempt_count += 1
             continue
+        finally:
+            if lease is not None:
+                release = getattr(lease, "release", None)
+                if callable(release):
+                    release()
 
         # Mid-stream backend error (e.g. OOM-killed scheduler — repo gotcha #1).
         if drain_exc is not None:

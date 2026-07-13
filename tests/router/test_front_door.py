@@ -66,6 +66,55 @@ def _get(host: str, port: int, path: str, headers: Dict[str, str] | None = None)
         conn.close()
 
 
+def test_header_write_failure_closes_unadvanced_backend_iterator():
+    closed = threading.Event()
+
+    class CloseAware:
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return "never reached"
+
+        def close(self):
+            closed.set()
+
+    class Backend:
+        def generate(self, request):
+            return CloseAware()
+
+    httpd = make_server("127.0.0.1", 0, Backend())
+    handler = httpd.RequestHandlerClass
+
+    def fail_headers(self, *args, **kwargs):
+        raise ConnectionResetError("simulated disconnect before headers")
+
+    handler.send_response = fail_headers
+    host, port = httpd.server_address[:2]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    conn = http.client.HTTPConnection(host, port, timeout=5)
+    try:
+        conn.request(
+            "POST",
+            "/v1/chat/completions",
+            json.dumps({
+                "model": "chat",
+                "messages": [{"role": "user", "content": "hello"}],
+                "stream": True,
+            }),
+            {"Content-Type": "application/json"},
+        )
+        with pytest.raises((http.client.RemoteDisconnected, ConnectionResetError)):
+            conn.getresponse()
+        assert closed.wait(1)
+    finally:
+        conn.close()
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
 # --------------------------------------------------------------------------- #
 # SSE parsers (consumer side)
 # --------------------------------------------------------------------------- #

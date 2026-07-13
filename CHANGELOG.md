@@ -8,6 +8,12 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Router transition safety for slow single-workstation model swaps.** Promotion,
+  rollback, and resume now quiesce affected tiers, drain counted generations before
+  container mutation, require exact `/v1/models` identity readiness, and leave
+  unrelated Fast serves resident. Authenticated CLI/MCP/controller operations expose
+  transition status, quiesce, drain, and guarded readmission; `serves promote` is now
+  remotely dispatchable as one human-gated transaction.
 - **Health-aware runtime tier eligibility.** Local tiers can declare a
   `health_path`; bounded cached probes exclude stopped or starting model serves
   before inference, record `skipped-unavailable` without tripping the circuit

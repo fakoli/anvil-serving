@@ -79,6 +79,7 @@ The main table: tier topology, preset map, and routing policy knobs.
 | `profile_path` | string (path) | unset | Path to a measured quality profile (`profile.json`, written by `python -m anvil_serving.router.profile_bootstrap`). When set, `router run` routes on your measured verdicts instead of the built-in seed profile. A configured-but-unloadable path is a startup `ConfigError` — fail fast, never silently fall back to seeds the operator asked to replace. `~` is expanded. |
 | `availability_probe_interval` | number (seconds) | `5.0` | Cache duration for local-tier readiness results. After expiry, the next request rechecks the configured `health_path`, so a recovered serve is automatically readmitted without a router restart. |
 | `availability_probe_timeout` | number (seconds) | `1.0` | Per-probe timeout for local-tier readiness checks. A failed probe skips that tier before inference and does not increment its circuit breaker. |
+| `availability_probe_max_bytes` | integer (256–1048576) | `65536` | Maximum `/v1/models` response bytes read by identity readiness. Oversized responses fail closed. |
 
 ## `[[router.tiers]]`
 
@@ -115,6 +116,7 @@ bound to the tiers it can serve. If *no* tier can build a backend, startup fails
 | `timeout` | number > 0 (seconds) | unset | Per-tier transport timeout. Overrides `[router].relay_timeout` (local) or the 120 s cloud default for this tier only — e.g. give a slow high-reasoning specialist 90 s. |
 | `max_concurrency` | positive integer | unset (no cap) | Per-tier cap on concurrent in-flight requests, enforced by a per-tier semaphore. Excess requests *block* until a slot frees (they are serialised, not rejected) — distinct from the process-global front-door limiter, which 503s. For low-throughput specialized-engine tiers ([ADR-0010](adr/0010-specialized-engine-tier.md)). |
 | `health_path` | absolute URL path | unset | Enables cached runtime readiness for this local tier, normally `"/health"`. The router combines this path with `base_url`'s scheme and authority. A failed check records `skipped-unavailable`, sends no inference request, consumes no retry attempt, and does not mutate circuit state. Cloud tiers and tiers without this field preserve the previous no-probe behavior. Query strings, fragments, and relative paths are rejected. |
+| `model_identity` | boolean | `false` | Opt into exact served-model readiness for a local tier. Requires `health_path` and a non-empty `model`; after health passes, the router makes a bounded authenticated `GET /v1/models` and admits the tier only when an advertised id exactly equals `model`. Promotion-managed tiers must enable it. |
 
 ### Runtime readiness versus configuration
 
@@ -125,6 +127,11 @@ the next quality-approved candidate is tried. Once Fast responds successfully af
 interval, it returns to the pool automatically. Readiness is independent of response quality:
 verification failures still trigger per-request fallback and profile evidence, not endpoint-health
 ejection. See [ADR-0016](adr/0016-runtime-tier-readiness.md).
+
+`model_identity = true` extends the same cached result with a bounded `/v1/models` check. It proves
+only the advertised served name—not the weight revision, quantization, image, engine flags, or
+quality. Those remain promotion-manifest and independent-preflight concerns. Quiesce/readmit
+invalidates the combined cache immediately.
 
 ## `[router.presets]`
 

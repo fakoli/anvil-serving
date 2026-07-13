@@ -144,6 +144,10 @@ class AvailabilityStore(Protocol):
     def check(self, tier: "Tier") -> "AvailabilityResult":
         ...
 
+    def invalidate(self, tier_id: Optional[str] = None) -> None:
+        """Expire cached readiness after an administrative state change."""
+        ...
+
 
 @runtime_checkable
 class Observer(Protocol):
