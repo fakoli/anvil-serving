@@ -249,6 +249,11 @@ services:
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39000
 
+  # gemma4-unified image: pin by PCI-ordered INDEX, not UUID — the image int()-parses
+  # CUDA_VISIBLE_DEVICES at import (vllm/kernels/oink_ops.py) and crashes on a UUID value
+  # (CLAUDE.md gotcha #21; this is why the 2026-07-08 voice A/B gemma4 candidates
+  # "failed before STT"). CUDA_DEVICE_ORDER=PCI_BUS_ID (from the env anchor) makes
+  # index 0 deterministically the RTX 5090 (bus 01:00.0 < 03:00.0).
   voice-gemma4-12b:
     <<: *voice-candidate-common
     image: ${VOICE_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
@@ -257,7 +262,7 @@ services:
       - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39001:39001"
     environment:
       <<: *voice-candidate-env
-      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_12B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_12B_CUDA_DEVICE:-0}
     deploy:
       resources:
         reservations:
@@ -276,6 +281,7 @@ services:
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39001
 
+  # Index pin, not UUID — same gemma4-unified image constraint as voice-gemma4-12b above.
   voice-gemma4-e4b:
     <<: *voice-candidate-common
     image: ${VOICE_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
@@ -284,7 +290,7 @@ services:
       - "${VOICE_CANDIDATE_PUBLISH:-127.0.0.1}:39002:39002"
     environment:
       <<: *voice-candidate-env
-      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_E4B_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      CUDA_VISIBLE_DEVICES: ${VOICE_GEMMA4_E4B_CUDA_DEVICE:-0}
     deploy:
       resources:
         reservations:
