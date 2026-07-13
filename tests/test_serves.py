@@ -346,19 +346,18 @@ def test_shipped_fakoli_manifest_ocr_serve():
     # 16384-token KV window.
     assert ocr["vram_mib"] == 5120
     assert ocr["port"] == 30007 and ocr["model"] == "paddleocr-vl-1.6"
-    # The OCR serve fits the dark-fast budget alongside the fast tier alone…
+    # The FULL declared resident set (fast + embeddings + reranker + ocr) FITS
+    # the dark-fast budget after the 2026-07-13 T011 operator rebalance (fast
+    # 18432 -> 14336 via the pre-quantized FP8-Dynamic checkpoint, reserve
+    # 7168 -> 4608), resolving the previously pinned T015 oversubscription
+    # (full - budget == 4769). This pin keeps the next rebalance deliberate:
+    # the resident set must keep fitting.
     budget = reservations.budgets_of(serves_list)["dark-fast"].budget_mib
-    assert by_name["fast"]["vram_mib"] + ocr["vram_mib"] <= budget
-    # …but the FULL declared resident set (fast + embeddings + reranker + ocr)
-    # OVERSUBSCRIBES the 32 GiB card — a documented, admission-gated conflict:
-    # `serves up ocr` denies with the ledger until >= 5120 MiB is freed.
-    # Deciding which residents dark-fast actually hosts is the
-    # gpu-reservations:T015 resident-set decision; this pin makes that decision
-    # deliberate (rebalancing the manifest must revisit this assertion).
     full = sum(
         s["vram_mib"] for s in serves_list if s.get("gpu_role") == "dark-fast"
     )
-    assert full - budget == 4769, (full, budget)
+    assert full == 26112 and budget == 27999, (full, budget)
+    assert budget - full == 1887, (full, budget)
 
 
 def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):

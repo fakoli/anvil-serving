@@ -42,7 +42,7 @@
 auth_env = "ANVIL_ROUTER_TOKEN"
 
 [router]
-mapping_version = "2026-07-13.fakoli-dark-gemma4-e4b-fast"
+mapping_version = "2026-07-13.fakoli-dark-t011-ocr-fp8-fast"
 # verify_local_min at its default (true): an empty local 200 becomes a 503 so the gateway
 # fails over to native. (v0.7.0 note: tool-call-only replies — empty content + populated
 # tool_calls — correctly PASS this gate; regression-pinned in #94. Tools now actually reach
@@ -60,6 +60,11 @@ profile_path = "/etc/anvil/profile.json"
 id            = "fast-local"
 base_url      = "http://host.docker.internal:30003/v1"
 model         = "gemma4-e4b-it"
+# T011 rebalance (2026-07-13): the serve now runs the pre-quantized
+# leon-se/gemma-4-E4B-it-FP8-Dynamic checkpoint inside a 14336 MiB reservation.
+# Declaring the quantization keeps the serve fingerprint truthful; the profile
+# fast-local rows are re-stamped to this identity in the same promotion.
+quantization  = "fp8"
 dialect       = "openai"
 context_limit = 32768
 privacy       = "local"

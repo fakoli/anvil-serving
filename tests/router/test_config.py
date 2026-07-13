@@ -1022,9 +1022,13 @@ def test_fakoli_agentic_config_loads():
         "long-context": ("heavy-local",),
         "ocr": ("ocr-local",),
     }
-    # It carries none of the flexibility:T007 engine fields.
+    # flexibility:T007 engine fields: unset except the fast tier's truthful
+    # quantization (T011 rebalance: the serve runs the FP8-Dynamic checkpoint,
+    # and the declared quantization keeps the fingerprint honest).
     for t in cfg.tiers:
-        assert t.engine is None and t.quantization is None
+        assert t.engine is None
+        expected_quant = "fp8" if t.id == "fast-local" else None
+        assert t.quantization == expected_quant, t.id
     fast = cfg.tier("fast-local")
     heavy = cfg.tier("heavy-local")
     # gpu-reservations:T011 — the OCR VLM tier: reached only via the "ocr"
