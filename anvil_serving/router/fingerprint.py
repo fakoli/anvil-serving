@@ -82,7 +82,7 @@ IDENTITY_FIELDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("dialect", ("dialect",)),
     ("context_limit", ("context_limit", "max_context", "context_window")),
     ("params", ("params", "serve_params", "sampling_params")),
-    ("reasoning", ("extra_body",)),
+    ("reasoning", ("extra_body", "extra_body_defaults")),
 )
 
 
@@ -119,7 +119,19 @@ def identity(spec: Any, *, mode: Optional[str] = None) -> dict[str, Any]:
     """
     out: dict[str, Any] = {}
     for canonical, names in IDENTITY_FIELDS:
-        value = _resolve(spec, names)
+        if canonical == "reasoning":
+            defaults = _resolve(spec, ("extra_body_defaults",))
+            overrides = _resolve(spec, ("extra_body",))
+            if isinstance(defaults, Mapping) or isinstance(overrides, Mapping):
+                value = dict(defaults) if isinstance(defaults, Mapping) else {}
+                if isinstance(overrides, Mapping):
+                    value.update(overrides)
+                if not value:
+                    value = None
+            else:
+                value = overrides if overrides is not None else defaults
+        else:
+            value = _resolve(spec, names)
         if canonical == "params" and isinstance(value, Mapping):
             value = {
                 key: item

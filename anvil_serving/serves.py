@@ -45,13 +45,17 @@ requires `bash` on PATH (Git Bash / WSL on Windows); a stopped container is just
 `docker start`ed and needs none of this.
 """
 import argparse
+import math
+import numbers
 import os
 import re
 import shlex
 import subprocess
+import time
 from . import guard
 import sys
 import urllib.request
+import urllib.error
 
 from .paths import config_path
 
@@ -234,6 +238,264 @@ def load_manifest(path):
             s["up"] = [tok.replace("{dir}", mdir) for tok in up]
         serves.append(s)
     return serves
+
+
+def load_promotions(path):
+    """Load guarded model-promotion plans from a serves manifest.
+
+    Paths are resolved relative to the manifest, matching ``serve.up``. A plan
+    names both the promoted and rollback serve plus both router states, so a
+    failed health/preflight/router gate can restore the complete deployment.
+    """
+    with open(path, "rb") as f:
+        data = tomllib.load(f)
+    mdir = os.path.dirname(os.path.abspath(path))
+    required = (
+        "name", "target", "rollback", "router_config", "router_profile",
+        "rollback_router_config", "rollback_router_profile",
+    )
+    plans = []
+    for raw in data.get("promotion", []):
+        plan = dict(raw)
+        missing = [field for field in required if not plan.get(field)]
+        if missing:
+            raise ValueError("promotion entry missing required field(s) %s: %r" % (
+                ", ".join(missing), raw))
+        for field in (
+            "router_config", "router_profile", "rollback_router_config",
+            "rollback_router_profile",
+        ):
+            value = str(plan[field]).replace("{dir}", mdir)
+            if not os.path.isabs(value):
+                value = os.path.join(mdir, value)
+            plan[field] = os.path.abspath(value)
+        plan.setdefault("candidate", None)
+        plan.setdefault("needle_ctx", 32768)
+        plan.setdefault("tool_batch", 20)
+        plan.setdefault("startup_timeout", 600)
+        plan.setdefault("rollback_startup_timeout", plan["startup_timeout"])
+        plan.setdefault("poll_interval", 5)
+        for field in ("startup_timeout", "rollback_startup_timeout", "poll_interval"):
+            value = plan[field]
+            if (isinstance(value, bool) or not isinstance(value, numbers.Real)
+                    or not math.isfinite(value) or value <= 0):
+                raise ValueError("promotion %s must be a finite positive number" % field)
+        default_gate = {
+            "name": "preflight", "checks": "smoke,json,needle,tools",
+            "thinking_mode": "default", "visible_answer_tokens": 256,
+            "reasoning_headroom_tokens": 0,
+            "reasoning_evidence": "any",
+        }
+        for field in ("gate", "rollback_gate"):
+            gates = plan.get(field) or [default_gate]
+            if not isinstance(gates, list) or not all(isinstance(g, dict) for g in gates):
+                raise ValueError("promotion %s must be an array of gate tables" % field)
+            normalized = []
+            for index, raw_gate in enumerate(gates):
+                gate = dict(default_gate)
+                gate.update(raw_gate)
+                gate.setdefault("name", "%s-%d" % (field, index + 1))
+                if gate["thinking_mode"] not in {"default", "enabled", "disabled", "unsupported"}:
+                    raise ValueError("promotion gate has invalid thinking_mode: %r" % gate)
+                if gate["reasoning_evidence"] not in {"any", "required", "forbidden"}:
+                    raise ValueError("promotion gate has invalid reasoning_evidence: %r" % gate)
+                if gate.get("json_out"):
+                    value = str(gate["json_out"]).replace("{dir}", mdir)
+                    gate["json_out"] = os.path.abspath(value if os.path.isabs(value) else os.path.join(mdir, value))
+                normalized.append(gate)
+            plan[field] = normalized
+        plans.append(plan)
+    return plans
+
+
+def _exact_serve(serves, name):
+    matches = [serve for serve in serves if serve["name"] == name]
+    if len(matches) != 1:
+        raise ValueError("serve %r must match exactly one manifest entry" % name)
+    return matches[0]
+
+
+def _await_healthy(serve, timeout, poll_interval, *, _open=urllib.request.urlopen,
+                   _sleep=time.sleep):
+    deadline = time.monotonic() + timeout
+    while True:
+        if _health(serve["port"], serve["health"], _open=_open) == 200:
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        _sleep(min(poll_interval, max(0, deadline - time.monotonic())))
+
+
+def _promotion_cli(argv, *, _run=subprocess.run):
+    command = [sys.executable, "-m", "anvil_serving.cli", *argv, "--confirm"]
+    print("  gate: %s" % " ".join(command))
+    result = _run(command, text=True)
+    return result.returncode
+
+
+def _gateway_status(url, *, _open=urllib.request.urlopen):
+    try:
+        with _open(url, timeout=5) as response:
+            return getattr(response, "status", None) or response.getcode()
+    except urllib.error.HTTPError as exc:
+        return exc.code  # auth failures still prove the router is reachable
+    except Exception:
+        return None
+
+
+def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
+                          dry_run=False, require_candidate=True, resume=False,
+                          _run=subprocess.run,
+                          _open=urllib.request.urlopen, _sleep=time.sleep):
+    target = _exact_serve(serves, plan["rollback"] if rollback else plan["target"])
+    displaced = _exact_serve(serves, plan["target"] if rollback else plan["rollback"])
+    candidate = _exact_serve(serves, plan["candidate"]) if plan.get("candidate") else None
+    config = plan["rollback_router_config"] if rollback else plan["router_config"]
+    profile = plan["rollback_router_profile"] if rollback else plan["router_profile"]
+    label = "rollback" if rollback else "promotion"
+
+    for path in (config, profile):
+        if not os.path.isfile(path):
+            print("  %s refused: required router artifact is missing: %s" % (label, path))
+            return 2
+    # Validate BOTH deployable states with the deployed image before the first
+    # container is stopped. A forward failure is only safely reversible when
+    # its rollback config/profile are already known-loadable (and vice versa).
+    if not dry_run:
+        pairs = (
+            (plan["router_config"], plan["router_profile"]),
+            (plan["rollback_router_config"], plan["rollback_router_profile"]),
+        )
+        for pair_config, pair_profile in pairs:
+            validate = [
+                "router", "promote", "--config", pair_config, "--profile", pair_profile,
+                "--validate-only",
+            ]
+            if _promotion_cli(validate, _run=_run) != 0:
+                print("  %s refused: router artifacts failed deployed-loader validation" % label)
+                return 2
+    if candidate is not None and not rollback and not dry_run and require_candidate:
+        if docker_state(candidate["container"], _run=_run) != "running" or _health(
+            candidate["port"], candidate["health"], _open=_open
+        ) != 200:
+            print("  promotion refused: candidate %s is not running and healthy" % candidate["name"])
+            return 2
+
+    stop_names = [displaced["name"]]
+    if candidate is not None and not rollback:
+        stop_names.insert(0, candidate["name"])
+    gates = plan["rollback_gate" if rollback else "gate"]
+    print("  %s plan: stop %s; start %s; %d preflight gate(s); promote router" % (
+        label, ", ".join(stop_names), target["name"], len(gates)))
+    if dry_run:
+        cmd_down(serves, stop_names, dry_run=True, _run=_run)
+        cmd_up(serves, [target["name"]], dry_run=True, recreate=True, _run=_run)
+        for gate in gates:
+            print("  gate %s: eval preflight --tier %s --checks %s --thinking-mode %s "
+                  "--visible-answer-tokens %s --reasoning-headroom-tokens %s" % (
+                      gate["name"], target["name"], gate["checks"], gate["thinking_mode"],
+                      gate["visible_answer_tokens"], gate["reasoning_headroom_tokens"]))
+        print("  gate: router promote --config %s --profile %s" % (config, profile))
+        print("  verify: router gateway is reachable after reload")
+        return 0
+
+    if cmd_down(serves, stop_names, _run=_run) != 0:
+        return 1
+    target_state = docker_state(target["container"], _run=_run)
+    if resume and target_state == "running":
+        print("  resume: %s is already running; continuing at health gate" % target["name"])
+    elif cmd_up(serves, [target["name"]], recreate=True, _run=_run) != 0:
+        return 1
+    startup_timeout = plan["rollback_startup_timeout"] if rollback else plan["startup_timeout"]
+    if not _await_healthy(target, startup_timeout, plan["poll_interval"],
+                          _open=_open, _sleep=_sleep):
+        print("  %s failed: %s did not become healthy" % (label, target["name"]))
+        return 1
+    for gate in gates:
+        preflight = [
+            "eval", "preflight", "--tier", target["name"], "--manifest", manifest_path,
+            "--needle-ctx", str(plan["needle_ctx"]), "--tool-batch", str(plan["tool_batch"]),
+            "--checks", str(gate["checks"]), "--thinking-mode", str(gate["thinking_mode"]),
+            "--visible-answer-tokens", str(gate["visible_answer_tokens"]),
+            "--reasoning-headroom-tokens", str(gate["reasoning_headroom_tokens"]),
+            "--reasoning-evidence", str(gate["reasoning_evidence"]),
+        ]
+        if gate.get("reasoning_effort"):
+            preflight.extend(["--reasoning-effort", str(gate["reasoning_effort"])])
+        if gate.get("json_out"):
+            preflight.extend(["--json-out", str(gate["json_out"])])
+        if _promotion_cli(preflight, _run=_run) != 0:
+            print("  %s failed: preflight gate %s rejected %s" % (
+                label, gate["name"], target["name"]))
+            return 1
+    promote = [
+        "router", "promote", "--config", config, "--profile", profile,
+    ]
+    if _promotion_cli(promote, _run=_run) != 0:
+        return 1
+    gateway_url = str(plan.get("router_health_url", "http://127.0.0.1:8000/healthz"))
+    status = _gateway_status(gateway_url, _open=_open)
+    if status != 200:
+        print("  %s failed: router health gate returned HTTP %s" % (label, status))
+        return 1
+    print("  router gateway reachable after reload (HTTP %s)" % status)
+    return 0
+
+
+def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
+                resume=False, dry_run=False, _run=subprocess.run, _open=urllib.request.urlopen,
+                _sleep=time.sleep):
+    """Atomically promote a staged model recipe or restore its complete rollback state."""
+    matches = [plan for plan in promotions if plan["name"] == name]
+    if len(matches) != 1:
+        print("promotion %r must match exactly one [[promotion]] plan" % name)
+        return 1
+    plan = matches[0]
+    try:
+        for field in ("target", "rollback"):
+            _exact_serve(serves, plan[field])
+        if plan.get("candidate"):
+            _exact_serve(serves, plan["candidate"])
+    except ValueError as exc:
+        print("promotion refused: %s" % exc)
+        return 1
+    try:
+        rc = _promotion_transition(
+            serves, plan, manifest_path, rollback=rollback, dry_run=dry_run,
+            require_candidate=not resume, resume=resume,
+            _run=_run, _open=_open, _sleep=_sleep,
+        )
+    except Exception as exc:
+        print("promotion transition failed: %s" % exc)
+        rc = 1
+    if rc == 0 or dry_run:
+        return rc
+    if rc == 2:  # refused before the first mutation; nothing needs restoring
+        return 1
+    if rollback:
+        print("  rollback gate failed; restoring the promoted serve and router state")
+        try:
+            recover_rc = _promotion_transition(
+                serves, plan, manifest_path, rollback=False, require_candidate=False,
+                _run=_run, _open=_open, _sleep=_sleep,
+            )
+        except Exception as exc:
+            print("  promoted-state recovery raised: %s" % exc)
+            recover_rc = 1
+        if recover_rc != 0:
+            print("  CRITICAL: rollback and promoted-state recovery both failed")
+        return 1
+    print("  promotion gate failed; restoring serve and router rollback state")
+    try:
+        rollback_rc = _promotion_transition(
+            serves, plan, manifest_path, rollback=True, _run=_run, _open=_open, _sleep=_sleep,
+        )
+    except Exception as exc:
+        print("  automatic rollback raised: %s" % exc)
+        rollback_rc = 1
+    if rollback_rc != 0:
+        print("  CRITICAL: automatic rollback failed; inspect serves status and router artifacts")
+    return 1
 
 
 def _select(serves, names):
@@ -678,7 +940,7 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     return r.returncode
 
 
-_ACTIONS = ("status", "up", "down", "rm", "adopt", "logs", "render")
+_ACTIONS = ("status", "up", "down", "rm", "adopt", "logs", "promote", "render")
 
 _ACTION_DESCRIPTIONS = {
     "status": "Show docker and health state for manifest serves.",
@@ -687,6 +949,7 @@ _ACTION_DESCRIPTIONS = {
     "rm": "Remove serve containers after explicit confirmation.",
     "adopt": "Bring externally-started serves under compose management.",
     "logs": "Show bounded or streaming docker logs for one serve.",
+    "promote": "Promote a staged model recipe with preflight and full rollback.",
     "render": "Render tuned compose, manifest, and router-tier configuration.",
 }
 
@@ -706,7 +969,10 @@ def _build_action_parser(action):
         prog="anvil-serving serves %s" % action,
         description=_ACTION_DESCRIPTIONS[action],
     )
-    if action == "logs":
+    if action == "promote":
+        p.add_argument("names", nargs=1, metavar="PLAN",
+                       help="the [[promotion]] plan name from the manifest")
+    elif action == "logs":
         p.add_argument("names", nargs=1, metavar="NAME",
                        help="serve name/container to read logs from.")
     else:
@@ -714,7 +980,7 @@ def _build_action_parser(action):
                        help="serve names/containers to act on (default: all in the manifest).")
     p.add_argument("--manifest",
                    help="path to the serves manifest TOML (default: ./serves.toml if present, then ~/.anvil-serving/serves.toml).")
-    if action in {"up", "down", "rm", "adopt"}:
+    if action in {"up", "down", "rm", "adopt", "promote"}:
         p.add_argument("--dry-run", action="store_true",
                        help="print what would run without touching any container.")
     else:
@@ -740,6 +1006,13 @@ def _build_action_parser(action):
                        help="stream new output (Ctrl-C to stop).")
     else:
         p.set_defaults(tail="200", since=None, follow=False)
+    if action == "promote":
+        p.add_argument("--rollback", action="store_true",
+                       help="restore the plan's rollback serve and router state")
+        p.add_argument("--resume", action="store_true",
+                       help="resume an interrupted promotion from an already-running target")
+    else:
+        p.set_defaults(rollback=False, resume=False)
     return p
 
 
@@ -815,6 +1088,16 @@ def main(argv=None):
         return cmd_rm(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)
     if a.action == "adopt":
         return cmd_adopt(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)
+    if a.action == "promote":
+        try:
+            promotions = load_promotions(manifest_path)
+        except Exception as exc:
+            print("bad promotion plan in %s: %s" % (manifest_path, exc), file=sys.stderr)
+            return 2
+        return cmd_promote(
+            serves, promotions, a.names[0], os.path.abspath(manifest_path),
+            rollback=a.rollback, resume=a.resume, dry_run=a.dry_run,
+        )
     return 2
 
 
