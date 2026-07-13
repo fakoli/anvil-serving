@@ -42,6 +42,7 @@ anvil-serving routes with evidence:
 | Keep proven work local | `allow` rows in the quality profile stay on local tiers. |
 | Verify risky work | `allow-with-verify` rows buffer and check output before returning it. |
 | Avoid known local failures | `deny` rows skip local or exhaust cleanly. |
+| Stop a model serve safely | Configured local health checks remove an unavailable tier before inference and automatically readmit it after recovery. |
 | Preserve one agent endpoint | Anthropic Messages and OpenAI Chat Completions terminate at the router. |
 | Keep billing explicit | The default config has no cloud API key; metered cloud is opt-in. |
 | Operate safely | MCP/controller tools expose status, route probes, voice lifecycle, preflight, benchmark, and OpenClaw sync. |

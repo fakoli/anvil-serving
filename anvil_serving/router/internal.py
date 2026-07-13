@@ -65,6 +65,9 @@ class NoAvailableTierError(Exception):
       is refused up front instead of being forwarded to a too-small tier (which
       would 400 at the model with an "input exceeds maximum context length"
       traceback).
+    * ``kind="unavailable"`` — candidates are configured, bound, and allowed,
+      but their explicit runtime readiness checks currently report unavailable.
+      No inference request was sent and no circuit failure was recorded.
 
     Both kinds are the SAME exception type (the front door's
     ``except NoAvailableTierError`` contract is unchanged; only the message —
@@ -103,6 +106,14 @@ class NoAvailableTierError(Exception):
                 f"smaller request, or add/route to a larger-context tier -- "
                 f"this is a payload-size problem, not a credentials/endpoint "
                 f"or availability problem."
+            )
+        elif kind == "unavailable":
+            super().__init__(
+                f"no quality-gated tier is currently ready for "
+                f"work_class={work_class!r}: configured candidate tier(s) "
+                f"{cands} failed runtime readiness and were not dispatched. "
+                f"Start the intended serve or wait for its health check to "
+                f"recover; no circuit-breaker failure was recorded."
             )
         else:
             super().__init__(

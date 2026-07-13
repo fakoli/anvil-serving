@@ -121,6 +121,11 @@ class Tier:
     # default-unset (NOT in ``_REQUIRED_TIER_KEYS``), so existing configs parse
     # unchanged with it reading as ``None``.
     max_concurrency: Optional[int] = None
+    # Optional readiness path on the same scheme/authority as ``base_url``.
+    # When set on a local tier, the router probes it before dispatch and keeps
+    # an unavailable container out of the candidate pool. Absent preserves the
+    # pre-readiness behavior with no additional network call.
+    health_path: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -173,6 +178,11 @@ class RouterConfig:
     # unreadable path is a startup ConfigError (fail fast, never silently fall
     # back to seeds the operator asked to replace).
     profile_path: Optional[str] = None
+    # Runtime readiness probe controls for local tiers that declare
+    # ``health_path``. Results are cached for the interval; each probe is
+    # individually bounded by the timeout. Both are additive config fields.
+    availability_probe_interval: float = 5.0
+    availability_probe_timeout: float = 1.0
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
@@ -452,6 +462,22 @@ def _parse_tier(raw: object) -> Tier:
             )
         tier_max_concurrency = raw_max_concurrency
 
+    raw_health_path = raw.get("health_path")
+    health_path: Optional[str] = None
+    if raw_health_path is not None:
+        if (
+            not isinstance(raw_health_path, str)
+            or not raw_health_path.startswith("/")
+            or raw_health_path.startswith("//")
+            or "?" in raw_health_path
+            or "#" in raw_health_path
+        ):
+            raise ConfigError(
+                f"tier {tid!r}: health_path must be an absolute URL path "
+                f"without query/fragment or absent, got {raw_health_path!r}"
+            )
+        health_path = raw_health_path
+
     return Tier(
         id=tid,
         base_url=base_url,
@@ -470,6 +496,7 @@ def _parse_tier(raw: object) -> Tier:
         params=params,
         timeout=tier_timeout,
         max_concurrency=tier_max_concurrency,
+        health_path=health_path,
     )
 
 
@@ -624,6 +651,26 @@ def load(path: str) -> RouterConfig:
         os.path.expanduser(raw_profile_path) if raw_profile_path else None
     )
 
+    def _positive_seconds(key: str, default: float) -> float:
+        raw_value = router.get(key, default)
+        if (
+            isinstance(raw_value, bool)
+            or not isinstance(raw_value, (int, float))
+            or raw_value <= 0
+        ):
+            raise ConfigError(
+                f"[router].{key} must be a positive number of seconds "
+                f"(default {default}) in {path}"
+            )
+        return float(raw_value)
+
+    availability_probe_interval = _positive_seconds(
+        "availability_probe_interval", 5.0
+    )
+    availability_probe_timeout = _positive_seconds(
+        "availability_probe_timeout", 1.0
+    )
+
     return RouterConfig(
         tiers=tuple(tiers),
         presets=MappingProxyType(presets),
@@ -634,4 +681,6 @@ def load(path: str) -> RouterConfig:
         relay_timeout=relay_timeout,
         verify_local_min=verify_local_min,
         profile_path=profile_path,
+        availability_probe_interval=availability_probe_interval,
+        availability_probe_timeout=availability_probe_timeout,
     )
