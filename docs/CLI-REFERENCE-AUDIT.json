@@ -112,19 +112,19 @@
         "router-run": 54,
         "serves-multiplex": 6,
         "serves-render": 15,
-        "voice-audio": 28,
+        "voice-audio": 30,
         "voice-proxy": 42,
         "voice-sidecar": 30
       },
       "files_by_category": {
         "docs": 46,
-        "examples": 44,
+        "examples": 46,
         "implementation": 146,
         "skills": 4,
         "tests": 149,
         "tooling": 25
       },
-      "files_scanned": 414,
+      "files_scanned": 416,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

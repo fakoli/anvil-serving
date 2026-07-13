@@ -1032,14 +1032,21 @@ def main(argv=None):
         return cmd_status(a.container)
     if a.action in {"transition-status", "quiesce", "drain", "readmit"}:
         action = "status" if a.action == "transition-status" else a.action
+        # The declarative top-level CLI consumes ``--confirm`` before invoking
+        # leaf handlers and carries that authorization through the scoped guard.
+        # Keep direct ``router_manage.main`` calls working too by accepting the
+        # leaf parser's flag when it is present.
+        confirmed = bool(
+            getattr(a, "confirm", False) or guard.confirmation_authorized()
+        )
         try:
             result = transition_request(
                 action,
                 tier_id=getattr(a, "tier", None),
                 timeout=getattr(a, "timeout", None),
                 router_url=a.router_url,
-                confirm=getattr(a, "confirm", False),
-                dry_run=(getattr(a, "dry_run", False) or not getattr(a, "confirm", False))
+                confirm=confirmed,
+                dry_run=(getattr(a, "dry_run", False) or not confirmed)
                 if action in ("quiesce", "readmit") else False,
             )
         except ValueError as exc:
