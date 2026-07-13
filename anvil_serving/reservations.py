@@ -18,9 +18,15 @@ reservation simply by stopping the container.
 Enforcement happens at the lifecycle verbs (`serves up`, and `voice audio up`
 which delegates to the same `cmd_up`): :func:`deny_over_budget` is consulted
 BEFORE any container-mutating docker command runs, and an over-budget request
-fails the whole command with the ledger printed. Eviction of `evictable`
-reservations is a separate layer (ADR-0017 §5, gpu-reservations:T005) — this
-module only admits or rejects.
+fails the whole command with the ledger printed. When the requester is
+`on-demand` and the operator opted in (`serves up --evict`),
+:func:`plan_eviction` chooses the committed `evictable` reservations whose
+release would admit the request (ADR-0017 §5); `serves.cmd_up` then composes
+the ADR-0018 transition per victim — quiesce its router tier, bounded drain
+via the router's `AdmissionLease` accounting, `serves down` — and the stopped
+container IS the reservation release. `resident` reservations are never
+candidates: this module plans or refuses (loudly, with the ledger); it never
+operates containers or the router itself.
 
 Terminology (ADR-0017): these are *reservations*, never `*Lease` —
 `AdmissionLease` in `router/admission.py` is the request-admission layer;
@@ -354,3 +360,119 @@ def deny_over_budget(
         "or shrink the declared vram_mib"
     )
     return lines
+
+
+def plan_eviction(
+    serves: list[dict],
+    targets: list[dict],
+    state_of: Callable[[str], str],
+) -> tuple[Optional[list[GpuReservation]], list[str]]:
+    """Choose the `evictable` reservations whose release admits the targets
+    (ADR-0017 §5, gpu-reservations:T005).
+
+    Returns ``(victims, lines)``:
+
+    - ``([], [])`` — nothing to evict: the targets already fit (a concurrent
+      release can make an earlier denial stale — the ledger is re-derived
+      here), or the manifest has no ledger.
+    - ``(victims, lines)`` — stopping the returned committed `evictable`
+      reservations (largest-first per role, so the fewest serves are
+      disturbed; name tie-break for determinism) frees enough VRAM. `lines`
+      describe the plan.
+    - ``(None, lines)`` — eviction cannot admit the targets, with the ledger:
+      a requester that is not `on-demand` may never evict (ADR-0017 §1/§3),
+      and only `evictable` reservations are candidates — `resident` (and any
+      other non-`evictable`) committed reservations are never stopped, so a
+      deficit exceeding every evictable reservation combined is a loud
+      refusal, not a deeper eviction.
+
+    Planning only: no docker command runs here, and executing the plan is the
+    caller's job (serves.cmd_up composes the ADR-0018 quiesce/drain transition
+    before each victim's container is stopped).
+    """
+    budgets = budgets_of(serves)
+    if not budgets:
+        return [], []
+    requesting = [
+        t for t in targets
+        if (r := reservation_of(t)) is not None and r.gpu_role in budgets
+    ]
+    if not requesting:
+        return [], []
+    residency_of = {t["name"]: t.get("residency") for t in requesting}
+    target_names = set(residency_of)
+    ledger = build_ledger(serves, state_of, budgets=budgets)
+    victims: list[GpuReservation] = []
+    lines: list[str] = []
+    refused = False
+    for role, role_ledger in sorted(ledger.items()):
+        requested = [
+            r for r in role_ledger.reservations
+            if r.serve in target_names and not r.committed
+        ]
+        deficit = sum(r.vram_mib for r in requested) - role_ledger.free_mib
+        if not requested or deficit <= 0:
+            continue
+        non_on_demand = [
+            r for r in requested if residency_of.get(r.serve) != "on-demand"
+        ]
+        if non_on_demand:
+            refused = True
+            lines.append(
+                "eviction refused: gpu_role %r is over budget by %d MiB and "
+                "only `on-demand` requesters may evict (ADR-0017)" % (
+                    role, deficit)
+            )
+            lines.append(role_ledger.describe())
+            for r in non_on_demand:
+                lines.append(
+                    "requester %s declares residency %s" % (
+                        r.describe(),
+                        repr(residency_of.get(r.serve)) if residency_of.get(r.serve)
+                        else "(none)",
+                    )
+                )
+            continue
+        candidates = sorted(
+            (
+                r for r in role_ledger.reservations
+                if r.committed and r.residency == "evictable"
+                and r.serve not in target_names
+            ),
+            key=lambda r: (-r.vram_mib, r.serve),
+        )
+        evictable_mib = sum(r.vram_mib for r in candidates)
+        if evictable_mib < deficit:
+            refused = True
+            protected = [
+                r for r in role_ledger.reservations
+                if r.committed and r.residency != "evictable"
+            ]
+            lines.append(
+                "eviction refused: gpu_role %r needs %d MiB but every "
+                "evictable reservation combined frees only %d MiB" % (
+                    role, deficit, evictable_mib)
+            )
+            lines.append(role_ledger.describe())
+            for r in protected:
+                lines.append(
+                    "never evicted (residency %s): %s" % (
+                        repr(r.residency) if r.residency else "(none)",
+                        r.describe(),
+                    )
+                )
+            continue
+        freed = 0
+        for r in candidates:
+            if freed >= deficit:
+                break
+            victims.append(r)
+            freed += r.vram_mib
+            lines.append(
+                "evict %s: frees %d MiB on gpu_role %r" % (
+                    r.describe(), r.vram_mib, role)
+            )
+    if refused:
+        lines.append("no container command was run; the ledger stands")
+        return None, lines
+    return victims, lines
