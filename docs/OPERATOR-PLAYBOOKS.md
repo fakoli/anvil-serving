@@ -39,6 +39,7 @@ resource and keep the same gate semantics.
 | Controller readiness | Health endpoint on the controller's private address | `GET /health` on `http://anvil-gpu.tailnet.example:8766` |
 | Model inventory | `models_inventory` | `anvil-serving models sync --out ./model-library` |
 | Environment and tier health | `doctor_summary`, `serves_status`, `router_status` | `anvil-serving doctor --config ./router.toml`; `anvil-serving serves status`; `anvil-serving router status` |
+| GPU VRAM reservation ledger (ADR-0017) | `reservation_status` — read-only per-`gpu_role` capacity/reserve/committed/free plus each declared reservation's docker state | `anvil-serving serves status` (ledger section) |
 | Router lifecycle and logs | `router_manage`, `router_logs` | `anvil-serving router reload`; `anvil-serving router logs --tail 200` |
 | Recent routing decisions | `decision_summary` | `GET /v1/decisions` on the router front door |
 | Route-decision probe | `route_decision` | `POST /v1/route` on the router front door |
