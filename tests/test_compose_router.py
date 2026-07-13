@@ -53,12 +53,19 @@ def _port_host_binds(block: str) -> list[str]:
     """Return the host-bind portion of every short-syntax `ports:` entry in a block.
 
     e.g. ``- "127.0.0.1:30000:30000"`` -> ``"127.0.0.1"``; a bare ``"8000:8000"``
-    (no host IP given, i.e. published on ALL interfaces) -> ``"0.0.0.0"``.
+    (no host IP given, i.e. published on ALL interfaces) -> ``"0.0.0.0"``. An
+    env-overridable bind ``- "${FOO_PUBLISH:-127.0.0.1}:30005:30005"`` normalizes
+    to its DEFAULT (``"127.0.0.1"``): what ships is the default, and the security
+    property under test is that the shipped default stays loopback — the env var
+    is the operator's explicit, per-deploy opt-in beyond it (ADR-0004).
     """
     binds = []
-    for m in re.finditer(r'-\s*"?\$?\{?([^"\s{}:]*)(?::-[^}]*\})?\}?:(\d+):(\d+)"?', block):
-        host_ip = m.group(1)
-        binds.append(host_ip if host_ip else "0.0.0.0")
+    for m in re.finditer(r'-\s*"?\$?\{?([^"\s{}:]*)(?::-([^}]*)\})?\}?:(\d+):(\d+)"?', block):
+        host_ip, default = m.group(1), m.group(2)
+        if default is not None:
+            binds.append(default if default else "0.0.0.0")
+        else:
+            binds.append(host_ip if host_ip else "0.0.0.0")
     return binds
 
 
@@ -145,9 +152,10 @@ def test_only_router_is_published_beyond_loopback():
         for host_ip in _port_host_binds(block):
             if name == "router":
                 continue
-            assert host_ip in ("127.0.0.1", "${ROUTER_PUBLISH:-127.0.0.1}"), (
+            assert host_ip == "127.0.0.1", (
                 f"service {name!r} publishes a port on {host_ip!r} (must stay "
-                f"loopback-only or unpublished; the router is the only service "
+                f"loopback-only or unpublished BY DEFAULT — an env-overridable "
+                f"bind must default to 127.0.0.1; the router is the only service "
                 f"allowed beyond loopback -- ADR-0004)"
             )
 

@@ -231,6 +231,113 @@ services:
       --gpu-memory-utilization ${FAST_QWEN36_GPU_UTIL:-0.85}
       --host 0.0.0.0 --port 30003
 
+  # ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
+  # Always-on text-embedding + reranker serves sharing the multi-tenant RTX 5090 with the
+  # fast tier and the voice sidecars. Both are 0.6B bf16 checkpoints on the SAME pinned vLLM
+  # image as `heavy` (a standard image, so the UUID pin applies — gotcha #13; the index-pin
+  # exception is gemma4-unified-specific, gotcha #21).
+  #
+  # ADR-0017 reservations: serves.toml declares gpu_role "dark-fast" / residency "resident"
+  # with vram_mib 3200 (embeddings) and 3456 (reranker). --gpu-memory-utilization below is
+  # vram_mib / 32607 CAPACITY (fraction of TOTAL device memory — see the `fast` deviation
+  # note above): 0.0981 = 3200/32607 and 0.1060 = 3456/32607. Keep vram_mib and the
+  # fraction in lockstep.
+  #
+  # HONEST-MEASURED floor (2026-07-13, single-instance): each engine reports
+  # "Model loading took 1.12 GiB" of weights plus a ~1.70-1.75 GiB fixed runtime floor
+  # (WSL2 CUDA context + torch/cuBLAS/NCCL workspaces + profiled activation peak) BEFORE
+  # any KV — a 3072 MiB budget left only 0.17-0.18 GiB of KV, below even a 2048-token
+  # window (vLLM: "estimated maximum model length is 1568-1728"). The windows below are
+  # sized to the measured remainder: embeddings 2048 tokens (0.22 GiB KV vs ~0.35 available
+  # at 3200), reranker 4096 tokens (0.44 GiB KV vs ~0.55 available at 3456) — retrieval
+  # chunks are short; rerank candidate docs run longer. --enforce-eager skips CUDA-graph
+  # capture (pooling serves never decode, so graphs buy nothing and their memory would eat
+  # the KV margin); --max-num-batched-tokens caps the chunked-prefill activation peak.
+  #
+  # Publish: loopback-only by default (ADR-0004 — unauthenticated endpoints stay off the
+  # LAN). Opt in to tailnet exposure per serve by setting EMBEDDINGS_PUBLISH /
+  # RERANKER_PUBLISH to this host's tailnet address (e.g. 100.87.34.66) before `serves up`.
+  embeddings:
+    image: ${EMBEDDINGS_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    container_name: vllm-qwen3-embedding
+    restart: unless-stopped
+    ipc: host
+    ports:
+      - "${EMBEDDINGS_PUBLISH:-127.0.0.1}:30005:30005"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    # --runner pooling --convert embed: this vLLM (0.23) replaced the old `--task embed`
+    # spelling. 2048-token window is a deliberate serving cap (retrieval chunks), not the
+    # model's 32K max — it bounds the KV floor inside the 3200 MiB reservation (see the
+    # measured-floor note above).
+    command: >
+      serve Qwen/Qwen3-Embedding-0.6B
+      --revision ${EMBEDDINGS_REVISION:-97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3}
+      --served-model-name qwen3-embedding-0.6b
+      --runner pooling
+      --convert embed
+      --max-model-len 2048
+      --max-num-batched-tokens 2048
+      --max-num-seqs 16
+      --enforce-eager
+      --gpu-memory-utilization 0.0981
+      --host 0.0.0.0 --port 30005
+
+  reranker:
+    image: ${RERANKER_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    container_name: vllm-qwen3-reranker
+    restart: unless-stopped
+    ipc: host
+    ports:
+      - "${RERANKER_PUBLISH:-127.0.0.1}:30006:30006"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    # The upstream vLLM recipe for the original Qwen3-Reranker checkpoints: override the
+    # architecture to Qwen3ForSequenceClassification so the pooling runner serves it as a
+    # cross-encoder scorer (/rerank, /score), with classifier_from_token +
+    # is_original_qwen3_reranker mapping the "yes"/"no" LM-head tokens to the relevance score.
+    command: >
+      serve Qwen/Qwen3-Reranker-0.6B
+      --revision ${RERANKER_REVISION:-e61197ed45024b0ed8a2d74b80b4d909f1255473}
+      --served-model-name qwen3-reranker-0.6b
+      --runner pooling
+      --hf-overrides '{"architectures":["Qwen3ForSequenceClassification"],"classifier_from_token":["no","yes"],"is_original_qwen3_reranker":true}'
+      --max-model-len 4096
+      --max-num-batched-tokens 2048
+      --max-num-seqs 8
+      --enforce-eager
+      --gpu-memory-utilization 0.1060
+      --host 0.0.0.0 --port 30006
+
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
   # host.docker.internal:<port>. Pinned to the DEPLOYED RELEASE image anvil-serving:0.12.0
   # (rebuilt from main — flexibility-mode + the v2 profile loader, which is backward-compatible
