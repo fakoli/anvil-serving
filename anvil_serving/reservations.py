@@ -161,6 +161,39 @@ def parse_gpu_roles(data: dict) -> dict[str, GpuRoleBudget]:
     return budgets
 
 
+def derive_gpu_memory_utilization(vram_mib: int, budget: GpuRoleBudget) -> float:
+    """Engine-enforced budget for a reserved vLLM/SGLang serve (ADR-0017 §4).
+
+    `serves render` derives the engine's memory fraction
+    (`--gpu-memory-utilization` for vLLM, `--mem-fraction-static` for SGLang)
+    from `vram_mib / (capacity - reserve)` so the declared reservation is what
+    the engine actually respects — a serve can no longer hand-tune a fraction
+    that quietly exceeds what the ledger admitted.
+
+    Raises ValueError when the reservation can never fit its role's budget
+    (`vram_mib > capacity - reserve`, or a zero budget): rendering a compose
+    the admission check (`deny_over_budget`) is guaranteed to reject would just
+    defer the failure to `serves up`.
+    """
+    if isinstance(vram_mib, bool) or not isinstance(vram_mib, int) or vram_mib <= 0:
+        raise ValueError(
+            f"reservation vram_mib must be a positive integer (MiB): {vram_mib!r}"
+        )
+    if budget.budget_mib <= 0:
+        raise ValueError(
+            "gpu_role %r has no reservable budget (capacity %d MiB - reserve %d MiB)"
+            % (budget.gpu_role, budget.vram_mib, budget.reserve_mib)
+        )
+    if vram_mib > budget.budget_mib:
+        raise ValueError(
+            "reservation %d MiB exceeds gpu_role %r budget %d MiB "
+            "(capacity %d MiB - reserve %d MiB); shrink vram_mib or raise capacity"
+            % (vram_mib, budget.gpu_role, budget.budget_mib,
+               budget.vram_mib, budget.reserve_mib)
+        )
+    return round(vram_mib / budget.budget_mib, 4)
+
+
 def reservation_of(serve: dict) -> Optional[GpuReservation]:
     """The serve's declared reservation, or None if it doesn't participate.
 
