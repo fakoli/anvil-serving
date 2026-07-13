@@ -36,6 +36,7 @@ nav:
       - Operator playbooks: OPERATOR-PLAYBOOKS.md
       - Troubleshooting: TROUBLESHOOTING.md
       - Serves & eval: SERVES-AND-EVAL.md
+      - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
       - Model settings: MODEL-SETTINGS-EXAMPLE.md
       - Device topologies: DEVICE-TOPOLOGIES.md
       - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
