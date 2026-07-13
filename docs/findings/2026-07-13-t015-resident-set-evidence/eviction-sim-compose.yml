@@ -1,0 +1,20 @@
+# T015 eviction-cycle verification compose (evidence artifact, NOT product config).
+# Two TRIVIAL alpine containers stand in for the evictable `vision` slot and the
+# `on-demand` ComfyUI acquisition on an ISOLATED sim gpu_role ("sim-5090"), so the
+# real serves.cmd_up --evict drain path (ledger admission -> plan_eviction ->
+# _evict_victims -> real container stop, then start the acquirer) runs end to end
+# with ZERO impact on the live dark-fast resident set or the production router.
+# The router quiesce/drain/readmit legs are recorded through the injectable
+# transition seam (those legs were already validated LIVE against the real router
+# in gpu-reservations:T013). alpine is the smallest local image (12 MiB).
+services:
+  vision-sim:
+    image: alpine:3.20
+    container_name: vision-sim
+    command: ["sh", "-c", "sleep 100000"]
+    restart: "no"
+  comfyui-sim:
+    image: alpine:3.20
+    container_name: comfyui-sim
+    command: ["sh", "-c", "sleep 100000"]
+    restart: "no"

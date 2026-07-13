@@ -33,9 +33,18 @@
 #                        physically unreachable: E4B's bf16 embeddings/per-layer-embeddings
 #                        survive every fp8 shape — measured 12.4 GiB FP8-Dynamic weights.)
 #                        HONESTY NOTE: observed non-ledger draw (display + voice) was
-#                        ~5.7 GiB on 2026-07-13 — above this reserve, so the ledger's free
-#                        figure runs ~1.1 GiB optimistic; physical headroom after the full
-#                        resident set is ~0.8 GiB. Revisit at the next drift check.
+#                        ~5.6 GiB on 2026-07-13 — above this reserve. gpu-reservations:T015
+#                        live re-measure (full resident set up): GPU0 memory.used 31843 MiB,
+#                        committed 26112 -> draw 5731 MiB; nvidia-smi memory.total 32607 MiB
+#                        matches this capacity EXACTLY; allocatable memory.free was 345 MiB.
+#                        So the ledger's free (1887 MiB) runs ~1.5 GiB optimistic against the
+#                        physical 345 MiB, and real headroom after the full resident set is
+#                        only ~0.3 GiB, tightening under fast-tier KV pressure (the earlier
+#                        ~0.8 GiB point estimate was optimistic). The declared budgets
+#                        themselves are accurate — vLLM fills each serve to its util cap, and
+#                        all five residents stay healthy inside the 32607 MiB device. Revisit
+#                        at the next drift check.
+#                        (T015 evidence: docs/findings/2026-07-13-t015-resident-set-evidence/)
 # The dark-heavy PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
 # now — adoption is incremental (ADR-0017 consequences).
 [[gpu_roles]]

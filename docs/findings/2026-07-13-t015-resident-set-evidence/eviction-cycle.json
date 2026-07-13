@@ -1,0 +1,119 @@
+{
+  "steps": [
+    {
+      "label": "1-vision-sim-committed",
+      "sim-5090": {
+        "gpu_role": "sim-5090",
+        "capacity_mib": 20000,
+        "reserve_mib": 0,
+        "budget_mib": 20000,
+        "committed_mib": 12288,
+        "free_mib": 7712,
+        "reservations": [
+          {
+            "serve": "vision-sim",
+            "container": "vision-sim",
+            "vram_mib": 12288,
+            "residency": "evictable",
+            "state": "running",
+            "committed": true
+          },
+          {
+            "serve": "comfyui-sim",
+            "container": "comfyui-sim",
+            "vram_mib": 12288,
+            "residency": "on-demand",
+            "state": "absent",
+            "committed": false
+          }
+        ]
+      }
+    },
+    {
+      "label": "2-comfyui-sim-denied-without-evict",
+      "returncode": 1
+    },
+    {
+      "label": "3-comfyui-sim-admitted-with-evict",
+      "returncode": 0
+    },
+    {
+      "label": "3-after-eviction",
+      "sim-5090": {
+        "gpu_role": "sim-5090",
+        "capacity_mib": 20000,
+        "reserve_mib": 0,
+        "budget_mib": 20000,
+        "committed_mib": 12288,
+        "free_mib": 7712,
+        "reservations": [
+          {
+            "serve": "vision-sim",
+            "container": "vision-sim",
+            "vram_mib": 12288,
+            "residency": "evictable",
+            "state": "exited",
+            "committed": false
+          },
+          {
+            "serve": "comfyui-sim",
+            "container": "comfyui-sim",
+            "vram_mib": 12288,
+            "residency": "on-demand",
+            "state": "running",
+            "committed": true
+          }
+        ]
+      }
+    },
+    {
+      "label": "4-vision-sim-restored",
+      "sim-5090": {
+        "gpu_role": "sim-5090",
+        "capacity_mib": 20000,
+        "reserve_mib": 0,
+        "budget_mib": 20000,
+        "committed_mib": 12288,
+        "free_mib": 7712,
+        "reservations": [
+          {
+            "serve": "vision-sim",
+            "container": "vision-sim",
+            "vram_mib": 12288,
+            "residency": "evictable",
+            "state": "running",
+            "committed": true
+          },
+          {
+            "serve": "comfyui-sim",
+            "container": "comfyui-sim",
+            "vram_mib": 12288,
+            "residency": "on-demand",
+            "state": "exited",
+            "committed": false
+          }
+        ]
+      }
+    }
+  ],
+  "transition_calls": [
+    {
+      "action": "quiesce",
+      "tier_id": "vision-sim-tier",
+      "timeout": null,
+      "applied": true
+    },
+    {
+      "action": "drain",
+      "tier_id": "vision-sim-tier",
+      "timeout": 60.0,
+      "applied": true
+    },
+    {
+      "action": "readmit",
+      "tier_id": "vision-sim-tier",
+      "timeout": null,
+      "applied": true
+    }
+  ]
+}
