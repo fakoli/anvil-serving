@@ -117,6 +117,23 @@ correctly **denies** `up comfyui` (free 1887 < 12288) — that denial is the fea
 Bring residents down via the main manifest (e.g. `serves down ocr embeddings
 reranker` frees 11776 → 13663 free) and restore them afterwards.
 
+## Non-disruptive verification probe (no VRAM)
+
+To validate the pinned image and the migrated volume **without** displacing the
+resident tenants (how the 2026-07-13 migration was verified while the ledger was
+fully committed), run a one-off CPU probe — a verification probe in the sense the
+repo rules allow direct docker for, NOT a serve lifecycle path (the real serve
+stays gated by `serves up` admission):
+
+```powershell
+docker run --rm -d --name comfyui-probe -p 127.0.0.1:18188:8188 `
+  -v comfyui-models:/app/models:ro -e COMFYUI_EXTRA_ARGS="--cpu" `
+  obeliks/comfyui:0.27.1-cu128
+curl http://127.0.0.1:18188/system_stats            # "comfyui_version": "0.27.1"
+curl http://127.0.0.1:18188/models/diffusion_models # the migrated wan2.2 files
+docker stop comfyui-probe                           # --rm cleans it up
+```
+
 ## GGUF caveat
 
 The `unet/` GGUF files (Wan2.2 Q6_K) load only through the ComfyUI-GGUF custom node,
