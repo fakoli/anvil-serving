@@ -361,6 +361,38 @@ def test_reservation_of_requires_both_gpu_role_and_vram(tmp_path):
     assert (r.serve, r.gpu_role, r.vram_mib) == ("a", "r", 1024)
 
 
+# ---- engine-enforced budgets (gpu-reservations:T003, ADR-0017 §4) -------------
+
+def test_derive_gpu_memory_utilization_is_vram_over_budget():
+    budget = reservations.GpuRoleBudget("dark-fast", 32768, 2768)  # budget 30000
+    assert reservations.derive_gpu_memory_utilization(24000, budget) == 0.8
+    assert reservations.derive_gpu_memory_utilization(30000, budget) == 1.0
+
+
+def test_derive_gpu_memory_utilization_rounds_to_four_places():
+    budget = reservations.GpuRoleBudget("dark-fast", 32768, 2768)
+    assert reservations.derive_gpu_memory_utilization(20000, budget) == 0.6667
+
+
+def test_derive_gpu_memory_utilization_rejects_over_budget_reservation():
+    budget = reservations.GpuRoleBudget("dark-fast", 32768, 2768)
+    with pytest.raises(ValueError, match="exceeds gpu_role 'dark-fast' budget"):
+        reservations.derive_gpu_memory_utilization(30001, budget)
+
+
+def test_derive_gpu_memory_utilization_rejects_zero_budget_role():
+    budget = reservations.GpuRoleBudget("display-only", 2048, 2048)
+    with pytest.raises(ValueError, match="no reservable budget"):
+        reservations.derive_gpu_memory_utilization(1, budget)
+
+
+def test_derive_gpu_memory_utilization_rejects_bad_vram():
+    budget = reservations.GpuRoleBudget("dark-fast", 32768, 2768)
+    for bad in (0, -1, True, "1024", 1.5):
+        with pytest.raises(ValueError):
+            reservations.derive_gpu_memory_utilization(bad, budget)
+
+
 # ---- voice audio up rides the same rails --------------------------------------
 
 def test_voice_audio_up_is_denied_by_the_same_ledger(tmp_path, capsys):

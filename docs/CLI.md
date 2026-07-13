@@ -323,6 +323,14 @@ sglang|vllm` (default inferred from the model's `config.json`), `--gpu-mem-util`
 `models sync` card), `--tier-id`, and `--bind`/`--expose-lan` (default `127.0.0.1`; `--expose-lan` = `0.0.0.0`,
 see `SECURITY.md`).
 
+GPU residency reservations (ADR-0017): `--gpu-role` + `--vram-mib` (and optional `--residency
+resident|evictable|on-demand`) declare the serve's VRAM reservation. When the manifest declares a
+matching `[[gpu_roles]]` capacity row, the engine memory fraction is **derived** from
+`vram_mib / (capacity - reserve)` — `--gpu-memory-utilization` (vLLM) or `--mem-fraction-static`
+(SGLang) — overriding `--gpu-mem-util`, and the reservation fields are written into the appended
+`[[serve]]` entry so `serves up` admission enforces the same budget. Without reservation flags the
+render is unchanged.
+
 ```bash
 anvil-serving serves render --model /models/qwen3-32b-nvfp4 --gpu 1 --context 131072 --served-name heavy
 ```

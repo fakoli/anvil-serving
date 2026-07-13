@@ -32,6 +32,16 @@ written by `models sync`) injects the engine-appropriate
 `--chat-template-kwargs '{"enable_thinking": false}'` into the serve command
 — CLAUDE.md gotcha #6: a thinking-by-default model on a small `max_tokens`
 budget otherwise burns it reasoning and returns EMPTY content.
+
+Engine-enforced reservation budgets (gpu-reservations:T003, ADR-0017 §4):
+`--gpu-role` + `--vram-mib` declare the serve's GPU residency reservation. When
+the serves manifest (`--manifest-out`) declares a matching `[[gpu_roles]]`
+capacity row, the engine's memory fraction is DERIVED from
+`vram_mib / (capacity - reserve)` — `--gpu-memory-utilization` for vLLM,
+`--mem-fraction-static` for SGLang — so the declared reservation is what the
+engine actually respects, and the reservation fields are written into the
+appended `[[serve]]` entry so `serves up` admission (T002) sees them. Serves
+without a reservation render byte-for-byte unchanged.
 """
 import ipaddress
 import json
@@ -41,9 +51,11 @@ import shlex
 import subprocess
 import sys
 import argparse
+import tomllib
 
 from . import gpus as _gpus
 from . import multiplexer as _multiplexer
+from . import reservations as _reservations
 from . import serves as _serves
 
 HERE = os.path.dirname(__file__)
@@ -208,9 +220,22 @@ def _toml_str(value):
     return json.dumps(str(value))
 
 
-def render_serve_entry(name, container, port, served_name, up, health="/health", engine="sglang"):
+def render_serve_entry(name, container, port, served_name, up, health="/health", engine="sglang",
+                       gpu_role=None, vram_mib=None, residency=None):
     """A `[[serve]]` TOML block for the `anvil-serving serves` manifest —
-    container/port/model MUST agree with the compose just rendered (T009 AC)."""
+    container/port/model MUST agree with the compose just rendered (T009 AC).
+
+    Optional ADR-0017 reservation fields (`gpu_role`/`vram_mib`/`residency`)
+    are emitted only when given, so `serves up` admission (T002) sees the same
+    reservation the compose's engine budget was derived from — and a render
+    without them keeps the exact pre-reservation block."""
+    reservation = ""
+    if gpu_role is not None:
+        reservation += f'gpu_role = {_toml_str(gpu_role)}\n'
+    if vram_mib is not None:
+        reservation += f'vram_mib = {int(vram_mib)}\n'
+    if residency is not None:
+        reservation += f'residency = {_toml_str(residency)}\n'
     return (
         f'\n[[serve]]\n'
         f'name = {_toml_str(name)}\n'
@@ -219,18 +244,21 @@ def render_serve_entry(name, container, port, served_name, up, health="/health",
         f'model = {_toml_str(served_name)}\n'
         f'engine = {_toml_str(engine)}\n'
         f'health = {_toml_str(health)}\n'
+        f'{reservation}'
         f'up = {_toml_str(up)}\n'
     )
 
 
 def append_serve_entry(
-    manifest_path, name, container, port, served_name, up, health="/health", engine="sglang"
+    manifest_path, name, container, port, served_name, up, health="/health", engine="sglang",
+    gpu_role=None, vram_mib=None, residency=None,
 ):
     """Append a `[[serve]]` block to `manifest_path`, creating it (with a
     header comment) if absent. A repeated `deploy` for the same `name` does
     NOT duplicate the block — it prints a note and leaves the manifest alone
     (edit it by hand to update an existing entry)."""
-    entry = render_serve_entry(name, container, port, served_name, up, health, engine)
+    entry = render_serve_entry(name, container, port, served_name, up, health, engine,
+                               gpu_role=gpu_role, vram_mib=vram_mib, residency=residency)
     if os.path.isfile(manifest_path):
         try:
             existing = _serves.load_manifest(manifest_path)
@@ -327,6 +355,21 @@ def _infer_engine(model_path):
     return "vllm" if ("nvfp4" in qsig or "fp4" in qsig) else "sglang"
 
 
+def _load_gpu_role_budgets(manifest_path):
+    """The serves manifest's `[[gpu_roles]]` capacity rows (read-only lookup).
+
+    Returns `{}` when the manifest doesn't exist yet (a first render has no
+    capacity table to derive from). Raises when the manifest exists but its
+    TOML or `[[gpu_roles]]` rows don't validate — deriving an engine budget
+    against garbage capacity would be worse than failing loudly (same
+    fail-at-parse philosophy as `reservations.parse_gpu_roles`)."""
+    if not manifest_path or not os.path.isfile(manifest_path):
+        return {}
+    with open(manifest_path, "rb") as f:
+        data = tomllib.load(f)
+    return _reservations.parse_gpu_roles(data)
+
+
 def main(argv, *, prog="anvil-serving serves render"):
     ap = argparse.ArgumentParser(prog=prog)
     ap.add_argument("--model", required=True, help="local model dir mounted into the container")
@@ -339,7 +382,23 @@ def main(argv, *, prog="anvil-serving serves render"):
                     help="serving engine (default: inferred from the model's "
                          "config.json weight format, else sglang)")
     ap.add_argument("--gpu-mem-util", type=float, default=0.90,
-                    help="--gpu-memory-utilization for the vLLM engine (ignored for sglang)")
+                    help="--gpu-memory-utilization for the vLLM engine (ignored "
+                         "for sglang); OVERRIDDEN by the value derived from a "
+                         "declared reservation (--gpu-role/--vram-mib) when the "
+                         "manifest declares that role's [[gpu_roles]] capacity")
+    ap.add_argument("--gpu-role", default=None,
+                    help="gpu_role of this serve's ADR-0017 VRAM reservation "
+                         "(requires --vram-mib); when --manifest-out declares a "
+                         "matching [[gpu_roles]] capacity row, the engine memory "
+                         "fraction is derived from vram_mib / (capacity - reserve) "
+                         "and the reservation is written into the [[serve]] entry")
+    ap.add_argument("--vram-mib", type=int, default=None,
+                    help="declared VRAM reservation of this serve in MiB "
+                         "(requires --gpu-role)")
+    ap.add_argument("--residency", choices=list(_serves._RESIDENCIES), default=None,
+                    help="ADR-0017 residency of the reservation written to the "
+                         "[[serve]] entry (resident: never evicted; evictable: may "
+                         "be stopped to make room; on-demand: may evict evictable)")
     ap.add_argument("--disable-thinking", action="store_true",
                     help="inject the engine-appropriate flag to disable a "
                          "thinking-by-default model (CLAUDE.md gotcha #6: "
@@ -367,9 +426,56 @@ def main(argv, *, prog="anvil-serving serves render"):
     bind = a.bind or (LAN_BIND if a.expose_lan else LOOPBACK_BIND)
     engine = a.engine or _infer_engine(a.model)
     disable_thinking = a.disable_thinking or read_thinking_default(a.model_facts)
+
+    # Engine-enforced reservation budget (gpu-reservations:T003, ADR-0017 §4):
+    # a declared reservation whose gpu_role has a [[gpu_roles]] capacity row in
+    # the manifest derives the engine memory fraction from
+    # vram_mib / (capacity - reserve) — the engine then respects the ledger's
+    # budget instead of a hand-tuned fraction. A role without a declared
+    # capacity row stays underivable (same rule as the ledger: no budget row,
+    # no participation), so the explicit/default fraction is kept with a
+    # warning. No reservation flags -> everything below is a no-op.
+    if (a.gpu_role is None) != (a.vram_mib is None):
+        ap.error("--gpu-role and --vram-mib must be given together "
+                 "(a reservation needs both; see ADR-0017)")
+    if a.vram_mib is not None and a.vram_mib <= 0:
+        ap.error("--vram-mib must be a positive integer (MiB)")
+    derived_util = None
+    if a.gpu_role is not None:
+        try:
+            budgets = _load_gpu_role_budgets(a.manifest_out)
+        except (tomllib.TOMLDecodeError, ValueError) as e:
+            print(f"[anvil-serving] ERROR: cannot read [[gpu_roles]] capacity "
+                  f"from {a.manifest_out}: {e}", file=sys.stderr)
+            return 2
+        budget = budgets.get(a.gpu_role)
+        if budget is None:
+            print(f"[anvil-serving] WARNING: gpu_role {a.gpu_role!r} has no "
+                  f"[[gpu_roles]] capacity row in {a.manifest_out}; engine "
+                  f"memory fraction NOT derived (keeping "
+                  f"--gpu-mem-util/defaults). Declare [[gpu_roles]] capacity "
+                  f"to engine-enforce the reservation (ADR-0017).",
+                  file=sys.stderr)
+        else:
+            try:
+                derived_util = _reservations.derive_gpu_memory_utilization(
+                    a.vram_mib, budget)
+            except ValueError as e:
+                print(f"[anvil-serving] ERROR: {e}", file=sys.stderr)
+                return 2
+            print(f"[anvil-serving] reservation: derived engine memory "
+                  f"fraction {derived_util} = {a.vram_mib} MiB / "
+                  f"({budget.vram_mib} - {budget.reserve_mib}) MiB "
+                  f"for gpu_role {a.gpu_role!r}", file=sys.stderr)
+
+    render_kwargs = {}
+    if derived_util is not None:
+        render_kwargs["mem_fraction"] = derived_util   # sglang --mem-fraction-static
+    gpu_mem_util = derived_util if derived_util is not None else a.gpu_mem_util
     open(a.out, "w", encoding="utf-8").write(
         render(a.model, a.gpu, a.context, a.served_name, port=a.port, bind=bind,
-              engine=engine, gpu_mem_util=a.gpu_mem_util, disable_thinking=disable_thinking))
+              engine=engine, gpu_mem_util=gpu_mem_util,
+              disable_thinking=disable_thinking, **render_kwargs))
     print("wrote", a.out, "\nLaunch:  docker compose -f", a.out, "up -d")
 
     if a.no_manifest:
@@ -388,7 +494,8 @@ def main(argv, *, prog="anvil-serving serves render"):
     compose_path = a.out.replace(os.sep, "/")
     up = f"docker compose -f {compose_path} up -d {service}"
     if append_serve_entry(
-        a.manifest_out, tier_id, container, a.port, a.served_name, up, engine=engine
+        a.manifest_out, tier_id, container, a.port, a.served_name, up, engine=engine,
+        gpu_role=a.gpu_role, vram_mib=a.vram_mib, residency=a.residency,
     ):
         print(f"appended [[serve]] {tier_id!r} to {a.manifest_out}")
 
