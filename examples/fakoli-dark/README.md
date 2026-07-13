@@ -16,6 +16,13 @@ explicit model-free policy. The router and controller addresses are synthetic
 private-network examples, and controller authentication is named by the
 `ANVIL_CONTROLLER_TOKEN` environment variable only.
 
+The RTX 5090 (`dark-fast`) is also the host's primary Windows display GPU. The confirmation-gated
+`anvil-serving host gpu-sharing probe` command audits and runs the profile-gated, read-only
+`gpu-sharing-inspect` Compose service, but Green Context
+creation, MPS operations, sustained kernels, or interference benchmarks require a separate
+maintenance/confirmation gate with display-health observation and rollback. Do not encode transient
+driver/runtime observations in `operator-topology.toml`; retain them in dated evidence instead.
+
 Install a private deployment copy with real addresses at
 `~/.anvil-serving/operator-topology.toml`. The canonical voice lifecycle is
 topology-owned. Set that copy's `command_host` and `command_runtime` to the

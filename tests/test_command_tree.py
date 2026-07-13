@@ -58,6 +58,16 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["host restart-docker"]["execution_host_os"] == ["windows", "macos"]
     assert records["host reset-wsl"]["execution_host_os"] == ["windows"]
     assert records["host status"]["remote_operation"]["tool"] == "host_summary"
+    assert records["host gpu-sharing inspect"]["mutation_class"] == "read"
+    assert records["host gpu-sharing inspect"]["handler"] == "anvil_serving.gpu_sharing:main"
+    assert records["host gpu-sharing inspect"]["execution_runtime_roles"] == ["native"]
+    assert records["host gpu-sharing probe"]["mutation_class"] == "mutate"
+    assert records["host gpu-sharing probe"]["handler"] == "anvil_serving.gpu_sharing:main"
+    assert {flag for option in records["host gpu-sharing probe"]["options"] for flag in option["flags"]} >= {
+        "--confirm",
+        "--dry-run",
+        "--gpu-uuid",
+    }
     assert records["doctor"]["remote_operation"]["tool"] == "doctor_summary"
     assert {"topology show", "topology validate", "topology resolve"} <= records.keys()
     assert records["harness status openclaw"]["remote_operation"] == {

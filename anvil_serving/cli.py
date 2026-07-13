@@ -70,6 +70,7 @@ _HANDLER_PROGS = {
     "anvil_serving.eval": "anvil-serving eval",
     "anvil_serving.external_benchmarks.cli": "anvil-serving eval benchmark external",
     "anvil_serving.gpus": "anvil-serving host gpus",
+    "anvil_serving.gpu_sharing": "anvil-serving host gpu-sharing inspect",
     "anvil_serving.harness": "anvil-serving harness",
     "anvil_serving.host": "anvil-serving host",
     "anvil_serving.init": "anvil-serving init",
