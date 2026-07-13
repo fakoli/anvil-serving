@@ -36,6 +36,8 @@ import time
 
 from . import guard
 import urllib.request
+import urllib.error
+import urllib.parse
 
 try:
     import tomllib  # Python 3.11+
@@ -46,6 +48,7 @@ except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3
 # running / absent / error) instead of re-deriving it here.
 from .paths import config_path
 from .serves import docker_state
+from .transports import _is_safe_controller_ip
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -59,7 +62,7 @@ DEFAULT_CFG_VOLUME = "anvil-router-cfg"
 # with the LIVE image's own loader is what makes promote version-safe — a newer local
 # checkout must not re-verdict a profile the deployed router would reject. Keep this in
 # lockstep with the `router` service image in examples/fakoli-dark/docker-compose.yml.
-DEFAULT_IMAGE = "anvil-serving:0.10.0"
+DEFAULT_IMAGE = "anvil-serving:0.12.0"
 # The router READS its config volume mounted at ROUTER_CFG_MOUNT (/etc/anvil); the
 # side-container mounts the SAME volume at _SIDE_MOUNT (/cfg). `_volume_path` translates a
 # router-visible dest to its /cfg path, PRESERVING subdirectories (so /etc/anvil/x/p.json
@@ -74,6 +77,121 @@ _SIDE_MOUNT = "/cfg"
 # Dest paths are interpolated into a root `sh -c`, so restrict them to safe characters
 # (no shell metacharacters, no `..`) BEFORE building any command string.
 _SAFE_DEST = re.compile(r"^[A-Za-z0-9._/-]+$")
+DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
+TRANSITION_PATH = "/v1/admin/transition"
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _safe_router_url(value):
+    parsed = urllib.parse.urlsplit(value)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("router_url must be an HTTP(S) URL")
+    import ipaddress
+    try:
+        address = ipaddress.ip_address(parsed.hostname)
+    except ValueError:
+        raise ValueError("router_url must use a literal private IP address") from None
+    if not _is_safe_controller_ip(address):
+        raise ValueError("router_url must use a loopback, private, or tailnet address")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("router_url must not contain credentials, query, or fragment")
+    return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
+
+
+def transition_request(
+    action,
+    *,
+    tier_id=None,
+    timeout=None,
+    router_url=None,
+    confirm=False,
+    dry_run=True,
+    reason="promotion",
+    env=None,
+    _open=None,
+):
+    """Call the router-owned transition boundary and return a dictionary."""
+    if action not in ("status", "quiesce", "drain", "readmit"):
+        raise ValueError("unsupported transition action")
+    if action != "status" and (not isinstance(tier_id, str) or not tier_id):
+        raise ValueError("tier_id is required")
+    environ = os.environ if env is None else env
+    base = _safe_router_url(
+        router_url or environ.get("ANVIL_ROUTER_URL") or DEFAULT_ROUTER_URL
+    )
+    if action in ("quiesce", "readmit") and (not confirm or dry_run):
+        return {
+            "applied": False,
+            "dry_run": True,
+            "action": action,
+            "tier_id": tier_id,
+            "router_url": base,
+        }
+    token = environ.get("ANVIL_ROUTER_TOKEN") or ""
+    if not token:
+        raise ValueError("ANVIL_ROUTER_TOKEN is required")
+    headers = {
+        "Accept": "application/json",
+        "Authorization": "Bearer " + token,
+    }
+    if _open is None:
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), _NoRedirect()
+        ).open
+    else:
+        opener = _open
+    request_timeout = 5.0
+    if action == "status":
+        query = "" if tier_id is None else "?" + urllib.parse.urlencode({"tier_id": tier_id})
+        request = urllib.request.Request(base + TRANSITION_PATH + query, headers=headers)
+    else:
+        body = {
+            "action": action,
+            "tier_id": tier_id,
+            "confirm": bool(confirm),
+            "dry_run": bool(dry_run),
+            "reason": reason,
+        }
+        if action == "drain":
+            if (
+                isinstance(timeout, bool)
+                or not isinstance(timeout, (int, float))
+                or timeout <= 0
+                or timeout > 3600
+            ):
+                raise ValueError("timeout must be between 0 and 3600 seconds")
+            body["timeout"] = float(timeout)
+            request_timeout = float(timeout) + 5.0
+        payload = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(
+            base + TRANSITION_PATH, data=payload, headers=headers, method="POST"
+        )
+    try:
+        with opener(request, timeout=request_timeout) as response:
+            raw = response.read(256 * 1024 + 1)
+            status = getattr(response, "status", None) or response.getcode()
+    except urllib.error.HTTPError as exc:
+        raise ValueError("router transition request failed with HTTP %s" % exc.code) from None
+    except Exception as exc:
+        raise ValueError(
+            "router transition transport failed (%s)" % type(exc).__name__
+        ) from None
+    if len(raw) > 256 * 1024:
+        raise ValueError("router transition response was oversized")
+    if not isinstance(status, int) or not 200 <= status < 300:
+        raise ValueError("router transition request failed")
+    try:
+        result = json.loads(raw)
+    except Exception:
+        raise ValueError("router transition response was malformed") from None
+    if not isinstance(result, dict):
+        raise ValueError("router transition response was malformed")
+    return result
 
 
 def default_compose_candidates():
@@ -829,6 +947,22 @@ def _build_parser():
     sp = sub.add_parser("status", help="Show deployed router container and health status.")
     add_container(sp)
 
+    for action, help_text in (
+        ("transition-status", "Show router-owned tier transition state."),
+        ("quiesce", "Stop new requests from entering one router tier."),
+        ("drain", "Wait for a quiesced tier's active requests to finish."),
+        ("readmit", "Readmit a tier only after current readiness passes."),
+    ):
+        sp = sub.add_parser(action, help=help_text, description=help_text)
+        sp.add_argument("--tier", required=action != "transition-status")
+        sp.add_argument("--router-url", default=None,
+                        help="private router base URL (default: ANVIL_ROUTER_URL or http://127.0.0.1:8000).")
+        if action == "drain":
+            sp.add_argument("--timeout", type=float, required=True)
+        if action in ("quiesce", "readmit"):
+            sp.add_argument("--confirm", action="store_true")
+            sp.add_argument("--dry-run", action="store_true", default=False)
+
     sp = sub.add_parser("logs", help="Show docker logs for the deployed router container.")
     add_container(sp)
     sp.add_argument("--tail", default="200", help="number of trailing lines to show (default: %(default)s; 'all').")
@@ -867,7 +1001,8 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     argv = _normalize_leading_options(
         argv,
-        {"up", "down", "restart", "reload", "status", "logs", "token", "promote"},
+        {"up", "down", "restart", "reload", "status", "logs", "token", "promote",
+         "transition-status", "quiesce", "drain", "readmit"},
         {
             "--container": 1, "--compose": 1, "--service": 1, "--env-file": 1,
             "--tail": 1, "--since": 1, "--profile": 1, "--config": 1,
@@ -895,6 +1030,44 @@ def main(argv=None):
         return cmd_reload(a.container, dry_run=a.dry_run, verify=not a.no_verify)
     if a.action == "status":
         return cmd_status(a.container)
+    if a.action in {"transition-status", "quiesce", "drain", "readmit"}:
+        action = "status" if a.action == "transition-status" else a.action
+        # The declarative top-level CLI consumes ``--confirm`` before invoking
+        # leaf handlers and carries that authorization through the scoped guard.
+        # Keep direct ``router_manage.main`` calls working too by accepting the
+        # leaf parser's flag when it is present.
+        confirmed = bool(
+            getattr(a, "confirm", False) or guard.confirmation_authorized()
+        )
+        try:
+            result = transition_request(
+                action,
+                tier_id=getattr(a, "tier", None),
+                timeout=getattr(a, "timeout", None),
+                router_url=a.router_url,
+                confirm=confirmed,
+                dry_run=(getattr(a, "dry_run", False) or not confirmed)
+                if action in ("quiesce", "readmit") else False,
+            )
+        except ValueError as exc:
+            print("router transition failed: %s" % exc, file=sys.stderr)
+            return 1
+        print(json.dumps(result, sort_keys=True))
+        if action == "drain":
+            drain = result.get("result", result)
+            if isinstance(drain, dict) and not drain.get("drained", False):
+                return 1
+        if action == "status":
+            rows = result.get("tiers", [])
+            if isinstance(rows, list) and any(
+                isinstance(row, dict) and row.get("ready") is False for row in rows
+            ):
+                return 1
+        if action == "readmit":
+            readmit = result.get("result", result)
+            if isinstance(readmit, dict) and readmit.get("readmitted") is False:
+                return 1
+        return 0
     if a.action == "logs":
         return cmd_logs(a.container, tail=a.tail, since=a.since, follow=a.follow)
     if a.action == "token":

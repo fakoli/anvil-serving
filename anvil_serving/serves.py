@@ -45,6 +45,7 @@ requires `bash` on PATH (Git Bash / WSL on Windows); a stopped container is just
 `docker start`ed and needs none of this.
 """
 import argparse
+import json
 import math
 import numbers
 import os
@@ -272,12 +273,27 @@ def load_promotions(path):
                 value = os.path.join(mdir, value)
             plan[field] = os.path.abspath(value)
         plan.setdefault("candidate", None)
+        affected = plan.get("affected_tiers")
+        if (
+            not isinstance(affected, list)
+            or not affected
+            or not all(isinstance(tier, str) and tier for tier in affected)
+            or len(set(affected)) != len(affected)
+        ):
+            raise ValueError(
+                "promotion affected_tiers must be a non-empty unique array of tier ids"
+            )
+        plan["affected_tiers"] = list(affected)
+        plan.setdefault("drain_timeout", 120)
         plan.setdefault("needle_ctx", 32768)
         plan.setdefault("tool_batch", 20)
         plan.setdefault("startup_timeout", 600)
         plan.setdefault("rollback_startup_timeout", plan["startup_timeout"])
         plan.setdefault("poll_interval", 5)
-        for field in ("startup_timeout", "rollback_startup_timeout", "poll_interval"):
+        for field in (
+            "startup_timeout", "rollback_startup_timeout", "poll_interval",
+            "drain_timeout",
+        ):
             value = plan[field]
             if (isinstance(value, bool) or not isinstance(value, numbers.Real)
                     or not math.isfinite(value) or value <= 0):
@@ -315,6 +331,143 @@ def _exact_serve(serves, name):
     if len(matches) != 1:
         raise ValueError("serve %r must match exactly one manifest entry" % name)
     return matches[0]
+
+
+def _validate_promotion_topology(serves, plan):
+    """Prove affected tiers map only to the managed serve pair."""
+    from urllib.parse import urlsplit
+    from .router.config import load as load_router
+
+    forward = load_router(plan["router_config"])
+    rollback = load_router(plan["rollback_router_config"])
+    target = _exact_serve(serves, plan["target"])
+    old = _exact_serve(serves, plan["rollback"])
+    affected = set(plan["affected_tiers"])
+    forward_ids = {tier.id for tier in forward.tiers}
+    rollback_ids = {tier.id for tier in rollback.tiers}
+    if not affected <= forward_ids or not affected <= rollback_ids:
+        raise ValueError("affected_tiers contains an unknown router tier")
+
+    def _endpoint_hosts(serve):
+        hosts = {
+            "127.0.0.1",
+            "host.docker.internal",
+            str(serve["name"]).casefold(),
+            str(serve["container"]).casefold(),
+        }
+        up = serve.get("up") or []
+        try:
+            up_index = up.index("up")
+        except ValueError:
+            pass
+        else:
+            hosts.update(
+                token.casefold()
+                for token in up[up_index + 1:]
+                if token and not token.startswith("-")
+            )
+        return hosts
+
+    def _owns_endpoint(tier, serve):
+        parsed = urlsplit(tier.base_url)
+        return (
+            parsed.scheme == "http"
+            and parsed.hostname is not None
+            and parsed.hostname.casefold() in _endpoint_hosts(serve)
+            and parsed.port == serve["port"]
+        )
+
+    def _matches(tier, serve):
+        return (
+            _owns_endpoint(tier, serve)
+            and tier.model == serve["served_name"]
+            and tier.model_identity
+        )
+
+    forward_owned = {
+        tier.id for tier in forward.tiers if _owns_endpoint(tier, target)
+    }
+    rollback_owned = {
+        tier.id for tier in rollback.tiers if _owns_endpoint(tier, old)
+    }
+    if affected != forward_owned or affected != rollback_owned:
+        raise ValueError(
+            "affected_tiers must exactly cover every tier owned by the managed endpoint"
+        )
+
+    for tier_id in affected:
+        if not _matches(forward.tier(tier_id), target):
+            raise ValueError(
+                "affected tier does not map to the target serve with identity readiness"
+            )
+        if not _matches(rollback.tier(tier_id), old):
+            raise ValueError(
+                "affected tier does not map to the rollback serve with identity readiness"
+            )
+    for tier_id in forward_ids | rollback_ids:
+        if tier_id in affected:
+            continue
+        if tier_id not in forward_ids or tier_id not in rollback_ids:
+            raise ValueError("unaffected router tiers differ between promotion states")
+        if forward.tier(tier_id) != rollback.tier(tier_id):
+            raise ValueError("unaffected router tier configuration changed")
+    return True
+
+
+def _router_base_url(plan):
+    from urllib.parse import urlsplit, urlunsplit
+
+    health_url = str(plan.get("router_health_url", "http://127.0.0.1:8000/healthz"))
+    parsed = urlsplit(health_url)
+    return urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
+
+
+def _promotion_transition_cli(plan, action, tier_id, *, timeout=None, _run=subprocess.run):
+    argv = [
+        sys.executable, "-m", "anvil_serving.cli", "router", action,
+        "--tier", tier_id, "--router-url", _router_base_url(plan),
+    ]
+    if timeout is not None:
+        argv += ["--timeout", str(timeout)]
+    if action in ("quiesce", "readmit"):
+        argv.append("--confirm")
+    print("  gate: %s" % " ".join(argv))
+    return _run(argv, text=True).returncode
+
+
+def _compensate_quiesce(plan, tier_ids, *, _run=subprocess.run):
+    """Idempotently readmit every possibly quiesced tier after a refusal."""
+    failed = []
+    for tier_id in dict.fromkeys(tier_ids):
+        if _promotion_transition_cli(plan, "readmit", tier_id, _run=_run) != 0:
+            failed.append(tier_id)
+    if failed:
+        print(
+            "  recovery: admission remains fail-closed for %s; use --resume "
+            "after router readiness recovers" % ", ".join(failed)
+        )
+        return False
+    return True
+
+
+def _serve_identity_ready(serve, *, _open=urllib.request.urlopen, max_bytes=65536):
+    from urllib.parse import urlunsplit
+
+    url = urlunsplit(("http", "127.0.0.1:%s" % serve["port"], "/v1/models", "", ""))
+    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    try:
+        with _open(request, timeout=5) as response:
+            raw = response.read(max_bytes + 1)
+    except Exception:
+        return False
+    if len(raw) > max_bytes:
+        return False
+    try:
+        data = json.loads(raw).get("data")
+        ids = [item.get("id") for item in data if isinstance(item, dict)]
+    except Exception:
+        return False
+    return serve["served_name"] in ids
 
 
 def _await_healthy(serve, timeout, poll_interval, *, _open=urllib.request.urlopen,
@@ -390,8 +543,13 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     print("  %s plan: stop %s; start %s; %d preflight gate(s); promote router" % (
         label, ", ".join(stop_names), target["name"], len(gates)))
     if dry_run:
+        for tier_id in plan["affected_tiers"]:
+            print("  gate: quiesce router tier %s" % tier_id)
+            print("  gate: drain router tier %s (timeout %ss)" % (
+                tier_id, plan["drain_timeout"]))
         cmd_down(serves, stop_names, dry_run=True, _run=_run)
         cmd_up(serves, [target["name"]], dry_run=True, recreate=True, _run=_run)
+        print("  gate: exact served-model identity for %s" % target["served_name"])
         for gate in gates:
             print("  gate %s: eval preflight --tier %s --checks %s --thinking-mode %s "
                   "--visible-answer-tokens %s --reasoning-headroom-tokens %s" % (
@@ -399,19 +557,53 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                       gate["visible_answer_tokens"], gate["reasoning_headroom_tokens"]))
         print("  gate: router promote --config %s --profile %s" % (config, profile))
         print("  verify: router gateway is reachable after reload")
+        print("  verify: post-restart health and model identity for %s" % (
+            ", ".join(plan["affected_tiers"])))
         return 0
+
+    quiesced = []
+    for tier_id in plan["affected_tiers"]:
+        if _promotion_transition_cli(
+            plan, "quiesce", tier_id, _run=_run
+        ) != 0:
+            print("  %s refused: failed to quiesce %s" % (label, tier_id))
+            # The router may have applied quiescence before its response was
+            # lost. Compensate the current tier as well as earlier successes.
+            return 2 if _compensate_quiesce(
+                plan, [*quiesced, tier_id], _run=_run
+            ) else 3
+        quiesced.append(tier_id)
+    for tier_id in plan["affected_tiers"]:
+        if _promotion_transition_cli(
+            plan, "drain", tier_id, timeout=plan["drain_timeout"], _run=_run
+        ) != 0:
+            print("  %s refused: drain timed out for %s before container mutation" % (
+                label, tier_id))
+            return 2 if _compensate_quiesce(
+                plan, quiesced, _run=_run
+            ) else 3
 
     if cmd_down(serves, stop_names, _run=_run) != 0:
         return 1
     target_state = docker_state(target["container"], _run=_run)
-    if resume and target_state == "running":
-        print("  resume: %s is already running; continuing at health gate" % target["name"])
+    reuse_target = (
+        resume
+        and target_state == "running"
+        and _health(target["port"], target["health"], _open=_open) == 200
+        and _serve_identity_ready(target, _open=_open)
+    )
+    if reuse_target:
+        print("  resume: %s is already healthy with exact model identity" % target["name"])
     elif cmd_up(serves, [target["name"]], recreate=True, _run=_run) != 0:
         return 1
     startup_timeout = plan["rollback_startup_timeout"] if rollback else plan["startup_timeout"]
     if not _await_healthy(target, startup_timeout, plan["poll_interval"],
                           _open=_open, _sleep=_sleep):
         print("  %s failed: %s did not become healthy" % (label, target["name"]))
+        return 1
+    if not _serve_identity_ready(target, _open=_open):
+        print("  %s failed: %s did not advertise the exact configured model" % (
+            label, target["name"]))
         return 1
     for gate in gates:
         preflight = [
@@ -441,6 +633,15 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         print("  %s failed: router health gate returned HTTP %s" % (label, status))
         return 1
     print("  router gateway reachable after reload (HTTP %s)" % status)
+    # The restart intentionally discards process-local quiescence.  Ordinary
+    # health+identity readiness in the new router is the fail-closed guard.
+    for tier_id in plan["affected_tiers"]:
+        if _promotion_transition_cli(
+            plan, "transition-status", tier_id, _run=_run
+        ) != 0:
+            print("  %s failed: post-restart readiness rejected %s" % (
+                label, tier_id))
+            return 1
     return 0
 
 
@@ -458,6 +659,7 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
             _exact_serve(serves, plan[field])
         if plan.get("candidate"):
             _exact_serve(serves, plan["candidate"])
+        _validate_promotion_topology(serves, plan)
     except ValueError as exc:
         print("promotion refused: %s" % exc)
         return 1
@@ -473,6 +675,11 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
     if rc == 0 or dry_run:
         return rc
     if rc == 2:  # refused before the first mutation; nothing needs restoring
+        return 1
+    if rc == 3:
+        # No container mutation occurred, but the router's admission state is
+        # uncertain. Do not compound that uncertainty with an automatic swap.
+        print("  CRITICAL: pre-mutation admission compensation failed; no containers changed")
         return 1
     if rollback:
         print("  rollback gate failed; restoring the promoted serve and router state")

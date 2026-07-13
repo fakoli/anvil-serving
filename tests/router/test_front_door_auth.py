@@ -86,6 +86,34 @@ _CHAT_BODY = {
 }
 
 
+class _TransitionBackend(StaticBackend):
+    def __init__(self):
+        super().__init__(["ok"])
+        self.state = "admitting"
+
+    def transition_status(self, tier_id=None):
+        return {"tiers": [{
+            "tier_id": tier_id or "heavy-local",
+            "state": self.state,
+            "reason": "promotion" if self.state == "quiesced" else "admitting",
+            "active_requests": 0,
+            "ready": True,
+            "expected_model": "heavy",
+            "observed_model": "heavy",
+        }]}
+
+    def quiesce_tier(self, tier_id, reason="promotion"):
+        self.state = "quiesced"
+        return self.transition_status(tier_id)["tiers"][0]
+
+    def drain_tier(self, tier_id, timeout):
+        return {"drained": True, "timed_out": False}
+
+    def readmit_tier(self, tier_id):
+        self.state = "admitting"
+        return {"readmitted": True, "reason": "readiness_passed"}
+
+
 # --------------------------------------------------------------------------- #
 # auth ON: correct token -> 200
 # --------------------------------------------------------------------------- #
@@ -229,3 +257,76 @@ def test_v1_decisions_requires_auth():
     assert status_unauthed == 401
     assert status_authed == 200
     assert json.loads(raw)["count"] == 0
+
+
+def test_transition_boundary_requires_configured_auth_and_valid_token():
+    backend = _TransitionBackend()
+    with running_server(backend, auth_token=None) as (host, port):
+        status_off, _, _ = _get(host, port, "/v1/admin/transition")
+    with running_server(backend, auth_token=TOKEN) as (host, port):
+        status_missing, _, _ = _get(host, port, "/v1/admin/transition")
+        status_valid, _, raw = _get(
+            host, port, "/v1/admin/transition?tier_id=heavy-local",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+    assert status_off == 404
+    assert status_missing == 401
+    assert status_valid == 200
+    assert json.loads(raw)["tiers"][0]["expected_model"] == "heavy"
+
+
+def test_transition_status_get_rejects_body_framing_and_closes_connection():
+    backend = _TransitionBackend()
+    with running_server(backend, auth_token=TOKEN) as (host, port):
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        try:
+            conn.request(
+                "GET",
+                "/v1/admin/transition",
+                body=b"smuggled",
+                headers={"Authorization": f"Bearer {TOKEN}"},
+            )
+            response = conn.getresponse()
+            raw = response.read()
+            assert response.status == 400
+            assert response.getheader("Connection") == "close"
+            assert json.loads(raw)["error"]["type"] == "invalid_request"
+        finally:
+            conn.close()
+
+
+def test_transition_mutations_preview_then_apply_and_drain():
+    backend = _TransitionBackend()
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    with running_server(backend, auth_token=TOKEN) as (host, port):
+        preview_status, _, preview_raw = _post(
+            host, port, "/v1/admin/transition",
+            {"action": "quiesce", "tier_id": "heavy-local"}, headers,
+        )
+        assert backend.state == "admitting"
+        applied_status, _, applied_raw = _post(
+            host, port, "/v1/admin/transition",
+            {
+                "action": "quiesce", "tier_id": "heavy-local",
+                "confirm": True, "dry_run": False,
+            }, headers,
+        )
+        drain_status, _, drain_raw = _post(
+            host, port, "/v1/admin/transition",
+            {"action": "drain", "tier_id": "heavy-local", "timeout": 1}, headers,
+        )
+        readmit_status, _, _ = _post(
+            host, port, "/v1/admin/transition",
+            {
+                "action": "readmit", "tier_id": "heavy-local",
+                "confirm": True, "dry_run": False,
+            }, headers,
+        )
+    assert preview_status == 200
+    assert json.loads(preview_raw)["applied"] is False
+    assert applied_status == 200
+    assert json.loads(applied_raw)["result"]["state"] == "quiesced"
+    assert drain_status == 200
+    assert json.loads(drain_raw)["result"]["drained"] is True
+    assert readmit_status == 200
+    assert backend.state == "admitting"

@@ -24,13 +24,27 @@ from __future__ import annotations
 
 import threading
 import time
+import json
+import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Mapping, Optional
 from urllib.parse import urlsplit, urlunsplit
 
 from .config import PRIVACY_LOCAL, RouterConfig, Tier
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _direct_opener():
+    """Return the shared token-safe probe transport policy."""
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), _NoRedirect()
+    ).open
 
 
 @dataclass(frozen=True)
@@ -44,13 +58,21 @@ class AvailabilityResult:
     available: bool
     state: str
     reason: str
+    expected_model: Optional[str] = None
+    observed_model: Optional[str] = None
 
 
 class AlwaysAvailable:
     """Backwards-compatible availability implementation with no network I/O."""
 
     def check(self, tier: Tier) -> AvailabilityResult:
-        return AvailabilityResult(True, "ready", "availability_not_configured")
+        return AvailabilityResult(
+            True, "ready", "availability_not_configured",
+            expected_model=tier.model if tier.model_identity else None,
+        )
+
+    def invalidate(self, tier_id: Optional[str] = None) -> None:
+        return None
 
 
 class HttpHealthAvailability:
@@ -66,13 +88,16 @@ class HttpHealthAvailability:
         self,
         config: RouterConfig,
         *,
-        opener: Callable[..., object] = urllib.request.urlopen,
+        opener: Optional[Callable[..., object]] = None,
         clock: Callable[[], float] = time.monotonic,
+        env: Optional[Mapping[str, str]] = None,
     ) -> None:
         self._probe_interval = config.availability_probe_interval
         self._probe_timeout = config.availability_probe_timeout
-        self._opener = opener
+        self._probe_max_bytes = config.availability_probe_max_bytes
+        self._opener = opener if opener is not None else _direct_opener()
         self._clock = clock
+        self._env = os.environ if env is None else env
         self._lock = threading.Lock()
         self._cache: Dict[str, tuple[float, AvailabilityResult]] = {}
 
@@ -94,12 +119,17 @@ class HttpHealthAvailability:
             if cached is not None and now - cached[0] < self._probe_interval:
                 return cached[1]
 
-        result = self._probe(url)
+        result = self._probe(url, tier)
         with self._lock:
             self._cache[tier.id] = (self._clock(), result)
         return result
 
-    def _probe(self, url: str) -> AvailabilityResult:
+    @staticmethod
+    def _models_url(tier: Tier) -> str:
+        parsed = urlsplit(tier.base_url)
+        return urlunsplit((parsed.scheme, parsed.netloc, "/v1/models", "", ""))
+
+    def _probe(self, url: str, tier: Tier) -> AvailabilityResult:
         request = urllib.request.Request(url, method="GET")
         try:
             with self._opener(request, timeout=self._probe_timeout) as response:
@@ -114,9 +144,66 @@ class HttpHealthAvailability:
             )
 
         if isinstance(status, int) and 200 <= status < 400:
+            if tier.model_identity:
+                return self._probe_identity(tier)
             return AvailabilityResult(True, "ready", "health_passed")
         code = status if isinstance(status, int) else "unknown"
         return AvailabilityResult(False, "unavailable", f"health_http_{code}")
+
+    def _probe_identity(self, tier: Tier) -> AvailabilityResult:
+        expected = tier.model
+        headers = {"Accept": "application/json"}
+        token = self._env.get(tier.auth_env, "")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        request = urllib.request.Request(
+            self._models_url(tier), headers=headers, method="GET"
+        )
+        try:
+            with self._opener(request, timeout=self._probe_timeout) as response:
+                status = getattr(response, "status", None) or response.getcode()
+                if not isinstance(status, int) or not 200 <= status < 300:
+                    code = status if isinstance(status, int) else "unknown"
+                    return AvailabilityResult(
+                        False, "unavailable", f"identity_http_{code}", expected
+                    )
+                payload = response.read(self._probe_max_bytes + 1)
+        except urllib.error.HTTPError as exc:
+            return AvailabilityResult(
+                False, "unavailable", f"identity_http_{exc.code}", expected
+            )
+        except Exception as exc:  # noqa: BLE001 - stable transport code only
+            return AvailabilityResult(
+                False,
+                "unavailable",
+                f"identity_transport_{type(exc).__name__}",
+                expected,
+            )
+        if len(payload) > self._probe_max_bytes:
+            return AvailabilityResult(
+                False, "unavailable", "identity_oversized", expected
+            )
+        try:
+            document = json.loads(payload)
+            data = document["data"]
+            if not isinstance(data, list):
+                raise ValueError("bad data")
+            model_ids = [
+                item.get("id") for item in data
+                if isinstance(item, dict) and isinstance(item.get("id"), str)
+            ]
+        except Exception:  # noqa: BLE001 - raw parser details are not status
+            return AvailabilityResult(
+                False, "unavailable", "identity_malformed", expected
+            )
+        observed = model_ids[0][:256] if model_ids else None
+        if expected in model_ids:
+            return AvailabilityResult(
+                True, "ready", "identity_passed", expected, expected
+            )
+        return AvailabilityResult(
+            False, "unavailable", "identity_mismatch", expected, observed
+        )
 
     def invalidate(self, tier_id: Optional[str] = None) -> None:
         """Expire cached state for tests and future lifecycle notifications."""
