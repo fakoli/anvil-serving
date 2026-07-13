@@ -59,3 +59,20 @@ quick-edit   = ["fast-local", "heavy-local"]
 review       = ["heavy-local"]
 planning     = ["heavy-local"]
 long-context = ["heavy-local"]
+
+# ── Purpose-model serves (optional; ADR-0017 §7) ──
+# Embedding/rerank serves routed BY MODEL NAME on POST /v1/embeddings and
+# POST /v1/rerank (same front-door token auth; decisions logged). The request's
+# `model` field must equal a configured `model` below — an unknown model name is
+# a clean 404, never a fallthrough to chat routing. Absent -> both endpoints 404.
+# [[router.purpose_models]]
+# id       = "embeddings-local"
+# kind     = "embedding"                  # "embedding" | "rerank"
+# model    = "qwen3-embedding-0.6b"       # the serve's --served-model-name
+# base_url = "http://127.0.0.1:30005/v1"  # router POSTs to {base_url}/embeddings
+#
+# [[router.purpose_models]]
+# id       = "reranker-local"
+# kind     = "rerank"
+# model    = "qwen3-reranker-0.6b"
+# base_url = "http://127.0.0.1:30006/v1"  # router POSTs to {base_url}/rerank

@@ -80,6 +80,7 @@ The main table: tier topology, preset map, and routing policy knobs.
 | `availability_probe_interval` | number (seconds) | `5.0` | Cache duration for local-tier readiness results. After expiry, the next request rechecks the configured `health_path`, so a recovered serve is automatically readmitted without a router restart. |
 | `availability_probe_timeout` | number (seconds) | `1.0` | Per-probe timeout for local-tier readiness checks. A failed probe skips that tier before inference and does not increment its circuit breaker. |
 | `availability_probe_max_bytes` | integer (256–1048576) | `65536` | Maximum `/v1/models` response bytes read by identity readiness. Oversized responses fail closed. |
+| `purpose_models` | array of tables | `[]` | Purpose-model serves (embedding/rerank) routed **by model name** on `POST /v1/embeddings` and `POST /v1/rerank` (see `[[router.purpose_models]]` below). Absent or empty leaves both endpoints 404. |
 
 ## `[[router.tiers]]`
 
@@ -155,6 +156,41 @@ value falls through to the Tier-0 classifier, which infers a work class from the
 the inferred preset is missing from your config, the request collapses to the safer tier. Config
 preset names are otherwise free-form — a custom name works as a declared preset for any caller
 that sends it, it just isn't advertised by `/v1/models`.
+
+## `[[router.purpose_models]]`
+
+Purpose-model serves ([ADR-0017 §7](adr/0017-gpu-residency-reservations.md)): non-chat inference
+surfaces the front door routes **by model name**, never through the chat intent/policy pipeline.
+When at least one entry is configured, the front door serves `POST /v1/embeddings` (OpenAI
+Embeddings shape) and `POST /v1/rerank` (Jina/Cohere-style shape, as served by vLLM) under the same
+`[server].auth_env` token auth; the request's `model` field is matched against the entries of the
+matching `kind` and the validated body is relayed verbatim to that serve. **An unknown model name
+is a clean HTTP 404 naming the configured models for that kind — it never falls through to chat
+routing.** Every dispatched request is recorded in the decision log (work class `embedding` /
+`rerank`) and appears in `GET /v1/decisions`.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `id` | string, non-empty | Audit-trail id for this serve (shares the namespace with tier ids; must be unique across both). |
+| `kind` | `"embedding"` \| `"rerank"` | Which surface this serve backs: `embedding` → `/v1/embeddings`, `rerank` → `/v1/rerank`. |
+| `model` | string, non-empty | The serve's `--served-model-name` — the exact string callers send in the request `model` field. One serve per `(kind, model)` pair. |
+| `base_url` | string | OpenAI-style base URL (e.g. `http://127.0.0.1:30005/v1`); the router POSTs to `{base_url}/embeddings` or `{base_url}/rerank`. Only `http://`/`https://` accepted. |
+| `auth_env` (optional) | string | Env-var *name* for an upstream bearer token (same validation as a tier's `auth_env`). Local pooling serves usually need none. If set but unresolved at startup, the entry is skipped with a warning (mirrors the cloud-tier stance). |
+| `timeout` (optional) | number > 0 (seconds) | Per-serve transport timeout; defaults to `[router].relay_timeout`. |
+
+```toml
+[[router.purpose_models]]
+id       = "embeddings-local"
+kind     = "embedding"
+model    = "qwen3-embedding-0.6b"
+base_url = "http://127.0.0.1:30005/v1"
+
+[[router.purpose_models]]
+id       = "reranker-local"
+kind     = "rerank"
+model    = "qwen3-reranker-0.6b"
+base_url = "http://127.0.0.1:30006/v1"
+```
 
 ## `[modes]` manifest
 
