@@ -36,5 +36,5 @@ people and the chat logs.
 | [0014](0014-tailnet-controller-transport.md) | Tailnet controller transport for split-host OpenClaw deployments | Accepted |
 | [0015](0015-operator-skills-and-subagent-workflows.md) | Operator skills and sub-agent workflows above the MCP/controller control plane | Accepted |
 | [0016](0016-runtime-tier-readiness.md) | Runtime tier readiness excludes stopped serves without config rewrites | Accepted |
-| [0017](0017-gpu-residency-leases.md) | GPU residency leases: declarative VRAM ledger enforced by serve lifecycle verbs | Accepted |
+| [0017](0017-gpu-residency-reservations.md) | GPU residency reservations: declarative VRAM ledger enforced by serve lifecycle verbs | Accepted |
 | [0018](0018-router-transition-safety.md) | Router transition safety for slow single-workstation model swaps | Accepted |
