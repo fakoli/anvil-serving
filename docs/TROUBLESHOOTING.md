@@ -279,3 +279,27 @@ The install is stdlib-only — no required runtime dependencies.
   `POST /v1/route`), locally or via the split-host controller.
 - **Playbooks** — step-by-step operator workflows for status, preflight, benchmark, and OpenClaw
   sync live in [Operator playbooks](OPERATOR-PLAYBOOKS.md).
+## A promotion stopped before container mutation
+
+Run `anvil-serving router transition-status --tier heavy-local --router-url
+http://127.0.0.1:8000`. A drain timeout means an admitted generation is still active; the workflow
+does not stop any serve. If timeout recovery could revalidate the old health and exact model name,
+it safely readmits the tier. Otherwise the tier stays fail-closed: correct the endpoint, confirm its
+`/health` and `/v1/models` identity, then use `serves promote ... --resume`.
+
+`--resume` never trusts old artifacts. It reasserts quiescence, drains again, reruns health,
+identity, and every direct preflight gate, and only skips recreation when the intended target is
+already running. A failed automatic rollback reports the same fail-closed state; inspect both serve
+and router status before retrying.
+
+## A healthy serve is reported as `identity_mismatch`
+
+The health port is live but `/v1/models` did not advertise the tier's exact configured `model`.
+Correct either the serve's `--served-model-name` or the reviewed router config; do not readmit it by
+bypassing the guard. The identity check does not prove weights, revision, quantization, or engine
+flags—use promotion fingerprints and preflight evidence for those properties.
+
+The reference two-GPU transition leaves Fast resident on the RTX 5090 while Heavy changes on the
+RTX PRO 6000. The accepted final router restart can briefly interrupt Fast connections, but it must
+not stop or recreate the Fast model container. Any live Fakoli Dark promotion remains a separate
+explicit human-gated operation.
