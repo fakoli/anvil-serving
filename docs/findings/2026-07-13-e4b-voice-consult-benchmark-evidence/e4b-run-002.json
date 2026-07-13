@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.023
+  },
+  "id": "e4b-run-002",
+  "latency": {
+    "llm_ms": 2626.09,
+    "llm_stage_latency_ms": 2626.09,
+    "stt_ms": 151.09,
+    "total_turn_latency_ms": 4783.05,
+    "ttfa_ms": 2841.68,
+    "tts_ms": 2005.88,
+    "turn_latency_ms": 4783.05
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "Here are several ways to respond, depending on the context of the interaction and what you want to communicate.\n\nSince your input was just a blank space (or perhaps an implied request for a response), I will provide options that cover general scenarios:\n\n---\n\n## 1. If you are waiting for a prompt or need clarification:\n\nThis is the most likely scenario. You are waiting for the user to give you something to work with.\n\n* **\"How can I help you today?\"** (Standard, polite, and open-ended)\n* **\"Please provide me with some text or a question!\"** (Direct and helpful)\n* **\"I'm ready when you are. What would you like me to do?\"** (Enthusiastic and patient)\n* **\"What are you looking for?\"** (Concise)\n\n## 2. If you are acknowledging the previous turn (confirming readiness):\n\nIf you just finished a previous task or are showing you're available.\n\n* **\"Okay, I'm ready.\"**\n* **\"Understood. Let's proceed.\"**\n* **\"Awaiting your instructions.\"**\n\n## 3. If you suspect the input was accidental or a test:\n\n* **\"Did you mean to send something?\"** (Gentle inquiry)\n* **\"Is there something specific you'd like assistance with?\"** (Polite redirection)\n\n## 4. If you want to give a general, conversational response:\n\nIf the interaction is meant to be informal.\n\n* **\"Hello there! \ud83d\ude0a\"**\n* **\"Hi! How's your day going?\"**\n* **\"What's on your mind?\"**\n\n---\n\n**\u27a1\ufe0f To get the best response, please tell me what you were hoping for!**\n\n* **Did you want me to write something?**\n* **Did you want me to answer a question?**\n* **Were you testing my system?**",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 87.3949,
+    "output_bytes": 4194954,
+    "request_count": 28,
+    "source_sample_rate": 24000
+  }
+}

@@ -1,0 +1,543 @@
+{
+  "schema_version": "voice-benchmark-comparison/v1",
+  "task": "gpu-reservations:T008",
+  "title": "Voice consult benchmark: E4B-backed chat-fast vs 35B baseline",
+  "generated_utc": "2026-07-13",
+  "harness": "anvil-serving voice benchmark (examples/voice/fakoli-dark.toml, candidate=gemma4-e4b-it)",
+  "turn_latency_budget_ms": 5000.0,
+  "route_identity_verified": "POST /v1/route {\"model\":\"chat-fast\"} -> gemma4-e4b-it / fast-local / local (confidence 1.0)",
+  "candidate": {
+    "label": "gemma4-e4b-it via chat-fast (live router 100.87.34.66:8000)",
+    "route": {
+      "endpoint_host": "100.87.34.66",
+      "model": "gemma4-e4b-it",
+      "provider": "fast-local",
+      "tier": "local",
+      "work_class": null
+    },
+    "llm": {
+      "base_url": "http://100.87.34.66:8000/v1",
+      "model": "chat-fast"
+    },
+    "stt": {
+      "base_url": "http://127.0.0.1:30010/v1",
+      "model": "tdt-0.6b-v3"
+    },
+    "tts": {
+      "base_url": "http://127.0.0.1:30011/v1",
+      "model": "kokoro"
+    },
+    "n_runs": 12,
+    "turn_latency_ms": {
+      "min": 300.34,
+      "max": 13801.83,
+      "mean": 2608.1,
+      "median": 1294.75,
+      "all": [
+        4783.05,
+        484.83,
+        1392.77,
+        2461.56,
+        1196.73,
+        2958.49,
+        2051.74,
+        959.12,
+        13801.83,
+        493.17,
+        413.52,
+        300.34
+      ]
+    },
+    "ttfa_ms": {
+      "min": 191.01,
+      "max": 7197.96,
+      "mean": 1500.05,
+      "median": 804.6,
+      "all": [
+        2841.68,
+        318.1,
+        823.21,
+        1543.76,
+        785.99,
+        1672.43,
+        1314.13,
+        626.27,
+        7197.96,
+        370.65,
+        315.38,
+        191.01
+      ]
+    },
+    "llm_stage_latency_ms": {
+      "min": 89.04,
+      "max": 7079.45,
+      "mean": 1343.41,
+      "median": 674.37,
+      "all": [
+        2626.09,
+        169.57,
+        706.79,
+        1318.97,
+        641.94,
+        1501.57,
+        1089.48,
+        494.84,
+        7079.45,
+        218.83,
+        184.34,
+        89.04
+      ]
+    },
+    "reply_chars_per_run": [
+      1539,
+      101,
+      443,
+      846,
+      408,
+      911,
+      618,
+      287,
+      5388,
+      121,
+      105,
+      34
+    ]
+  },
+  "baseline_35b": {
+    "label": "qwen36-35b-a3b-nvfp4 (prior Fast tier)",
+    "source": "docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.voice.json",
+    "turn_latency_ms": 377.52,
+    "ttfa_ms": 308.04,
+    "llm_stage_latency_ms": 165.4,
+    "reply_chars": 34
+  },
+  "gate": {
+    "metric": "turn_latency_ms",
+    "budget_ms": 5000.0,
+    "n_runs": 12,
+    "runs_over_budget": 1,
+    "over_budget_values_ms": [
+      13801.83
+    ],
+    "max_turn_latency_ms": 13801.83,
+    "breached": true,
+    "verdict": "REGRESSION",
+    "blocks_35b_retirement": true
+  },
+  "caveats": [
+    "Synthetic STT input yields an empty hypothesis (stt_wer=1.0 in BOTH E4B and the 35B baseline). The comparison is fair (identical harness/STT/TTS/input), but absolute turn latency is a harness proxy, not a live-consult SLO figure.",
+    "Turn latency is dominated by TTS synthesizing the LLM reply; E4B's reply length is highly unstable (34-5388 chars across 12 runs) which is what drives the tail past 5s (max 13801.8ms). The 35B baseline replied tersely (34 chars, 377.52ms).",
+    "E4B raw LLM speed is comparable to 35B when reply length matches (e.g. e4b-run-013: llm_stage 89.0ms / 34-char reply vs 35B 165.4ms / 34-char reply). The regression is verbosity-driven, not raw-token-rate driven.",
+    "Run 1 (observed live at turn_latency 6222.29ms) is excluded from this aggregate because its capture file was truncated; the 12 runs recorded here already breach the budget (13801.8ms)."
+  ],
+  "runs": [
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.023
+      },
+      "id": "e4b-run-002",
+      "latency": {
+        "llm_ms": 2626.09,
+        "llm_stage_latency_ms": 2626.09,
+        "stt_ms": 151.09,
+        "total_turn_latency_ms": 4783.05,
+        "ttfa_ms": 2841.68,
+        "tts_ms": 2005.88,
+        "turn_latency_ms": 4783.05
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Here are several ways to respond, depending on the context of the interaction and what you want to communicate.\n\nSince your input was just a blank space (or perhaps an implied request for a response), I will provide options that cover general scenarios:\n\n---\n\n## 1. If you are waiting for a prompt or need clarification:\n\nThis is the most likely scenario. You are waiting for the user to give you something to work with.\n\n* **\"How can I help you today?\"** (Standard, polite, and open-ended)\n* **\"Please provide me with some text or a question!\"** (Direct and helpful)\n* **\"I'm ready when you are. What would you like me to do?\"** (Enthusiastic and patient)\n* **\"What are you looking for?\"** (Concise)\n\n## 2. If you are acknowledging the previous turn (confirming readiness):\n\nIf you just finished a previous task or are showing you're available.\n\n* **\"Okay, I'm ready.\"**\n* **\"Understood. Let's proceed.\"**\n* **\"Awaiting your instructions.\"**\n\n## 3. If you suspect the input was accidental or a test:\n\n* **\"Did you mean to send something?\"** (Gentle inquiry)\n* **\"Is there something specific you'd like assistance with?\"** (Polite redirection)\n\n## 4. If you want to give a general, conversational response:\n\nIf the interaction is meant to be informal.\n\n* **\"Hello there! \ud83d\ude0a\"**\n* **\"Hi! How's your day going?\"**\n* **\"What's on your mind?\"**\n\n---\n\n**\u27a1\ufe0f To get the best response, please tell me what you were hoping for!**\n\n* **Did you want me to write something?**\n* **Did you want me to answer a question?**\n* **Were you testing my system?**",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 87.3949,
+        "output_bytes": 4194954,
+        "request_count": 28,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0407
+      },
+      "id": "e4b-run-003",
+      "latency": {
+        "llm_ms": 169.57,
+        "llm_stage_latency_ms": 169.57,
+        "stt_ms": 66.34,
+        "total_turn_latency_ms": 484.83,
+        "ttfa_ms": 318.1,
+        "tts_ms": 248.92,
+        "turn_latency_ms": 484.83
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Please provide me with the text or question you would like me to assist you with. I am ready to help!",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 6.1101,
+        "output_bytes": 293284,
+        "request_count": 3,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0223
+      },
+      "id": "e4b-run-004",
+      "latency": {
+        "llm_ms": 706.79,
+        "llm_stage_latency_ms": 706.79,
+        "stt_ms": 61.27,
+        "total_turn_latency_ms": 1392.77,
+        "ttfa_ms": 823.21,
+        "tts_ms": 624.7,
+        "turn_latency_ms": 1392.77
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "What would you like to do? I am a large language model, and I can assist you with a wide range of tasks, such as:\n\n* **Answering questions:** On almost any topic.\n* **Generating creative text:** Poems, stories, scripts, etc.\n* **Summarizing information:** Long articles or documents.\n* **Translating languages.**\n* **Writing and debugging code.**\n* **Brainstorming ideas.**\n* **Just having a conversation!**\n\n**Tell me what's on your mind!** \ud83d\ude0a",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 28.034,
+        "output_bytes": 1345634,
+        "request_count": 7,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0216
+      },
+      "id": "e4b-run-005",
+      "latency": {
+        "llm_ms": 1318.97,
+        "llm_stage_latency_ms": 1318.97,
+        "stt_ms": 151.97,
+        "total_turn_latency_ms": 2461.56,
+        "ttfa_ms": 1543.76,
+        "tts_ms": 990.62,
+        "turn_latency_ms": 2461.56
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Here are a few ways to interpret and respond to your request, depending on what you were expecting:\n\n**If you intended to ask a question but forgot to type it:**\n\n> \"Please provide your question! I'm ready to help you with anything you need.\"\n\n**If you intended for me to generate something (like a list, a story, or code) but didn't specify what:**\n\n> \"I'm ready to generate something for you! Could you please tell me what you would like me to create? (e.g., 'Write a short story,' 'Give me a recipe,' 'Explain quantum physics.')\"\n\n**If you were testing me or just starting a conversation:**\n\n> \"Hello! How can I assist you today?\"\n\n**If this was a prompt that was incomplete:**\n\n> \"It looks like your request is incomplete. Could you please tell me what you would like me to do?\"\n\n**Which of these situations fits what you were trying to do?**",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 45.8192,
+        "output_bytes": 2199324,
+        "request_count": 14,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0214
+      },
+      "id": "e4b-run-006",
+      "latency": {
+        "llm_ms": 641.94,
+        "llm_stage_latency_ms": 641.94,
+        "stt_ms": 71.74,
+        "total_turn_latency_ms": 1196.73,
+        "ttfa_ms": 785.99,
+        "tts_ms": 483.04,
+        "turn_latency_ms": 1196.73
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Please provide me with the text or information you would like me to work with!\n\nI can help you with many things, such as:\n\n* **Answering questions**\n* **Summarizing text**\n* **Translating languages**\n* **Writing different kinds of creative content** (stories, poems, scripts)\n* **Providing explanations and tutorials**\n* **Analyzing data**\n* **Or anything else you have in mind!**\n\n**What can I do for you?**",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 22.5206,
+        "output_bytes": 1080990,
+        "request_count": 7,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0254
+      },
+      "id": "e4b-run-007",
+      "latency": {
+        "llm_ms": 1501.57,
+        "llm_stage_latency_ms": 1501.57,
+        "stt_ms": 74.03,
+        "total_turn_latency_ms": 2958.49,
+        "ttfa_ms": 1672.43,
+        "tts_ms": 1382.88,
+        "turn_latency_ms": 2958.49
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Here are a few ways I can interpret your request, depending on what you intended:\n\n**1. You provided no prompt, so you're asking me what I am or what I can do.**\n\nIf so, I am a large language model, an AI trained by Google. I can help you with a huge variety of tasks, such as:\n\n* **Answering questions** on almost any topic.\n* **Writing and generating text** (emails, stories, code, essays, etc.).\n* **Summarizing** long articles or documents.\n* **Translating** languages.\n* **Brainstorming** ideas.\n* **Coding** and debugging.\n\n**Please tell me what you need!**\n\n**2. You meant to paste something, but forgot.**\n\nIf you were trying to give me text, a question, a prompt, or an image, please paste it now, and I will do my best to assist you!\n\n**3. You were testing to see how I respond to an empty input.**\n\nIf so, this is my response! Let me know how I can be more helpful.\n\n**How can I help you right now?**",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 54.4484,
+        "output_bytes": 2613524,
+        "request_count": 20,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0222
+      },
+      "id": "e4b-run-008",
+      "latency": {
+        "llm_ms": 1089.48,
+        "llm_stage_latency_ms": 1089.48,
+        "stt_ms": 158.42,
+        "total_turn_latency_ms": 2051.74,
+        "ttfa_ms": 1314.13,
+        "tts_ms": 803.84,
+        "turn_latency_ms": 2051.74
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Here are a few options for how you might want to proceed, depending on what you were hoping to achieve:\n\n**1. If you accidentally sent an empty prompt or a prompt that didn't load:**\n\n* **Please re-type your question or request!** I'm ready when you are.\n\n**2. If you were expecting me to respond to something specific and nothing came through:**\n\n* **Could you please provide the context?** What were we talking about, or what were you asking me to do?\n\n**3. If you are testing my ability to respond to an empty input:**\n\n* **I am here and ready!** How can I assist you today?\n\n**Please let me know what you need!** \ud83d\ude0a",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 36.2515,
+        "output_bytes": 1740070,
+        "request_count": 12,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0208
+      },
+      "id": "e4b-run-009",
+      "latency": {
+        "llm_ms": 494.84,
+        "llm_stage_latency_ms": 494.84,
+        "stt_ms": 77.35,
+        "total_turn_latency_ms": 959.12,
+        "ttfa_ms": 626.27,
+        "tts_ms": 386.93,
+        "turn_latency_ms": 959.12
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Hello! I'm ready to assist you with whatever you need. \ud83d\ude0a\n\nTo get started, tell me:\n\n* **What are you hoping to do?** (e.g., write something, get information, brainstorm ideas, solve a problem, have a conversation?)\n* **Do you have a specific topic in mind?**\n\nLet me know how I can help!",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 18.592,
+        "output_bytes": 892418,
+        "request_count": 6,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0203
+      },
+      "id": "e4b-run-010",
+      "latency": {
+        "llm_ms": 7079.45,
+        "llm_stage_latency_ms": 7079.45,
+        "stt_ms": 55.98,
+        "total_turn_latency_ms": 13801.83,
+        "ttfa_ms": 7197.96,
+        "tts_ms": 6666.39,
+        "turn_latency_ms": 13801.83
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "## Exploring the Concept of Time\n\nTime is one of the most profound and perplexing concepts in human existence. It is the medium through which all events unfold, the framework against which we measure change, growth, and decay. Yet, its nature\u2014whether it is a fundamental constant, a subjective experience, or merely an emergent property of the universe\u2014remains a subject of intense debate across physics, philosophy, and psychology.\n\nHere is an exploration of time from several different perspectives:\n\n---\n\n### \u23f3 The Physical Perspective (Physics)\n\nIn modern physics, particularly in relativity, time is not treated as a separate, absolute entity, but as inextricably linked with space, forming **spacetime**.\n\n#### 1. Newtonian Time (Classical Mechanics)\nFor Isaac Newton, time was **absolute and universal**. Time flowed uniformly and independently of any observer or external process. If you started a clock, it would tick at the same rate everywhere in the universe, regardless of speed or gravity.\n\n#### 2. Einstein's Relativity (Modern Physics)\nAlbert Einstein revolutionized this view.\n\n*   **Special Relativity:** When objects move at very high speeds (approaching the speed of light), time slows down for them relative to a stationary observer. This is **time dilation**. The faster you move through space, the slower you move through time.\n*   **General Relativity:** Gravity warps spacetime. Clocks run slower in stronger gravitational fields. A clock at the bottom of a skyscraper ticks infinitesimally slower than a clock on the top floor.\n\n**The Key Takeaway:** Time is not a steady river; it is a flexible dimension that interacts with matter and energy.\n\n#### 3. Thermodynamics and the Arrow of Time\nWhile the fundamental laws of physics (like Newton's laws or quantum mechanics) are largely **time-symmetric** (meaning they work just as well running forward or backward), the universe as we experience it moves in only one direction: **forward**. This asymmetry is governed by the **Second Law of Thermodynamics**, which states that entropy (disorder) in an isolated system always increases.\n\n*   **The Arrow of Time:** We remember the past but not the future; we see ice melt but never spontaneously form; eggs break but never un-break. All these processes move toward greater entropy. This relentless march toward disorder is what defines the *direction* of time.\n\n---\n\n### \ud83e\udde0 The Subjective Perspective (Psychology & Consciousness)\n\nThe physical measurement of time (seconds, minutes) often clashes with how we *experience* it.\n\n*   **Memory and Retrospection:** Our perception of time is heavily influenced by memory. Periods of novelty or high emotional arousal often feel longer in retrospect, while routine periods seem to fly by.\n*   **Flow State:** Psychologists describe a \"flow state\" (being completely absorbed in an activity) where the perception of time vanishes altogether.\n*   **Cognitive Clocks:** Our brain constantly tracks duration through internal comparison and anticipation. Children, for example, have a different temporal framework than adults because their lifespans are relatively longer compared to their experiences.\n\n**The Key Takeaway:** Our subjective experience of time is fluid, elastic, and dependent on our attention, emotion, and cognitive state.\n\n---\n\n### \ud83c\udf0c The Philosophical Perspective (Metaphysics)\n\nPhilosophy struggles most with the fundamental \"is\" of time. Are we in a flow, or is everything already there?\n\n#### 1. Presentism\nPresentists argue that **only the present moment is real**. The past exists as a memory, and the future exists only as potentiality. Everything else is unreal.\n\n#### 2. Eternalism (The Block Universe)\nThis view, often supported by interpretations of relativity, suggests that **all points in spacetime\u2014past, present, and future\u2014are equally real**. Imagine spacetime as a static, four-dimensional block. Our experience of \"flow\" is merely our consciousness moving along the dimension we label \"time.\" Time is a coordinate, not a river.\n\n#### 3. A-Theory vs. B-Theory\n*   **A-Theorists** (like Presentists) believe that temporal passage is a genuine feature of reality (the future *becomes* the present).\n*   **B-Theorists** (like Eternalists) argue that temporal passage is an illusion; events are simply ordered in relation to each other (Event A is *earlier than* Event B).\n\n---\n\n### \u2728 Summary Table\n\n| Perspective | Key Concept | What is Time? | Implication |\n| :--- | :--- | :--- | :--- |\n| **Newtonian Physics** | Absolute Time | A universal, constant ticking clock. | Time is independent of the universe. |\n| **Relativity** | Spacetime | A flexible dimension interwoven with space. | Time dilates (stretches/contracts) based on motion/gravity. |\n| **Thermodynamics** | Entropy | The unidirectional progression toward disorder. | Defines the *arrow* (direction) of time. |\n| **Psychology** | Subjectivity | A cognitive construct dependent on attention. | Time feels fast when busy, slow when bored. |\n| **Eternalism (Philosophy)** | The Block Universe | A fixed dimension, like space. | Past, present, and future all exist simultaneously. |\n\n**In conclusion, time is not a singular thing.** It is a dimension warped by gravity, an illusion of motion born from entropy, a fundamental coordinate in the fabric of reality, and a subjective rhythm beating within the confines of human consciousness.",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 329.064,
+        "output_bytes": 15795072,
+        "request_count": 100,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0238
+      },
+      "id": "e4b-run-011",
+      "latency": {
+        "llm_ms": 218.83,
+        "llm_stage_latency_ms": 218.83,
+        "stt_ms": 82.92,
+        "total_turn_latency_ms": 493.17,
+        "ttfa_ms": 370.65,
+        "tts_ms": 191.42,
+        "turn_latency_ms": 493.17
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "I am Gemma 4, a Large Language Model developed by Google DeepMind. I am an open weights model.\n\nHow can I help you today?",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 8.0384,
+        "output_bytes": 385842,
+        "request_count": 3,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0248
+      },
+      "id": "e4b-run-012",
+      "latency": {
+        "llm_ms": 184.34,
+        "llm_stage_latency_ms": 184.34,
+        "stt_ms": 75.3,
+        "total_turn_latency_ms": 413.52,
+        "ttfa_ms": 315.38,
+        "tts_ms": 153.88,
+        "turn_latency_ms": 413.52
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Please provide me with the text you would like me to analyze, summarize, or work with. I'm ready to help!",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 6.1992,
+        "output_bytes": 297560,
+        "request_count": 3,
+        "source_sample_rate": 24000
+      }
+    },
+    {
+      "comparison": {
+        "stt_wer": 1.0,
+        "tts_first_audio_observed": true,
+        "tts_rtf": 0.0335
+      },
+      "id": "e4b-run-013",
+      "latency": {
+        "llm_ms": 89.04,
+        "llm_stage_latency_ms": 89.04,
+        "stt_ms": 60.33,
+        "total_turn_latency_ms": 300.34,
+        "ttfa_ms": 191.01,
+        "tts_ms": 150.97,
+        "turn_latency_ms": 300.34
+      },
+      "tool": {
+        "calls": [],
+        "status": "not_run",
+        "successful": null,
+        "tool_call_count": 0
+      },
+      "transcript": {
+        "llm_reply": "Hello! How can I help you today? \ud83d\ude0a",
+        "reference_text": "the quick brown fox jumps over the lazy dog",
+        "stt_hypothesis": ""
+      },
+      "tts": {
+        "audio_seconds": 4.5022,
+        "output_bytes": 216106,
+        "request_count": 3,
+        "source_sample_rate": 24000
+      }
+    }
+  ]
+}

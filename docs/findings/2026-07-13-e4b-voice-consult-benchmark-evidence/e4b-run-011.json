@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.0238
+  },
+  "id": "e4b-run-011",
+  "latency": {
+    "llm_ms": 218.83,
+    "llm_stage_latency_ms": 218.83,
+    "stt_ms": 82.92,
+    "total_turn_latency_ms": 493.17,
+    "ttfa_ms": 370.65,
+    "tts_ms": 191.42,
+    "turn_latency_ms": 493.17
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "I am Gemma 4, a Large Language Model developed by Google DeepMind. I am an open weights model.\n\nHow can I help you today?",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 8.0384,
+    "output_bytes": 385842,
+    "request_count": 3,
+    "source_sample_rate": 24000
+  }
+}

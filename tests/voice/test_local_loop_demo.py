@@ -616,7 +616,7 @@ def test_fakoli_dark_manifest_is_valid_and_pins_fast_tier():
     assert data["voice"]["llm"]["base_url"] == "http://100.87.34.66:8000/v1"
     assert data["voice"]["llm"]["model"] == "chat-fast"
     assert data["voice"]["llm"]["expected_route_provider"] == "fast-local"
-    assert data["voice"]["llm"]["expected_route_model"] == "qwen36-35b-a3b-nvfp4"
+    assert data["voice"]["llm"]["expected_route_model"] == "gemma4-e4b-it"
     assert data["voice"]["llm"]["expected_route_tier"] == "local"
     assert data["voice"]["stt"]["base_url"] == "http://127.0.0.1:30010/v1"
     assert data["voice"]["stt"]["stream"] is False

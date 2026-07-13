@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.0222
+  },
+  "id": "e4b-run-008",
+  "latency": {
+    "llm_ms": 1089.48,
+    "llm_stage_latency_ms": 1089.48,
+    "stt_ms": 158.42,
+    "total_turn_latency_ms": 2051.74,
+    "ttfa_ms": 1314.13,
+    "tts_ms": 803.84,
+    "turn_latency_ms": 2051.74
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "Here are a few options for how you might want to proceed, depending on what you were hoping to achieve:\n\n**1. If you accidentally sent an empty prompt or a prompt that didn't load:**\n\n* **Please re-type your question or request!** I'm ready when you are.\n\n**2. If you were expecting me to respond to something specific and nothing came through:**\n\n* **Could you please provide the context?** What were we talking about, or what were you asking me to do?\n\n**3. If you are testing my ability to respond to an empty input:**\n\n* **I am here and ready!** How can I assist you today?\n\n**Please let me know what you need!** \ud83d\ude0a",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 36.2515,
+    "output_bytes": 1740070,
+    "request_count": 12,
+    "source_sample_rate": 24000
+  }
+}

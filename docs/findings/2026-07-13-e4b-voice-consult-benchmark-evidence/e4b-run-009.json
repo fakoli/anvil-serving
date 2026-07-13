@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.0208
+  },
+  "id": "e4b-run-009",
+  "latency": {
+    "llm_ms": 494.84,
+    "llm_stage_latency_ms": 494.84,
+    "stt_ms": 77.35,
+    "total_turn_latency_ms": 959.12,
+    "ttfa_ms": 626.27,
+    "tts_ms": 386.93,
+    "turn_latency_ms": 959.12
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "Hello! I'm ready to assist you with whatever you need. \ud83d\ude0a\n\nTo get started, tell me:\n\n* **What are you hoping to do?** (e.g., write something, get information, brainstorm ideas, solve a problem, have a conversation?)\n* **Do you have a specific topic in mind?**\n\nLet me know how I can help!",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 18.592,
+    "output_bytes": 892418,
+    "request_count": 6,
+    "source_sample_rate": 24000
+  }
+}
