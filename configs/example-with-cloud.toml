@@ -81,3 +81,10 @@ quick-edit   = ["fast-local", "heavy-local", "cloud"]
 review       = ["heavy-local", "cloud"]
 planning     = ["cloud"]
 long-context = ["heavy-local", "cloud"]
+# Document OCR needs a VISION-capable tier: the example's text-only local tiers
+# cannot read image content, so this maps to the (vision-capable) cloud model.
+# NOTE: cloud eligibility is still gated by [router].metered_cloud above — add
+# "ocr" there to accept the metered cost, or (better) point this preset at a
+# resident local OCR serve (e.g. PaddleOCR-VL on vLLM; see
+# examples/fakoli-dark/anvil-router.live.toml's ocr-local tier) at $0.
+ocr          = ["cloud"]

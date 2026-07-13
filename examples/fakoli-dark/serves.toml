@@ -127,6 +127,32 @@ vram_mib = 3456
 residency = "resident"
 up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
 
+# ── OCR serve (gpu-reservations:T011) ──
+# PaddleOCR-VL-1.6 behind the router's "ocr" intent preset (ocr-local -> :30007).
+# Declared as an ADR-0017 `resident` reservation on the multi-tenant 5090; the
+# 4096 MiB budget is HONEST-MEASURED (see docker-compose.yml's ocr service note:
+# 1.79 GiB weights + ~1.9 GiB vLLM/WSL2 runtime floor + the 16384-token KV
+# window). docker-compose.yml enforces it with --gpu-memory-utilization 0.1256 =
+# 4096 / 32607 capacity — change them together.
+#
+# CAPACITY NOTE (2026-07-13): the dark-fast ledger CANNOT admit this reservation
+# alongside the full T009 resident set — fast 18432 + embeddings 3200 +
+# reranker 3456 leaves 351 MiB of the 25439 MiB budget free. `serves up ocr`
+# correctly denies with the ledger until >= 4096 MiB is freed (e.g.
+# `serves down reranker`). Resolving which residents the 32 GiB card actually
+# hosts is the gpu-reservations:T015 resident-set decision.
+[[serve]]
+name = "ocr"                   # PaddleOCR-VL-1.6 (vLLM, RTX 5090)
+container = "vllm-paddleocr-vl"
+port = 30007
+model = "paddleocr-vl-1.6"     # served-model-name (the ocr-local router tier's `model`)
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 4096
+residency = "resident"
+up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
+
 # One guarded operation owns the model swap, functional gate, router update,
 # and complete model+router rollback. This single-GPU plan validates the newly
 # started target in-transaction; a separately resident candidate cannot coexist.

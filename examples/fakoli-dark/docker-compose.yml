@@ -338,6 +338,74 @@ services:
       --gpu-memory-utilization 0.1060
       --host 0.0.0.0 --port 30006
 
+  # ── OCR serve (gpu-reservations:T011) ──
+  # PaddleOCR-VL-1.6 (0.9B, bf16, arch paddleocr_vl) on the multi-tenant RTX 5090:
+  # the document-parsing VLM behind the router's "ocr" intent preset (tier
+  # ocr-local -> :30007). Serves OpenAI chat completions with image content —
+  # send the task prompt ("OCR:", "Table Recognition:", ...) plus the page image
+  # (vLLM recipe: docs.vllm.ai/projects/recipes -> PaddlePaddle/PaddleOCR-VL;
+  # native vllm support since v0.11.1 — the pinned nightly digest has it).
+  #
+  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 4096 /
+  # residency "resident" for this serve. --gpu-memory-utilization below is
+  # 4096 / 32607 CAPACITY = 0.1256 (fraction of TOTAL device memory — see the
+  # `fast` deviation note above). Keep vram_mib and the fraction in lockstep.
+  # HONEST-MEASURED (2026-07-13, this box): weights load at 1.79 GiB bf16 plus
+  # the ~1.7-1.9 GiB fixed vLLM/WSL2 runtime floor (CUDA context + torch
+  # workspaces + the multimodal-profiling activation peak) before any KV — at
+  # 4096 MiB the engine reports ~0.29 GiB free for KV (~16.9k tokens), exactly
+  # covering the 16384-token window (GQA KV is tiny: 2 kv-heads x 18 layers).
+  # --enforce-eager skips CUDA-graph capture (its memory would eat the KV
+  # margin; a 0.9B decoder is fast eager). --no-enable-prefix-caching +
+  # --mm-processor-cache-gb 0 per the upstream recipe (OCR pages don't repeat,
+  # so cache memory buys nothing). sm_120 note: bf16 DENSE is the proven-safe
+  # path (CLAUDE.md gotchas #7/#16 concern FP8-MoE / NVFP4-MoE kernels, not
+  # this shape); VLLM_USE_V2_MODEL_RUNNER=0 stays mandatory (gotcha #14).
+  #
+  # Publish: loopback-only by default (ADR-0004). Opt in to tailnet exposure by
+  # setting OCR_PUBLISH to this host's tailnet address before `serves up`.
+  ocr:
+    image: ${OCR_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    container_name: vllm-paddleocr-vl
+    restart: unless-stopped
+    ipc: host
+    ports:
+      - "${OCR_PUBLISH:-127.0.0.1}:30007:30007"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    # Revision PINNED to the vllm-hfcache snapshot pulled by `models pull` (66317ac…);
+    # unpinned, a refreshed HF `main` ref would force a cold re-download at `up`.
+    # --trust-remote-code: the checkpoint's config/processor classes are custom code
+    # (auto_map) even though the model architecture itself is vLLM-native.
+    command: >
+      serve PaddlePaddle/PaddleOCR-VL-1.6
+      --revision ${OCR_PADDLEOCR_REVISION:-66317acc4c9fc17bd154591ce650735cd2855f3e}
+      --served-model-name paddleocr-vl-1.6
+      --trust-remote-code
+      --max-model-len 16384
+      --max-num-batched-tokens 16384
+      --max-num-seqs 4
+      --no-enable-prefix-caching
+      --mm-processor-cache-gb 0
+      --enforce-eager
+      --gpu-memory-utilization 0.1256
+      --host 0.0.0.0 --port 30007
+
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
   # host.docker.internal:<port>. Pinned to the DEPLOYED RELEASE image anvil-serving:0.12.0
   # (rebuilt from main — flexibility-mode + the v2 profile loader, which is backward-compatible

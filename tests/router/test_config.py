@@ -1007,10 +1007,11 @@ def test_fakoli_agentic_is_byte_identical_to_live():
 
 
 def test_fakoli_agentic_config_loads():
-    """The agentic mode config parses (it is the live two-tier deploy)."""
+    """The agentic mode config parses (it is the live deploy: two chat tiers
+    plus the gpu-reservations:T011 OCR tier)."""
     cfg = load(str(FAKOLI_AGENTIC))
     assert isinstance(cfg, RouterConfig)
-    assert {t.id for t in cfg.tiers} == {"fast-local", "heavy-local"}
+    assert {t.id for t in cfg.tiers} == {"fast-local", "heavy-local", "ocr-local"}
     assert cfg.profile_path == "/etc/anvil/profile.json"
     assert cfg.presets == {
         "chat": ("heavy-local", "fast-local"),
@@ -1019,12 +1020,22 @@ def test_fakoli_agentic_config_loads():
         "review": ("heavy-local",),
         "planning": ("heavy-local",),
         "long-context": ("heavy-local",),
+        "ocr": ("ocr-local",),
     }
     # It carries none of the flexibility:T007 engine fields.
     for t in cfg.tiers:
         assert t.engine is None and t.quantization is None
     fast = cfg.tier("fast-local")
     heavy = cfg.tier("heavy-local")
+    # gpu-reservations:T011 — the OCR VLM tier: reached only via the "ocr"
+    # preset, tool-free (a document parser, not a coding model), window matched
+    # to the serve's --max-model-len.
+    ocr = cfg.tier("ocr-local")
+    assert ocr.model == "paddleocr-vl-1.6"
+    assert ocr.base_url == "http://host.docker.internal:30007/v1"
+    assert ocr.context_limit == 16384
+    assert ocr.tool_support is False
+    assert ocr.privacy == "local"
     assert fast.model == "gemma4-e4b-it"
     assert fast.base_url == "http://host.docker.internal:30003/v1"
     assert fast.context_limit == 32768
