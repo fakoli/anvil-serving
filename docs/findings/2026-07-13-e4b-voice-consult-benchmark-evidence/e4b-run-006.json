@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.0214
+  },
+  "id": "e4b-run-006",
+  "latency": {
+    "llm_ms": 641.94,
+    "llm_stage_latency_ms": 641.94,
+    "stt_ms": 71.74,
+    "total_turn_latency_ms": 1196.73,
+    "ttfa_ms": 785.99,
+    "tts_ms": 483.04,
+    "turn_latency_ms": 1196.73
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "Please provide me with the text or information you would like me to work with!\n\nI can help you with many things, such as:\n\n* **Answering questions**\n* **Summarizing text**\n* **Translating languages**\n* **Writing different kinds of creative content** (stories, poems, scripts)\n* **Providing explanations and tutorials**\n* **Analyzing data**\n* **Or anything else you have in mind!**\n\n**What can I do for you?**",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 22.5206,
+    "output_bytes": 1080990,
+    "request_count": 7,
+    "source_sample_rate": 24000
+  }
+}
