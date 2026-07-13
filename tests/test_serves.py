@@ -252,6 +252,81 @@ def test_load_manifest_without_reservation_fields_parses_unchanged(tmp_path):
     }  # no reservation keys are invented for entries that never declared them
 
 
+# ---- serve groups: field parse/validation --------------------------------
+
+def test_load_manifest_parses_groups_field(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        groups = ["fast-only", "llm-stack"]
+        up = "docker compose up -d fast"
+    """)
+    (s,) = serves.load_manifest(path)
+    assert s["groups"] == ["fast-only", "llm-stack"]
+
+
+def test_load_manifest_groups_absent_adds_no_key(tmp_path):
+    """Omitting `groups` must not invent a key — backward compatible."""
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+    """)
+    (s,) = serves.load_manifest(path)
+    assert "groups" not in s
+
+
+def test_load_manifest_groups_dedupes_preserving_order(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        groups = ["llm-stack", "fast-only", "llm-stack"]
+    """)
+    (s,) = serves.load_manifest(path)
+    assert s["groups"] == ["llm-stack", "fast-only"]
+
+
+@pytest.mark.parametrize("groups", ['"llm-stack"', "42", "[1, 2]", '["ok", ""]', '["ok", "  "]'])
+def test_load_manifest_rejects_invalid_groups(tmp_path, groups):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        groups = {groups}
+    """)
+    with pytest.raises(ValueError, match="groups must be a list of non-empty strings"):
+        serves.load_manifest(path)
+
+
+@pytest.mark.parametrize("reserved", ['["all"]', '["fast-only", "ALL"]'])
+def test_load_manifest_rejects_reserved_group_all(tmp_path, reserved):
+    path = _manifest(tmp_path, f"""
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-local"
+        engine = "vllm"
+        groups = {reserved}
+    """)
+    with pytest.raises(ValueError, match="reserved group 'all'"):
+        serves.load_manifest(path)
+
+
 def test_load_manifest_rejects_conflicting_legacy_engine_markers(tmp_path):
     path = _manifest(tmp_path, """
         [[serve]]

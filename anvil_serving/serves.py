@@ -110,6 +110,11 @@ _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # "evictable" serves. (The VRAM types are reservations, never *Lease —
 # AdmissionLease in router/admission.py is the request-admission layer.)
 _RESIDENCIES = ("resident", "evictable", "on-demand")
+# serve groups (serve-groups): a serve may be tagged into any number of named
+# groups so `serves up/down/status --group NAME` can act on the whole set at
+# once. "all" is the RESERVED implicit group (every serve in the manifest set);
+# it is never authored on a [[serve]] entry.
+RESERVED_GROUP = "all"
 # ADR-0017 §5 eviction defaults: the bounded ADR-0018 drain wait before a
 # victim's container is stopped, and the deployed router the transition talks
 # to (matching the promotion plans' router_health_url default host).
@@ -134,6 +139,127 @@ def resolve_manifest_path(path=None):
         if os.path.isfile(os.path.expanduser(candidate)):
             return candidate
     return DEFAULT_MANIFEST
+
+
+def manifest_set_paths(manifest_path):
+    """Every `serves*.toml` in the manifest's directory (sorted), for group
+    resolution (serve-groups §2).
+
+    A serve may span serves.toml + serves.voice.toml + serves.comfyui.toml, so
+    a group must resolve across the whole set — deterministically. The set is
+    "all files matching serves*.toml in the manifest's own directory" (the
+    default ~/.anvil-serving, or the --manifest's dir), sorted by path. The
+    manifest itself is always included even if it does not match the glob
+    (an operator may point --manifest at a differently named file).
+    """
+    import glob
+
+    mdir = os.path.dirname(os.path.abspath(os.path.expanduser(manifest_path)))
+    paths = sorted(glob.glob(os.path.join(mdir, "serves*.toml")))
+    manifest_abs = os.path.abspath(os.path.expanduser(manifest_path))
+    if os.path.isfile(manifest_abs) and manifest_abs not in {
+        os.path.abspath(p) for p in paths
+    }:
+        paths.append(manifest_abs)
+    return paths
+
+
+def load_manifest_set(manifest_path):
+    """Load + de-dupe the serves across the whole manifest set (serve-groups §2).
+
+    De-dup is BY CONTAINER (a serve can be mirrored across files — e.g. the
+    read-only ledger mirrors in serves.comfyui.toml re-declare the serves.toml
+    reservations on the same card). The lifecycle-owning entry (one that
+    declares an `up` command) wins over a read-only mirror so `--group up/down`
+    always targets the real serve and the reservation ledger is not
+    double-counted; ties keep the first entry in sorted-file order. The result
+    order is that first-seen order, so `serves groups` output is deterministic.
+    """
+    by_container = {}
+    for path in manifest_set_paths(manifest_path):
+        try:
+            loaded = load_manifest(path)
+        except FileNotFoundError:
+            continue
+        for s in loaded:
+            s["_manifest_file"] = os.path.abspath(os.path.expanduser(path))
+            key = s["container"]
+            incumbent = by_container.get(key)
+            if incumbent is None:
+                by_container[key] = s
+            elif not incumbent.get("up") and s.get("up"):
+                # A lifecycle-owning entry supersedes a read-only mirror while
+                # keeping the incumbent's position (dict reassignment).
+                by_container[key] = s
+    return list(by_container.values())
+
+
+def resolve_group(serves, group):
+    """Serves tagged `group`; the reserved 'all' selects every serve."""
+    if group.lower() == RESERVED_GROUP:
+        return list(serves)
+    return [s for s in serves if group in (s.get("groups") or [])]
+
+
+def select_groups(serves, groups):
+    """Union of the serves tagged by any of `groups`, de-duped by container.
+
+    Returns ``(selected, unknown)`` where `unknown` lists requested groups that
+    matched no serve (a likely typo — the caller refuses rather than acting on
+    a silently empty set). The reserved 'all' is never "unknown".
+    """
+    selected, seen, unknown = [], set(), []
+    for group in groups:
+        members = resolve_group(serves, group)
+        if not members and group.lower() != RESERVED_GROUP:
+            unknown.append(group)
+            continue
+        for s in members:
+            if s["container"] not in seen:
+                seen.add(s["container"])
+                selected.append(s)
+    return selected, unknown
+
+
+def resolve_group_targets(serves, groups, names):
+    """Target serve names for a `--group` operation (serve-groups §3).
+
+    The union of every serve tagged by any of `groups` with the positional
+    `names`, de-duped by container, preserving group-then-name order. Returns
+    ``(target_names, unknown_groups)``; a non-empty `unknown_groups` means a
+    requested group matched no serve and the caller should refuse.
+    """
+    group_serves, unknown = select_groups(serves, groups)
+    selected = list(group_serves)
+    seen = {s["container"] for s in selected}
+    for s in (_select(serves, names) if names else []):
+        if s["container"] not in seen:
+            seen.add(s["container"])
+            selected.append(s)
+    return [s["name"] for s in selected], unknown
+
+
+def groups_summary(serves):
+    """Machine-readable catalog of defined groups -> member serve names.
+
+    Mirrors the status/reservation JSON conventions: one row per group with its
+    members in manifest-set order, groups sorted by name. The reserved 'all' is
+    implicit (every serve) and is reported separately so tooling can enumerate
+    it without it colliding with authored groups.
+    """
+    catalog = {}
+    for s in serves:
+        for group in (s.get("groups") or []):
+            members = catalog.setdefault(group, [])
+            if s["name"] not in members:
+                members.append(s["name"])
+    return {
+        "groups": [
+            {"group": group, "serves": members}
+            for group, members in sorted(catalog.items())
+        ],
+        "all": [s["name"] for s in serves],
+    }
 
 
 def _read_dotenv(path):
@@ -277,6 +403,40 @@ def _normalize_reservation(s, raw):
         s["residency"] = normalized
 
 
+def _normalize_groups(s, raw):
+    """Validate/normalize the optional `groups` field on one serve entry.
+
+    `groups` is an optional list of non-empty strings (a serve may belong to
+    many groups); absent = no groups. Anything else — a non-list, a non-string
+    member, an empty/whitespace member, or the reserved name "all" — fails
+    loudly at parse time, exactly like the gpu_role/vram_mib/residency fields.
+    An entry that omits `groups` is left untouched (no key added), so
+    pre-groups manifests parse byte-for-byte the same as before.
+    """
+    if "groups" not in s:
+        return
+    groups = s.get("groups")
+    if not isinstance(groups, list):
+        raise ValueError(
+            f"serve entry groups must be a list of non-empty strings: {raw!r}"
+        )
+    normalized = []
+    for member in groups:
+        if not isinstance(member, str) or not member.strip():
+            raise ValueError(
+                f"serve entry groups must be a list of non-empty strings: {raw!r}"
+            )
+        name = member.strip()
+        if name.lower() == RESERVED_GROUP:
+            raise ValueError(
+                "serve entry groups must not include the reserved group "
+                f"{RESERVED_GROUP!r} (it implicitly selects every serve): {raw!r}"
+            )
+        if name not in normalized:
+            normalized.append(name)
+    s["groups"] = normalized
+
+
 def load_manifest(path):
     """Parse the serves manifest into a list of serve dicts.
 
@@ -317,6 +477,7 @@ def load_manifest(path):
         up = shlex.split(s["up"]) if s.get("up") else None
         s["engine"] = _normalize_engine(s, up)
         _normalize_reservation(s, raw)
+        _normalize_groups(s, raw)
         if gpu_role_budgets:
             s[reservations.GPU_ROLES_KEY] = gpu_role_budgets
         s["_manifest_dir"] = mdir
@@ -904,12 +1065,27 @@ def status_summary(serves, names=None, _run=subprocess.run, _open=urllib.request
     }
 
 
-def cmd_status(serves, _run=subprocess.run, _open=urllib.request.urlopen):
-    print("%-16s %-16s %-6s %-9s %s" % ("SERVE", "CONTAINER", "PORT", "DOCKER", "HEALTH"))
+def cmd_status(serves, names=None, _run=subprocess.run, _open=urllib.request.urlopen):
+    # `names` (from positional selectors and/or --group) filters WHICH rows are
+    # printed; the reservation ledger below still spans the WHOLE `serves` list,
+    # because committed VRAM on a role comes from every declared serve — a
+    # filtered ledger would misreport `free`. `names=None` prints every serve
+    # (unchanged behavior). docker_state is memoized so a filtered view probes
+    # only the rows it prints plus the reservation-declaring serves.
+    selected = _select(serves, names) if names else list(serves)
+    selected_containers = {s["container"] for s in selected}
     states = {}
+
+    def state_of(container):
+        if container not in states:
+            states[container] = docker_state(container, _run=_run)
+        return states[container]
+
+    print("%-16s %-16s %-6s %-9s %s" % ("SERVE", "CONTAINER", "PORT", "DOCKER", "HEALTH"))
     for s in serves:
-        st = docker_state(s["container"], _run=_run)
-        states[s["container"]] = st
+        if s["container"] not in selected_containers:
+            continue
+        st = state_of(s["container"])
         health = _health(s["port"], s["health"], _open=_open) if st == "running" else None
         print("%-16s %-16s %-6s %-9s %s" % (
             s["name"], s["container"], s["port"], st, health if health else "-"))
@@ -924,16 +1100,36 @@ def cmd_status(serves, _run=subprocess.run, _open=urllib.request.urlopen):
     # docker calls; manifests without [[gpu_roles]] print nothing extra.
     budgets = reservations.budgets_of(serves)
     if budgets:
-        ledger = reservations.build_ledger(
-            serves,
-            lambda container: states.get(container) or docker_state(container, _run=_run),
-            budgets=budgets,
-        )
+        ledger = reservations.build_ledger(serves, state_of, budgets=budgets)
         print("\nGPU reservations (ADR-0017, derived from docker state):")
         for _, role_ledger in sorted(ledger.items()):
             print("  " + role_ledger.describe())
             for r in role_ledger.reservations:
                 print("    %s%s" % (r.describe(), "" if r.committed else " [not committed]"))
+    return 0
+
+
+def cmd_groups(serves, as_json=False):
+    """List the groups defined across the manifest set and their member serves.
+
+    Read-only (no docker/network); the manifest set has already been resolved
+    and de-duped by the caller. `--json` emits the same catalog structurally for
+    tooling, matching the status/reservation JSON conventions.
+    """
+    summary = groups_summary(serves)
+    if as_json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0
+    if not summary["groups"]:
+        print("no groups defined in the manifest set")
+    else:
+        print("%-14s %s" % ("GROUP", "SERVES"))
+        for row in summary["groups"]:
+            print("%-14s %s" % (row["group"], ", ".join(row["serves"])))
+    print(
+        "\nreserved: 'all' selects every serve in the set (%d): %s"
+        % (len(summary["all"]), ", ".join(summary["all"]) or "-")
+    )
     return 0
 
 
@@ -1429,7 +1625,10 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     return r.returncode
 
 
-_ACTIONS = ("status", "up", "down", "rm", "adopt", "logs", "promote", "render")
+_ACTIONS = ("status", "up", "down", "rm", "adopt", "logs", "groups", "promote", "render")
+# Actions that accept `--group NAME` (repeatable) — they act across the whole
+# manifest set (serves*.toml in the manifest's dir), not just one file.
+_GROUP_ACTIONS = frozenset({"up", "down", "status"})
 
 _ACTION_DESCRIPTIONS = {
     "status": "Show docker and health state for manifest serves.",
@@ -1438,6 +1637,7 @@ _ACTION_DESCRIPTIONS = {
     "rm": "Remove serve containers after explicit confirmation.",
     "adopt": "Bring externally-started serves under compose management.",
     "logs": "Show bounded or streaming docker logs for one serve.",
+    "groups": "List serve groups across the manifest set and their members.",
     "promote": "Promote a staged model recipe with preflight and full rollback.",
     "render": "Render tuned compose, manifest, and router-tier configuration.",
 }
@@ -1464,11 +1664,25 @@ def _build_action_parser(action):
     elif action == "logs":
         p.add_argument("names", nargs=1, metavar="NAME",
                        help="serve name/container to read logs from.")
+    elif action == "groups":
+        p.set_defaults(names=[])
     else:
         p.add_argument("names", nargs="*",
                        help="serve names/containers to act on (default: all in the manifest).")
     p.add_argument("--manifest",
                    help="path to the serves manifest TOML (default: ./serves.toml if present, then ~/.anvil-serving/serves.toml).")
+    if action in _GROUP_ACTIONS:
+        p.add_argument("--group", action="append", metavar="NAME", dest="groups",
+                       help="act on every serve tagged NAME across the manifest set "
+                            "(serves*.toml in the manifest's dir); repeatable, unions with "
+                            "names; the reserved 'all' selects every serve.")
+    else:
+        p.set_defaults(groups=None)
+    if action == "groups":
+        p.add_argument("--json", action="store_true", dest="json_out",
+                       help="emit the group catalog as JSON for tooling.")
+    else:
+        p.set_defaults(json_out=False)
     if action in {"up", "down", "rm", "adopt", "promote"}:
         p.add_argument("--dry-run", action="store_true",
                        help="print what would run without touching any container.")
@@ -1548,6 +1762,10 @@ def main(argv=None):
     # `up --compose <file>`: ad-hoc/experiment serve from a compose file that is NOT in the
     # manifest — independent of serves.toml, so we neither require nor load a manifest here.
     if a.action == "up" and a.compose:
+        if a.groups:
+            print("--group has no meaning with --compose (an ad-hoc compose serve is not "
+                  "in the manifest set, so it carries no group tags)", file=sys.stderr)
+            return 2
         if a.recreate:
             print("--recreate has no meaning with --compose (`docker compose up -d` already "
                   "recreates a service when its config changed)", file=sys.stderr)
@@ -1562,8 +1780,13 @@ def main(argv=None):
         return 2
 
     manifest_path = resolve_manifest_path(a.manifest)
+    # A `--group` action (and `serves groups`) resolves across the whole manifest
+    # SET (every serves*.toml in the manifest's dir), de-duped by container, so a
+    # group can span serves.toml + serves.voice.toml + serves.comfyui.toml. Plain
+    # positional-name operations keep loading the SINGLE manifest, unchanged.
+    use_set = bool(a.groups) or a.action == "groups"
     try:
-        serves = load_manifest(manifest_path)
+        serves = load_manifest_set(manifest_path) if use_set else load_manifest(manifest_path)
     except FileNotFoundError:
         search_hint = (
             a.manifest
@@ -1581,14 +1804,39 @@ def main(argv=None):
         print("bad manifest %s: %s" % (manifest_path, e), file=sys.stderr)
         return 2
 
+    if a.action == "groups":
+        return cmd_groups(serves, as_json=a.json_out)
+
+    # Resolve --group to concrete serves across the set; the union with positional
+    # names becomes the target list. Print what each group resolved to before
+    # acting (honoring --dry-run), so an operator sees the blast radius first.
+    group_names = None
+    if a.groups:
+        group_names, unknown = resolve_group_targets(serves, a.groups, a.names)
+        if unknown:
+            print("unknown group(s): %s (no serve is tagged with them; see "
+                  "`anvil-serving serves groups`)" % ", ".join(unknown), file=sys.stderr)
+            return 2
+        for group in a.groups:
+            members = resolve_group(serves, group)
+            print("group %r -> %s" % (
+                group, ", ".join(m["name"] for m in members) or "(none)"))
+        if not group_names:
+            # Guard: an empty target list must never fall through to _select's
+            # "empty means all" and silently act on every serve.
+            print("no serves matched the requested group(s)/name(s)", file=sys.stderr)
+            return 1
+
     if a.action == "status":
-        return cmd_status(serves)
+        return cmd_status(serves, names=group_names)
     if a.action == "logs":
         return cmd_logs(serves, a.names, tail=a.tail, since=a.since, follow=a.follow)
     if a.action == "down":
-        return cmd_down(serves, a.names, dry_run=a.dry_run)
+        return cmd_down(serves, group_names if group_names is not None else a.names,
+                        dry_run=a.dry_run)
     if a.action == "up":
-        return cmd_up(serves, a.names, dry_run=a.dry_run, recreate=a.recreate,
+        return cmd_up(serves, group_names if group_names is not None else a.names,
+                      dry_run=a.dry_run, recreate=a.recreate,
                       evict=a.evict, drain_timeout=a.drain_timeout,
                       router_url=a.router_url)
     if a.action == "rm":
