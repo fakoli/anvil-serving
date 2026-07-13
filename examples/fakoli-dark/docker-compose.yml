@@ -6,13 +6,15 @@
 # scripts had. DO NOT manage these serves with raw `docker`/`docker compose` — go through
 # `anvil-serving serves` so the management experience stays consistent.
 #
-#   heavy  -> service `heavy`  (gpt-oss-120b, vLLM/MXFP4, :30002, RTX PRO 6000 96GB / GPU 1)
+#   heavy  -> service `heavy`  (ThinkingCap Qwen3.6-27B FP8, :30002, RTX PRO 6000 96GB / GPU 1)
 #   fast   -> service `fast`   (Qwen3.6-35B-A3B-NVFP4, vLLM, :30003, RTX 5090 / GPU 0)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
-# 2026-07-08 fast-tier promotion: heavy remains gpt-oss-120b @ reasoning_effort=high
-# (measured planning 0.92 — the promoted heavy tier), and fast is Qwen3.6-35B-A3B-NVFP4
-# (the human-approved Fast recommendation from the 2026-07-08 bakeoff). These replaced the
+# 2026-07-12 Heavy promotion: ThinkingCap Qwen3.6-27B FP8 replaces GPT-OSS-120B
+# after the repeated protocol-v2 quality gate. The old GPT-OSS recipe remains as the
+# opt-in `heavy-gptoss-rollback` managed service and in the recipe registry. Fast remains
+# Qwen3.6-35B-A3B-NVFP4, the
+# human-approved Fast recommendation from the 2026-07-08 bakeoff. These replaced the
 # agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live in git history. The
 # convention also shifted: weights now resolve as HF REPO-IDS from the
 # `vllm-hfcache` docker volume (the `anvil-serving models pull` path) — NOT `/models/<dir>`
@@ -28,12 +30,13 @@
 #   FAST_GPU_UUID   default GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 (RTX 5090)
 # Find yours with `nvidia-smi --query-gpu=index,uuid --format=csv` (or `anvil-serving doctor`).
 services:
-  # Heavy tier: gpt-oss-120b on vLLM (RTX PRO 6000 / GPU 1, :30002). MXFP4 weights auto-detect.
+  # Heavy tier: ThinkingCap Qwen3.6-27B FP8 on vLLM (RTX PRO 6000 / GPU 1, :30002).
   heavy:
-    image: vllm/vllm-openai:nightly
-    container_name: vllm-gptoss120
+    image: ${HEAVY_THINKINGCAP_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    container_name: vllm-thinkingcap-heavy
     restart: unless-stopped
     ipc: host
+    shm_size: "16gb"
     ports:
       # Loopback-only: unauthenticated vLLM endpoint must not be LAN-exposed (gotcha #1 / SECURITY.md).
       - "127.0.0.1:30002:30002"
@@ -46,6 +49,8 @@ services:
       CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
       # Mandatory on this WSL2 box: no UVA -> vLLM v2 runner's UvaBuffer dies (gotcha #14).
       VLLM_USE_V2_MODEL_RUNNER: "0"
+      # The tested FP8 path fails through DeepGEMM on this sm_120 recipe.
+      VLLM_USE_DEEP_GEMM: "0"
       # MAKE-OR-BREAK on sm_120: the `f` suffix; plain 12.0 -> `cvt.e2m1x2.f32 not supported`.
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       # Weights are already in vllm-hfcache, but vLLM still does an HF-hub metadata check at
@@ -59,11 +64,55 @@ services:
             - driver: nvidia
               device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]   # RTX PRO 6000 96GB
               capabilities: [gpu]
-    # Pin entrypoint (upstream flipped :nightly default to `vllm serve`); explicit is vintage-stable.
+    # Pin entrypoint because upstream image defaults have changed across releases.
     entrypoint: ["vllm"]
-    # Do NOT add --enforce-eager: CUDA graphs give 183 vs 33.6 tok/s (5.4x) and are stable.
+    command: >
+      serve bottlecapai/ThinkingCap-Qwen3.6-27B-FP8
+      --revision ${HEAVY_THINKINGCAP_REVISION:-e48255afd77b403446332be0f595868337b36591}
+      --served-model-name thinkingcap-qwen36-27b-fp8
+      --trust-remote-code
+      --language-model-only
+      --reasoning-parser qwen3
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --speculative-config '{"method":"mtp","num_speculative_tokens":${HEAVY_THINKINGCAP_MTP_TOKENS:-3}}'
+      --no-enable-prefix-caching
+      --kv-cache-dtype fp8
+      --max-model-len ${HEAVY_THINKINGCAP_MAX_MODEL_LEN:-262144}
+      --max-num-seqs ${HEAVY_THINKINGCAP_MAX_NUM_SEQS:-5}
+      --gpu-memory-utilization 0.92
+      --host 0.0.0.0 --port 30002
+      ${HEAVY_THINKINGCAP_EXTRA_ARGS:-}
+
+  # Opt-in rollback for Heavy. It deliberately shares :30002 and the PRO 6000,
+  # so stop `heavy` before starting it. It is never a router dependency.
+  heavy-gptoss-rollback:
+    profiles: ["rollback"]
+    image: ${HEAVY_GPTOSS_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    container_name: vllm-gptoss120
+    restart: unless-stopped
+    ipc: host
+    ports:
+      - "127.0.0.1:30002:30002"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
     command: >
       serve openai/gpt-oss-120b
+      --revision ${HEAVY_GPTOSS_REVISION:-b5c939de8f754692c1647ca79fbf85e8c1e70f8a}
       --served-model-name gpt-oss-120b
       --kv-cache-dtype fp8
       --tool-call-parser openai

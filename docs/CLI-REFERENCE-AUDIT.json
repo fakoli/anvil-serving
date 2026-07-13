@@ -28,7 +28,7 @@
         "eval-benchmark-external": 20,
         "eval-benchmark-run": 19,
         "eval-calibrate": 8,
-        "eval-preflight": 19,
+        "eval-preflight": 20,
         "eval-usage": 5,
         "host-gpus": 0,
         "init": 7,
@@ -100,7 +100,7 @@
         "eval-benchmark-external": 31,
         "eval-benchmark-run": 25,
         "eval-calibrate": 18,
-        "eval-preflight": 26,
+        "eval-preflight": 27,
         "eval-usage": 8,
         "host-gpus": 2,
         "init": 17,
@@ -118,13 +118,13 @@
       },
       "files_by_category": {
         "docs": 44,
-        "examples": 43,
+        "examples": 44,
         "implementation": 143,
         "skills": 4,
         "tests": 145,
         "tooling": 25
       },
-      "files_scanned": 404,
+      "files_scanned": 405,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

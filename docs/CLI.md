@@ -88,7 +88,7 @@ focused `--help`.
 | `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `router promote` | Promote a reviewed router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `router promote` | Promote a reviewed router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--validate-only` |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
@@ -98,6 +98,7 @@ focused `--help`.
 | `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest` |
 | `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
 | `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
+| `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--rollback`<br>`--resume` |
 | `serves status` | Show model serve status. | `read` / `bounded` | `--manifest` |
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--since`<br>`--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
@@ -342,20 +343,31 @@ anvil-serving models cache prune --mixture openai/gpt-oss-120b,Qwen/Qwen3-32B --
 ```
 anvil-serving eval preflight (--base-url URL --model ID | --tier NAME [--manifest PATH])
                         --confirm [--api-key-env ENV] [--needle-ctx N]
-                        [--tool-batch N] [--no-thinking]
+                        [--tool-batch N] [--checks LIST]
+                        [--thinking-mode MODE | --reasoning-effort LEVEL]
+                        [--visible-answer-tokens N] [--reasoning-headroom-tokens N]
+                        [--json-out PATH] [--no-thinking]
 ```
 
 Correctness gate against any OpenAI-compatible endpoint, before trusting throughput: short coding
 smoke, structured JSON, long-context needle retrieval (`--needle-ctx`, default 128000), and a
-shared-prefix tool-calling batch (`--tool-batch`, default 20). `--no-thinking` injects
-`chat_template_kwargs={"enable_thinking": false}` so thinking-by-default models (Qwen3.x, GLM)
-don't false-fail with empty content. `--tier` fills the endpoint and model from a serves manifest;
+shared-prefix tool-calling batch (`--tool-batch`, default 20). `--checks` can select an ordered
+subset of `smoke,json,needle,tools`. `--thinking-mode enabled|disabled` sends the Qwen-style
+`chat_template_kwargs` control; `--reasoning-effort` supports model families that use the
+top-level OpenAI field. `--no-thinking` remains an alias for `--thinking-mode disabled`.
+The visible-answer allocation and reasoning headroom are recorded separately and sent as one
+completion cap; each result reports finish reason, visible length, parsed reasoning-channel
+length, and reasoning-token usage when the engine exposes it. `--json-out` retains that evidence.
+`--tier` fills the endpoint and model from a serves manifest;
 without `--manifest`, it uses the bundled reference manifest. The CLI requires `--confirm` because
 the gate sends a live workload. Controller execution accepts direct endpoint inputs only, so an
 operator-local manifest path is never interpreted on another host. Exit code 0 = all pass, 1 = any fail.
 
 ```bash
 anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --no-thinking --confirm
+anvil-serving eval preflight --tier heavy --thinking-mode enabled \
+  --visible-answer-tokens 256 --reasoning-headroom-tokens 4096 \
+  --checks smoke,json --json-out ./preflight-thinking.json --confirm
 ```
 
 ### `eval benchmark`

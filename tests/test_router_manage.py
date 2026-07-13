@@ -390,6 +390,22 @@ def test_promote_validation_failure_aborts_before_write(tmp_path, capsys):
     assert "ABORT" in capsys.readouterr().out
 
 
+def test_promote_validate_only_checks_deployed_loader_without_writes(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[router]\nprofile_path = "/etc/anvil/profile.json"\n', encoding="utf-8")
+    run = FakeRun(state="running")
+    rc = rm.cmd_promote(
+        _profile(tmp_path), config_path=str(cfg), validate_only=True, _run=run
+    )
+    assert rc == 0
+    assert len(run.calls) == 1
+    argv = run.calls[0]
+    assert "--entrypoint" in argv and "python" in argv
+    payload = json.loads(run.inputs[0])
+    assert payload["profile"]["schema"]
+    assert "profile_path" in payload["config"]
+
+
 def test_promote_bad_json_aborts_without_docker(tmp_path):
     p = tmp_path / "profile.json"
     p.write_text("{not json", encoding="utf-8")
