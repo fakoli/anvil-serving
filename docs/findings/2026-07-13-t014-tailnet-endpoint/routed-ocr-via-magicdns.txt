@@ -1,0 +1,11 @@
+T014 routed OCR preset via MagicDNS (model=ocr + image_url through http://fakoli-dark.tail4378d.ts.net:8000/v1/chat/completions)
+image: assets/explainer-quality-gate.png
+---
+HTTP 200
+model: ocr
+finish_reason: length
+usage: {'prompt_tokens': 1215, 'completion_tokens': 512, 'total_tokens': 1727}
+extracted length: 783
+first 400 chars:
+measured score TO/althoinary為uosrhoHzew.dot- onyearose交通安全出絶 PMT GATE ※門市長之選民表达景明・必選 lyR 之道be 訪問地産系會會芝遊所 cOe ，首應那轉肉点点地球 mise，｜7。特性Y-1 ・空系laOhse oMy研過之後密自↑100中前後↑1007交易丨主對Rb心委員車 Thing 倉楜玥交記手開▲八線 Q81 系列 comis 種 birb 強力監之 ਨੂੰ快速 V（1）<|LOC_485|><|LOC_338|><|LOC_837|><|LOC_257|><|LOC_842|><|LOC_311|><|LOC_489|><|LOC_392|>
+registrated of報告信民航局.moip布機記者策略馬對3址 907 奉勤路M等安ニ重12輪24「出口中}}軒掌本利従民一<6 따아·e人士依▲转一次家具

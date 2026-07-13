@@ -1386,5 +1386,175 @@ def test_get_with_oversized_body_closes_cleanly():
     assert hit_eof, "server must close after oversized GET body"
 
 
+# --------------------------------------------------------------------------- #
+# Single tailnet DNS endpoint (gpu-reservations:T014 / F008)
+# --------------------------------------------------------------------------- #
+#
+# T014's decision is that ONE front-door server — reachable on the host's
+# Tailscale MagicDNS name (e.g. ``fakoli-dark.tail4378d.ts.net:8000``) — carries
+# every serving surface behind ONE bearer token: there is no separate router,
+# embeddings, or OCR endpoint. These tests prove that contract HERMETICALLY on
+# an ephemeral ``127.0.0.1`` port (the MagicDNS name resolves to the same
+# server; DNS/tailnet reachability is verified live in the runbook, not here).
+#
+# See docs/TAILNET-ENDPOINT-RUNBOOK.md for the live MagicDNS evidence.
+
+from anvil_serving.router.config import PurposeModel  # noqa: E402
+from anvil_serving.router.purpose import PurposeRouter  # noqa: E402
+
+_T014_TOKEN = "t014-single-endpoint-secret"
+_T014_EMBED_MODEL = "qwen3-embedding-0.6b"
+
+
+class _CannedTransport:
+    """Return one canned upstream JSON for the embeddings purpose model.
+
+    Hermetic seam: no socket is opened. Mirrors the injected transport used by
+    tests/router/test_embeddings.py.
+    """
+
+    def __init__(self, payload):
+        self._payload = payload
+
+    def __call__(self, url, *, data, headers, timeout, max_bytes=None):
+        return json.dumps(self._payload).encode("utf-8")
+
+
+@contextmanager
+def _tailnet_endpoint_server():
+    """One authed front door that also carries the embeddings purpose surface.
+
+    Bound to 127.0.0.1:0 for hermeticity — this is exactly the single server the
+    operator publishes on the tailnet by binding ``--host 0.0.0.0`` (or the
+    tailnet IP) so MagicDNS resolves to it.
+    """
+    embed_pm = PurposeModel(
+        id="embeddings-local",
+        kind="embedding",
+        model=_T014_EMBED_MODEL,
+        base_url="http://127.0.0.1:30005/v1",
+    )
+    purpose = PurposeRouter(
+        [embed_pm],
+        transport=_CannedTransport({
+            "object": "list",
+            "data": [{"object": "embedding", "index": 0, "embedding": [0.1, 0.2]}],
+            "model": _T014_EMBED_MODEL,
+            "usage": {"prompt_tokens": 4, "total_tokens": 4},
+        }),
+    )
+    httpd = make_server(
+        "127.0.0.1", 0, StaticBackend(["extracted text"]),
+        auth_token=_T014_TOKEN, purpose=purpose,
+    )
+    host, port = httpd.server_address[:2]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield host, port
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
+def _authed_post(host, port, path, body, token=_T014_TOKEN):
+    conn = http.client.HTTPConnection(host, port, timeout=10)
+    try:
+        headers = {"Content-Type": "application/json"}
+        if token is not None:
+            headers["Authorization"] = f"Bearer {token}"
+        conn.request("POST", path, json.dumps(body), headers)
+        resp = conn.getresponse()
+        return resp.status, resp.read()
+    finally:
+        conn.close()
+
+
+def _authed_get(host, port, path, token=_T014_TOKEN):
+    headers = {"Authorization": f"Bearer {token}"} if token is not None else {}
+    return _get(host, port, path, headers=headers)
+
+
+def test_t014_single_endpoint_serves_every_surface_under_one_token():
+    """models + embeddings + OCR-preset chat all resolve on ONE server/token.
+
+    This is the front-door half of T014's live acceptance criteria (the same
+    three requests are proven over the real MagicDNS name in the runbook).
+    """
+    with _tailnet_endpoint_server() as (host, port):
+        # Discovery.
+        status, _, body = _authed_get(host, port, "/v1/models")
+        assert status == 200, body
+        models = {m["id"] for m in json.loads(body)["data"]}
+        assert "ocr" in models  # the OCR preset is advertised on the one endpoint
+
+        # Embeddings (purpose surface) — same host:port, same token.
+        status, body = _authed_post(
+            host, port, "/v1/embeddings",
+            {"model": _T014_EMBED_MODEL, "input": "hello"},
+        )
+        assert status == 200, body
+        assert json.loads(body)["data"][0]["embedding"] == [0.1, 0.2]
+
+        # OCR-preset request — model "ocr" routed through the SAME front door.
+        status, body = _authed_post(
+            host, port, "/v1/chat/completions",
+            {"model": "ocr",
+             "messages": [{"role": "user", "content": "extract text"}]},
+        )
+        assert status == 200, body
+        assert json.loads(body)["choices"][0]["message"]["content"] == "extracted text"
+
+
+def test_t014_healthz_advertises_the_unified_route_surface():
+    """One /healthz lists chat + embeddings + rerank + route — no split endpoints."""
+    with _tailnet_endpoint_server() as (host, port):
+        # Healthz is intentionally token-free (container healthchecks).
+        status, _, body = _get(host, port, "/healthz")
+        assert status == 200, body
+        routes = set(json.loads(body)["routes"])
+        assert {
+            "/v1/chat/completions",
+            "/v1/messages",
+            "/v1/embeddings",
+            "/v1/rerank",
+            "/v1/route",
+        } <= routes
+
+
+def test_t014_one_token_gates_the_whole_endpoint():
+    """Every serving surface rejects a missing token with 401; healthz stays open.
+
+    The single tailnet endpoint means a single credential — a caller without the
+    token cannot reach discovery, embeddings, or the OCR preset.
+    """
+    with _tailnet_endpoint_server() as (host, port):
+        # healthz: reachable WITHOUT a token.
+        status, _, _ = _get(host, port, "/healthz")
+        assert status == 200
+
+        # models: 401 without token, 200 with.
+        status, _, _ = _get(host, port, "/v1/models")
+        assert status == 401
+        status, _, _ = _authed_get(host, port, "/v1/models")
+        assert status == 200
+
+        # embeddings: 401 without token.
+        status, _ = _authed_post(
+            host, port, "/v1/embeddings",
+            {"model": _T014_EMBED_MODEL, "input": "hi"}, token=None,
+        )
+        assert status == 401
+
+        # OCR-preset chat: 401 without token.
+        status, _ = _authed_post(
+            host, port, "/v1/chat/completions",
+            {"model": "ocr", "messages": [{"role": "user", "content": "x"}]},
+            token=None,
+        )
+        assert status == 401
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
