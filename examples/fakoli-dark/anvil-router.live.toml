@@ -137,6 +137,12 @@ privacy       = "local"
 tool_support  = false
 auth_env      = "ANVIL_VISION_LOCAL_KEY"
 health_path   = "/health"
+# REQUIRED for the eviction lifecycle: after a T005 eviction the tier stays
+# quiesced, and the guarded `router readmit` refuses with
+# "identity_not_configured" unless it can verify the serve's exact model
+# identity — without this flag an evicted vision tier can never re-enter
+# rotation (verified live, 2026-07-13 T013).
+model_identity = true
 
 # Purpose-model serves (gpu-reservations:T009/T010, ADR-0017 §7): the always-on Qwen3
 # embedding + reranker serves on the 5090 (serves.toml `embeddings`/`reranker`), routed BY

@@ -432,14 +432,26 @@ services:
   # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 12288 /
   # residency "EVICTABLE" (the first evictable serve on this ledger: it yields to
   # on-demand acquisitions via the T005 eviction flow, draining router tier
-  # vision-local first — serves.toml `router_tier`). --gpu-memory-utilization below
-  # is 12288 / 32607 CAPACITY = 0.3769 (fraction of TOTAL device memory — see the
-  # `fast` deviation note above). Keep vram_mib and the fraction in lockstep.
-  # HONEST-MEASURED (2026-07-13, this exact image+flags on the 5090): bf16 weights
-  # 8.28 GiB; at 12288 MiB the engine reports ~1.4 GiB free KV — bf16 KV (144
-  # KiB/token: 36 layers x 8 kv-heads x 128 head-dim) would undershoot the window,
-  # so --kv-cache-dtype fp8 (72 KiB/token; the proven sm_120 path the heavy serve
-  # uses) fits the 16384-token window with margin. --enforce-eager +
+  # vision-local first — serves.toml `router_tier`).
+  #
+  # WHY --kv-cache-memory-bytes (explicit KV size) instead of utilization-derived
+  # sizing (measured 2026-07-13, one-off T013 probe, this exact image+flags on the
+  # 5090): vLLM's AUTO memory profiling is unusable for this model on the busy WSL2
+  # card — cudaMemGetInfo's free-memory view is incoherent under WSL2 passthrough
+  # (init snapshot reported 30.2 GiB free while nvidia-smi showed ~12.6), so the
+  # profiler blamed the reconciliation delta on itself as a phantom "non-torch
+  # forward increase" of ~13.8 GiB and computed NEGATIVE available KV at every
+  # utilization we could budget (-12.61 GiB at 0.3769; mm caps moved it ~1 GiB).
+  # Explicit KV sizing bypasses the broken measurement: 1342177280 bytes = 1.25 GiB
+  # fp8 KV = 18,192 tokens (1.11x concurrency for the 16384-token window; fp8 KV is
+  # 72 KiB/token: 36 layers x 8 kv-heads x 128 head-dim). --gpu-memory-utilization
+  # 0.3769 = 12288 / 32607 capacity stays as the declared ceiling for tooling
+  # consistency (see the `fast` deviation note above) but no longer drives sizing.
+  # HONEST-MEASURED footprint: bf16 weights 8.6 GiB ("Model loading took"), total
+  # engine device delta 11,738 MiB (nvidia-smi before/after) — inside the 12288 MiB
+  # reservation with ~550 MiB margin. --limit-mm-per-prompt 2 images / no video +
+  # --mm-processor-kwargs max_pixels 2 MP bound the encoder cache and runtime
+  # activations (a screenshot at 2 MP is ~2048 vision tokens). --enforce-eager +
   # --no-enable-prefix-caching + --mm-processor-cache-gb 0 mirror the `ocr` recipe
   # (screenshots don't repeat; graph memory would eat the KV margin). sm_120 note:
   # bf16 DENSE + fp8 KV is the proven-safe shape (gotchas #7/#16 concern FP8/NVFP4
@@ -471,13 +483,16 @@ services:
               device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
     entrypoint: ["vllm"]
-    # Revision PINNED to the vllm-hfcache snapshot pulled by `models pull`;
+    # Revision PINNED to the vllm-hfcache snapshot pulled by `models pull` (ebb281e…);
     # unpinned, a refreshed HF `main` ref would force a cold re-download at `up`.
     command: >
       serve Qwen/Qwen3-VL-4B-Instruct
-      --revision ${VISION_QWEN3VL_REVISION:-main}
+      --revision ${VISION_QWEN3VL_REVISION:-ebb281ec70b05090aa6165b016eac8ec08e71b17}
       --served-model-name qwen3-vl-4b-instruct
+      --limit-mm-per-prompt '{"image":2,"video":0}'
+      --mm-processor-kwargs '{"max_pixels":2097152}'
       --kv-cache-dtype fp8
+      --kv-cache-memory-bytes 1342177280
       --max-model-len 16384
       --max-num-batched-tokens 4096
       --max-num-seqs 2

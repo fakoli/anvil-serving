@@ -1,0 +1,23 @@
+Based on the screenshot provided, here is a detailed description:
+
+**Application Shown:**
+The application is the **Anvil Serving Dashboard**. This is a monitoring and management interface for a GPU-based serving system, likely used for deploying and managing machine learning models (e.g., for tasks like OCR, planning, or image processing).
+
+**Status Information Visible:**
+1.  **GPU Hardware:** The system is using an **RTX 5090** graphics card.
+2.  **VRAM Usage:** **30057 MiB** (approximately 30 GB) of VRAM is currently in use.
+3.  **Active Serves:** There are **7 serves running** (likely referring to 7 active model instances or processes).
+4.  **System Health:** The system is marked as **HEALTHY**, indicated by a green circle and text.
+5.  **Request Distribution:** A bar chart titled "Requests per tier" shows the distribution of incoming requests across three tiers:
+    *   **heavy** (blue bar): Highest volume.
+    *   **fast** (orange bar): Medium volume.
+    *   **ocr** (green bar): Lowest volume.
+
+**Error Present:**
+Yes, there is a clear error message displayed prominently on the right side of the screen.
+
+*   **Error Code:** **Error 503**
+*   **Error Message:** "No available tier for preset 'planning' - all candidates busy"
+*   **Action Button:** A "Retry" button is provided 
+---
+finish: stop | model: vision | usage: 538 in / 408 out
