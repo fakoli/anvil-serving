@@ -402,3 +402,62 @@ def test_gpu_role_context_is_stable_uuid_identity_not_a_runtime_index():
     assert plan.as_dict()["gpu_role"] == "fast"
     assert plan.as_dict()["gpu_uuid"] == "GPU-01234567-89ab-cdef-0123-456789abcdef"
     assert "index" not in plan.as_dict()
+
+
+# ---- gpu_roles reservation capacity (ADR-0017) -------------------------------
+
+
+def test_gpu_roles_accept_reservation_capacity_fields():
+    data = _topology_data()
+    data["gpu_roles"][0].update(vram_mib=32768, reserve_mib=2048)
+
+    role = parse_topology(data).gpu_role("fast")
+    assert (role.vram_mib, role.reserve_mib) == (32768, 2048)
+
+
+def test_gpu_roles_without_reservation_fields_stay_out_of_the_ledger():
+    role = parse_topology(_topology_data()).gpu_role("fast")
+    assert role.vram_mib is None
+    assert role.reserve_mib is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("vram_mib", 0),
+        ("vram_mib", -1),
+        ("vram_mib", True),
+        ("vram_mib", "32768"),
+        ("reserve_mib", -1),
+        ("reserve_mib", True),
+        ("reserve_mib", "2048"),
+    ],
+)
+def test_gpu_roles_reject_non_integer_reservation_capacity(field, value):
+    data = _topology_data()
+    data["gpu_roles"][0]["vram_mib"] = 32768  # reserve_mib requires declared capacity
+    data["gpu_roles"][0][field] = value
+
+    errors = [
+        error
+        for error in validate_topology(data).errors
+        if error.path == f"gpu_roles[0].{field}"
+    ]
+    assert errors and errors[0].code == "type"
+
+
+def test_gpu_role_reserve_mib_requires_capacity_and_must_fit_within_it():
+    data = _topology_data()
+    data["gpu_roles"][0]["reserve_mib"] = 2048
+    errors = validate_topology(data).errors
+    assert any(
+        error.path == "gpu_roles[0].reserve_mib" and error.code == "required"
+        for error in errors
+    )
+
+    data["gpu_roles"][0]["vram_mib"] = 1024  # reserve larger than capacity
+    errors = validate_topology(data).errors
+    assert any(
+        error.path == "gpu_roles[0].reserve_mib" and error.code == "value"
+        for error in errors
+    )

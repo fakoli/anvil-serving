@@ -105,7 +105,7 @@ _RUNTIME_FIELDS = frozenset({"id", "host", "role"})
 _RESOURCE_FIELDS = frozenset(
     {"id", "role", "host", "runtime", "endpoint", "endpoint_kind", "path", "gpu_role", "workload"}
 )
-_GPU_ROLE_FIELDS = frozenset({"id", "host", "runtime", "uuid"})
+_GPU_ROLE_FIELDS = frozenset({"id", "host", "runtime", "uuid", "vram_mib", "reserve_mib"})
 _TRANSPORT_FIELDS = frozenset(
     {
         "id",
@@ -186,6 +186,12 @@ class GpuRole:
     host: str
     runtime: str
     uuid: str
+    # ADR-0017 GPU residency reservations: declared VRAM capacity of the card
+    # (``vram_mib``) and the never-reservable display/system reserve
+    # (``reserve_mib``). Both are declared identity, not measured state; a role
+    # without them does not participate in the reservation ledger.
+    vram_mib: int | None = None
+    reserve_mib: int | None = None
 
 
 @dataclass(frozen=True)
@@ -556,8 +562,27 @@ def _parse_gpu_roles(raw: object, errors: list[TopologyError]) -> list[tuple[int
         host = _required_id(record, "host", path, errors)
         runtime = _required_id(record, "runtime", path, errors)
         uuid = _required_gpu_uuid(record, "uuid", path, errors)
+        vram_mib = _optional_mib(record, "vram_mib", path, errors, minimum=1)
+        reserve_mib = _optional_mib(record, "reserve_mib", path, errors, minimum=0)
+        if reserve_mib is not None:
+            if "vram_mib" not in record:
+                _error(
+                    errors,
+                    f"{path}.reserve_mib",
+                    "requires vram_mib capacity on the same GPU role",
+                    "required",
+                )
+            elif vram_mib is not None and reserve_mib > vram_mib:
+                _error(
+                    errors,
+                    f"{path}.reserve_mib",
+                    "must not exceed the role's vram_mib capacity",
+                    "value",
+                )
         if None not in (role_id, host, runtime, uuid):
-            parsed.append((index, GpuRole(role_id, host, runtime, uuid)))
+            parsed.append(
+                (index, GpuRole(role_id, host, runtime, uuid, vram_mib, reserve_mib))
+            )
     return parsed
 
 
@@ -1087,6 +1112,20 @@ def _optional_bool(
     if not isinstance(value, bool):
         _error(errors, _field_path(path, key), "must be true or false", "type")
         return default
+    return value
+
+
+def _optional_mib(
+    record: Mapping[str, Any], key: str, path: str, errors: list[TopologyError], *, minimum: int
+) -> int | None:
+    """Optional declared MiB quantity (ADR-0017); integers only, never booleans."""
+    if key not in record:
+        return None
+    value = record[key]
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        bound = "a positive integer" if minimum > 0 else "a non-negative integer"
+        _error(errors, _field_path(path, key), f"must be {bound} of MiB", "type")
+        return None
     return value
 
 
