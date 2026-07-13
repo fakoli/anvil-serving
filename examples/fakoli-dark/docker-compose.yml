@@ -344,8 +344,11 @@ services:
   # with the live v1 profile) and a config VOLUME (anvil-router-cfg). Pin the released TAG (not
   # `build:`) so `up` reproduces the deployment and `router promote --image` validates against it.
   # Bump this tag + router_manage.DEFAULT_IMAGE together on each router release.
+  # ROUTER_IMAGE is a per-invocation CANDIDATE override for pre-release router verification
+  # (e.g. `ROUTER_IMAGE=anvil-serving:0.13.0rc1 anvil-serving router up`); a bare `up` always
+  # reproduces the pinned release.
   router:
-    image: anvil-serving:0.12.0
+    image: ${ROUTER_IMAGE:-anvil-serving:0.12.0}
     container_name: anvil-router
     restart: unless-stopped
     depends_on:

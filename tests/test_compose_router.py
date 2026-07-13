@@ -113,9 +113,15 @@ def test_router_service_pins_the_deployed_image():
     # does implicitly. So the router service must pin an image and must NOT build.
     services = _service_blocks(_compose_text())
     router = services["router"]
-    assert re.search(r"^\s*image:\s*anvil-serving:", router, re.MULTILINE), (
-        "router service must pin the deployed anvil-serving image"
-    )
+    # Same normalization stance as _port_host_binds (T009): an env-overridable
+    # image `${ROUTER_IMAGE:-anvil-serving:X.Y.Z}` normalizes to its DEFAULT —
+    # what ships is the pinned release; the env var is the operator's explicit,
+    # per-invocation candidate override for pre-release router verification.
+    assert re.search(
+        r"^\s*image:\s*(?:\$\{[A-Z0-9_]+:-)?anvil-serving:[^}\s]+\}?\s*$",
+        router,
+        re.MULTILINE,
+    ), "router service must pin the deployed anvil-serving image (a pinned default)"
     assert "build:" not in router, (
         "router service must NOT build (a fresh build produces a v2 image that rejects the "
         "live v1 profile); redeploying to a built image is a deliberate separate step"
