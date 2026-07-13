@@ -346,18 +346,54 @@ def test_shipped_fakoli_manifest_ocr_serve():
     # 16384-token KV window.
     assert ocr["vram_mib"] == 5120
     assert ocr["port"] == 30007 and ocr["model"] == "paddleocr-vl-1.6"
-    # The FULL declared resident set (fast + embeddings + reranker + ocr) FITS
+    # The FULL declared RESIDENT set (fast + embeddings + reranker + ocr) FITS
     # the dark-fast budget after the 2026-07-13 T011 operator rebalance (fast
     # 18432 -> 14336 via the pre-quantized FP8-Dynamic checkpoint, reserve
     # 7168 -> 4608), resolving the previously pinned T015 oversubscription
     # (full - budget == 4769). This pin keeps the next rebalance deliberate:
-    # the resident set must keep fitting.
+    # the resident set must keep fitting. (T013: the sum is residency-filtered —
+    # `evictable` serves like `vision` are OUTSIDE the always-on guarantee and
+    # pinned separately in test_shipped_fakoli_manifest_vision_serve.)
     budget = reservations.budgets_of(serves_list)["dark-fast"].budget_mib
-    full = sum(
-        s["vram_mib"] for s in serves_list if s.get("gpu_role") == "dark-fast"
+    resident = sum(
+        s["vram_mib"] for s in serves_list
+        if s.get("gpu_role") == "dark-fast" and s.get("residency") == "resident"
     )
-    assert full == 26112 and budget == 27999, (full, budget)
-    assert budget - full == 1887, (full, budget)
+    assert resident == 26112 and budget == 27999, (resident, budget)
+    assert budget - resident == 1887, (resident, budget)
+
+
+def test_shipped_fakoli_manifest_vision_serve():
+    # gpu-reservations:T013 — Qwen3-VL-4B-Instruct is the first `evictable`
+    # ADR-0017 reservation on dark-fast, behind the router's "vision" preset
+    # (vision-local, :30008). Evictable means: admitted only when the ledger
+    # has headroom, and stopped (drain-first, via the declared router_tier)
+    # when an `on-demand` acquisition needs the VRAM (T005 eviction flow).
+    serves_list = serves.load_manifest(serves.EXAMPLE_MANIFEST)
+    by_name = {s["name"]: s for s in serves_list}
+    vision = by_name["vision"]
+    assert vision["engine"] == "vllm"
+    assert vision["gpu_role"] == "dark-fast"
+    assert vision["residency"] == "evictable"
+    assert vision["health"] == "/health"
+    # The ADR-0018 drain hook: eviction quiesces + drains this router tier
+    # before the container is stopped (serves._evict_victims).
+    assert vision["router_tier"] == "vision-local"
+    # HONEST-MEASURED budget (see the manifest/compose comments): bf16 weights
+    # + the multimodal-profiling floor + the fp8-KV 16384-token window.
+    assert vision["vram_mib"] == 12288
+    assert vision["port"] == 30008 and vision["model"] == "qwen3-vl-4b-instruct"
+    # CAPACITY (deliberate, not an accident): vision does NOT fit alongside the
+    # full resident set — that is what `evictable` residency is for. This pin
+    # keeps the trade-off visible: if the resident set shrinks enough that
+    # vision becomes co-residable, or vision's budget changes, re-decide
+    # (gpu-reservations:T015) instead of silently drifting.
+    budget = reservations.budgets_of(serves_list)["dark-fast"].budget_mib
+    resident = sum(
+        s["vram_mib"] for s in serves_list
+        if s.get("gpu_role") == "dark-fast" and s.get("residency") == "resident"
+    )
+    assert resident + vision["vram_mib"] > budget, (resident, vision["vram_mib"], budget)
 
 
 def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):

@@ -1,0 +1,13 @@
+
+GPU memory (index, used MiB, total MiB):
+  0, 19964, 32607
+  1, 90846, 97887
+
+GPU reservations (ADR-0017, derived from docker state):
+  gpu_role 'dark-fast': capacity 32607 MiB, reserve 4608 MiB, committed 22528 MiB, free 5471 MiB
+    fast 14336 MiB (resident, running)
+    embeddings 3200 MiB (resident, exited) [not committed]
+    reranker 3456 MiB (resident, exited) [not committed]
+    ocr 5120 MiB (resident, exited) [not committed]
+    vision 12288 MiB (evictable, exited) [not committed]
+    comfyui-sim 8192 MiB (on-demand, running)

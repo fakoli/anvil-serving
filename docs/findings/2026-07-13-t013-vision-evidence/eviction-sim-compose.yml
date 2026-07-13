@@ -1,0 +1,13 @@
+# T013 eviction-flow verification: SIMULATED on-demand acquisition.
+# ADR-0017 accounting is DECLARATIVE — a running container commits its declared
+# vram_mib regardless of what it actually allocates — so a trivial container is
+# a faithful stand-in for the future ComfyUI image-gen workload's RESERVATION
+# without burning 8 GiB of real VRAM during the test. The eviction path being
+# proven (plan_eviction -> quiesce -> bounded drain -> docker stop) is the real
+# production code in anvil_serving/serves.py, exercised via `serves up --evict`.
+services:
+  comfyui-sim:
+    image: alpine:3.20
+    container_name: comfyui-sim
+    command: ["sleep", "infinity"]
+    restart: "no"

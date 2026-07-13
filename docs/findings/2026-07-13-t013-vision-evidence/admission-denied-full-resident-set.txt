@@ -1,0 +1,5 @@
+  reservation denied: gpu_role 'dark-fast' is over budget by 10401 MiB
+  gpu_role 'dark-fast': capacity 32607 MiB, reserve 4608 MiB, committed 26112 MiB, free 1887 MiB
+  committed: fast 14336 MiB (resident, running); embeddings 3200 MiB (resident, running); reranker 3456 MiB (resident, running); ocr 5120 MiB (resident, running)
+  offending reservation: vision 12288 MiB (evictable, absent) > free 1887 MiB
+  no container command was run; free VRAM with `serves down <name>` or shrink the declared vram_mib

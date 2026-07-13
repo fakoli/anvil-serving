@@ -1,0 +1,23 @@
+Based on the screenshot provided, here is a detailed description:
+
+**Application Shown:**
+The application is the **Anvil Serving Dashboard**. This is a monitoring and management interface for a GPU-based serving system, likely used for deploying and managing machine learning models (e.g., for tasks like OCR, planning, or image recognition).
+
+**Status Information Visible:**
+1.  **GPU Information:**
+    *   **GPU Model:** `RTX 5090`
+    *   **VRAM Usage:** `30057 MiB` (approximately 30.06 GB of video memory is currently in use).
+    *   **Active Serves:** `7` (seven model instances or "serves" are currently running).
+    *   **System Health:** A green circle with the status `HEALTHY`, indicating the GPU and serving system are operating normally.
+
+2.  **Requests per Tier:**
+    *   A bar chart titled "Requests per tier" displays the volume of requests handled by different model tiers.
+    *   The tiers are labeled as `heavy`, `fast`, and `ocr`.
+    *   The `heavy` tier has the highest number of requests (tallest bar, blue).
+    *   The `fast` tier has a moderate number of requests (orange bar).
+    *   The `ocr` tier has the lowest number of requests (green bar).
+
+**Error Present:**
+Y
+---
+finish: stop | model: qwen3-vl-4b-instruct | usage: 538 in / 435 out
