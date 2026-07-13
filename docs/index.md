@@ -94,6 +94,7 @@ device topologies.
 | [Device topologies](DEVICE-TOPOLOGIES.md) | Spread gateway, voice, router, and serve roles across hosts over private connectivity. |
 | [Model settings](MODEL-SETTINGS-EXAMPLE.md) | Tune thinking/sampling behavior for a served model. |
 | [Serves & eval](SERVES-AND-EVAL.md) | Manage model serves and run evals. |
+| [ComfyUI migration runbook](COMFYUI-MIGRATION-RUNBOOK.md) | Migrate the ComfyUI model library into its named volume and run the on-demand tenant. |
 | [Voice pipeline](VOICE.md) | Run native voice commands, profile switches, private audio bridges, multi-device audio/LLM topology, Realtime server, and benchmarks. |
 | [Benchmark results](BENCHMARKS.md) | Compare current measured model and end-to-end results with their exact configurations and caveats. |
 | [External benchmarks](EXTERNAL-BENCHMARKS.md) | Import and compare advisory benchmark data. |
