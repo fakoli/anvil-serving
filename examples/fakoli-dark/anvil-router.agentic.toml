@@ -93,6 +93,23 @@ interaction_benchmark_stream_max_tokens = 4352
 interaction_benchmark_max_tokens_by_intent = { planning = 4352 }
 interaction_benchmark_stream_max_tokens_by_intent = { planning = 4352 }
 
+# Purpose-model serves (gpu-reservations:T009/T010, ADR-0017 §7): the always-on Qwen3
+# embedding + reranker serves on the 5090 (serves.toml `embeddings`/`reranker`), routed BY
+# MODEL NAME on POST /v1/embeddings and POST /v1/rerank under the same router token. An
+# unknown model name is a clean 404 — never a fallthrough to chat routing. Reached over
+# host.docker.internal like the chat tiers; no auth (loopback-published pooling serves).
+[[router.purpose_models]]
+id       = "embeddings-local"
+kind     = "embedding"
+model    = "qwen3-embedding-0.6b"
+base_url = "http://host.docker.internal:30005/v1"
+
+[[router.purpose_models]]
+id       = "reranker-local"
+kind     = "rerank"
+model    = "qwen3-reranker-0.6b"
+base_url = "http://host.docker.internal:30006/v1"
+
 # heavy-first where quality matters; chat-fast pins to the fast tier first.
 [router.presets]
 chat         = ["heavy-local", "fast-local"]
