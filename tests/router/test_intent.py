@@ -233,6 +233,38 @@ def test_ocr_preset_resolves_declared_with_ocr_work_class():
     assert intent.candidate_tiers == CONFIG.presets["ocr"]
 
 
+# ── vision preset (gpu-reservations:T013) ────────────────────────────────────
+def test_vision_preset_resolves_declared_with_vision_work_class():
+    # "vision" is a declared-preset-only work class like "ocr": the classifier
+    # never infers it (image content alone is not intent — the ocr preset also
+    # carries images), but naming the preset routes to the configured vision
+    # pool with the taxonomy work class as its profile key.
+    intent = resolve(_req("vision"), CONFIG)
+    assert intent.source == "declared-preset"
+    assert intent.preset == "vision"
+    assert intent.work_class == "vision"
+    assert intent.work_class in classify_mod.WORK_CLASSES
+    assert intent.candidate_tiers == CONFIG.presets["vision"]
+
+
+def test_image_content_alone_never_infers_vision():
+    # Defense of the declared-preset-only property: an empty model with image
+    # content must NOT classify as "vision" (or "ocr") — the Tier-0 classifier
+    # has no image->vision rule, so intent stays with the text-derived class.
+    raw = {
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "what is in this screenshot?"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}},
+            ],
+        }]
+    }
+    intent = resolve(_req("", "what is in this screenshot?", raw=raw), CONFIG)
+    assert intent.source == "inferred"
+    assert intent.work_class not in ("vision", "ocr")
+
+
 # ── conflicting-keyword inference is ambiguous -> safer tier (AC3) ────────────
 def test_conflicting_keywords_route_to_safer_tier():
     # "review" + "implement" name two classes -> classifier not confident ->

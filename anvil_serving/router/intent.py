@@ -126,6 +126,18 @@ PRESETS: tuple[Preset, ...] = (
         ),
         work_class="ocr",
     ),
+    Preset(
+        id="vision",
+        name="Vision",
+        description=(
+            "General image understanding: describe, ground, and answer "
+            "questions about a screenshot or photo sent as image content in "
+            "the request. Route to a general-purpose VLM tier (e.g. an "
+            "evictable Qwen3-VL serve) — unlike `ocr`, which targets verbatim "
+            "document text/table extraction."
+        ),
+        work_class="vision",
+    ),
 )
 
 # Caller-facing preset id -> classifier-facing work class. DERIVED from the

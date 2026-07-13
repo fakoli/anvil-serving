@@ -1,0 +1,1 @@
+["planning", "quick-edit", "review", "chat", "chat-fast", "long-context", "ocr", "vision"]

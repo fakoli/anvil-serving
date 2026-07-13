@@ -1008,10 +1008,12 @@ def test_fakoli_agentic_is_byte_identical_to_live():
 
 def test_fakoli_agentic_config_loads():
     """The agentic mode config parses (it is the live deploy: two chat tiers
-    plus the gpu-reservations:T011 OCR tier)."""
+    plus the gpu-reservations:T011 OCR tier and the T013 vision tier)."""
     cfg = load(str(FAKOLI_AGENTIC))
     assert isinstance(cfg, RouterConfig)
-    assert {t.id for t in cfg.tiers} == {"fast-local", "heavy-local", "ocr-local"}
+    assert {t.id for t in cfg.tiers} == {
+        "fast-local", "heavy-local", "ocr-local", "vision-local"
+    }
     assert cfg.profile_path == "/etc/anvil/profile.json"
     assert cfg.presets == {
         "chat": ("heavy-local", "fast-local"),
@@ -1021,6 +1023,7 @@ def test_fakoli_agentic_config_loads():
         "planning": ("heavy-local",),
         "long-context": ("heavy-local",),
         "ocr": ("ocr-local",),
+        "vision": ("vision-local",),
     }
     # flexibility:T007 engine fields: unset except the fast tier's truthful
     # quantization (T011 rebalance: the serve runs the FP8-Dynamic checkpoint,
@@ -1040,6 +1043,16 @@ def test_fakoli_agentic_config_loads():
     assert ocr.context_limit == 16384
     assert ocr.tool_support is False
     assert ocr.privacy == "local"
+    # gpu-reservations:T013 — the general image-understanding VLM tier: reached
+    # only via the "vision" preset, tool-free, window matched to the serve's
+    # --max-model-len. Backed by the EVICTABLE `vision` serve, so this tier is
+    # legitimately unavailable whenever the ledger has no headroom.
+    vision = cfg.tier("vision-local")
+    assert vision.model == "qwen3-vl-4b-instruct"
+    assert vision.base_url == "http://host.docker.internal:30008/v1"
+    assert vision.context_limit == 16384
+    assert vision.tool_support is False
+    assert vision.privacy == "local"
     assert fast.model == "gemma4-e4b-it"
     assert fast.base_url == "http://host.docker.internal:30003/v1"
     assert fast.context_limit == 32768

@@ -146,8 +146,8 @@ chat         = ["fast-local", "heavy-local"]
 planning     = ["heavy-local"]
 ```
 
-The router's canonical caller-facing vocabulary is seven presets — `planning`, `quick-edit`,
-`review`, `chat`, `chat-fast`, `long-context`, `ocr` — and `GET /v1/models` advertises exactly that
+The router's canonical caller-facing vocabulary is eight presets — `planning`, `quick-edit`,
+`review`, `chat`, `chat-fast`, `long-context`, `ocr`, `vision` — and `GET /v1/models` advertises exactly that
 vocabulary. Harnesses select a preset by sending its name in the wire `model` field (optionally
 namespaced `anvil/planning`); matching against config keys is case-insensitive. The `model` field
 can also name a concrete tier id to pin the request to that tier, but a preset name is checked
