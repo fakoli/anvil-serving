@@ -102,6 +102,7 @@ from .modes import (
 
 from .policy import Needs, route
 from .profile_store import ProfileStore, default_profile
+from .purpose import PurposeRouter
 from .verify import NonEmptyContent, NotTruncated, ResponseView, default_verifiers
 
 
@@ -1192,18 +1193,35 @@ def build_server(
         admission=admission,
     )
 
+    # Purpose-model surfaces (gpu-reservations:T010 / ADR-0017 §7): when the
+    # config declares [[router.purpose_models]], bind a PurposeRouter that
+    # routes /v1/embeddings + /v1/rerank BY MODEL NAME to those serves. It
+    # shares the RoutingBackend's decision log so purpose decisions appear in
+    # the same audit trail (GET /v1/decisions). Absent -> None -> both paths
+    # stay 404, exactly the pre-T010 front door.
+    purpose: Optional[PurposeRouter] = None
+    if config.purpose_models:
+        purpose = PurposeRouter(
+            config.purpose_models,
+            env=env,
+            transport=transport,
+            default_timeout=config.relay_timeout,
+            decision_log=routing._decision_log,
+        )
+
     # Advertise the canonical intent vocabulary on GET /v1/models (T004): the
     # presets ARE the "models" a harness model picker addresses.
     # Pass exhaustion_status from config so the front door uses the operator-
     # configured keyless handoff signal (ADR-0001 §Mechanism, T004).
     httpd = make_server(host, port, routing, timeout=timeout, presets=PRESETS,
                         exhaustion_status=config.exhaustion_status,
-                        auth_token=auth_token)
+                        auth_token=auth_token, purpose=purpose)
     # Stash what we bound for introspection (serve()'s banner + tests).
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
     httpd.anvil_availability = availability  # type: ignore[attr-defined]
     httpd.anvil_admission = routing._admission  # type: ignore[attr-defined]
+    httpd.anvil_purpose = purpose  # type: ignore[attr-defined]
     return httpd
 
 
@@ -1232,10 +1250,13 @@ def serve(
     httpd = build_server(config_path, host=host, port=port, mode=mode)
     actual_host, actual_port = httpd.server_address[:2]
     tiers = ", ".join(httpd.anvil_tiers) or "(none)"  # type: ignore[attr-defined]
+    routes = "POST /v1/chat/completions, POST /v1/messages, GET /v1/models"
+    if getattr(httpd, "anvil_purpose", None) is not None:
+        routes += ", POST /v1/embeddings, POST /v1/rerank"
     print(
         f"anvil-serving front door on http://{actual_host}:{actual_port}\n"
         f"  tiers bound: {tiers}\n"
-        f"  routes: POST /v1/chat/completions, POST /v1/messages, GET /v1/models",
+        f"  routes: {routes}",
         flush=True,  # show the banner promptly even when stdout is redirected
     )
     try:

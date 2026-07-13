@@ -6,6 +6,14 @@ the caller's native SSE framing:
 * ``POST /v1/messages``          -> Anthropic Messages (named-event SSE)
 * ``POST /v1/chat/completions``  -> OpenAI Chat Completions (``data:`` / ``[DONE]``)
 
+Plus, when the server is built with a
+:class:`~anvil_serving.router.purpose.PurposeRouter` (``[[router.purpose_models]]``
+configured — gpu-reservations:T010 / ADR-0017 §7), two non-streaming
+purpose-model surfaces routed by MODEL NAME, never through chat routing:
+
+* ``POST /v1/embeddings``        -> OpenAI Embeddings (relayed to the named serve)
+* ``POST /v1/rerank``            -> Jina/Cohere-style rerank (relayed likewise)
+
 Each request is parsed into a single :class:`~anvil_serving.router.internal.InternalRequest`
 and passed through to ONE injectable :class:`~anvil_serving.router.internal.Backend`.
 Intent routing, multiple tiers, and verify/fallback are LATER tasks — not here.
@@ -39,9 +47,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Iterable, Optional
 
 from .backends import EchoBackend
+from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK
 from .decision_log import summarize_decisions
 from .dialects import Dialect
 from .dialects.anthropic import AnthropicDialect
+from .dialects.embeddings import (
+    EMBEDDINGS_PATH,
+    RERANK_PATH,
+    parse_embeddings_request,
+    parse_rerank_request,
+)
 from .dialects.openai import OpenAIDialect
 from .discovery import models_payload, ROUTE_ENDPOINT
 from .intent import PRESETS, Preset, WORK_CLASS_TO_PRESET
@@ -52,14 +67,24 @@ from .internal import (
     NoAvailableTierError,
     normalize_messages,
 )
+from .purpose import PurposeError, PurposeRouter
 
 # Path -> dialect. Stateless, so module-level singletons are fine.
+_OPENAI_DIALECT = OpenAIDialect()
 _ROUTES = {
-    "/v1/chat/completions": OpenAIDialect(),
+    "/v1/chat/completions": _OPENAI_DIALECT,
     "/v1/messages": AnthropicDialect(),
 }
 DECISION_SUMMARY_ENDPOINT = "/v1/decisions"
 TRANSITION_ENDPOINT = "/v1/admin/transition"
+# Purpose-model surfaces (gpu-reservations:T010 / ADR-0017 §7). POST-only,
+# routed by MODEL NAME via an injected PurposeRouter — active only when the
+# server is built with one (purpose_models configured); otherwise both paths
+# stay 404 exactly as before. Both speak the OpenAI error envelope.
+_PURPOSE_PATHS = {
+    EMBEDDINGS_PATH: PURPOSE_EMBEDDING,
+    RERANK_PATH: PURPOSE_RERANK,
+}
 
 # --------------------------------------------------------------------------- #
 # Resource caps (DoS protection)
@@ -126,7 +151,8 @@ def _extract_bearer_token(headers) -> Optional[str]:
 
 def _make_handler(backend: Backend, timeout: Optional[float],
                   presets: Iterable[Preset], exhaustion_status: int = 503,
-                  auth_token: Optional[str] = None):
+                  auth_token: Optional[str] = None,
+                  purpose: Optional[PurposeRouter] = None):
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -431,6 +457,38 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
             self._json(200, result)
 
+        # --- purpose-model surfaces (gpu-reservations:T010) -----------------
+        def _handle_purpose(self, kind: str, body: dict) -> None:
+            """Handle ``POST /v1/embeddings`` / ``POST /v1/rerank``.
+
+            Validates the wire shape (``dialects.embeddings``), then routes BY
+            MODEL NAME through the injected :class:`PurposeRouter` — never
+            through the chat intent/policy pipeline. An unknown model name is
+            a clean 404 naming the configured models (T010 acceptance
+            criterion: no fallthrough to chat routing). Responses and errors
+            speak the OpenAI envelope, the native shape for both surfaces.
+            """
+            try:
+                if kind == PURPOSE_EMBEDDING:
+                    parse_embeddings_request(body)
+                else:
+                    parse_rerank_request(body)
+                payload = purpose.dispatch(kind, body)
+            except DialectError as e:
+                self._error(e.status, e.etype, e.message,
+                            dialect=_OPENAI_DIALECT)
+                return
+            except PurposeError as e:
+                self._error(e.status, e.etype, e.message,
+                            dialect=_OPENAI_DIALECT)
+                return
+            except Exception as e:  # unexpected fault: log detail server-side
+                print(f"[anvil] 500 {kind} error: {e}", file=sys.stderr)
+                self._error(500, "internal_error", "internal error",
+                            dialect=_OPENAI_DIALECT)
+                return
+            self._json(200, payload)
+
         def _transition_status(self, tier_id: Optional[str]) -> None:
             status_fn = getattr(backend, "transition_status", None)
             if not callable(status_fn):
@@ -576,8 +634,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         "status": "ok",
                         "dialects": sorted(d.name for d in _ROUTES.values()),
                         # Advertise the decision endpoint alongside dialect routes
-                        # (ROUTE_ENDPOINT from discovery.py, T007).
-                        "routes": sorted(list(_ROUTES) + [ROUTE_ENDPOINT, DECISION_SUMMARY_ENDPOINT]),
+                        # (ROUTE_ENDPOINT from discovery.py, T007), plus the
+                        # purpose-model surfaces when a PurposeRouter is bound
+                        # (T010) — unconfigured servers advertise exactly the
+                        # pre-T010 route list.
+                        "routes": sorted(
+                            list(_ROUTES)
+                            + [ROUTE_ENDPOINT, DECISION_SUMMARY_ENDPOINT]
+                            + (list(_PURPOSE_PATHS) if purpose is not None else [])
+                        ),
                     })
                 elif route == "/v1/models":
                     # Preset discovery: list the configured presets (intent tokens)
@@ -606,12 +671,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     else:
                         summary = summarize_decisions(getattr(decision_log, "records", ()), limit=limit)
                     self._json(200, summary)
-                elif route in _ROUTES or route == ROUTE_ENDPOINT:
+                elif route in _ROUTES or route == ROUTE_ENDPOINT or (
+                    purpose is not None and route in _PURPOSE_PATHS
+                ):
                     # Known POST-only route requested with GET → 405 Method Not
                     # Allowed with Allow: POST (RFC 7231 §6.5.5).  Use the
                     # dialect's native error envelope when one is bound to the
-                    # path; /v1/route (not dialect-backed) uses the generic shape.
+                    # path (a purpose path speaks OpenAI); /v1/route (not
+                    # dialect-backed) uses the generic shape.
                     _dial405: Optional[Dialect] = _ROUTES.get(route)
+                    if _dial405 is None and route in _PURPOSE_PATHS:
+                        _dial405 = _OPENAI_DIALECT
                     _msg405 = "this route only accepts POST requests"
                     self._json(
                         405,
@@ -745,8 +815,23 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # body is parsed and dispatched AFTER the shared framing checks.
             is_route_decision = (path == ROUTE_ENDPOINT)
 
+            # Purpose-model surfaces (T010): active only when a PurposeRouter
+            # was injected — otherwise these paths fall through to the 404
+            # below, exactly the pre-T010 behaviour. Errors (including the
+            # framing rejections shared below) speak the OpenAI envelope, the
+            # native error shape for /v1/embeddings and /v1/rerank.
+            purpose_kind: Optional[str] = (
+                _PURPOSE_PATHS.get(path) if purpose is not None else None
+            )
+
             dialect: Optional[Dialect] = _ROUTES.get(path)
-            if dialect is None and not is_route_decision and not is_transition:
+            if dialect is None and purpose_kind is not None:
+                dialect = _OPENAI_DIALECT
+            if (
+                dialect is None
+                and not is_route_decision
+                and not is_transition
+            ):
                 # Unknown route — drain body if well-framed to keep the
                 # keep-alive socket in sync, then 404.
                 self._fail_framing(404, "not_found", f"no route {path}",
@@ -829,6 +914,13 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._handle_route_decision(body)
                 return
 
+            # /v1/embeddings + /v1/rerank (T010): routed by MODEL NAME through
+            # the PurposeRouter — never parsed as a chat dialect and never
+            # dispatched to backend.generate() (no fallthrough to chat).
+            if purpose_kind is not None:
+                self._handle_purpose(purpose_kind, body)
+                return
+
             try:
                 request = dialect.parse_request(body)
             except DialectError as e:  # dialect-specific rejection (e.g. max_tokens)
@@ -882,7 +974,8 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
                 timeout: Optional[float] = 120,
                 presets: Optional[Iterable[Preset]] = None,
                 exhaustion_status: int = 503,
-                auth_token: Optional[str] = None) -> ThreadingHTTPServer:
+                auth_token: Optional[str] = None,
+                purpose: Optional[PurposeRouter] = None) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
     Pass ``port=0`` to bind an ephemeral port (read it back from
@@ -899,8 +992,12 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
     ``[server].auth_env`` — ADR-0004 / T001); ``None`` (the default) means auth
     is OFF, identical to today's behaviour. Every route requires this token
     (``Authorization: Bearer <t>`` or ``x-api-key: <t>``, constant-time compare)
-    except ``GET /healthz``. Call ``server.serve_forever()`` (typically on a
-    background thread) to run.
+    except ``GET /healthz``. ``purpose`` is an optional
+    :class:`~anvil_serving.router.purpose.PurposeRouter` (gpu-reservations:T010):
+    when set, ``POST /v1/embeddings`` and ``POST /v1/rerank`` are routed by
+    model name through it (under the same token auth); when ``None`` (the
+    default) both paths stay 404 exactly as before. Call
+    ``server.serve_forever()`` (typically on a background thread) to run.
     """
     if backend is None:
         backend = EchoBackend()
@@ -908,7 +1005,8 @@ def make_server(host: str = "127.0.0.1", port: int = 8000,
         presets = PRESETS
     httpd = ThreadingHTTPServer(
         (host, port),
-        _make_handler(backend, timeout, presets, exhaustion_status, auth_token),
+        _make_handler(backend, timeout, presets, exhaustion_status, auth_token,
+                      purpose),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd

@@ -35,6 +35,13 @@ PRIVACY_LOCAL = "local"
 PRIVACY_CLOUD = "cloud"
 VALID_PRIVACY = {PRIVACY_LOCAL, PRIVACY_CLOUD}
 
+# Purpose-model kinds (ADR-0017 §7 / gpu-reservations:T010): non-chat inference
+# surfaces the front door routes by MODEL NAME (never through the chat
+# intent/policy pipeline). Each kind maps to exactly one front-door endpoint.
+PURPOSE_EMBEDDING = "embedding"
+PURPOSE_RERANK = "rerank"
+VALID_PURPOSE_KINDS = {PURPOSE_EMBEDDING, PURPOSE_RERANK}
+
 # An auth reference must be an ENV-VAR NAME, not a secret literal.
 _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
@@ -132,6 +139,31 @@ class Tier:
 
 
 @dataclass(frozen=True)
+class PurposeModel:
+    """One purpose-model serve the front door routes by MODEL NAME (T010).
+
+    ADR-0017 §7: embedding/reranker serves are ordinary ``[[serve]]`` entries;
+    the front door grows ``/v1/embeddings`` (and ``/v1/rerank``) and routes them
+    by the request's ``model`` field. A purpose model is deliberately NOT a
+    :class:`Tier`: it never enters the chat intent/policy/fallback pipeline, has
+    no work-class quality profile, and an unknown model name is a clean caller
+    error — never a fallthrough to chat routing.
+
+    ``auth_env`` follows the tier contract: it names an ENV VAR (never the
+    secret) and is OPTIONAL — local vLLM/SGLang pooling serves usually need no
+    auth. ``model`` is the serve's ``--served-model-name`` — the exact string
+    callers send in the request ``model`` field.
+    """
+
+    id: str
+    kind: str  # "embedding" | "rerank" (VALID_PURPOSE_KINDS)
+    model: str  # served-model-name; the routing key for this surface
+    base_url: str  # OpenAI-style base, e.g. "http://127.0.0.1:30005/v1"
+    auth_env: Optional[str] = None  # NAME of the env var holding the secret
+    timeout: Optional[float] = None  # per-model transport timeout override
+
+
+@dataclass(frozen=True)
 class RouterConfig:
     """Validated router topology: tiers + preset->candidate mapping.
 
@@ -187,6 +219,11 @@ class RouterConfig:
     availability_probe_interval: float = 5.0
     availability_probe_timeout: float = 1.0
     availability_probe_max_bytes: int = 64 * 1024
+    # gpu-reservations:T010 (ADR-0017 §7) — purpose-model serves routed by model
+    # name on /v1/embeddings and /v1/rerank. Additive and default-empty: an
+    # absent [[router.purpose_models]] list leaves the front door exactly as
+    # before (those endpoints 404).
+    purpose_models: tuple["PurposeModel", ...] = ()
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
@@ -524,6 +561,86 @@ def _parse_tier(raw: object) -> Tier:
     )
 
 
+def _parse_purpose_model(raw: object) -> PurposeModel:
+    """Parse + validate one ``[[router.purpose_models]]`` table (T010).
+
+    Mirrors :func:`_parse_tier`'s validation stance: typed errors naming the
+    entry, env-var-NAME-only auth references, http(s)-only base URLs.
+    """
+    if not isinstance(raw, dict):
+        raise ConfigError(
+            f"purpose_models entry must be a table, got {type(raw).__name__}"
+        )
+
+    pid = raw.get("id")
+    if not isinstance(pid, str) or not pid:
+        raise ConfigError(
+            f"purpose model id must be a non-empty string, got {pid!r}"
+        )
+
+    kind = raw.get("kind")
+    if not isinstance(kind, str) or kind not in VALID_PURPOSE_KINDS:
+        raise ConfigError(
+            f"purpose model {pid!r}: kind {kind!r} not in "
+            f"{sorted(VALID_PURPOSE_KINDS)}"
+        )
+
+    model = raw.get("model")
+    if not isinstance(model, str) or not model:
+        raise ConfigError(
+            f"purpose model {pid!r}: model must be a non-empty string (the "
+            f"serve's --served-model-name), got {model!r}"
+        )
+
+    base_url = raw.get("base_url")
+    if not isinstance(base_url, str) or not base_url.lower().startswith(
+        ("http://", "https://")
+    ):
+        raise ConfigError(
+            f"purpose model {pid!r}: base_url must be an http:// or https:// "
+            f"URL (got {base_url!r}); file://, ftp://, and other schemes are "
+            f"rejected to prevent SSRF and local-file access"
+        )
+
+    auth_env = raw.get("auth_env")
+    if auth_env is not None:
+        if not isinstance(auth_env, str) or not _ENV_NAME_RE.fullmatch(auth_env):
+            raise ConfigError(
+                f"purpose model {pid!r}: auth_env must name an ENV VAR matching "
+                f"^[A-Z][A-Z0-9_]*$ (got {auth_env!r}); store a secret "
+                f"reference, never the secret itself"
+            )
+        if _SECRET_SHAPED_RE.fullmatch(auth_env):
+            raise ConfigError(
+                f"purpose model {pid!r}: auth_env {auth_env!r} is shaped like a "
+                f"credential literal, not an env-var name; store the env-var "
+                f"NAME, never the secret"
+            )
+
+    raw_timeout = raw.get("timeout")
+    timeout: Optional[float] = None
+    if raw_timeout is not None:
+        if (
+            isinstance(raw_timeout, bool)
+            or not isinstance(raw_timeout, (int, float))
+            or raw_timeout <= 0
+        ):
+            raise ConfigError(
+                f"purpose model {pid!r}: timeout must be a positive number of "
+                f"seconds or absent, got {raw_timeout!r}"
+            )
+        timeout = float(raw_timeout)
+
+    return PurposeModel(
+        id=pid,
+        kind=kind,
+        model=model,
+        base_url=base_url,
+        auth_env=auth_env,
+        timeout=timeout,
+    )
+
+
 def load(path: str) -> RouterConfig:
     """Load + validate the ``[router]`` block of the TOML config at ``path``.
 
@@ -688,6 +805,38 @@ def load(path: str) -> RouterConfig:
             )
         return float(raw_value)
 
+    # ``purpose_models`` (gpu-reservations:T010 / ADR-0017 §7): non-chat
+    # inference serves routed by model name on /v1/embeddings + /v1/rerank.
+    # Absent -> empty -> those endpoints stay 404 (existing behaviour).
+    raw_purpose = router.get("purpose_models", [])
+    if not isinstance(raw_purpose, list):
+        raise ConfigError(
+            f"[router].purpose_models must be a list of tables in {path}"
+        )
+    purpose_models: list[PurposeModel] = []
+    seen_purpose_ids: set[str] = set()
+    seen_purpose_keys: set[tuple[str, str]] = set()
+    for raw in raw_purpose:
+        pm = _parse_purpose_model(raw)
+        if pm.id in seen_purpose_ids or pm.id in seen_ids:
+            raise ConfigError(
+                f"duplicate purpose model id: {pm.id!r} (purpose model ids "
+                f"share the audit-trail namespace with tier ids and must be "
+                f"unique across both)"
+            )
+        # One serve per (kind, model): the model name is the routing key for a
+        # purpose surface, so a duplicate would be ambiguous.
+        key = (pm.kind, pm.model)
+        if key in seen_purpose_keys:
+            raise ConfigError(
+                f"duplicate purpose model routing key: kind={pm.kind!r} "
+                f"model={pm.model!r} (each {pm.kind} model name may map to "
+                f"exactly one serve)"
+            )
+        seen_purpose_ids.add(pm.id)
+        seen_purpose_keys.add(key)
+        purpose_models.append(pm)
+
     availability_probe_interval = _positive_seconds(
         "availability_probe_interval", 5.0
     )
@@ -718,4 +867,5 @@ def load(path: str) -> RouterConfig:
         availability_probe_interval=availability_probe_interval,
         availability_probe_timeout=availability_probe_timeout,
         availability_probe_max_bytes=raw_probe_max_bytes,
+        purpose_models=tuple(purpose_models),
     )
