@@ -112,7 +112,7 @@
         "router-run": 54,
         "serves-multiplex": 6,
         "serves-render": 15,
-        "voice-audio": 30,
+        "voice-audio": 32,
         "voice-proxy": 42,
         "voice-sidecar": 30
       },

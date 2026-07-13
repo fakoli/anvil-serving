@@ -7,14 +7,16 @@
 # `anvil-serving serves` so the management experience stays consistent.
 #
 #   heavy  -> service `heavy`  (ThinkingCap Qwen3.6-27B FP8, :30002, RTX PRO 6000 96GB / GPU 1)
-#   fast   -> service `fast`   (Qwen3.6-35B-A3B-NVFP4, vLLM, :30003, RTX 5090 / GPU 0)
+#   fast   -> service `fast`   (Gemma 4 E4B IT, vLLM, :30003, RTX 5090 / GPU 0)
 #   router -> service `router` (anvil-serving front door, :8000 — see docs/adr/0004)
 #
 # 2026-07-12 Heavy promotion: ThinkingCap Qwen3.6-27B FP8 replaces GPT-OSS-120B
 # after the repeated protocol-v2 quality gate. The old GPT-OSS recipe remains as the
-# opt-in `heavy-gptoss-rollback` managed service and in the recipe registry. Fast remains
-# Qwen3.6-35B-A3B-NVFP4, the
-# human-approved Fast recommendation from the 2026-07-08 bakeoff. These replaced the
+# opt-in `heavy-gptoss-rollback` managed service and in the recipe registry.
+# 2026-07-13 Fast swap (gpu-reservations:T006): Gemma 4 E4B IT replaces Qwen3.6-35B-A3B-NVFP4
+# as the resident fast serve so the multi-tenant 5090 (always-on voice STT/TTS sidecars,
+# ADR-0017) keeps declared VRAM headroom. The 35B recipe remains as the opt-in
+# `fast-qwen36-rollback` managed service. These replaced the
 # agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live in git history. The
 # convention also shifted: weights now resolve as HF REPO-IDS from the
 # `vllm-hfcache` docker volume (the `anvil-serving models pull` path) — NOT `/models/<dir>`
@@ -121,9 +123,73 @@ services:
       --max-model-len 131072
       --host 0.0.0.0 --port 30002
 
-  # Fast tier: Qwen3.6-35B-A3B-NVFP4 on vLLM (RTX 5090 / GPU 0, :30003).
-  # The container name is retained so the managed `fast` serve can be recreated in place.
+  # Fast tier: Gemma 4 E4B IT (bf16) on vLLM (RTX 5090 / GPU 0, :30003) — gpu-reservations:T006,
+  # promoted from the docker-compose.experiment.yml `voice-gemma4-e4b` candidate recipe.
+  #
+  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 18432 /
+  # residency "resident" for this serve. --gpu-memory-utilization below is
+  # 18432 / 32607 CAPACITY = 0.5653, deliberately NOT the T003
+  # reservations.derive_gpu_memory_utilization value (18432 / (capacity - reserve) = 0.7103):
+  # vLLM applies the fraction to TOTAL device memory, so dividing by the post-reserve budget
+  # over-allocates by capacity/budget (measured 2026-07-13: 0.7103 -> engine held ~23.9 GiB,
+  # 5.5 GiB past the declared reservation). Keep vram_mib and this fraction in lockstep.
+  # Measured floor (2026-07-13): vLLM reports "Model loading took 15.18 GiB" for this bf16
+  # checkpoint (no per-layer-embedding offload in vLLM), so a smaller reservation cannot load;
+  # at 0.5653 the engine reports 2.29 GiB free for KV (~125k tokens, ample for the 32K window).
+  #
+  # GPU pin: INDEX, not UUID — the gemma4-unified image int()-parses CUDA_VISIBLE_DEVICES at
+  # import (vllm/kernels/oink_ops.py via platforms/interface.py device_id_to_physical_device_id)
+  # and crashes on a UUID value (CLAUDE.md gotcha #21). CUDA_DEVICE_ORDER=PCI_BUS_ID makes
+  # index 0 deterministically the 5090 (bus 01:00.0 < 03:00.0). The compose device_ids
+  # reservation below still names the UUID, but WSL2 ignores that isolation (gotcha #13) —
+  # the env pin is the one that counts.
   fast:
+    image: ${FAST_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
+    container_name: vllm-gemma4-e4b-fast
+    restart: unless-stopped
+    ipc: host
+    ports:
+      - "127.0.0.1:30003:30003"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${FAST_GEMMA4_CUDA_DEVICE:-0}   # RTX 5090 by PCI order (see pin note above)
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    # Revision is PINNED: the HF repo's `main` ref (a4c2d58…) is a metadata-only refresh whose
+    # snapshot has NO model.safetensors in the vllm-hfcache volume; fee6332… is the cached
+    # weights snapshot. Unpinned, a cold start tries to re-download 15 GB.
+    command: >
+      serve google/gemma-4-E4B-it
+      --revision ${FAST_GEMMA4_REVISION:-fee6332c1abaafb77f6f9624236c63aa2f1d0187}
+      --served-model-name gemma4-e4b-it
+      --enable-auto-tool-choice
+      --reasoning-parser gemma4
+      --tool-call-parser gemma4
+      --max-model-len 32768
+      --gpu-memory-utilization 0.5653
+      --host 0.0.0.0 --port 30003
+
+  # Opt-in rollback for Fast (gpu-reservations:T006, mirroring heavy-gptoss-rollback): the
+  # pre-swap Qwen3.6-35B-A3B-NVFP4 recipe. It deliberately shares :30003 and the 5090, so
+  # `serves down fast` before starting it. It is never a router dependency.
+  # NOT in the ADR-0017 ledger: its legacy 0.85 utilization (~27.7 GiB of 32.6) predates the
+  # always-on voice sidecars (~4.3 GiB) and cannot coexist with them — for a rollback with the
+  # sidecars up, set FAST_QWEN36_GPU_UTIL=0.78 or lower, or stop the sidecars first
+  # (`anvil-serving voice audio down`). See serves.toml for the full rollback runbook.
+  fast-qwen36-rollback:
+    profiles: ["rollback"]
     image: vllm/vllm-openai:nightly
     container_name: vllm-qwen36
     restart: unless-stopped
@@ -149,7 +215,7 @@ services:
               capabilities: [gpu]
     entrypoint: ["vllm"]
     # nvidia/*-NVFP4 is modelopt-packed -> --quantization modelopt_fp4 (gotcha #10). Qwen NVFP4
-    # needs the qwen3 reasoning/tool parsers + trust-remote-code. The promoted 35B-A3B recipe
+    # needs the qwen3 reasoning/tool parsers + trust-remote-code. The pre-swap 35B-A3B recipe
     # keeps 32K ctx / max-num-seqs 2 inside the 5090's 32GB envelope.
     command: >
       serve nvidia/Qwen3.6-35B-A3B-NVFP4
@@ -162,7 +228,7 @@ services:
       --trust-remote-code
       --max-model-len 32768
       --max-num-seqs 2
-      --gpu-memory-utilization 0.85
+      --gpu-memory-utilization ${FAST_QWEN36_GPU_UTIL:-0.85}
       --host 0.0.0.0 --port 30003
 
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over

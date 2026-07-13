@@ -1,0 +1,7 @@
+GPU memory (index, used MiB, total MiB):
+  0, 25498, 32607
+  1, 90846, 97887
+
+GPU reservations (ADR-0017, derived from docker state):
+  gpu_role 'dark-fast': capacity 32607 MiB, reserve 6656 MiB, committed 18432 MiB, free 7519 MiB
+    fast 18432 MiB (resident, running)

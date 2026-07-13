@@ -1025,7 +1025,7 @@ def test_fakoli_agentic_config_loads():
         assert t.engine is None and t.quantization is None
     fast = cfg.tier("fast-local")
     heavy = cfg.tier("heavy-local")
-    assert fast.model == "qwen36-35b-a3b-nvfp4"
+    assert fast.model == "gemma4-e4b-it"
     assert fast.base_url == "http://host.docker.internal:30003/v1"
     assert fast.context_limit == 32768
     assert dict(fast.extra_body or {}) == {"chat_template_kwargs": {"enable_thinking": False}}
