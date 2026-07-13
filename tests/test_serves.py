@@ -1181,3 +1181,150 @@ def test_safe_promotion_orders_quiesce_drain_before_heavy_mutation(tmp_path):
     post_restart = next(i for i, call in enumerate(calls) if "transition-status" in call)
     assert quiesce < drain < first_stop < post_restart
     assert not any("fast-c" in call for call in calls)
+
+
+# ---- status: reservation ledger surface (gpu-reservations:T004) ---------------
+
+# The reference multi-tenant card (mirrors tests/test_reservations.py):
+# 32 GiB 5090, 2 GiB display reserve -> 30720 MiB budget.
+STATUS_LEDGER_MANIFEST = """
+    [[gpu_roles]]
+    id = "dark-fast"
+    vram_mib = 32768
+    reserve_mib = 2048
+
+    [[serve]]
+    name = "fast"
+    container = "vllm-fast"
+    port = 30003
+    model = "fast-local"
+    engine = "vllm"
+    gpu_role = "dark-fast"
+    vram_mib = 20480
+    residency = "on-demand"
+
+    [[serve]]
+    name = "stt"
+    container = "anvil-voice-stt"
+    port = 30010
+    model = "tdt_ctc-110m"
+    engine = "audio"
+    gpu_role = "dark-fast"
+    vram_mib = 4096
+    residency = "resident"
+
+    [[serve]]
+    name = "plain"
+    container = "vllm-plain"
+    port = 30030
+    model = "plain-local"
+    engine = "vllm"
+"""
+
+
+def _status_states_run(states):
+    """Fake _run: `docker inspect <c>` -> states[c] ('absent' modeled as the
+    docker no-such-object failure); nvidia-smi and anything else -> empty ok."""
+    calls = []
+
+    def run(argv, **k):
+        calls.append(argv)
+        if isinstance(argv, list) and argv[:2] == ["docker", "inspect"]:
+            state = states.get(argv[-1], "absent")
+            if state == "absent":
+                return proc(1, "", "Error: No such object")
+            return proc(0, state + "\n")
+        return proc(0)
+
+    run.calls = calls
+    return run
+
+
+def _open_down(url, timeout=3):
+    raise OSError("health endpoint down")
+
+
+def test_cmd_status_prints_the_per_role_reservation_ledger(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, STATUS_LEDGER_MANIFEST))
+    run = _status_states_run({"vllm-fast": "running", "anvil-voice-stt": "exited"})
+    assert serves.cmd_status(loaded, _run=run, _open=_open_down) == 0
+    out = capsys.readouterr().out
+    # per-gpu_role capacity / reserve / committed / free (the acceptance criterion):
+    assert "GPU reservations" in out
+    assert ("gpu_role 'dark-fast': capacity 32768 MiB, reserve 2048 MiB, "
+            "committed 20480 MiB, free 10240 MiB") in out
+    # ... and the per-serve reservations with their observed docker state:
+    assert "fast 20480 MiB (on-demand, running)" in out
+    assert "stt 4096 MiB (resident, exited) [not committed]" in out
+
+
+def test_cmd_status_ledger_reuses_the_probed_states(tmp_path):
+    """The ledger section adds no docker calls: one inspect per manifest serve."""
+    loaded = serves.load_manifest(_manifest(tmp_path, STATUS_LEDGER_MANIFEST))
+    run = _status_states_run({"vllm-fast": "running", "anvil-voice-stt": "exited"})
+    assert serves.cmd_status(loaded, _run=run, _open=_open_down) == 0
+    inspects = [c for c in run.calls if c[:2] == ["docker", "inspect"]]
+    assert sorted(c[-1] for c in inspects) == [
+        "anvil-voice-stt", "vllm-fast", "vllm-plain"]
+
+
+def test_cmd_status_without_gpu_roles_prints_no_reservation_section(tmp_path, capsys):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30003
+        model = "fast-local"
+        engine = "vllm"
+    """))
+    run = _status_states_run({"vllm-fast": "running"})
+    assert serves.cmd_status(loaded, _run=run, _open=_open_down) == 0
+    assert "GPU reservations" not in capsys.readouterr().out
+
+
+def test_status_summary_reports_the_ledger_structurally(tmp_path):
+    loaded = serves.load_manifest(_manifest(tmp_path, STATUS_LEDGER_MANIFEST))
+    run = _status_states_run({"vllm-fast": "running", "anvil-voice-stt": "exited"})
+    data = serves.status_summary(loaded, _run=run, _open=_open_down)
+    (role,) = data["reservations"]["gpu_roles"]
+    assert role["gpu_role"] == "dark-fast"
+    assert role["capacity_mib"] == 32768
+    assert role["reserve_mib"] == 2048
+    assert role["budget_mib"] == 30720
+    assert role["committed_mib"] == 20480
+    assert role["free_mib"] == 10240
+    by_serve = {r["serve"]: r for r in role["reservations"]}
+    assert set(by_serve) == {"fast", "stt"}  # `plain` declares no reservation
+    assert by_serve["fast"] == {
+        "serve": "fast", "container": "vllm-fast", "vram_mib": 20480,
+        "residency": "on-demand", "state": "running", "committed": True,
+    }
+    assert by_serve["stt"]["state"] == "exited"
+    assert by_serve["stt"]["committed"] is False
+
+
+def test_status_summary_ledger_spans_the_whole_manifest_despite_names(tmp_path):
+    """A name-filtered status still reports role-wide commitments — a ledger
+    filtered to the selection would misreport `free`."""
+    loaded = serves.load_manifest(_manifest(tmp_path, STATUS_LEDGER_MANIFEST))
+    run = _status_states_run({"vllm-fast": "running", "anvil-voice-stt": "exited"})
+    data = serves.status_summary(loaded, ["plain"], _run=run, _open=_open_down)
+    assert data["selected"] == ["plain"]
+    (role,) = data["reservations"]["gpu_roles"]
+    assert role["committed_mib"] == 20480
+
+
+def test_status_summary_without_gpu_roles_has_empty_ledger_and_no_extra_probes(tmp_path):
+    loaded = serves.load_manifest(_manifest(tmp_path, """
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30003
+        model = "fast-local"
+        engine = "vllm"
+    """))
+    run = _status_states_run({"vllm-fast": "running"})
+    data = serves.status_summary(loaded, _run=run, _open=_open_down)
+    assert data["reservations"] == {"gpu_roles": []}
+    inspects = [c for c in run.calls if c[:2] == ["docker", "inspect"]]
+    assert len(inspects) == 1

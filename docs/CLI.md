@@ -295,8 +295,12 @@ reservation first: an over-budget request prints the per-role ledger
 (capacity/reserve/committed/free plus the offending reservation) and exits 1
 before any container command runs. The ledger derives from running serves
 (docker state) plus the declared fields — there is no state file — so `down`
-releases a reservation simply by stopping the container. Manifests without
-these fields behave exactly as before.
+releases a reservation simply by stopping the container. `serves status`
+prints the same ledger — per-`gpu_role` capacity, reserve, committed, and free
+MiB plus each declared reservation with its observed docker state — and the
+read-only MCP `reservation_status` tool returns it structurally, so agents can
+answer "can model X fit right now?" without starting anything. Manifests
+without these fields behave exactly as before.
 
 ```bash
 anvil-serving serves up heavy --manifest ./serves.toml --dry-run
@@ -837,8 +841,8 @@ anvil-serving mcp tools
 ```
 
 Stdio MCP server exposing the operational tool surface to agents — status
-(`router_status`, `serves_status`, `doctor_summary`, `host_summary`, `models_inventory`,
-`decision_summary`, `route_decision`), guarded lifecycle (`router_manage`, `router_promote`,
+(`router_status`, `serves_status`, `reservation_status`, `doctor_summary`, `host_summary`,
+`models_inventory`, `decision_summary`, `route_decision`), guarded lifecycle (`router_manage`, `router_promote`,
 `serves_manage`, `serves_logs`, `router_logs`, `voice_manage`, `cache_prune_plan`), probes
 (`preflight_probe`, `benchmark_probe`, `benchmark_artifact`), OpenClaw integration
 (`openclaw_sync`, `openclaw_gateway_restart`), and external benchmark readers. Mutating or expensive

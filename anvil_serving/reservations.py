@@ -260,6 +260,41 @@ def build_ledger(
     }
 
 
+def ledger_summary(ledger: dict[str, RoleLedger]) -> dict:
+    """JSON-able ledger snapshot for `serves status` and MCP (T004).
+
+    One row per gpu_role — capacity, reserve, derived budget, committed, free —
+    plus every declared reservation with its observed docker state. The shape
+    is intentionally simple and stable: the MCP `reservation_status` tool
+    returns exactly this, so agents can answer "can model X fit right now?"
+    without scraping the human table (ADR-0017 consequences).
+    """
+    return {
+        "gpu_roles": [
+            {
+                "gpu_role": role,
+                "capacity_mib": role_ledger.budget.vram_mib,
+                "reserve_mib": role_ledger.budget.reserve_mib,
+                "budget_mib": role_ledger.budget.budget_mib,
+                "committed_mib": role_ledger.committed_mib,
+                "free_mib": role_ledger.free_mib,
+                "reservations": [
+                    {
+                        "serve": r.serve,
+                        "container": r.container,
+                        "vram_mib": r.vram_mib,
+                        "residency": r.residency,
+                        "state": r.state,
+                        "committed": r.committed,
+                    }
+                    for r in role_ledger.reservations
+                ],
+            }
+            for role, role_ledger in sorted(ledger.items())
+        ],
+    }
+
+
 def deny_over_budget(
     serves: list[dict],
     targets: list[dict],
