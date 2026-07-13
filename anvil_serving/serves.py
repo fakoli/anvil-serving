@@ -86,6 +86,12 @@ _ENGINE_ALIASES = {
 # it never routes into LLM-only paths (deploy render, multiplexer swap).
 _ENGINES = {"vllm", "sglang", "llamacpp", "audio"}
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
+# declared VRAM reservation. "resident" is never evicted, "evictable" may be
+# stopped to make room, "on-demand" is started per task and may evict
+# "evictable" serves. (The VRAM types are reservations, never *Lease —
+# AdmissionLease in router/admission.py is the request-admission layer.)
+_RESIDENCIES = ("resident", "evictable", "on-demand")
 _ENGINE_MARKERS = {
     "vllm": re.compile(r"(^|[^a-z0-9])vllm([^a-z0-9]|$)"),
     "sglang": re.compile(r"(^|[^a-z0-9])sglang([^a-z0-9]|$)"),
@@ -201,6 +207,40 @@ def _normalize_engine(s, up):
     return engine
 
 
+def _normalize_reservation(s, raw):
+    """Validate/normalize ADR-0017 reservation fields on one serve entry.
+
+    All three fields are optional and independent; an entry that declares none
+    of them is left untouched (no keys are added), so pre-reservation manifests
+    parse byte-for-byte the same as before.
+    """
+    if "gpu_role" in s:
+        gpu_role = s.get("gpu_role")
+        if not isinstance(gpu_role, str) or not gpu_role.strip():
+            raise ValueError(f"serve entry gpu_role must be a non-empty string: {raw!r}")
+        s["gpu_role"] = gpu_role.strip()
+    if "vram_mib" in s:
+        vram = s.get("vram_mib")
+        if isinstance(vram, bool) or not isinstance(vram, int) or vram <= 0:
+            raise ValueError(
+                f"serve entry vram_mib must be a positive integer (MiB): {raw!r}"
+            )
+    if "residency" in s:
+        residency = s.get("residency")
+        if not isinstance(residency, str):
+            raise ValueError(
+                "serve entry residency must be one of "
+                f"{list(_RESIDENCIES)}: {raw!r}"
+            )
+        normalized = residency.strip().lower().replace("_", "-")
+        if normalized not in _RESIDENCIES:
+            raise ValueError(
+                "serve entry residency must be one of "
+                f"{list(_RESIDENCIES)} (got {residency!r}): {raw!r}"
+            )
+        s["residency"] = normalized
+
+
 def load_manifest(path):
     """Parse the serves manifest into a list of serve dicts.
 
@@ -233,6 +273,7 @@ def load_manifest(path):
         s["served_name"] = s.get("served_name") or s["model"]
         up = shlex.split(s["up"]) if s.get("up") else None
         s["engine"] = _normalize_engine(s, up)
+        _normalize_reservation(s, raw)
         s["_manifest_dir"] = mdir
         s.setdefault("health", "/health")
         if up:
