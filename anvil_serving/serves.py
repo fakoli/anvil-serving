@@ -103,6 +103,11 @@ _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # "evictable" serves. (The VRAM types are reservations, never *Lease —
 # AdmissionLease in router/admission.py is the request-admission layer.)
 _RESIDENCIES = ("resident", "evictable", "on-demand")
+# ADR-0017 §5 eviction defaults: the bounded ADR-0018 drain wait before a
+# victim's container is stopped, and the deployed router the transition talks
+# to (matching the promotion plans' router_health_url default host).
+EVICTION_DRAIN_TIMEOUT = 120
+DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
 _ENGINE_MARKERS = {
     "vllm": re.compile(r"(^|[^a-z0-9])vllm([^a-z0-9]|$)"),
     "sglang": re.compile(r"(^|[^a-z0-9])sglang([^a-z0-9]|$)"),
@@ -230,6 +235,19 @@ def _normalize_reservation(s, raw):
         if not isinstance(gpu_role, str) or not gpu_role.strip():
             raise ValueError(f"serve entry gpu_role must be a non-empty string: {raw!r}")
         s["gpu_role"] = gpu_role.strip()
+    if "router_tier" in s:
+        # The serve's router tier id, for the ADR-0018 quiesce/drain transition
+        # that eviction (gpu-reservations:T005) runs before stopping it. Like
+        # a promotion plan's affected_tiers, the mapping is DECLARED, not
+        # guessed: an evictable serve that routes traffic should name its tier
+        # so in-flight generations drain before `serves down`; one without it
+        # (nothing routes through the router) is stopped directly.
+        router_tier = s.get("router_tier")
+        if not isinstance(router_tier, str) or not router_tier.strip():
+            raise ValueError(
+                f"serve entry router_tier must be a non-empty string: {raw!r}"
+            )
+        s["router_tier"] = router_tier.strip()
     if "vram_mib" in s:
         vram = s.get("vram_mib")
         if isinstance(vram, bool) or not isinstance(vram, int) or vram <= 0:
@@ -483,10 +501,15 @@ def _router_base_url(plan):
     return urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
 
 
-def _promotion_transition_cli(plan, action, tier_id, *, timeout=None, _run=subprocess.run):
+def _transition_cli(router_url, action, tier_id, *, timeout=None, _run=subprocess.run):
+    """One ADR-0018 router transition step (quiesce/drain/readmit/
+    transition-status) through the deployed router's authenticated CLI
+    boundary. Shared by promotion plans and reservation eviction — both
+    compose the SAME transition; neither grows a second state authority.
+    """
     argv = [
         sys.executable, "-m", "anvil_serving.cli", "router", action,
-        "--tier", tier_id, "--router-url", _router_base_url(plan),
+        "--tier", tier_id, "--router-url", router_url,
     ]
     if timeout is not None:
         argv += ["--timeout", str(timeout)]
@@ -494,6 +517,12 @@ def _promotion_transition_cli(plan, action, tier_id, *, timeout=None, _run=subpr
         argv.append("--confirm")
     print("  gate: %s" % " ".join(argv))
     return _run(argv, text=True).returncode
+
+
+def _promotion_transition_cli(plan, action, tier_id, *, timeout=None, _run=subprocess.run):
+    return _transition_cli(
+        _router_base_url(plan), action, tier_id, timeout=timeout, _run=_run
+    )
 
 
 def _compensate_quiesce(plan, tier_ids, *, _run=subprocess.run):
@@ -1019,11 +1048,99 @@ def _warn_drift(s, _run=subprocess.run):
               % (s["container"], served, declared))
 
 
-def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
+def _readmit_evicted(tiers, transition):
+    """Best-effort readmission after a refused eviction (mirrors promotion's
+    `_compensate_quiesce`). `router readmit` is guarded — it re-runs health +
+    exact-identity readiness — so a tier that cannot prove readiness stays
+    quiesced (fail closed) and the operator is told."""
+    failed = [t for t in dict.fromkeys(tiers) if transition("readmit", t) != 0]
+    if failed:
+        print(
+            "  recovery: admission remains fail-closed for %s; readmit after "
+            "router readiness recovers" % ", ".join(failed)
+        )
+
+
+def _evict_victims(serves, victims, *, dry_run=False, drain_timeout, transition,
+                   _run=subprocess.run):
+    """Stop committed `evictable` reservations through the ADR-0018 transition
+    (ADR-0017 §5): per victim, quiesce its declared router tier and drain the
+    tier's counted in-flight generations — the router's `AdmissionLease`
+    accounting, bounded by `drain_timeout` — BEFORE any container is stopped.
+    Only then does `cmd_down` stop the victims, which IS the reservation
+    release (the ledger derives from docker state).
+
+    A victim with no `router_tier` in its manifest entry has no router
+    admission to drain (nothing routes through the router to it) and is
+    stopped directly. A quiesce/drain refusal aborts the WHOLE eviction before
+    the first container mutation, readmitting already-quiesced tiers
+    best-effort. After a successful eviction the victims' tiers deliberately
+    stay quiesced: an evicted serve is an unavailable tier (ADR-0017 §6), and
+    guarded `router readmit` (health + exact model identity) is the only way
+    back into rotation.
+
+    `transition(action, tier_id, timeout=None) -> int` is the ADR-0018 step
+    seam (returncode semantics, 0 = applied); the default is the deployed
+    router's authenticated CLI boundary via `_transition_cli`.
+    """
+    by_name = {s["name"]: s for s in serves}
+    plan = [(victim, by_name[victim.serve].get("router_tier")) for victim in victims]
+    for victim, tier in plan:
+        if tier:
+            print("  evict %s: quiesce + drain router tier %s (timeout %ss), "
+                  "then stop %s" % (
+                      victim.serve, tier, drain_timeout, victim.container))
+        else:
+            print("  evict %s: no router_tier declared — no router admission "
+                  "to drain; stop %s directly" % (victim.serve, victim.container))
+    if dry_run:
+        return 0
+    quiesced = []
+    for _victim, tier in plan:
+        if tier is None:
+            continue
+        if transition("quiesce", tier) != 0:
+            print("  eviction refused: failed to quiesce %s" % tier)
+            # The router may have applied quiescence before its response was
+            # lost. Compensate the current tier as well as earlier successes.
+            _readmit_evicted([*quiesced, tier], transition)
+            return 2
+        quiesced.append(tier)
+    for _victim, tier in plan:
+        if tier is None:
+            continue
+        if transition("drain", tier, timeout=drain_timeout) != 0:
+            print("  eviction refused: drain timed out for %s before "
+                  "container mutation" % tier)
+            _readmit_evicted(quiesced, transition)
+            return 2
+    if cmd_down(serves, [victim.serve for victim, _ in plan], _run=_run) != 0:
+        print("  eviction failed: a victim container did not stop; its router "
+              "tier stays quiesced (fail closed)")
+        return 1
+    for victim, tier in plan:
+        if tier:
+            print("  evicted %s; router tier %s stays quiesced until "
+                  "`router readmit` passes health + identity readiness" % (
+                      victim.serve, tier))
+    return 0
+
+
+def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
+           evict=False, drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
+           _transition=None):
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
         return 1
+    if evict and (
+        isinstance(drain_timeout, bool)
+        or not isinstance(drain_timeout, numbers.Real)
+        or not math.isfinite(drain_timeout) or drain_timeout <= 0
+    ):
+        print("--drain-timeout must be a finite positive number of seconds")
+        return 2
+    state_of = lambda container: docker_state(container, _run=_run)  # noqa: E731
     # ADR-0017 reservation ledger admission: acquiring the targets' declared
     # VRAM reservations must fit their gpu_role budgets BEFORE any container
     # command runs — an over-budget request fails the whole batch with the
@@ -1032,11 +1149,47 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
     # reservation with no ledger bookkeeping. Read-only, so it also gates
     # --dry-run (the preview should show the same refusal the real run hits).
     # Serves/manifests without reservation fields skip this entirely.
-    denial = reservations.deny_over_budget(
-        serves, targets, lambda container: docker_state(container, _run=_run))
+    denial = reservations.deny_over_budget(serves, targets, state_of)
+    if denial and evict:
+        # ADR-0017 §5 eviction (gpu-reservations:T005): an over-budget
+        # `on-demand` acquisition may stop committed `evictable` reservations
+        # instead of failing — composing the ADR-0018 transition (quiesce +
+        # bounded AdmissionLease drain) before each victim's container stops.
+        # `resident` serves are never candidates; an impossible plan is the
+        # same loud, ledger-printing refusal as plain admission.
+        victims, lines = reservations.plan_eviction(serves, targets, state_of)
+        if victims is None:
+            for line in lines:
+                print("  " + line)
+            return 1
+        if victims:
+            transition = _transition or (
+                lambda action, tier_id, timeout=None: _transition_cli(
+                    router_url or DEFAULT_ROUTER_URL, action, tier_id,
+                    timeout=timeout, _run=_run))
+            evict_rc = _evict_victims(
+                serves, victims, dry_run=dry_run, drain_timeout=drain_timeout,
+                transition=transition, _run=_run)
+            if evict_rc != 0:
+                return evict_rc
+        if dry_run:
+            # The preview stopped nothing, so the ledger still shows the old
+            # commitments; the plan above is the preview of their release.
+            denial = None
+        else:
+            # Re-derive admission from live docker state: the victims are
+            # stopped, so the request must now fit (fail loudly if not —
+            # e.g. a victim's restart policy revived it).
+            denial = reservations.deny_over_budget(serves, targets, state_of)
     if denial:
         for line in denial:
             print("  " + line)
+        if not evict:
+            victims, _ = reservations.plan_eviction(serves, targets, state_of)
+            if victims:
+                print("  (re-run with --evict to stop evictable serve(s) %s "
+                      "via a drained ADR-0018 transition)" % ", ".join(
+                          victim.serve for victim in victims))
         return 1
     rc = 0
     for s in targets:
@@ -1324,8 +1477,20 @@ def _build_action_parser(action):
                        help="bring up an ad-hoc/experiment serve from this compose file; names are compose service names.")
         p.add_argument("--recreate", action="store_true",
                        help="force `docker rm -f` + a fresh `up` for an existing container instead of `docker start`.")
+        p.add_argument("--evict", action="store_true",
+                       help="let an over-budget `on-demand` acquisition stop `evictable` reservations "
+                            "on the same gpu_role via a drained ADR-0018 router transition (quiesce + "
+                            "bounded drain before each stop); `resident` serves are never candidates.")
+        p.add_argument("--drain-timeout", type=float, default=EVICTION_DRAIN_TIMEOUT,
+                       metavar="SECONDS",
+                       help="bounded wait for an evicted tier's in-flight requests to finish before "
+                            "its container is stopped (default: %(default)s).")
+        p.add_argument("--router-url", metavar="URL",
+                       help="deployed router base URL for eviction quiesce/drain "
+                            "(default: %s)." % DEFAULT_ROUTER_URL)
     else:
-        p.set_defaults(compose=None, recreate=False)
+        p.set_defaults(compose=None, recreate=False, evict=False,
+                       drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None)
     if action == "logs":
         p.add_argument("--tail", default="200",
                        help="trailing lines to show (default: %(default)s; 'all').")
@@ -1380,6 +1545,10 @@ def main(argv=None):
             print("--recreate has no meaning with --compose (`docker compose up -d` already "
                   "recreates a service when its config changed)", file=sys.stderr)
             return 2
+        if a.evict:
+            print("--evict has no meaning with --compose (an ad-hoc compose serve declares "
+                  "no reservation; the ledger only admits manifest serves)", file=sys.stderr)
+            return 2
         return cmd_up_compose(a.compose, a.names, dry_run=a.dry_run)
     if a.compose:
         print("--compose is only valid with `up`", file=sys.stderr)
@@ -1412,7 +1581,9 @@ def main(argv=None):
     if a.action == "down":
         return cmd_down(serves, a.names, dry_run=a.dry_run)
     if a.action == "up":
-        return cmd_up(serves, a.names, dry_run=a.dry_run, recreate=a.recreate)
+        return cmd_up(serves, a.names, dry_run=a.dry_run, recreate=a.recreate,
+                      evict=a.evict, drain_timeout=a.drain_timeout,
+                      router_url=a.router_url)
     if a.action == "rm":
         return cmd_rm(serves, a.names, dry_run=a.dry_run, assume_yes=a.yes)
     if a.action == "adopt":
