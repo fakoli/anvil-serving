@@ -1,7 +1,8 @@
-# 0017 — GPU residency leases for purpose-driven serves
+# ADR-0017 — GPU residency leases for purpose-driven serves
 
-Date: 2026-07-13
-Status: Accepted
+- **Status:** Accepted
+- **Date:** 2026-07-13
+- **Relates to:** ADR-0002, ADR-0012, ADR-0016; `docs/findings/2026-07-12-green-context-mps-capability.md`
 
 ## Context
 
@@ -17,7 +18,11 @@ Hardware partitioning is not available on this deployment:
 
 - The 5090 has no MIG (consumer sm_120 silicon). The RTX PRO 6000 Blackwell
   does support MIG, but it is fully committed to the heavy tier.
-- CUDA MPS does not exist under WSL2.
+- CUDA MPS static partitioning is **unknown under WSL2/Docker Desktop** per
+  `docs/findings/2026-07-12-green-context-mps-capability.md` (absence of the
+  control binary is not evidence of architectural unsupport). Even if later
+  proven to work, MPS partitions SM allocation, not VRAM, so it would not
+  solve the VRAM-ledger problem this ADR addresses.
 - Per-process VRAM attribution is impossible under WSL2 passthrough —
   `nvidia-smi --query-compute-apps` reports `[N/A]` for every PID. Any
   accounting must therefore be **declarative**, not measured.
@@ -79,7 +84,8 @@ serve lifecycle, not by the driver.
 
 ## Alternatives considered
 
-- **MIG / MPS partitioning** — unavailable on the 5090 / under WSL2 (above).
+- **MIG / MPS partitioning** — MIG is unavailable on the 5090; MPS is
+  unknown-under-WSL2 and VRAM-irrelevant even if available (above).
 - **K8s-style fractional GPU schedulers (HAMi, KAI)** — require a cluster
   scheduler this single-host Docker Compose deployment doesn't have; the
   lease ledger delivers the useful subset (admission control) inside the
