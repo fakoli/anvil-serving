@@ -213,6 +213,13 @@ share the main project and become `--remove-orphans` bait for any invocation
 against the other file. See `examples/fakoli-dark/serves.voice.toml` and
 `examples/fakoli-dark/docker-compose.voice-audio.yml` for the reference shape.
 
+The bridge-port publishes follow the directory's loopback-only default: set
+`VOICE_AUDIO_PUBLISH` to the host's tailnet address (see `.env.example`) so
+Mini's realtime proxy can reach `:30110`/`:30111`; without it the audio serves
+bind loopback only. Audio serve entries declare `engine = "audio"` — the
+truthful non-LLM label in `serves status` — rather than omitting `engine`,
+which would fall back to a legacy marker guess.
+
 ## Multi-Device Expansion
 
 Fakoli Mini and Fakoli Dark are reference devices, not fixed product roles. The

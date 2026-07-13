@@ -1,6 +1,6 @@
 # Voice audio serves (STT/TTS) for the OpenClaw Talk reference topology.
 # SEPARATE from serves.toml on purpose: these are always-on audio services
-# owned by `anvil-serving voice audio up/down` (voice.audio-dark.toml points
+# owned by `anvil-serving voice audio up/down` (the host voice manifest points
 # here via manifest_path). Generic `serves down` / serves_manage hygiene over
 # serves.toml must never stop them - that is exactly the outage this split fixes.
 
@@ -11,6 +11,7 @@ name = "stt"                   # parakeet.cpp tdt_ctc-110m (RTX 5090)
 container = "anvil-voice-stt"
 port = 30010
 model = "tdt_ctc-110m"
+engine = "audio"
 up = "docker compose -f {dir}/docker-compose.voice-audio.yml up -d stt"
 
 [[serve]]
@@ -18,5 +19,6 @@ name = "tts"                   # kokoro-fastapi (RTX 5090)
 container = "anvil-voice-tts"
 port = 30011
 model = "kokoro"
+engine = "audio"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.voice-audio.yml up -d tts"
