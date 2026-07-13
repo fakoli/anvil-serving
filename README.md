@@ -147,6 +147,8 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | `anvil-serving models cache prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |
 | `anvil-serving doctor` | Preflight the environment a router deploy depends on (Python, Docker, Compose, GPU runtime). |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings (memory caps, mmap gotchas). |
+| `anvil-serving host gpu-sharing inspect` | Inspect CUDA Green Context and MPS capability without changing GPU state. |
+| `anvil-serving host gpu-sharing probe` | Audit and run the confirmation-gated Docker CUDA prerequisite probe on an exact GPU UUID. |
 | `anvil-serving host status` | Inspect a local or topology-targeted host through its authenticated controller. |
 
 **Quality loop** — the measurements behind the routing profile:

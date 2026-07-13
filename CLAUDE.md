@@ -224,6 +224,16 @@ Cloud credentials go in env vars only — never in config files. The front door 
 19. **Community prior art — cross-ref before burning a load cycle on a new model:**
     `local-inference-lab/rtx6kpro` wiki (closest thing to a master list of sm_120-working models) +
     `0xsero/blackwell-gpu-wiki` (the sm_100-vs-sm_120 "why it breaks" reference).
+20. **Validate Docker CUDA in the Docker layer, not the default WSL distro.** These are three
+    different environments: native Windows, an ordinary distro such as `Ubuntu-24.04`, and the
+    `docker-desktop` WSL VM that owns Docker's Linux `dockerd`/`containerd`. Native Windows toolkit
+    versions do not describe a Linux container. Ordinary Ubuntu can validate the WSL `libcuda` stub
+    and any runtime installed in that distro, but it does not prove the Docker image path.
+    `docker-desktop` is intentionally minimal: expect `/dev/dxg` and the Windows-driver
+    `/usr/lib/wsl/lib/libcuda.so` stub, but not necessarily `nvidia-smi`, `nvcc`, `libcudart`, or MPS.
+    Those user-space components come from the selected CUDA image. For container capability claims,
+    inspect the `docker-desktop` substrate, then validate versions/symbols inside a Compose-managed,
+    GPU-UUID-pinned image. Keep these runtime observations out of stable topology identity.
 
 ---
 
