@@ -685,7 +685,28 @@ def test_cmd_up_recreate_rescues_dead_container():
 # ---- guarded promotion ------------------------------------------------------
 
 def _promotion_manifest(tmp_path):
-    for name in ("new.toml", "new.json", "old.toml", "old.json"):
+    for name, model in (("new.toml", "new-heavy"), ("old.toml", "old-heavy")):
+        (tmp_path / name).write_text(
+            """
+[router]
+mapping_version = "test"
+[[router.tiers]]
+id = "heavy-local"
+base_url = "http://127.0.0.1:30002/v1"
+model = "%s"
+dialect = "openai"
+context_limit = 131072
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_HEAVY_KEY"
+health_path = "/health"
+model_identity = true
+[router.presets]
+chat = ["heavy-local"]
+""" % model,
+            encoding="utf-8",
+        )
+    for name in ("new.json", "old.json"):
         (tmp_path / name).write_text("{}", encoding="utf-8")
     return _manifest(tmp_path, """
         [[serve]]
@@ -720,6 +741,7 @@ def _promotion_manifest(tmp_path):
         router_profile = "{dir}/new.json"
         rollback_router_config = "{dir}/old.toml"
         rollback_router_profile = "{dir}/old.json"
+        affected_tiers = ["heavy-local"]
         needle_ctx = 131072
         tool_batch = 20
 
@@ -874,3 +896,52 @@ def test_cmd_promote_refuses_unhealthy_candidate_without_mutating(tmp_path):
         _open=lambda *args, **kwargs: (_ for _ in ()).throw(OSError("down")),
     ) == 1
     assert not any(call[:2] == ["docker", "stop"] for call in run.calls)
+
+
+def test_safe_promotion_orders_quiesce_drain_before_heavy_mutation(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    # An unrelated resident Fast serve is present but outside the managed pair.
+    managed.append({
+        "name": "fast", "container": "fast-c", "port": 30003,
+        "model": "fast-model", "served_name": "fast-model",
+        "health": "/health", "up": ["docker", "start", "fast-c"],
+    })
+    plans = serves.load_promotions(path)
+    run = _inspect_returning("running")
+
+    class Response:
+        status = 200
+
+        def __init__(self, body=b""):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def getcode(self):
+            return self.status
+
+        def read(self, amount=-1):
+            return self.body if amount < 0 else self.body[:amount]
+
+    def open_(request, timeout):
+        if hasattr(request, "full_url") and request.full_url.endswith("/v1/models"):
+            return Response(b'{"data":[{"id":"new-heavy"}]}')
+        return Response()
+
+    assert serves.cmd_promote(
+        managed, plans, "heavy-v2", path, resume=True,
+        _run=run, _open=open_, _sleep=lambda _: None,
+    ) == 0
+
+    calls = run.calls
+    quiesce = next(i for i, call in enumerate(calls) if "quiesce" in call)
+    drain = next(i for i, call in enumerate(calls) if "drain" in call)
+    first_stop = next(i for i, call in enumerate(calls) if call[:2] == ["docker", "stop"])
+    post_restart = next(i for i, call in enumerate(calls) if "transition-status" in call)
+    assert quiesce < drain < first_stop < post_restart
+    assert not any("fast-c" in call for call in calls)

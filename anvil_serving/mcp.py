@@ -977,6 +977,31 @@ def tool_router_manage(args: dict) -> dict:
     return _ok({"applied": True, "dry_run": False, "target": target, **result})
 
 
+def tool_router_transition(args: dict) -> dict:
+    from . import router_manage
+
+    action = _str_arg(args, "action", required=True)
+    tier_id = _str_arg(args, "tier", "")
+    router_url = _str_arg(args, "router_url", "")
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    timeout = args.get("timeout")
+    if timeout is not None:
+        timeout = _bounded_int_arg(args, "timeout", 60, min_value=1, max_value=3600)
+    try:
+        result = router_manage.transition_request(
+            action,
+            tier_id=tier_id or None,
+            timeout=timeout,
+            router_url=router_url or None,
+            confirm=confirm,
+            dry_run=dry_run,
+        )
+    except ValueError as exc:
+        raise ToolError("transition_failed", str(exc))
+    return _ok(result)
+
+
 def _decision_records_from_path(path: str, *, max_input_bytes: int) -> list[dict]:
     if not os.path.isfile(path):
         raise ToolError("decision_log_not_found", "decision summary source not found", {"path": path})
@@ -1451,6 +1476,55 @@ def tool_serves_manage(args: dict) -> dict:
         return _ok({"applied": False, "dry_run": True, "target": target, "command": argv, "plan": plan})
     result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
     return _ok({"applied": True, "dry_run": False, "target": target, "plan": plan, **result})
+
+
+def tool_serves_promote(args: dict) -> dict:
+    from . import serves as serves_mod
+
+    manifest_arg = _str_arg(args, "manifest", "")
+    manifest = serves_mod.resolve_manifest_path(manifest_arg or None)
+    plan_name = _str_arg(args, "plan", required=True)
+    rollback = _arg_bool(args.get("rollback"), False, name="rollback")
+    resume = _arg_bool(args.get("resume"), False, name="resume")
+    dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
+    confirm = _arg_bool(args.get("confirm"), False, name="confirm")
+    human_approved = _arg_bool(args.get("human_approved"), False, name="human_approved")
+    timeout_seconds = _bounded_int_arg(
+        args, "timeout_seconds", 7200, min_value=1, max_value=14400
+    )
+    apply_requested = confirm and not dry_run
+    if apply_requested and not human_approved:
+        raise ToolError(
+            "human_approval_required",
+            "serve promotion apply requires confirm=true, dry_run=false, and human_approved=true",
+        )
+    argv = [
+        sys.executable, "-m", "anvil_serving.cli", "serves", "promote",
+        plan_name, "--manifest", manifest,
+    ]
+    if rollback:
+        argv.append("--rollback")
+    if resume:
+        argv.append("--resume")
+    if not apply_requested:
+        argv.append("--dry-run")
+        return _ok({
+            "applied": False,
+            "dry_run": True,
+            "human_gate_required": True,
+            "manifest": manifest,
+            "plan": plan_name,
+            "command": argv,
+        })
+    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    return _ok({
+        "applied": True,
+        "dry_run": False,
+        "human_approved": True,
+        "manifest": manifest,
+        "plan": plan_name,
+        **result,
+    })
 
 
 def tool_serves_logs(args: dict) -> dict:
@@ -2820,6 +2894,18 @@ TOOLS: Dict[str, dict] = {
         }, required=["action"]),
         "handler": tool_router_manage,
     },
+    "router_transition": {
+        "description": "Inspect, quiesce, drain, or safely readmit a router tier through the authenticated router boundary.",
+        "inputSchema": _schema({
+            "action": {"type": "string"},
+            "tier": {"type": "string"},
+            "router_url": {"type": "string"},
+            "timeout": _bounded_integer_schema(1, 3600, 60),
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+        }, required=["action"]),
+        "handler": tool_router_transition,
+    },
     "decision_summary": {
         "description": "Summarize recent router decisions without prompts or secrets; defaults to GET /v1/decisions.",
         "inputSchema": _schema({
@@ -2875,6 +2961,20 @@ TOOLS: Dict[str, dict] = {
             "timeout_seconds": _bounded_integer_schema(1, 7200, 300),
         }, required=["action"]),
         "handler": tool_serves_manage,
+    },
+    "serves_promote": {
+        "description": "Preview or execute the complete guarded serve promotion/rollback transaction.",
+        "inputSchema": _schema({
+            "manifest": {"type": "string"},
+            "plan": {"type": "string"},
+            "rollback": {"type": "boolean"},
+            "resume": {"type": "boolean"},
+            "dry_run": {"type": "boolean"},
+            "confirm": {"type": "boolean"},
+            "human_approved": {"type": "boolean"},
+            "timeout_seconds": _bounded_integer_schema(1, 14400, 7200),
+        }, required=["plan"]),
+        "handler": tool_serves_promote,
     },
     "serves_logs": {
         "description": "Read bounded docker logs for one manifest serve; follow mode is not allowed.",

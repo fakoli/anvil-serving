@@ -4,6 +4,7 @@ from __future__ import annotations
 import textwrap
 import types
 import urllib.error
+import json
 
 import pytest
 
@@ -26,7 +27,13 @@ from anvil_serving.router.internal import (
 from anvil_serving.router.serve import RoutingBackend
 
 
-def _tier(tier_id: str, port: int, *, health_path: str | None = "/health") -> Tier:
+def _tier(
+    tier_id: str,
+    port: int,
+    *,
+    health_path: str | None = "/health",
+    model_identity: bool = False,
+) -> Tier:
     return Tier(
         id=tier_id,
         base_url=f"http://127.0.0.1:{port}/v1",
@@ -37,6 +44,7 @@ def _tier(tier_id: str, port: int, *, health_path: str | None = "/health") -> Ti
         auth_env="ANVIL_TEST_KEY",
         model=tier_id,
         health_path=health_path,
+        model_identity=model_identity,
     )
 
 
@@ -52,8 +60,9 @@ def _config(*tiers: Tier, verify_local_min: bool = False) -> RouterConfig:
 
 
 class _Response:
-    def __init__(self, status: int) -> None:
+    def __init__(self, status: int, body: bytes = b"") -> None:
         self.status = status
+        self.body = body
 
     def __enter__(self):
         return self
@@ -63,6 +72,9 @@ class _Response:
 
     def getcode(self) -> int:
         return self.status
+
+    def read(self, amount: int = -1) -> bytes:
+        return self.body if amount < 0 else self.body[:amount]
 
 
 class _Profile:
@@ -237,6 +249,7 @@ def test_config_parses_health_path_and_probe_controls(tmp_path):
             mapping_version = "test"
             availability_probe_interval = 7
             availability_probe_timeout = 0.5
+            availability_probe_max_bytes = 4096
 
             [[router.tiers]]
             id = "fast-local"
@@ -248,6 +261,7 @@ def test_config_parses_health_path_and_probe_controls(tmp_path):
             tool_support = true
             auth_env = "ANVIL_FAST_KEY"
             health_path = "/healthz"
+            model_identity = true
 
             [router.presets]
             chat-fast = ["fast-local"]
@@ -260,6 +274,119 @@ def test_config_parses_health_path_and_probe_controls(tmp_path):
     assert config.tier("fast-local").health_path == "/healthz"
     assert config.availability_probe_interval == 7.0
     assert config.availability_probe_timeout == 0.5
+    assert config.availability_probe_max_bytes == 4096
+    assert config.tier("fast-local").model_identity is True
+
+
+def test_identity_readiness_requires_exact_advertised_model_and_is_cached():
+    tier = _tier("heavy-local", 30002, model_identity=True)
+    calls = []
+
+    def open_(request, timeout):
+        calls.append((request.full_url, request.get_header("Authorization")))
+        if request.full_url.endswith("/health"):
+            return _Response(200)
+        body = json.dumps({"object": "list", "data": [{"id": "heavy-local"}]}).encode()
+        return _Response(200, body)
+
+    availability = HttpHealthAvailability(
+        _config(tier), opener=open_, env={"ANVIL_TEST_KEY": "secret"}
+    )
+    result = availability.check(tier)
+    assert result.available is True
+    assert result.reason == "identity_passed"
+    assert result.expected_model == "heavy-local"
+    assert result.observed_model == "heavy-local"
+    assert availability.check(tier) is result
+    assert calls == [
+        ("http://127.0.0.1:30002/health", None),
+        ("http://127.0.0.1:30002/v1/models", "Bearer secret"),
+    ]
+
+
+def test_healthy_wrong_model_fails_closed_without_raw_payload():
+    tier = _tier("heavy-local", 30002, model_identity=True)
+
+    def open_(request, timeout):
+        if request.full_url.endswith("/health"):
+            return _Response(200)
+        return _Response(200, b'{"data":[{"id":"wrong-secret-model"}]}')
+
+    result = HttpHealthAvailability(_config(tier), opener=open_).check(tier)
+    assert result.available is False
+    assert result.reason == "identity_mismatch"
+    assert result.expected_model == "heavy-local"
+    assert result.observed_model == "wrong-secret-model"
+    assert "wrong-secret-model" not in result.reason
+
+
+@pytest.mark.parametrize(
+    ("failure", "reason"),
+    [
+        (urllib.error.HTTPError("http://ignored", 401, "secret", {}, None), "identity_http_401"),
+        (TimeoutError("secret timeout detail"), "identity_transport_TimeoutError"),
+        (ConnectionRefusedError("secret endpoint"), "identity_transport_ConnectionRefusedError"),
+    ],
+)
+def test_identity_transport_failures_are_content_free(failure, reason):
+    tier = _tier("heavy-local", 30002, model_identity=True)
+
+    def open_(request, timeout):
+        if request.full_url.endswith("/health"):
+            return _Response(200)
+        raise failure
+
+    result = HttpHealthAvailability(_config(tier), opener=open_).check(tier)
+    assert result.available is False
+    assert result.reason == reason
+    assert "secret" not in result.reason
+
+
+@pytest.mark.parametrize(
+    ("body", "reason"),
+    [
+        (b"not-json", "identity_malformed"),
+        (b'{"data":{}}', "identity_malformed"),
+        (b'{"data":[]}', "identity_mismatch"),
+        (b"x" * (64 * 1024 + 1), "identity_oversized"),
+    ],
+    ids=["not-json", "wrong-data-shape", "empty-list", "oversized"],
+)
+def test_identity_payload_failures_are_bounded(body, reason):
+    tier = _tier("heavy-local", 30002, model_identity=True)
+
+    def open_(request, timeout):
+        return _Response(200, b"" if request.full_url.endswith("/health") else body)
+
+    result = HttpHealthAvailability(_config(tier), opener=open_).check(tier)
+    assert result.available is False
+    assert result.reason == reason
+
+
+def test_config_rejects_identity_without_model_or_health(tmp_path):
+    path = tmp_path / "router.toml"
+    path.write_text(
+        textwrap.dedent(
+            """
+            [router]
+            mapping_version = "test"
+            [[router.tiers]]
+            id = "heavy-local"
+            base_url = "http://127.0.0.1:30002/v1"
+            dialect = "openai"
+            context_limit = 32768
+            privacy = "local"
+            tool_support = true
+            auth_env = "ANVIL_HEAVY_KEY"
+            model_identity = true
+            [router.presets]
+            chat = ["heavy-local"]
+            """
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="model_identity requires"):
+        load(str(path))
 
 
 @pytest.mark.parametrize(

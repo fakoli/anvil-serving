@@ -3341,3 +3341,42 @@ def test_cli_dispatches_mcp(monkeypatch):
     monkeypatch.setattr(mcp, "main", fake_main)
     assert cli.main(["mcp", "tools"]) == 0
     assert seen["argv"] == ["list-tools"]
+def test_router_transition_tool_reuses_router_management_client(monkeypatch):
+    from anvil_serving import router_manage
+
+    seen = {}
+    monkeypatch.setattr(
+        router_manage,
+        "transition_request",
+        lambda action, **kwargs: seen.update(action=action, **kwargs) or {"tiers": []},
+    )
+    envelope = mcp.call_tool("router_transition", {
+        "action": "quiesce",
+        "tier": "heavy-local",
+        "router_url": "http://100.87.34.66:8000",
+        "confirm": True,
+        "dry_run": False,
+    })
+    assert envelope["ok"] is True
+    assert seen["action"] == "quiesce"
+    assert seen["tier_id"] == "heavy-local"
+    assert seen["confirm"] is True
+    assert seen["dry_run"] is False
+
+
+def test_serves_promote_tool_is_preview_by_default_and_triple_gated(tmp_path):
+    manifest = tmp_path / "serves.toml"
+    manifest.write_text("", encoding="utf-8")
+    preview = mcp.call_tool("serves_promote", {
+        "manifest": str(manifest), "plan": "heavy-v2",
+    })
+    assert preview["ok"] is True
+    assert preview["data"]["applied"] is False
+    assert "--dry-run" in preview["data"]["command"]
+
+    refused = mcp.call_tool("serves_promote", {
+        "manifest": str(manifest), "plan": "heavy-v2",
+        "confirm": True, "dry_run": False,
+    })
+    assert refused["ok"] is False
+    assert refused["error"]["code"] == "human_approval_required"

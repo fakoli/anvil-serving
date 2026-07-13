@@ -669,3 +669,76 @@ def test_up_main_empty_env_file_disables_autodetect(monkeypatch):
     monkeypatch.setattr(rm, "cmd_up", lambda c, s, **k: seen.update(k) or 0)
     rm.main(["up", "--env-file", ""])                            # explicit '' -> no env file
     assert seen["env_file"] is None
+
+
+# ---- router-owned transition boundary --------------------------------------
+
+class _HTTPResponse:
+    status = 200
+
+    def __init__(self, body):
+        self.body = json.dumps(body).encode()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return None
+
+    def read(self, amount=-1):
+        return self.body if amount < 0 else self.body[:amount]
+
+    def getcode(self):
+        return self.status
+
+
+def test_transition_request_uses_env_token_and_private_tailnet_url():
+    calls = []
+
+    def open_(request, timeout):
+        calls.append((request, timeout))
+        return _HTTPResponse({"tiers": []})
+
+    result = rm.transition_request(
+        "status",
+        router_url="http://100.87.34.66:8000",
+        env={"ANVIL_ROUTER_TOKEN": "secret"},
+        _open=open_,
+    )
+    assert result == {"tiers": []}
+    request, timeout = calls[0]
+    assert request.full_url == "http://100.87.34.66:8000/v1/admin/transition"
+    assert request.get_header("Authorization") == "Bearer secret"
+    assert timeout == 5.0
+
+
+def test_transition_mutation_is_preview_without_confirmation():
+    result = rm.transition_request(
+        "quiesce", tier_id="heavy-local", router_url="http://127.0.0.1:8000",
+        env={},
+    )
+    assert result["applied"] is False
+    assert result["dry_run"] is True
+
+
+def test_transition_request_rejects_public_or_credentialed_urls():
+    for url in ("http://8.8.8.8:8000", "http://user:pass@127.0.0.1:8000"):
+        try:
+            rm.transition_request("status", router_url=url, env={"ANVIL_ROUTER_TOKEN": "x"})
+        except ValueError as exc:
+            assert "router_url" in str(exc)
+        else:
+            raise AssertionError("unsafe URL accepted")
+
+
+def test_transition_cli_prints_structured_result(monkeypatch, capsys):
+    seen = {}
+    monkeypatch.setattr(
+        rm, "transition_request",
+        lambda action, **kwargs: seen.update(action=action, **kwargs) or {"ok": True},
+    )
+    assert rm.main(["quiesce", "--tier", "heavy-local", "--confirm"]) == 0
+    assert seen["action"] == "quiesce"
+    assert seen["confirm"] is True
+    assert seen["dry_run"] is False
+    assert json.loads(capsys.readouterr().out) == {"ok": True}
