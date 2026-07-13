@@ -81,7 +81,9 @@ _ENGINE_ALIASES = {
     "llama-cpp": "llamacpp",
     "llama_cpp": "llamacpp",
 }
-_ENGINES = {"vllm", "sglang", "llamacpp"}
+# "audio" labels non-LLM serves (STT/TTS sidecars) truthfully in status output;
+# it never routes into LLM-only paths (deploy render, multiplexer swap).
+_ENGINES = {"vllm", "sglang", "llamacpp", "audio"}
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _ENGINE_MARKERS = {
     "vllm": re.compile(r"(^|[^a-z0-9])vllm([^a-z0-9]|$)"),

@@ -1,0 +1,45 @@
+# Dark-owned STT/TTS audio serves for the OpenClaw Talk reference topology.
+# Publishes each serve on the Dark loopback port (same-host local loop) and on
+# the tailnet bridge port that Fakoli Mini's realtime proxy targets
+# (100.87.34.66:30110 / :30111 — private tailnet only, never LAN).
+# Managed via `anvil-serving voice audio up/down`; do not docker-run by hand.
+name: anvil-voice-audio
+
+services:
+  stt:
+    image: ghcr.io/mudler/parakeet.cpp-server:latest-cuda
+    container_name: anvil-voice-stt
+    restart: unless-stopped
+    command: ["--model", "tdt_ctc-110m"]
+    ports:
+      - "127.0.0.1:30010:8080"
+      - "${VOICE_AUDIO_PUBLISH:-127.0.0.1}:30110:8080"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # Pin the RTX 5090 by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
+      CUDA_VISIBLE_DEVICES: ${AUDIO_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${AUDIO_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+
+  tts:
+    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128
+    container_name: anvil-voice-tts
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:30011:8880"
+      - "${VOICE_AUDIO_PUBLISH:-127.0.0.1}:30111:8880"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${AUDIO_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${AUDIO_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]

@@ -186,13 +186,39 @@ can manage.
 
 | Lifecycle | Use When | `voice audio up` | `voice audio down` |
 |---|---|---|---|
-| `managed` | The audio serve is declared in `serves.toml`. | Delegates to the same serve adapter used by `anvil-serving serves`. | Stops the matching serve. |
+| `managed` | The audio serve is declared in a serves manifest named by `manifest_path` (use a dedicated `serves.voice.toml`, not the shared `serves.toml` — see below). | Delegates to the same serve adapter used by `anvil-serving serves`. | Stops the matching serve. |
 | `native` | The audio serve is a same-host process, such as MLX Audio on a Mac Mini or laptop. | Starts `start_command` without a shell, writes `pid_file`, logs to `log_file`, and probes `/models`. | Stops the PID it started; if no PID is present but the endpoint is up, uses optional `stop_command`. |
 | `external` | Another supervisor or operator owns the process. | Skips lifecycle and reports that it was skipped. | Skips lifecycle and reports that it was skipped. |
 
 Native lifecycle commands are trusted operator manifest content, similar to a
 `serves.toml` `up` command. They are parsed with `shlex` and executed as argv
 without a shell.
+
+### Keep audio serves out of the shared model-serves manifest
+
+Declare `managed` STT/TTS serves in a **separate manifest** (for example
+`serves.voice.toml`, referenced from the voice manifest via `manifest_path`),
+not in the host's main `serves.toml`. Generic hygiene over the main manifest —
+`anvil-serving serves down`, the `serves_manage` MCP tool — walks every entry
+and `docker stop`s it. On a host where the manifest's LLM containers are not
+the currently-running ones that sweep is an invisible no-op, so nothing warns
+you that adding always-on audio serves to the same file puts them in its blast
+radius (observed on fakoli-dark, 2026-07-13: two clean sequential stops of the
+audio serves during routine lifecycle work).
+
+For the same reason, give the audio compose file its own explicit Compose
+project (`name: anvil-voice-audio`). Compose derives the default project from
+the directory, so audio services defined in a second file in the same directory
+share the main project and become `--remove-orphans` bait for any invocation
+against the other file. See `examples/fakoli-dark/serves.voice.toml` and
+`examples/fakoli-dark/docker-compose.voice-audio.yml` for the reference shape.
+
+The bridge-port publishes follow the directory's loopback-only default: set
+`VOICE_AUDIO_PUBLISH` to the host's tailnet address (see `.env.example`) so
+Mini's realtime proxy can reach `:30110`/`:30111`; without it the audio serves
+bind loopback only. Audio serve entries declare `engine = "audio"` — the
+truthful non-LLM label in `serves status` — rather than omitting `engine`,
+which would fall back to a legacy marker guess.
 
 ## Multi-Device Expansion
 
