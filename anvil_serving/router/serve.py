@@ -63,6 +63,11 @@ from typing import Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 # constructs it, and to keep the ``anvil_serving.router.serve.RelayBackend``
 # import path stable for existing callers.
 from .backends import CloudBackend, MissingCredentialError, RelayBackend
+from .availability import (
+    AlwaysAvailable,
+    AvailabilityResult,
+    HttpHealthAvailability,
+)
 from .backends.cloud import DiscoveryTransport, Transport, discover_single_model
 from .config import (
     ConfigError,
@@ -423,6 +428,7 @@ class RoutingBackend:
         profile: ProfileStore,
         *,
         mode: Optional[str] = None,
+        availability: Optional[object] = None,
     ):
         self._config = config
         # Active serving mode (ADR-0011 / flexibility:T013): stamped onto every
@@ -441,6 +447,9 @@ class RoutingBackend:
             config, dict(backends)
         )
         self._profile = profile
+        self._availability = (
+            availability if availability is not None else AlwaysAvailable()
+        )
         self._decision_log = DecisionLog()
         # Session-scoped circuit breaker: owned here, shared across all requests,
         # thread-safe (ThreadingHTTPServer spawns one thread per connection).
@@ -530,6 +539,30 @@ class RoutingBackend:
         # downgrade (PR #48) for any stored entry, including (tier, None) ones.
         return self._profile.decision(tier_id, work_class, is_cloud=is_cloud)
 
+    def _availability_snapshot(
+        self, tier_ids: Sequence[str]
+    ) -> Dict[str, AvailabilityResult]:
+        """Resolve readiness once per request for a stable fallback walk.
+
+        A faulty availability implementation fails closed for that tier and is
+        represented by a content-free reason. The next configured candidate is
+        still considered; availability can never bypass the quality gate.
+        """
+        snapshot: Dict[str, AvailabilityResult] = {}
+        for tier_id in tier_ids:
+            try:
+                result = self._availability.check(self._config.tier(tier_id))
+                if not isinstance(result, AvailabilityResult):
+                    raise TypeError("non-AvailabilityResult")
+                snapshot[tier_id] = result
+            except Exception as exc:  # noqa: BLE001 - readiness failure isolates tier
+                snapshot[tier_id] = AvailabilityResult(
+                    False,
+                    "unavailable",
+                    f"availability_check_{type(exc).__name__}",
+                )
+        return snapshot
+
     def generate(self, request: InternalRequest) -> Iterator[str]:
         # Eagerly resolve intent + policy BEFORE returning any iterator so that
         # a routing failure raises here — the front door catches NoAvailableTierError
@@ -572,8 +605,26 @@ class RoutingBackend:
             raise NoAvailableTierError(decision.work_class, decision.tiers)
 
         work_class = decision.work_class
-        first_verdict = self._tier_verdict(bound_tiers[0], work_class)
-        first_tier = self._config.tier(bound_tiers[0])
+        availability = self._availability_snapshot(bound_tiers)
+        available_tiers = tuple(
+            tid for tid in bound_tiers if availability[tid].available
+        )
+        if not available_tiers:
+            # Run the fallback recorder with the stable snapshot so the decision
+            # log distinguishes readiness skips from backend/circuit failures.
+            self._route_with_verify(
+                request,
+                bound_tiers,
+                work_class,
+                [NonEmptyContent(), NotTruncated()],
+                availability,
+            )
+            raise NoAvailableTierError(
+                work_class, bound_tiers, kind="unavailable"
+            )
+
+        first_verdict = self._tier_verdict(available_tiers[0], work_class)
+        first_tier = self._config.tier(available_tiers[0])
 
         # genericity:T004 — a privacy=local tier under "allow" is normally the
         # most trusted case (streamed raw, below) but that also means it is the
@@ -600,9 +651,9 @@ class RoutingBackend:
             # (finish_reason / tool_calls) is propagated to our thread-local AFTER
             # the stream is exhausted — the dialect layer reads it via
             # get_last_structured() to render the real stop reason / tool calls (#42).
-            inner_backend = self._backends[bound_tiers[0]]
+            inner_backend = self._backends[available_tiers[0]]
             # Selected at route time, before the backend call (AC3 residency).
-            self._note_selected(bound_tiers[0])
+            self._note_selected(available_tiers[0])
             self._thread_local.last_result = None  # cleared; set when stream finishes
 
             def _allow_wrap() -> Iterator[str]:
@@ -622,7 +673,9 @@ class RoutingBackend:
         verifiers = default_verifiers() if not min_verify_local_allow else [
             NonEmptyContent(), NotTruncated(),
         ]
-        result = self._route_with_verify(request, bound_tiers, work_class, verifiers)
+        result = self._route_with_verify(
+            request, bound_tiers, work_class, verifiers, availability
+        )
         if result.exhausted:
             # Every gated, bound candidate failed verify (or was guarded out by the
             # budget / circuit-breaker).  Refuse to serve the last attempt's text
@@ -652,6 +705,7 @@ class RoutingBackend:
         bound_tiers: Tuple[str, ...],
         work_class: Optional[str],
         verifiers: Sequence,
+        availability: Mapping[str, AvailabilityResult],
     ):
         """Buffer + run ``verifiers`` over ``bound_tiers`` via
         :func:`~anvil_serving.router.fallback.route_with_fallback`.
@@ -705,6 +759,7 @@ class RoutingBackend:
             breaker=self._circuit_breaker,
             verifier_timeout=5.0,
             response_view_factory=_structured_view_factory,
+            availability_for=lambda tier_id: availability[tier_id],
             mode=self._mode,
         )
 
@@ -773,7 +828,16 @@ class RoutingBackend:
             )
             raise NoAvailableTierError(decision.work_class, decision.tiers)
 
-        top_tier_id = bound_tiers[0]
+        availability = self._availability_snapshot(bound_tiers)
+        available_tiers = tuple(
+            tid for tid in bound_tiers if availability[tid].available
+        )
+        if not available_tiers:
+            raise NoAvailableTierError(
+                decision.work_class, bound_tiers, kind="unavailable"
+            )
+
+        top_tier_id = available_tiers[0]
         top_tier = self._config.tier(top_tier_id)
 
         # Confidence: deterministic scheme (see docstring).
@@ -802,6 +866,11 @@ class RoutingBackend:
         reason_parts = [f"{src_label}; quality gate: {quality_gate}"]
         if denied:
             reason_parts.append(f"denied: {denied}")
+        unavailable = [
+            tid for tid in bound_tiers if not availability[tid].available
+        ]
+        if unavailable:
+            reason_parts.append(f"unavailable: {unavailable}")
         reason = "; ".join(reason_parts)
 
         return {
@@ -829,6 +898,7 @@ def build_server(
     transport: Optional[Transport] = None,
     timeout: Optional[float] = 120,
     mode: Optional[str] = None,
+    availability: Optional[object] = None,
 ) -> ThreadingHTTPServer:
     """Load the config and build (but do NOT start) the bound front-door server.
 
@@ -879,6 +949,7 @@ def build_server(
                 f"auth"
             )
 
+    backends_injected = backends is not None
     if backends is None:
         built, skipped = build_backends(config, env=env, transport=transport)
         for tid, reason in skipped:
@@ -949,7 +1020,18 @@ def build_server(
                 flush=True,
             )
 
-    routing = RoutingBackend(config, backends, profile, mode=mode)
+    if availability is None:
+        # Hermetic/custom backends are an explicit replacement for the real
+        # configured endpoints, so do not probe unrelated config URLs. Callers
+        # that want readiness with injected backends can inject it explicitly.
+        availability = (
+            AlwaysAvailable()
+            if backends_injected
+            else HttpHealthAvailability(config)
+        )
+    routing = RoutingBackend(
+        config, backends, profile, mode=mode, availability=availability
+    )
 
     # Advertise the canonical intent vocabulary on GET /v1/models (T004): the
     # presets ARE the "models" a harness model picker addresses.
@@ -961,6 +1043,7 @@ def build_server(
     # Stash what we bound for introspection (serve()'s banner + tests).
     httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
     httpd.anvil_routing = routing  # type: ignore[attr-defined]
+    httpd.anvil_availability = availability  # type: ignore[attr-defined]
     return httpd
 
 

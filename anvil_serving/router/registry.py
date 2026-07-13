@@ -301,11 +301,14 @@ def default_registry() -> Registry:
     * ``classifier``     -> an adapter over ``classify.classify`` (``heuristic``).
     * ``routing_policy`` -> an adapter over ``policy.route`` (``residency-aware``).
     * ``profile_store``  -> the hand-authored seed profile (``default``).
+    * ``availability_store`` -> no-network backwards-compatible readiness
+      (``always``); production serving replaces it with cached HTTP health.
     * ``observer``       -> a :class:`~anvil_serving.router.decision_log.DecisionLog`-backed
       audit sink (``decision_log``).
     """
     # Imported lazily so importing the registry never pulls the whole serving
     # stack (and so seams.py stays free of concrete-impl imports).
+    from .availability import AlwaysAvailable
     from .backends import EchoBackend, StaticBackend
     from .classify import classify
     from .decision_log import DecisionLog
@@ -337,6 +340,9 @@ def default_registry() -> Registry:
 
     # profile_store (control) — the hand-authored seed quality table.
     reg.register("profile_store", "default", default_profile())
+
+    # availability_store (cross) — no-network compatibility implementation.
+    reg.register("availability_store", "always", AlwaysAvailable())
 
     # observer (cross) — a DecisionLog-backed audit sink.
     reg.register("observer", "decision_log", DecisionLogObserver(DecisionLog()))

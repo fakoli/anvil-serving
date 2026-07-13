@@ -265,7 +265,8 @@ def append_serve_entry(
 
 
 def render_tier_stub(tier_id, served_name, port, dialect="openai", context_limit=131072,
-                      privacy="local", tool_support=True, auth_env=None, disable_thinking=False):
+                      privacy="local", tool_support=True, auth_env=None,
+                      disable_thinking=False, health_path="/health"):
     """A `[[router.tiers]]` TOML stub for `configs/*.toml` — `model` MUST equal
     the serve's `--served-model-name` and the port MUST equal the compose's
     published port (T009 AC), so pasting this in never 404s (genericity:R001).
@@ -291,6 +292,7 @@ def render_tier_stub(tier_id, served_name, port, dialect="openai", context_limit
         f'privacy       = {_toml_str(privacy)}\n'
         f'tool_support  = {"true" if tool_support else "false"}\n'
         f'auth_env      = {_toml_str(auth_env)}\n'
+        f'health_path   = {_toml_str(health_path)}\n'
     )
 
 

@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Health-aware runtime tier eligibility.** Local tiers can declare a
+  `health_path`; bounded cached probes exclude stopped or starting model serves
+  before inference, record `skipped-unavailable` without tripping the circuit
+  breaker, and automatically readmit recovered upstreams without rewriting
+  router config or restarting the front door.
 - **Lower-noise observability dashboard for desktop and tailnet phones.** The
   read-only dashboard now separates grouped Windows, Fast/Heavy GPU, shared
   graphics memory, WSL, and Docker graphs from a bounded searchable probe

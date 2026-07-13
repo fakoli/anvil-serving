@@ -35,3 +35,4 @@ people and the chat logs.
 | [0013](0013-openclaw-layers-and-mcp-control-plane.md) | OpenClaw layers and MCP control plane: hook adapter for intent, router data plane for quality, MCP for operations | Accepted |
 | [0014](0014-tailnet-controller-transport.md) | Tailnet controller transport for split-host OpenClaw deployments | Accepted |
 | [0015](0015-operator-skills-and-subagent-workflows.md) | Operator skills and sub-agent workflows above the MCP/controller control plane | Accepted |
+| [0016](0016-runtime-tier-readiness.md) | Runtime tier readiness excludes stopped serves without config rewrites | Accepted |

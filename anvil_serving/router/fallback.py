@@ -350,6 +350,7 @@ def route_with_fallback(
     log: Optional[DecisionLog] = None,
     breaker: Optional[Union[Dict[str, int], CircuitBreaker]] = None,
     response_view_factory: Optional[Callable[[Sequence[str], InternalRequest], object]] = None,
+    availability_for: Optional[Callable[[str], object]] = None,
     verifier_timeout: Optional[float] = None,
     max_buffer_bytes: Optional[int] = _DEFAULT_MAX_BUFFER_BYTES,
     mode: Optional[str] = None,
@@ -361,13 +362,16 @@ def route_with_fallback(
     1. **Retry cap** — stop if the configured ``max_attempts`` is already spent.
     2. **Budget** — if attempting this tier would reach ``max_total_tokens``,
        record a ``budget-stop`` and STOP (no further tier is tried).
-    3. **Circuit** — if the tier's circuit is open
+    3. **Readiness** — when ``availability_for`` reports a configured upstream
+       unavailable, record ``skipped-unavailable`` and move on without calling
+       the backend or mutating its circuit state.
+    4. **Circuit** — if the tier's circuit is open
        (``breaker[tier] >= circuit_threshold`` for a dict, or
        ``CircuitBreaker.is_open(tier, threshold)`` for the session-scoped
        breaker), record ``skipped-circuit`` and move on. A skip is not a real
        attempt and does not consume the retry cap, so an open local circuit never
        starves a healthy downstream (cloud) tier.
-    4. **Attempt** — call ``backend_for(config.tier(tier))`` and drain its
+    5. **Attempt** — call ``backend_for(config.tier(tier))`` and drain its
        deltas with an optional byte cap (``max_buffer_bytes``). A raising backend
        is a failed attempt (``error``). An overflow is a failed attempt
        (``overflow``). Assemble a ``ResponseView`` and run the verifiers (with an
@@ -490,7 +494,10 @@ def route_with_fallback(
             served_tier=served,
             total_prompt_tokens=total_prompt,
             total_completion_tokens=total_completion,
-            fell_back=any(a.outcome in ("fallback", "error", "overflow") for a in attempts),
+            fell_back=any(
+                a.outcome in ("fallback", "error", "overflow", "skipped-unavailable")
+                for a in attempts
+            ),
             cost_usd=cost_usd,
             # Active serving mode (ADR-0011 / flexibility:T013); None (a --config
             # boot with no mode) leaves the record identical to pre-T013.
@@ -537,7 +544,35 @@ def route_with_fallback(
             )
             break
 
-        # 3. Circuit breaker — skip a tier whose circuit is open. A skip is NOT a
+        # 3. Runtime readiness — an intentionally stopped, starting, or otherwise
+        #    unhealthy configured upstream is not a backend failure. Skip it
+        #    without spending an attempt or mutating the circuit breaker.
+        if availability_for is not None:
+            try:
+                availability = availability_for(tier_id)
+                available = bool(getattr(availability, "available"))
+                availability_reason = str(
+                    getattr(availability, "reason", "unavailable")
+                )
+            except Exception as exc:  # noqa: BLE001 - readiness seam fails closed
+                available = False
+                availability_reason = (
+                    f"availability_check_{type(exc).__name__}"
+                )
+            if not available:
+                attempts.append(
+                    AttemptRecord(
+                        tier_id=tier_id,
+                        verifier_passed=False,
+                        verify_reason=availability_reason,
+                        prompt_tokens=0,
+                        completion_tokens=0,
+                        outcome="skipped-unavailable",
+                    )
+                )
+                continue
+
+        # 4. Circuit breaker — skip a tier whose circuit is open. A skip is NOT a
         #    real attempt: it does NOT consume the retry cap (the finite candidate
         #    list already bounds the loop), so open LOCAL circuits never starve a
         #    healthy downstream tier (e.g. cloud) out of the budget.
@@ -555,7 +590,7 @@ def route_with_fallback(
             )
             continue
 
-        # 4a. Resolve the tier. An unknown tier id is a CONFIG miss, not a backend
+        # 5a. Resolve the tier. An unknown tier id is a CONFIG miss, not a backend
         #     fault: record it (no token charge, no breaker bump, does not consume
         #     the retry cap) and move on — do not misattribute it as an "error".
         try:
@@ -573,7 +608,7 @@ def route_with_fallback(
             )
             continue
 
-        # 4b. Attempt the tier. A raising backend (eager OR mid-stream) is a
+        # 5b. Attempt the tier. A raising backend (eager OR mid-stream) is a
         #     failed attempt, never a propagated exception.
         #     * Eager faults (backend_for() raises, generate() raises before
         #       yielding) are caught by the outer try/except.
