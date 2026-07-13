@@ -346,15 +346,19 @@ services:
   # (vLLM recipe: docs.vllm.ai/projects/recipes -> PaddlePaddle/PaddleOCR-VL;
   # native vllm support since v0.11.1 — the pinned nightly digest has it).
   #
-  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 4096 /
+  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 5120 /
   # residency "resident" for this serve. --gpu-memory-utilization below is
-  # 4096 / 32607 CAPACITY = 0.1256 (fraction of TOTAL device memory — see the
+  # 5120 / 32607 CAPACITY = 0.1570 (fraction of TOTAL device memory — see the
   # `fast` deviation note above). Keep vram_mib and the fraction in lockstep.
-  # HONEST-MEASURED (2026-07-13, this box): weights load at 1.79 GiB bf16 plus
-  # the ~1.7-1.9 GiB fixed vLLM/WSL2 runtime floor (CUDA context + torch
-  # workspaces + the multimodal-profiling activation peak) before any KV — at
-  # 4096 MiB the engine reports ~0.29 GiB free for KV (~16.9k tokens), exactly
-  # covering the 16384-token window (GQA KV is tiny: 2 kv-heads x 18 layers).
+  # HONEST-MEASURED (2026-07-13, one-off T011 verification probe on the sibling
+  # sm_120 card, this exact image+flags): "Model loading took 1.82 GiB"; the
+  # fixed non-weights floor (WSL2 CUDA context + torch workspaces + the
+  # MULTIMODAL profiling activation peak) is ~2.65 GiB at 4096 batched tokens —
+  # much larger than the text-only purpose serves' ~1.7 GiB floor, and it SCALES
+  # with --max-num-batched-tokens (measured: 16384 -> -1.41 GiB KV, 8192 ->
+  # -0.53 GiB, 4096 -> +0.53 GiB at a 4/5 GiB budget). At 5120 MiB the engine
+  # reports 0.53 GiB free KV = 30,720 tokens (1.88x concurrency for the
+  # 16384-token window; GQA KV is tiny: 2 kv-heads x 18 layers).
   # --enforce-eager skips CUDA-graph capture (its memory would eat the KV
   # margin; a 0.9B decoder is fast eager). --no-enable-prefix-caching +
   # --mm-processor-cache-gb 0 per the upstream recipe (OCR pages don't repeat,
@@ -398,12 +402,12 @@ services:
       --served-model-name paddleocr-vl-1.6
       --trust-remote-code
       --max-model-len 16384
-      --max-num-batched-tokens 16384
-      --max-num-seqs 4
+      --max-num-batched-tokens 4096
+      --max-num-seqs 2
       --no-enable-prefix-caching
       --mm-processor-cache-gb 0
       --enforce-eager
-      --gpu-memory-utilization 0.1256
+      --gpu-memory-utilization 0.1570
       --host 0.0.0.0 --port 30007
 
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over

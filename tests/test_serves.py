@@ -341,23 +341,24 @@ def test_shipped_fakoli_manifest_ocr_serve():
     assert ocr["gpu_role"] == "dark-fast"
     assert ocr["residency"] == "resident"
     assert ocr["health"] == "/health"
-    # HONEST-MEASURED budget (see the manifest/compose comments): weights + the
-    # fixed vLLM/WSL2 runtime floor + the serve's 16384-token KV window.
-    assert ocr["vram_mib"] == 4096
+    # HONEST-MEASURED budget (see the manifest/compose comments): 1.82 GiB
+    # weights + the ~2.65 GiB multimodal-profiling floor + the serve's
+    # 16384-token KV window.
+    assert ocr["vram_mib"] == 5120
     assert ocr["port"] == 30007 and ocr["model"] == "paddleocr-vl-1.6"
     # The OCR serve fits the dark-fast budget alongside the fast tier alone…
     budget = reservations.budgets_of(serves_list)["dark-fast"].budget_mib
     assert by_name["fast"]["vram_mib"] + ocr["vram_mib"] <= budget
     # …but the FULL declared resident set (fast + embeddings + reranker + ocr)
     # OVERSUBSCRIBES the 32 GiB card — a documented, admission-gated conflict:
-    # `serves up ocr` denies with the ledger until >= 4096 MiB is freed.
+    # `serves up ocr` denies with the ledger until >= 5120 MiB is freed.
     # Deciding which residents dark-fast actually hosts is the
     # gpu-reservations:T015 resident-set decision; this pin makes that decision
     # deliberate (rebalancing the manifest must revisit this assertion).
     full = sum(
         s["vram_mib"] for s in serves_list if s.get("gpu_role") == "dark-fast"
     )
-    assert full - budget == 3745, (full, budget)
+    assert full - budget == 4769, (full, budget)
 
 
 def test_shipped_fast_candidate_dry_run_uses_manifest_compose(capsys):
