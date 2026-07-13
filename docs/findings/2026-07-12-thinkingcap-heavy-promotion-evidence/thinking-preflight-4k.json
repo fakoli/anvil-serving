@@ -1,0 +1,84 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30002/v1",
+  "model": "thinkingcap-qwen36-27b-fp8",
+  "thinking": {
+    "mode": "enabled",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 4096,
+    "max_completion_tokens": 4352
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "3.9s got='`sum(xs)`' finish='stop' visible=11 reasoning_chars=1246 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=33 reasoning_chars=639 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "\n\n`sum(xs)`",
+      "finish_reason": "stop",
+      "content_chars": 11,
+      "content_excerpt": "\n\n`sum(xs)`",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 1246,
+      "reasoning_excerpt": "Thinking Process:\n\n1.  **Analyze the Request:** The user wants a Python one-liner to calculate the sum of a list named `xs`.\n\n2.  **Identify the Standard Solution:** The built-in function `sum()` is d",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 26,
+        "total_tokens": 377,
+        "completion_tokens": 351,
+        "prompt_tokens_details": null
+      },
+      "test": "smoke",
+      "seconds": 3.92,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "\n\n{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 33,
+      "content_excerpt": "\n\n{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 639,
+      "reasoning_excerpt": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - User wants: `{\"language\":\"python\",\"ok\":true}`\n   - Constraint: \"Return ONLY a JSON object... No prose.\"\n   - Format: Strict JSON, nothing e",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 28,
+        "total_tokens": 219,
+        "completion_tokens": 191,
+        "prompt_tokens_details": null
+      },
+      "test": "json",
+      "seconds": 2.017,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

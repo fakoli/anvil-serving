@@ -73,12 +73,13 @@ Exit code 0 means all passed; 1 means at least one failed.
 - **Wrong `--model` name:** the value must be the serve's `--served-model-name`, not the HF repo
   id or a router preset. A mismatch surfaces as an HTTP 404 / model-not-found error from the
   serve.
-- **Thinking-budget timeout or false-fail:** thinking-by-default models (Qwen3.x, GLM) burn the
-  token budget on hidden reasoning and return empty content, or time out on the long-context
-  needle. Re-run with `--no-thinking` (injects
-  `chat_template_kwargs: {"enable_thinking": false}` into every request). Note gpt-oss-style
-  models ignore that kwarg — they gate reasoning via reasoning effort and just need adequate
-  `max_tokens` (the tests already send >= 256).
+- **Thinking-budget timeout or false-fail:** inspect the reported `finish_reason`, visible length,
+  reasoning-channel length, and reasoning-token usage. For a functional gate on Qwen-style
+  models, use `--thinking-mode disabled` (or `--no-thinking`) with the default 256 visible-token
+  allocation. For a quality gate, use `--thinking-mode enabled` with benchmark-calibrated
+  `--reasoning-headroom-tokens`; this headroom is added to `--visible-answer-tokens` as the API
+  completion cap. GPT-OSS-style models ignore Qwen's chat-template control; use their supported
+  `--reasoning-effort` semantics and an explicit budget instead.
 - **Tool-batch failures on new hardware:** garbage signatures (`<<tool`, `<|`, `function=`)
   in the batch test are the known sm_120 failure mode — see CLAUDE.md gotcha 7 and
   `docs/findings/blackwell-sm120-lab-notebook.md`.

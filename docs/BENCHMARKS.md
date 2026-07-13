@@ -235,9 +235,13 @@ Its three-repetition confirmation reached **9/10 stable MMLU-Pro items and
 27/30 passing attempts**, while retaining its 15/15 ARC result at 1,024. This
 is the highest stable quality-slice score in the current Heavy round, ahead of
 Nemotron 3 Super's 8/10, but it costs materially more reasoning budget and wall
-time. Nemotron remains the better matched-budget/latency result; ThinkingCap is
-the selected resident direct endpoint when Heavy intelligence is prioritized.
-Neither model is promoted into the router.
+time. Nemotron remains the better matched-budget/latency result. ThinkingCap is
+now the routed **Heavy default** when Heavy intelligence is prioritized: it
+passed a thinking-disabled functional gate (coding, JSON, 131K needle, 20/20
+tools) and a separate thinking-enabled gate with 256 visible tokens plus 4,096
+reasoning-headroom tokens. Both gates retained finish/reasoning evidence before
+the guarded router promotion; GPT-OSS-120B remains the complete rollback state.
+See the [promotion finding and raw evidence](findings/2026-07-12-thinkingcap-heavy-promotion.md).
 
 The Unsloth checkpoint used its required vLLM 0.25.0 / FlashInfer 0.6.13 /
 CUTLASS DSL 4.5.2 path with native FlashInfer-CUTLASS NVFP4 and embedded MTP.

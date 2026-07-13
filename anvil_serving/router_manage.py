@@ -268,6 +268,14 @@ _VALIDATOR = (
     "from anvil_serving.router.profile_bootstrap import store_from_profile; "
     "store_from_profile(json.load(sys.stdin))"
 )
+_ARTIFACT_VALIDATOR = (
+    "import sys, json, os, tempfile; "
+    "from anvil_serving.router.profile_bootstrap import store_from_profile; "
+    "from anvil_serving.router.config import load, load_server_config; "
+    "x=json.load(sys.stdin); store_from_profile(x['profile']); "
+    "f=tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False, encoding='utf-8'); "
+    "f.write(x['config']); f.close(); load(f.name); load_server_config(f.name); os.unlink(f.name)"
+)
 
 
 def _volume_text(text):
@@ -551,7 +559,7 @@ def _await_running(container, _run, _sleep, baseline_restarts=None,
 def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
                 cfg_volume=DEFAULT_CFG_VOLUME, image=DEFAULT_IMAGE,
                 profile_dest=DEFAULT_PROFILE_DEST, config_dest=DEFAULT_CONFIG_DEST,
-                no_reload=False, dry_run=False,
+                no_reload=False, validate_only=False, dry_run=False,
                 _run=subprocess.run, _sleep=time.sleep):
     """Validate -> back up -> atomically write -> reload -> verify (rollback on crash).
 
@@ -627,14 +635,19 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
         return True
 
     # -- (a) VALIDATE against the DEPLOYED image's own loader ------------------
+    validator = _ARTIFACT_VALIDATOR if config_text is not None else _VALIDATOR
+    validation_text = (
+        json.dumps({"profile": json.loads(profile_text), "config": config_text})
+        if config_text is not None else profile_text
+    )
     val_argv = ["docker", "run", "--rm", "-i", "--entrypoint", "python",
-                image, "-c", _VALIDATOR]
+                image, "-c", validator]
     print("  validate: %s (against %s loader)" % (profile_path, image))
     if not dry_run:
         try:
             r = _run(
                 val_argv,
-                input=profile_text,
+                input=validation_text,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -647,6 +660,10 @@ def cmd_promote(profile_path, *, config_path=None, container=DEFAULT_CONTAINER,
                   "(exit %s): %s" % (r.returncode, (r.stderr or r.stdout or "").strip()))
             print("  (no volume was touched — this prevents a crash-loop on a bad profile.)")
             return 1
+
+    if validate_only:
+        print("  OK: profile/config accepted by the deployed router image; no state changed.")
+        return 0
 
     # -- (b) BACK UP the current profile (and config, if promoting one) -------
     # so a crash-loop can be rolled back symmetrically. `.bak` absent => there was
@@ -841,6 +858,8 @@ def _build_parser():
                     help="router-visible config path (default: %(default)s).")
     sp.add_argument("--no-reload", action="store_true",
                     help="write the profile but don't restart the router.")
+    sp.add_argument("--validate-only", action="store_true",
+                    help="validate profile/config with the deployed image without writing or reloading.")
     return p
 
 
@@ -884,7 +903,8 @@ def main(argv=None):
         return cmd_promote(
             a.profile, config_path=a.config, container=a.container,
             cfg_volume=a.cfg_volume, image=a.image, profile_dest=a.profile_dest,
-            config_dest=a.config_dest, no_reload=a.no_reload, dry_run=a.dry_run)
+            config_dest=a.config_dest, no_reload=a.no_reload,
+            validate_only=a.validate_only, dry_run=a.dry_run)
     return 2
 
 
