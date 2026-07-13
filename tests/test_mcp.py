@@ -199,6 +199,7 @@ def test_tools_list_has_json_schemas():
         "decision_summary",
         "router_promote",
         "serves_status",
+        "reservation_status",
         "serves_manage",
         "serves_logs",
         "voice_manage",
@@ -415,6 +416,84 @@ def test_serves_status_is_structured(tmp_path):
     assert rows["serves"][0]["running"] is True
     assert rows["serves"][0]["health_status"] == 200
     assert rows["gpu_memory_lines"] == ["0, 1024, 24576"]
+
+
+def _reservation_manifest(tmp_path):
+    p = tmp_path / "serves.toml"
+    p.write_text(textwrap.dedent("""
+        [[gpu_roles]]
+        id = "dark-fast"
+        vram_mib = 32768
+        reserve_mib = 2048
+
+        [[serve]]
+        name = "fast"
+        container = "vllm-fast"
+        port = 30001
+        model = "fast-model"
+        engine = "vllm"
+        gpu_role = "dark-fast"
+        vram_mib = 20480
+        residency = "on-demand"
+
+        [[serve]]
+        name = "stt"
+        container = "anvil-voice-stt"
+        port = 30010
+        model = "tdt_ctc-110m"
+        engine = "audio"
+        gpu_role = "dark-fast"
+        vram_mib = 4096
+        residency = "resident"
+    """), encoding="utf-8")
+    return str(p)
+
+
+def test_reservation_status_tool_returns_the_per_role_ledger(tmp_path, monkeypatch):
+    """gpu-reservations:T004: the read-only MCP surface over the ADR-0017 ledger."""
+    from anvil_serving import serves
+
+    manifest = _reservation_manifest(tmp_path)
+    states = {"vllm-fast": "running", "anvil-voice-stt": "exited"}
+
+    def run(argv, **kw):
+        if argv[:2] == ["docker", "inspect"]:
+            state = states.get(argv[-1], "absent")
+            if state == "absent":
+                return proc(1, "", "Error: No such object")
+            return proc(0, state + "\n")
+        return proc(0)
+
+    # Patch the probe itself: the tool runs with the module-level default
+    # `_run=subprocess.run`, which is bound at def time.
+    monkeypatch.setattr(
+        serves, "docker_state",
+        lambda container, _run=None: states.get(container, "absent"))
+    env = mcp.call_tool("reservation_status", {"manifest": manifest})
+
+    assert env["ok"] is True
+    (role,) = env["data"]["gpu_roles"]
+    assert role["gpu_role"] == "dark-fast"
+    assert role["capacity_mib"] == 32768
+    assert role["reserve_mib"] == 2048
+    assert role["budget_mib"] == 30720
+    assert role["committed_mib"] == 20480
+    assert role["free_mib"] == 10240
+    by_serve = {r["serve"]: r for r in role["reservations"]}
+    assert by_serve["fast"]["committed"] is True
+    assert by_serve["fast"]["state"] == "running"
+    assert by_serve["stt"]["committed"] is False
+    # Structurally the SAME data `serves status` reports (the T004 contract):
+    summary = serves.status_summary(
+        serves.load_manifest(manifest), _run=run,
+        _open=lambda url, timeout=3: (_ for _ in ()).throw(OSError("down")))
+    assert env["data"] == summary["reservations"]
+
+
+def test_reservation_status_tool_reports_missing_manifest(tmp_path):
+    env = mcp.call_tool("reservation_status", {"manifest": str(tmp_path / "nope.toml")})
+    assert env["ok"] is False
+    assert env["error"]["code"] == "manifest_not_found"
 
 
 def test_router_status_is_structured(monkeypatch):
