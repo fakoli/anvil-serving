@@ -51,6 +51,7 @@ health = "/system_stats"
 gpu_role = "dark-fast"
 vram_mib = 12288
 residency = "on-demand"
+groups = ["comfy"]             # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.comfyui.yml up -d comfyui"
 
 # ── Ledger mirrors of the serves.toml reservations on the same card ──
