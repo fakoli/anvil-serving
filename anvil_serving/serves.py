@@ -36,6 +36,16 @@ compose file). A paused serve (either kind) is `docker unpause`d. `--recreate` f
 clean `docker rm -f` + `up` for any serve. stdlib-only: `subprocess` to docker, `urllib`
 for the health probe, `tomllib` to read the manifest.
 
+GPU residency reservations (ADR-0017): a `[[serve]]` entry may declare
+`gpu_role`/`vram_mib`/`residency`, and the manifest may declare `[[gpu_roles]]`
+capacity rows (`id`, `vram_mib`, `reserve_mib`). When both are present, `up`
+acquires the serve's VRAM reservation against the role's budget FIRST — an
+over-budget request prints the per-role ledger (capacity/reserve/committed/
+free plus the offending reservation) and exits 1 without running any container
+command. The ledger is derived from docker state plus the declared fields (no
+state file), so `down` releases a reservation simply by stopping the
+container. Manifests without these fields are entirely unaffected.
+
 TRUST BOUNDARY: a serve's `up` command from the manifest is EXECUTED. It is parsed
 with `shlex` and run as an argv list (no shell), so `{dir}` paths with spaces are
 safe and there is no shell-injection sink — but pointing `--manifest` at an
@@ -54,6 +64,7 @@ import shlex
 import subprocess
 import time
 from . import guard
+from . import reservations
 import sys
 import urllib.request
 import urllib.error
@@ -253,6 +264,13 @@ def load_manifest(path):
     with open(path, "rb") as f:
         data = tomllib.load(f)
     mdir = os.path.dirname(os.path.abspath(path))
+    # ADR-0017: optional [[gpu_roles]] capacity rows (id / vram_mib /
+    # reserve_mib, mirroring the topology schema) declare each gpu_role's VRAM
+    # budget for the reservation ledger. Attached to every serve dict (like
+    # `_manifest_dir`) so the budgets travel with the parsed serves through
+    # every cmd_up call path — but ONLY when the manifest declares them, so a
+    # pre-reservation manifest still parses byte-for-byte the same as before.
+    gpu_role_budgets = reservations.parse_gpu_roles(data)
     serves = []
     for raw in data.get("serve", []):
         s = dict(raw)
@@ -274,6 +292,8 @@ def load_manifest(path):
         up = shlex.split(s["up"]) if s.get("up") else None
         s["engine"] = _normalize_engine(s, up)
         _normalize_reservation(s, raw)
+        if gpu_role_budgets:
+            s[reservations.GPU_ROLES_KEY] = gpu_role_budgets
         s["_manifest_dir"] = mdir
         s.setdefault("health", "/health")
         if up:
@@ -839,6 +859,8 @@ def cmd_status(serves, _run=subprocess.run, _open=urllib.request.urlopen):
 
 
 def cmd_down(serves, names, dry_run=False, _run=subprocess.run):
+    # ADR-0017: stopping a container IS the reservation release — the ledger is
+    # derived from docker state, so no bookkeeping happens (or could drift) here.
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
@@ -958,6 +980,20 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run):
     targets = _select(serves, names)
     if not targets:
         print("no matching serves in manifest")
+        return 1
+    # ADR-0017 reservation ledger admission: acquiring the targets' declared
+    # VRAM reservations must fit their gpu_role budgets BEFORE any container
+    # command runs — an over-budget request fails the whole batch with the
+    # ledger printed, and nothing is started/recreated. Committed state is
+    # derived from docker (running serves), so `serves down` releases a
+    # reservation with no ledger bookkeeping. Read-only, so it also gates
+    # --dry-run (the preview should show the same refusal the real run hits).
+    # Serves/manifests without reservation fields skip this entirely.
+    denial = reservations.deny_over_budget(
+        serves, targets, lambda container: docker_state(container, _run=_run))
+    if denial:
+        for line in denial:
+            print("  " + line)
         return 1
     rc = 0
     for s in targets:
