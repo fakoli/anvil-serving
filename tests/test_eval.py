@@ -42,7 +42,7 @@ def _rec(captured):
 def test_tiers_read_from_manifest():
     tiers = ev._tiers()
     assert {"heavy", "fast"} <= set(tiers)
-    assert tiers["fast"]["model"] == "qwen36-35b-a3b-nvfp4"
+    assert tiers["fast"]["model"] == "gemma4-e4b-it"
     assert tiers["fast"]["base_url"] == "http://127.0.0.1:30003/v1"
     assert tiers["heavy"]["base_url"] == "http://127.0.0.1:30002/v1"
 
@@ -105,7 +105,7 @@ def test_reachable_tier_fills_base_url_and_model_and_passthrough():
     assert rc == 0
     argv = captured["argv"]
     assert "--base-url" in argv and "http://127.0.0.1:30003/v1" in argv
-    assert "--model" in argv and "qwen36-35b-a3b-nvfp4" in argv
+    assert "--model" in argv and "gemma4-e4b-it" in argv
     assert "--requests" in argv and "3" in argv          # passthrough preserved
     assert argv[1].endswith("preflight.py")
 
@@ -118,7 +118,7 @@ def test_base_url_override_skips_reachability_gate():
                                _call=_rec(captured), _open=_unreachable)
     assert rc == 0  # not 3 — gate skipped
     assert "http://remote:8000/v1" in captured["argv"]
-    assert "qwen36-35b-a3b-nvfp4" in captured["argv"]  # model still filled from the tier
+    assert "gemma4-e4b-it" in captured["argv"]  # model still filled from the tier
 
 
 def test_explicit_base_url_and_model_need_no_tier():

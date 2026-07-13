@@ -4,8 +4,10 @@
 # "which model containers exist, on which ports". Manage the serves ONLY through
 # `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
 #
-# 2026-07-12 reconcile: heavy = ThinkingCap Qwen3.6-27B FP8 (promoted heavy tier, :30002, PRO 6000);
-# fast = Qwen3.6-35B-A3B-NVFP4 (:30003, RTX 5090). These back the router tiers in the live
+# 2026-07-12 reconcile: heavy = ThinkingCap Qwen3.6-27B FP8 (promoted heavy tier, :30002, PRO 6000).
+# 2026-07-13 fast swap (gpu-reservations:T006): fast = Gemma 4 E4B IT (:30003, RTX 5090) with a
+# declared ADR-0017 resident reservation; the previous Qwen3.6-35B-A3B-NVFP4 recipe stays as the
+# opt-in `fast-qwen36-rollback` serve. These back the router tiers in the live
 # config (heavy-local -> :30002, fast-local -> :30003). `{dir}` resolves to this file's dir.
 #
 # BOTH serves are Docker-Compose-defined (docker-compose.yml holds a service per tier) — see
@@ -13,6 +15,22 @@
 # name, so `serves up heavy` and `serves up fast` stay independent. `docker compose up -d` is
 # drift-safe (natively recreates a service whose config changed). Use `serves up --recreate
 # <name>` to force a fresh container.
+
+# ADR-0017 GPU residency reservations — declared capacity of the multi-tenant RTX 5090
+# ("dark-fast"). `serves up` admits a reserving serve against vram_mib - reserve_mib before any
+# container command runs; `serves status` prints the derived ledger.
+#   capacity 32607 MiB = nvidia-smi memory.total for GPU-04d3b6e7… (RTX 5090 32 GB).
+#   reserve 6656 MiB   = Windows display/system (~2 GiB) + the always-on voice STT/TTS
+#                        sidecars (anvil-voice-stt/tts, serves.voice.toml). Those sidecars are
+#                        managed by `voice audio up/down` from a SEPARATE manifest, so this
+#                        ledger cannot see them as reservations — they are budgeted here as
+#                        reserve instead. Observed combined draw 2026-07-13: 6325 MiB.
+# The dark-heavy PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
+# now — adoption is incremental (ADR-0017 consequences).
+[[gpu_roles]]
+id = "dark-fast"
+vram_mib = 32607
+reserve_mib = 6656
 
 [[serve]]
 name = "heavy"                 # heavy quality tier — ThinkingCap Qwen3.6-27B FP8
@@ -32,14 +50,42 @@ engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gptoss-rollback"
 
+# Fast tier — Gemma 4 E4B IT on the RTX 5090 (gpu-reservations:T006). The reservation is
+# HONEST-MEASURED, not the task's optimistic ~6000 MiB estimate: vLLM loads this bf16
+# checkpoint at 15.18 GiB of weights (no per-layer-embedding offload), so 18432 MiB =
+# weights + KV/activations for the 32K window. docker-compose.yml enforces it with
+# --gpu-memory-utilization 0.5653 = 18432 / 32607 capacity (see the deviation note there:
+# the T003 derive formula over-allocates when reserve_mib > 0) — change them together.
 [[serve]]
-name = "fast"                  # fast tier — Qwen3.6-35B-A3B-NVFP4 on the RTX 5090
-container = "vllm-qwen36"
+name = "fast"                  # fast tier — Gemma 4 E4B IT on the RTX 5090
+container = "vllm-gemma4-e4b-fast"
 port = 30003
-model = "qwen36-35b-a3b-nvfp4" # served-model-name (used by `anvil-serving eval`)
+model = "gemma4-e4b-it"        # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 18432
+residency = "resident"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"
+
+# Opt-in FAST rollback (pre-T006 Qwen3.6-35B-A3B-NVFP4); stop `fast` first because both own
+# :30003. Deliberately OUTSIDE the ADR-0017 ledger: its legacy 0.85-util footprint (~27.7 GiB)
+# cannot coexist with the always-on voice sidecars, so a declared reservation would always be
+# denied. Rollback runbook:
+#   1. anvil-serving serves --manifest {this} down fast --confirm
+#   2. either `anvil-serving voice audio down --confirm` (frees the sidecars' ~4.3 GiB) or
+#      export FAST_QWEN36_GPU_UTIL=0.78 to shrink the recipe under the remaining headroom
+#   3. anvil-serving serves --manifest {this} up fast-qwen36-rollback --confirm
+#   4. revert the router's fast-local tier model to "qwen36-35b-a3b-nvfp4"
+#      (anvil-router.live.toml history) via the router promotion path.
+[[serve]]
+name = "fast-qwen36-rollback"
+container = "vllm-qwen36"
+port = 30003
+model = "qwen36-35b-a3b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d fast-qwen36-rollback"
 
 # One guarded operation owns the model swap, functional gate, router update,
 # and complete model+router rollback. This single-GPU plan validates the newly
