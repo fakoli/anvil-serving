@@ -20,7 +20,7 @@ heavy local serve, and an optional, explicitly-metered cloud endpoint.
    the health check.
 2. **Intent resolution** (`router/intent.py`) turns the request's `model` field into a work class
    and a candidate tier pool, in strict precedence: a **declared preset** (`planning`,
-   `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`), else a **pinned tier id**, else
+   `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`), else a **pinned tier id**, else
    the **Tier-0 classifier** (`router/classify.py`) infers the work class from the payload.
    Ambiguous inference collapses to the safest configured tier. `resolve()` never raises.
 3. The **routing policy** (`router/policy.py`) filters and orders that pool: hard constraints

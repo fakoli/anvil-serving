@@ -123,28 +123,39 @@ services:
       --max-model-len 131072
       --host 0.0.0.0 --port 30002
 
-  # Fast tier: Gemma 4 E4B IT (bf16) on vLLM (RTX 5090 / GPU 0, :30003) — gpu-reservations:T006,
-  # promoted from the docker-compose.experiment.yml `voice-gemma4-e4b` candidate recipe.
+  # Fast tier: Gemma 4 E4B IT FP8-Dynamic on vLLM (RTX 5090 / GPU 0, :30003) —
+  # gpu-reservations:T006 promoted the E4B serve; the T011 operator rebalance moved it to
+  # the PRE-QUANTIZED leon-se/gemma-4-E4B-it-FP8-Dynamic checkpoint (compressed-tensors,
+  # vision/audio towers + lm_head kept bf16) on the standard pinned vLLM image — the same
+  # digest the heavy/embeddings/reranker/ocr serves run, with NATIVE vLLM Gemma4 support
+  # (gemma4_mm) and the gemma4 reasoning/tool parsers.
   #
-  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 18432 /
+  # WHY not online fp8 in the old gemma4-unified image (both shapes measured broken here,
+  # 2026-07-13): its CutlassFP8ScaledMMLinearKernel calls torch.ops._C.cutlass_scaled_mm
+  # through the torch stable ABI, which rejects fp8 dtypes ("Not yet supported ScalarType
+  # 46"); forcing VLLM_TEST_FORCE_FP8_MARLIN quantizes the vision tower too, whose
+  # transformers-backend forward casts pixel_values to the fp8 weight dtype and Marlin
+  # rejects fp8 activations ("unsupported `a` scalar_type"). A pre-quantized checkpoint
+  # that keeps the towers in its `ignore` list sidesteps both. Per gotcha #18 the
+  # compressed-tensors checkpoint auto-detects — OMIT --quantization.
+  #
+  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 14336 /
   # residency "resident" for this serve. --gpu-memory-utilization below is
-  # 18432 / 32607 CAPACITY = 0.5653, deliberately NOT the T003
-  # reservations.derive_gpu_memory_utilization value (18432 / (capacity - reserve) = 0.7103):
+  # 14336 / 32607 CAPACITY = 0.4396, deliberately NOT the T003
+  # reservations.derive_gpu_memory_utilization value (vram / (capacity - reserve)):
   # vLLM applies the fraction to TOTAL device memory, so dividing by the post-reserve budget
   # over-allocates by capacity/budget (measured 2026-07-13: 0.7103 -> engine held ~23.9 GiB,
-  # 5.5 GiB past the declared reservation). Keep vram_mib and this fraction in lockstep.
-  # Measured floor (2026-07-13): vLLM reports "Model loading took 15.18 GiB" for this bf16
-  # checkpoint (no per-layer-embedding offload in vLLM), so a smaller reservation cannot load;
-  # at 0.5653 the engine reports 2.29 GiB free for KV (~125k tokens, ample for the 32K window).
+  # 5.5 GiB past the then-declared 18432). Keep vram_mib and this fraction in lockstep.
+  # Measured floor (2026-07-13, T011 rebalance): "Model loading took 11.49 GiB" for the
+  # 12.4 GiB FP8-Dynamic checkpoint (E4B's bf16 embeddings/per-layer-embeddings survive
+  # every fp8 shape — the operator's initial 10240 MiB fast target was physically
+  # unreachable); at 0.4396 the engine reports 0.8 GiB KV = 43,708 tokens (> the 32768
+  # window, 1.33x max concurrency).
   #
-  # GPU pin: INDEX, not UUID — the gemma4-unified image int()-parses CUDA_VISIBLE_DEVICES at
-  # import (vllm/kernels/oink_ops.py via platforms/interface.py device_id_to_physical_device_id)
-  # and crashes on a UUID value (CLAUDE.md gotcha #21). CUDA_DEVICE_ORDER=PCI_BUS_ID makes
-  # index 0 deterministically the 5090 (bus 01:00.0 < 03:00.0). The compose device_ids
-  # reservation below still names the UUID, but WSL2 ignores that isolation (gotcha #13) —
-  # the env pin is the one that counts.
+  # GPU pin: UUID (gotcha #13) — the standard image parses UUID pins fine; the old INDEX
+  # pin was a gemma4-unified-image workaround (gotcha #21) and left with that image.
   fast:
-    image: ${FAST_GEMMA4_IMAGE:-vllm/vllm-openai:gemma4-unified}
+    image: ${FAST_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
     container_name: vllm-gemma4-e4b-fast
     restart: unless-stopped
     ipc: host
@@ -154,7 +165,7 @@ services:
       - "vllm-hfcache:/root/.cache/huggingface"
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-      CUDA_VISIBLE_DEVICES: ${FAST_GEMMA4_CUDA_DEVICE:-0}   # RTX 5090 by PCI order (see pin note above)
+      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
@@ -167,18 +178,17 @@ services:
               device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
               capabilities: [gpu]
     entrypoint: ["vllm"]
-    # Revision is PINNED: the HF repo's `main` ref (a4c2d58…) is a metadata-only refresh whose
-    # snapshot has NO model.safetensors in the vllm-hfcache volume; fee6332… is the cached
-    # weights snapshot. Unpinned, a cold start tries to re-download 15 GB.
+    # Revision is PINNED to the vllm-hfcache snapshot pulled by `models pull` (56e30bf…);
+    # unpinned, a refreshed HF `main` ref would force a cold re-download at `up`.
     command: >
-      serve google/gemma-4-E4B-it
-      --revision ${FAST_GEMMA4_REVISION:-fee6332c1abaafb77f6f9624236c63aa2f1d0187}
+      serve leon-se/gemma-4-E4B-it-FP8-Dynamic
+      --revision ${FAST_GEMMA4_REVISION:-56e30bf603d18a4972caffafa1bb4a4f9a841dee}
       --served-model-name gemma4-e4b-it
       --enable-auto-tool-choice
       --reasoning-parser gemma4
       --tool-call-parser gemma4
       --max-model-len 32768
-      --gpu-memory-utilization 0.5653
+      --gpu-memory-utilization 0.4396
       --host 0.0.0.0 --port 30003
 
   # Opt-in rollback for Fast (gpu-reservations:T006, mirroring heavy-gptoss-rollback): the
@@ -337,6 +347,78 @@ services:
       --enforce-eager
       --gpu-memory-utilization 0.1060
       --host 0.0.0.0 --port 30006
+
+  # ── OCR serve (gpu-reservations:T011) ──
+  # PaddleOCR-VL-1.6 (0.9B, bf16, arch paddleocr_vl) on the multi-tenant RTX 5090:
+  # the document-parsing VLM behind the router's "ocr" intent preset (tier
+  # ocr-local -> :30007). Serves OpenAI chat completions with image content —
+  # send the task prompt ("OCR:", "Table Recognition:", ...) plus the page image
+  # (vLLM recipe: docs.vllm.ai/projects/recipes -> PaddlePaddle/PaddleOCR-VL;
+  # native vllm support since v0.11.1 — the pinned nightly digest has it).
+  #
+  # ADR-0017 reservation: serves.toml declares gpu_role "dark-fast" / vram_mib 5120 /
+  # residency "resident" for this serve. --gpu-memory-utilization below is
+  # 5120 / 32607 CAPACITY = 0.1570 (fraction of TOTAL device memory — see the
+  # `fast` deviation note above). Keep vram_mib and the fraction in lockstep.
+  # HONEST-MEASURED (2026-07-13, one-off T011 verification probe on the sibling
+  # sm_120 card, this exact image+flags): "Model loading took 1.82 GiB"; the
+  # fixed non-weights floor (WSL2 CUDA context + torch workspaces + the
+  # MULTIMODAL profiling activation peak) is ~2.65 GiB at 4096 batched tokens —
+  # much larger than the text-only purpose serves' ~1.7 GiB floor, and it SCALES
+  # with --max-num-batched-tokens (measured: 16384 -> -1.41 GiB KV, 8192 ->
+  # -0.53 GiB, 4096 -> +0.53 GiB at a 4/5 GiB budget). At 5120 MiB the engine
+  # reports 0.53 GiB free KV = 30,720 tokens (1.88x concurrency for the
+  # 16384-token window; GQA KV is tiny: 2 kv-heads x 18 layers).
+  # --enforce-eager skips CUDA-graph capture (its memory would eat the KV
+  # margin; a 0.9B decoder is fast eager). --no-enable-prefix-caching +
+  # --mm-processor-cache-gb 0 per the upstream recipe (OCR pages don't repeat,
+  # so cache memory buys nothing). sm_120 note: bf16 DENSE is the proven-safe
+  # path (CLAUDE.md gotchas #7/#16 concern FP8-MoE / NVFP4-MoE kernels, not
+  # this shape); VLLM_USE_V2_MODEL_RUNNER=0 stays mandatory (gotcha #14).
+  #
+  # Publish: loopback-only by default (ADR-0004). Opt in to tailnet exposure by
+  # setting OCR_PUBLISH to this host's tailnet address before `serves up`.
+  ocr:
+    image: ${OCR_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    container_name: vllm-paddleocr-vl
+    restart: unless-stopped
+    ipc: host
+    ports:
+      - "${OCR_PUBLISH:-127.0.0.1}:30007:30007"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    # Revision PINNED to the vllm-hfcache snapshot pulled by `models pull` (66317ac…);
+    # unpinned, a refreshed HF `main` ref would force a cold re-download at `up`.
+    # --trust-remote-code: the checkpoint's config/processor classes are custom code
+    # (auto_map) even though the model architecture itself is vLLM-native.
+    command: >
+      serve PaddlePaddle/PaddleOCR-VL-1.6
+      --revision ${OCR_PADDLEOCR_REVISION:-66317acc4c9fc17bd154591ce650735cd2855f3e}
+      --served-model-name paddleocr-vl-1.6
+      --trust-remote-code
+      --max-model-len 16384
+      --max-num-batched-tokens 4096
+      --max-num-seqs 2
+      --no-enable-prefix-caching
+      --mm-processor-cache-gb 0
+      --enforce-eager
+      --gpu-memory-utilization 0.1570
+      --host 0.0.0.0 --port 30007
 
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
   # host.docker.internal:<port>. Pinned to the DEPLOYED RELEASE image anvil-serving:0.12.0

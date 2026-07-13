@@ -20,7 +20,7 @@ profile, reference integration, product differentiator, and local serving tools.
 
 | Term | Definition |
 |------|------------|
-| Intent preset | A closed vocabulary value sent in the wire `model` field, such as `planning`, `quick-edit`, `review`, `chat`, `chat-fast`, or `long-context`. |
+| Intent preset | A closed vocabulary value sent in the wire `model` field, such as `planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, or `ocr`. |
 | Work class | The task category used for quality decisions, such as planning, bounded edit, review, or long-context retrieval. |
 | Tier | A configured backend candidate. Common tiers are `fast-local`, `heavy-local`, and an explicit cloud tier. |
 | Quality profile | The per-tier, per-work-class trust table that decides `allow`, `allow-with-verify`, or `deny`. |
@@ -35,8 +35,8 @@ profile, reference integration, product differentiator, and local serving tools.
 - Say **router** for the network-facing service that agents call.
 - Say **local tier** for a model endpoint the router can call.
 - Say **quality profile** for the evidence table.
-- Say **intent preset** for `planning`, `quick-edit`, `review`, `chat`, `chat-fast`, and
-  `long-context`.
+- Say **intent preset** for `planning`, `quick-edit`, `review`, `chat`, `chat-fast`,
+  `long-context`, and `ocr`.
 - Say **OpenClaw reference integration** when describing the plugin path.
 - Say **local serving tools** for `eval usage`, `models`, `serves`, `init`,
   `eval preflight`, `eval benchmark run`, `eval benchmark external`,

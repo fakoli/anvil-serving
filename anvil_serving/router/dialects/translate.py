@@ -40,6 +40,33 @@ def _is_seq(v: Any) -> bool:
     return isinstance(v, (list, tuple))
 
 
+def has_image_artifacts(raw: Mapping[str, Any]) -> bool:
+    """True when the raw wire body carries image content worth preserving.
+
+    Detects (cheap, defensive) the image content-block spellings of both
+    dialects inside ``messages``: OpenAI ``{"type": "image_url"}`` /
+    ``{"type": "input_image"}`` parts and Anthropic ``{"type": "image"}``
+    blocks. Used by the backend body builder (gpu-reservations:T011): the
+    flattened ``request.messages`` keep only text, so relaying an OCR/vision
+    request from the flattened form would silently drop the image the caller
+    sent. Malformed entries are skipped, never raised.
+    """
+    messages = raw.get("messages")
+    if not _is_seq(messages):
+        return False
+    for m in messages:
+        if not isinstance(m, Mapping):
+            continue
+        content = m.get("content")
+        if _is_seq(content):
+            for block in content:
+                if isinstance(block, Mapping) and block.get("type") in (
+                    "image_url", "input_image", "image",
+                ):
+                    return True
+    return False
+
+
 def has_tool_artifacts(raw: Mapping[str, Any]) -> bool:
     """True when the raw wire body carries any tool structure worth preserving.
 

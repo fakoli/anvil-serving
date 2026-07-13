@@ -1,0 +1,9 @@
+  0, 29994, 32607
+  1, 90846, 97887
+
+GPU reservations (ADR-0017, derived from docker state):
+  gpu_role 'dark-fast': capacity 32607 MiB, reserve 4608 MiB, committed 26112 MiB, free 1887 MiB
+    fast 14336 MiB (resident, running)
+    embeddings 3200 MiB (resident, running)
+    reranker 3456 MiB (resident, running)
+    ocr 5120 MiB (resident, running)
