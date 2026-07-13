@@ -171,6 +171,48 @@ services:
       --host 0.0.0.0 --port ${PORT:-39099}
       ${EXTRA_ARGS:-}
 
+  # Read-only CUDA capability probe for the Docker Desktop/WSL GPU path.
+  # This intentionally compiles and runs only driver/runtime inventory calls:
+  # it does NOT create a Green Context, CUDA stream, MPS daemon/partition, or workload.
+  # Keep it behind an explicit profile. Normal operator use goes through the
+  # confirmation-gated `anvil-serving host gpu-sharing probe` wrapper.
+  gpu-sharing-inspect:
+    profiles: ["gpu-sharing-probe"]
+    # Official NVIDIA CUDA 13.1.1 multi-platform index, with linux/amd64 selected
+    # explicitly below. The product wrapper refuses overrides; direct diagnostic
+    # Compose use must review any replacement CUDA 13.1+ devel image separately.
+    image: ${GPU_SHARING_PROBE_IMAGE:-nvidia/cuda@sha256:9cf8694a27722418a1f175d90f85d5afb5a728fd4a9907d7f0565efecfa14d32}
+    platform: linux/amd64
+    container_name: cuda-green-context-inspect
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /run/anvil:size=128m,mode=0755,exec
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - "./gpu-sharing:/opt/anvil-gpu-sharing:ro"
+    working_dir: /opt/anvil-gpu-sharing
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - >-
+        nvcc -std=c++17 -O2
+        /opt/anvil-gpu-sharing/inspect.cu
+        -lcuda -ldl -o /run/anvil/gpu-sharing-inspect
+        && /run/anvil/gpu-sharing-inspect
+
   # Managed voice-latency candidates. These are opt-in A/B serves, not production tiers.
   # They use distinct container names and ports so `anvil-serving serves up/down <name>`
   # can manage them without touching the live heavy/fast/router compose services.

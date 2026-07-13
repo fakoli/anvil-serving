@@ -174,6 +174,9 @@ focused `--help`.
 | `host` | Inspect and repair declared host operations. | `read` / `bounded` | - |
 | `host status` | Show structured host status. | `read` / `bounded` | - |
 | `host gpus` | Show GPU inventory. | `read` / `bounded` | - |
+| `host gpu-sharing` | Inspect and probe CUDA GPU-sharing capabilities. | `read` / `bounded` | - |
+| `host gpu-sharing inspect` | Inspect Green Context and MPS capability without mutation. | `read` / `bounded` | `--timeout` |
+| `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose-file`<br>`--gpu-uuid`<br>`--timeout` |
 | `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
 | `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | - |
 | `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -570,7 +573,7 @@ anvil-serving doctor --config configs/example.toml
 ### `host`
 
 ```
-anvil-serving host {status|gpus|doctor|memory|wsl-config|restart-docker|reset-wsl|reclaim} [flags]
+anvil-serving host {status|gpus|gpu-sharing|doctor|memory|wsl-config|restart-docker|reset-wsl|reclaim} [flags]
 ```
 
 Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
@@ -579,6 +582,8 @@ Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
 |--------|--------------|
 | `status` | Return structured host RAM, Docker/WSL memory, and GPU status. |
 | `gpus` | List observed NVIDIA indexes, names, and stable UUIDs. |
+| `gpu-sharing inspect` | Return versioned JSON evidence for CUDA Green Context and MPS static-partition capability without creating contexts, starting daemons, or changing partitions. |
+| `gpu-sharing probe` | Audit the reviewed Docker CUDA prerequisite service and, with `--confirm`, run it once on an exact GPU UUID without creating a CUDA context or workload. |
 | `doctor` | Inspect the host + recommend a safe WSL memory cap. |
 | `wsl-config` | Windows-native only. Edit `.wslconfig` memory/swap (`--memory GB`, `--swap GB`); backup + safe-cap refusal (`--force` overrides only that cap), `--revert` restores the newest anvil backup, and `--dry-run` shows the change. |
 | `restart-docker` | Windows/macOS native only. Apply via a Docker Desktop restart; requires `--confirm`, while `--dry-run` performs no restart. |
@@ -588,6 +593,8 @@ Owns the host (WSL / Docker Desktop) config, with backup/revert and safe caps.
 
 ```bash
 anvil-serving host wsl-config --memory 64 --dry-run
+anvil-serving host gpu-sharing inspect
+anvil-serving host gpu-sharing probe --gpu-uuid GPU-... --dry-run
 anvil-serving host memory
 anvil-serving host reclaim --confirm                       # one-shot
 anvil-serving host reclaim --watch --threshold-gb 40 --interval 30 --confirm   # bakeoff watchdog
@@ -601,6 +608,54 @@ it, `reclaim` frees it. Both are Windows/WSL2-only and exit with a clear message
 With `--topology`, host actions resolve a declared `host` resource. Use `--target host:ID` when a
 topology contains more than one host resource. OS/runtime compatibility is checked before local or
 controller dispatch, so a Windows-only action cannot execute on Fakoli Mini/macOS.
+
+#### `host gpu-sharing inspect`
+
+```bash
+anvil-serving host gpu-sharing inspect [--timeout SECONDS]
+anvil-serving host gpu-sharing inspect \
+  --topology ~/.anvil-serving/operator-topology.toml \
+  --target host:fakoli-dark
+```
+
+This is a bounded, read-only capability inventory. It reuses `host gpus` discovery and the
+topology's UUID-backed `gpu_roles`, queries extended `nvidia-smi` facts, checks CUDA driver/runtime
+symbols without creating a context, discovers optional PyTorch/FlashInfer packages without importing
+them, and sends only `get_server_list` and `lspart` to an already-running MPS control daemon. Missing
+tools, malformed output, permission failures, and timeouts remain structured warnings. The payload's
+`mutated_state` is always `false`.
+
+The status vocabulary is `supported`, `unsupported`, `unavailable`, `unknown`,
+`blocked_by_runtime_version`, and `blocked_by_environment`. `supported` means the inspected API/tool
+surface and documented hardware gate are present; it does not prove that creating a Green Context or
+an MPS partition works on that exact WSL2/Docker path. No container is started merely to inspect
+container CUDA, so that field stays `unknown` when the command runs on the host.
+
+#### `host gpu-sharing probe`
+
+```bash
+anvil-serving host gpu-sharing probe \
+  --compose-file examples/fakoli-dark/docker-compose.experiment.yml \
+  --gpu-uuid GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 \
+  --dry-run
+
+anvil-serving host gpu-sharing probe \
+  --compose-file examples/fakoli-dark/docker-compose.experiment.yml \
+  --gpu-uuid GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1 \
+  --confirm
+```
+
+The default is a preview. Before live execution, the command renders Compose with the requested
+UUID and fails closed unless the service is profile-gated, read-only, unprivileged, portless,
+capability-dropped, `no-new-privileges`, non-restarting, and pinned to that UUID in both
+`CUDA_VISIBLE_DEVICES` and the NVIDIA device reservation. It also requires the exact reviewed CUDA
+image digest, Linux platform, entrypoint/command, read-only source bind, and normalized source hash;
+an image override or edited probe source is refused before container creation. `--confirm`
+authorizes only the reviewed
+prerequisite inspection: Docker may pull/cache the pinned image and creates a temporary container,
+but the source creates no CUDA context, allocation, stream, event, kernel, MPS daemon, or partition.
+Green Context creation and sustained work remain a separate maintenance-window operation,
+especially when the selected GPU drives the Windows desktop.
 
 ### `collectors`
 

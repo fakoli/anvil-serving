@@ -614,9 +614,62 @@ def build_command_tree() -> CommandTree:
         _resource_node("serve", "Run the private controller.", "anvil_serving.controller", role="controller", mutation="process", options=(_removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),), output_policy="foreground"),
         _resource_node("status", "Probe controller health.", "anvil_serving.controller", role="controller", remote_operation=_remote(mode="controller-status")),
     ), docs_anchor="docs/CLI.md#controller")
+    gpu_sharing = _node(
+        "gpu-sharing",
+        "Inspect and probe CUDA GPU-sharing capabilities.",
+        children=(
+            _resource_node(
+                "inspect",
+                "Inspect Green Context and MPS capability without mutation.",
+                "anvil_serving.gpu_sharing",
+                role="host",
+                argv_prefix=(),
+                forward_resolution_options=True,
+                options=(
+                    _option(
+                        "--timeout",
+                        summary="Per-subprocess timeout in seconds.",
+                        value_name="SECONDS",
+                    ),
+                ),
+                execution_runtime_roles=("native",),
+                docs_anchor="docs/CLI.md#host-gpu-sharing-inspect",
+            ),
+            _resource_node(
+                "probe",
+                "Run the guarded Docker CUDA prerequisite probe.",
+                "anvil_serving.gpu_sharing",
+                role="host",
+                argv_prefix=("probe",),
+                mutation="mutate",
+                options=confirm_options
+                + (
+                    _option(
+                        "--compose-file",
+                        summary="Compose file containing the reviewed probe service.",
+                        value_name="PATH",
+                    ),
+                    _option(
+                        "--gpu-uuid",
+                        summary="Exact NVIDIA GPU UUID to pin and verify.",
+                        value_name="GPU-UUID",
+                    ),
+                    _option(
+                        "--timeout",
+                        summary="Bounded live probe timeout in seconds.",
+                        value_name="SECONDS",
+                    ),
+                ),
+                execution_runtime_roles=("native",),
+                docs_anchor="docs/CLI.md#host-gpu-sharing-probe",
+            ),
+        ),
+        docs_anchor="docs/CLI.md#host-gpu-sharing",
+    )
     host_read_actions = (
         _resource_node("status", "Show structured host status.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
         _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("gpu_inventory")),
+        gpu_sharing,
         _resource_node("doctor", "Diagnose host configuration.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
         _resource_node("memory", "Show host RAM and WSL VM memory usage.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), execution_host_os=("windows",)),
     )
