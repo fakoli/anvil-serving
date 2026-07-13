@@ -31,6 +31,10 @@
 # deployment: gemma4-e4b-it for fast local work (gpu-reservations:T006 swap; rollback tier
 # model is qwen36-35b-a3b-nvfp4, see serves.toml `fast-qwen36-rollback`) and
 # ThinkingCap Qwen3.6-27B FP8 for heavy local work.
+# Promoted to the live anvil-router-cfg volume on 2026-07-13 (gpu-reservations:T007) together
+# with the reseeded profile.json (fast-local rows re-stamped to the E4B serve fingerprint +
+# explicit chat-fast rows, calibration pending):
+# docs/findings/2026-07-13-e4b-fast-router-promotion-evidence/promotion-profile.json.
 # The router runs in a container on the `fakoli-dark_default` network and reaches the
 # serves via `host.docker.internal` (see the tier `base_url`s below); only the router
 # is published (authed via the token).

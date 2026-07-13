@@ -1,0 +1,129 @@
+{
+  "applied": false,
+  "dry_run": true,
+  "preview": {
+    "agent_models": {},
+    "agent_names": [],
+    "api_key": "${ANVIL_ROUTER_TOKEN}",
+    "base_url": "http://100.87.34.66:8000/v1",
+    "model_count": 6,
+    "model_ids": [
+      "chat",
+      "chat-fast",
+      "quick-edit",
+      "review",
+      "planning",
+      "long-context"
+    ],
+    "plugin_id": "openclaw-anvil-intent-router",
+    "provider": {
+      "agents": {
+        "defaults": {
+          "model": {
+            "primary": "anvil/chat"
+          },
+          "models": {
+            "anvil/chat": {},
+            "anvil/chat-fast": {},
+            "anvil/long-context": {},
+            "anvil/planning": {},
+            "anvil/quick-edit": {},
+            "anvil/review": {}
+          }
+        }
+      },
+      "models": {
+        "mode": "merge",
+        "providers": {
+          "anvil": {
+            "api": "openai-completions",
+            "apiKey": "${ANVIL_ROUTER_TOKEN}",
+            "baseUrl": "http://100.87.34.66:8000/v1",
+            "models": [
+              {
+                "contextWindow": 131072,
+                "id": "chat",
+                "input": [
+                  "text"
+                ],
+                "maxTokens": 8192,
+                "name": "Anvil \u00b7 Chat",
+                "reasoning": true
+              },
+              {
+                "contextWindow": 131072,
+                "id": "chat-fast",
+                "input": [
+                  "text"
+                ],
+                "maxTokens": 8192,
+                "name": "Anvil \u00b7 Chat Fast",
+                "reasoning": true
+              },
+              {
+                "contextWindow": 131072,
+                "id": "quick-edit",
+                "input": [
+                  "text"
+                ],
+                "maxTokens": 8192,
+                "name": "Anvil \u00b7 Quick Edit",
+                "reasoning": true
+              },
+              {
+                "contextWindow": 131072,
+                "id": "review",
+                "input": [
+                  "text",
+                  "image"
+                ],
+                "maxTokens": 16000,
+                "name": "Anvil \u00b7 Review",
+                "reasoning": true
+              },
+              {
+                "contextWindow": 131072,
+                "id": "planning",
+                "input": [
+                  "text"
+                ],
+                "maxTokens": 32000,
+                "name": "Anvil \u00b7 Planning",
+                "reasoning": true
+              },
+              {
+                "contextWindow": 131072,
+                "id": "long-context",
+                "input": [
+                  "text"
+                ],
+                "maxTokens": 16000,
+                "name": "Anvil \u00b7 Long Context",
+                "reasoning": true
+              }
+            ]
+          }
+        }
+      },
+      "plugins": {
+        "entries": {
+          "openclaw-anvil-intent-router": {
+            "hooks": {
+              "allowConversationAccess": true
+            }
+          }
+        }
+      }
+    },
+    "skill_load_dirs": [],
+    "skill_name": null,
+    "skills": false,
+    "voice": false,
+    "voice_consult_bootstrap_context_mode": null,
+    "voice_consult_model": null,
+    "voice_consult_thinking_level": null,
+    "voice_model": null,
+    "voice_provider": null,
+    "voice_realtime_url": null
+  }
+}
