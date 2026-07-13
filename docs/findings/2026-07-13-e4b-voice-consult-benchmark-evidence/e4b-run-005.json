@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "stt_wer": 1.0,
+    "tts_first_audio_observed": true,
+    "tts_rtf": 0.0216
+  },
+  "id": "e4b-run-005",
+  "latency": {
+    "llm_ms": 1318.97,
+    "llm_stage_latency_ms": 1318.97,
+    "stt_ms": 151.97,
+    "total_turn_latency_ms": 2461.56,
+    "ttfa_ms": 1543.76,
+    "tts_ms": 990.62,
+    "turn_latency_ms": 2461.56
+  },
+  "tool": {
+    "calls": [],
+    "status": "not_run",
+    "successful": null,
+    "tool_call_count": 0
+  },
+  "transcript": {
+    "llm_reply": "Here are a few ways to interpret and respond to your request, depending on what you were expecting:\n\n**If you intended to ask a question but forgot to type it:**\n\n> \"Please provide your question! I'm ready to help you with anything you need.\"\n\n**If you intended for me to generate something (like a list, a story, or code) but didn't specify what:**\n\n> \"I'm ready to generate something for you! Could you please tell me what you would like me to create? (e.g., 'Write a short story,' 'Give me a recipe,' 'Explain quantum physics.')\"\n\n**If you were testing me or just starting a conversation:**\n\n> \"Hello! How can I assist you today?\"\n\n**If this was a prompt that was incomplete:**\n\n> \"It looks like your request is incomplete. Could you please tell me what you would like me to do?\"\n\n**Which of these situations fits what you were trying to do?**",
+    "reference_text": "the quick brown fox jumps over the lazy dog",
+    "stt_hypothesis": ""
+  },
+  "tts": {
+    "audio_seconds": 45.8192,
+    "output_bytes": 2199324,
+    "request_count": 14,
+    "source_sample_rate": 24000
+  }
+}

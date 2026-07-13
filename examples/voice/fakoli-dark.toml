@@ -18,7 +18,9 @@ stream = true
 api_key_env = "ANVIL_ROUTER_TOKEN"
 expected_endpoint_host = "100.87.34.66"
 expected_route_provider = "fast-local"
-expected_route_model = "qwen36-35b-a3b-nvfp4"
+# Post gpu-reservations:T007 the live Fast preset resolves to Gemma 4 E4B.
+# Verified via `POST /v1/route {"model":"chat-fast"}` -> gemma4-e4b-it / fast-local / local.
+expected_route_model = "gemma4-e4b-it"
 expected_route_tier = "local"
 
 [voice.stt]
