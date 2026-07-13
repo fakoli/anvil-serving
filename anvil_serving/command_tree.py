@@ -383,13 +383,14 @@ def build_command_tree() -> CommandTree:
                 "anvil_serving.router_manage",
                 role="router",
                 mutation="mutate",
-                options=confirm_options,
+                options=confirm_options + (_option("--validate-only", summary="Validate without changing router state."),),
                 remote_operation=_remote(
                     "router_promote",
                     confirmed=(("human_approved", True),),
                     allowed=(
                         "container", "dry_run", "profile", "config", "cfg_volume",
                         "image", "profile_dest", "config_dest", "no_reload",
+                        "validate_only",
                     ),
                 ),
             ),
@@ -405,6 +406,7 @@ def build_command_tree() -> CommandTree:
         _resource_node("down", "Stop manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option,), remote_operation=_remote("serves_manage", fixed=(("action", "down"),), positionals=("names",))),
         _resource_node("rm", "Remove a model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "rm"),), positionals=("names",))),
         _resource_node("adopt", "Adopt an existing model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "adopt"),), positionals=("names",))),
+        _resource_node("promote", "Promote a staged model recipe with preflight and full rollback.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--rollback", summary="Restore the plan's rollback serve and router state."), _option("--resume", summary="Resume an interrupted promotion."))),
         _resource_node("status", "Show model serve status.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option,), remote_operation=_remote("serves_status", positionals=("names",))),
         _resource_node("logs", "Read bounded model serve logs.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, _option("--tail", summary="Number of trailing lines.", value_name="N|all"), _option("--since", summary="Only logs since a timestamp or duration.", value_name="TIME"), _option("--follow", summary="Follow log output.", output_policy="follow")), remote_operation=_remote("serves_logs", positionals=("names",))),
         _resource_node("multiplex", "Run the single-resident model multiplexer.", "anvil_serving.multiplexer", role="model-serve", mutation="process", gpu=True, argv_prefix=(), output_policy="foreground"),
@@ -477,7 +479,7 @@ def build_command_tree() -> CommandTree:
                 options=(_option("--confirm", summary="Confirm the live evaluation workload."),),
                 remote_operation=_remote(
                     "preflight_probe", confirmed=(("confirm", True),),
-                    allowed=("base_url", "model", "api_key_env", "needle_ctx", "tool_batch", "no_thinking", "timeout_seconds"),
+                    allowed=("base_url", "model", "api_key_env", "needle_ctx", "tool_batch", "checks", "no_thinking", "thinking_mode", "reasoning_effort", "reasoning_evidence", "visible_answer_tokens", "reasoning_headroom_tokens", "timeout_seconds"),
                 ),
             ),
             _resource_node("planning", "Run planning evaluation.", "anvil_serving.eval", role="evaluation"),
@@ -490,7 +492,7 @@ def build_command_tree() -> CommandTree:
                     options=(_option("--confirm", summary="Confirm the live evaluation workload."),),
                     remote_operation=_remote(
                         "benchmark_probe", confirmed=(("confirm", True),),
-                        allowed=("base_url", "model", "api_key_env", "requests", "concurrency", "max_tokens", "ctx_tokens", "no_thinking", "timeout_seconds"),
+                        allowed=("base_url", "model", "api_key_env", "requests", "concurrency", "max_tokens", "ctx_tokens", "no_thinking", "thinking_mode", "reasoning_effort", "visible_answer_tokens", "reasoning_headroom_tokens", "timeout_seconds"),
                     ),
                 ),
                 _node(
