@@ -234,6 +234,14 @@ Cloud credentials go in env vars only — never in config files. The front door 
     Those user-space components come from the selected CUDA image. For container capability claims,
     inspect the `docker-desktop` substrate, then validate versions/symbols inside a Compose-managed,
     GPU-UUID-pinned image. Keep these runtime observations out of stable topology identity.
+21. **The `gemma4-unified` vLLM image crashes on a UUID `CUDA_VISIBLE_DEVICES` pin.** Its
+    `vllm/kernels/oink_ops.py` import calls `has_device_capability()` → `int(CUDA_VISIBLE_DEVICES)`
+    (`ValueError: invalid literal for int() … 'GPU-04d3…'`), surfacing as the opaque
+    "Model architectures [...] failed to be inspected" registry error. For that image, pin by
+    PCI-ordered INDEX instead: `CUDA_DEVICE_ORDER=PCI_BUS_ID` + `CUDA_VISIBLE_DEVICES=0`
+    (fakoli-dark: bus 01:00.0 = 5090 < 03:00.0 = PRO 6000, so 0 is deterministic). This was the
+    root cause of the 2026-07-08 voice A/B gemma4 candidates "failed before STT". Gotcha #13's
+    UUID rule still applies to every image that parses UUIDs (nightly, pinned sha256 releases).
 
 ---
 
