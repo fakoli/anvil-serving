@@ -111,6 +111,20 @@ def test_load_manifest_infers_pre_engine_entries(tmp_path, container, up, expect
     assert serve["engine"] == expected
 
 
+def test_load_manifest_accepts_audio_engine_for_non_llm_serves(tmp_path):
+    path = _manifest(tmp_path, """
+        [[serve]]
+        name = "stt"
+        container = "anvil-voice-stt"
+        port = 30010
+        model = "tdt_ctc-110m"
+        engine = "audio"
+        up = "docker compose -f {dir}/docker-compose.voice-audio.yml up -d stt"
+    """)
+    (serve,) = serves.load_manifest(path)
+    assert serve["engine"] == "audio"
+
+
 def test_load_manifest_rejects_conflicting_legacy_engine_markers(tmp_path):
     path = _manifest(tmp_path, """
         [[serve]]
