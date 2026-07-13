@@ -1,4 +1,9 @@
-import socket, base64, os, hashlib, sys, json
+import base64
+import hashlib
+import json
+import os
+import socket
+import sys
 
 host, port = "127.0.0.1", 8765
 paths = ["/", "/ws", "/v1/realtime", "/realtime"]
