@@ -84,7 +84,7 @@ def make_request(text: str = "fix the parser") -> InternalRequest:
 # AC1: every catalogued seam has >=1 impl that satisfies its Protocol
 # --------------------------------------------------------------------------- #
 def test_catalog_is_non_empty_and_matches_seam_names():
-    # The two views of the catalog agree, and it actually contains the 7 stages.
+    # The two views of the catalog agree, including runtime availability.
     assert tuple(SEAMS) == SEAM_NAMES
     assert set(SEAM_NAMES) == {
         "dialect",
@@ -93,6 +93,7 @@ def test_catalog_is_non_empty_and_matches_seam_names():
         "backend",
         "verifier",
         "profile_store",
+        "availability_store",
         "observer",
     }
 

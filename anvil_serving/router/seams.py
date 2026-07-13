@@ -56,8 +56,9 @@ from .verify import Verifier
 from .dialects import Dialect
 
 if TYPE_CHECKING:  # annotation-only; never evaluated at runtime (future annotations).
+    from .availability import AvailabilityResult
     from .classify import Classification
-    from .config import RouterConfig
+    from .config import RouterConfig, Tier
     from .decision_log import DecisionRecord
     from .intent import Intent
     from .internal import InternalRequest
@@ -128,6 +129,19 @@ class ProfileStore(Protocol):
         ...
 
     def score(self, tier_id: str, work_class: Optional[str]) -> float:
+        ...
+
+
+@runtime_checkable
+class AvailabilityStore(Protocol):
+    """Runtime readiness for a configured tier (DATA/control boundary — M2).
+
+    Configuration and quality decide whether a tier is allowed; this seam says
+    whether that configured upstream is ready now. Implementations return a
+    structured, content-free result and never operate the upstream lifecycle.
+    """
+
+    def check(self, tier: "Tier") -> "AvailabilityResult":
         ...
 
 
@@ -243,6 +257,8 @@ _SPECS = (
              "response -> pass/fail/score (cheap, chainable)"),
     SeamSpec("profile_store", ProfileStore, "control", True,
              "where the (tier, work-class) quality table lives"),
+    SeamSpec("availability_store", AvailabilityStore, "cross", True,
+             "configured tier -> current readiness without lifecycle mutation"),
     SeamSpec("observer", Observer, "cross", True,
              "audit / metrics / fallback-event sink"),
 )
@@ -263,6 +279,7 @@ __all__ = [
     "Classifier",
     "RoutingPolicy",
     "ProfileStore",
+    "AvailabilityStore",
     "Observer",
     # thin adapters lifting shipped impls onto the object-shaped seams
     "FunctionClassifier",

@@ -42,6 +42,8 @@ mapping_version = "2026-07-12.fakoli-dark-thinkingcap-heavy"
 # tool_calls — correctly PASS this gate; regression-pinned in #94. Tools now actually reach
 # the local model since #96.)
 verify_local_min = true
+availability_probe_interval = 5
+availability_probe_timeout = 1
 # The deployed router image reads this path inside the anvil-router-cfg volume.
 profile_path = "/etc/anvil/profile.json"
 
@@ -54,6 +56,7 @@ context_limit = 32768
 privacy       = "local"
 tool_support  = true
 auth_env      = "ANVIL_FAST_LOCAL_KEY"
+health_path   = "/health"
 extra_body    = { chat_template_kwargs = { enable_thinking = false } }
 
 [router.tiers.params]
@@ -70,6 +73,7 @@ context_limit = 131072
 privacy       = "local"
 tool_support  = true
 auth_env      = "ANVIL_HEAVY_LOCAL_KEY"
+health_path   = "/health"
 extra_body_defaults = { chat_template_kwargs = { enable_thinking = true } }
 
 [router.tiers.params]
