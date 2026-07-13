@@ -80,7 +80,7 @@ anvil_serving/
     serve.py           `anvil-serving router run` entrypoint: config → backends → front door
     front_door.py      ThreadingHTTPServer accepting Anthropic Messages + OpenAI Chat Completions,
                        binding 127.0.0.1 (never localhost — see gotchas), SSE streaming
-    intent.py          PRESETS enum (planning/quick-edit/review/chat/chat-fast/long-context/ocr) + resolve()
+    intent.py          PRESETS enum (planning/quick-edit/review/chat/chat-fast/long-context/ocr/vision) + resolve()
     classify.py        Tier-0 work-class classifier (infers intent from raw payload)
     policy.py          residency-aware routing: hard constraints → profile deny → cost order
     fallback.py        ordered tier walk: serve → verify → escalate; retry cap + circuit breaker
@@ -242,6 +242,17 @@ Cloud credentials go in env vars only — never in config files. The front door 
     (fakoli-dark: bus 01:00.0 = 5090 < 03:00.0 = PRO 6000, so 0 is deterministic). This was the
     root cause of the 2026-07-08 voice A/B gemma4 candidates "failed before STT". Gotcha #13's
     UUID rule still applies to every image that parses UUIDs (nightly, pinned sha256 releases).
+22. **vLLM's AUTO memory profiling lies on a busy WSL2 GPU — size the KV cache explicitly.**
+    `cudaMemGetInfo` under WSL2 passthrough returns an incoherent free-memory view on a
+    shared card (a fresh engine saw "30.2 GiB free" while `nvidia-smi` showed ~12.6): during
+    the profile run the view reconciles toward reality and vLLM attributes the entire delta
+    to itself as a phantom "non-torch forward increase" (~13.8 GiB for Qwen3-VL-4B), computing
+    NEGATIVE available KV at any budget a multi-tenant reservation allows. Fix: pass
+    `--kv-cache-memory-bytes <bytes>` (v0.23 image) to bypass measurement-based sizing;
+    keep `--gpu-memory-utilization` as the declared ceiling. First hit: T013's vision serve
+    (`examples/fakoli-dark/docker-compose.yml`, `vision` service note). Small engines whose
+    total footprint stays far below the phantom floor (embeddings/reranker/ocr) load fine,
+    which is why this stayed hidden until a mid-size VLM.
 
 ---
 
@@ -249,7 +260,7 @@ Cloud credentials go in env vars only — never in config files. The front door 
 
 - **The `model` field is the routing channel.** It's present in both Anthropic Messages and
   OpenAI Chat Completions, forwarded verbatim, and free-form. Named presets in the model
-  field (`planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`) is the right
+  field (`planning`, `quick-edit`, `review`, `chat`, `chat-fast`, `long-context`, `ocr`, `vision`) is the right
   wire surface for harnesses that can be configured (Claude Code, Aider, Codex CLI).
 - **Tier-0 classifier is the universal floor.** For harnesses that can't set the model
   field (or don't), `classify.py` infers work-class from the raw payload (token count,

@@ -1,0 +1,74 @@
+{
+    "count": 2,
+    "available": 2,
+    "limit": 3,
+    "records": [
+        {
+            "intent": "-",
+            "work_class": "vision",
+            "requested_tiers": [
+                "vision-local"
+            ],
+            "served_tier": "vision-local",
+            "fell_back": false,
+            "attempts": [
+                {
+                    "tier_id": "vision-local",
+                    "outcome": "served",
+                    "verifier_passed": true,
+                    "verify_reason": "verify_passed",
+                    "prompt_tokens": 19,
+                    "completion_tokens": 262
+                }
+            ],
+            "total_prompt_tokens": 19,
+            "total_completion_tokens": 262,
+            "cost_usd": 0.0,
+            "mode": "-"
+        },
+        {
+            "intent": "-",
+            "work_class": "vision",
+            "requested_tiers": [
+                "vision-local"
+            ],
+            "served_tier": "vision-local",
+            "fell_back": false,
+            "attempts": [
+                {
+                    "tier_id": "vision-local",
+                    "outcome": "served",
+                    "verifier_passed": true,
+                    "verify_reason": "verify_passed",
+                    "prompt_tokens": 19,
+                    "completion_tokens": 259
+                }
+            ],
+            "total_prompt_tokens": 19,
+            "total_completion_tokens": 259,
+            "cost_usd": 0.0,
+            "mode": "-"
+        }
+    ],
+    "totals": {
+        "fallback_count": 0,
+        "prompt_tokens": 38,
+        "completion_tokens": 521,
+        "cost_usd": 0.0,
+        "served_tiers": {
+            "vision-local": 2
+        },
+        "attempt_outcomes": {
+            "served": 2
+        }
+    },
+    "omitted_fields": [
+        "prompt",
+        "messages",
+        "content",
+        "response",
+        "api_key",
+        "authorization",
+        "token"
+    ]
+}

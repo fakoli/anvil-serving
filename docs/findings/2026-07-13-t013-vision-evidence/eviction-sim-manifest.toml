@@ -1,0 +1,87 @@
+# T013 eviction-flow verification manifest (evidence artifact, NOT product config).
+# Mirrors the dark-fast ledger rows of examples/fakoli-dark/serves.toml exactly
+# (same [[gpu_roles]] budget, same containers, same reservations) and adds ONE
+# simulated `on-demand` requester standing in for a future ComfyUI image-gen
+# acquisition. Absolute paths replace {dir} because this file lives outside the
+# repo. The eviction code path exercised is the REAL serves.cmd_up --evict flow.
+
+[[gpu_roles]]
+id = "dark-fast"
+vram_mib = 32607
+reserve_mib = 4608
+
+[[serve]]
+name = "fast"
+container = "vllm-gemma4-e4b-fast"
+port = 30003
+model = "gemma4-e4b-it"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 14336
+residency = "resident"
+up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d fast"
+
+[[serve]]
+name = "embeddings"
+container = "vllm-qwen3-embedding"
+port = 30005
+model = "qwen3-embedding-0.6b"
+engine = "embedding"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 3200
+residency = "resident"
+up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d embeddings"
+
+[[serve]]
+name = "reranker"
+container = "vllm-qwen3-reranker"
+port = 30006
+model = "qwen3-reranker-0.6b"
+engine = "reranker"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 3456
+residency = "resident"
+up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d reranker"
+
+[[serve]]
+name = "ocr"
+container = "vllm-paddleocr-vl"
+port = 30007
+model = "paddleocr-vl-1.6"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 5120
+residency = "resident"
+up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d ocr"
+
+[[serve]]
+name = "vision"
+container = "vllm-qwen3-vl-vision"
+port = 30008
+model = "qwen3-vl-4b-instruct"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 12288
+residency = "evictable"
+router_tier = "vision-local"
+up = "docker compose -f C:/Users/sdoum/ai-code/wt-gpu-vision-serve/examples/fakoli-dark/docker-compose.yml up -d vision"
+
+# The simulated on-demand acquisition: stands in for a ComfyUI image-gen task
+# needing ~8 GiB. ADR-0017 accounting is declarative, so a trivial container
+# commits this reservation exactly as the real workload would.
+[[serve]]
+name = "comfyui-sim"
+container = "comfyui-sim"
+port = 39900
+model = "comfyui-sim"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 8192
+residency = "on-demand"
+up = "docker compose -f C:/Users/sdoum/AppData/Local/Temp/claude/C--Users-sdoum-ai-code-claude-env/8873df2c-be4a-48f6-8242-c081b5736582/scratchpad/comfyui-sim-compose.yml up -d comfyui-sim"

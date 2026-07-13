@@ -1,0 +1,21 @@
+=== T013 eviction flow (simulated on-demand acquisition 'comfyui-sim', 8192 MiB, via serves up --evict) ===
+{"action": "quiesce", "applied": true, "result": {"active_requests": 0, "draining": false, "reason": "promotion", "state": "quiesced", "tier_id": "vision-local"}}
+{"action": "drain", "applied": true, "result": {"drained": true, "snapshot": {"active_requests": 0, "draining": false, "reason": "promotion", "state": "quiesced", "tier_id": "vision-local"}, "timed_out": false}}
+  evict vision: quiesce + drain router tier vision-local (timeout 60.0s), then stop vllm-qwen3-vl-vision
+  gate: C:\Users\sdoum\AppData\Local\Programs\Python\Python313\python.exe -m anvil_serving.cli router quiesce --tier vision-local --router-url http://127.0.0.1:8099 --confirm
+  gate: C:\Users\sdoum\AppData\Local\Programs\Python\Python313\python.exe -m anvil_serving.cli router drain --tier vision-local --router-url http://127.0.0.1:8099 --timeout 60.0
+  stop vllm-qwen3-vl-vision
+  stopped vllm-qwen3-vl-vision
+  evicted vision; router tier vision-local stays quiesced until `router readmit` passes health + identity readiness
+  compose up comfyui-sim: docker compose -f C:/Users/sdoum/AppData/Local/Temp/claude/C--Users-sdoum-ai-code-claude-env/8873df2c-be4a-48f6-8242-c081b5736582/scratchpad/comfyui-sim-compose.yml up -d comfyui-sim
+
+=== routed vision request while evicted (expect 503 exhaustion) ===
+HTTP 503
+
+=== restore: release the on-demand reservation, serves up vision, guarded readmit ===
+  stop comfyui-sim
+  stopped comfyui-sim
+  compose up vision: docker compose -f C:\Users\sdoum\ai-code\wt-gpu-vision-serve\examples\fakoli-dark/docker-compose.yml up -d vision
+{"action": "readmit", "applied": true, "result": {"readmitted": true, "reason": "readiness_passed", "status": {"tiers": [{"active_requests": 0, "draining": false, "expected_model": "qwen3-vl-4b-instruct", "observed_model": "qwen3-vl-4b-instruct", "readiness_reason": "identity_passed", "readiness_state": "ready", "ready": true, "reason": "admitting", "state": "admitting", "tier_id": "vision-local"}]}}}
+=== routed vision request after restore ===
+finish: stop | model: vision | grounded: True

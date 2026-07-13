@@ -42,7 +42,7 @@
 auth_env = "ANVIL_ROUTER_TOKEN"
 
 [router]
-mapping_version = "2026-07-13.fakoli-dark-t011-ocr-fp8-fast"
+mapping_version = "2026-07-13.fakoli-dark-t013-vision"
 # verify_local_min at its default (true): an empty local 200 becomes a 503 so the gateway
 # fails over to native. (v0.7.0 note: tool-call-only replies — empty content + populated
 # tool_calls — correctly PASS this gate; regression-pinned in #94. Tools now actually reach
@@ -117,6 +117,33 @@ tool_support  = false
 auth_env      = "ANVIL_OCR_LOCAL_KEY"
 health_path   = "/health"
 
+# Vision tier (gpu-reservations:T013): Qwen3-VL-4B-Instruct on the 5090 (serves.toml
+# `vision`, :30008), reached only through the "vision" intent preset below. A general
+# image-understanding VLM (describe/ground a screenshot or photo) — distinct from
+# ocr-local's verbatim document extraction. Not a coding model: tool_support false, and
+# the 16384-token window matches the serve's --max-model-len. Callers send the image as
+# OpenAI image content plus a prompt ("Describe this screenshot", ...).
+# CAPACITY NOTE: the serve is an ADR-0017 `evictable` reservation and does not fit
+# alongside the full dark-fast resident set (see serves.toml) — it runs opportunistically
+# and yields to on-demand acquisitions via the T005 eviction flow. While it is down, the
+# availability probe marks this tier unavailable and "vision" requests exhaust cleanly (503).
+[[router.tiers]]
+id            = "vision-local"
+base_url      = "http://host.docker.internal:30008/v1"
+model         = "qwen3-vl-4b-instruct"
+dialect       = "openai"
+context_limit = 16384
+privacy       = "local"
+tool_support  = false
+auth_env      = "ANVIL_VISION_LOCAL_KEY"
+health_path   = "/health"
+# REQUIRED for the eviction lifecycle: after a T005 eviction the tier stays
+# quiesced, and the guarded `router readmit` refuses with
+# "identity_not_configured" unless it can verify the serve's exact model
+# identity — without this flag an evicted vision tier can never re-enter
+# rotation (verified live, 2026-07-13 T013).
+model_identity = true
+
 # Purpose-model serves (gpu-reservations:T009/T010, ADR-0017 §7): the always-on Qwen3
 # embedding + reranker serves on the 5090 (serves.toml `embeddings`/`reranker`), routed BY
 # MODEL NAME on POST /v1/embeddings and POST /v1/rerank under the same router token. An
@@ -135,8 +162,9 @@ model    = "qwen3-reranker-0.6b"
 base_url = "http://host.docker.internal:30006/v1"
 
 # heavy-first where quality matters; chat-fast pins to the fast tier first.
-# ocr routes ONLY to the OCR VLM — the text tiers cannot read image content, so
-# there is no meaningful fallback: exhaustion (503) is the correct failure mode.
+# ocr/vision route ONLY to their VLM tiers — the text tiers cannot read image
+# content, so there is no meaningful fallback: exhaustion (503) is the correct
+# failure mode.
 [router.presets]
 chat         = ["heavy-local", "fast-local"]
 chat-fast    = ["fast-local", "heavy-local"]
@@ -145,3 +173,4 @@ review       = ["heavy-local"]
 planning     = ["heavy-local"]
 long-context = ["heavy-local"]
 ocr          = ["ocr-local"]
+vision       = ["vision-local"]

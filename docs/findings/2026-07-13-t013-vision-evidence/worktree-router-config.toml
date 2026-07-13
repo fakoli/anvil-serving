@@ -1,0 +1,46 @@
+# T013 verification router (worktree instance, 127.0.0.1:8099).
+# Mirrors examples/fakoli-dark/anvil-router.live.toml but runs as a host
+# process, so tiers are reached via 127.0.0.1 host ports (never localhost).
+# Auth: ANVIL_ROUTER_TOKEN (required for the ADR-0018 transition CLI).
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+
+[router]
+mapping_version = "2026-07-13.t013-worktree-verify"
+verify_local_min = true
+availability_probe_interval = 5
+availability_probe_timeout = 1
+
+[[router.tiers]]
+id            = "fast-local"
+base_url      = "http://127.0.0.1:30003/v1"
+model         = "gemma4-e4b-it"
+quantization  = "fp8"
+dialect       = "openai"
+context_limit = 32768
+privacy       = "local"
+tool_support  = true
+auth_env      = "ANVIL_FAST_LOCAL_KEY"
+health_path   = "/health"
+extra_body    = { chat_template_kwargs = { enable_thinking = false } }
+
+[[router.tiers]]
+id            = "vision-local"
+base_url      = "http://127.0.0.1:30008/v1"
+model         = "qwen3-vl-4b-instruct"
+dialect       = "openai"
+context_limit = 16384
+privacy       = "local"
+tool_support  = false
+auth_env      = "ANVIL_VISION_LOCAL_KEY"
+health_path   = "/health"
+model_identity = true
+
+[router.presets]
+chat         = ["fast-local"]
+chat-fast    = ["fast-local"]
+quick-edit   = ["fast-local"]
+review       = ["fast-local"]
+planning     = ["fast-local"]
+long-context = ["fast-local"]
+vision       = ["vision-local"]
