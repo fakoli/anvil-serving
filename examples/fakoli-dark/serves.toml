@@ -20,20 +20,28 @@
 # ("dark-fast"). `serves up` admits a reserving serve against vram_mib - reserve_mib before any
 # container command runs; `serves status` prints the derived ledger.
 #   capacity 32607 MiB = nvidia-smi memory.total for GPU-04d3b6e7… (RTX 5090 32 GB).
-#   reserve 7168 MiB   = Windows display/system (~2 GiB) + the always-on voice STT/TTS
+#   reserve 4608 MiB   = Windows display/system + umbrella for the always-on voice STT/TTS
 #                        sidecars (anvil-voice-stt/tts, serves.voice.toml). Those sidecars are
 #                        managed by `voice audio up/down` from a SEPARATE manifest, so this
 #                        ledger cannot see them as reservations — they are budgeted here as
-#                        reserve instead. Observed non-fast draw drifted 6325 -> ~7090 MiB
-#                        across 2026-07-13 (T006 -> T009: device used minus the fast engine's
-#                        enforced 18432), so T009 raised the reserve 6656 -> 7168 to keep the
-#                        ledger's free figure physically honest.
+#                        reserve instead. 2026-07-13 (gpu-reservations:T011 rebalance): the
+#                        operator resolved the T015 resident-set conflict by shrinking fast
+#                        (18432 -> 14336, pre-quantized FP8 checkpoint) and this reserve
+#                        (7168 -> 4608) so the full resident set (fast 14336 + embeddings
+#                        3200 + reranker 3456 + ocr 5120 = 26112 MiB) fits the 27999 MiB
+#                        budget. (The operator's initial 10240 MiB fast target proved
+#                        physically unreachable: E4B's bf16 embeddings/per-layer-embeddings
+#                        survive every fp8 shape — measured 12.4 GiB FP8-Dynamic weights.)
+#                        HONESTY NOTE: observed non-ledger draw (display + voice) was
+#                        ~5.7 GiB on 2026-07-13 — above this reserve, so the ledger's free
+#                        figure runs ~1.1 GiB optimistic; physical headroom after the full
+#                        resident set is ~0.8 GiB. Revisit at the next drift check.
 # The dark-heavy PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
 # now — adoption is incremental (ADR-0017 consequences).
 [[gpu_roles]]
 id = "dark-fast"
 vram_mib = 32607
-reserve_mib = 7168
+reserve_mib = 4608
 
 [[serve]]
 name = "heavy"                 # heavy quality tier — ThinkingCap Qwen3.6-27B FP8
@@ -53,21 +61,24 @@ engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gptoss-rollback"
 
-# Fast tier — Gemma 4 E4B IT on the RTX 5090 (gpu-reservations:T006). The reservation is
-# HONEST-MEASURED, not the task's optimistic ~6000 MiB estimate: vLLM loads this bf16
-# checkpoint at 15.18 GiB of weights (no per-layer-embedding offload), so 18432 MiB =
-# weights + KV/activations for the 32K window. docker-compose.yml enforces it with
-# --gpu-memory-utilization 0.5653 = 18432 / 32607 capacity (see the deviation note there:
+# Fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090 (gpu-reservations:T006 swap; T011
+# operator rebalance). bf16 weights alone are 15.18 GiB and cannot fit the rebalanced
+# budget; ONLINE fp8 in the gemma4-unified image is broken on this box (cutlass stable-ABI
+# rejects fp8 dtypes; Marlin crashes on the fp8-quantized vision tower), so the serve runs
+# the PRE-QUANTIZED leon-se/gemma-4-E4B-it-FP8-Dynamic checkpoint (compressed-tensors,
+# towers/lm_head kept bf16 — 12.4 GiB weights measured) on the standard pinned vLLM image
+# + KV for the 32K window inside 14336 MiB. docker-compose.yml enforces it with
+# --gpu-memory-utilization 0.4396 = 14336 / 32607 capacity (see the deviation note there:
 # the T003 derive formula over-allocates when reserve_mib > 0) — change them together.
 [[serve]]
-name = "fast"                  # fast tier — Gemma 4 E4B IT on the RTX 5090
+name = "fast"                  # fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090
 container = "vllm-gemma4-e4b-fast"
 port = 30003
 model = "gemma4-e4b-it"        # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
 gpu_role = "dark-fast"
-vram_mib = 18432
+vram_mib = 14336
 residency = "resident"
 up = "docker compose -f {dir}/docker-compose.yml up -d fast"
 
@@ -126,6 +137,35 @@ gpu_role = "dark-fast"
 vram_mib = 3456
 residency = "resident"
 up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
+
+# ── OCR serve (gpu-reservations:T011) ──
+# PaddleOCR-VL-1.6 behind the router's "ocr" intent preset (ocr-local -> :30007).
+# Declared as an ADR-0017 `resident` reservation on the multi-tenant 5090; the
+# 5120 MiB budget is HONEST-MEASURED on the sibling sm_120 card with this exact
+# image+flags (see docker-compose.yml's ocr service note: 1.82 GiB weights +
+# ~2.65 GiB multimodal-profiling floor + 0.53 GiB KV = 30,720 tokens for the
+# 16384-token window; a 4096 MiB budget failed init with negative KV).
+# docker-compose.yml enforces it with --gpu-memory-utilization 0.1570 =
+# 5120 / 32607 capacity — change them together.
+#
+# CAPACITY (2026-07-13, gpu-reservations:T011 operator rebalance): with fast at
+# 14336 MiB (FP8-Dynamic) and reserve at 4608 MiB, the FULL resident set — fast
+# 14336 + embeddings 3200 + reranker 3456 + ocr 5120 = 26112 MiB — fits the
+# 27999 MiB dark-fast budget with 1887 MiB of ledger headroom, so `serves up
+# ocr` admits alongside the T009 trio. (The earlier T015 conflict — fast at
+# 18432 left only 351 MiB free — was resolved by that rebalance; see the
+# [[gpu_roles]] note.)
+[[serve]]
+name = "ocr"                   # PaddleOCR-VL-1.6 (vLLM, RTX 5090)
+container = "vllm-paddleocr-vl"
+port = 30007
+model = "paddleocr-vl-1.6"     # served-model-name (the ocr-local router tier's `model`)
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 5120
+residency = "resident"
+up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
 
 # One guarded operation owns the model swap, functional gate, router update,
 # and complete model+router rollback. This single-GPU plan validates the newly

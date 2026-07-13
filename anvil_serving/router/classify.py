@@ -42,6 +42,13 @@ from .internal import InternalRequest, estimate_tokens
 # naming the "chat-fast" preset directly in the wire `model` field
 # (intent.py's declared-preset path) or, as defense in depth, by the
 # structural `modality` marker this module's classify() recognizes below.
+# "ocr" (gpu-reservations:T011) is the document-OCR class the `ocr` preset
+# (intent.py) maps to: extract text/tables/formulas from image content with a
+# vision-capable OCR tier (e.g. a resident PaddleOCR-VL serve). It is a
+# DECLARED-PRESET-ONLY class: this module never infers it (no Tier-0 keywords
+# — a text-keyword guess at "the caller wants OCR" would misroute ordinary
+# chat), so it is reachable only by naming the "ocr" preset in the wire
+# `model` field.
 WORK_CLASSES = (
     "chat",
     "chat-fast",
@@ -50,6 +57,7 @@ WORK_CLASSES = (
     "planning",
     "review",
     "long-context",
+    "ocr",
 )
 
 # Above this estimated WORD count a request is "long-context" regardless of what

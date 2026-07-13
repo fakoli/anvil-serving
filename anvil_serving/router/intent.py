@@ -116,6 +116,16 @@ PRESETS: tuple[Preset, ...] = (
         ),
         work_class="long-context",
     ),
+    Preset(
+        id="ocr",
+        name="OCR",
+        description=(
+            "Document OCR and parsing: extract text, tables, and formulas from "
+            "a document image sent as image content in the request. Route to a "
+            "vision-capable OCR tier (e.g. a resident PaddleOCR-VL serve)."
+        ),
+        work_class="ocr",
+    ),
 )
 
 # Caller-facing preset id -> classifier-facing work class. DERIVED from the

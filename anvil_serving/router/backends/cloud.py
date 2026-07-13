@@ -67,6 +67,7 @@ from ..dialects.translate import (
     anthropic_messages_to_openai,
     anthropic_tool_choice_to_openai,
     anthropic_tools_to_openai,
+    has_image_artifacts,
     has_tool_artifacts,
     openai_messages_to_anthropic,
     openai_tool_choice_to_anthropic,
@@ -661,11 +662,28 @@ class CloudBackend:
         preserve_tools = (
             request.dialect in _SUPPORTED_DIALECTS and has_tool_artifacts(raw)
         )
+        # Wire fidelity for image-carrying requests (gpu-reservations:T011):
+        # the flattened request.messages keep only text, so an OCR/vision
+        # request relayed from the flattened form silently loses the image the
+        # caller sent — the tier then answers a text-only prompt and the
+        # failure is invisible. SAME-DIALECT only: the raw messages are
+        # forwarded verbatim (like the same-dialect tool path). Cross-dialect
+        # image translation is deliberately out of scope — such a request
+        # keeps the pre-T011 flattened behaviour.
+        preserve_images = (
+            request.dialect in _SUPPORTED_DIALECTS
+            and request.dialect == self._tier.dialect
+            and has_image_artifacts(raw)
+        )
 
         if self._tier.dialect == DIALECT_ANTHROPIC:
             # Anthropic's messages array is user/assistant only; the system
             # prompt rides the top-level `system` field.
-            if preserve_tools and request.dialect == DIALECT_ANTHROPIC:
+            # preserve_images implies request.dialect == tier dialect, so it
+            # always selects this verbatim branch, never the translated one.
+            if preserve_images or (
+                preserve_tools and request.dialect == DIALECT_ANTHROPIC
+            ):
                 msgs: List[Dict[str, Any]] = [
                     dict(m) for m in raw.get("messages") or ()
                     if isinstance(m, Mapping) and m.get("role") != "system"
@@ -721,7 +739,9 @@ class CloudBackend:
             return body
 
         # openai-compatible: the system prompt rides as a role=system message.
-        if preserve_tools and request.dialect == DIALECT_OPENAI:
+        # preserve_images implies same-dialect (see above), so it always takes
+        # this verbatim branch.
+        if preserve_images or (preserve_tools and request.dialect == DIALECT_OPENAI):
             msgs = [
                 dict(m) for m in raw.get("messages") or ()
                 if isinstance(m, Mapping)

@@ -52,7 +52,7 @@ anvil-serving routes with evidence:
 Callers send a workload intent in the `model` field:
 
 ```text
-planning   quick-edit   review   chat   chat-fast   long-context
+planning   quick-edit   review   chat   chat-fast   long-context   ocr
 ```
 
 The router maps that intent to candidate tiers, filters them by hard constraints, ranks by the

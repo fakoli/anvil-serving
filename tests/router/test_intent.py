@@ -220,6 +220,19 @@ def test_custom_preset_outside_taxonomy_has_none_work_class():
     assert intent.candidate_tiers == ("cloud",)
 
 
+# ── ocr preset (gpu-reservations:T011) ───────────────────────────────────────
+def test_ocr_preset_resolves_declared_with_ocr_work_class():
+    # "ocr" is a declared-preset-only work class: the classifier never infers
+    # it (no Tier-0 keywords), but naming the preset routes to the configured
+    # OCR pool with the taxonomy work class as its profile key.
+    intent = resolve(_req("ocr"), CONFIG)
+    assert intent.source == "declared-preset"
+    assert intent.preset == "ocr"
+    assert intent.work_class == "ocr"
+    assert intent.work_class in classify_mod.WORK_CLASSES
+    assert intent.candidate_tiers == CONFIG.presets["ocr"]
+
+
 # ── conflicting-keyword inference is ambiguous -> safer tier (AC3) ────────────
 def test_conflicting_keywords_route_to_safer_tier():
     # "review" + "implement" name two classes -> classifier not confident ->
