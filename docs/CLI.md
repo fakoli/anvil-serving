@@ -98,7 +98,7 @@ focused `--help`.
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | `--dry-run` |
-| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--compose`<br>`--recreate` |
+| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--compose`<br>`--recreate`<br>`--evict`<br>`--drain-timeout`<br>`--router-url` |
 | `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest` |
 | `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
 | `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
@@ -276,7 +276,7 @@ See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 | Action | What it does |
 |--------|--------------|
 | `status` | Docker + `/health` state for every manifest serve. |
-| `up` | Start (restart/unpause/run the manifest `up`); `--recreate` forces a fresh `up`; `up --compose FILE` brings up an ad-hoc compose serve not in the manifest. |
+| `up` | Start (restart/unpause/run the manifest `up`); `--recreate` forces a fresh `up`; `up --compose FILE` brings up an ad-hoc compose serve not in the manifest; `--evict` lets an over-budget `on-demand` acquisition stop `evictable` reservations through a drained ADR-0018 transition (`--drain-timeout`, `--router-url`). |
 | `down` | `docker stop` the serves, then re-checks state: a container revived by its restart policy (GPU not actually freed) is a loud warning and exit 1. |
 | `rm` | `docker rm -f`; an unrecognised name is treated literally as a container (evict an experiment squatting a port). **Irreversible, so it prompts `[y/N]` — pass `--yes` in scripts/automation** (no TTY answers No and nothing is removed). |
 | `adopt` | Bring an externally-started manifest serve under compose management (recreates via `docker rm -f` + `up`, so it prompts like `rm`; `--yes` skips). |
@@ -301,6 +301,24 @@ MiB plus each declared reservation with its observed docker state — and the
 read-only MCP `reservation_status` tool returns it structurally, so agents can
 answer "can model X fit right now?" without starting anything. Manifests
 without these fields behave exactly as before.
+
+**Eviction via drain (ADR-0017 §5 + ADR-0018).** With `up --evict`, an
+over-budget acquisition whose requester declares `residency = "on-demand"` may
+stop committed `evictable` reservations on the same `gpu_role` instead of
+failing — composing the ADR-0018 transition per victim: quiesce the victim's
+declared `router_tier`, drain its counted in-flight generations (the router's
+`AdmissionLease` accounting, bounded by `--drain-timeout`, default 120 s)
+through the deployed router at `--router-url` (default `http://127.0.0.1:8000`),
+and only then stop the container — the reservation release. Victims are chosen
+largest-first (fewest serves disturbed); a victim without a `router_tier` has
+no router admission to drain and is stopped directly. `resident` reservations
+are **never** candidates: when the deficit exceeds every evictable reservation
+combined — or the requester is not `on-demand` — the command refuses loudly
+with the ledger and runs no container command, exactly like plain admission. A
+quiesce/drain refusal aborts before any container mutation and readmits
+already-quiesced tiers (guarded, so an unready tier stays fail-closed); after a
+successful eviction the victim's tier deliberately stays quiesced until
+`router readmit` passes health + exact model identity.
 
 ```bash
 anvil-serving serves up heavy --manifest ./serves.toml --dry-run
