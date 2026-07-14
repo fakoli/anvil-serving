@@ -1,2 +1,5 @@
 docs/CLI-COMMAND-MANIFEST.json text eol=lf
+# POSIX shell scripts must stay LF: a CRLF working copy injects \r that breaks
+# the shebang / `set` lines under Git Bash on Windows.
+*.sh text eol=lf
 docs/findings/*-evidence/** -text

@@ -11,8 +11,6 @@ import os
 import textwrap
 import types
 
-import pytest
-
 from anvil_serving import reservations, serves
 
 
