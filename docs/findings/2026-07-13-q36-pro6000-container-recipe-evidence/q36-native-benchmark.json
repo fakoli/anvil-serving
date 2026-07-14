@@ -1,0 +1,27 @@
+{
+  "observed_date": "2026-07-13",
+  "engine": "q36",
+  "engine_revision": "458eb018997565445f0ce0a4887ed7cdfeab756b",
+  "model": "Qwen3.6-35B-A3B-MXFP4_MOE.gguf",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "power_limit_watts": 300,
+  "kv": "fp16",
+  "mtp": false,
+  "repetitions": 3,
+  "command_arguments": [
+    "-p", "2048,8192,32768,90112",
+    "-n", "128",
+    "-d", "0,32768,90112",
+    "-r", "3"
+  ],
+  "results": [
+    {"test": "pp2048", "tokens_per_second": 11951.6, "standard_deviation": 384.8},
+    {"test": "pp8192", "tokens_per_second": 11273.7, "standard_deviation": 1.8},
+    {"test": "pp32768", "tokens_per_second": 9937.1, "standard_deviation": 27.9},
+    {"test": "pp90112", "tokens_per_second": 7784.6, "standard_deviation": 54.6},
+    {"test": "tg128", "tokens_per_second": 252.7, "standard_deviation": 0.4},
+    {"test": "tg128 @ d32768", "tokens_per_second": 217.6, "standard_deviation": 0.1},
+    {"test": "tg128 @ d90112", "tokens_per_second": 171.6, "standard_deviation": 0.2}
+  ],
+  "caveat": "q36-only synthetic run. No back-to-back llama.cpp control was run, and the 300 W PRO 6000 is not directly comparable to q36's published 400 W RTX 5090 result."
+}
