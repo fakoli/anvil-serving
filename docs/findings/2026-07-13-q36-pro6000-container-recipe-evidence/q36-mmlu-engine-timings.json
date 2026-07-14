@@ -1,0 +1,83 @@
+{
+  "observed_date": "2026-07-13",
+  "run_start_utc": "2026-07-14T01:39:38.7791935Z",
+  "run_end_utc": "2026-07-14T01:43:23.9328909Z",
+  "engine": "q36",
+  "engine_revision": "458eb018997565445f0ce0a4887ed7cdfeab756b",
+  "model": "qwen3.6-35b-a3b",
+  "model_file": "Qwen3.6-35B-A3B-MXFP4_MOE.gguf",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "configuration": {
+    "allocated_context_tokens": 32768,
+    "kv": "fp16",
+    "mtp": false,
+    "temperature": 0,
+    "state_cache": false,
+    "repetitions": 2,
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 4096,
+    "max_completion_tokens": 4352
+  },
+  "source": {
+    "dataset": "TIGER-Lab/MMLU-Pro",
+    "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+    "last_modified": "2026-05-02T06:26:05Z",
+    "age_days": 72,
+    "age_class": "aging",
+    "fixture": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+    "fixture_sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636"
+  },
+  "summary": [
+    {
+      "repetition": 1,
+      "stable_passes": 8,
+      "items": 10,
+      "prompt_tokens": 1425,
+      "completion_tokens": 27693,
+      "weighted_prefill_tokens_per_second": 1715.4,
+      "median_prefill_tokens_per_second": 2503.0,
+      "weighted_decode_tokens_per_second": 248.7,
+      "median_decode_tokens_per_second": 249.1,
+      "attempt_latency_sum_seconds": 112.343
+    },
+    {
+      "repetition": 2,
+      "stable_passes": 8,
+      "items": 10,
+      "prompt_tokens": 1425,
+      "completion_tokens": 27693,
+      "weighted_prefill_tokens_per_second": 2536.5,
+      "median_prefill_tokens_per_second": 2497.0,
+      "weighted_decode_tokens_per_second": 248.5,
+      "median_decode_tokens_per_second": 248.8,
+      "attempt_latency_sum_seconds": 112.127
+    }
+  ],
+  "attempts": [
+    {"id":"mmlu-pro-5-health","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":93,"cached_tokens":0,"prefill_tokens_per_second":291,"completion_tokens":2125,"decode_tokens_per_second":249.5,"ending_context_tokens":2218,"finish_reason":"stop","status":"passed","final":"J"},
+    {"id":"mmlu-pro-5-health","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":93,"cached_tokens":0,"prefill_tokens_per_second":1793,"completion_tokens":2125,"decode_tokens_per_second":250.1,"ending_context_tokens":2218,"finish_reason":"stop","status":"passed","final":"J"},
+    {"id":"mmlu-pro-10-physics","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":153,"cached_tokens":0,"prefill_tokens_per_second":2631,"completion_tokens":1484,"decode_tokens_per_second":250.4,"ending_context_tokens":1637,"finish_reason":"stop","status":"passed","final":"E"},
+    {"id":"mmlu-pro-10-physics","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":153,"cached_tokens":0,"prefill_tokens_per_second":2639,"completion_tokens":1484,"decode_tokens_per_second":249.4,"ending_context_tokens":1637,"finish_reason":"stop","status":"passed","final":"E"},
+    {"id":"mmlu-pro-15-business","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":226,"cached_tokens":0,"prefill_tokens_per_second":3665,"completion_tokens":2091,"decode_tokens_per_second":250.6,"ending_context_tokens":2317,"finish_reason":"stop","status":"passed","final":"F"},
+    {"id":"mmlu-pro-15-business","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":226,"cached_tokens":0,"prefill_tokens_per_second":3683,"completion_tokens":2091,"decode_tokens_per_second":250.6,"ending_context_tokens":2317,"finish_reason":"stop","status":"passed","final":"F"},
+    {"id":"mmlu-pro-20-biology","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":134,"cached_tokens":0,"prefill_tokens_per_second":2395,"completion_tokens":1740,"decode_tokens_per_second":251.3,"ending_context_tokens":1874,"finish_reason":"stop","status":"passed","final":"B"},
+    {"id":"mmlu-pro-20-biology","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":134,"cached_tokens":0,"prefill_tokens_per_second":2401,"completion_tokens":1740,"decode_tokens_per_second":250.6,"ending_context_tokens":1874,"finish_reason":"stop","status":"passed","final":"B"},
+    {"id":"mmlu-pro-25-chemistry","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":113,"cached_tokens":0,"prefill_tokens_per_second":2062,"completion_tokens":4352,"decode_tokens_per_second":249.8,"ending_context_tokens":4465,"finish_reason":"length","status":"failed","final":null,"failure_class":"visible_answer_budget_exhausted"},
+    {"id":"mmlu-pro-25-chemistry","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":113,"cached_tokens":0,"prefill_tokens_per_second":2064,"completion_tokens":4352,"decode_tokens_per_second":249.5,"ending_context_tokens":4465,"finish_reason":"length","status":"failed","final":null,"failure_class":"visible_answer_budget_exhausted"},
+    {"id":"mmlu-pro-30-computer-science","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":176,"cached_tokens":0,"prefill_tokens_per_second":2947,"completion_tokens":4352,"decode_tokens_per_second":248.7,"ending_context_tokens":4528,"finish_reason":"length","status":"failed","final":null,"failure_class":"visible_answer_budget_exhausted"},
+    {"id":"mmlu-pro-30-computer-science","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":176,"cached_tokens":0,"prefill_tokens_per_second":2969,"completion_tokens":4352,"decode_tokens_per_second":247.9,"ending_context_tokens":4528,"finish_reason":"length","status":"failed","final":null,"failure_class":"visible_answer_budget_exhausted"},
+    {"id":"mmlu-pro-35-economics","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":106,"cached_tokens":0,"prefill_tokens_per_second":2001,"completion_tokens":1953,"decode_tokens_per_second":248.7,"ending_context_tokens":2059,"finish_reason":"stop","status":"passed","final":"F"},
+    {"id":"mmlu-pro-35-economics","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":106,"cached_tokens":0,"prefill_tokens_per_second":2016,"completion_tokens":1953,"decode_tokens_per_second":248.3,"ending_context_tokens":2059,"finish_reason":"stop","status":"passed","final":"F"},
+    {"id":"mmlu-pro-40-engineering","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":147,"cached_tokens":0,"prefill_tokens_per_second":2611,"completion_tokens":4172,"decode_tokens_per_second":246.8,"ending_context_tokens":4319,"finish_reason":"stop","status":"passed","final":"C"},
+    {"id":"mmlu-pro-40-engineering","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":147,"cached_tokens":0,"prefill_tokens_per_second":2593,"completion_tokens":4172,"decode_tokens_per_second":246.3,"ending_context_tokens":4319,"finish_reason":"stop","status":"passed","final":"C"},
+    {"id":"mmlu-pro-45-philosophy","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":118,"cached_tokens":0,"prefill_tokens_per_second":2120,"completion_tokens":2090,"decode_tokens_per_second":247.3,"ending_context_tokens":2208,"finish_reason":"stop","status":"passed","final":"B"},
+    {"id":"mmlu-pro-45-philosophy","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":118,"cached_tokens":0,"prefill_tokens_per_second":2127,"completion_tokens":2090,"decode_tokens_per_second":247.1,"ending_context_tokens":2208,"finish_reason":"stop","status":"passed","final":"B"},
+    {"id":"mmlu-pro-65-law","repetition":1,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":159,"cached_tokens":0,"prefill_tokens_per_second":2844,"completion_tokens":3334,"decode_tokens_per_second":246.4,"ending_context_tokens":3493,"finish_reason":"stop","status":"passed","final":"I"},
+    {"id":"mmlu-pro-65-law","repetition":2,"allocated_context_tokens":32768,"starting_context_tokens":0,"prompt_tokens":159,"cached_tokens":0,"prefill_tokens_per_second":2839,"completion_tokens":3334,"decode_tokens_per_second":248.0,"ending_context_tokens":3493,"finish_reason":"stop","status":"passed","final":"I"}
+  ],
+  "engine_log_lines": 20,
+  "all_cached_tokens_zero": true,
+  "paired_outputs_byte_identical": true,
+  "rate_method": "Per-attempt rates are q36 server log values. Weighted summaries are total tokens divided by the sum of tokens/rate for the ten attempts in that repetition.",
+  "interpretation": "Eight categories passed both repetitions. Chemistry and computer science exhausted the 4352-token completion cap in both repetitions without emitting FINAL; no completed answer was graded wrong."
+}

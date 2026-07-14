@@ -1,0 +1,81 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39040/v1",
+  "model": "qwen3.6-35b-a3b",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 256
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "1.3s got=\"<think>\\nHere's a thinking process:\\n\\n1.  **Analyze \" finish='length' visible=871 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": false,
+      "detail": "error: Extra data: line 1 column 32 (char 31)"
+    }
+  ],
+  "observations": [
+    {
+      "content": "<think>\nHere's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Input:** A list `xs`\n   - **Output:** The sum of the list\n   - **Constraint:** Python one-liner\n\n2.  **Identify Core Functionality:**\n   - In Python, the built-in function `sum()` is specifically designed to calculate the sum of an iterable.\n   - `sum(xs)` directly returns the sum of all elements in the list `xs`.\n\n3.  **Check Constraints:**\n   - Is it a one-liner? Yes, `sum(xs)` is a single expression.\n   - Does it return the sum? Yes.\n   - Is it valid Python? Yes.\n\n4.  **Consider Alternatives (for completeness, though not needed):**\n   - `reduce(lambda a, b: a + b, xs)` (requires `from functools import reduce`, not a true one-liner without imports, and less efficient)\n   - `sum([x for x in xs])` (redundant)\n   - `eval('+'.join(map(str, xs)))` (hacky, unsafe, inefficient)\n   - `sum(xs)`",
+      "finish_reason": "length",
+      "content_chars": 871,
+      "content_excerpt": "<think>\nHere's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Input:** A list `xs`\n   - **Output:** The sum of the list\n   - **Constraint:** Python one-liner\n\n2.  **Identify Core Functional",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 24,
+        "completion_tokens": 256,
+        "total_tokens": 280
+      },
+      "test": "smoke",
+      "seconds": 1.282,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "<think>\nHere's a thinking process:\n\n1.  **Analyze User Input:**\n   - The user explicitly requests: \"Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\"\n   - The expected output is strictly a JSON object with specific keys and values.\n   - No additional text, explanations, or formatting should be included.\n\n2.  **Identify Constraints:**\n   - Output must be ONLY the JSON object.\n   - Format: `{\"language\":\"python\",\"ok\":true}`\n   - No prose, no markdown, no extra characters.\n\n3.  **Formulate Response:**\n   - Directly output the exact JSON string requested.\n   - Ensure it matches the specification exactly.\n\n   Output: `{\"language\":\"python\",\"ok\":true}`\n\n4.  **Self-Correction/Verification:**\n   - Check against constraints: Is it only JSON? Yes.\n   - Does it match the requested structure? Yes.\n   - Is there any prose? No.\n   - Ready. Output matches exactly.\u2705\n</think>\n\n{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 923,
+      "content_excerpt": "<think>\nHere's a thinking process:\n\n1.  **Analyze User Input:**\n   - The user explicitly requests: \"Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\"\n   - The expected output is s",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 26,
+        "completion_tokens": 240,
+        "total_tokens": 266
+      },
+      "test": "json",
+      "seconds": 1.022
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "forbidden",
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": [
+      "disallowed finish_reason: [\"'length'\"]"
+    ]
+  },
+  "passed": false
+}
