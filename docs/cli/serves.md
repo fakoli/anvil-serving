@@ -22,6 +22,18 @@ manifest-owned; a recipe is a reusable model-and-engine configuration managed un
 | `serves logs` | Read bounded serve logs. |
 | `serves multiplex` | Run the single-resident model multiplexer. |
 
+Every leaf now uses the same focused-help layout: exact usage, reviewed copyable
+examples, configuration precedence, behavior and safety notes, local arguments,
+global options, and the direct reference link. For example:
+
+```bash
+anvil-serving serves up --help
+anvil-serving serves switch --help
+```
+
+The command tree owns those examples and notes, so the machine-readable manifest,
+terminal help, and reference audit cannot drift independently.
+
 ## Select manifests and groups
 
 Serve lifecycle commands operate on the configured manifest set. Use `--group NAME`
@@ -48,7 +60,9 @@ anvil-serving serves logs OCR_SERVE_NAME
 ```
 
 Only manifest-owned resources are mutated. Destructive leaves require confirmation,
-and `down` does not imply removal.
+and `down` does not imply removal. `--confirm` is the only public consent spelling;
+the removed `serves rm --yes` and `serves adopt --yes` forms fail with migration
+guidance before reaching Docker.
 
 ## Render and adopt
 

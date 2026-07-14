@@ -1,8 +1,11 @@
 {
   "commands": [
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#init",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -143,8 +146,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -285,8 +291,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -472,8 +481,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -654,8 +666,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -835,8 +850,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1016,8 +1034,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1197,8 +1218,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1415,8 +1439,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1601,8 +1628,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1758,8 +1788,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1938,8 +1971,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2140,8 +2176,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2332,8 +2371,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2534,8 +2576,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2704,8 +2749,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2871,8 +2919,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -3013,8 +3064,26 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Rendering never starts a container or changes router trust.",
+        "Use --no-manifest --out - for a non-persistent preview."
+      ],
+      "configuration_notes": [
+        "--out and --manifest-out resolve from the invocation directory.",
+        "The default bind is 127.0.0.1; public exposure must be explicit."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves render --model /models/qwen --gpu 0 --served-name heavy --out docker-compose.heavy.yml",
+          "summary": "Render a Heavy serve and write its Compose definition."
+        },
+        {
+          "invocation": "anvil-serving serves render --model /models/qwen --gpu 0 --served-name heavy --no-manifest --out -",
+          "summary": "Inspect the generated Compose definition without changing a manifest."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3145,16 +3214,6 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -3170,8 +3229,30 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Preview is offline and does not start, recreate, or evict a container.",
+        "Apply requires --confirm; eviction uses a bounded router drain."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves up heavy --dry-run",
+          "summary": "Preview the exact Heavy serve start plan."
+        },
+        {
+          "invocation": "anvil-serving serves up heavy --confirm",
+          "summary": "Apply the reviewed Heavy serve start plan."
+        },
+        {
+          "invocation": "anvil-serving serves up --group ocr --dry-run",
+          "summary": "Preview every serve in the OCR group."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3419,8 +3500,26 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Preview does not stop a container.",
+        "Apply requires --confirm and verifies the stopped state."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves down heavy --dry-run",
+          "summary": "Preview stopping the Heavy serve."
+        },
+        {
+          "invocation": "anvil-serving serves down heavy --confirm",
+          "summary": "Stop Heavy and verify that it remains stopped."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3618,8 +3717,26 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Preview resolves names without removing a container.",
+        "Apply requires --confirm; the removed --yes spelling is refused with guidance."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves rm experiment --dry-run",
+          "summary": "Preview removing one experiment container."
+        },
+        {
+          "invocation": "anvil-serving serves rm experiment --confirm",
+          "summary": "Remove the reviewed container without a second consent spelling."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3787,8 +3904,11 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Confirm a direct irreversible leaf operation.",
-          "tombstone": null,
+          "summary": "Removed option.",
+          "tombstone": {
+            "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+            "replacement": "--confirm"
+          },
           "value_name": null
         }
       ],
@@ -3817,8 +3937,26 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Preview validates the manifest-owned replacement without recreating it.",
+        "Apply requires --confirm and verifies the adopted serve."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves adopt heavy --dry-run",
+          "summary": "Preview recreating Heavy under manifest ownership."
+        },
+        {
+          "invocation": "anvil-serving serves adopt heavy --confirm",
+          "summary": "Adopt the reviewed Heavy container."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3986,8 +4124,11 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Confirm a direct irreversible leaf operation.",
-          "tombstone": null,
+          "summary": "Removed option.",
+          "tombstone": {
+            "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+            "replacement": "--confirm"
+          },
           "value_name": null
         }
       ],
@@ -4016,8 +4157,32 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Omitting MODEL is read-only and lists ready or blocked choices.",
+        "Apply requires --confirm, journals the transaction, and automatically rolls back on failure.",
+        "Switching runtime wiring does not promote quality evidence or router trust."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory.",
+        "Recipe registry precedence: --registry, ./serve-recipes.toml, ./configs/serve-recipes.toml, then the operator config home."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves switch heavy",
+          "summary": "List activation-ready recipes for the Heavy role."
+        },
+        {
+          "invocation": "anvil-serving serves switch heavy gpt-oss-120b --dry-run",
+          "summary": "Preview switching Heavy to the GPT-OSS recipe."
+        },
+        {
+          "invocation": "anvil-serving serves switch heavy gpt-oss-120b --confirm",
+          "summary": "Apply the reviewed Heavy switch."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4195,7 +4360,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": true,
-          "summary": "Recipe model id or unique basename.",
+          "summary": "Compatibility spelling for the positional MODEL selector.",
           "tombstone": null,
           "value_name": "MODEL"
         }
@@ -4213,8 +4378,30 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Preview resolves the full transaction without changing containers or router state.",
+        "Apply requires --confirm, runs bounded preflight, and automatically compensates failures."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves promote heavy-v2 --dry-run",
+          "summary": "Preview the complete promotion transaction."
+        },
+        {
+          "invocation": "anvil-serving serves promote heavy-v2 --confirm",
+          "summary": "Apply a reviewed promotion plan."
+        },
+        {
+          "invocation": "anvil-serving serves promote heavy-v2 --rollback --confirm",
+          "summary": "Restore the plan's declared rollback serve and router state."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4427,8 +4614,25 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Read-only and bounded; it never starts or stops a serve."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves status",
+          "summary": "Show every manifest-owned serve."
+        },
+        {
+          "invocation": "anvil-serving serves status heavy --json",
+          "summary": "Return one serve status in the stable JSON envelope."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4604,8 +4808,25 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Read-only and bounded; the implicit all group is included."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves groups",
+          "summary": "List every group and its members."
+        },
+        {
+          "invocation": "anvil-serving serves groups --json",
+          "summary": "Return the group catalog in the stable JSON envelope."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4761,8 +4982,30 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Bounded by default; --follow deliberately switches to an unbounded stream.",
+        "JSON is available only for bounded output, not --follow."
+      ],
+      "configuration_notes": [
+        "Manifest precedence: --manifest, ./serves.toml, then $ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves logs heavy",
+          "summary": "Read the last 200 Heavy serve log lines."
+        },
+        {
+          "invocation": "anvil-serving serves logs heavy --tail 100 --since 10m",
+          "summary": "Read a smaller recent window."
+        },
+        {
+          "invocation": "anvil-serving serves logs heavy --follow",
+          "summary": "Follow new log output until interrupted."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4958,8 +5201,26 @@
       "visible": true
     },
     {
+      "behavior_notes": [
+        "Runs in the foreground until interrupted.",
+        "Foreground protocol output does not support --json."
+      ],
+      "configuration_notes": [
+        "--registry selects an explicit model registry; otherwise the packaged registry is used.",
+        "The default bind is 127.0.0.1."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/serves.md",
+      "examples": [
+        {
+          "invocation": "anvil-serving serves multiplex --self-check",
+          "summary": "Validate the multiplexer contract without starting a server."
+        },
+        {
+          "invocation": "anvil-serving serves multiplex --host 127.0.0.1 --port 30000",
+          "summary": "Run the loopback-only multiplexer in the foreground."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5105,8 +5366,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -5247,8 +5511,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#catalog-sync",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5444,8 +5711,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#artifact-pull",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5691,8 +5961,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#model-scoring",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5838,8 +6111,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#recipes",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -5980,8 +6256,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#discover-recipes",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6137,8 +6416,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#discover-recipes",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6294,8 +6576,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6481,8 +6766,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6668,8 +6956,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6845,8 +7136,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#load-a-recipe",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -7032,8 +7326,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#cache-prune",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7174,8 +7471,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#cache-prune",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -7404,8 +7704,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7549,8 +7852,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7694,8 +8000,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7839,8 +8148,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7981,8 +8293,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -8178,8 +8493,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -8551,8 +8869,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -8696,8 +9017,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -8863,8 +9187,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -9043,8 +9370,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -9185,8 +9515,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -9562,8 +9895,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -9969,8 +10305,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -10114,8 +10453,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -10256,8 +10598,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -10398,8 +10743,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -10540,8 +10888,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -10682,8 +11033,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -10824,8 +11178,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11001,8 +11358,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11166,8 +11526,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11363,8 +11726,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11560,8 +11926,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11765,8 +12134,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11970,8 +12342,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -12167,8 +12542,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -12352,8 +12730,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -12494,8 +12875,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -12701,8 +13085,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -12898,8 +13285,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13095,8 +13485,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -13237,8 +13630,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -13379,10 +13775,13 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "tts-serve"
       ],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13558,10 +13957,13 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "tts-serve"
       ],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13737,10 +14139,13 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "tts-serve"
       ],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13901,10 +14306,13 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "tts-serve"
       ],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -14065,8 +14473,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -14207,11 +14618,14 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -14356,11 +14770,14 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -14542,11 +14959,14 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -14728,11 +15148,14 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -14914,11 +15337,14 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15079,11 +15505,14 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15245,11 +15674,14 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15394,11 +15826,14 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15543,8 +15978,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#profiles",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15685,8 +16123,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#profiles",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15827,8 +16268,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#profiles",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15969,8 +16413,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16111,8 +16558,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16253,8 +16703,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16395,8 +16848,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16537,8 +16993,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16682,8 +17141,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16827,8 +17289,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16972,8 +17437,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17117,8 +17585,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17262,8 +17733,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17407,8 +17881,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17549,8 +18026,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17691,8 +18171,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -17886,8 +18369,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -18028,8 +18514,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -18209,8 +18698,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -18351,8 +18843,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -18509,8 +19004,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#mcp",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -18667,8 +19165,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#mcp",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -18835,8 +19336,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#mcp",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -19003,8 +19507,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#mcp",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -19161,8 +19668,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#controller",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -19303,8 +19813,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#controller",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -19463,8 +19976,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#controller",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -19618,8 +20134,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -19760,8 +20279,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -19914,8 +20436,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -20068,8 +20593,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -20210,8 +20738,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -20366,8 +20897,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -20562,8 +21096,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -20716,8 +21253,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [
         "windows"
       ],
@@ -20864,8 +21404,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [
         "windows"
       ],
@@ -21050,8 +21593,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [
         "windows",
         "macos"
@@ -21234,8 +21780,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [
         "windows"
       ],
@@ -21417,8 +21966,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#host",
+      "examples": [],
       "execution_host_os": [
         "windows"
       ],
@@ -21595,8 +22147,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#doctor",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21749,8 +22304,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#upgrade",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -21931,8 +22489,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#topology",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -22073,8 +22634,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#topology",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -22215,8 +22779,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#topology",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -22357,8 +22924,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#topology",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -22499,8 +23069,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -22641,8 +23214,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -22863,8 +23439,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -23065,8 +23644,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -23267,8 +23849,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -23479,8 +24064,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#dashboard",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -23621,8 +24209,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#dashboard",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -23797,8 +24388,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -23939,8 +24533,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -24125,8 +24722,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -24311,8 +24911,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -24517,8 +25120,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -24723,8 +25329,11 @@
       "visible": true
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -24868,8 +25477,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -25013,8 +25625,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -25158,8 +25773,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -25303,8 +25921,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -25448,8 +26069,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -25593,8 +26217,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -25738,8 +26365,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -25883,8 +26513,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -26028,8 +26661,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -26173,8 +26809,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -26318,8 +26957,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -26463,8 +27105,11 @@
       "visible": false
     },
     {
+      "behavior_notes": [],
+      "configuration_notes": [],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/CLI.md",
+      "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -26608,5 +27253,5 @@
       "visible": false
     }
   ],
-  "schema_version": 2
+  "schema_version": 3
 }

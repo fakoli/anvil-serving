@@ -309,8 +309,8 @@ def test_leaf_positional_and_option_order_reaches_same_handler(monkeypatch, argv
     [
         (["serves", "up"], {"--manifest", "--dry-run", "--compose", "--recreate"}),
         (["serves", "down"], {"--manifest", "--dry-run"}),
-        (["serves", "rm"], {"--manifest", "--dry-run", "--yes"}),
-        (["serves", "adopt"], {"--manifest", "--dry-run", "--yes"}),
+        (["serves", "rm"], {"--manifest", "--dry-run", "--confirm"}),
+        (["serves", "adopt"], {"--manifest", "--dry-run", "--confirm"}),
     ],
 )
 def test_serves_focused_help_matches_leaf_action_flags(capsys, path, flags):
