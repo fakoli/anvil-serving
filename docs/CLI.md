@@ -277,7 +277,7 @@ See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 | Action | What it does |
 |--------|--------------|
 | `status` | Docker + `/health` state for every manifest serve (or, with `--group`/names, just the selected ones — the reservation ledger still spans the whole set). |
-| `up` | Start (restart/unpause/run the manifest `up`); `--recreate` forces a fresh `up`; `up --compose FILE` brings up an ad-hoc compose serve not in the manifest; `--evict` lets an over-budget `on-demand` acquisition stop `evictable` reservations through a drained ADR-0018 transition (`--drain-timeout`, `--router-url`). |
+| `up` | Ensures the deployed router is healthy first (see below), then starts serves (restart/unpause/run the manifest `up`); `--recreate` forces a fresh `up`; `up --compose FILE` brings up an ad-hoc compose serve not in the manifest; `--evict` lets an over-budget `on-demand` acquisition stop `evictable` reservations through a drained ADR-0018 transition (`--drain-timeout`, `--router-url`); `--no-router` skips the router-ensure step. |
 | `down` | `docker stop` the serves, then re-checks state: a container revived by its restart policy (GPU not actually freed) is a loud warning and exit 1. |
 | `rm` | `docker rm -f`; an unrecognised name is treated literally as a container (evict an experiment squatting a port). **Irreversible, so it prompts `[y/N]` — pass `--yes` in scripts/automation** (no TTY answers No and nothing is removed). |
 | `adopt` | Bring an externally-started manifest serve under compose management (recreates via `docker rm -f` + `up`, so it prompts like `rm`; `--yes` skips). |
@@ -287,7 +287,8 @@ See [Serves & eval](SERVES-AND-EVAL.md) for the manifest format and workflows.
 | `promote` | Execute the manifest's complete quiesce → drain → Heavy swap → health/identity → direct preflight → router promotion/restart → post-restart readiness transaction. `--rollback` uses the same order; `--resume` reasserts quiescence and reruns every gate while reusing an already healthy target. |
 
 Common flags: `--manifest`, `--dry-run`; `rm`/`adopt` also take `--yes`;
-`up`/`down`/`status` also take `--group NAME` (repeatable).
+`up`/`down`/`status` also take `--group NAME` (repeatable); `up` also takes
+`--no-router` (skip the router-ensure step).
 
 **Serve groups (`--group`).** A `[[serve]]` entry may declare an optional
 `groups = ["a", "b"]` list (non-empty strings; a serve may belong to many
@@ -318,6 +319,30 @@ anvil-serving serves groups --manifest ./serves.toml
 anvil-serving serves up --group embedding --manifest ./serves.toml
 anvil-serving serves status --group llm-stack --manifest ./serves.toml
 anvil-serving serves down --group voice heavy --manifest ./serves.toml --confirm
+```
+
+**Router ensure (`serves up`).** Serves are only reachable behind the deployed
+router, so `serves up` ensures that router is healthy **before** starting any
+serve. It reuses the `router` verb's own machinery — the same health-check path
+as `anvil-serving router status` and the same bring-up path as `anvil-serving
+router up` — rather than re-deriving either. The step is idempotent: a router
+whose container is already running is left untouched (no restart) and `serves
+up` prints `router: already healthy`; only a genuinely down (absent/exited)
+router is brought up, printing `router: started`. (The loopback HTTP probe is
+positive confirmation, not a requirement: a router deployed with
+`ROUTER_PUBLISH=<tailnet-ip>` publishes `:8000` on that IP rather than
+`127.0.0.1`, so the loopback probe returns nothing even when the front door is
+up and docker-healthy — requiring a loopback `200` would needlessly restart
+every tailnet-published router.) `--dry-run`
+reports the action without performing it (`router: … would start (dry-run)`),
+and `--no-router` skips the whole step for offline/serve-only workflows
+(`router: skipped (--no-router)`). Bringing the router up is a safety net, not a
+gate: if the router fails to start, `serves up` reports it and still starts the
+serves. Only `serves up` ensures the router — `down`/`status` do not.
+
+```bash
+anvil-serving serves up --group voice --dry-run   # shows: router: already healthy
+anvil-serving serves up heavy --no-router         # skip the router-ensure step
 ```
 
 **GPU residency reservations (ADR-0017).** A `[[serve]]` entry may declare
