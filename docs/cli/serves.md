@@ -15,6 +15,7 @@ manifest-owned; a recipe is a reusable model-and-engine configuration managed un
 | `serves down` | Stop manifest-owned serves. |
 | `serves rm` | Remove a manifest-owned serve. |
 | `serves adopt` | Adopt an existing serve into manifest ownership. |
+| `serves switch` | Switch a deployment role to an activation-ready recipe. |
 | `serves promote` | Preflight and promote a staged recipe with rollback. |
 | `serves status` | Show bounded serve status. |
 | `serves groups` | List serve groups and their members. |
@@ -61,7 +62,36 @@ anvil-serving serves adopt --confirm
 serve under the same ownership contract; it does not silently claim arbitrary
 containers.
 
-## Promote a recipe
+## Switch Heavy by recipe
+
+For the common model-selection path, choose the deployment role and recipe directly:
+
+```bash
+anvil-serving serves switch heavy
+anvil-serving serves switch heavy --recipe ThinkingCap-Qwen3.6-27B-FP8 --dry-run
+anvil-serving serves switch heavy --recipe ThinkingCap-Qwen3.6-27B-FP8 --confirm
+anvil-serving serves switch heavy --recipe gpt-oss-120b --confirm
+```
+
+With no `--recipe`, the command lists the resolved registry path and marks each declared
+choice `ready` or `blocked` after validating its plan and effective Compose service; listing
+does not prompt for confirmation. `switch` accepts a full model id or an unambiguous basename. It only accepts recipes
+with a matching `[recipe.activation.ROLE]` entry, and verifies that the recipe's managed
+serve and served-model identity match the referenced promotion plan before any mutation.
+The existing promotion transaction still owns quiesce, drain, preflight, router update,
+and automatic rollback. Before apply, `switch` resolves the effective Compose service,
+binds it to the recipe's image/model/revision/flags/environment/GPU/port, compares the
+Compose service hash and live container contract, snapshots all router artifacts into the
+operation directory, compares the deployed router config and profile with the expected source
+state, and takes exclusive role and promotion locks. A matching active target is a no-op. Each real switch writes a durable operation
+journal and fresh gate evidence under the operator config directory instead of overwriting
+dated findings. A normal registry row is intentionally not enough to alter a live routing
+tier; add a reviewed activation mapping and promotion plan first. Controller and SSH
+transport parity remain tracked follow-up work; run this command on the resource owner.
+
+## Advanced: promote a plan
+
+For lower-level plan operation and recovery:
 
 ```bash
 anvil-serving serves promote PROMOTION_PLAN --dry-run

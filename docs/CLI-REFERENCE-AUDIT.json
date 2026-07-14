@@ -103,7 +103,7 @@
         "eval-preflight": 24,
         "eval-usage": 7,
         "host-gpus": 3,
-        "init": 29,
+        "init": 30,
         "mcp-serve": 24,
         "mcp-tools": 9,
         "models-cache-prune": 9,
