@@ -84,6 +84,7 @@ _HANDLER_PROGS = {
     "anvil_serving.preflight": "anvil-serving eval preflight",
     "anvil_serving.profile": "anvil-serving eval usage",
     "anvil_serving.router.serve": "anvil-serving router run",
+    "anvil_serving.router_endpoint": "anvil-serving router endpoint",
     "anvil_serving.router_manage": "anvil-serving router",
     "anvil_serving.serves": "anvil-serving serves",
     "anvil_serving.topology_cli": "anvil-serving topology",

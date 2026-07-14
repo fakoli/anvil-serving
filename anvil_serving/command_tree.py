@@ -402,12 +402,28 @@ def build_command_tree() -> CommandTree:
     router = _node(
         "router", "Manage the deployed router and its lifecycle.",
         children=(
-            _resource_node("run", "Run the router in the foreground.", "anvil_serving.router.serve", role="router", mutation="process", argv_prefix=(), output_policy="foreground", options=(
-                _option("--config", summary="Router TOML; alternatively configure ANVIL_MODE.", value_name="PATH"),
-                _option("--mode", summary="Configured router mode; alternatively use ANVIL_MODE.", value_name="agentic|flexibility"),
-                _option("--host", summary="Router bind host.", value_name="ADDRESS"),
-                _option("--port", summary="Router bind port.", value_name="PORT"),
-            )),
+            _resource_node(
+                "run", "Run the router in the foreground.", "anvil_serving.router.serve",
+                role="router", mutation="process", argv_prefix=(), output_policy="foreground",
+                options=(
+                    _option("--config", summary="Router TOML; alternatively configure ANVIL_MODE.", value_name="PATH"),
+                    _option("--mode", summary="Configured router mode; alternatively use ANVIL_MODE.", value_name="agentic|flexibility"),
+                    _option("--host", summary="Router bind host.", value_name="ADDRESS"),
+                    _option("--port", summary="Router bind port.", value_name="PORT"),
+                ),
+                examples=(
+                    _example("anvil-serving router run --config configs/example.toml", "Run one exact router configuration in the foreground."),
+                    _example("anvil-serving router run --mode agentic --host 127.0.0.1 --port 8000", "Resolve agentic mode and bind it to loopback."),
+                ),
+                configuration_notes=(
+                    "--config selects an exact TOML and bypasses mode resolution.",
+                    "Mode precedence is --mode, ANVIL_MODE, modes manifest, then the built-in default.",
+                ),
+                behavior_notes=(
+                    "Runs in the foreground until interrupted.",
+                    "The default bind is 127.0.0.1; a non-loopback bind requires an operator-provided authentication layer.",
+                ),
+            ),
             *(
                 _resource_node(
                     action,
@@ -426,6 +442,18 @@ def build_command_tree() -> CommandTree:
                             if action == "down"
                             else ("container", "dry_run", "no_verify")
                         ),
+                    ),
+                    examples=(
+                        _example(f"anvil-serving router {action} --dry-run", f"Preview the deployed router {action} operation."),
+                        _example(f"anvil-serving router {action} --confirm", f"Apply the reviewed router {action} operation."),
+                    ),
+                    configuration_notes=(
+                        ("--compose overrides the operator-home Compose file and packaged example." if action in {"up", "down"} else "--container defaults to the deployed anvil-router container."),
+                        ("--service defaults to router; router up also detects a conventional environment file." if action == "up" else "--service defaults to the router Compose service." if action == "down" else "Global target options select the resource owner when the router is remote."),
+                    ),
+                    behavior_notes=(
+                        "Preview prints the exact lifecycle command without invoking Docker.",
+                        ("Apply changes Compose service state after confirmation." if action in {"up", "down"} else "Apply verifies the restarted container stays running unless --no-verify is set."),
                     ),
                 )
                 for action, summary in (
@@ -453,6 +481,18 @@ def build_command_tree() -> CommandTree:
                         "validate_only",
                     ),
                 ),
+                examples=(
+                    _example("anvil-serving router promote --profile ./candidate-profile.json --dry-run", "Validate and preview a reviewed profile promotion."),
+                    _example("anvil-serving router promote --profile ./candidate-profile.json --confirm", "Write the reviewed profile and reload the router."),
+                ),
+                configuration_notes=(
+                    "--profile is required; --config optionally promotes a matching router configuration.",
+                    "Container, image, volume, and destination flags default to the deployed router layout.",
+                ),
+                behavior_notes=(
+                    "Preview and --validate-only do not write router configuration.",
+                    "Promotion validates with the deployed image and never replaces the independent human quality gate.",
+                ),
             ),
             _resource_node(
                 "endpoint",
@@ -468,8 +508,35 @@ def build_command_tree() -> CommandTree:
                 ),
                 execution_runtime_roles=("native",),
                 docs_anchor=ROUTER_DOC,
+                examples=(
+                    _example("anvil-serving router endpoint", "Show the configured listen address and Tailscale DNS name."),
+                    _example("anvil-serving router endpoint --no-tailscale --json", "Inspect the local endpoint without Tailscale discovery."),
+                ),
+                configuration_notes=(
+                    "--host and --port override discovered container or configured bindings.",
+                    "--container defaults to anvil-router; --no-tailscale skips MagicDNS discovery.",
+                ),
+                behavior_notes=(
+                    "Endpoint discovery is read-only and does not change router or tailnet state.",
+                    "Human output includes listen address, local URL, source, running state, and DNS availability.",
+                ),
             ),
-            _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router", remote_operation=_remote("router_status", allowed=("container",))),
+            _resource_node(
+                "status", "Show router status.", "anvil_serving.router_manage",
+                role="router", remote_operation=_remote("router_status", allowed=("container",)),
+                examples=(
+                    _example("anvil-serving router status", "Show bounded status for the deployed router."),
+                    _example("anvil-serving router status --json", "Read router status through the stable result envelope."),
+                ),
+                configuration_notes=(
+                    "--container defaults to the deployed anvil-router container.",
+                    "Global target and transport options select the resource owner when needed.",
+                ),
+                behavior_notes=(
+                    "Status is read-only and bounded; it does not follow logs or restart the router.",
+                    "Missing or stopped containers return explicit state instead of mutating deployment state.",
+                ),
+            ),
             _resource_node(
                 "transition-status", "Show router tier transition state.",
                 "anvil_serving.router_manage", role="router",
@@ -480,6 +547,18 @@ def build_command_tree() -> CommandTree:
                 remote_operation=_remote(
                     "router_transition", fixed=(("action", "status"),),
                     allowed=("tier", "router_url"),
+                ),
+                examples=(
+                    _example("anvil-serving router transition-status", "Show transition state for every router tier."),
+                    _example("anvil-serving router transition-status --tier heavy-local", "Show transition state for one tier."),
+                ),
+                configuration_notes=(
+                    "--router-url overrides ANVIL_ROUTER_URL and the default http://127.0.0.1:8000.",
+                    "--tier narrows the result to one tier when supplied.",
+                ),
+                behavior_notes=(
+                    "Transition status is read-only and does not quiesce, drain, or readmit a tier.",
+                    "Use it between transition steps to verify router-owned state.",
                 ),
             ),
             *(
@@ -494,6 +573,18 @@ def build_command_tree() -> CommandTree:
                         "router_transition", fixed=(("action", action),),
                         allowed=("tier", "router_url", "timeout", "dry_run"),
                     ),
+                    examples=(
+                        (_example(f"anvil-serving router {action} --tier heavy-local --dry-run", f"Preview the Heavy tier {action} operation.") if action in {"quiesce", "readmit"} else _example("anvil-serving router drain --tier heavy-local --timeout 120", "Wait up to 120 seconds for Heavy requests to finish.")),
+                        (_example(f"anvil-serving router {action} --tier heavy-local --confirm", f"Apply the reviewed Heavy tier {action} operation.") if action in {"quiesce", "readmit"} else _example("anvil-serving router drain --tier heavy-local --timeout 300 --router-url http://127.0.0.1:8000", "Drain through one explicit private router URL.")),
+                    ),
+                    configuration_notes=(
+                        "--router-url overrides ANVIL_ROUTER_URL and the default http://127.0.0.1:8000.",
+                        ("--tier is required and identifies the router tier to mutate." if action in {"quiesce", "readmit"} else "--tier and a positive --timeout are required for a bounded drain."),
+                    ),
+                    behavior_notes=(
+                        ("Preview performs no transition; apply requires shared confirmation." if action in {"quiesce", "readmit"} else "Drain waits only for an already-quiesced tier and does not change admission state."),
+                        ("Readmit checks current readiness before returning the tier to service." if action == "readmit" else "Use transition-status between steps to verify router-owned state."),
+                    ),
                 )
                 for action, summary in (
                     ("quiesce", "Quiesce one router tier."),
@@ -501,8 +592,44 @@ def build_command_tree() -> CommandTree:
                     ("readmit", "Safely readmit one router tier."),
                 )
             ),
-            _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),), remote_operation=_remote("router_logs", allowed=("container", "tail", "since", "follow"))),
-            _resource_node("token", "Inspect the router token state.", "anvil_serving.router_manage", role="router", options=(_option("--reveal", summary="Reveal the local token after confirmation.", requires_confirmation=True), _option("--confirm", summary="Confirm token reveal."))),
+            _resource_node(
+                "logs", "Read bounded router logs.", "anvil_serving.router_manage",
+                role="router",
+                options=(_option("--follow", summary="Follow log output.", output_policy="follow"),),
+                remote_operation=_remote("router_logs", allowed=("container", "tail", "since", "follow")),
+                examples=(
+                    _example("anvil-serving router logs --tail 200 --since 10m", "Read a bounded recent log window."),
+                    _example("anvil-serving router logs --follow", "Follow new router log output until interrupted."),
+                ),
+                configuration_notes=(
+                    "--container defaults to anvil-router; --tail defaults to 200 lines.",
+                    "--since accepts Docker timestamp or relative-duration forms such as 10m or 1h.",
+                ),
+                behavior_notes=(
+                    "Without --follow, output is bounded and returns after the selected log window.",
+                    "--follow is an explicit foreground stream and is incompatible with structured JSON output.",
+                ),
+            ),
+            _resource_node(
+                "token", "Inspect the router token state.", "anvil_serving.router_manage",
+                role="router",
+                options=(
+                    _option("--reveal", summary="Reveal the local token after confirmation.", requires_confirmation=True),
+                    _option("--confirm", summary="Confirm token reveal."),
+                ),
+                examples=(
+                    _example("anvil-serving router token", "Inspect whether the deployed router token is configured."),
+                    _example("anvil-serving router token --reveal --confirm", "Reveal the local token only after explicit confirmation."),
+                ),
+                configuration_notes=(
+                    "--container defaults to the deployed anvil-router container.",
+                    "Token values are resolved from deployment state and are not read from command arguments.",
+                ),
+                behavior_notes=(
+                    "The default command never prints the token value.",
+                    "--reveal is local-only and requires confirmation; avoid using it in logs or automation.",
+                ),
+            ),
         ),
         docs_anchor=ROUTER_DOC,
     )

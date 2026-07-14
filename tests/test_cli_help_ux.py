@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 import shlex
 
 import pytest
 
-from anvil_serving import cli, models, multiplexer, serves
+from anvil_serving import (
+    cli,
+    models,
+    multiplexer,
+    router_endpoint,
+    router_manage,
+    serves,
+)
 from anvil_serving.command_tree import COMMAND_TREE, CommandNode
+from anvil_serving.router import serve as router_serve
 
 
 SERVES_LEAVES = (
@@ -35,6 +44,27 @@ MODELS_LEAVES = (
     ("recipes", "delete"),
     ("recipes", "load"),
     ("cache", "prune"),
+)
+
+ROUTER_LEAVES = (
+    "run",
+    "up",
+    "down",
+    "restart",
+    "reload",
+    "promote",
+    "endpoint",
+    "status",
+    "transition-status",
+    "quiesce",
+    "drain",
+    "readmit",
+    "logs",
+    "token",
+)
+
+ROUTER_MANAGE_LEAVES = tuple(
+    action for action in ROUTER_LEAVES if action not in {"run", "endpoint"}
 )
 
 
@@ -100,6 +130,16 @@ def test_models_leaf_help_has_reviewed_navigation_contract(parts, capsys):
     _assert_reviewed_help(path, node, text)
 
 
+@pytest.mark.parametrize("action", ROUTER_LEAVES)
+def test_router_leaf_help_has_reviewed_navigation_contract(action, capsys):
+    node = _leaf("router", action)
+
+    assert cli.main(["router", action, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    _assert_reviewed_help(("router", action), node, text)
+
+
 @pytest.mark.parametrize("action", SERVES_LEAVES)
 def test_serves_reviewed_examples_resolve_to_the_documented_leaf(action):
     node = _serves_leaf(action)
@@ -123,6 +163,77 @@ def test_models_reviewed_examples_resolve_to_the_documented_leaf(parts):
         assert unknown is None
         assert tuple(item.name for item in path) == expected_path
         assert cli._tombstone(path, rest) is None
+
+
+@pytest.mark.parametrize("action", ROUTER_LEAVES)
+def test_router_reviewed_examples_resolve_to_the_documented_leaf(action):
+    node = _leaf("router", action)
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        assert tokens[0] == "anvil-serving"
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        assert tuple(item.name for item in path) == ("router", action)
+        assert cli._tombstone(path, rest) is None
+
+
+@pytest.mark.parametrize("action", ROUTER_MANAGE_LEAVES)
+def test_router_manage_examples_reach_the_real_action_parser(action):
+    node = _leaf("router", action)
+    parser = router_manage._build_parser()
+    for example in node.examples:
+        arguments = shlex.split(example.invocation, posix=True)[2:]
+        arguments = [
+            argument
+            for argument in arguments
+            if argument not in {"--confirm", "--json"}
+        ]
+        parsed = parser.parse_args(arguments)
+        assert parsed.action == action
+
+
+def test_router_run_examples_reach_the_real_parser(monkeypatch):
+    node = _leaf("router", "run")
+    calls = []
+    monkeypatch.setattr(
+        router_serve,
+        "resolve_serve_config",
+        lambda **kwargs: ("resolved.toml", kwargs["mode_flag"]),
+    )
+    monkeypatch.setattr(
+        router_serve,
+        "serve",
+        lambda config, **kwargs: calls.append((config, kwargs)),
+    )
+
+    for example in node.examples:
+        arguments = shlex.split(example.invocation, posix=True)[3:]
+        assert router_serve.main(arguments) == 0
+
+    assert len(calls) == len(node.examples)
+
+
+def test_router_endpoint_examples_reach_the_real_parser(monkeypatch, capsys):
+    node = _leaf("router", "endpoint")
+    monkeypatch.setattr(
+        router_endpoint,
+        "discover_router_endpoint",
+        lambda **_kwargs: router_endpoint.RouterEndpoint(
+            "127.0.0.1",
+            8000,
+            "http://127.0.0.1:8000",
+            "default",
+            "anvil-router",
+            True,
+            "node.example.ts.net",
+            "connected",
+        ),
+    )
+
+    for example in node.examples:
+        arguments = shlex.split(example.invocation, posix=True)[1:]
+        assert cli.main(arguments) == 0
+        capsys.readouterr()
 
 
 @pytest.mark.parametrize(
@@ -150,6 +261,18 @@ def test_models_reviewed_help_is_windows_console_safe(parts, monkeypatch, capsys
     assert all(len(line) <= 72 for line in reviewed_detail.splitlines())
 
 
+@pytest.mark.parametrize("action", ROUTER_LEAVES)
+def test_router_reviewed_help_is_windows_console_safe(action, monkeypatch, capsys):
+    monkeypatch.setenv("COLUMNS", "72")
+
+    assert cli.main(["router", action, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    text.encode("cp1252")
+    reviewed_detail = text[text.index("Configuration:") :]
+    assert all(len(line) <= 72 for line in reviewed_detail.splitlines())
+
+
 def test_recipe_configuration_notes_match_runtime_precedence(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     config_home = tmp_path / "operator-home"
@@ -164,6 +287,63 @@ def test_recipe_configuration_notes_match_runtime_precedence(tmp_path, monkeypat
     project_registry.parent.mkdir()
     project_registry.write_text('schema = "project"\n', encoding="utf-8")
     assert models._default_registry() == str(project_registry)
+
+
+def test_router_docs_group_every_operator_task():
+    text = (Path(__file__).parents[1] / "docs" / "cli" / "router.md").read_text(
+        encoding="utf-8"
+    )
+    for heading in (
+        "### Run and discover",
+        "### Deployment lifecycle",
+        "### Safe tier transitions",
+        "### Credentials",
+    ):
+        assert heading in text
+    for action in ROUTER_LEAVES:
+        assert f"`router {action}`" in text
+    assert "router token --reveal --confirm" in text
+
+
+def test_router_transition_configuration_matches_runtime_precedence():
+    environment = {
+        "ANVIL_ROUTER_URL": "http://100.87.34.66:8000",
+    }
+    inherited = router_manage.transition_request(
+        "quiesce",
+        tier_id="heavy-local",
+        env=environment,
+    )
+    explicit = router_manage.transition_request(
+        "quiesce",
+        tier_id="heavy-local",
+        router_url="http://100.87.34.67:9000",
+        env=environment,
+    )
+
+    assert inherited["router_url"] == "http://100.87.34.66:8000"
+    assert explicit["router_url"] == "http://100.87.34.67:9000"
+
+
+def test_router_manage_configuration_notes_match_parser_defaults():
+    parser = router_manage._build_parser()
+
+    for action in ("restart", "reload", "status", "logs", "token"):
+        parsed = parser.parse_args([action])
+        assert parsed.container == router_manage.DEFAULT_CONTAINER
+    for action in ("up", "down"):
+        parsed = parser.parse_args([action])
+        assert parsed.service == router_manage.DEFAULT_SERVICE
+
+    logs = parser.parse_args(["logs"])
+    assert logs.tail == "200"
+
+    promote = parser.parse_args(["promote", "--profile", "candidate.json"])
+    assert promote.container == router_manage.DEFAULT_CONTAINER
+    assert promote.cfg_volume == router_manage.DEFAULT_CFG_VOLUME
+    assert promote.image == router_manage.DEFAULT_IMAGE
+    assert promote.profile_dest == router_manage.DEFAULT_PROFILE_DEST
+    assert promote.config_dest == router_manage.DEFAULT_CONFIG_DEST
 
 
 @pytest.mark.parametrize(
