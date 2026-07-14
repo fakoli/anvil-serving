@@ -503,15 +503,15 @@ services:
       --host 0.0.0.0 --port 30008
 
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
-  # host.docker.internal:<port>. Pinned to the locally built release image anvil-serving:0.13.1
+  # host.docker.internal:<port>. Pinned to the locally built release image anvil-serving:0.13.2
   # and a config VOLUME (anvil-router-cfg). Build that image with the repository Dockerfile; do
   # not use `build:` here, so `up` and `router promote --image` validate the exact runtime tag.
   # Bump this tag + router_manage.DEFAULT_IMAGE together on each router release.
   # ROUTER_IMAGE is a per-invocation CANDIDATE override for pre-release router verification
-  # (e.g. `ROUTER_IMAGE=anvil-serving:0.13.1rc1 anvil-serving router up`); a bare `up` always
+  # (e.g. `ROUTER_IMAGE=anvil-serving:0.13.2rc1 anvil-serving router up`); a bare `up` always
   # reproduces the pinned release.
   router:
-    image: ${ROUTER_IMAGE:-anvil-serving:0.13.1}
+    image: ${ROUTER_IMAGE:-anvil-serving:0.13.2}
     container_name: anvil-router
     restart: unless-stopped
     depends_on:
