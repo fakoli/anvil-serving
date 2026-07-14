@@ -538,6 +538,7 @@ def render_manifest_index(manifest: dict[str, object]) -> str:
             ", ".join(f"`{flag}`" for flag in option["flags"])
             for option in record["options"]
             if tuple(option["flags"]) not in global_options
+            and not option.get("tombstone")
         ]
         lines.append(
             "| `{}` | {} | `{}` / `{}` | {} |".format(

@@ -293,6 +293,11 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
     ):
         if key in recipe and not isinstance(recipe[key], dict):
             raise RecipeError("recipe.%s must be a table" % key)
+    serve = recipe.get("serve") or {}
+    if "args" in serve:
+        raise RecipeError(
+            "recipe.serve.args is unsupported; use recipe.serve.flags as an array of strings"
+        )
     activation = recipe.get("activation") or {}
     for role, config in activation.items():
         if not isinstance(role, str) or not role.strip():

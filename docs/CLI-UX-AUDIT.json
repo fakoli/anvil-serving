@@ -3,23 +3,23 @@
   "manifest_schema_version": 2,
   "maximum_failures": {
     "boundedness": 103,
-    "configuration": 103,
-    "confirmation": 103,
-    "docs": 103,
-    "drift_protection": 103,
-    "errors": 103,
-    "grammar": 103,
-    "help": 103,
+    "configuration": 101,
+    "confirmation": 96,
+    "docs": 93,
+    "drift_protection": 102,
+    "errors": 95,
+    "grammar": 93,
+    "help": 93,
     "journaling": 103,
-    "linux": 103,
-    "macos": 103,
-    "output": 103,
-    "parser_tests": 103,
-    "preview": 103,
-    "remote_parity": 103,
-    "rollback": 103,
+    "linux": 102,
+    "macos": 102,
+    "output": 100,
+    "parser_tests": 93,
+    "preview": 96,
+    "remote_parity": 102,
+    "rollback": 102,
     "timeout": 103,
-    "windows": 103
+    "windows": 102
   },
   "records": [
     {
@@ -1420,297 +1420,619 @@
       "path": "mcp tools"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "confirmation": "sha256:d96702e276902d51a75df9bec6892048b6e3ca69746fece5573a6e4309a6600f",
+        "docs": "sha256:b2ab97173bb9bb3e9322d1f90347e69d91fdc8b2ec15fa91b33aaa369d5ea7ed",
+        "errors": "sha256:83f4c5e54700603c6af767e20ba457b953b9530271125ce8649993f09895aa32",
+        "grammar": "sha256:9d9b928328d3c0cb116bdd7fccd6d433fa44cc9e5211b5998045f1520cbdfff6",
+        "help": "sha256:23acbe3619a098ae0da370abf3f90f207be7123a63d234eaaa3d001a35e07636",
+        "output": "sha256:598b49e02f856fc8bb972176830f7804824e78815a5e56545f4302a362933b60",
+        "parser_tests": "sha256:478a2f22782b97ab81ea29d7a49a60ef1f10d88c92306a13a063d427f621fea5",
+        "preview": "sha256:486eebfa97d1caa6457f401e25cd2f7af611ec5ea77aebd9dcf979aa9680e11b"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/models.md#cache-prune",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:c1ad144d93cd49cb8e498117b434090f9d0aa24600ab93a801150aefa94136aa",
+      "evidence": {
+        "confirmation": [
+          "tests/test_models.py::test_models_cache_prune_only_confirms_execute_and_propagates_authorization"
+        ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "errors": [
+          "tests/test_models.py::test_cache_prune_delete_failure_returns_partial",
+          "tests/test_models.py::test_cache_prune_json_preserves_broad_wipe_refusal",
+          "tests/test_models.py::test_cache_prune_scan_failure_is_structured_json"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_models_cache_prune_only_confirms_execute_and_propagates_authorization"
+        ],
+        "help": [
+          "tests/test_models.py::test_models_cache_prune_help_uses_canonical_usage"
+        ],
+        "output": [
+          "tests/test_models.py::test_cache_prune_json_preserves_broad_wipe_refusal"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_models_cache_prune_only_confirms_execute_and_propagates_authorization"
+        ],
+        "preview": [
+          "tests/test_models.py::test_cache_prune_dry_run_reports_plan_without_deleting",
+          "tests/test_models.py::test_cache_prune_default_dry_run_does_not_create_catalog_directory"
+        ]
+      },
+      "manifest_fingerprint": "sha256:db7daede38fc223bd6b1181d301889c92c19a566d7afcc3a9d04714f7678a817",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models cache prune"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:4fb6b0d9b0d3905ce1a8a98245f5559c2f5f22f8d117bf655c11d7c47188e976",
+        "confirmation": "sha256:c9b2b353bef86ca740af10909a44299bfa1634b93187b00ba9ba1330aa7876d9",
+        "docs": "sha256:51b69aa083798da8e638c2582eacbafe64f35fa90d9d81226fbd98a40aa9e7ee",
+        "errors": "sha256:57a61aa97f37a0b668e50be55e32fa02d9821ddff42fd7fd7f92cd4e8270f636",
+        "grammar": "sha256:febde1ff99e43558db5a5f1b8a1fc463487e4d0e19c80a1295e3b4696ceaf5ca",
+        "help": "sha256:955c79df48762cd82fbcfe208dfadbbb804716c672ea331e38c3cc6574e001ae",
+        "parser_tests": "sha256:171ef7137d2799adf05ecc0168a11db3d870ffe652a477abaf2215ab1cd08baf",
+        "preview": "sha256:10e440248529e5797c1bd99e15741250f0bc9064efbcb9016a00c387db999fc3"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
-      "docs_anchor": "docs/cli/models.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:485ef82662799977b6143a84581a8cca89a187e629a12acbd81eba98705bb043",
+      "docs_anchor": "docs/cli/models.md#artifact-pull",
+      "evidence": {
+        "configuration": [
+          "tests/test_models.py::test_pull_token_env_forwards_value_into_child_env_only",
+          "tests/test_models.py::test_pull_exported_token_wins_over_dotenv"
+        ],
+        "confirmation": [
+          "tests/test_models.py::test_pull_apply_requires_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "errors": [
+          "tests/test_models.py::test_pull_nonzero_docker_exit_surfaces_clean_rc",
+          "tests/test_models.py::test_pull_missing_docker_binary_is_clean_127"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_pull_dispatches_through_top_level_cli"
+        ],
+        "help": [
+          "tests/test_models.py::test_pull_help_documents_flags_and_rationale"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_pull_dispatches_through_top_level_cli"
+        ],
+        "preview": [
+          "tests/test_models.py::test_pull_dry_run_prints_command_and_runs_nothing"
+        ]
+      },
+      "manifest_fingerprint": "sha256:97300087bb262158127a034ec03d17cd734f957059e7a17ba34037d40ba592c6",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models pull"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "confirmation": "sha256:7f5c7b6df171c0a303b931504c4c3e3c0a6c175ff2fbeef24afaaab948dfb46c",
+        "docs": "sha256:ac7b8fcc405be3bd62b8065a7176d7b18c7e78c93b8204382ce0ebf4ad2b5b0a",
+        "errors": "sha256:aa54cd85b0b8cad0915bf7f20bb81503655393c8113b0a4d2df33bd98c28a9fc",
+        "grammar": "sha256:82b4d0b4e35819ba8a1107c9dfdf8089aec809ea90a1e2382780b453982570fe",
+        "help": "sha256:bf9ca3c228b6f29cbca32a731e75fabd3ef2a9b255d8e1fb6e0cfd4e0f2131d4",
+        "parser_tests": "sha256:2639c5aa51203c45a33af7f761eb9a1b2f890cd85dbb0466fd8a911317198495",
+        "preview": "sha256:2120202d9b5c9c4f1c5a4c4dd54a7cbaa8e88d94ec73fed58e9abb8a13002642"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
-      "docs_anchor": "docs/cli/models.md#recipes",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:e40287d5986d9b4a270892096439213d2ff042ce6fa889e7ed789b5e0d3da7ba",
+      "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
+      "evidence": {
+        "confirmation": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "errors": [
+          "tests/test_models.py::test_recipe_write_rejects_unsupported_value_before_backup"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "help": [
+          "tests/test_models.py::test_recipe_leaf_help_is_actionable"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "preview": [
+          "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
+        ]
+      },
+      "manifest_fingerprint": "sha256:96ea55e1a3ca877001442a50a0b54b4e0451adab1f6a7fd6d2d6d3e8a306085b",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes create"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "confirmation": "sha256:2b534432374f4f0a7894c4d54b356389b1d41b23af29bbb2e23340a1c9c31fda",
+        "docs": "sha256:9bb654f4ddd380ec72329d0785c213c5693890e3817b0fc41f98567609773864",
+        "errors": "sha256:f0d02a166eba97c11cdad88bc186dcf076dc44635796c4f92ecf37c94973580a",
+        "grammar": "sha256:98658219c7d214fac15cce7738c49a282ab49531136e1f703e1a49ab4155d550",
+        "help": "sha256:f70a5a2ceffb789a09dd25a46df6ba721e6382d103060fe6858e6f44528d8feb",
+        "parser_tests": "sha256:cd6330d1b68fac604173cdee38917c31adb74e92559ab8af53a45cf714a3b721",
+        "preview": "sha256:be7333e8f1c52d646ed6e5cbd46f960470e35976b0ac121ee4565771e50b4ed9"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
-      "docs_anchor": "docs/cli/models.md#recipes",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:ce75fc36c114abcb32eb2ed89066b26892bcf3ddde18cfe7e3afc95f825ee7ab",
+      "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
+      "evidence": {
+        "confirmation": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "errors": [
+          "tests/test_models.py::test_recipe_write_rejects_unsupported_value_before_backup"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "help": [
+          "tests/test_models.py::test_recipe_leaf_help_is_actionable"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "preview": [
+          "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
+        ]
+      },
+      "manifest_fingerprint": "sha256:4acbc6b5d60cfe56e498100135daf743fc8ccc08ece2d7a06c10e3da4c85fc55",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes delete"
     },
     {
       "attestations": {
-        "configuration": "sha256:84d2cd3d5515912155f5069f21a8c0661c4fe71df8c7b25acb93a3e72513e52f"
+        "configuration": "sha256:b0dc60bc13e91ad5217e64f5fede1029c83e050ac18921baf96fa2e8c25fb215",
+        "docs": "sha256:a9c79ca3b1c64b69b26577efda17dc5bfa2225f2e672bbef3571e8a2012ed138",
+        "errors": "sha256:e100b91aafba566853d4b83e44360639ba01e4d04e2a5039de04bec2eba14de0",
+        "grammar": "sha256:8e9b7f9a437d118aa0b9e8b97d28df763c33e57708081ae6452b81ef7d4a952a",
+        "help": "sha256:236c8583bdb4ce406e156c56ea3d6fe46d1e03774b1c7b4e1aa016ad311fa4f2",
+        "parser_tests": "sha256:122306e9bb05694fc3081e130316bf23e6c5ce854f87324a38b8b1b301040b77"
       },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
-      "docs_anchor": "docs/cli/models.md#recipes",
+      "docs_anchor": "docs/cli/models.md#discover-recipes",
       "evidence": {
         "configuration": [
           "tests/test_models.py::test_recipe_default_registry_resolves_without_explicit_flag"
+        ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "errors": [
+          "tests/test_models.py::test_recipe_malformed_registry_is_clean_error"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_recipe_list_tables_recorded_recipes"
+        ],
+        "help": [
+          "tests/test_models.py::test_recipe_leaf_help_is_actionable"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_recipe_list_tables_recorded_recipes"
         ]
       },
-      "manifest_fingerprint": "sha256:a43b2de69dd4883bfda3c02ff53122e9e45cedcd97e047a7f96675b3f8222fc9",
+      "manifest_fingerprint": "sha256:29bc8721a4c6827185f10fdda474b7b04576cffdff7fc7b942a319a1134b0480",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models recipes list"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "confirmation": "sha256:fc7392d87c077d5f0b58b50bc7a0358f2814edbcad05184682226fab46e45e31",
+        "docs": "sha256:ca15b570540a6da0fe66e19a34970b880222970fb39bb3efe204662a11f7c2fe",
+        "grammar": "sha256:770d0bdc9c303a6545d9c5bb3d569625188654539f7fd43495cb024d1e37bd94",
+        "help": "sha256:87ea4189299e8df6fac9b453717475853301401680398ade3759151baae80af5",
+        "parser_tests": "sha256:feaf03384f46f764f5851f5cbab9d39186f18206eeb8842b5600c8c5af2bf62c",
+        "preview": "sha256:4bb1b8ed91ddd8aaa08ac46655b928703549ffc5ad1f574c734646071a1f4364"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
-      "docs_anchor": "docs/cli/models.md#recipes",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:d8bf085af3c8b78241a181446cbe6d9df2992de211cf23188dca4fa7fea76008",
+      "docs_anchor": "docs/cli/models.md#load-a-recipe",
+      "evidence": {
+        "confirmation": [
+          "tests/test_models.py::test_recipe_load_confirmed_invokes_loader_once"
+        ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_recipe_load_dispatches_through_canonical_cli"
+        ],
+        "help": [
+          "tests/test_models.py::test_recipe_leaf_help_is_actionable"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_recipe_load_dispatches_through_canonical_cli"
+        ],
+        "preview": [
+          "tests/test_models.py::test_recipe_load_dry_run_selects_recipe_without_docker"
+        ]
+      },
+      "manifest_fingerprint": "sha256:807f9eb50c5c3d89f082df4d393c0b848ca48a637add4a28fe0e01bf28e1ace7",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes load"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "docs": "sha256:6305edc5787ea2b7a11119ad8d6830691e91ab1e8011afd94599ba4988442c0d",
+        "errors": "sha256:8b0024f836c9d1a0cc0fd0b0cb40918187e3151997cfce223f82a8ebd0b64cdc",
+        "grammar": "sha256:a1f9d14e7669474cbcf9dc0f17991c4285a8d9f5d8eacd59d95c46099bc5282a",
+        "help": "sha256:89f2f5f0fad936051b3c21cb3da4563879ddf1bd2e85d358bac942761b5b4c7b",
+        "parser_tests": "sha256:696c1c13e8df0b2564240de429f8efc6a9e50e14bbd87d64e76199be586ab06e"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
-      "docs_anchor": "docs/cli/models.md#recipes",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:d2dc6170774e8d88119e5dff22b6da7e9e2ffa347939e95dce2fe3a645df3c2e",
+      "docs_anchor": "docs/cli/models.md#discover-recipes",
+      "evidence": {
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "errors": [
+          "tests/test_models.py::test_recipe_show_unknown_model_is_clean_error"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_recipe_dispatches_through_cli"
+        ],
+        "help": [
+          "tests/test_models.py::test_recipe_leaf_help_is_actionable"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_recipe_dispatches_through_cli"
+        ]
+      },
+      "manifest_fingerprint": "sha256:c07eaad6342bbbbe8da38676970c7c7961e34bdb61e78fd2809e527eadb70643",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models recipes show"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "confirmation": "sha256:064f755bc56c8e7de4aa74c6bf1371ffc608225416304d0ffdc00a3f6af8faf4",
+        "docs": "sha256:fee120eed82e5124628ffb54ababfc77a4c758f079cda3de60ed7d1133a28d82",
+        "errors": "sha256:6cfc246c14187efb84bee5c9f547d8e7502411914e5f00f27b24bc9da8e0bf94",
+        "grammar": "sha256:bf2c2fed33e4e061305e3c5b97ce0e908d828ea59e7b386b39e60e490f5b0a60",
+        "help": "sha256:8235e38cccb2f0003336e3fd0c4c771dc86f1b27e273a90586fa52ccc0f2193a",
+        "parser_tests": "sha256:cf30680a565ea3dd25886327ba9e1298d014855480cf9b5a4e9e8a87fb00e039",
+        "preview": "sha256:eca592d1415144e24a2e78efbc5a1e6091232fd8ea7f5374a9904608a2cf28eb"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
-      "docs_anchor": "docs/cli/models.md#recipes",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:bd29abd3a964f26b1661c9960b4bf952e461f6d4b40405e160ef711be6ee708d",
+      "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
+      "evidence": {
+        "confirmation": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "errors": [
+          "tests/test_models.py::test_recipe_write_rejects_unsupported_value_before_backup"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "help": [
+          "tests/test_models.py::test_recipe_leaf_help_is_actionable"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
+        ],
+        "preview": [
+          "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
+        ]
+      },
+      "manifest_fingerprint": "sha256:d74d5e36b837fc9988c735d125032595d318716de39de429e34b1f28c1d417af",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes update"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "docs": "sha256:1b959f258658d05d3e9f8cdd89962c38bc2cfe98ebfa982c6c09eca79aa9fece",
+        "grammar": "sha256:29a3a854e612953f09a698d43e0c7516ef919aca03c00be6d1e957887deaa73d",
+        "help": "sha256:d7dbe5e67a66a4d0678fcba206b7ca74f096dc06ceefe11d7951f6ef2e017ef6",
+        "output": "sha256:de1ff8a50cc72d4ed6a2aabc2e93e9a04c6ff7377d4b46cd1c6987c5602a4319",
+        "parser_tests": "sha256:a0307200f6bd456fe9591c07827e59dc7345f413597e695e6d4bf70836582f65"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
-      "docs_anchor": "docs/cli/models.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:ae1051308d55489919d0be406ade451749cccef730ed3605ace029065ce2df5a",
+      "docs_anchor": "docs/cli/models.md#model-scoring",
+      "evidence": {
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_models_score_dispatches_canonically_and_root_score_refuses"
+        ],
+        "help": [
+          "tests/test_models.py::test_models_score_help_uses_canonical_usage"
+        ],
+        "output": [
+          "tests/test_models.py::test_models_score_dispatches_canonically_and_root_score_refuses"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_models_score_dispatches_canonically_and_root_score_refuses"
+        ]
+      },
+      "manifest_fingerprint": "sha256:ef7dc54b8b40872626cfa465710ecb2b7fd4bfd590241134a58131aaa30f0efe",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models score"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:c8bab2814b2632c3ef7e0546c0cb655f50f2ce1cf217dca5ce81c65a113eb617",
+        "confirmation": "sha256:bb3910b950a7ba40ed1023e4deb1c457105623bdf8fd38c4a9054e1854cee028",
+        "drift_protection": "sha256:84b38635dc71169f3c4116657b906d74129ff933c770677a3c21bfa0a94e1051",
+        "errors": "sha256:8e9c9af32230973a4a2d617c941dde504f1b47cc66f97feb3b1157baff8d1b48",
+        "grammar": "sha256:1c8883322a843c7d7e43fa3263ff59003247c319cdad54bf1093a9dabd22cfc0",
+        "help": "sha256:e421480cfc0301e0bbf848c04ab4b775e4f4e00423048736d5e37c1ddc5dbb4b",
+        "linux": "sha256:06a059d7b8870991ddf6619de0f627e088f172b305a923c55cfdd8ad616fd5ff",
+        "macos": "sha256:32ff3a5289a56a557a26ba5c6d80a35d59b8550f0e725a2d2a0c2b0d0137a5dd",
+        "parser_tests": "sha256:2b6aaf95cdf2b7c00cc726b3dcb64cad38c1edd5860d5bede05f16fc6e7906ff",
+        "preview": "sha256:26e0a6353c01dc769e46575c650ce678db1bfb198bc6ec9ed759bb9e1d499ea6",
+        "remote_parity": "sha256:3f60f3d61541007b47536a1eb5b1984da233e69c4d7c458f664964849615c4b1",
+        "rollback": "sha256:aa1aace71ee6331a578bdaba112ce3b7940f3ddd40ee0bc0371480136afce731",
+        "windows": "sha256:37503b4c5d53239e8d7fd3d09422bdbf86d9f49fd1715f340f784dba90cfec8e",
+        "docs": "sha256:2fda041baffd7a199a2d5c1a001ed534866eb56cb6dd44e4483ab0f3e4b140f4",
+        "output": "sha256:280722605a018461db1c34751c12ec09a5c3b0c7283b10a0933d0a4ba88fde95"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
+        "drift_protection": "pass",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
+        "linux": "pass",
+        "macos": "pass",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "pass",
+        "remote_parity": "pass",
+        "rollback": "pass",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/models.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:21d138bde7dbf1dd9a01f438625f646a6e03798bedeb8873dcd80b0125284364",
+      "docs_anchor": "docs/cli/models.md#catalog-sync",
+      "evidence": {
+        "configuration": [
+          "tests/test_models.py::test_models_sync_dry_run_resolves_environment_model_dirs",
+          "tests/test_models.py::test_models_sync_dry_run_resolves_environment_hf_roots",
+          "tests/test_models.py::test_build_sync_argv_includes_optional_roots"
+        ],
+        "confirmation": [
+          "tests/test_models.py::test_models_sync_apply_requires_shared_confirmation"
+        ],
+        "drift_protection": [
+          "tests/test_models.py::test_models_sync_refuses_concurrent_writer"
+        ],
+        "errors": [
+          "tests/test_models.py::test_models_sync_failure_preserves_existing_catalog",
+          "tests/test_models.py::test_models_sync_refuses_unmanaged_existing_directory",
+          "tests/test_models.py::test_models_sync_invalid_staging_preserves_existing_catalog",
+          "tests/test_models.py::test_models_sync_worker_launch_error_is_structured_and_cleans_staging",
+          "tests/test_models.py::test_models_sync_failed_rollback_names_backup_and_recovery_command"
+        ],
+        "grammar": [
+          "tests/test_models.py::test_models_sync_action_still_accepted"
+        ],
+        "help": [
+          "tests/test_models.py::test_models_sync_help_documents_sync_flags"
+        ],
+        "linux": [
+          "tests/test_models.py::test_sync_source_platform_labels_native_hosts"
+        ],
+        "macos": [
+          "tests/test_models.py::test_sync_source_platform_labels_native_hosts"
+        ],
+        "parser_tests": [
+          "tests/test_models.py::test_models_sync_still_dispatches"
+        ],
+        "preview": [
+          "tests/test_models.py::test_models_sync_dry_run_resolves_plan_without_writing_or_scanning"
+        ],
+        "remote_parity": [
+          "tests/test_mcp.py::test_models_inventory_sync_preview_is_argv",
+          "tests/test_mcp.py::test_models_inventory_confirmed_sync_returns_catalog_counts"
+        ],
+        "rollback": [
+          "tests/test_models.py::test_models_sync_replacement_failure_restores_existing_catalog"
+        ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
+        "output": [
+          "tests/test_models.py::test_models_sync_json_captures_child_output_in_one_document"
+        ],
+        "windows": [
+          "tests/test_models.py::test_sync_source_platform_labels_native_hosts"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e3224bad414f2d1ab09fde1918fdf6fc360b6d8cacd5721a4fd981acf847111c",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models sync"

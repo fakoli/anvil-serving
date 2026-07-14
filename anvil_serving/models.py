@@ -15,13 +15,19 @@ volume, then serve later with the repo-id as ``--model`` — bytes never touch 9
 """
 import os
 import argparse
+import glob
+from contextlib import contextmanager
+from importlib import resources
 import json
 import shlex
+import shutil
 import subprocess
+import tempfile
 import tomllib
 import sys
 from . import config
 from . import guard
+from . import paths
 from . import serve_recipes
 HERE = os.path.dirname(__file__)
 
@@ -163,6 +169,28 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
               f"command exists to avoid (gotcha #15). Pass a named docker volume.",
               file=sys.stderr)
         return 2
+    if not image or image.startswith("-"):
+        print(
+            "[anvil-serving] --image must be a Docker image reference, not an option",
+            file=sys.stderr,
+        )
+        return 2
+    option_like = [
+        ("repository", repo_id),
+        ("revision", revision),
+        ("include", include),
+        ("exclude", exclude),
+    ]
+    for label, value in option_like:
+        if not value and label == "repository":
+            print("[anvil-serving] repository id must not be empty", file=sys.stderr)
+            return 2
+        if isinstance(value, str) and value.startswith("-"):
+            print(
+                "[anvil-serving] %s must be a value, not a command option" % label,
+                file=sys.stderr,
+            )
+            return 2
     environ = os.environ if _environ is None else _environ
     argv = build_pull_argv(repo_id, volume=volume, image=image, revision=revision,
                            include=include, exclude=exclude, token_env=token_env)
@@ -193,7 +221,32 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
     if dry_run:
         # Preview does not need to resolve/read a secret: argv contains only the
         # variable name (`-e HF_TOKEN`), never its value.
+        print("MODEL ARTIFACT PULL PLAN")
+        print("repository: %s" % repo_id)
+        print("revision: %s" % (revision or "(default branch)"))
+        print("volume: %s" % volume)
+        print("image: %s" % image)
+        print("include: %s" % (include or "(all files)"))
+        print("exclude: %s" % (exclude or "(none)"))
+        if token_env:
+            print("token environment variable: %s" % token_env)
+            print(
+                "token dotenv fallback: %s"
+                % (
+                    os.path.abspath(os.path.expanduser(token_file))
+                    if token_file
+                    else "(disabled)"
+                )
+            )
+        else:
+            print("token source: disabled (--no-token)")
+        print("preconditions: Docker installed and running; named volume is writable")
+        print("ordered actions: resolve token source; start one download container; run hf download")
+        print("docker command:")
         print(printable)
+        print("deferred until apply: confirmation, token read, image resolution, and Docker execution")
+        print("recovery: rerun the same command; hf download resumes completed and partial files")
+        print("rollback: none automatic; downloaded volume bytes remain until explicitly removed")
         return 0
 
     print(f"[anvil-serving] pulling {repo_id!r} into docker volume "
@@ -213,7 +266,8 @@ def build_sync_argv(out=None, hf_roots="", model_dirs=""):
     This is shared by the CLI-adjacent MCP preview path so agents can show the
     exact command before running a cache scan. It never resolves or inlines any
     credentials; the sync script reads ``HF_TOKEN`` from the process env if the
-    operator has configured it.
+    operator has configured it. Callers add exactly one of ``--dry-run`` or
+    ``--confirm`` so previews cannot be mistaken for authorized apply commands.
     """
 
     out = out or os.path.join(os.getcwd(), DEFAULT_CATALOG_DIR)
@@ -254,6 +308,9 @@ def load_model_catalog(catalog_dir=None):
         if not isinstance(data, dict):
             errors.append({"path": path, "error": "summary JSON must be an object"})
             continue
+        if not isinstance(data.get("id"), str) or not data["id"].strip() or "format" not in data:
+            errors.append({"path": path, "error": "summary must contain a non-empty id and format"})
+            continue
         if not is_real_catalog_entry(data):
             continue
         entry = dict(data)
@@ -287,12 +344,16 @@ def pull_main(argv):
                     "18-90 min loads); a named docker volume is ext4-native inside "
                     "WSL2 (no 9P) and loads in seconds (CLAUDE.md gotcha #15). The "
                     "download runs `hf download` INSIDE a container with the volume "
-                    "mounted at the HF cache, so bytes land on native ext4.",
+                    "mounted at the HF cache, so bytes land on native ext4.\n\n"
+                    "Examples:\n"
+                    "  anvil-serving models pull openai/gpt-oss-120b --dry-run\n"
+                    "  anvil-serving models pull openai/gpt-oss-120b --confirm",
         epilog="`hf download` is resumable/idempotent (it skips complete files). "
                "gotcha #12: a concurrent/interrupted download to the same cache "
                "can deadlock on .cache/huggingface/.gitignore.lock ('Still waiting "
                "to acquire lock'); stop the other download and resume ONE — do NOT "
                "delete the lock file blindly.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("repo_id", help="Hugging Face repo id, e.g. openai/gpt-oss-120b")
     ap.add_argument("--volume", default=DEFAULT_PULL_VOLUME,
@@ -331,13 +392,16 @@ DEFAULT_REGISTRY = os.path.join("configs", "serve-recipes.toml")
 
 
 def _default_registry():
-    """Resolve the default registry path regardless of cwd (cwd-relative first, then
-    repo-root-relative so `python -m anvil_serving.cli models recipes ...` works anywhere)."""
-    if os.path.exists(DEFAULT_REGISTRY):
-        return DEFAULT_REGISTRY
-    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    candidate = os.path.join(repo_root, "configs", "serve-recipes.toml")
-    return candidate if os.path.exists(candidate) else DEFAULT_REGISTRY
+    """Resolve the read registry using the documented configuration precedence."""
+    project_registry = os.path.abspath(DEFAULT_REGISTRY)
+    home_registry = paths.config_path("serve-recipes.toml")
+    for candidate in (project_registry, home_registry):
+        if os.path.isfile(candidate):
+            return candidate
+    packaged = resources.files("anvil_serving._scaffold_templates").joinpath(
+        "serve-recipes.toml"
+    )
+    return os.fspath(packaged)
 
 
 def _fmt_throughput(measured):
@@ -360,11 +424,19 @@ def _fmt_intent(intent):
     return ", ".join(suited) if suited else "-"
 
 
+def _fmt_activation_roles(recipe):
+    activation = recipe.get("activation") or {}
+    if not isinstance(activation, dict):
+        return "-"
+    return ", ".join(sorted(str(role) for role in activation)) or "-"
+
+
 def _print_recipe_table(registry):
     recipes = registry.get("recipe") or []
-    headers = ["status", "model", "throughput", "intent"]
+    headers = ["status", "model", "activates", "throughput", "intent"]
     rows = [[r.get("status", ""), r.get("model", ""),
-             _fmt_throughput(r.get("measured")), _fmt_intent(r.get("intent"))]
+             _fmt_activation_roles(r), _fmt_throughput(r.get("measured")),
+             _fmt_intent(r.get("intent"))]
             for r in recipes]
     widths = [len(h) for h in headers]
     for row in rows:
@@ -400,6 +472,21 @@ def _print_recipe_show(recipe):
                 if isinstance(v, list):
                     v = ", ".join(str(x) for x in v)
                 print("  %s: %s" % (k, v))
+    activation = recipe.get("activation") or {}
+    if isinstance(activation, dict) and activation:
+        print()
+        print("activation:")
+        for role, details in sorted(activation.items()):
+            print("  %s:" % role)
+            if isinstance(details, dict):
+                for key, value in details.items():
+                    print("    %s: %s" % (key, value))
+            else:
+                print("    %s" % details)
+            print(
+                "    switch preview: anvil-serving serves switch %s --recipe %s --dry-run"
+                % (role, recipe.get("model", ""))
+            )
     download = recipe.get("download") or {}
     if download.get("command"):
         print()
@@ -447,21 +534,107 @@ def _confirm_recipe_mutation(action, model, *, confirm, dry_run):
     return False
 
 
+def _help_description(outcome, *examples):
+    return "%s\n\nExamples:\n%s" % (
+        outcome,
+        "\n".join("  " + example for example in examples),
+    )
+
+
+def _print_recipe_mutation_plan(
+    action,
+    registry_path,
+    registry_digest,
+    recipe,
+    *,
+    recipe_file=None,
+    previous=None,
+):
+    print("RECIPE %s PLAN" % action.upper())
+    print("registry: %s" % os.path.abspath(registry_path))
+    print("registry digest: %s" % (registry_digest or "(new registry)"))
+    if recipe_file:
+        print("recipe input: %s" % os.path.abspath(recipe_file))
+        print(
+            "recipe input digest: %s"
+            % (serve_recipes.registry_digest(recipe_file) or "(unreadable)")
+        )
+    if previous is not None:
+        print("current model: %s" % previous.get("model", ""))
+    entry_label = "recipe selected for deletion" if action == "delete" else "proposed registry entry"
+    print(entry_label + ":")
+    for line in serve_recipes.format_recipe(recipe).rstrip().splitlines():
+        print("  " + line)
+    if registry_digest:
+        print("ordered actions: lock registry; verify digest; create backup; atomically write")
+        print("manual recovery: restore the numbered .anvil.bak.N registry backup")
+    else:
+        print("ordered actions: lock registry; verify it is still absent; atomically create")
+        print("manual recovery: remove the newly created registry")
+    print("deferred until apply: confirmation and registry drift recheck")
+
+
 def _recipe_main(argv):
-    ap = argparse.ArgumentParser(prog="anvil-serving models recipes")
+    ap = argparse.ArgumentParser(
+        prog="anvil-serving models recipes",
+        description="Discover, edit, and load reusable model serve recipes.",
+    )
     sub = ap.add_subparsers(dest="recipe_action", required=True)
-    p_list = sub.add_parser("list", help="table the recorded serve recipes")
-    p_list.add_argument("--registry", default=None, help="registry TOML (default: %s)" % DEFAULT_REGISTRY)
-    p_show = sub.add_parser("show", help="reproducible docker run + measured stats for a model")
-    p_show.add_argument("model", help="model id (exact or basename, e.g. gpt-oss-120b)")
-    p_show.add_argument("--registry", default=None, help="registry TOML (default: %s)" % DEFAULT_REGISTRY)
+    p_list = sub.add_parser(
+        "list",
+        help="table the recorded serve recipes",
+        description=_help_description(
+            "List the recipes in one registry with status, throughput, and intent.",
+            "anvil-serving models recipes list",
+            "anvil-serving models recipes list --registry REGISTRY",
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_list.add_argument("--registry", default=None,
+                        help="registry TOML (default precedence: project, config home, packaged)")
+    p_show = sub.add_parser(
+        "show",
+        help="reproducible docker run + measured stats for a model",
+        description=_help_description(
+            "Show one resolved recipe, including its reproducible Docker command and evidence.",
+            "anvil-serving models recipes show gpt-oss-120b",
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_show.add_argument("model", metavar="MODEL",
+                        help="model id (exact or basename, e.g. gpt-oss-120b)")
+    p_show.add_argument("--registry", default=None,
+                        help="registry TOML (default precedence: project, config home, packaged)")
     for action, summary in (
         ("create", "add exactly one recipe from a TOML file"),
         ("update", "replace a selected recipe from a TOML file"),
     ):
-        parser = sub.add_parser(action, help=summary)
+        example = (
+            "anvil-serving models recipes create --recipe-file ./candidate.toml "
+            "--registry ./serve-recipes.local.toml"
+            if action == "create"
+            else "anvil-serving models recipes update MODEL --recipe-file ./candidate.toml "
+                 "--registry ./serve-recipes.local.toml"
+        )
+        parser = sub.add_parser(
+            action,
+            help=summary,
+            description=_help_description(
+                (
+                    "Create one recipe in an operator-owned registry."
+                    if action == "create"
+                    else "Replace one selected recipe in an operator-owned registry."
+                ),
+                example + " --dry-run",
+                example + " --confirm",
+            ),
+            epilog="Apply writes atomically and preserves a numbered backup when a prior "
+                   "registry exists.",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
         if action == "update":
-            parser.add_argument("model", help="current model id or unambiguous basename")
+            parser.add_argument("model", metavar="MODEL",
+                                help="current model id or unambiguous basename")
         parser.add_argument("--recipe-file", required=True, metavar="PATH",
                             help="TOML containing exactly one [[recipe]] table")
         parser.add_argument("--registry", required=True, metavar="TOML",
@@ -469,18 +642,42 @@ def _recipe_main(argv):
         parser.add_argument("--dry-run", action="store_true",
                             help="validate and preview without writing")
         parser.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
-    p_delete = sub.add_parser("delete", help="remove one recipe from an operator registry")
-    p_delete.add_argument("model", help="model id or unambiguous basename")
+    p_delete = sub.add_parser(
+        "delete",
+        help="remove one recipe from an operator registry",
+        description=_help_description(
+            "Delete one selected recipe from an operator-owned registry.",
+            "anvil-serving models recipes delete MODEL --registry REGISTRY --dry-run",
+            "anvil-serving models recipes delete MODEL --registry REGISTRY --confirm",
+        ),
+        epilog="Apply writes atomically and preserves a numbered backup.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_delete.add_argument("model", metavar="MODEL",
+                          help="model id or unambiguous basename")
     p_delete.add_argument("--registry", required=True, metavar="TOML",
                           help="operator-owned registry TOML to mutate")
     p_delete.add_argument("--dry-run", action="store_true",
                           help="preview without writing")
     p_delete.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
-    p_load = sub.add_parser("load", help="start a named local container from one recipe")
-    p_load.add_argument("model", help="model id or unambiguous basename")
+    p_load = sub.add_parser(
+        "load",
+        help="start a named local container from one recipe",
+        description=_help_description(
+            "Start a new loopback-bound Docker container from one recorded recipe.",
+            "anvil-serving models recipes load MODEL --container NAME --dry-run",
+            "anvil-serving models recipes load MODEL --container NAME --confirm",
+        ),
+        epilog="Loading does not change router policy. Run eval preflight next; use serves "
+               "switch only after human review.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_load.add_argument("model", metavar="MODEL",
+                        help="model id or unambiguous basename")
     p_load.add_argument("--container", required=True, metavar="NAME",
                         help="new Docker container name for this loaded recipe")
-    p_load.add_argument("--registry", default=None, help="registry TOML (default: %s)" % DEFAULT_REGISTRY)
+    p_load.add_argument("--registry", default=None,
+                        help="registry TOML (default precedence: project, config home, packaged)")
     p_load.add_argument("--dry-run", action="store_true",
                         help="print the exact docker command without starting it")
     p_load.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
@@ -517,14 +714,22 @@ def _recipe_main(argv):
             if a.recipe_action == "create":
                 updated = serve_recipes.create_recipe(registry, replacement)
                 model = replacement["model"]
+                previous = None
             else:
-                updated, _previous = serve_recipes.update_recipe(registry, a.model, replacement)
+                updated, previous = serve_recipes.update_recipe(registry, a.model, replacement)
                 model = replacement["model"]
         except serve_recipes.RecipeError as exc:
             print(str(exc), file=sys.stderr)
             return 1
         if a.dry_run:
-            print("would %s recipe %r in %s" % (a.recipe_action, model, registry_path))
+            _print_recipe_mutation_plan(
+                a.recipe_action,
+                registry_path,
+                registry_digest,
+                replacement,
+                recipe_file=a.recipe_file,
+                previous=previous,
+            )
             return 0
         if not _confirm_recipe_mutation(a.recipe_action, model, confirm=a.confirm, dry_run=False):
             return 3
@@ -546,7 +751,13 @@ def _recipe_main(argv):
             print(str(exc), file=sys.stderr)
             return 1
         if a.dry_run:
-            print("would delete recipe %r from %s" % (deleted["model"], registry_path))
+            _print_recipe_mutation_plan(
+                "delete",
+                registry_path,
+                registry_digest,
+                deleted,
+                previous=deleted,
+            )
             return 0
         if not _confirm_recipe_mutation("delete", deleted["model"], confirm=a.confirm, dry_run=False):
             return 3
@@ -572,8 +783,20 @@ def _recipe_main(argv):
             return 1
         printable = shlex.join(command)
         if a.dry_run:
-            print("would load recipe %r as container %r:" % (recipe["model"], a.container))
+            print("RECIPE LOAD PLAN")
+            print("registry: %s" % os.path.abspath(registry_path))
+            print("registry digest: %s" % serve_recipes.registry_digest(registry_path))
+            print("model: %s" % recipe["model"])
+            print("container: %s" % a.container)
+            print("docker command:")
             print(printable)
+            print(
+                "recovery after a successful start by this command: docker rm -f %s"
+                % shlex.quote(a.container)
+            )
+            print("ownership condition: never remove a container that existed before apply")
+            print("deferred until apply: confirmation and Docker start")
+            print("not performed by load: health check and eval preflight; run them next")
             return 0
         if not _confirm_recipe_mutation("load", recipe["model"], confirm=a.confirm, dry_run=False):
             return 3
@@ -590,15 +813,264 @@ def _recipe_main(argv):
     return 2
 
 
-def _sync_main(args):
-    os.makedirs(os.path.join(args.out, "cards"), exist_ok=True)
-    roots = os.pathsep.join(config.hf_cache_roots(args.hf_roots.split(os.pathsep) if args.hf_roots else None))
-    env = dict(os.environ, ANVIL_MODELS_OUT=args.out)
+def _resolved_model_dirs(explicit="", *, environ=None):
+    """Return the plain-model directories the sync subprocess will inspect."""
+    environ = os.environ if environ is None else environ
+    configured = explicit or environ.get("ANVIL_MODEL_DIRS", "")
+    candidates = [item for item in configured.split(os.pathsep) if item]
+    candidates.extend(glob.glob("/mnt/c/Users/*/models"))
+    resolved = []
+    seen = set()
+    for candidate in candidates:
+        normalized = os.path.normpath(os.path.abspath(os.path.expanduser(candidate)))
+        if normalized in seen or not os.path.isdir(normalized):
+            continue
+        seen.add(normalized)
+        resolved.append(normalized)
+    return resolved
+
+
+def _next_catalog_backup(path):
+    index = 1
+    while True:
+        candidate = "%s.anvil.bak.%s" % (path, index)
+        if not os.path.exists(candidate):
+            return candidate
+        index += 1
+
+
+class CatalogSyncBusy(RuntimeError):
+    """Another process already owns the catalog replacement lock."""
+
+
+@contextmanager
+def _catalog_lock(path):
+    """Hold one non-blocking cross-platform lock for a catalog sync."""
+    parent = os.path.dirname(path)
+    basename = os.path.basename(path) or "catalog"
+    lock_path = os.path.join(parent, ".%s.anvil-sync.lock" % basename)
+    handle = open(lock_path, "a+b")
+    locked = False
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write(b"\0")
+                handle.flush()
+            handle.seek(0)
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise CatalogSyncBusy from exc
+        else:
+            import fcntl
+
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                raise CatalogSyncBusy from exc
+        locked = True
+        yield
+    finally:
+        if locked:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        handle.close()
+
+
+def _catalog_output_error(path):
+    """Return a refusal reason unless ``path`` is a safe managed catalog target."""
+    output = os.path.abspath(path)
+    resolved = os.path.normcase(os.path.realpath(output))
+    protected = {
+        os.path.normcase(os.path.realpath(os.getcwd())): "the current working directory",
+        os.path.normcase(os.path.realpath(os.path.expanduser("~"))): "the user home directory",
+        os.path.normcase(os.path.realpath(os.path.dirname(HERE))): "the anvil-serving checkout",
+    }
+    if resolved in protected:
+        return "refusing catalog output %s: it is %s" % (output, protected[resolved])
+    if os.path.lexists(output) and (os.path.islink(output) or not os.path.isdir(output)):
+        return "refusing catalog output %s: existing target must be a directory, not a file or link" % output
+    if os.path.isdir(output):
+        try:
+            entries = os.listdir(output)
+        except OSError as exc:
+            return "cannot inspect catalog output %s: %s" % (output, exc)
+        if entries and not (
+            os.path.isdir(os.path.join(output, "cards"))
+            and os.path.isfile(os.path.join(output, "INDEX.md"))
+        ):
+            return (
+                "refusing catalog output %s: existing non-empty directory is not an "
+                "anvil model catalog (expected cards/ and INDEX.md)" % output
+            )
+    return None
+
+
+def _configured_hf_roots(explicit="", *, environ=None):
+    environ = os.environ if environ is None else environ
+    candidates = []
+    for configured in (environ.get("ANVIL_HF_ROOTS", ""), explicit):
+        candidates.extend(item for item in configured.split(os.pathsep) if item)
+    return config.hf_cache_roots(candidates)
+
+
+def _staged_catalog_error(path):
+    """Return a reason when a successful child did not produce a valid catalog."""
+    cards = os.path.join(path, "cards")
+    index = os.path.join(path, "INDEX.md")
+    if not os.path.isdir(cards) or not os.path.isfile(index):
+        return "sync produced an incomplete catalog (expected cards/ and INDEX.md)"
+    real_entries = 0
+    for card_path in glob.glob(os.path.join(cards, "*.json")):
+        try:
+            with open(card_path, encoding="utf-8") as handle:
+                card = json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            return "sync produced an unreadable card %s: %s" % (card_path, exc)
+        if not isinstance(card, dict):
+            return "sync produced a non-object card %s" % card_path
+        if not isinstance(card.get("id"), str) or not card["id"].strip() or "format" not in card:
+            return "sync produced a card without a non-empty id and format: %s" % card_path
+        if is_real_catalog_entry(card):
+            real_entries += 1
+    if real_entries == 0:
+        return "sync produced no readable model entries; the active catalog was not replaced"
+    return None
+
+
+def _sync_apply(output, roots, model_dirs):
+    """Build and atomically install one complete catalog while holding its lock."""
+    parent = os.path.dirname(output)
+    staging = None
+    try:
+        staging = tempfile.mkdtemp(
+            prefix=".%s.anvil-sync-" % (os.path.basename(output) or "catalog"),
+            dir=parent,
+        )
+        os.makedirs(os.path.join(staging, "cards"), exist_ok=True)
+    except OSError as exc:
+        if staging:
+            shutil.rmtree(staging, ignore_errors=True)
+        print("cannot create staged model catalog beside %s: %s" % (output, exc), file=sys.stderr)
+        return 1
+    env = dict(os.environ, ANVIL_MODELS_OUT=staging, PYTHONUTF8="1")
     if roots:
-        env["ANVIL_HF_ROOTS"] = roots
-    if args.model_dirs:
-        env["ANVIL_MODEL_DIRS"] = args.model_dirs
-    return subprocess.call([sys.executable, os.path.join(HERE, "_sync.py")], env=env)
+        env["ANVIL_HF_ROOTS"] = os.pathsep.join(roots)
+    else:
+        env.pop("ANVIL_HF_ROOTS", None)
+    if model_dirs:
+        env["ANVIL_MODEL_DIRS"] = os.pathsep.join(model_dirs)
+    else:
+        env.pop("ANVIL_MODEL_DIRS", None)
+    try:
+        completed = subprocess.run(
+            [sys.executable, os.path.join(HERE, "_sync.py")],
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+    except OSError as exc:
+        shutil.rmtree(staging, ignore_errors=True)
+        print("cannot launch model catalog worker: %s" % exc, file=sys.stderr)
+        return 4
+    if completed.stdout:
+        print(completed.stdout, end="")
+    if completed.stderr:
+        print(completed.stderr, end="", file=sys.stderr)
+    if completed.returncode:
+        shutil.rmtree(staging, ignore_errors=True)
+        return int(completed.returncode)
+    staged_error = _staged_catalog_error(staging)
+    if staged_error:
+        print(staged_error, file=sys.stderr)
+        shutil.rmtree(staging, ignore_errors=True)
+        return 1
+    backup = None
+    try:
+        if os.path.exists(output):
+            backup = _next_catalog_backup(output)
+            os.replace(output, backup)
+        os.replace(staging, output)
+        staging = None
+    except OSError as exc:
+        if backup and not os.path.exists(output) and os.path.exists(backup):
+            try:
+                os.replace(backup, output)
+            except OSError:
+                recovery_code = "import os; os.replace(%r, %r)" % (backup, output)
+                recovery_argv = [sys.executable, "-c", recovery_code]
+                recovery_command = (
+                    subprocess.list2cmdline(recovery_argv)
+                    if os.name == "nt"
+                    else shlex.join(recovery_argv)
+                )
+                print(
+                    "catalog replacement failed; prior catalog is preserved at %s" % backup,
+                    file=sys.stderr,
+                )
+                print(
+                    "recovery command: %s" % recovery_command,
+                    file=sys.stderr,
+                )
+                return 5
+        print("cannot replace model catalog %s: %s" % (output, exc), file=sys.stderr)
+        return 1
+    finally:
+        if staging:
+            shutil.rmtree(staging, ignore_errors=True)
+    if backup:
+        print("backup: %s" % backup)
+    return 0
+
+
+def _sync_main(args):
+    roots = _configured_hf_roots(args.hf_roots)
+    model_dirs = _resolved_model_dirs(args.model_dirs)
+    output = os.path.abspath(args.out)
+    output_error = _catalog_output_error(output)
+    if output_error:
+        print(output_error, file=sys.stderr)
+        return 3
+    if args.dry_run:
+        print("MODEL CATALOG SYNC PLAN")
+        print("output: %s" % output)
+        print("Hugging Face roots: %s" % (os.pathsep.join(roots) or "(auto-detected none)"))
+        print("plain model directories: %s" % (os.pathsep.join(model_dirs) or "(none)"))
+        print("actions: scan local model roots; stage cards/ summaries and INDEX.md; replace the catalog")
+        print("rollback: preserve the prior catalog as a numbered .anvil.bak.N directory")
+        print("deferred until apply: filesystem scan, model-card fetches, and catalog writes")
+        return 0
+    parent = os.path.dirname(output)
+    try:
+        os.makedirs(parent, exist_ok=True)
+        with _catalog_lock(output):
+            output_error = _catalog_output_error(output)
+            if output_error:
+                print(output_error, file=sys.stderr)
+                return 3
+            return _sync_apply(output, roots, model_dirs)
+    except CatalogSyncBusy:
+        print(
+            "model catalog sync already in progress for %s; wait for it to finish" % output,
+            file=sys.stderr,
+        )
+        return 4
+    except OSError as exc:
+        print("cannot prepare model catalog output %s: %s" % (output, exc), file=sys.stderr)
+        return 1
 
 
 def main(argv):
@@ -609,11 +1081,24 @@ def main(argv):
     )
     sub = ap.add_subparsers(dest="action", required=True)
 
-    sync = sub.add_parser("sync", help="scan HF caches and build the model catalog")
+    sync = sub.add_parser(
+        "sync",
+        help="scan HF caches and build the model catalog",
+        description=_help_description(
+            "Scan configured local model roots and write a structured model catalog.",
+            "anvil-serving models sync --out CATALOG --dry-run",
+            "anvil-serving models sync --out CATALOG --confirm",
+        ),
+        epilog="Apply stages a complete replacement, preserves the prior catalog as "
+               "a numbered backup, then installs cards/*.json and INDEX.md.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     sync.add_argument("--out", default=os.path.join(os.getcwd(), DEFAULT_CATALOG_DIR),
                       help="output dir for cards/ + INDEX.md")
     sync.add_argument("--hf-roots", default="", help="extra HF cache roots (os.pathsep-separated)")
     sync.add_argument("--model-dirs", default="", help="extra plain model dirs (os.pathsep-separated)")
+    sync.add_argument("--dry-run", action="store_true",
+                      help="resolve sources and preview catalog writes without scanning or writing")
 
     sub.add_parser("pull", help="download a Hugging Face repo into a named Docker volume")
     sub.add_parser("recipe", help="create, inspect, edit, delete, or load serve recipes")

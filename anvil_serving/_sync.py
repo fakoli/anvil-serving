@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """sync_model_cards.py - catalog local models: pull HF cards + local config, extract serving facts.
 
 Scans HuggingFace caches and plain model dirs, downloads each model's README card,
@@ -16,6 +16,7 @@ import os
 import re
 import json
 import glob
+import sys
 import time
 import urllib.request
 import urllib.error
@@ -23,7 +24,6 @@ import urllib.error
 HERE = os.environ.get("ANVIL_MODELS_OUT") or os.path.join(os.getcwd(), "model-library")
 CARDS = os.path.join(HERE, "cards")
 STATE = os.path.join(HERE, "_seen.json")
-os.makedirs(CARDS, exist_ok=True)
 
 
 def _fs_slug(name):
@@ -307,20 +307,40 @@ def write_index(rows):
             q=(f"{r.get('quant') or ''} {r.get('quant_bits') or ''}".strip() or "—"),
             lic=r.get("license") or "—",
             th=("yes" if r.get("thinking_default") else "—"),
-            bn=bench or "—", src=("win" if "/mnt/c" in r.get("local_path","") else "wsl")))
+            bn=bench or "—", src=_source_platform(r.get("local_path", ""))))
     open(os.path.join(HERE, "INDEX.md"), "w", encoding="utf-8").write("\n".join(L)+"\n")
 
+
+def _source_platform(path, *, os_name=None, platform_name=None):
+    """Label the host path without treating every non-Windows path as WSL."""
+    os_name = os.name if os_name is None else os_name
+    platform_name = sys.platform if platform_name is None else platform_name
+    normalized = str(path).replace("\\", "/").lower()
+    if normalized.startswith("/mnt/") and len(normalized) > 6 and normalized[6] == "/":
+        return "windows-wsl"
+    if os_name == "nt":
+        return "windows"
+    if platform_name == "darwin":
+        return "macos"
+    return "linux"
+
+
 def main():
+    # Imports are used by the read-only cache planner. Keep filesystem creation
+    # in the worker entry point so importing these scan helpers never writes.
+    os.makedirs(CARDS, exist_ok=True)
     models = discover()
     print(f"discovered {len(models)} model folders")
     rows = []
+    errors = 0
     for owner, repo, d, kind in models:
         try:
             s = summarize(owner, repo, d, kind)
             rows.append(s)
             print(f"  [{s.get('format'):>11}] {s['id']}  {s.get('size_gb')}GB  card={'y' if s.get('card_saved') else 'n'}")
         except Exception as e:
-            print(f"  ERROR {owner}/{repo}: {e}")
+            errors += 1
+            print(f"  ERROR {owner}/{repo}: {e}", file=sys.stderr)
     write_index(rows)
     # new-model detection (vs last run) for the Cowork analysis task
     real_ids = [r["id"] for r in rows if r.get("format") in ("safetensors","GGUF")]
@@ -330,6 +350,7 @@ def main():
               open(STATE, "w", encoding="utf-8"), indent=1)
     print(f"wrote INDEX.md + {len(rows)} summaries to {HERE}")
     print("NEW_MODELS: " + (", ".join(new_ids) if new_ids else "none"))
+    return 1 if errors else 0
 
 def _loadable(cfg, fmt="safetensors"):
     """Mirror summarize()'s decision via the same derivation, for self-check."""
@@ -380,4 +401,4 @@ def _selfcheck():
 
 if __name__ == "__main__":
     _selfcheck()
-    main()
+    raise SystemExit(main())
