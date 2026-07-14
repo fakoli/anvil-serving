@@ -1329,6 +1329,71 @@ def _evict_victims(serves, victims, *, dry_run=False, drain_timeout, transition,
     return 0
 
 
+def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
+                          compose=None, env_file=None,
+                          _run=subprocess.run, _open=urllib.request.urlopen):
+    """Ensure the DEPLOYED router is healthy before `serves up` (serves are only
+    reachable behind it).
+
+    Reuses the `router` verb's own machinery — its `status_summary` health-check
+    path and its `cmd_up` bring-up code path — rather than re-deriving either, so
+    "healthy" and "start" mean exactly what `anvil-serving router status`/`router up`
+    mean. Idempotent: a healthy router is left untouched (no restart). `--no-router`
+    skips the whole step (offline/serve-only workflows); `--dry-run` reports the
+    action without performing it. Prints one `router: …` line describing what it did.
+
+    Returns 0 when the router is (or would be) healthy or the step was skipped; the
+    non-zero `router up` return code when a real bring-up failed. Router bring-up is
+    a safety net, not a gate — the caller reports the failure but still brings serves
+    up (a failed router does not make the serves themselves un-startable).
+
+    router_manage is imported lazily: it does `from .serves import docker_state` at
+    module load, so a top-level import here would be circular.
+    """
+    from . import router_manage
+
+    if no_router:
+        print("router: skipped (--no-router)")
+        return 0
+    if container is None:
+        container = router_manage.DEFAULT_CONTAINER
+    # Reuse the `router status` health-check path verbatim (its status_summary /
+    # _health), rather than re-deriving either.
+    summary = router_manage.status_summary(container, _run=_run, _open=_open)
+    if summary.get("docker_state") == "error":
+        # docker is unreachable — we can neither probe nor bring the router up.
+        print("router: cannot determine health (docker unavailable) — bringing serves up anyway")
+        return 1
+    # "healthy" == the container is running (and not in a docker error state). A
+    # positive loopback HTTP code is EXTRA confirmation, but its ABSENCE is not
+    # proof of unhealth: a router deployed with ROUTER_PUBLISH=<tailnet-ip>
+    # publishes 8000 on that IP, not 127.0.0.1, so the loopback probe returns
+    # nothing even when the front door is up and docker-healthy (it answers 401
+    # on the tailnet address). Requiring a loopback 200 here would needlessly
+    # RESTART every tailnet-published router on each `serves up` — the exact
+    # opposite of "if already healthy, do nothing". So a running container is
+    # treated as healthy; only a genuinely-down (absent/exited) one is started.
+    if summary.get("running"):
+        print("router: already healthy")
+        return 0
+    if dry_run:
+        print("router: not healthy -> would start (dry-run)")
+        return 0
+    print("router: not healthy -> starting")
+    compose_path = compose or router_manage.resolve_compose_path(None)
+    if env_file is None:
+        env_file = router_manage._default_env_file()
+    rc = router_manage.cmd_up(
+        compose_path, router_manage.DEFAULT_SERVICE,
+        env_file=env_file, dry_run=False, _run=_run,
+    )
+    if rc == 0:
+        print("router: started")
+    else:
+        print("router: FAILED to start (see above) — bringing serves up anyway")
+    return rc
+
+
 def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
            evict=False, drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
            _transition=None):
@@ -1709,9 +1774,14 @@ def _build_action_parser(action):
         p.add_argument("--router-url", metavar="URL",
                        help="deployed router base URL for eviction quiesce/drain "
                             "(default: %s)." % DEFAULT_ROUTER_URL)
+        p.add_argument("--no-router", action="store_true",
+                       help="skip ensuring the deployed router is healthy first "
+                            "(offline/serve-only workflows); by default `serves up` "
+                            "brings the router up idempotently if it is not healthy.")
     else:
         p.set_defaults(compose=None, recreate=False, evict=False,
-                       drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None)
+                       drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
+                       no_router=False)
     if action == "logs":
         p.add_argument("--tail", default="200",
                        help="trailing lines to show (default: %(default)s; 'all').")
@@ -1758,6 +1828,15 @@ def main(argv=None):
             raise
         return int(exc.code or 2)
     a.action = action
+
+    # `serves up` ensures the DEPLOYED router is healthy FIRST — serves are only
+    # reachable behind it. Reuses the `router` verb's own status/up code paths;
+    # idempotent (a healthy router is not restarted), honors --dry-run, and
+    # --no-router skips it. Placed before BOTH up paths (ad-hoc --compose and
+    # manifest) so either form gets the ensure. Non-gating: a failed router
+    # bring-up is reported but still proceeds to the serves.
+    if a.action == "up":
+        ensure_router_healthy(no_router=a.no_router, dry_run=a.dry_run)
 
     # `up --compose <file>`: ad-hoc/experiment serve from a compose file that is NOT in the
     # manifest — independent of serves.toml, so we neither require nor load a manifest here.
