@@ -1,0 +1,52 @@
+# q36 engine experiment on Fakoli Dark's RTX PRO 6000.
+#
+# This is deliberately separate from the live compose file. The q36 candidate
+# and `heavy` are mutually exclusive because both own physical GPU 1. Use the
+# `anvil-serving serves` lifecycle declared in serves.q36.toml.
+services:
+  q36-pro6000:
+    build:
+      context: ./q36
+      dockerfile: Dockerfile
+      args:
+        Q36_REVISION: ${Q36_REVISION:-458eb018997565445f0ce0a4887ed7cdfeab756b}
+    image: ${Q36_IMAGE:-q36-engine:458eb018-cuda13.1.2}
+    container_name: q36-pro6000
+    restart: "no"
+    init: true
+    ipc: host
+    ports:
+      - "127.0.0.1:39040:8080"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface:ro"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # Docker Desktop exposes both devices despite Compose device_ids. The CUDA
+      # runtime mask is the proven isolation boundary on this host: physical GPU
+      # 1 is the PRO 6000, while physical GPU 0 remains the live RTX 5090.
+      CUDA_VISIBLE_DEVICES: ${Q36_GPU_INDEX:-1}
+      # Greedy-only, lossless self-speculative decode. The wrapper validates
+      # the documented q36 depth range (1..3) before starting the engine.
+      Q36_MTP: ${Q36_MTP:-0}
+      Q36_MTP_DEPTH: ${Q36_MTP_DEPTH:-1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    command:
+      - -m
+      - "${Q36_MODEL_PATH:-/root/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF/snapshots/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/Qwen3.6-35B-A3B-MXFP4_MOE.gguf}"
+      - --port
+      - "8080"
+      - --ctx
+      - "${Q36_CTX:-32768}"
+      - --temp
+      - "${Q36_TEMP:-0}"
+      - --no-state-cache
+
+volumes:
+  vllm-hfcache:
+    external: true

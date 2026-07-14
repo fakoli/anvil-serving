@@ -72,7 +72,7 @@ name = "fast"                 # logical name (also accepted by down/up)
 container = "vllm-gptoss"     # docker container name (== the compose service's container_name)
 port = 30001
 model = "gpt-oss-20b"         # served-model-name (used by `eval`)
-engine = "vllm"               # vllm, sglang, llamacpp — or a truthful non-chat-LLM label:
+engine = "vllm"               # vllm, sglang, llamacpp, q36 — or a truthful non-chat-LLM label:
                               # audio (STT/TTS), embedding, reranker (ADR-0017 §7),
                               # image (the ComfyUI tenant, gpu-reservations:T012)
 health = "/health"
@@ -100,8 +100,9 @@ never bypassed).
 
 The shipped `examples/fakoli-dark` manifests author: `voice` (stt, tts),
 `fast-only` (fast), `heavy-only` (heavy), `embedding` (embeddings, reranker),
-`llm-stack` (heavy, fast, embeddings, reranker, ocr, vision), and `comfy`
-(comfyui). Experiment/candidate serves are deliberately left untagged.
+`llm-stack` (heavy, fast, embeddings, reranker, ocr, vision), `comfy`
+(comfyui), and `q36-experiment` (q36-pro6000). Other experiment/candidate
+serves are deliberately left untagged.
 
 ```bash
 anvil-serving serves groups --manifest examples/fakoli-dark/serves.toml
@@ -133,6 +134,21 @@ overrides, the generic experiment service uses the RTX 5090 and a loopback-only 
 `docker compose ... config --quiet` is a useful validation gate. Once it answers on `:{PORT}`,
 point `anvil-serving eval preflight --base-url http://127.0.0.1:{PORT}/v1 --model {SERVED_NAME}`
 at it.
+
+The dedicated q36 engine has its own digest-pinned CUDA 13.1.2 build and managed
+manifest. It uses the exact GGUF snapshot from the shared `vllm-hfcache` volume,
+binds loopback-only on port 39040, and is mutually exclusive with `heavy` on the
+RTX PRO 6000:
+
+```powershell
+anvil-serving serves down --manifest examples/fakoli-dark/serves.toml heavy --confirm
+anvil-serving serves up --manifest examples/fakoli-dark/serves.q36.toml q36-pro6000 --confirm
+anvil-serving serves status --manifest examples/fakoli-dark/serves.q36.toml q36-pro6000
+anvil-serving serves down --manifest examples/fakoli-dark/serves.q36.toml q36-pro6000 --confirm
+```
+
+The image recipe and its source/image pins are documented in
+`examples/fakoli-dark/q36/README.md`.
 
 #### Docker Desktop/WSL CUDA validation layers
 
