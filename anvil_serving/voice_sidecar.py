@@ -23,6 +23,7 @@ DEFAULT_CONFIG = os.path.join(
     "huggingface-speech-to-speech",
     "openclaw-gateway.example.toml",
 )
+MAX_CONFIG_BYTES = 1024 * 1024
 
 _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _SECRET_PREFIXES = ("sk" + "-", "hf" + "_", "ghp" + "_")
@@ -46,7 +47,18 @@ def _resolve_config_path(path: str | None) -> str:
 def load_manifest(path: str | None = None) -> dict:
     config_path = _resolve_config_path(path)
     with open(config_path, "rb") as f:
-        data = tomllib.load(f)
+        payload = f.read(MAX_CONFIG_BYTES + 1)
+    if len(payload) > MAX_CONFIG_BYTES:
+        raise ConfigError(
+            "voice sidecar manifest exceeds %d bytes: %s"
+            % (MAX_CONFIG_BYTES, config_path)
+        )
+    try:
+        data = tomllib.loads(payload.decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise ConfigError(
+            "voice sidecar manifest is not valid UTF-8: %s" % config_path
+        ) from exc
     validate_manifest(data)
     return data
 
@@ -341,7 +353,12 @@ def build_parser(prog: str = "anvil-serving voice sidecar") -> argparse.Argument
 
     sp = sub.add_parser("compose", help="render a Docker Compose service skeleton")
     add_config(sp)
-    sp.add_argument("--service-name", default="speech-to-speech")
+    sp.add_argument(
+        "--service-name",
+        default="speech-to-speech",
+        metavar="NAME",
+        help="Docker Compose service name for the rendered skeleton",
+    )
     sp.add_argument(
         "--with-auth",
         action="store_true",

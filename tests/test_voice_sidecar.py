@@ -183,6 +183,22 @@ def test_cli_without_config_explains_missing_installed_default(monkeypatch, caps
     assert "config not found" not in err
 
 
+def test_load_manifest_rejects_oversized_input(tmp_path):
+    oversized = tmp_path / "oversized.toml"
+    oversized.write_bytes(b"x" * (voice_sidecar.MAX_CONFIG_BYTES + 1))
+
+    with pytest.raises(voice_sidecar.ConfigError, match="exceeds"):
+        voice_sidecar.load_manifest(str(oversized))
+
+
+def test_load_manifest_rejects_non_utf8_input(tmp_path):
+    invalid = tmp_path / "invalid-utf8.toml"
+    invalid.write_bytes(b"[voice_sidecar]\ncontainer_image = \"\xff\"\n")
+
+    with pytest.raises(voice_sidecar.ConfigError, match="not valid UTF-8"):
+        voice_sidecar.load_manifest(str(invalid))
+
+
 def test_cli_dispatches_voice_sidecar_command_json(capsys):
     rc = cli.main(["voice", "sidecar", "command", "--config", str(EXAMPLE), "--json"])
     assert rc == 0

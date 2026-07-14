@@ -858,6 +858,22 @@ def test_load_manifest_bad_toml_raises(tmp_path):
         voice_config.load_manifest(str(bad))
 
 
+def test_load_manifest_rejects_oversized_input(tmp_path):
+    oversized = tmp_path / "oversized.toml"
+    oversized.write_bytes(b"x" * (voice_config.MAX_MANIFEST_BYTES + 1))
+
+    with pytest.raises(voice_config.ConfigError, match="exceeds"):
+        voice_config.load_raw_manifest(str(oversized))
+
+
+def test_load_manifest_rejects_non_utf8_input(tmp_path):
+    invalid = tmp_path / "invalid-utf8.toml"
+    invalid.write_bytes(b"[voice]\nname = \"\xff\"\n")
+
+    with pytest.raises(voice_config.ConfigError, match="not valid UTF-8"):
+        voice_config.load_raw_manifest(str(invalid))
+
+
 def test_load_manifest_from_tmp_path_roundtrip(tmp_path):
     manifest = tmp_path / "voice.toml"
     manifest.write_text(
