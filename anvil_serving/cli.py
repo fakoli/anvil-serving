@@ -298,18 +298,9 @@ def _print_focused_help(path: Sequence[CommandNode]) -> None:
         descendant.execution_policy == "resource-owner"
         for descendant in _walk_nodes(node.children)
     )
-    global_options = COMMAND_TREE.global_options
-    if not supports_resolution:
-        resolution_flags = {
-            *_RESOLUTION_VALUE_OPTIONS,
-            "--experimental-model-workload",
-            "--allow-ssh-fallback",
-        }
-        global_options = tuple(
-            option
-            for option in global_options
-            if not resolution_flags.intersection(option.flags)
-        )
+    global_options = _global_options_for_path(path)
+    if supports_resolution and node.execution_policy != "resource-owner":
+        global_options = COMMAND_TREE.global_options
     options = global_options + node.options
     if options:
         print()
@@ -350,6 +341,48 @@ def _hidden_leaf_help_flags(path: Sequence[CommandNode]) -> frozenset[str]:
     return frozenset(flags)
 
 
+def _hidden_leaf_help_arguments(path: Sequence[CommandNode]) -> frozenset[str]:
+    """Compatibility positionals accepted by handlers but absent from the public CLI."""
+    if tuple(item.name for item in path) == ("mcp", "serve"):
+        return frozenset({"{list-tools}"})
+    return frozenset()
+
+
+def _global_options_for_path(path: Sequence[CommandNode]) -> tuple[CommandOption, ...]:
+    """Return dispatcher-owned options that the selected public leaf accepts."""
+    node = path[-1]
+    resolution_flags = {
+        *_RESOLUTION_VALUE_OPTIONS,
+        "--experimental-model-workload",
+        "--allow-ssh-fallback",
+    }
+    if path[0].name == "topology":
+        accepted = {"--topology", "--topology-overlay"}
+        if node.name == "resolve":
+            accepted.update(
+                {
+                    "--command-host",
+                    "--command-runtime",
+                    "--target",
+                    "--transport",
+                    "--experimental-model-workload",
+                }
+            )
+        return tuple(
+            option
+            for option in COMMAND_TREE.global_options
+            if not resolution_flags.intersection(option.flags)
+            or accepted.intersection(option.flags)
+        )
+    if node.execution_policy == "resource-owner":
+        return COMMAND_TREE.global_options
+    return tuple(
+        option
+        for option in COMMAND_TREE.global_options
+        if not resolution_flags.intersection(option.flags)
+    )
+
+
 def _strip_optional_usage_flag(line: str, flag: str) -> str:
     """Remove one dispatcher-owned optional from an argparse usage line."""
     optional_group = re.compile(r"\[([^\[\]]*)\]")
@@ -373,7 +406,10 @@ def _strip_optional_usage_flag(line: str, flag: str) -> str:
 
 
 def _normalized_leaf_sections(
-    rendered: str, *, hidden_flags: frozenset[str]
+    rendered: str,
+    *,
+    hidden_flags: frozenset[str],
+    hidden_arguments: frozenset[str] = frozenset(),
 ) -> tuple[list[str], list[str]]:
     """Split argparse help into canonical usage and local argument sections."""
     lines = rendered.splitlines()
@@ -387,6 +423,11 @@ def _normalized_leaf_sections(
         index += 1
     for flag in sorted(hidden_flags, key=len, reverse=True):
         usage = [_strip_optional_usage_flag(line, flag).strip() for line in usage]
+    for argument in sorted(hidden_arguments, key=len, reverse=True):
+        usage = [
+            re.sub(r"\s*\[" + re.escape(argument) + r"\]", "", line).strip()
+            for line in usage
+        ]
     usage = [line for line in usage if line]
     if usage:
         usage[-1] = usage[-1] + " [global options]"
@@ -425,11 +466,16 @@ def _normalized_leaf_sections(
         stripped = line.lstrip()
         indent = len(line) - len(stripped)
         option_line = indent <= 2 and stripped.startswith("-")
+        argument_line = indent <= 2 and any(
+            stripped.startswith(argument) for argument in hidden_arguments
+        )
         if option_line:
             skipping = any(
                 re.match(r"^" + re.escape(flag) + r"(?:[ ,]|$)", stripped)
                 for flag in hidden_flags
             )
+        elif argument_line:
+            skipping = True
         elif skipping and (not stripped or indent <= 2):
             skipping = False
         if not skipping:
@@ -439,6 +485,19 @@ def _normalized_leaf_sections(
                 "options:": "Options:",
             }.get(stripped.casefold())
             filtered.append(normalized if normalized is not None else line)
+    compacted: list[str] = []
+    for offset, line in enumerate(filtered):
+        if line == "Arguments:":
+            following = next(
+                (item for item in filtered[offset + 1 :] if item.strip()),
+                None,
+            )
+            if following is None or following in {"Arguments:", "Options:"}:
+                continue
+        compacted.append(line)
+    filtered = compacted
+    while filtered and not filtered[0].strip():
+        filtered.pop(0)
     while filtered and not filtered[-1].strip():
         filtered.pop()
     return usage, filtered
@@ -452,6 +511,7 @@ def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> Non
     usage, local_sections = _normalized_leaf_sections(
         rendered,
         hidden_flags=_hidden_leaf_help_flags(path),
+        hidden_arguments=_hidden_leaf_help_arguments(path),
     )
 
     print("anvil-serving %s" % command)
@@ -543,18 +603,7 @@ def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> Non
                 )
             )
 
-    global_options = COMMAND_TREE.global_options
-    if node.execution_policy != "resource-owner":
-        resolution_flags = {
-            *_RESOLUTION_VALUE_OPTIONS,
-            "--experimental-model-workload",
-            "--allow-ssh-fallback",
-        }
-        global_options = tuple(
-            option
-            for option in global_options
-            if not resolution_flags.intersection(option.flags)
-        )
+    global_options = _global_options_for_path(path)
     dispatcher_options = tuple(
         option
         for option in node.options
@@ -605,18 +654,7 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
         for option in node.options
         if "--confirm" in option.flags
     ]
-    global_options = COMMAND_TREE.global_options
-    if node.execution_policy != "resource-owner":
-        resolution_flags = {
-            *_RESOLUTION_VALUE_OPTIONS,
-            "--experimental-model-workload",
-            "--allow-ssh-fallback",
-        }
-        global_options = tuple(
-            option
-            for option in global_options
-            if not resolution_flags.intersection(option.flags)
-        )
+    global_options = _global_options_for_path(path)
     print("\nDispatcher options:")
     rendered_dispatcher_options = []
     for option in (*global_options, *dispatcher_options):
