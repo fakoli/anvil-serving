@@ -1,0 +1,569 @@
+# Declarative serves manifest for the fakoli-dark (flexibility-mode) topology.
+#
+# `anvil-serving serves {status|up|down}` reads this — the single source of truth for
+# "which model containers exist, on which ports". Manage the serves ONLY through
+# `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
+#
+# 2026-07-12 reconcile: heavy = ThinkingCap Qwen3.6-27B FP8 (promoted heavy tier, :30002, PRO 6000).
+# 2026-07-13 fast swap (gpu-reservations:T006): fast = Gemma 4 E4B IT (:30003, RTX 5090) with a
+# declared ADR-0017 resident reservation; the previous Qwen3.6-35B-A3B-NVFP4 recipe stays as the
+# opt-in `fast-qwen36-rollback` serve. These back the router tiers in the live
+# config (heavy-local -> :30002, fast-local -> :30003). `{dir}` resolves to this file's dir.
+#
+# BOTH serves are Docker-Compose-defined (docker-compose.yml holds a service per tier) — see
+# docs/adr/0002-serves-are-compose-defined.md. Each `up` targets its own compose service by
+# name, so `serves up heavy` and `serves up fast` stay independent. `docker compose up -d` is
+# drift-safe (natively recreates a service whose config changed). Use `serves up --recreate
+# <name>` to force a fresh container.
+
+# ADR-0017 GPU residency reservations — declared capacity of the multi-tenant RTX 5090
+# ("dark-fast"). `serves up` admits a reserving serve against vram_mib - reserve_mib before any
+# container command runs; `serves status` prints the derived ledger.
+#   capacity 32607 MiB = nvidia-smi memory.total for GPU-04d3b6e7… (RTX 5090 32 GB).
+#   reserve 4608 MiB   = Windows display/system + umbrella for the always-on voice STT/TTS
+#                        sidecars (anvil-voice-stt/tts, serves.voice.toml). Those sidecars are
+#                        managed by `voice audio up/down` from a SEPARATE manifest, so this
+#                        ledger cannot see them as reservations — they are budgeted here as
+#                        reserve instead. 2026-07-13 (gpu-reservations:T011 rebalance): the
+#                        operator resolved the T015 resident-set conflict by shrinking fast
+#                        (18432 -> 14336, pre-quantized FP8 checkpoint) and this reserve
+#                        (7168 -> 4608) so the full resident set (fast 14336 + embeddings
+#                        3200 + reranker 3456 + ocr 5120 = 26112 MiB) fits the 27999 MiB
+#                        budget. (The operator's initial 10240 MiB fast target proved
+#                        physically unreachable: E4B's bf16 embeddings/per-layer-embeddings
+#                        survive every fp8 shape — measured 12.4 GiB FP8-Dynamic weights.)
+#                        HONESTY NOTE: observed non-ledger draw (display + voice) was
+#                        ~5.6 GiB on 2026-07-13 — above this reserve. gpu-reservations:T015
+#                        live re-measure (full resident set up): GPU0 memory.used 31843 MiB,
+#                        committed 26112 -> draw 5731 MiB; nvidia-smi memory.total 32607 MiB
+#                        matches this capacity EXACTLY; allocatable memory.free was 345 MiB.
+#                        So the ledger's free (1887 MiB) runs ~1.5 GiB optimistic against the
+#                        physical 345 MiB, and real headroom after the full resident set is
+#                        only ~0.3 GiB, tightening under fast-tier KV pressure (the earlier
+#                        ~0.8 GiB point estimate was optimistic). The declared budgets
+#                        themselves are accurate — vLLM fills each serve to its util cap, and
+#                        all five residents stay healthy inside the 32607 MiB device. Revisit
+#                        at the next drift check.
+#                        (T015 evidence: docs/findings/2026-07-13-t015-resident-set-evidence/)
+# The dark-heavy PRO 6000 is single-tenant (heavy tier only) and stays outside the ledger for
+# now — adoption is incremental (ADR-0017 consequences).
+[[gpu_roles]]
+id = "dark-fast"
+vram_mib = 32607
+reserve_mib = 4608
+
+[[serve]]
+name = "heavy"                 # heavy quality tier — ThinkingCap Qwen3.6-27B FP8
+container = "vllm-thinkingcap-heavy"
+port = 30002
+model = "thinkingcap-qwen36-27b-fp8" # served-model-name (used by `anvil-serving eval`)
+engine = "vllm"
+health = "/health"
+groups = ["heavy-only", "llm-stack"]  # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
+
+[[serve]]
+name = "heavy-gptoss-rollback" # opt-in rollback; stop `heavy` first because both own :30002
+container = "vllm-gptoss120"
+port = 30002
+model = "gpt-oss-120b"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-gptoss-rollback"
+
+# Fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090 (gpu-reservations:T006 swap; T011
+# operator rebalance). bf16 weights alone are 15.18 GiB and cannot fit the rebalanced
+# budget; ONLINE fp8 in the gemma4-unified image is broken on this box (cutlass stable-ABI
+# rejects fp8 dtypes; Marlin crashes on the fp8-quantized vision tower), so the serve runs
+# the PRE-QUANTIZED leon-se/gemma-4-E4B-it-FP8-Dynamic checkpoint (compressed-tensors,
+# towers/lm_head kept bf16 — 12.4 GiB weights measured) on the standard pinned vLLM image
+# + KV for the 32K window inside 14336 MiB. docker-compose.yml enforces it with
+# --gpu-memory-utilization 0.4396 = 14336 / 32607 capacity (see the deviation note there:
+# the T003 derive formula over-allocates when reserve_mib > 0) — change them together.
+[[serve]]
+name = "fast"                  # fast tier — Gemma 4 E4B IT FP8-Dynamic on the RTX 5090
+container = "vllm-gemma4-e4b-fast"
+port = 30003
+model = "gemma4-e4b-it"        # served-model-name (used by `anvil-serving eval`)
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 14336
+residency = "resident"
+groups = ["fast-only", "llm-stack"]  # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.yml up -d fast"
+
+# Opt-in FAST rollback (pre-T006 Qwen3.6-35B-A3B-NVFP4); stop `fast` first because both own
+# :30003. Deliberately OUTSIDE the ADR-0017 ledger: its legacy 0.85-util footprint (~27.7 GiB)
+# cannot coexist with the always-on voice sidecars, so a declared reservation would always be
+# denied. Rollback runbook:
+#   1. anvil-serving serves --manifest {this} down fast --confirm
+#   2. either `anvil-serving voice audio down --confirm` (frees the sidecars' ~4.3 GiB) or
+#      export FAST_QWEN36_GPU_UTIL=0.78 to shrink the recipe under the remaining headroom
+#   3. anvil-serving serves --manifest {this} up fast-qwen36-rollback --confirm
+#   4. revert the router's fast-local tier model to "qwen36-35b-a3b-nvfp4"
+#      (anvil-router.live.toml history) via the router promotion path.
+[[serve]]
+name = "fast-qwen36-rollback"
+container = "vllm-qwen36"
+port = 30003
+model = "qwen36-35b-a3b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d fast-qwen36-rollback"
+
+# ── Purpose-model serves (gpu-reservations:T009, ADR-0017 §7) ──
+# Always-on text-embedding + reranker serves on the multi-tenant 5090, riding the same
+# [[serve]] rails as the LLM tiers: declared `resident` reservations admitted by `serves up`,
+# loopback-only publish by default (set EMBEDDINGS_PUBLISH / RERANKER_PUBLISH to this host's
+# tailnet address for cross-host access). Engine labels are the truthful purpose-model
+# vocabulary ("embedding"/"reranker", extending the "audio" precedent) — these serve pooling
+# endpoints (/v1/embeddings, /rerank), NOT chat completions, so LLM tooling must not target
+# them. Reservations are HONEST-MEASURED (2026-07-13): each instance carries 1.12 GiB bf16
+# weights + a ~1.7 GiB fixed vLLM/WSL2 runtime floor before any KV, so 3200 MiB (embeddings,
+# 2048-token window) and 3456 MiB (reranker, 4096-token window) are the smallest budgets that
+# load with margin. docker-compose.yml enforces them with --gpu-memory-utilization
+# vram_mib / 32607 capacity (0.0981 / 0.1060 — fraction of TOTAL capacity, per the T006
+# deviation note there) — change them together.
+[[serve]]
+name = "embeddings"            # Qwen3-Embedding-0.6B (vLLM pooling runner, RTX 5090)
+container = "vllm-qwen3-embedding"
+port = 30005
+model = "qwen3-embedding-0.6b" # served-model-name (what /v1/embeddings callers send)
+engine = "embedding"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 3200
+residency = "resident"
+groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.yml up -d embeddings"
+
+[[serve]]
+name = "reranker"              # Qwen3-Reranker-0.6B (vLLM sequence-classification, RTX 5090)
+container = "vllm-qwen3-reranker"
+port = 30006
+model = "qwen3-reranker-0.6b"  # served-model-name (what /rerank callers send)
+engine = "reranker"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 3456
+residency = "resident"
+groups = ["embedding", "llm-stack"]  # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.yml up -d reranker"
+
+# ── OCR serve (gpu-reservations:T011) ──
+# PaddleOCR-VL-1.6 behind the router's "ocr" intent preset (ocr-local -> :30007).
+# Declared as an ADR-0017 `resident` reservation on the multi-tenant 5090; the
+# 5120 MiB budget is HONEST-MEASURED on the sibling sm_120 card with this exact
+# image+flags (see docker-compose.yml's ocr service note: 1.82 GiB weights +
+# ~2.65 GiB multimodal-profiling floor + 0.53 GiB KV = 30,720 tokens for the
+# 16384-token window; a 4096 MiB budget failed init with negative KV).
+# docker-compose.yml enforces it with --gpu-memory-utilization 0.1570 =
+# 5120 / 32607 capacity — change them together.
+#
+# CAPACITY (2026-07-13, gpu-reservations:T011 operator rebalance): with fast at
+# 14336 MiB (FP8-Dynamic) and reserve at 4608 MiB, the FULL resident set — fast
+# 14336 + embeddings 3200 + reranker 3456 + ocr 5120 = 26112 MiB — fits the
+# 27999 MiB dark-fast budget with 1887 MiB of ledger headroom, so `serves up
+# ocr` admits alongside the T009 trio. (The earlier T015 conflict — fast at
+# 18432 left only 351 MiB free — was resolved by that rebalance; see the
+# [[gpu_roles]] note.)
+[[serve]]
+name = "ocr"                   # PaddleOCR-VL-1.6 (vLLM, RTX 5090)
+container = "vllm-paddleocr-vl"
+port = 30007
+model = "paddleocr-vl-1.6"     # served-model-name (the ocr-local router tier's `model`)
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 5120
+residency = "resident"
+groups = ["llm-stack"]  # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
+
+# ── Vision serve (gpu-reservations:T013) ──
+# Qwen3-VL-4B-Instruct behind the router's "vision" intent preset (vision-local ->
+# :30008): general image understanding (describe/ground a screenshot or photo) —
+# distinct from `ocr`'s verbatim document extraction. Declared as the first ADR-0017
+# `EVICTABLE` reservation on the multi-tenant 5090: it runs opportunistically when the
+# ledger has headroom and YIELDS to `on-demand` acquisitions (e.g. a ComfyUI image-gen
+# task) via the T005 eviction flow — `serves up <on-demand> --evict` quiesces + drains
+# router tier `vision-local` (declared below) through the ADR-0018 transition before
+# the container is stopped; a later `serves up vision` restores it (then
+# `router readmit --tier vision-local` returns it to rotation).
+# docker-compose.yml enforces the budget with --gpu-memory-utilization 0.3769 =
+# 12288 / 32607 capacity — change them together (see the compose note for the
+# honest-measured breakdown).
+#
+# CAPACITY (2026-07-13): vision does NOT fit alongside the full resident set — fast
+# 14336 + embeddings 3200 + reranker 3456 + ocr 5120 = 26112 of the 27999 MiB budget
+# leaves 1887 MiB free < 12288. That is by design for an evictable serve: `serves up
+# vision` is correctly denied with the ledger until the operator frees residents
+# (e.g. `serves down ocr reranker embeddings` -> 13663 MiB free admits it). Which
+# residents dark-fast hosts is the gpu-reservations:T015 resident-set decision.
+[[serve]]
+name = "vision"                # Qwen3-VL-4B-Instruct (vLLM, RTX 5090)
+container = "vllm-qwen3-vl-vision"
+port = 30008
+model = "qwen3-vl-4b-instruct" # served-model-name (the vision-local router tier's `model`)
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 12288
+residency = "evictable"
+router_tier = "vision-local"
+groups = ["llm-stack"]  # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.yml up -d vision"
+
+# One guarded operation owns the model swap, functional gate, router update,
+# and complete model+router rollback. This single-GPU plan validates the newly
+# started target in-transaction; a separately resident candidate cannot coexist.
+[[promotion]]
+name = "thinkingcap-heavy"
+target = "heavy"
+rollback = "heavy-gptoss-rollback"
+router_config = "{dir}/anvil-router.live.toml"
+router_profile = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/promotion-profile.json"
+rollback_router_config = "{dir}/anvil-router.gptoss-rollback.toml"
+rollback_router_profile = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/gptoss-rollback-profile.json"
+affected_tiers = ["heavy-local"]
+drain_timeout = 120
+needle_ctx = 131072
+tool_batch = 20
+startup_timeout = 600
+rollback_startup_timeout = 1200
+poll_interval = 5
+router_health_url = "http://100.87.34.66:8000/healthz"
+
+[[promotion.gate]]
+name = "functional-thinking-disabled"
+checks = "smoke,json,needle,tools"
+thinking_mode = "disabled"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 0
+reasoning_evidence = "forbidden"
+json_out = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/functional-preflight.json"
+
+[[promotion.gate]]
+name = "quality-thinking-enabled-4k"
+checks = "smoke,json"
+thinking_mode = "enabled"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 4096
+reasoning_evidence = "required"
+json_out = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/thinking-preflight-4k.json"
+
+[[promotion.rollback_gate]]
+name = "gptoss-functional"
+checks = "smoke,json,needle,tools"
+thinking_mode = "default"
+reasoning_effort = "high"
+visible_answer_tokens = 256
+reasoning_headroom_tokens = 4096
+reasoning_evidence = "required"
+
+# Voice latency A/B candidates. These are opt-in experiment serves, not production tiers:
+# they use separate ports, `restart: "no"` compose services, and do not replace `fast`.
+#
+# Start/stop through the managed surface:
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up voice-qwen3-32b
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml down voice-qwen3-32b
+#
+# The experiment compose defaults to loopback-only publishes. For cross-host Mini validation,
+# set VOICE_CANDIDATE_PUBLISH to this host's tailnet/private address before `serves up`.
+
+[[serve]]
+name = "voice-qwen3-32b"
+container = "vllm-voice-qwen3-32b"
+port = 39000
+model = "qwen3-32b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-qwen3-32b"
+
+[[serve]]
+name = "voice-gemma4-12b"
+container = "vllm-voice-gemma4-12b"
+port = 39001
+model = "gemma4-12b-it"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-12b"
+
+[[serve]]
+name = "voice-gemma4-e4b"
+container = "vllm-voice-gemma4-e4b"
+port = 39002
+model = "gemma4-e4b-it"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-e4b"
+
+# Experimental Fast voice TTS candidate. Gepard exposes a Cartesia-compatible
+# streaming TTS API, not OpenAI `/v1/audio/speech`; select it through the
+# `gepard-fast-tts` voice profile rather than replacing the default Kokoro
+# bridge ports.
+[[serve]]
+name = "tts-gepard-fast"
+container = "gepard-fast-tts"
+port = 39111
+model = "gepard-1.0"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d tts-gepard-fast"
+
+# Fast-tier LLM bakeoff candidates. These are source-backed experiment serves
+# from fast-tier-llm-bakeoff-2026-07. They default to the RTX 5090 path and
+# must be dry-run / started through `anvil-serving serves`, never as raw docker
+# commands:
+#
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml --dry-run up fast-qwen36-35b-a3b
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-devstral-small2-llamacpp
+#
+# Leave FAST_CANDIDATE_PUBLISH unset for same-host benchmark loops. Set it to a
+# controlled tailnet/private address only when Mini needs to reach Dark directly.
+
+[[serve]]
+name = "fast-qwen36-35b-a3b"
+container = "vllm-fast-qwen36-35b-a3b"
+port = 39010
+model = "qwen36-35b-a3b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-qwen36-35b-a3b"
+
+[[serve]]
+name = "fast-gemma4-31b"
+container = "vllm-fast-gemma4-31b"
+port = 39011
+model = "gemma4-31b-it-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-gemma4-31b"
+
+[[serve]]
+name = "fast-glm47-flash-sglang"
+container = "sglang-fast-glm47-flash"
+port = 39012
+model = "glm-4.7-flash"
+engine = "sglang"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-glm47-flash-sglang"
+
+[[serve]]
+name = "fast-glm47-flash-llamacpp"
+container = "llamacpp-fast-glm47-flash"
+port = 39013
+model = "glm-4.7-flash-gguf"
+engine = "llamacpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-glm47-flash-llamacpp"
+
+[[serve]]
+name = "fast-devstral-small2"
+container = "vllm-fast-devstral-small2"
+port = 39014
+model = "devstral-small-2-24b"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-devstral-small2"
+
+[[serve]]
+name = "fast-devstral-small2-llamacpp"
+container = "llamacpp-fast-devstral-small2"
+port = 39015
+model = "devstral-small-2-24b-gguf"
+engine = "llamacpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-devstral-small2-llamacpp"
+
+[[serve]]
+name = "fast-qwen3-30b-a3b"
+container = "vllm-fast-qwen3-30b-a3b"
+port = 39016
+model = "qwen3-30b-a3b-instruct"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d fast-qwen3-30b-a3b"
+
+# Heavy-tier CANDIDATE (evaluation, NOT promoted): Qwen3.5-122B-A10B-NVFP4 on the RTX PRO 6000
+# (:39017). Shares the PRO 6000 with the production GPT-OSS heavy tier, so stop `heavy` before
+# `serves up heavy-qwen35-122b`. Not wired into the router until explicitly promoted to heavy-local.
+[[serve]]
+name = "heavy-qwen35-122b"
+container = "vllm-heavy-qwen35-122b"
+port = 39017
+model = "qwen35-122b-a10b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d heavy-qwen35-122b"
+
+# Single-PRO-6000 MXFP4/Marlin comparison candidate. This is the previously proven
+# flexibility-mode checkpoint expanded to 131K for a local throughput + deterministic
+# session-eval A/B. It shares the Heavy GPU and is never started with `heavy` or another
+# PRO-6000 candidate resident.
+[[serve]]
+name = "heavy-qwen35-122b-mxfp4"
+container = "vllm-qwen35-122b"
+port = 30004
+model = "qwen35-122b-mxfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.flexibility.yml up -d qwen35-122b"
+
+# ── 2026-07-10 Blackwell local-model bakeoff CANDIDATES (evaluation, NOT promoted) ──
+# 5090-track (:39020-21) coexist with live heavy; PRO-6000-track (:39022-24) share the
+# card with GPT-OSS heavy — stop `heavy` before bringing any of those up. None of these
+# are wired into the router.
+[[serve]]
+name = "cand-nemotron3-nano-30b"
+container = "vllm-cand-nemotron3-nano-30b"
+port = 39020
+model = "nemotron3-nano-30b-a3b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-nano-30b"
+
+[[serve]]
+name = "cand-nemotron3-omni-30b"
+container = "vllm-cand-nemotron3-omni-30b"
+port = 39021
+model = "nemotron3-omni-30b-a3b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-omni-30b"
+
+[[serve]]
+name = "cand-ornith-35b-fp8"
+container = "vllm-cand-ornith-35b-fp8"
+port = 39022
+model = "ornith-1.0-35b-fp8"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-ornith-35b-fp8"
+
+[[serve]]
+name = "cand-minimax-m27-reap"
+container = "vllm-cand-minimax-m27-reap"
+port = 39023
+model = "minimax-m27-reap-139b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-minimax-m27-reap"
+
+[[serve]]
+name = "cand-deepseek-v4-flash"
+container = "vllm-cand-deepseek-v4-flash"
+port = 39024
+model = "deepseek-v4-flash-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-deepseek-v4-flash"
+
+[[serve]]
+name = "cand-gemma4-31b-llamacpp"
+container = "llamacpp-cand-gemma4-31b"
+port = 39025
+model = "gemma4-31b-it-q4-gguf"
+engine = "llamacpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-gemma4-31b-llamacpp"
+
+[[serve]]
+name = "cand-nemotron3-puzzle-75b"
+container = "vllm-cand-nemotron3-puzzle-75b"
+port = 39026
+model = "nemotron3-puzzle-75b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-puzzle-75b"
+
+[[serve]]
+name = "cand-qwen36-heavy-mtp"
+container = "vllm-cand-qwen36-heavy-mtp"
+port = 39027
+model = "qwen36-27b-nvfp4-mtp"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-qwen36-heavy-mtp"
+
+[[serve]]
+name = "cand-qwen35-35b-llamacpp"
+container = "llamacpp-cand-qwen35-35b"
+port = 39028
+model = "qwen35-35b-a3b-q4km-gguf"
+engine = "llamacpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-qwen35-35b-llamacpp"
+
+[[serve]]
+name = "cand-gemma4-e4b-llamacpp"
+container = "llamacpp-cand-gemma4-e4b"
+port = 39029
+model = "gemma4-e4b-q4-gguf"
+engine = "llamacpp"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-gemma4-e4b-llamacpp"
+
+[[serve]]
+name = "cand-qwen36-fp8"
+container = "vllm-cand-qwen36-fp8"
+port = 39030
+model = "qwen36-27b-fp8"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-qwen36-fp8"
+
+[[serve]]
+name = "cand-thinkingcap-qwen36-fp8"
+container = "vllm-cand-thinkingcap-qwen36-fp8"
+port = 39031
+model = "thinkingcap-qwen36-27b-fp8"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-thinkingcap-qwen36-fp8"
+
+[[serve]]
+name = "cand-mistral-small4-119b-nvfp4"
+container = "vllm-cand-mistral-small4-119b-nvfp4"
+port = 39032
+model = "mistral-small4-119b-a6b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-mistral-small4-119b-nvfp4"
+
+[[serve]]
+name = "cand-nemotron3-super-120b"
+container = "vllm-cand-nemotron3-super-120b"
+port = 39033
+model = "nemotron3-super-120b-a12b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-nemotron3-super-120b"
+
+[[serve]]
+name = "cand-laguna-xs-21-nvfp4"
+container = "vllm-cand-laguna-xs-21-nvfp4"
+port = 39034
+model = "laguna-xs-2.1-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-laguna-xs-21-nvfp4"
+
+[[serve]]
+name = "cand-laguna-xs-21-nvfp4-sglang"
+container = "sglang-cand-laguna-xs-21-nvfp4"
+port = 39035
+model = "laguna-xs-2.1-nvfp4-sglang"
+engine = "sglang"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-laguna-xs-21-nvfp4-sglang"
+
+[[serve]]
+name = "cand-unsloth-qwen36-27b-nvfp4"
+container = "vllm-cand-unsloth-qwen36-27b-nvfp4"
+port = 39036
+model = "unsloth-qwen36-27b-nvfp4"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d cand-unsloth-qwen36-27b-nvfp4"

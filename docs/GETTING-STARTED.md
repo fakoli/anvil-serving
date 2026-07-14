@@ -87,14 +87,16 @@ recipes. The model names below (`gpt-oss-20b`, `qwen35-awq-local`) are not magic
 `model` values the two tiers in `configs/example.toml` declare; if your serves run different
 models, change the config's tier `model` fields (and these commands) to match.
 
-**Fastest path for a full machine — `init --home`.** Rather than hand-writing the manifests and
-compose files, `anvil-serving init --home` scaffolds the whole operational set (all `serves*.toml`
+**Fastest path for a full machine — `anvil-serving init`.** Rather than hand-writing the manifests
+and compose files, bare `anvil-serving init` scaffolds the whole operational set (all `serves*.toml`
 manifests with their group tags, the compose files, `operator-topology.toml`, `.env.example`, and
 the ADR-0019 tailnet `edge.toml`) into `~/.anvil-serving/` — the default search dir for `serves`
-and `router`. A fresh machine then runs a whole tier group with zero hand-assembly:
+and `router`. The set ships inside the installed package, so this works from a normal
+`pip`/`uv tool install`, not just a source checkout. A fresh machine then runs a whole tier group
+with zero hand-assembly:
 
 ```bash
-anvil-serving init --home            # scaffold into ~/.anvil-serving (or --out-dir DIR)
+anvil-serving init                   # scaffold into ~/.anvil-serving (or --out-dir DIR)
 cp ~/.anvil-serving/.env.example ~/.anvil-serving/.env   # then fill host values + secrets
 anvil-serving serves groups          # voice / fast-only / heavy-only / embedding / llm-stack / comfy
 anvil-serving serves up --group voice
@@ -102,7 +104,8 @@ anvil-serving serves up --group voice
 
 Host-specific values (GPU UUIDs, tailnet address) land as clearly-marked placeholders you edit
 before bring-up; secrets are never written (only `.env.example`). Existing operator files are
-backed up (`.anvil.bak.N`), never clobbered. See [`init --home`](CLI.md#init) for the full set.
+backed up (`.anvil.bak.N`), never clobbered. For a single-model quick bring-up into the CWD instead,
+use `anvil-serving init --single-model`. See [`init`](CLI.md#init) for the full set.
 
 Before starting the router, stand up those serves and validate each endpoint:
 
