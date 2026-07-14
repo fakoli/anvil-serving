@@ -5,6 +5,9 @@ quality gates, host operations, and integrations. This landing page is the map;
 each command family has a focused reference with its commands, workflows, and
 safety rules.
 
+The cross-family grammar, safety, output, and portability rules are recorded in
+[ADR-0021](adr/0021-cli-interaction-contract.md).
+
 ## Command families
 
 | Work area | Top-level verbs | Reference |
