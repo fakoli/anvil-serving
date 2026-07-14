@@ -3,9 +3,9 @@
 > Looking for the concise system overview? Start with [Architecture](ARCHITECTURE.md); this page
 > is the full design reference with the grounding evidence and rationale.
 
-> **Status:** shipped on `main`; source version v0.13.0. Published tags/packages can lag `main`,
+> **Status:** shipped on `main`; source version v0.13.1. Published tags/packages can lag `main`,
 > so install from a clone when evaluating the full control-plane surface described here. This is the
-> router design reference, originally revised 2026-06-30 and status-updated for the v0.13.0 docs pass.
+> router design reference, originally revised 2026-06-30 and status-updated for the v0.13.1 docs pass.
 > Sets the product direction for anvil-serving
 > as a **harness-facing** tool for clients that can point at a custom Anthropic/OpenAI-compatible
 > base URL and send a free-form model string, rather than an anvil-coupled serving tier.
