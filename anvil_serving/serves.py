@@ -2206,7 +2206,7 @@ def _warn_drift(s, _run=subprocess.run):
         return
     served = _served_model(s["container"], _run=_run)
     if served and served != declared:
-        print("  WARNING: %s was created serving %r but the manifest declares %r — "
+        print("  WARNING: %s was created serving %r but the manifest declares %r -- "
               "`docker start` will resurrect the STALE model; run `up --recreate` (or "
               "convert this serve to a compose file) to fix."
               % (s["container"], served, declared))
@@ -2255,7 +2255,7 @@ def _evict_victims(serves, victims, *, dry_run=False, drain_timeout, transition,
                   "then stop %s" % (
                       victim.serve, tier, drain_timeout, victim.container))
         else:
-            print("  evict %s: no router_tier declared — no router admission "
+            print("  evict %s: no router_tier declared -- no router admission "
                   "to drain; stop %s directly" % (victim.serve, victim.container))
     if dry_run:
         return 0
@@ -2323,7 +2323,7 @@ def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
     summary = router_manage.status_summary(container, _run=_run, _open=_open)
     if summary.get("docker_state") == "error":
         # docker is unreachable — we can neither probe nor bring the router up.
-        print("router: cannot determine health (docker unavailable) — bringing serves up anyway")
+        print("router: cannot determine health (docker unavailable) -- bringing serves up anyway")
         return 1
     # "healthy" == the container is running (and not in a docker error state). A
     # positive loopback HTTP code is EXTRA confirmation, but its ABSENCE is not
@@ -2351,7 +2351,7 @@ def ensure_router_healthy(*, no_router=False, dry_run=False, container=None,
     if rc == 0:
         print("router: started")
     else:
-        print("router: FAILED to start (see above) — bringing serves up anyway")
+        print("router: FAILED to start (see above) -- bringing serves up anyway")
     return rc
 
 
@@ -2433,7 +2433,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
             # Exception: an explicit `--recreate` may rescue a `dead` container — it's a
             # terminal (not running) state, so a `docker rm -f` + fresh `up` is safe. The
             # other states stay hands-off even under --recreate.
-            print("  %s: in state %r — not auto-started; resolve manually" % (s["container"], st))
+            print("  %s: in state %r -- not auto-started; resolve manually" % (s["container"], st))
             rc = 1
             continue
 
@@ -2444,7 +2444,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
             # Explicit clean recreate from `up` (compose OR script): force-remove the
             # existing container, then run the fresh-create `up`.
             if not up:
-                print("  %s: --recreate requested but no `up` command in manifest — "
+                print("  %s: --recreate requested but no `up` command in manifest -- "
                       "cannot recreate; resolve manually" % s["container"])
                 rc = 1
                 continue
@@ -2459,7 +2459,7 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                 desc = "recreate %s: docker rm -f + %s" % (s["container"], " ".join(up))
         elif st == "absent":
             if not up:
-                print("  %s: absent and no `up` command in manifest — start it "
+                print("  %s: absent and no `up` command in manifest -- start it "
                       "manually (see examples/fakoli-dark/)" % s["name"])
                 rc = 1
                 continue
@@ -2527,7 +2527,7 @@ def cmd_rm(serves, names, dry_run=False, assume_yes=False, _run=subprocess.run,
     for tok in names:
         matched = _select(serves, [tok])
         if len(matched) > 1:
-            print("  %s: ambiguous — matches serves %s; pass the exact container name to remove one"
+            print("  %s: ambiguous -- matches serves %s; pass the exact container name to remove one"
                   % (tok, ", ".join(s["name"] for s in matched)))
             rc = 1
             continue
@@ -2621,7 +2621,7 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
         print("no matching serve in the manifest (names: %s)" % ", ".join(names), file=sys.stderr)
         return 1
     if len(targets) > 1:
-        print("`logs` needs ONE serve; matched %d: %s — name just one."
+        print("`logs` needs ONE serve; matched %d: %s -- name just one."
               % (len(targets), ", ".join(s["name"] for s in targets)), file=sys.stderr)
         return 2
     container = targets[0]["container"]
@@ -2690,8 +2690,8 @@ def _build_action_parser(action):
         epilog=(
             "Examples:\n"
             "  anvil-serving serves switch heavy\n"
-            "  anvil-serving serves switch heavy --recipe MODEL --dry-run\n"
-            "  anvil-serving serves switch heavy --recipe MODEL --confirm\n\n"
+            "  anvil-serving serves switch heavy MODEL --dry-run\n"
+            "  anvil-serving serves switch heavy MODEL --confirm\n\n"
             "Preview resolves the effective Compose service and reports any deferred "
             "live-state refusal. Apply requires exact source router artifacts, takes an "
             "exclusive role lock plus the common promotion lock, journals evidence, "
@@ -2706,6 +2706,8 @@ def _build_action_parser(action):
     elif action == "switch":
         p.add_argument("names", nargs=1, metavar="ROLE",
                        help="deployment role to switch (for example: heavy)")
+        p.add_argument("recipe_selector", nargs="?", metavar="MODEL",
+                       help="recipe model id or unique basename to activate; omit to list choices")
     elif action == "logs":
         p.add_argument("names", nargs=1, metavar="NAME",
                        help="serve name/container to read logs from.")
@@ -2773,7 +2775,7 @@ def _build_action_parser(action):
         p.set_defaults(tail="200", since=None, follow=False)
     if action == "switch":
         p.add_argument("--recipe", metavar="MODEL",
-                       help="recipe model id or unique basename to activate")
+                       help="recipe model id or unique basename to activate (compatibility form)")
         p.add_argument("--registry", metavar="PATH",
                        help="recipe registry TOML (default: configs/serve-recipes.toml, then operator config)")
         p.set_defaults(resume=False)
@@ -2814,6 +2816,16 @@ def main(argv=None):
             raise
         return int(exc.code or 2)
     a.action = action
+
+    # Reject conflicting selectors before resolving manifests or registries. This
+    # is an argument error, so its result must not depend on which config files
+    # happen to exist on the current host.
+    if a.action == "switch" and a.recipe_selector and a.recipe:
+        print(
+            "choose either positional MODEL or --recipe MODEL, not both",
+            file=sys.stderr,
+        )
+        return 2
 
     # `serves up` ensures the DEPLOYED router is healthy FIRST — serves are only
     # reachable behind it. Reuses the `router` verb's own status/up code paths;
@@ -2919,6 +2931,7 @@ def main(argv=None):
             rollback=a.rollback, resume=a.resume, dry_run=a.dry_run,
         )
     if a.action == "switch":
+        selector = a.recipe_selector or a.recipe
         registry_path = resolve_recipe_registry_path(a.registry)
         try:
             promotions = load_promotions(manifest_path)
@@ -2933,12 +2946,12 @@ def main(argv=None):
         except Exception as exc:
             print("bad switch configuration: %s" % exc, file=sys.stderr)
             return 2
-        if not a.recipe:
+        if not selector:
             return cmd_switch_choices(
                 serves, promotions, registry, a.names[0], registry_path,
             )
         return cmd_switch(
-            serves, promotions, registry, a.names[0], a.recipe,
+            serves, promotions, registry, a.names[0], selector,
             os.path.abspath(manifest_path), resume=a.resume, dry_run=a.dry_run,
         )
     return 2

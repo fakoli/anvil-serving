@@ -38,6 +38,22 @@ def test_eval_fixtures_present():
     assert any(d.name == "2026-06-28-planning-capability" for d in eval_dirs)
 
 
+def test_atomic_profile_write_preserves_existing_target_on_replace_failure(
+    monkeypatch, tmp_path
+):
+    out = tmp_path / "profile.json"
+    out.write_text("old profile\n", encoding="utf-8")
+
+    def fail_replace(*args, **kwargs):
+        raise OSError("replace denied")
+
+    monkeypatch.setattr(pb.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="replace denied"):
+        pb._atomic_write_text(out, "new profile\n")
+    assert out.read_text(encoding="utf-8") == "old profile\n"
+    assert list(tmp_path.glob(".profile.json.*.tmp")) == []
+
+
 def test_replay_entry_per_model_work_class():
     """One entry per (tier, work-class), each with a valid score + positive n."""
     entries = pb.build_entries(EVAL_DATA)
@@ -546,6 +562,23 @@ def test_run_live_refuses_endpoints_not_covering_measured_tier(tmp_path, monkeyp
             judge=judge,
             now=lambda: _FIXED_NOW,
             endpoints={"some-other-tier": "http://127.0.0.1:30001/v1"},
+            confirm_calls_real_tiers=True,
+        )
+    assert judge.calls == []
+
+
+def test_run_live_refuses_confirmed_url_that_does_not_match_tier(tmp_path, monkeypatch):
+    _no_network(monkeypatch)
+    judge = _fake_judge()
+    with pytest.raises(pb.LiveBootstrapNotConfigured, match="does not match the backend"):
+        pb.run_live(
+            tiers=[_fast_local_tier(tid="fast-local")],
+            prompts={"planning": ["x"]},
+            out_path=tmp_path / "c.json",
+            backend_factory=lambda tier: _FakeBackend(),
+            judge=judge,
+            now=lambda: _FIXED_NOW,
+            endpoints={"fast-local": "http://127.0.0.1:39999/v1"},
             confirm_calls_real_tiers=True,
         )
     assert judge.calls == []

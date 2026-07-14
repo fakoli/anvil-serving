@@ -512,7 +512,10 @@ def test_eval_benchmark_external_dispatches_and_removed_roots_refuse(capsys):
     fixture = FIXTURES / "millstone_sample.json"
     local = FIXTURES / "local_benchmark_sample.json"
 
-    assert top_cli.main(["eval", "benchmark", "external", "import", "--source", "millstone", "--file", str(fixture), "--db", str(db)]) == 0
+    assert top_cli.main([
+        "eval", "benchmark", "external", "import", "--source", "millstone",
+        "--file", str(fixture), "--db", str(db), "--confirm",
+    ]) == 0
     capsys.readouterr()
     assert top_cli.main(["eval", "benchmark", "external", "compare", "--local", str(local), "--gpu", "RTX PRO 6000", "--db", str(db)]) == 0
     assert "# External Benchmark Comparison" in capsys.readouterr().out
@@ -521,3 +524,42 @@ def test_eval_benchmark_external_dispatches_and_removed_roots_refuse(capsys):
     assert "was removed" in capsys.readouterr().err
     assert top_cli.main(["benchmark", "external", "list"]) == 2
     assert "was removed" in capsys.readouterr().err
+
+
+def test_external_import_requires_confirmation_but_dry_run_never_writes(capsys):
+    root = _scratch("import-confirm")
+    db = root / "benchmarks.sqlite"
+    fixture = FIXTURES / "millstone_sample.json"
+    args = [
+        "eval", "benchmark", "external", "import", "--source", "millstone",
+        "--file", str(fixture), "--db", str(db),
+    ]
+    assert top_cli.main(args) == 3
+    assert "confirmation required" in capsys.readouterr().err
+    assert top_cli.main([*args, "--dry-run"]) == 0
+    assert "would import" in capsys.readouterr().out
+    assert not db.exists()
+
+
+def test_external_import_refuses_oversized_input_before_db_write(monkeypatch, capsys):
+    root = _scratch("import-limit")
+    source = root / "large.json"
+    source.write_bytes(b"12345")
+    db = root / "benchmarks.sqlite"
+    monkeypatch.setattr(cli, "MAX_IMPORT_BYTES", 4)
+    assert cli.main([
+        "import", "--source", "manual", "--file", str(source), "--db", str(db),
+    ]) == 1
+    assert "exceeds 4 byte limit" in capsys.readouterr().err
+    assert not db.exists()
+
+
+def test_external_export_is_atomic_and_backs_up_existing_target():
+    root = _scratch("export-atomic")
+    db = root / "benchmarks.sqlite"
+    store.init_db(db)
+    target = root / "rows.json"
+    target.write_text("operator content", encoding="utf-8")
+    assert cli.main(["export", "--out", str(target), "--db", str(db)]) == 0
+    assert json.loads(target.read_text(encoding="utf-8")) == []
+    assert (root / "rows.json.anvil.bak.1").read_text(encoding="utf-8") == "operator content"

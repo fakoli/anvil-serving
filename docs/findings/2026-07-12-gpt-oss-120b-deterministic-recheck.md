@@ -1,5 +1,10 @@
 # GPT-OSS-120B deterministic-eval control
 
+> **Historical protocol warning:** this finding correctly identified the broken comparison
+> protocol, and its reported cross-model scores remain invalid for ranking or promotion. The
+> replacement contract is now [ADR-0022](../adr/0022-evaluation-evidence-protocol.md) and
+> `anvil-serving eval benchmark quality`; this point-in-time record is intentionally unchanged.
+
 **Point-in-time record, 2026-07-12.** This run restored the production
 `openai/gpt-oss-120b` Heavy serve on Fakoli Dark, repeated the same preflight
 and conventional benchmark shape used for the Qwen3.5-122B MXFP4 and Nemotron

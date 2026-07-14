@@ -15,7 +15,7 @@ sampling params), production hardening, and heavy-tier speculative decoding (ADR
 the router a containerized, token-authed service (ADR-0004); v0.5.0 shipped generic onboarding
 (ADR-0003); v0.4.x shipped advise-and-defer and Docker-Compose-defined serves. The local serving
 tools (`eval usage`, `models sync`, `serves render`, `eval preflight`,
-`eval benchmark run`, `serves multiplex`)
+`eval benchmark capacity`, `eval benchmark quality`, `serves multiplex`)
 ship and right-size the local tiers the router routes across.
 
 Source of truth for product framing: **`README.md`**.
@@ -52,7 +52,8 @@ raw `urllib` → the upstream; any NEW model-calling code must use the Agent SDK
 anvil_serving/
   cli.py               dispatch: models | serves | eval | init | doctor | voice |
                                  router | harness | host | mcp | controller |
-                                 eval usage | eval preflight | eval benchmark run |
+                                 eval usage | eval preflight |
+                                 eval benchmark capacity | eval benchmark quality |
                                  eval benchmark external | eval calibrate |
                                  serves render | serves multiplex |
                                  models cache prune | models score | voice sidecar
@@ -138,7 +139,7 @@ anvil-serving eval usage --out-dir .
 anvil-serving models sync --out ./model-library
 anvil-serving serves render --model /path/to/model --gpu 1 --context 131072 --served-name local
 anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local --confirm
-anvil-serving eval benchmark run --base-url http://127.0.0.1:30000/v1 --model local --burst 20 --confirm
+anvil-serving eval benchmark capacity --base-url http://127.0.0.1:30000/v1 --model local --burst 20 --confirm
 
 # Harness/control-plane operations:
 anvil-serving harness sync openclaw --config configs/example.toml --dry-run

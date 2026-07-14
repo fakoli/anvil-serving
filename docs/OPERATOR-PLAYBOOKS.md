@@ -52,7 +52,7 @@ resource and keep the same gate semantics.
 | Probe a multiplexer endpoint | Not exposed yet | `GET /healthz`; `GET /v1/models` on the multiplexer base URL |
 | Serve logs | `serves_logs` with bounded `tail`; no follow mode | `anvil-serving serves logs <name> --tail 200` |
 | Correctness gate | `preflight_probe` | `anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model <served-name>` |
-| Throughput run | `benchmark_probe` for a bounded probe; `benchmark_artifact` when `--json-out` evidence is required | `anvil-serving eval benchmark run --base-url http://127.0.0.1:30000/v1 --model <served-name> --json-out <file>` |
+| Throughput run | `benchmark_probe` for a bounded probe; `benchmark_artifact` when an artifact is required | `anvil-serving eval benchmark capacity --base-url http://127.0.0.1:30000/v1 --model <served-name> --output <file> --confirm` |
 | OpenClaw config sync | `openclaw_sync`, `openclaw_gateway_restart`, `openclaw_gateway_status` | `anvil-serving harness sync openclaw --config <router.toml> ...`; `anvil-serving harness restart openclaw ...`; `anvil-serving harness status openclaw ...` |
 | OpenClaw COLO smoke/eval | Not exposed as MCP yet | `python examples/openclaw/colo_smoke.py --live --gateway-host fakoli-mini --router-base-url http://100.87.34.66:8000/v1 --artifact <file>` |
 | Profile/config-only router promotion | `router_promote` preview; apply requires `confirm:true`, `dry_run:false`, and `human_approved:true` | `anvil-serving router promote --profile <candidate.json> [--config <candidate.toml>]` |
@@ -598,11 +598,12 @@ candidate.
 4. Run benchmark and write a machine-readable artifact.
 
    ```bash
-   anvil-serving eval benchmark run \
+   anvil-serving eval benchmark capacity \
      --base-url http://127.0.0.1:30000/v1 \
      --model <served-name> \
      --burst 20 \
-     --json-out .anvil/benchmarks/<served-name>-benchmark.json
+     --output .anvil/benchmarks/<served-name>-benchmark.json \
+     --confirm
    ```
 
    Through MCP/controller, use `benchmark_probe` for the quick bounded probe and

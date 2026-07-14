@@ -484,7 +484,7 @@ def _print_recipe_show(recipe):
             else:
                 print("    %s" % details)
             print(
-                "    switch preview: anvil-serving serves switch %s --recipe %s --dry-run"
+                "    switch preview: anvil-serving serves switch %s %s --dry-run"
                 % (role, recipe.get("model", ""))
             )
     download = recipe.get("download") or {}
