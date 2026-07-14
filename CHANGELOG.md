@@ -6,8 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-13
+
 ### Changed
 
+- **Local router image tag advanced to `anvil-serving:0.13.0`.** The reference compose file,
+  shipped scaffold, and guarded router-management default stay in lockstep with this source
+  release. Build the image locally from this checkout; no container registry artifact is published.
 - **BREAKING (pre-1.0, operator-requested): `anvil-serving init` now defaults to the full
   operational home scaffold.** Bare `init` scaffolds the whole config set (all `serves*.toml`,
   compose files, `operator-topology.toml`, voice manifest, `.env.example`, and the ADR-0019
@@ -54,6 +59,18 @@ All notable changes to this project are documented here. The format is based on
   deterministic planning-eval artifacts. The measured candidate remains
   experimental and explicitly unpromoted because it was slower than the prior
   NVFP4 result and passed only one of five planning evals.
+- **GPU-residency-aware model lifecycle.** Serve manifests can now declare named GPU roles,
+  reservations, and resident or evictable workloads. `serves up` validates admission before
+  starting a container, reports the derived reservation ledger, supports grouped lifecycle
+  operations, and drains an evictable router tier before admitting an on-demand replacement.
+  The reference topology includes the promoted Gemma 4 E4B Fast tier plus dedicated embedding,
+  reranker, OCR, vision, and ComfyUI service definitions.
+- **Tailnet edge and purpose-model routing.** The authenticated router can front bounded
+  `/v1/embeddings` and `/v1/rerank` purpose models, while the managed tailnet edge owns the
+  private `/v1` and optional ComfyUI entrypoints without exposing raw model serves.
+- **Q36 RTX PRO 6000 experiment recipe and evidence.** Adds an opt-in, separately managed Q36
+  experiment for the PRO 6000; it remains mutually exclusive with the selected ThinkingCap Heavy
+  serve and is not a production routing tier.
 
 ## [0.12.0] - 2026-07-11
 
@@ -850,7 +867,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/fakoli/anvil-serving/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/fakoli/anvil-serving/compare/v0.10.0...v0.12.0
 [0.10.0]: https://github.com/fakoli/anvil-serving/compare/v0.7.3...v0.10.0
 [0.7.3]: https://github.com/fakoli/anvil-serving/compare/v0.7.2...v0.7.3
