@@ -20,6 +20,56 @@ never promotes a model or changes router policy.
 | Measure tiers with an independent judge | `eval calibrate` | Reviewable calibrated profile. |
 | Use external results as priors | `eval benchmark external ...` | Dated advisory evidence. |
 
+## Command map
+
+Start with the task, then open focused help for the exact action. Every leaf below has its own
+examples, configuration precedence, behavior, safety notes, and full option reference.
+
+### Prepare and gate
+
+| Command | Use it to |
+| --- | --- |
+| `eval usage` | Turn recorded coding sessions into usage and role-sizing artifacts. |
+| `eval preflight` | Prove endpoint correctness before spending time on benchmarks. |
+
+### Measure and inspect
+
+| Command | Use it to |
+| --- | --- |
+| `eval benchmark capacity` | Measure latency, throughput, context, and cache behavior. |
+| `eval benchmark quality` | Run repeated built-in or protocol-v3 answer-quality suites. |
+| `eval benchmark evidence list` | Discover normalized local benchmark artifacts. |
+| `eval benchmark evidence show` | Inspect one normalized local artifact summary. |
+| `eval benchmark evidence compare` | Compare artifacts and fail closed on workload mismatches. |
+
+### Build reviewable profiles
+
+| Command | Use it to |
+| --- | --- |
+| `eval bootstrap` | Replay retained fixtures into a candidate quality profile. |
+| `eval calibrate` | Measure confirmed local tiers with an independent judge. |
+
+### Manage external priors
+
+| Command | Use it to |
+| --- | --- |
+| `eval benchmark external init` | Initialize the local SQLite evidence store. |
+| `eval benchmark external sources` | Inspect source adapters and latest snapshot state. |
+| `eval benchmark external fetch` | Fetch and import one bounded live snapshot. |
+| `eval benchmark external import` | Import one retained snapshot without network access. |
+| `eval benchmark external list` | Browse normalized advisory rows. |
+| `eval benchmark external report` | Render filtered Markdown or JSON. |
+| `eval benchmark external export` | Export normalized advisory rows atomically. |
+| `eval benchmark external compare` | Compare one local capacity artifact with external priors. |
+
+### Retain comparison runs
+
+| Command | Use it to |
+| --- | --- |
+| `eval benchmark external notebook add` | Append one ranking-grade local quality artifact. |
+| `eval benchmark external notebook list` | List latest runs or the complete append history. |
+| `eval benchmark external notebook render` | Render a comparison matrix and evidence verdicts. |
+
 The usual candidate path is:
 
 ```bash

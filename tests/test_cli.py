@@ -95,7 +95,7 @@ def test_top_level_help_groups_commands_and_shows_examples(capsys):
         "router run",
         "eval preflight",
         "anvil-serving serves status",
-        "http://127.0.0.1:30000/v1",
+        "--tier heavy --dry-run",
         "https://fakoli.github.io/anvil-serving/CLI/",
     ):
         assert token in out
@@ -115,6 +115,29 @@ def test_root_help_examples_execute_on_canonical_paths(capsys):
     for command in commands:
         assert cli.main([*command, "--help"]) == 0
         assert "usage:" in capsys.readouterr().out.lower()
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        (),
+        ("eval",),
+        ("eval", "benchmark"),
+        ("eval", "benchmark", "evidence"),
+        ("eval", "benchmark", "external"),
+        ("eval", "benchmark", "external", "notebook"),
+    ),
+)
+def test_root_and_eval_parent_help_respect_narrow_windows_console(
+    path, monkeypatch, capsys
+):
+    monkeypatch.setenv("COLUMNS", "60")
+
+    assert cli.main([*path, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    text.encode("cp1252")
+    assert all(len(line) <= 60 for line in text.splitlines())
 
 
 @pytest.mark.parametrize("flag", ["-V", "--version"])
