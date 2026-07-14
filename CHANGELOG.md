@@ -6,8 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-07-14
+
 ### Added
 
+- **Full model recipe CRUD and guarded loading.** `models recipes` can list, show, create, update,
+  delete, and load recorded serve recipes. Mutations use atomic writes, backups, cross-platform
+  registry locking, and drift detection; loads validate Docker arguments and keep published ports
+  on loopback.
 - **Guarded `anvil-serving upgrade` self-update command.** Resolves the newest stable PyPI
   release, preserves `uv tool` / `pipx` / `pip` package-manager ownership, supports a no-write
   dry run, requires confirmation before mutation, rejects downgrades, verifies the resulting CLI
@@ -19,6 +25,12 @@ All notable changes to this project are documented here. The format is based on
 - **Dedicated OCR lifecycle group.** The shipped and packaged Fakoli Dark manifests now expose
   `--group ocr`, so operators can stop or start PaddleOCR independently through `serves down/up`
   without targeting the full `llm-stack` group.
+
+### Changed
+
+- **Local router image tag advanced to `anvil-serving:0.13.1`.** The Dockerfile, reference compose
+  file, packaged scaffold, and guarded router-management default stay in lockstep with this patch
+  release. Build the image locally from this checkout; no container registry artifact is published.
 
 ## [0.13.0] - 2026-07-13
 
@@ -881,7 +893,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/fakoli/anvil-serving/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/fakoli/anvil-serving/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/fakoli/anvil-serving/compare/v0.10.0...v0.12.0
 [0.10.0]: https://github.com/fakoli/anvil-serving/compare/v0.7.3...v0.10.0

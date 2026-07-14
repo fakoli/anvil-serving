@@ -248,7 +248,7 @@ on every route — a 403 usually comes from a proxy or the upstream serve, not f
 
 ## pip install anvil-serving is missing commands
 
-**What it means.** Published packages lag `main`. The source tree is versioned v0.13.0 while
+**What it means.** Published packages lag `main`. The source tree is versioned v0.13.1 while
 tags and PyPI releases can trail it, so a command documented here may not exist in the installed
 release.
 

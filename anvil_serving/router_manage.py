@@ -62,7 +62,7 @@ DEFAULT_CFG_VOLUME = "anvil-router-cfg"
 # with the LIVE image's own loader is what makes promote version-safe — a newer local
 # checkout must not re-verdict a profile the deployed router would reject. Keep this in
 # lockstep with the `router` service image in examples/fakoli-dark/docker-compose.yml.
-DEFAULT_IMAGE = "anvil-serving:0.13.0"
+DEFAULT_IMAGE = "anvil-serving:0.13.1"
 # The router READS its config volume mounted at ROUTER_CFG_MOUNT (/etc/anvil); the
 # side-container mounts the SAME volume at _SIDE_MOUNT (/cfg). `_volume_path` translates a
 # router-visible dest to its /cfg path, PRESERVING subdirectories (so /etc/anvil/x/p.json
