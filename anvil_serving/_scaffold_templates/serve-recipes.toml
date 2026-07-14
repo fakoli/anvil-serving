@@ -24,6 +24,68 @@
 schema = "anvil-serving.serve-recipes/v1"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED — ThinkingCap Qwen3.6-27B FP8 : current standard Heavy tier
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "bottlecapai/ThinkingCap-Qwen3.6-27B-FP8"
+status = "verified"
+source = "promoted on fakoli-dark, 2026-07-12 — guarded preflight and router promotion"
+family = "qwen3.6"
+total_params_b = 27
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+  arch = "sm_120"
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+  quantization = "fp8"
+  context_tokens = 262144
+  port = 30002
+  managed_serve = "heavy"
+  served_model_name = "thinkingcap-qwen36-27b-fp8"
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "VLLM_USE_DEEP_GEMM=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--revision e48255afd77b403446332be0f595868337b36591",
+    "--served-model-name thinkingcap-qwen36-27b-fp8",
+    "--trust-remote-code",
+    "--language-model-only",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":3}'",
+    "--no-enable-prefix-caching",
+    "--kv-cache-dtype fp8",
+    "--max-model-len 262144",
+    "--max-num-seqs 5",
+    "--gpu-memory-utilization 0.92",
+    "--host 0.0.0.0",
+    "--port 30002",
+  ]
+
+  [recipe.measured]
+  preflight = "Guarded functional and thinking-enabled preflight passed during the 2026-07-12 Heavy promotion."
+  promotion_evidence = "docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/"
+
+  [recipe.intent]
+  suited = ["heavy", "agentic", "long-context", "planning", "review"]
+  mode = "agentic-heavy"
+  rationale = "Current standard Heavy model: stronger agentic behavior than the GPT-OSS rollback while preserving tool use and thinking support."
+
+  [recipe.activation.heavy]
+  plan = "thinkingcap-heavy"
+  direction = "promote"
+  compose_service = "heavy"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # VERIFIED — Qwen3.6-27B-NVFP4 : previous OpenClaw Talk fast-tier control
 # ─────────────────────────────────────────────────────────────────────────────
 [[recipe]]
@@ -106,10 +168,12 @@ active_params_b = 5.1        # MoE: 128 experts, top-4 routing; MXFP4 MoE + bf16
 
   [recipe.serve]
   engine = "vllm"
-  image = "vllm/vllm-openai:nightly"   # ENTRYPOINT is ["vllm","serve"] -> pass model as POSITIONAL, do NOT add another 'serve'
+  image = "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
   quantization = "mxfp4"               # auto-detected as gpt_oss_mxfp4; MoE backend = MARLIN (FlashInfer-TRTLLM MXFP4 is sm_100-only)
   context_tokens = 131072
   port = 30002
+  managed_serve = "heavy-gptoss-rollback"
+  served_model_name = "gpt-oss-120b"
   # env: FLASHINFER_CUDA_ARCH_LIST=12.0f is MAKE-OR-BREAK on sm_120 — the 'f' suffix.
   # Plain '12.0' -> runtime "Feature 'cvt.e2m1x2.f32' not supported on .target 'sm_120'".
   env = [
@@ -118,11 +182,15 @@ active_params_b = 5.1        # MoE: 128 experts, top-4 routing; MXFP4 MoE + bf16
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
   ]
   flags = [
+    "--revision b5c939de8f754692c1647ca79fbf85e8c1e70f8a",
+    "--served-model-name gpt-oss-120b",
     "--kv-cache-dtype fp8",
     "--tool-call-parser openai",
     "--enable-auto-tool-choice",
     "--gpu-memory-utilization 0.88",
     "--max-model-len 131072",
+    "--host 0.0.0.0",
+    "--port 30002",
   ]
   # DO NOT add --enforce-eager: measured eager=33.6 tok/s vs CUDA-graphs=183 (5.4x).
   # CUDA graphs capture cleanly on sm_120 (83 piecewise + 83 full-decode) and are
@@ -145,6 +213,11 @@ active_params_b = 5.1        # MoE: 128 experts, top-4 routing; MXFP4 MoE + bf16
   [recipe.download]
   note = "HF repo is 182 GB = 3 copies (root MXFP4 60.8 / metal 60.8 / original 60.8). vLLM needs ONLY root."
   command = "anvil-serving models pull openai/gpt-oss-120b --token-env HF_TOKEN   # then hf --exclude 'metal/*' --exclude 'original/*'"
+
+  [recipe.activation.heavy]
+  plan = "thinkingcap-heavy"
+  direction = "rollback"
+  compose_service = "heavy-gptoss-rollback"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # VERIFIED (prior) — dense Qwen3-32B-NVFP4 : heavy-tier NVFP4 candidate

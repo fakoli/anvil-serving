@@ -107,6 +107,7 @@ required operands, choices, and defaults.
 | `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--group` |
 | `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
 | `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
+| `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |
 | `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--rollback`<br>`--resume` |
 | `serves status` | Show model serve status. | `read` / `bounded` | `--manifest`<br>`--group` |
 | `serves groups` | List serve groups across the manifest set and their members. | `read` / `bounded` | `--manifest` |

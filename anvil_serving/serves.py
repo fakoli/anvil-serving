@@ -55,6 +55,9 @@ requires `bash` on PATH (Git Bash / WSL on Windows); a stopped container is just
 `docker start`ed and needs none of this.
 """
 import argparse
+from contextlib import contextmanager, nullcontext
+import copy
+import hashlib
 import json
 import math
 import numbers
@@ -62,9 +65,11 @@ import os
 import re
 import shlex
 import subprocess
+import tempfile
 import time
 from . import guard
 from . import reservations
+from . import serve_recipes
 import sys
 import urllib.request
 import urllib.error
@@ -85,6 +90,7 @@ REPO = os.path.dirname(HERE)
 DEFAULT_MANIFEST = "./serves.toml"
 CONFIG_HOME_MANIFEST = "~/.anvil-serving/serves.toml"
 EXAMPLE_MANIFEST = os.path.join(REPO, "examples", "fakoli-dark", "serves.toml")
+DEFAULT_RECIPE_REGISTRY = os.path.join("configs", "serve-recipes.toml")
 
 # States meaning the container exists but is already stopped (nothing to free).
 _STOPPED = ("exited", "created", "dead")
@@ -143,6 +149,23 @@ def resolve_manifest_path(path=None):
         if os.path.isfile(os.path.expanduser(candidate)):
             return candidate
     return DEFAULT_MANIFEST
+
+
+def resolve_recipe_registry_path(path=None):
+    """Resolve the recipe catalog used by role-based serve switching."""
+    if path:
+        return path
+    candidates = (
+        "./serve-recipes.toml",
+        DEFAULT_RECIPE_REGISTRY,
+        config_path("serve-recipes.toml"),
+        os.path.join(REPO, "configs", "serve-recipes.toml"),
+        os.path.join(HERE, "_scaffold_templates", "serve-recipes.toml"),
+    )
+    for candidate in candidates:
+        if os.path.isfile(os.path.expanduser(candidate)):
+            return candidate
+    return config_path("serve-recipes.toml")
 
 
 def manifest_set_paths(manifest_path):
@@ -729,7 +752,7 @@ def _serve_identity_ready(serve, *, _open=urllib.request.urlopen, max_bytes=6553
         ids = [item.get("id") for item in data if isinstance(item, dict)]
     except Exception:
         return False
-    return serve["served_name"] in ids
+    return ids == [serve["served_name"]]
 
 
 def _await_healthy(serve, timeout, poll_interval, *, _open=urllib.request.urlopen,
@@ -887,7 +910,69 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     promote = [
         "router", "promote", "--config", config, "--profile", profile,
     ]
-    if _promotion_cli(promote, _run=_run) != 0:
+    expected_artifacts = plan.get("_expected_artifact_digests")
+    if expected_artifacts is not None:
+        config_key = "rollback_router_config" if rollback else "router_config"
+        profile_key = "rollback_router_profile" if rollback else "router_profile"
+        desired_router = {
+            "config": expected_artifacts[config_key],
+            "profile": expected_artifacts[profile_key],
+        }
+        try:
+            current_artifacts = _promotion_artifact_digests(plan)
+        except (OSError, TypeError, ValueError) as exc:
+            print("  %s refused: cannot recheck router artifacts: %s" % (label, exc))
+            return 1
+        if current_artifacts != expected_artifacts:
+            print(
+                "  %s refused: router config/profile files changed during the transaction"
+                % label
+            )
+            return 1
+    else:
+        desired_router = {
+            "config": _artifact_digest(config, "config"),
+            "profile": _artifact_digest(profile, "profile"),
+        }
+    expected_router = plan.get("_expected_router_digests")
+    if expected_router is not None:
+        try:
+            current_router = _deployed_router_digests(plan, _run=_run)
+        except RuntimeError as exc:
+            print("  %s refused: final router compare-and-swap check failed: %s" % (
+                label, exc,
+            ))
+            return 4
+        if current_router != expected_router:
+            print(
+                "  %s refused: router config/profile changed during the transaction" % label
+            )
+            return 4
+    promote_rc = _promotion_cli(promote, _run=_run)
+    if expected_router is not None:
+        try:
+            current_router = _deployed_router_digests(plan, _run=_run)
+        except RuntimeError as exc:
+            print("  %s failed: cannot resolve router state after promote: %s" % (
+                label, exc,
+            ))
+            return 4
+        if current_router == desired_router:
+            # Advance the CAS token so any later automatic recovery expects
+            # the state that was actually installed, not the stale source.
+            plan["_expected_router_digests"] = dict(desired_router)
+        elif current_router != expected_router:
+            print(
+                "  %s failed: router entered an unknown config/profile state; "
+                "automatic recovery is blocked" % label
+            )
+            return 4
+        if promote_rc != 0:
+            return 1
+        if current_router != desired_router:
+            print("  %s failed: router promote returned success without installing artifacts" % label)
+            return 1
+    elif promote_rc != 0:
         return 1
     gateway_url = str(plan.get("router_health_url", "http://127.0.0.1:8000/healthz"))
     status = _gateway_status(gateway_url, _open=_open)
@@ -907,9 +992,9 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     return 0
 
 
-def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
-                resume=False, dry_run=False, _run=subprocess.run, _open=urllib.request.urlopen,
-                _sleep=time.sleep):
+def _cmd_promote_unlocked(serves, promotions, name, manifest_path, *, rollback=False,
+                          resume=False, dry_run=False, _run=subprocess.run,
+                          _open=urllib.request.urlopen, _sleep=time.sleep):
     """Atomically promote a staged model recipe or restore its complete rollback state."""
     matches = [plan for plan in promotions if plan["name"] == name]
     if len(matches) != 1:
@@ -922,6 +1007,8 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
         if plan.get("candidate"):
             _exact_serve(serves, plan["candidate"])
         _validate_promotion_topology(serves, plan)
+        _validate_promotion_configs(plan)
+        _validate_promotion_profiles(plan)
     except ValueError as exc:
         print("promotion refused: %s" % exc)
         return 1
@@ -942,6 +1029,14 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
         # No container mutation occurred, but the router's admission state is
         # uncertain. Do not compound that uncertainty with an automatic swap.
         print("  CRITICAL: pre-mutation admission compensation failed; no containers changed")
+        return 1
+    if rc == 4:
+        # Container state may already have changed, but the router's exact
+        # deployed artifacts are unknown. Starting the opposite transition
+        # could compound the split-brain, so stop and require inspection.
+        print(
+            "  CRITICAL: router state is uncertain; automatic container recovery blocked"
+        )
         return 1
     if rollback:
         print("  rollback gate failed; restoring the promoted serve and router state")
@@ -967,6 +1062,868 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
     if rollback_rc != 0:
         print("  CRITICAL: automatic rollback failed; inspect serves status and router artifacts")
     return 1
+
+
+def _compose_service_for_recipe(serve, recipe, activation, *, _run=subprocess.run):
+    """Resolve Compose and prove its effective service exactly matches the recipe."""
+    up = serve.get("up") or []
+    try:
+        compose_index = up.index("compose")
+        up_index = up.index("up", compose_index + 1)
+    except ValueError as exc:
+        raise serve_recipes.RecipeError(
+            "activation-ready serve %r must use a docker compose up command" % serve["name"]
+        ) from exc
+    service_name = activation["compose_service"]
+    requested_services = [token for token in up[up_index + 1:] if not token.startswith("-")]
+    if requested_services != [service_name]:
+        raise serve_recipes.RecipeError(
+            "activation compose_service %r does not match manifest up target %r" % (
+                service_name, requested_services,
+            )
+        )
+    command = [*up[:up_index], "config", "--format", "json"]
+    try:
+        completed = _run(command, capture_output=True, text=True)
+    except OSError as exc:
+        raise serve_recipes.RecipeError("cannot resolve effective Compose configuration: %s" % exc) from exc
+    if completed.returncode != 0:
+        raise serve_recipes.RecipeError(
+            "cannot resolve effective Compose configuration: %s" % (
+                (completed.stderr or completed.stdout or "unknown docker compose error").strip()
+            )
+        )
+    try:
+        service = json.loads(completed.stdout)["services"][service_name]
+        if not isinstance(service, dict):
+            raise TypeError("service must be an object")
+    except (KeyError, TypeError, json.JSONDecodeError) as exc:
+        raise serve_recipes.RecipeError(
+            "docker compose config did not contain service %r" % service_name
+        ) from exc
+    hash_command = [*up[:up_index], "config", "--hash", service_name]
+    try:
+        hash_result = _run(hash_command, capture_output=True, text=True)
+    except OSError as exc:
+        raise serve_recipes.RecipeError(
+            "cannot resolve effective Compose service hash: %s" % exc
+        ) from exc
+    hash_parts = (hash_result.stdout or "").strip().split()
+    if (
+        hash_result.returncode != 0
+        or len(hash_parts) != 2
+        or hash_parts[0] != service_name
+        or not re.fullmatch(r"[0-9a-fA-F]{64}", hash_parts[1])
+    ):
+        raise serve_recipes.RecipeError(
+            "cannot resolve effective Compose service hash: %s" % (
+                (hash_result.stderr or hash_result.stdout or "invalid docker compose hash").strip()
+            )
+        )
+    compose_hash = hash_parts[1].lower()
+
+    recipe_serve = recipe.get("serve") or {}
+    expected_command = ["serve", recipe["model"]]
+    for flag in recipe_serve.get("flags", []):
+        try:
+            expected_command.extend(shlex.split(flag))
+        except ValueError as exc:
+            raise serve_recipes.RecipeError("cannot parse recipe flag %r: %s" % (flag, exc)) from exc
+    checks = {
+        "image": (service.get("image"), recipe_serve.get("image")),
+        "container_name": (service.get("container_name"), serve["container"]),
+        "command": (service.get("command"), expected_command),
+    }
+    for field, (actual, expected) in checks.items():
+        if actual != expected:
+            raise serve_recipes.RecipeError(
+                "effective Compose %s for %r does not match recipe (actual=%r, expected=%r)"
+                % (field, service_name, actual, expected)
+            )
+    environment = service.get("environment") or {}
+    for item in recipe_serve.get("env", []):
+        name, separator, value = item.partition("=")
+        if not separator or environment.get(name) != value:
+            raise serve_recipes.RecipeError(
+                "effective Compose environment %s for %r does not match recipe" % (
+                    name, service_name,
+                )
+            )
+    gpu_uuid = (recipe.get("hardware") or {}).get("gpu_uuid")
+    if gpu_uuid:
+        devices = (
+            service.get("deploy", {}).get("resources", {}).get("reservations", {})
+            .get("devices", [])
+        )
+        device_ids = [
+            device_id
+            for device in devices if isinstance(device, dict)
+            for device_id in (device.get("device_ids") or [])
+        ]
+        if device_ids != [gpu_uuid]:
+            raise serve_recipes.RecipeError(
+                "effective Compose GPU assignment for %r does not match recipe" % service_name
+            )
+    port = recipe_serve.get("port")
+    ports = service.get("ports") or []
+    normalized_ports = sorted(
+        (
+            str(item.get("host_ip") or ""),
+            int(item.get("target", -1)),
+            str(item.get("published")),
+            str(item.get("protocol") or "tcp"),
+        )
+        for item in ports if isinstance(item, dict)
+    )
+    expected_ports = [] if port is None else [("127.0.0.1", port, str(port), "tcp")]
+    if normalized_ports != expected_ports:
+        raise serve_recipes.RecipeError(
+            "effective Compose ports for %r must be exactly the reviewed loopback binding %r"
+            % (service_name, expected_ports)
+        )
+    scrubbed = json.loads(json.dumps(service))
+    for name in list((scrubbed.get("environment") or {})):
+        if any(marker in name.upper() for marker in ("TOKEN", "KEY", "SECRET", "PASSWORD")):
+            scrubbed["environment"][name] = "<redacted>"
+    payload = json.dumps(scrubbed, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    shm_size = service.get("shm_size")
+    if isinstance(shm_size, str) and shm_size.isdigit():
+        shm_size = int(shm_size)
+    sensitive_environment = any(
+        any(marker in name.upper() for marker in ("TOKEN", "KEY", "SECRET", "PASSWORD"))
+        for name in environment
+    )
+    contract = {
+        "service": service_name,
+        "compose_hash": compose_hash,
+        "compose_hash_verifiable": not sensitive_environment,
+        "cap_add": sorted(service.get("cap_add") or []),
+        "cap_drop": sorted(service.get("cap_drop") or []),
+        "devices": service.get("devices") or [],
+        "entrypoint": service.get("entrypoint") if "entrypoint" in service else None,
+        "environment": {
+            name: value for name, value in environment.items()
+            if not any(
+                marker in name.upper()
+                for marker in ("TOKEN", "KEY", "SECRET", "PASSWORD")
+            )
+        },
+        "ipc": service.get("ipc"),
+        "network_mode": service.get("network_mode") if "network_mode" in service else None,
+        "pid": service.get("pid") or "",
+        "ports": normalized_ports,
+        "privileged": bool(service.get("privileged", False)),
+        "read_only": bool(service.get("read_only", False)),
+        "restart": service.get("restart"),
+        "security_opt": (
+            sorted(service["security_opt"]) if "security_opt" in service else None
+        ),
+        "shm_size": shm_size,
+        "user": service.get("user") if "user" in service else None,
+        "sysctls": service.get("sysctls") or {},
+        "ulimits": service.get("ulimits") or {},
+        "uts": service.get("uts") or "",
+        "volumes": service.get("volumes") or [],
+        "working_dir": service.get("working_dir") if "working_dir" in service else None,
+    }
+    return {
+        "fingerprint": "sha256:" + hashlib.sha256(payload).hexdigest(),
+        "contract": contract,
+    }
+
+
+def _running_container_matches_recipe(serve, recipe, deployment, *, _run=subprocess.run):
+    """Verify the live container's immutable launch inputs against the recipe."""
+    try:
+        result = _run(["docker", "inspect", serve["container"]], capture_output=True, text=True)
+    except OSError:
+        return False
+    if result.returncode != 0:
+        return False
+    try:
+        documents = json.loads(result.stdout)
+        inspect = documents[0]
+        config = inspect["Config"]
+        host = inspect["HostConfig"]
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError):
+        return False
+    recipe_serve = recipe.get("serve") or {}
+    expected_command = ["serve", recipe["model"]]
+    for flag in recipe_serve.get("flags", []):
+        try:
+            expected_command.extend(shlex.split(flag))
+        except ValueError:
+            return False
+    if config.get("Image") != recipe_serve.get("image") or config.get("Cmd") != expected_command:
+        return False
+    contract = deployment.get("contract") if isinstance(deployment, dict) else None
+    if not isinstance(contract, dict):
+        return False
+    labels = config.get("Labels") or {}
+    if labels.get("com.docker.compose.service") != contract["service"]:
+        return False
+    if contract["compose_hash_verifiable"] and (
+        labels.get("com.docker.compose.config-hash") != contract["compose_hash"]
+    ):
+        return False
+    if contract["entrypoint"] is not None and (
+        config.get("Entrypoint") or []
+    ) != contract["entrypoint"]:
+        return False
+    if contract["user"] is not None and (config.get("User") or "") != contract["user"]:
+        return False
+    if contract["working_dir"] is not None and (
+        config.get("WorkingDir") or ""
+    ) != contract["working_dir"]:
+        return False
+    host_checks = {
+        "IpcMode": contract["ipc"] or "private",
+        "PidMode": contract["pid"],
+        "Privileged": contract["privileged"],
+        "ReadonlyRootfs": contract["read_only"],
+        "UTSMode": contract["uts"],
+    }
+    if any(host.get(name) != expected for name, expected in host_checks.items()):
+        return False
+    if sorted(host.get("CapAdd") or []) != contract["cap_add"]:
+        return False
+    if sorted(host.get("CapDrop") or []) != contract["cap_drop"]:
+        return False
+    if (host.get("Sysctls") or {}) != contract["sysctls"]:
+        return False
+    if contract["network_mode"] is not None and (
+        host.get("NetworkMode") != contract["network_mode"]
+    ):
+        return False
+    if contract["devices"]:
+        expected_devices = sorted(
+            (
+                str(item.get("source", "")),
+                str(item.get("target", "")),
+                str(item.get("permissions", "rwm")),
+            )
+            for item in contract["devices"] if isinstance(item, dict)
+        )
+        actual_devices = sorted(
+            (
+                str(item.get("PathOnHost", "")),
+                str(item.get("PathInContainer", "")),
+                str(item.get("CgroupPermissions", "rwm")),
+            )
+            for item in (host.get("Devices") or []) if isinstance(item, dict)
+        )
+        if actual_devices != expected_devices:
+            return False
+    elif host.get("Devices") not in (None, []):
+        return False
+    expected_ulimits = {}
+    for name, value in contract["ulimits"].items():
+        if isinstance(value, dict):
+            expected_ulimits[name] = (
+                int(value.get("soft", value.get("hard", 0))),
+                int(value.get("hard", value.get("soft", 0))),
+            )
+        else:
+            expected_ulimits[name] = (int(value), int(value))
+    actual_ulimits = {
+        str(item.get("Name")): (int(item.get("Soft", 0)), int(item.get("Hard", 0)))
+        for item in (host.get("Ulimits") or []) if isinstance(item, dict)
+    }
+    if actual_ulimits != expected_ulimits:
+        return False
+    if contract["security_opt"] is not None and sorted(
+        host.get("SecurityOpt") or []
+    ) != contract["security_opt"]:
+        return False
+    restart = (host.get("RestartPolicy") or {}).get("Name") or "no"
+    if restart != (contract["restart"] or "no"):
+        return False
+    if contract["shm_size"] is not None:
+        try:
+            expected_shm_size = int(contract["shm_size"])
+        except (TypeError, ValueError):
+            return False
+        if host.get("ShmSize") != expected_shm_size:
+            return False
+    environment = {}
+    for item in config.get("Env") or []:
+        name, separator, value = str(item).partition("=")
+        if separator:
+            environment[name] = value
+    for item in recipe_serve.get("env", []):
+        name, _, value = item.partition("=")
+        if environment.get(name) != value:
+            return False
+    for name, value in contract["environment"].items():
+        if environment.get(name) != str(value):
+            return False
+    expected_mounts = []
+    for item in contract["volumes"]:
+        if not isinstance(item, dict):
+            return False
+        expected_mounts.append({
+            "type": item.get("type", "volume"),
+            "source": item.get("source"),
+            "target": item.get("target"),
+            "read_only": bool(item.get("read_only", False)),
+        })
+    actual_mounts = inspect.get("Mounts") or []
+    if len(actual_mounts) != len(expected_mounts):
+        return False
+    for expected in expected_mounts:
+        matches = [
+            mount for mount in actual_mounts
+            if isinstance(mount, dict)
+            and str(mount.get("Type", "")).lower() == expected["type"]
+            and mount.get("Destination") == expected["target"]
+            and bool(not mount.get("RW", True)) == expected["read_only"]
+        ]
+        if len(matches) != 1:
+            return False
+        actual_source = matches[0].get("Name") or matches[0].get("Source")
+        expected_source = expected["source"]
+        if expected_source and expected["type"] == "bind" and actual_source != expected_source:
+            return False
+        if expected_source and expected["type"] == "volume" and not (
+            actual_source == expected_source
+            or str(actual_source).endswith("_" + str(expected_source))
+        ):
+            return False
+    gpu_uuid = (recipe.get("hardware") or {}).get("gpu_uuid")
+    if gpu_uuid:
+        device_ids = [
+            device_id
+            for request in (host.get("DeviceRequests") or []) if isinstance(request, dict)
+            for device_id in (request.get("DeviceIDs") or [])
+        ]
+        if device_ids != [gpu_uuid]:
+            return False
+    try:
+        actual_ports = sorted(
+            (
+                str(binding.get("HostIp") or ""),
+                int(str(container_port).split("/", 1)[0]),
+                str(binding.get("HostPort")),
+                str(container_port).split("/", 1)[1]
+                if "/" in str(container_port) else "tcp",
+            )
+            for container_port, bindings in (host.get("PortBindings") or {}).items()
+            for binding in (bindings or []) if isinstance(binding, dict)
+        )
+    except (TypeError, ValueError):
+        return False
+    if actual_ports != [tuple(item) for item in contract["ports"]]:
+        return False
+    return True
+
+
+def _validate_promotion_profiles(plan):
+    """Prove profile policy is identical outside the declared affected tiers."""
+    def entries(path):
+        with open(path, "r", encoding="utf-8") as handle:
+            document = json.load(handle)
+        rows = document.get("entries", [])
+        if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+            raise ValueError("router profile entries must be an array of objects")
+        return {
+            (row.get("tier_id"), row.get("work_class")): row
+            for row in rows
+        }
+
+    forward = entries(plan["router_profile"])
+    rollback = entries(plan["rollback_router_profile"])
+    affected = set(plan["affected_tiers"])
+    forward_unaffected = {key: value for key, value in forward.items() if key[0] not in affected}
+    rollback_unaffected = {key: value for key, value in rollback.items() if key[0] not in affected}
+    if forward_unaffected != rollback_unaffected:
+        raise ValueError("unaffected router profile entries differ between promotion states")
+
+
+def _validate_promotion_configs(plan):
+    """Prove router config changes are limited to declared tier records."""
+    def document(path):
+        with open(path, "rb") as handle:
+            value = tomllib.load(handle)
+        router = value.get("router")
+        if not isinstance(router, dict):
+            raise ValueError("router config must contain a [router] table")
+        tiers = router.get("tiers")
+        if not isinstance(tiers, list) or not all(isinstance(row, dict) for row in tiers):
+            raise ValueError("router tiers must be an array of tables")
+        by_id = {}
+        for row in tiers:
+            tier_id = row.get("id")
+            if not isinstance(tier_id, str) or not tier_id or tier_id in by_id:
+                raise ValueError("router tiers must have unique non-empty ids")
+            by_id[tier_id] = row
+        comparable = copy.deepcopy(value)
+        comparable_router = comparable["router"]
+        comparable_router.pop("tiers", None)
+        # mapping_version is deployment metadata; the actual routes, globals,
+        # presets, purpose models, and server settings must remain identical.
+        comparable_router.pop("mapping_version", None)
+        return comparable, by_id
+
+    forward_document, forward_tiers = document(plan["router_config"])
+    rollback_document, rollback_tiers = document(plan["rollback_router_config"])
+    if forward_document != rollback_document:
+        raise ValueError(
+            "router configs differ outside declared affected tier records"
+        )
+    if set(forward_tiers) != set(rollback_tiers):
+        raise ValueError("router config tier sets differ between promotion states")
+    affected = set(plan["affected_tiers"])
+    if not affected or not affected <= set(forward_tiers):
+        raise ValueError("affected_tiers must name existing router tiers")
+    for tier_id in set(forward_tiers) - affected:
+        if forward_tiers[tier_id] != rollback_tiers[tier_id]:
+            raise ValueError(
+                "unaffected router tier %r differs between promotion states" % tier_id
+            )
+
+
+def _artifact_digest(path, kind):
+    with open(path, "rb") as handle:
+        if kind == "config":
+            document = tomllib.load(handle)
+        else:
+            document = json.load(handle)
+    payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _promotion_artifact_digests(plan):
+    return {
+        "router_config": _artifact_digest(plan["router_config"], "config"),
+        "router_profile": _artifact_digest(plan["router_profile"], "profile"),
+        "rollback_router_config": _artifact_digest(
+            plan["rollback_router_config"], "config"
+        ),
+        "rollback_router_profile": _artifact_digest(
+            plan["rollback_router_profile"], "profile"
+        ),
+    }
+
+
+def _deployed_router_digests(plan, *, _run=subprocess.run):
+    """Read canonical config/profile digests from the running router container."""
+    script = (
+        "import hashlib,json,tomllib;"
+        "c=tomllib.load(open('/etc/anvil/config.toml','rb'));"
+        "p=json.load(open('/etc/anvil/profile.json','r',encoding='utf-8'));"
+        "h=lambda x:hashlib.sha256(json.dumps(x,sort_keys=True,separators=(',',':')).encode()).hexdigest();"
+        "print(json.dumps({'config':h(c),'profile':h(p)},sort_keys=True))"
+    )
+    container = str(plan.get("router_container", "anvil-router"))
+    try:
+        result = _run(
+            ["docker", "exec", container, "python", "-c", script],
+            capture_output=True, text=True,
+        )
+    except OSError as exc:
+        raise RuntimeError("cannot inspect deployed router artifacts: %s" % exc) from exc
+    if result.returncode != 0:
+        raise RuntimeError(
+            "cannot inspect deployed router artifacts: %s" % (
+                (result.stderr or result.stdout or "docker exec failed").strip()
+            )
+        )
+    try:
+        value = json.loads(result.stdout)
+        if set(value) != {"config", "profile"}:
+            raise ValueError("unexpected keys")
+        return value
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise RuntimeError("deployed router returned invalid artifact digests") from exc
+
+
+def _router_switch_state(plan, rollback, *, _run=subprocess.run):
+    current = _deployed_router_digests(plan, _run=_run)
+    forward = {
+        "config": _artifact_digest(plan["router_config"], "config"),
+        "profile": _artifact_digest(plan["router_profile"], "profile"),
+    }
+    reverse = {
+        "config": _artifact_digest(plan["rollback_router_config"], "config"),
+        "profile": _artifact_digest(plan["rollback_router_profile"], "profile"),
+    }
+    target, source = (reverse, forward) if rollback else (forward, reverse)
+    if current == target:
+        return "target"
+    if current == source:
+        return "source"
+    return "drift"
+
+
+@contextmanager
+def _switch_role_lock(role):
+    """Hold one non-blocking, cross-platform lock for a deployment role."""
+    lock_dir = config_path("locks")
+    os.makedirs(lock_dir, exist_ok=True)
+    path = os.path.join(lock_dir, "serves-switch-%s.lock" % role)
+    handle = open(path, "a+b")
+    locked = False
+    try:
+        if os.name == "nt":
+            import msvcrt
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write(b"\0")
+                handle.flush()
+            handle.seek(0)
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise RuntimeError("another switch is already active for role %r" % role) from exc
+        else:
+            import fcntl
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                raise RuntimeError("another switch is already active for role %r" % role) from exc
+        locked = True
+        yield
+    finally:
+        if locked:
+            if os.name == "nt":
+                import msvcrt
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        handle.close()
+
+
+def _write_switch_journal(path, document):
+    parent = os.path.dirname(path)
+    os.makedirs(parent, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=".switch-", suffix=".json", dir=parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            json.dump(document, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def _snapshot_promotion_artifacts(plan, operation_dir):
+    """Copy router artifacts into one operation-owned immutable input set."""
+    os.makedirs(operation_dir, exist_ok=True)
+    names = {
+        "router_config": "router-forward.toml",
+        "router_profile": "profile-forward.json",
+        "rollback_router_config": "router-rollback.toml",
+        "rollback_router_profile": "profile-rollback.json",
+    }
+    sources = {}
+    for field, name in names.items():
+        source = os.path.abspath(plan[field])
+        target = os.path.join(operation_dir, name)
+        sources[field] = source
+        with open(source, "rb") as source_handle:
+            payload = source_handle.read()
+        with open(target, "xb") as target_handle:
+            target_handle.write(payload)
+            target_handle.flush()
+            os.fsync(target_handle.fileno())
+        os.chmod(target, 0o400)
+        plan[field] = target
+    return sources
+
+
+def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
+                resume=False, dry_run=False, _run=subprocess.run, _open=urllib.request.urlopen,
+                _sleep=time.sleep):
+    """Run the common promotion transaction under the global promotion lock."""
+    # Promotion plans may overlap on only some affected tiers. A lock derived
+    # from the complete tier set would let partially overlapping plans race, so
+    # all live promotions share one short, explicit transaction lock.
+    lock = nullcontext() if dry_run else _switch_role_lock("promotion")
+    try:
+        with lock:
+            return _cmd_promote_unlocked(
+                serves, promotions, name, manifest_path,
+                rollback=rollback, resume=resume, dry_run=dry_run,
+                _run=_run, _open=_open, _sleep=_sleep,
+            )
+    except RuntimeError as exc:
+        print("promotion refused: %s" % exc, file=sys.stderr)
+        return 1
+
+
+def _operation_promotion(promotions, plan_name, role, recipe, rollback,
+                         deployment_fingerprint, manifest_path, dry_run):
+    operation_id = "%s-%s-%s" % (time.time_ns(), os.getpid(), role)
+    operation_dir = config_path("operations", operation_id)
+    selected = copy.deepcopy(next(item for item in promotions if item["name"] == plan_name))
+    for group in ("gate", "rollback_gate"):
+        for index, gate in enumerate(selected.get(group, []), 1):
+            safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(gate["name"])).strip("-")
+            gate["json_out"] = os.path.join(
+                operation_dir, "%s-%02d-%s.json" % (group, index, safe_name or "gate"),
+            )
+    operation = {
+        "schema": "anvil-serving.serves-switch-operation/v1",
+        "operation_id": operation_id,
+        "role": role,
+        "recipe": recipe["model"],
+        "promotion": plan_name,
+        "direction": "rollback" if rollback else "promote",
+        "deployment_fingerprint": deployment_fingerprint,
+        "manifest": os.path.abspath(manifest_path),
+        "status": "preview" if dry_run else "planned",
+        "evidence_dir": operation_dir,
+    }
+    replaced = [selected if item["name"] == plan_name else item for item in promotions]
+    return replaced, selected, operation, os.path.join(operation_dir, "journal.json")
+
+
+def resolve_recipe_activation(serves, promotions, registry, role, selector, *,
+                              _run=subprocess.run):
+    """Resolve one recipe's role activation to a proven promotion direction."""
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", role):
+        raise serve_recipes.RecipeError(
+            "deployment role must use only letters, digits, '.', '_', or '-'"
+        )
+    recipe = serve_recipes.find_recipe(registry, selector)
+    if recipe is None:
+        raise serve_recipes.RecipeError("no serve recipe for %r" % selector)
+    serve_recipes.validate_recipe(recipe)
+    activation = (recipe.get("activation") or {}).get(role)
+    if not isinstance(activation, dict):
+        raise serve_recipes.RecipeError(
+            "recipe %r is not activation-ready for role %r; add "
+            "[recipe.activation.%s] with plan and direction" % (
+                recipe["model"], role, role,
+            )
+        )
+    plan_name = activation["plan"]
+    direction = activation["direction"]
+    matching_plans = [plan for plan in promotions if plan["name"] == plan_name]
+    if len(matching_plans) != 1:
+        raise serve_recipes.RecipeError(
+            "activation plan %r must match exactly one [[promotion]] entry" % plan_name
+        )
+    plan = matching_plans[0]
+    manifest_name = plan["target" if direction == "promote" else "rollback"]
+    selected_serve = _exact_serve(serves, manifest_name)
+    serve = recipe.get("serve") or {}
+    managed_serve = serve.get("managed_serve")
+    served_model_name = serve.get("served_model_name")
+    if managed_serve != selected_serve["name"]:
+        raise serve_recipes.RecipeError(
+            "recipe %r declares managed_serve %r, but %s direction of plan %r "
+            "selects %r" % (
+                recipe["model"], managed_serve, direction, plan_name,
+                selected_serve["name"],
+            )
+        )
+    if served_model_name != selected_serve["served_name"]:
+        raise serve_recipes.RecipeError(
+            "recipe %r declares served_model_name %r, but manifest serve %r "
+            "advertises %r" % (
+                recipe["model"], served_model_name, selected_serve["name"],
+                selected_serve["served_name"],
+            )
+        )
+    _validate_promotion_topology(serves, plan)
+    _validate_promotion_configs(plan)
+    _validate_promotion_profiles(plan)
+    deployment = _compose_service_for_recipe(
+        selected_serve, recipe, activation, _run=_run,
+    )
+    return recipe, plan_name, direction == "rollback", deployment
+
+
+def cmd_switch(serves, promotions, registry, role, selector, manifest_path, *,
+               resume=False, dry_run=False, _run=subprocess.run,
+               _open=urllib.request.urlopen, _sleep=time.sleep):
+    """Switch a deployment role to an activation-ready recipe."""
+    try:
+        recipe, plan_name, rollback, deployment = resolve_recipe_activation(
+            serves, promotions, registry, role, selector, _run=_run,
+        )
+    except (serve_recipes.RecipeError, OSError, KeyError, TypeError, ValueError) as exc:
+        print(
+            "switch refused: %s; run `anvil-serving serves switch %s` to list choices"
+            % (exc, role),
+            file=sys.stderr,
+        )
+        return 2
+    direction = "rollback" if rollback else "promote"
+    print("switch %s -> %s (%s plan %s)" % (
+        role, recipe["model"], direction, plan_name,
+    ))
+    print("  effective deployment: %s" % deployment["fingerprint"])
+    promotions, plan, operation, journal_path = _operation_promotion(
+        promotions, plan_name, role, recipe, rollback, deployment["fingerprint"],
+        manifest_path, dry_run,
+    )
+    operation["registry_sha256"] = "sha256:" + hashlib.sha256(
+        json.dumps(registry, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    prefix = "planned " if dry_run else ""
+    print("  %soperation: %s" % (prefix, operation["operation_id"]))
+    print("  %sevidence: %s" % (prefix, operation["evidence_dir"]))
+    role_lock = nullcontext() if dry_run else _switch_role_lock(role)
+    promotion_lock = nullcontext() if dry_run else _switch_role_lock("promotion")
+    mutation_started = False
+    try:
+        with role_lock, promotion_lock:
+            selected_serve = _exact_serve(
+                serves, plan["rollback" if rollback else "target"],
+            )
+            rebound = _compose_service_for_recipe(
+                selected_serve, recipe, recipe["activation"][role], _run=_run,
+            )
+            if rebound != deployment:
+                print(
+                    "switch refused: effective Compose configuration changed after preview",
+                    file=sys.stderr,
+                )
+                return 2
+            if not dry_run:
+                sources = _snapshot_promotion_artifacts(plan, operation["evidence_dir"])
+                operation["source_router_artifacts"] = sources
+                operation["router_artifact_snapshots"] = {
+                    field: plan[field] for field in sources
+                }
+            _validate_promotion_topology(serves, plan)
+            _validate_promotion_configs(plan)
+            _validate_promotion_profiles(plan)
+            try:
+                router_state = _router_switch_state(plan, rollback, _run=_run)
+            except (OSError, RuntimeError, ValueError) as exc:
+                if not dry_run:
+                    print("switch refused: %s" % exc, file=sys.stderr)
+                    return 2
+                router_state = "deferred"
+                print("  deferred apply check: %s" % exc)
+            if not dry_run and router_state in {"source", "target"}:
+                plan["_expected_router_digests"] = _deployed_router_digests(plan, _run=_run)
+                plan["_expected_artifact_digests"] = _promotion_artifact_digests(plan)
+                operation["source_router_digests"] = dict(plan["_expected_router_digests"])
+                operation["router_artifact_digests"] = dict(
+                    plan["_expected_artifact_digests"]
+                )
+                operation["manifest_sha256"] = serve_recipes.registry_digest(manifest_path)
+            if router_state == "drift":
+                print(
+                    "switch refused: deployed router config/profile matches neither the "
+                    "expected source nor target state",
+                    file=sys.stderr,
+                )
+                return 2
+            target_name = plan["rollback" if rollback else "target"]
+            target = _exact_serve(serves, target_name)
+            if router_state == "target":
+                state = docker_state(target["container"], _run=_run)
+                if state == "running" and _health(
+                    target["port"], target["health"], _open=_open
+                ) == 200 and _serve_identity_ready(target, _open=_open) \
+                        and _running_container_matches_recipe(
+                            target, recipe, deployment, _run=_run
+                        ):
+                    print("  already active: router, container health, and exact model identity match")
+                    return 0
+                print("  target router state is active, but the serve needs guarded recovery")
+            if not dry_run:
+                operation["status"] = "running"
+                _write_switch_journal(journal_path, operation)
+                mutation_started = True
+            rc = _cmd_promote_unlocked(
+                serves, promotions, plan_name, manifest_path,
+                rollback=rollback, resume=resume, dry_run=dry_run,
+                _run=_run, _open=_open, _sleep=_sleep,
+            )
+            if not dry_run:
+                operation["status"] = "complete" if rc == 0 else "failed"
+                operation["exit_code"] = rc
+                _write_switch_journal(journal_path, operation)
+            if rc == 0 and not dry_run and not _running_container_matches_recipe(
+                target, recipe, deployment, _run=_run,
+            ):
+                print(
+                    "switch failed: running container no longer matches the selected recipe; "
+                    "restoring the prior state",
+                    file=sys.stderr,
+                )
+                recovery = _cmd_promote_unlocked(
+                    serves, promotions, plan_name, manifest_path,
+                    rollback=not rollback, resume=False, dry_run=False,
+                    _run=_run, _open=_open, _sleep=_sleep,
+                )
+                operation["status"] = "failed"
+                operation["exit_code"] = 1
+                operation["recovery_exit_code"] = recovery
+                _write_switch_journal(journal_path, operation)
+                return 1
+            return rc
+    except Exception as exc:
+        if mutation_started:
+            print(
+                "switch failed after mutation began: %s; inspect %s" % (
+                    exc, journal_path,
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        print("switch refused: %s" % exc, file=sys.stderr)
+        return 2
+
+
+def cmd_switch_choices(serves, promotions, registry, role, registry_path, *,
+                       _run=subprocess.run):
+    """List and validate recipes that declare activation for one deployment role."""
+    available_roles = sorted({
+        candidate_role
+        for recipe in registry.get("recipe", []) if isinstance(recipe, dict)
+        for candidate_role in (recipe.get("activation") or {})
+    })
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", role) or role not in available_roles:
+        print(
+            "unknown deployment role %r (available: %s)" % (
+                role, ", ".join(available_roles) or "none",
+            ),
+            file=sys.stderr,
+        )
+        return 2
+    rows = []
+    for recipe in registry.get("recipe", []):
+        activation = (recipe.get("activation") or {}).get(role)
+        if isinstance(activation, dict):
+            try:
+                resolve_recipe_activation(
+                    serves, promotions, registry, role, recipe["model"], _run=_run,
+                )
+                readiness, detail = "ready", "-"
+            except (serve_recipes.RecipeError, OSError, KeyError, TypeError, ValueError) as exc:
+                readiness = "blocked"
+                detail = str(exc).replace("\n", " ")[:120]
+            rows.append((
+                recipe["model"], recipe.get("status", "-"), readiness,
+                activation, detail,
+            ))
+    print("recipe registry: %s" % os.path.abspath(os.path.expanduser(registry_path)))
+    if not rows:
+        print("no recipes declare activation for role %r" % role)
+        return 0
+    print("%-52s %-10s %-9s %-10s %-22s %s" % (
+        "MODEL", "STATUS", "ACTIVATE", "DIRECTION", "PLAN", "DETAIL",
+    ))
+    for model, status, readiness, activation, detail in rows:
+        print("%-52s %-10s %-9s %-10s %-22s %s" % (
+            model, status, readiness, activation["direction"], activation["plan"], detail,
+        ))
+    return 0
 
 
 def _select(serves, names):
@@ -1694,7 +2651,10 @@ def cmd_logs(serves, names, tail="200", since=None, follow=False, _run=subproces
     return r.returncode
 
 
-_ACTIONS = ("status", "up", "down", "rm", "adopt", "logs", "groups", "promote", "render")
+_ACTIONS = (
+    "status", "up", "down", "rm", "adopt", "logs", "groups", "switch",
+    "promote", "render",
+)
 # Actions that accept `--group NAME` (repeatable) — they act across the whole
 # manifest set (serves*.toml in the manifest's dir), not just one file.
 _GROUP_ACTIONS = frozenset({"up", "down", "status"})
@@ -1707,6 +2667,7 @@ _ACTION_DESCRIPTIONS = {
     "adopt": "Bring externally-started serves under compose management.",
     "logs": "Show bounded or streaming docker logs for one serve.",
     "groups": "List serve groups across the manifest set and their members.",
+    "switch": "Switch a deployment role to an activation-ready recipe.",
     "promote": "Promote a staged model recipe with preflight and full rollback.",
     "render": "Render tuned compose, manifest, and router-tier configuration.",
 }
@@ -1726,10 +2687,25 @@ def _build_action_parser(action):
     p = argparse.ArgumentParser(
         prog="anvil-serving serves %s" % action,
         description=_ACTION_DESCRIPTIONS[action],
+        epilog=(
+            "Examples:\n"
+            "  anvil-serving serves switch heavy\n"
+            "  anvil-serving serves switch heavy --recipe MODEL --dry-run\n"
+            "  anvil-serving serves switch heavy --recipe MODEL --confirm\n\n"
+            "Preview resolves the effective Compose service and reports any deferred "
+            "live-state refusal. Apply requires exact source router artifacts, takes an "
+            "exclusive role lock plus the common promotion lock, journals evidence, "
+            "and retains automatic rollback."
+            if action == "switch" else None
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     if action == "promote":
         p.add_argument("names", nargs=1, metavar="PLAN",
                        help="the [[promotion]] plan name from the manifest")
+    elif action == "switch":
+        p.add_argument("names", nargs=1, metavar="ROLE",
+                       help="deployment role to switch (for example: heavy)")
     elif action == "logs":
         p.add_argument("names", nargs=1, metavar="NAME",
                        help="serve name/container to read logs from.")
@@ -1752,7 +2728,7 @@ def _build_action_parser(action):
                        help="emit the group catalog as JSON for tooling.")
     else:
         p.set_defaults(json_out=False)
-    if action in {"up", "down", "rm", "adopt", "promote"}:
+    if action in {"up", "down", "rm", "adopt", "switch", "promote"}:
         p.add_argument("--dry-run", action="store_true",
                        help="print what would run without touching any container.")
     else:
@@ -1795,13 +2771,19 @@ def _build_action_parser(action):
                        help="stream new output (Ctrl-C to stop).")
     else:
         p.set_defaults(tail="200", since=None, follow=False)
-    if action == "promote":
+    if action == "switch":
+        p.add_argument("--recipe", metavar="MODEL",
+                       help="recipe model id or unique basename to activate")
+        p.add_argument("--registry", metavar="PATH",
+                       help="recipe registry TOML (default: configs/serve-recipes.toml, then operator config)")
+        p.set_defaults(resume=False)
+    elif action == "promote":
         p.add_argument("--rollback", action="store_true",
                        help="restore the plan's rollback serve and router state")
         p.add_argument("--resume", action="store_true",
                        help="resume an interrupted promotion from an already-running target")
     else:
-        p.set_defaults(rollback=False, resume=False)
+        p.set_defaults(recipe=None, registry=None, rollback=False, resume=False)
     return p
 
 
@@ -1935,6 +2917,29 @@ def main(argv=None):
         return cmd_promote(
             serves, promotions, a.names[0], os.path.abspath(manifest_path),
             rollback=a.rollback, resume=a.resume, dry_run=a.dry_run,
+        )
+    if a.action == "switch":
+        registry_path = resolve_recipe_registry_path(a.registry)
+        try:
+            promotions = load_promotions(manifest_path)
+            registry = serve_recipes.load_registry(registry_path)
+        except FileNotFoundError as exc:
+            print(
+                "switch input not found: %s (run `anvil-serving init`, or pass "
+                "--manifest and --registry explicitly)" % exc.filename,
+                file=sys.stderr,
+            )
+            return 2
+        except Exception as exc:
+            print("bad switch configuration: %s" % exc, file=sys.stderr)
+            return 2
+        if not a.recipe:
+            return cmd_switch_choices(
+                serves, promotions, registry, a.names[0], registry_path,
+            )
+        return cmd_switch(
+            serves, promotions, registry, a.names[0], a.recipe,
+            os.path.abspath(manifest_path), resume=a.resume, dry_run=a.dry_run,
         )
     return 2
 
