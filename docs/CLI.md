@@ -86,7 +86,7 @@ required operands, choices, and defaults.
 <!-- BEGIN GENERATED CLI MANIFEST INDEX -->
 | Command path | Purpose | Class / output | Declared command options |
 |---|---|---|---|
-| `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `read` / `bounded` | - |
+| `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | `--out-dir`<br>`--single-model`<br>`--model`<br>`--catalog-dir`<br>`--gpu`<br>`--served-name`<br>`--tier-id`<br>`--port`<br>`--context`<br>`--engine`<br>`--disable-thinking`<br>`--bind`<br>`--expose-lan` |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
 | `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--mode`<br>`--host`<br>`--port` |
 | `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -194,12 +194,12 @@ required operands, choices, and defaults.
 | `host gpu-sharing inspect` | Inspect Green Context and MPS capability without mutation. | `read` / `bounded` | `--timeout` |
 | `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose-file`<br>`--gpu-uuid`<br>`--timeout` |
 | `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
-| `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | - |
-| `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `host memory` | Show host RAM and WSL VM memory usage. | `read` / `bounded` | `--distro` |
+| `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--memory`<br>`--swap`<br>`--revert`<br>`--force` |
 | `host restart-docker` | Restart Docker Desktop. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host reset-wsl` | Reset WSL. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `host reclaim` | Drop the WSL VM page cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--watch` |
-| `doctor` | Check dependencies and configured health. | `read` / `bounded` | - |
+| `host reclaim` | Drop the WSL VM page cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--force`<br>`--watch`<br>`--threshold-gb`<br>`--interval`<br>`--distro` |
+| `doctor` | Check dependencies and configured health. | `read` / `bounded` | `--config`<br>`--no-config` |
 | `upgrade` | Upgrade this CLI to the newest stable published release. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manager`<br>`--allow-editable` |
 | `topology` | Inspect and resolve deployment topology. | `read` / `bounded` | - |
 | `topology show` | Show a validated topology summary. | `read` / `bounded` | - |
@@ -266,6 +266,9 @@ shown by focused help. Common moves include:
 | `mcp list-tools` | `mcp tools` |
 | `mcp list-tools --list-tools` | `mcp tools` |
 | `controller serve --allow-unauthenticated-loopback` | `Configure the token named by --auth-token-env` |
+| `host restart-docker --force` | `--confirm` |
+| `host reset-wsl --force` | `--confirm` |
+| `host reclaim --yes` | `--confirm` |
 | `serve` | `router run` |
 | `deploy` | `serves render` |
 | `multiplexer` | `serves multiplex` |
