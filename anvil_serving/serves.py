@@ -2817,6 +2817,16 @@ def main(argv=None):
         return int(exc.code or 2)
     a.action = action
 
+    # Reject conflicting selectors before resolving manifests or registries. This
+    # is an argument error, so its result must not depend on which config files
+    # happen to exist on the current host.
+    if a.action == "switch" and a.recipe_selector and a.recipe:
+        print(
+            "choose either positional MODEL or --recipe MODEL, not both",
+            file=sys.stderr,
+        )
+        return 2
+
     # `serves up` ensures the DEPLOYED router is healthy FIRST — serves are only
     # reachable behind it. Reuses the `router` verb's own status/up code paths;
     # idempotent (a healthy router is not restarted), honors --dry-run, and
@@ -2921,12 +2931,6 @@ def main(argv=None):
             rollback=a.rollback, resume=a.resume, dry_run=a.dry_run,
         )
     if a.action == "switch":
-        if a.recipe_selector and a.recipe:
-            print(
-                "choose either positional MODEL or --recipe MODEL, not both",
-                file=sys.stderr,
-            )
-            return 2
         selector = a.recipe_selector or a.recipe
         registry_path = resolve_recipe_registry_path(a.registry)
         try:
