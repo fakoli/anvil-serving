@@ -914,7 +914,7 @@ def _confirm(
     if not _requires_confirmation(node, policy_args):
         return forwarded, False
     command = _command_name(path)
-    next_action = f"rerun with --confirm: anvil-serving {command} --confirm"
+    next_action = "rerun the same command with --confirm"
     if json_mode or not sys.stdin.isatty():
         raise SafetyError(
             f"confirmation required; {next_action}",

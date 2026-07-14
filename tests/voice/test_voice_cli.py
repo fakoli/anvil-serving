@@ -1564,7 +1564,7 @@ def test_dispatched_via_top_level_cli(capsys):
     out = capsys.readouterr().out
     assert "anvil-serving voice - Manage audio and realtime proxy operations." in out
     assert "audio" in out and "proxy" in out and "benchmark" in out
-    assert "Docs: docs/VOICE.md" in out
+    assert "Docs: docs/cli/voice.md" in out
 
 
 def test_voice_sidecar_nested_help_dispatches(capsys):
@@ -1576,7 +1576,7 @@ def test_voice_sidecar_nested_help_dispatches(capsys):
     assert "--topology" not in out
     assert "--json" in out
     assert "-h, --help" in out
-    assert "Docs: docs/CLI.md" in out
+    assert "Docs: docs/cli/voice.md#speech-to-speech-sidecar" in out
 
 
 def test_top_level_help_mentions_voice(capsys):

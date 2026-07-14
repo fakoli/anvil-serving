@@ -116,11 +116,12 @@ different if nested.
   - `--db` and `--source`, `--url`, `--gpu`, `--model` mention paths are preserved in examples.
 
 - [x] `models cache prune`
-  - Full command form and gating flags documented in `docs/CLI.md` (`--json`, `--execute`, `--yes`, `--dry-run`,
-    `--include-servable`, `--allow-empty-mixture`, `--self-check`, `--mixture`).
+  - Safe preview, execution gates, and widening safeguards are documented in `docs/cli/models.md`;
+    focused `--help` remains the full flag reference.
 
 - [x] `models score`
-  - Full command form documented in `docs/CLI.md` with supported flags (`--json`, `--no-local`, `--self-check`).
+  - Canonical command is indexed in `docs/CLI.md` and grouped in `docs/cli/models.md`;
+    focused `--help` remains the full flag reference.
 
 - [x] `voice sidecar`
   - Subcommands documented: `validate`, `command`, `compose`.

@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **CLI documentation is organized by operator workflow.** A concise reference landing page now
+  maps every public verb into focused router, serve, model-and-recipe, evaluation, host,
+  control-plane, and voice pages. Full recipe CRUD and loading are directly discoverable, focused
+  command help links to its owning family page, and the generated exhaustive index remains the
+  drift-checked lookup surface.
+- **CLI examples are parser-checked against required operands and safety gates.** Router and serve
+  promotion, tier transitions, topology resolution, voice ownership, GPU-sharing probes, grouped
+  serve logs, and cache deletion now show complete copyable forms. Collector actions are first-class
+  command-tree leaves, and writing collector configuration is confirmation-gated.
+
 ## [0.13.2] - 2026-07-14
 
 ### Changed

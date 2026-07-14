@@ -27,7 +27,15 @@ nav:
   - Get started: GETTING-STARTED.md
   - Architecture: ARCHITECTURE.md
   - Reference:
-      - CLI: CLI.md
+      - CLI:
+          - Overview: CLI.md
+          - Router: cli/router.md
+          - Model serves: cli/serves.md
+          - Models & recipes: cli/models.md
+          - Evaluation & benchmarks: cli/eval.md
+          - Host & setup: cli/host.md
+          - Control plane & integrations: cli/control-plane.md
+          - Voice: cli/voice.md
       - Configuration: CONFIGURATION.md
       - Terminology: TERMINOLOGY.md
   - Product design:

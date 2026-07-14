@@ -105,7 +105,7 @@ anvil-serving serves up --group voice
 Host-specific values (GPU UUIDs, tailnet address) land as clearly-marked placeholders you edit
 before bring-up; secrets are never written (only `.env.example`). Existing operator files are
 backed up (`.anvil.bak.N`), never clobbered. For a single-model quick bring-up into the CWD instead,
-use `anvil-serving init --single-model`. See [`init`](CLI.md#init) for the full set.
+use `anvil-serving init --single-model`. See [`init`](cli/host.md#init) for the full set.
 
 Before starting the router, stand up those serves and validate each endpoint:
 
