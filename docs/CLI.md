@@ -65,6 +65,7 @@ confirmation or acknowledgement flags in focused `--help`.
 | `mcp` | Stdio MCP server (and remote-controller proxy) for operational tools. | Control plane & integrations |
 | `controller` | Token-authenticated HTTP controller for split-host MCP forwarding. | Control plane & integrations |
 | `harness` | Render/apply harness-side config (OpenClaw) from the live router config. | Control plane & integrations |
+| `edge` | Own the Tailscale tailnet edge: path-route the single MagicDNS name to `/v1` (router) + `/comfyui`. | Control plane & integrations |
 | `topology` | Validate and resolve host/resource ownership without execution. | Control plane & integrations |
 | `voice` | Voice pipeline: STT/TTS serve lifecycle, realtime server, benchmark, bridge. | Voice |
 | `voice sidecar` | Validate/render the HF speech-to-speech sidecar command and compose. | Voice |
@@ -196,6 +197,11 @@ focused `--help`.
 | `collectors` | Configure and inspect optional read-only collector adapters. | `read` / `bounded` | - |
 | `dashboard` | Serve the read-only system observability dashboard. | `read` / `bounded` | - |
 | `dashboard serve` | Serve the packaged local dashboard. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-env` |
+| `edge` | Own the Tailscale tailnet edge in front of the unchanged router. | `read` / `bounded` | - |
+| `edge render` | Render the tailscale serve invocations without applying. | `read` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map` |
+| `edge status` | Show serve mappings, flagging which this tool manages. | `read` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map` |
+| `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map`<br>`--dry-run`<br>`--confirm` |
+| `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--config`<br>`--https-port`<br>`--host`<br>`--map`<br>`--dry-run`<br>`--confirm` |
 <!-- END GENERATED CLI MANIFEST INDEX -->
 
 ---
@@ -983,6 +989,47 @@ explicit verified SSH recovery; normal `auto` execution never invokes SSH.
 anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --restart
 anvil-serving harness status openclaw --topology examples/fakoli-dark/operator-topology.toml
 ```
+
+### `edge`
+
+```
+anvil-serving edge render [--config PATH] [--map MOUNT=TARGET ...] [--https-port PORT] [--host ADDR]
+anvil-serving edge status [--config PATH] [--map MOUNT=TARGET ...]
+anvil-serving edge up   [--dry-run] [--confirm] [--config PATH] [--map MOUNT=TARGET ...]
+anvil-serving edge down [--dry-run] [--confirm] [--config PATH] [--map MOUNT=TARGET ...]
+```
+
+anvil-serving owns the Tailscale tailnet edge (ADR-0019): it renders and applies a
+`tailscale serve` config that path-routes the host's **single MagicDNS name** to the local
+services, so there is one name, one TLS listener, and one thing to reason about. The edge is a
+**pure L7 path-router in front of the unchanged router** — it adds no Python proxy; Tailscale
+Serve does the (WebSocket-capable) proxying natively.
+
+Default route map (extensible via config — `path -> local port`):
+
+| Mount | Target | Surface |
+|-------|--------|---------|
+| `/v1` | `127.0.0.1:8000` | The existing anvil-router, **completely unchanged** — the whole OpenAI/Anthropic `/v1` surface. |
+| `/comfyui` | `127.0.0.1:8188` | ComfyUI; its live queue needs WebSockets, which Tailscale Serve handles natively. |
+
+`render` and `--dry-run` print the exact `tailscale serve` invocations without applying them.
+`up` is additive and idempotent — it sets **only** the mounts this tool manages and never
+touches an operator-set mapping already parked at another path. `down` removes **only** the
+mounts this tool manages **and** that currently point at the configured target, so an
+operator's own `tailscale serve` mappings are never clobbered (it never runs
+`tailscale serve reset`). The MagicDNS name is read from Tailscale (`.Self.DNSName`), never
+hardcoded. Config lives in `[edge]` / `[edge.routes]` (mount → port or full URL); `--map`
+overrides win, and `--map MOUNT=off` drops a default route.
+
+```bash
+# Preview the mapping, then apply additively and verify through the one name:
+anvil-serving edge render
+anvil-serving edge up --confirm
+curl -H "Authorization: Bearer $ANVIL_ROUTER_TOKEN" https://<magicdns-name>/v1/models
+```
+
+See the [single tailnet DNS endpoint runbook](TAILNET-ENDPOINT-RUNBOOK.md) for the deployed
+MagicDNS form, token auth, and live verification.
 
 ---
 
