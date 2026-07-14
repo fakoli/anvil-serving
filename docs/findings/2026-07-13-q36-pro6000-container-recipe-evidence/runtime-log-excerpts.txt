@@ -1,0 +1,69 @@
+q36 RTX PRO 6000 bounded, sanitized log excerpts
+Observed 2026-07-13. Hostname, user identity, process IDs, and unrelated logs omitted.
+
+=== final restored server startup ===
+q36 launcher: mtp=off
+CUDA Version 13.1.2
+MTP: nextn module uploaded (self-speculative decode available)
+engine ready in 7.9s | ctx 32768 | kv fp16 | default temp 0.00 (greedy)
+listening on 0.0.0.0:8080  (POST /v1/chat/completions)
+
+=== arithmetic smoke, MTP off ===
+[chat] prompt 25 tok (0 cached) prefill 135 t/s | gen 7 tok 227.6 t/s | stop | lifetime 0.00M (pf 0.00M + gen 0.00M), cache-hit 0.00M | tc ok 0 bad 0
+
+=== arithmetic smoke, MTP on K=1 ===
+q36 launcher: mtp=on depth=1
+[chat] prompt 25 tok (0 cached) prefill 91 t/s | gen 7 tok 219.4 t/s | stop | lifetime 0.00M (pf 0.00M + gen 0.00M), cache-hit 0.00M | tc ok 0 bad 0 | mtp accept 75% (1.75 tok/verify)
+
+=== reasoning-heavy, 2048 output tokens, MTP off ===
+[chat] prompt 74 tok (0 cached) prefill 273 t/s | gen 2048 tok 249.9 t/s | length | lifetime 0.00M (pf 0.00M + gen 0.00M), cache-hit 0.00M | tc ok 0 bad 0
+
+=== reasoning-heavy, 2048 output tokens, MTP on K=1 ===
+[chat] prompt 74 tok (0 cached) prefill 288 t/s | gen 2048 tok 284.2 t/s | length | lifetime 0.00M (pf 0.00M + gen 0.00M), cache-hit 0.00M | tc ok 0 bad 0 | mtp accept 93% (1.93 tok/verify)
+
+=== reasoning-heavy, 4096 output tokens, MTP off ===
+[chat] prompt 74 tok (0 cached) prefill 362 t/s | gen 4096 tok 247.9 t/s | length | lifetime 0.00M (pf 0.00M + gen 0.00M), cache-hit 0.00M | tc ok 0 bad 0
+
+=== reasoning-heavy, 4096 output tokens, MTP on K=1 ===
+[chat] prompt 74 tok (0 cached) prefill 404 t/s | gen 4096 tok 285.7 t/s | length | lifetime 0.00M (pf 0.00M + gen 0.00M), cache-hit 0.00M | tc ok 0 bad 0 | mtp accept 94% (1.94 tok/verify)
+
+=== q36_info ===
+model bound OK: 10 attention blocks, 30 ssm blocks
+active-bytes/token breakdown (what each lever can optimize):
+  Q8_0 dense (attn+ssm+shared): 1492.9 MB  54.7%
+  Q8_0 output head            :  540.3 MB  19.8%
+  MXFP4 routed experts (top-8):  347.6 MB  12.7%
+  Q5_K/Q6_K routed experts    :  245.6 MB   9.0%
+  F32 (router/conv/ssm gates) :  103.5 MB   3.8%
+bos=248044 eos=248046 rope_freq_base=10000000
+total weights      : 20.65 GiB
+active/decode token: 2.543 GiB  (top-8 of 256 experts + dense)
+
+=== test_dequant ===
+== constant checks ==
+  constants: OK
+
+== real-tensor dequant (block 0) ==
+  token_embd.weight[Q8_0]      n=2048 min=-0.0664 max=0.1289 mean=0.0000 std=0.0091 nonfinite=0
+  blk.0.ffn_gate_exps.weight[MXFP4] n=512 min=-0.0469 max=0.0469 mean=-0.0007 std=0.0126 nonfinite=0
+  blk.0.ffn_down_exps.weight[Q5_K] n=512 min=-0.0338 max=0.0249 mean=-0.0007 std=0.0072 nonfinite=0
+  blk.3.attn_q.weight[Q8_0]    n=2048 min=-0.0374 max=0.0405 mean=-0.0000 std=0.0112 nonfinite=0
+
+ALL DEQUANT CHECKS PASSED (0 failures)
+
+=== test_mma_bs ===
+A byte=0x02: D[0][0]=32.0000 D[7][0]=32.0000 D[8][0]=32.0000 D[15][3]=32.0000 (want 32 if codes=1.0)
+A byte=0x20: D[0][0]=0.0000 D[7][0]=0.0000 D[8][0]=0.0000 D[15][3]=0.0000 (want 32 if codes=1.0)
+A byte=0x22: D[0][0]=32.0000 D[7][0]=32.0000 D[8][0]=32.0000 D[15][3]=32.0000 (want 32 if codes=1.0)
+verify {bid=2,tid=0}: max_rel_err=0.000e+00 -> PASS
+
+=== q36_bench ===
+| model | test | t/s |
+|---|---|---:|
+| Qwen3.6-35B-A3B-MXFP4_MOE.gguf | pp2048 | 11951.6 +/- 384.8 |
+| Qwen3.6-35B-A3B-MXFP4_MOE.gguf | pp8192 | 11273.7 +/- 1.8 |
+| Qwen3.6-35B-A3B-MXFP4_MOE.gguf | pp32768 | 9937.1 +/- 27.9 |
+| Qwen3.6-35B-A3B-MXFP4_MOE.gguf | pp90112 | 7784.6 +/- 54.6 |
+| Qwen3.6-35B-A3B-MXFP4_MOE.gguf | tg128 | 252.7 +/- 0.4 |
+| Qwen3.6-35B-A3B-MXFP4_MOE.gguf | tg128 @ d32768 | 217.6 +/- 0.1 |
+| Qwen3.6-35B-A3B-MXFP4_MOE.gguf | tg128 @ d90112 | 171.6 +/- 0.2 |

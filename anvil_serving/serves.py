@@ -101,8 +101,12 @@ _ENGINE_ALIASES = {
 # would invite LLM tooling (preflight, promotion gates) at a /v1 surface that
 # has no chat completions. "image" (gpu-reservations:T012) labels the ComfyUI
 # image/video-generation tenant the same truthful way: a graph UI + API,
-# no OpenAI-compatible surface at all.
-_ENGINES = {"vllm", "sglang", "llamacpp", "audio", "embedding", "reranker", "image"}
+# no OpenAI-compatible surface at all. "q36" is the dedicated q36 CUDA engine;
+# it exposes an OpenAI-compatible chat surface but is not vLLM/llama.cpp.
+_ENGINES = {
+    "vllm", "sglang", "llamacpp", "q36",
+    "audio", "embedding", "reranker", "image",
+}
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
 # declared VRAM reservation. "resident" is never evicted, "evictable" may be

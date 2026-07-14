@@ -1,0 +1,54 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39040/v1",
+  "model": "qwen3.6-35b-a3b",
+  "thinking": {
+    "mode": "default",
+    "chat_template_kwargs": null,
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 4096,
+    "max_completion_tokens": 4352
+  },
+  "checks": [
+    "smoke"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "1.9s got=\"<think>\\nHere's a thinking process:\\n\\n1.  **Analyze \" finish='stop' visible=1428 reasoning_chars=0 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "<think>\nHere's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Input:** A list `xs`\n   - **Output:** The sum of the list\n   - **Constraint:** Python one-liner\n\n2.  **Identify Core Functionality:**\n   - In Python, the built-in function `sum()` is specifically designed to calculate the sum of an iterable.\n   - `sum(xs)` directly returns the sum of all elements in the list `xs`.\n\n3.  **Check Constraints:**\n   - Is it a one-liner? Yes, `sum(xs)` is a single expression.\n   - Does it return the sum? Yes.\n   - Is it valid Python? Yes.\n\n4.  **Consider Alternatives (for completeness, though not needed):**\n   - `reduce(lambda a, b: a + b, xs)` (requires `from functools import reduce`, not a true one-liner without imports, and less efficient)\n   - `sum([x for x in xs])` (redundant)\n   - `eval('+'.join(map(str, xs)))` (hacky, unsafe, inefficient)\n   - `sum(xs)` is clearly the best and most Pythonic.\n\n5.  **Formulate Response:**\n   - Provide the exact one-liner.\n   - Keep it concise as requested.\n   - Optionally add a brief explanation if needed, but the prompt just asks for the one-liner.\n\n   Response: `sum(xs)`\n\n6.  **Self-Correction/Verification:**\n   - Does it meet all criteria? Yes.\n   - Is it accurate? Yes.\n   - Any edge cases? Works for empty lists (returns 0), works for numeric lists. Standard behavior.\n   - Final answer is straightforward.\n\n   Output matches the request exactly.\u2705\n</think>\n\n`sum(xs)`",
+      "finish_reason": "stop",
+      "content_chars": 1428,
+      "content_excerpt": "<think>\nHere's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Input:** A list `xs`\n   - **Output:** The sum of the list\n   - **Constraint:** Python one-liner\n\n2.  **Identify Core Functional",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 24,
+        "completion_tokens": 403,
+        "total_tokens": 427
+      },
+      "test": "smoke",
+      "seconds": 1.904,
+      "passed": true,
+      "validation_detail": "contains sum("
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "any",
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

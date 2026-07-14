@@ -1,0 +1,70 @@
+{
+  "observed_date": "2026-07-13",
+  "engine": "q36",
+  "model": "Qwen3.6-35B-A3B-MXFP4_MOE.gguf",
+  "context_tokens": 32768,
+  "temperature": 0,
+  "arithmetic_smoke": {
+    "prompt": "What is 17 * 23? Respond with only the numeric answer.",
+    "expected": 391,
+    "max_completion_tokens": 64,
+    "mtp_off": {
+      "finish_reason": "stop",
+      "prompt_tokens": 25,
+      "completion_tokens": 7,
+      "response": "<think>\n\n</think>\n\n391",
+      "decode_tokens_per_second": 227.6
+    },
+    "mtp_on_k1": {
+      "finish_reason": "stop",
+      "prompt_tokens": 25,
+      "completion_tokens": 7,
+      "response": "<think>\n\n</think>\n\n391",
+      "decode_tokens_per_second": 219.4,
+      "acceptance_percent": 75,
+      "tokens_per_verify": 1.75
+    },
+    "independent_check_passed": true,
+    "byte_identical": true,
+    "throughput_interpretation": "Seven generated tokens are too few for a speed comparison."
+  },
+  "reasoning_heavy": {
+    "prompt": "Consider a 10 by 10 grid. Starting at (0,0), each move is one step right or one step up. How many shortest paths reach (10,10) without ever visiting (5,5)? Work it out carefully, then end your response with a line exactly FINAL=<integer>.",
+    "independent_expected_answer": 121252,
+    "independent_derivation": "C(20,10) - C(10,5)^2",
+    "repeated_1024_token_run": {
+      "mtp_off_decode_tokens_per_second": [251.4, 250.7, 251.9],
+      "mtp_off_mean": 251.3333333333,
+      "mtp_on_k1_decode_tokens_per_second": [286.6, 290.2, 289.9],
+      "mtp_on_k1_mean": 288.9,
+      "mtp_relative_gain_percent": 14.95,
+      "all_finish_reasons": "length",
+      "all_final_answers": null
+    },
+    "single_2048_token_run": {
+      "mtp_off_decode_tokens_per_second": 249.9,
+      "mtp_on_k1_decode_tokens_per_second": 284.2,
+      "mtp_relative_gain_percent": 13.73,
+      "mtp_acceptance_percent": 93,
+      "mtp_tokens_per_verify": 1.93,
+      "both_finish_reasons": "length",
+      "both_final_answers": null,
+      "cross_mode_byte_identical": false
+    },
+    "single_4096_token_run": {
+      "mtp_off_decode_tokens_per_second": 247.9,
+      "mtp_on_k1_decode_tokens_per_second": 285.7,
+      "mtp_relative_gain_percent": 15.25,
+      "mtp_acceptance_percent": 94,
+      "mtp_tokens_per_verify": 1.94,
+      "both_finish_reasons": "length",
+      "both_final_answers": null,
+      "cross_mode_byte_identical": false,
+      "mtp_off_response_sha256": "b1ead5c11a841864dc005f8d11a957d2c0bd2f7fa55bc0837dd0648efe350994",
+      "mtp_on_response_sha256": "fc37d8d32e6c6d8aee0e914558151fb42f981e559fbd9c4ddb3547c2f407d4b8"
+    },
+    "quality_gate": "fail",
+    "quality_gate_reason": "No tested budget emitted the required FINAL line. The model remained in a verbose visible thinking trace.",
+    "identity_caveat": "MTP modes required container recreation. Cross-mode divergence at long output does not by itself isolate MTP from cross-restart CUDA nondeterminism."
+  }
+}
