@@ -1,17 +1,32 @@
 {
   "commands": [
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Packaged templates are validated before writing; existing operator files receive numbered backups before replacement.",
+        "Initialization writes configuration only and never starts a model serve or router."
+      ],
+      "configuration_notes": [
+        "Full setup writes to --out-dir, ANVIL_SERVING_HOME, or the platform config home in that order.",
+        "Single-model setup uses --model or the largest loadable entry from --catalog-dir and binds 127.0.0.1 by default."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#init",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving init --out-dir ./anvil-config",
+          "summary": "Scaffold the complete operator configuration into one explicit directory."
+        },
+        {
+          "invocation": "anvil-serving init --single-model --model ./models/qwen --gpu 0 --engine vllm --out-dir ./single-model",
+          "summary": "Create a self-consistent one-model bring-up without starting it."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
       "handler": "anvil_serving.init:main",
-      "mutation_class": "read",
+      "mutation_class": "mutate",
       "options": [
         {
           "flags": [
@@ -131,6 +146,136 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--out-dir"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Configuration output directory.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--single-model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Create a one-model bring-up instead of the full config set.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit local model path for single-model setup.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--catalog-dir"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Model catalog used for automatic selection.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--gpu"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "GPU index or stable NVIDIA UUID.",
+          "tombstone": null,
+          "value_name": "DEVICE"
+        },
+        {
+          "flags": [
+            "--served-name"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Served-model identity override.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--tier-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router tier identity override.",
+          "tombstone": null,
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--port"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Loopback model endpoint port.",
+          "tombstone": null,
+          "value_name": "PORT"
+        },
+        {
+          "flags": [
+            "--context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Model context window.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--engine"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serving engine override.",
+          "tombstone": null,
+          "value_name": "sglang|vllm"
+        },
+        {
+          "flags": [
+            "--disable-thinking"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Disable thinking in the generated tier.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--bind"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Published model-server address.",
+          "tombstone": null,
+          "value_name": "ADDRESS"
+        },
+        {
+          "flags": [
+            "--expose-lan"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Publish the model server on 0.0.0.0.",
           "tombstone": null,
           "value_name": null
         }
@@ -20797,7 +20942,7 @@
       "behavior_notes": [],
       "configuration_notes": [],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
+      "docs_anchor": "docs/cli/host.md#command-map",
       "examples": [],
       "execution_host_os": [],
       "execution_policy": "offline",
@@ -20939,11 +21084,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Status is read-only, bounded, and does not repair host configuration.",
+        "Unavailable probes remain explicit structured checks instead of causing a mutation or traceback."
+      ],
+      "configuration_notes": [
+        "Global topology and target options select the declared host resource owner; local execution is the default.",
+        "The summary combines physical RAM, Docker or WSL memory, GPU inventory, and the recommended Windows reserve."
+      ],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
-      "examples": [],
+      "docs_anchor": "docs/cli/host.md#inspect-the-host",
+      "examples": [
+        {
+          "invocation": "anvil-serving host status",
+          "summary": "Show the local host summary as bounded JSON."
+        },
+        {
+          "invocation": "anvil-serving host status --topology operator-topology.toml --target host:dark --json",
+          "summary": "Read a topology-declared host through the stable result envelope."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21096,11 +21256,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Inventory is read-only and never changes device mode, visibility, or allocation.",
+        "A host without nvidia-smi or visible NVIDIA devices returns an empty inventory cleanly."
+      ],
+      "configuration_notes": [
+        "GPU discovery uses nvidia-smi on the selected host and has a fixed 15-second query deadline.",
+        "Global topology and target options resolve which host owns the inventory request."
+      ],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
-      "examples": [],
+      "docs_anchor": "docs/cli/host.md#inspect-the-host",
+      "examples": [
+        {
+          "invocation": "anvil-serving host gpus",
+          "summary": "List locally visible NVIDIA GPU indexes, stable UUIDs, and names."
+        },
+        {
+          "invocation": "anvil-serving host gpus --topology operator-topology.toml --target host:dark --json",
+          "summary": "Read bounded GPU inventory from a declared remote owner."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21398,11 +21573,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Inspection never creates a CUDA context, starts MPS, launches a workload, or changes GPU state.",
+        "Missing or ambiguous capability evidence is reported as unavailable or unknown, never inferred as supported."
+      ],
+      "configuration_notes": [
+        "--timeout defaults to 10 seconds per subprocess and must not exceed 60 seconds.",
+        "When topology is supplied, role ownership follows stable GPU UUIDs rather than transient runtime indexes."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving host gpu-sharing inspect --timeout 10",
+          "summary": "Inspect local Green Context and MPS capability evidence."
+        },
+        {
+          "invocation": "anvil-serving host gpu-sharing inspect --topology operator-topology.toml --target host:dark --json",
+          "summary": "Attach declared GPU roles to runtime observations by UUID."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21557,11 +21747,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run renders and audits the exact service, image digest, source hash, isolation, and UUID pin without execution.",
+        "Confirmed execution may populate the image cache but must not create a CUDA context, launch a workload, or alter GPU state."
+      ],
+      "configuration_notes": [
+        "--compose-file defaults to the reviewed experiment Compose file and --gpu-uuid requires the full NVIDIA UUID form.",
+        "The live timeout defaults to 180 seconds and must not exceed 300 seconds."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving host gpu-sharing probe --gpu-uuid GPU-00000000-0000-0000-0000-000000000000 --dry-run",
+          "summary": "Audit the pinned one-shot Compose probe without starting a container."
+        },
+        {
+          "invocation": "anvil-serving host gpu-sharing probe --gpu-uuid GPU-00000000-0000-0000-0000-000000000000 --confirm",
+          "summary": "Run the reviewed prerequisite probe in one temporary container."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21756,11 +21961,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Host doctor is read-only and prints a recommendation rather than changing .wslconfig.",
+        "Unavailable host, Docker, or GPU probes remain visible in the diagnosis."
+      ],
+      "configuration_notes": [
+        "Global topology and target options select the host owner; native local execution is the default.",
+        "The WSL recommendation keeps a 14 GB target Windows reserve and never exceeds the 10 GB safety floor."
+      ],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
-      "examples": [],
+      "docs_anchor": "docs/cli/host.md#inspect-the-host",
+      "examples": [
+        {
+          "invocation": "anvil-serving host doctor",
+          "summary": "Inspect local host memory, Docker or WSL capacity, and GPUs."
+        },
+        {
+          "invocation": "anvil-serving host doctor --topology operator-topology.toml --target host:dark --json",
+          "summary": "Diagnose a topology-declared host through its controller."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21913,11 +22133,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Memory inspection is read-only and never reclaims cache or restarts WSL.",
+        "Unsupported hosts return a capability error with the native /proc alternative."
+      ],
+      "configuration_notes": [
+        "This command runs locally on Windows; --distro selects the WSL distribution used to read /proc/meminfo.",
+        "All WSL distributions share the same VM memory, so the default distribution is normally sufficient."
+      ],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
-      "examples": [],
+      "docs_anchor": "docs/cli/host.md#inspect-the-host",
+      "examples": [
+        {
+          "invocation": "anvil-serving host memory",
+          "summary": "Show Windows, WSL VM, page-cache, and GPU memory usage."
+        },
+        {
+          "invocation": "anvil-serving host memory --distro Ubuntu",
+          "summary": "Read VM-wide WSL memory through one explicit distro."
+        }
+      ],
       "execution_host_os": [
         "windows"
       ],
@@ -22049,6 +22284,16 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--distro"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "WSL distro to inspect.",
+          "tombstone": null,
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -22064,11 +22309,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run preserves the file; apply changes only memory and swap while retaining custom sections and comments.",
+        "Apply creates a numbered backup and requires a separate Docker Desktop restart before the WSL cap becomes live."
+      ],
+      "configuration_notes": [
+        "Windows only; provide --memory and/or --swap, or use --revert to restore the newest numbered backup.",
+        "--force overrides only the 10 GB Windows reserve check; --confirm remains the public mutation gate."
+      ],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
-      "examples": [],
+      "docs_anchor": "docs/cli/host.md#repair-the-host",
+      "examples": [
+        {
+          "invocation": "anvil-serving host wsl-config --memory 64 --swap 8 --dry-run",
+          "summary": "Preview only the .wslconfig keys that would change."
+        },
+        {
+          "invocation": "anvil-serving host wsl-config --memory 64 --swap 8 --confirm",
+          "summary": "Back up and apply the reviewed WSL memory settings."
+        }
+      ],
       "execution_host_os": [
         "windows"
       ],
@@ -22220,6 +22480,46 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--memory"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "WSL memory cap in GB.",
+          "tombstone": null,
+          "value_name": "GB"
+        },
+        {
+          "flags": [
+            "--swap"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "WSL swap size in GB.",
+          "tombstone": null,
+          "value_name": "GB"
+        },
+        {
+          "flags": [
+            "--revert"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Restore the newest numbered backup.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--force"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Override the Windows memory-reserve refusal.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -22253,11 +22553,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run launches nothing; apply briefly stops the engine and every running container.",
+        "The restart is attempted once and the command prints explicit router and serve verification steps."
+      ],
+      "configuration_notes": [
+        "This operation targets Docker Desktop on Windows or macOS; Linux operators use their service manager.",
+        "Global topology and target options can select a declared host owner; --confirm is the only public consent spelling."
+      ],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
-      "examples": [],
+      "docs_anchor": "docs/cli/host.md#repair-the-host",
+      "examples": [
+        {
+          "invocation": "anvil-serving host restart-docker --dry-run",
+          "summary": "Preview the platform-specific Docker Desktop restart."
+        },
+        {
+          "invocation": "anvil-serving host restart-docker --confirm",
+          "summary": "Cycle Docker Desktop once after reviewing the disruption."
+        }
+      ],
       "execution_host_os": [
         "windows",
         "macos"
@@ -22410,6 +22725,19 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--force"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Removed option.",
+          "tombstone": {
+            "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+            "replacement": "--confirm"
+          },
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -22440,11 +22768,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run kills no processes; apply terminates vmmemWSL and hung wsl front ends, then restarts Docker Desktop once.",
+        "Permission failures return nonzero and print the elevated WSLService recovery command instead of retrying."
+      ],
+      "configuration_notes": [
+        "Windows only; use this recovery after WSL commands hang and Docker Desktop cannot rebuild its backend.",
+        "Global topology and target options can select a declared host owner; --confirm is the only public consent spelling."
+      ],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
-      "examples": [],
+      "docs_anchor": "docs/cli/host.md#repair-the-host",
+      "examples": [
+        {
+          "invocation": "anvil-serving host reset-wsl --dry-run",
+          "summary": "Preview the bounded Windows WSL recovery sequence."
+        },
+        {
+          "invocation": "anvil-serving host reset-wsl --confirm",
+          "summary": "Reset a wedged WSL VM and restart Docker Desktop once."
+        }
+      ],
       "execution_host_os": [
         "windows"
       ],
@@ -22595,6 +22938,19 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--force"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Removed option.",
+          "tombstone": {
+            "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+            "replacement": "--confirm"
+          },
           "value_name": null
         }
       ],
@@ -22626,11 +22982,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "One-shot reclaim syncs first, refuses a growing checkpoint cache by default, and drops only clean page-cache data.",
+        "Watch mode is an explicit foreground loop until interrupted and cannot be combined with structured JSON output."
+      ],
+      "configuration_notes": [
+        "Windows only; --distro selects the WSL target, while --watch requires a positive --threshold-gb and --interval.",
+        "--force overrides only the active model-load refusal; --confirm remains the public mutation gate."
+      ],
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/host.md#host",
-      "examples": [],
+      "docs_anchor": "docs/cli/host.md#repair-the-host",
+      "examples": [
+        {
+          "invocation": "anvil-serving host reclaim --dry-run",
+          "summary": "Preview the one-shot WSL page-cache reclaim command."
+        },
+        {
+          "invocation": "anvil-serving host reclaim --watch --threshold-gb 60 --interval 30 --confirm",
+          "summary": "Run a foreground reclaim watchdog during a reviewed bakeoff."
+        }
+      ],
       "execution_host_os": [
         "windows"
       ],
@@ -22785,6 +23156,29 @@
         },
         {
           "flags": [
+            "--force"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Override the active model-load refusal.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--yes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Removed option.",
+          "tombstone": {
+            "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+            "replacement": "--confirm"
+          },
+          "value_name": null
+        },
+        {
+          "flags": [
             "--watch"
           ],
           "output_policy": "follow",
@@ -22792,6 +23186,36 @@
           "summary": "Foreground reclaim watchdog loop.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--threshold-gb"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Watch-mode cache threshold.",
+          "tombstone": null,
+          "value_name": "GB"
+        },
+        {
+          "flags": [
+            "--interval"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Watch-mode polling interval.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--distro"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "WSL distro in which to reclaim cache.",
+          "tombstone": null,
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -22807,11 +23231,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Required Python, Docker, and Compose failures return nonzero; GPU, runtime, and unavailable tier health are advisory warnings.",
+        "Doctor is read-only and never starts Docker, a model serve, or the router."
+      ],
+      "configuration_notes": [
+        "Without --config, ./router.toml is checked only when it exists; --no-config disables tier health probes.",
+        "An explicit missing or invalid --config is a required failure rather than a skipped optional check."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#doctor",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving doctor --no-config",
+          "summary": "Check Python, Docker, Compose, NVIDIA runtime, and GPU discovery only."
+        },
+        {
+          "invocation": "anvil-serving doctor --config ./router.toml --json",
+          "summary": "Check one explicit router configuration and emit structured results."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -22941,6 +23380,26 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router config used for tier health probes.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--no-config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Skip tier health probes.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -22964,11 +23423,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run performs discovery only and never invokes a package-manager mutation.",
+        "Apply runs one upgrade attempt and verifies that anvil-serving --version exactly matches the selected release."
+      ],
+      "configuration_notes": [
+        "--manager auto detects uv tool, pipx, or pip ownership; an explicit manager overrides detection.",
+        "Editable installs are refused unless --allow-editable deliberately replaces the source checkout with a published package."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#upgrade",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving upgrade --dry-run",
+          "summary": "Resolve the installed package owner and latest stable PyPI version."
+        },
+        {
+          "invocation": "anvil-serving upgrade --manager auto --confirm",
+          "summary": "Apply the reviewed upgrade through the owning package manager."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -24869,11 +25343,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "The server runs in the foreground until interrupted and does not support structured JSON output.",
+        "Dashboard routes are read-only observability endpoints and never become a second management control plane."
+      ],
+      "configuration_notes": [
+        "The default bind is 127.0.0.1:8766; any non-loopback bind requires the token named by --auth-env.",
+        "The dashboard builds its packaged telemetry registry and retains only bounded in-process history."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/host.md#dashboard",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving dashboard serve --host 127.0.0.1 --port 8766",
+          "summary": "Run the read-only dashboard on its loopback default."
+        },
+        {
+          "invocation": "anvil-serving dashboard serve --host 100.64.0.10 --auth-env ANVIL_DASHBOARD_TOKEN",
+          "summary": "Bind to one private address with bearer-token protection."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [

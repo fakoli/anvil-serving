@@ -2,115 +2,217 @@
 
 [CLI overview](../CLI.md) · [Control plane & integrations](control-plane.md) · [Troubleshooting](../TROUBLESHOOTING.md)
 
-This family covers initial configuration, health checks, CLI upgrades, host inspection
-and repair, GPU-sharing capability checks, and the local observability dashboard.
+Use this family to create the operator configuration, verify the installation,
+inspect the host that owns a deployment, and run explicitly guarded host repair.
+Focused `--help` is the complete flag reference for every command below.
 
-## Commands
+## Choose a workflow
+
+| Goal | Start here | Then |
+| --- | --- | --- |
+| Configure a new installation | `init --out-dir PATH` | Replace host placeholders, then run `doctor`. |
+| Check whether this machine is ready | `doctor --no-config` | Add `--config PATH` when the router config exists. |
+| Inspect a topology-owned host | `host status` | Use `host doctor` for a recommendation or `host memory` for WSL details. |
+| Change the WSL memory cap safely | `host doctor` | Preview `host wsl-config`, apply it, then restart Docker Desktop. |
+| Recover a wedged WSL backend | `host reset-wsl --dry-run` | Apply only after reviewing the process and container disruption. |
+| Check GPU partitioning prerequisites | `host gpu-sharing inspect` | Run the confirmation-gated probe only when static evidence is insufficient. |
+| Upgrade the installed CLI | `upgrade --dry-run` | Apply through the detected package owner with `--confirm`. |
+
+## Command map
+
+### Configure and maintain the installation
 
 | Command | Purpose |
 | --- | --- |
-| `init` | Scaffold the complete operational configuration or a single-model bring-up. |
-| `doctor` | Check dependencies and configured service health. |
-| `upgrade` | Upgrade the CLI to the newest stable published release. |
-| `host status` | Show structured host status. |
-| `host gpus` | Show GPU inventory. |
-| `host gpu-sharing ...` | Inspect or probe CUDA sharing capabilities. |
-| `host doctor` | Diagnose declared host configuration. |
-| `host memory` | Show host RAM and WSL VM memory usage. |
-| `host wsl-config` | Render or update WSL configuration. |
-| `host restart-docker` | Restart Docker Desktop. |
-| `host reset-wsl` | Reset WSL. |
-| `host reclaim` | Drop the WSL VM page cache. |
-| `dashboard serve` | Serve the packaged read-only dashboard. |
+| `init` | Scaffold the complete operator configuration or a one-model bring-up. |
+| `doctor` | Check Python, Docker, Compose, GPU discovery, and optional tier health. |
+| `upgrade` | Upgrade the installed CLI to the newest stable published release. |
+
+### Inspect the host
+
+| Command | Purpose |
+| --- | --- |
+| `host status` | Return the structured host summary. |
+| `host gpus` | List visible NVIDIA GPU indexes, stable UUIDs, and names. |
+| `host doctor` | Explain host memory capacity and recommend a safe WSL cap. |
+| `host memory` | Show Windows, WSL VM, page-cache, and GPU memory usage. |
+
+### Plan and apply host repair
+
+| Command | Purpose |
+| --- | --- |
+| `host wsl-config` | Preview, update, or revert the WSL memory and swap keys. |
+| `host restart-docker` | Restart Docker Desktop once on Windows or macOS. |
+| `host reset-wsl` | Reset a wedged Windows WSL backend, then restart Docker Desktop. |
+| `host reclaim` | Drop clean WSL page cache once or run a foreground watchdog. |
+
+### Inspect GPU-sharing prerequisites
+
+| Command | Purpose |
+| --- | --- |
+| `host gpu-sharing inspect` | Collect non-mutating Green Context and MPS capability evidence. |
+| `host gpu-sharing probe` | Audit or run the reviewed, UUID-pinned CUDA prerequisite probe. |
+
+### Observe the host
+
+| Command | Purpose |
+| --- | --- |
+| `dashboard serve` | Run the packaged read-only observability dashboard. |
 
 ## Init
 
-With no flags, `init` scaffolds the full operator configuration into
-`~/.anvil-serving` (or the platform-equivalent home resolved by the CLI):
+Full setup writes the packaged operational configuration to the platform config
+home. `ANVIL_SERVING_HOME` changes that home; `--out-dir` selects one explicit
+directory instead.
 
 ```bash
-anvil-serving init
+anvil-serving init --out-dir ./anvil-config
 ```
 
-The generated set includes router variants, mode configuration, the serve-recipe
-registry, model/voice/ComfyUI manifests and compose files, operator topology,
-environment template, voice configuration, and tailnet-edge configuration. Existing
-operator files are not silently overwritten.
+The scaffold includes router variants, modes, recipes, model/voice/ComfyUI
+manifests and Compose files, operator topology, `.env.example`, voice settings,
+and tailnet-edge settings. Templates are validated before the first write.
+Existing operator files receive numbered `.anvil.bak.N` backups before they are
+replaced.
 
-For an isolated single-model bring-up, use focused help to supply the model, engine,
-port, and output directory:
+For a one-model configuration:
 
 ```bash
-anvil-serving init --single-model --help
+anvil-serving init --single-model --model ./models/qwen --gpu 0 --engine vllm --out-dir ./single-model
 ```
+
+This mode writes mutually consistent Compose, serve-manifest, router, and
+topology files. It binds the model endpoint to `127.0.0.1` by default and does
+not start a container or router. Unlike disruptive repair verbs, `init` is an
+immediate scaffold operation; select a disposable `--out-dir` when evaluating
+the generated files.
 
 ## Doctor
 
 ```bash
-anvil-serving doctor
-anvil-serving --json doctor
-anvil-serving host doctor
+anvil-serving doctor --no-config
+anvil-serving doctor --config ./router.toml --json
 ```
 
-`doctor` checks the installed tool and configured services. `host doctor` is the
-topology-aware host diagnostic under the resource-owner command family.
+Python, Docker, and Compose are required checks. NVIDIA runtime, GPU discovery,
+and unavailable tier health are advisory because the router and model serves
+may live on different hosts. With neither selector, `./router.toml` is checked
+only when it exists. An explicit missing or invalid `--config` fails instead of
+being skipped.
+
+`host doctor` is the topology-aware host-capacity view:
+
+```bash
+anvil-serving host doctor
+anvil-serving host doctor --topology operator-topology.toml --target host:dark --json
+```
+
+It recommends a WSL cap that targets a 14 GB Windows reserve and never exceeds
+the 10 GB safety floor. It does not edit `.wslconfig`.
 
 ## Upgrade
 
 ```bash
 anvil-serving upgrade --dry-run
-anvil-serving upgrade --confirm
 anvil-serving upgrade --manager auto --confirm
 ```
 
-`--dry-run` reports the detected install manager and proposed version without writing.
-A bare `upgrade` also stops before mutation, but reports that confirmation is required;
-repeat with `--confirm` to apply the resolved upgrade.
-Use `--allow-editable` only when intentionally replacing an editable source install.
+Preview detects whether uv tool, pipx, or pip owns the installation and resolves
+the newest stable PyPI version. Apply performs one package-manager attempt and
+then verifies the exact `anvil-serving --version` output. Editable installs are
+refused unless `--allow-editable` deliberately replaces the checkout with the
+published package.
 
-## Host
-
-Read-only inspection works across Linux, macOS, and Windows where the underlying
-capability exists:
+## Inspect the host
 
 ```bash
 anvil-serving host status
 anvil-serving host gpus
-anvil-serving host memory
+anvil-serving host memory --distro Ubuntu
 ```
 
-Repair operations are explicit and guarded:
+`host status`, `host gpus`, and `host doctor` can resolve a topology-declared
+host through its authenticated controller. `host memory` is a local Windows
+operation because it reads WSL `/proc/meminfo`; the selected distro is only the
+view into the shared WSL VM.
+
+These commands are read-only. Missing GPU tools or unavailable probes remain
+visible as empty or degraded results instead of triggering repair.
+
+## Repair the host
+
+Use one consent spelling for public host mutations: preview with `--dry-run`,
+then apply the reviewed operation with `--confirm`.
 
 ```bash
-anvil-serving host wsl-config --dry-run
-anvil-serving host wsl-config --confirm
+anvil-serving host wsl-config --memory 64 --swap 8 --dry-run
+anvil-serving host wsl-config --memory 64 --swap 8 --confirm
+anvil-serving host restart-docker --dry-run
 anvil-serving host restart-docker --confirm
+anvil-serving host reset-wsl --dry-run
 anvil-serving host reset-wsl --confirm
+anvil-serving host reclaim --dry-run
 anvil-serving host reclaim --confirm
 ```
 
-OS-specific operations fail with a clear capability error on unsupported hosts instead
-of assuming WSL or Docker Desktop is present.
+`host wsl-config` changes only `memory` and `swap`, preserves other sections,
+and creates a numbered backup. Use `--revert --dry-run`, then
+`--revert --confirm`, to restore the newest backup. `--force` has one narrow
+meaning here: override the 10 GB Windows-reserve refusal. It does not replace
+the public `--confirm` gate.
+
+`host restart-docker` supports Docker Desktop on Windows and macOS.
+`host reset-wsl` is Windows-only recovery for a hung VM and prints an elevated
+fallback if process termination is denied. Both use one attempt and stop for
+diagnosis rather than retry-looping disruptive actions.
+
+`host reclaim` synchronizes the filesystem before dropping clean page cache and
+refuses when a checkpoint appears to be streaming. Its `--force` overrides that
+specific active-load refusal, not confirmation. Watch mode is an explicit
+foreground process:
+
+```bash
+anvil-serving host reclaim --watch --threshold-gb 60 --interval 30 --confirm
+```
 
 ## GPU sharing
 
+Start with static, non-mutating inspection:
+
 ```bash
-anvil-serving host gpu-sharing inspect
-anvil-serving host gpu-sharing probe --gpu-uuid GPU-... --dry-run
-anvil-serving host gpu-sharing probe --gpu-uuid GPU-... --confirm
+anvil-serving host gpu-sharing inspect --timeout 10
+anvil-serving host gpu-sharing inspect --topology operator-topology.toml --target host:dark --json
 ```
 
-`inspect` is non-mutating. `probe` runs a guarded Docker/CUDA prerequisite check; it
-does not enable Green Contexts or MPS automatically.
+The inspector looks at exported CUDA symbols, driver/runtime versions, GPU
+identity, and read-only MPS commands. It never creates a CUDA context, starts
+MPS, or launches a workload. Missing evidence stays `unknown` or `unavailable`.
+
+The product probe first audits an exact image digest, source hash, Compose
+profile, read-only filesystem, dropped capabilities, and one full GPU UUID:
+
+```bash
+anvil-serving host gpu-sharing probe --gpu-uuid GPU-00000000-0000-0000-0000-000000000000 --dry-run
+anvil-serving host gpu-sharing probe --gpu-uuid GPU-00000000-0000-0000-0000-000000000000 --confirm
+```
+
+A confirmed probe uses one temporary container and may populate the Docker
+image cache. Its contract still forbids context creation, workload launch, and
+GPU-state mutation.
 
 ## Dashboard
 
 ```bash
-anvil-serving dashboard serve --help
+anvil-serving dashboard serve --host 127.0.0.1 --port 8766
 ```
 
-The dashboard is read-only and intended for local system observability. It does not
-become a second control plane.
+The dashboard runs in the foreground and exposes read-only observability APIs.
+The default bind is `127.0.0.1:8766`. A non-loopback private bind requires a
+bearer-token environment variable:
+
+```bash
+anvil-serving dashboard serve --host 100.64.0.10 --auth-env ANVIL_DASHBOARD_TOKEN
+```
 
 ## Related references
 
