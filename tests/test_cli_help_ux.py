@@ -10,13 +10,19 @@ import pytest
 from anvil_serving import (
     benchmark_evidence,
     cli,
+    collectors,
+    controller,
+    edge,
     gpu_sharing,
+    harness,
     host,
+    mcp,
     models,
     multiplexer,
     router_endpoint,
     router_manage,
     serves,
+    topology_cli,
 )
 from anvil_serving.command_tree import COMMAND_TREE, CommandNode, HandlerRef
 from anvil_serving.external_benchmarks import store as external_benchmark_store
@@ -121,6 +127,34 @@ SETUP_HOST_GUARDED_MUTATIONS = (
     ("host", "reclaim"),
 )
 
+CONTROL_PLANE_LEAVES = (
+    ("harness", "sync", "openclaw"),
+    ("harness", "restart", "openclaw"),
+    ("harness", "status", "openclaw"),
+    ("mcp", "serve"),
+    ("mcp", "tools"),
+    ("controller", "serve"),
+    ("controller", "status"),
+    ("topology", "show"),
+    ("topology", "validate"),
+    ("topology", "resolve"),
+    ("collectors", "configure"),
+    ("collectors", "validate"),
+    ("collectors", "capabilities"),
+    ("collectors", "inspect"),
+    ("edge", "render"),
+    ("edge", "status"),
+    ("edge", "up"),
+    ("edge", "down"),
+)
+
+CONTROL_PLANE_GUARDED_MUTATIONS = (
+    ("harness", "sync", "openclaw"),
+    ("harness", "restart", "openclaw"),
+    ("edge", "up"),
+    ("edge", "down"),
+)
+
 
 def _serves_leaf(action: str) -> CommandNode:
     family = next(node for node in COMMAND_TREE.nodes if node.name == "serves")
@@ -221,6 +255,64 @@ def test_setup_host_leaf_help_has_reviewed_navigation_contract(parts, capsys):
     assert len(node.behavior_notes) == 2
 
 
+@pytest.mark.parametrize("parts", CONTROL_PLANE_LEAVES)
+def test_control_plane_leaf_help_has_reviewed_navigation_contract(parts, capsys):
+    node = _leaf(*parts)
+
+    assert cli.main([*parts, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    _assert_reviewed_help(parts, node, text)
+    assert len(node.examples) == 2
+    assert len(node.configuration_notes) == 2
+    assert len(node.behavior_notes) == 2
+
+
+def test_topology_help_explains_every_leaf_owned_resolution_selector(capsys):
+    assert cli.main(["topology", "resolve", "--help"]) == 0
+    text = capsys.readouterr().out
+
+    for flag in (
+        "--topology",
+        "--topology-overlay",
+        "--command-host",
+        "--command-runtime",
+        "--target",
+        "--transport",
+        "--experimental-model-workload",
+    ):
+        assert flag in text
+    assert "--allow-ssh-fallback" not in text
+
+
+def test_mcp_serve_help_hides_compatibility_tool_listing_alias(capsys):
+    assert cli.main(["mcp", "serve", "--help"]) == 0
+    text = capsys.readouterr().out
+
+    assert "{list-tools}" not in text
+    assert "compatibility alias" not in text
+    assert not any(
+        line.lstrip().startswith("--list-tools") for line in text.splitlines()
+    )
+
+    assert cli.main(["mcp", "--help"]) == 0
+    group_help = capsys.readouterr().out
+    assert "tools" in group_help
+    assert "List bounded MCP tools." in group_help
+
+
+def test_remote_harness_sync_example_never_writes_a_loopback_router_url():
+    node = _leaf("harness", "sync", "openclaw")
+    remote = next(
+        example.invocation
+        for example in node.examples
+        if "--gateway-host" in example.invocation
+    )
+
+    assert "--base-url" in remote
+    assert "--base-url http://127.0.0.1" not in remote
+
+
 @pytest.mark.parametrize("action", SERVES_LEAVES)
 def test_serves_reviewed_examples_resolve_to_the_documented_leaf(action):
     node = _serves_leaf(action)
@@ -299,6 +391,57 @@ def test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags(
         for token in rest:
             if token.startswith("--"):
                 assert token.split("=", 1)[0] in help_text
+
+
+@pytest.mark.parametrize("parts", CONTROL_PLANE_LEAVES)
+def test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags(
+    parts, capsys
+):
+    node = _leaf(*parts)
+
+    assert cli.main([*parts, "--help"]) == 0
+    help_text = capsys.readouterr().out
+
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        assert tokens[0] == "anvil-serving"
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        assert tuple(item.name for item in path) == parts
+        assert cli._tombstone(path, rest) is None
+        if "--target" in rest:
+            assert "--topology" in rest
+        for token in rest:
+            if token.startswith("--"):
+                assert token.split("=", 1)[0] in help_text
+
+
+@pytest.mark.parametrize("parts", CONTROL_PLANE_LEAVES)
+def test_control_plane_reviewed_examples_reach_the_real_leaf_parser(parts):
+    node = _leaf(*parts)
+    parsers = {
+        "anvil_serving.harness": harness._build_parser,
+        "anvil_serving.mcp": mcp._build_main_parser,
+        "anvil_serving.controller": controller._build_parser,
+        "anvil_serving.topology_cli": topology_cli._parser,
+        "anvil_serving.collectors": collectors.build_parser,
+        "anvil_serving.edge": edge.build_parser,
+    }
+    assert node.handler is not None
+    parser = parsers[node.handler.module]()
+
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        if node.handler.module != "anvil_serving.topology_cli":
+            _resolution, rest = cli._extract_resolution_options(rest)
+        rest = tuple(
+            token
+            for token in rest
+            if token not in {"--confirm", "--json", "--quiet", "--verbose"}
+        )
+        parser.parse_args([*cli._handler_argv(path), *rest])
 
 
 @pytest.mark.parametrize("action", ROUTER_MANAGE_LEAVES)
@@ -420,6 +563,19 @@ def test_setup_host_reviewed_help_is_windows_console_safe(
     assert all(len(line) <= 60 for line in text.splitlines())
 
 
+@pytest.mark.parametrize("parts", CONTROL_PLANE_LEAVES)
+def test_control_plane_reviewed_help_is_windows_console_safe(
+    parts, monkeypatch, capsys
+):
+    monkeypatch.setenv("COLUMNS", "60")
+
+    assert cli.main([*parts, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    text.encode("cp1252")
+    assert all(len(line) <= 60 for line in text.splitlines())
+
+
 def test_recipe_configuration_notes_match_runtime_precedence(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     config_home = tmp_path / "operator-home"
@@ -484,6 +640,57 @@ def test_setup_host_docs_group_every_operator_task():
         assert "`%s`" % " ".join(parts) in text
     assert "`--confirm`" in text
     assert "one consent spelling" in text
+
+
+def test_control_plane_docs_group_every_operator_task():
+    text = (
+        Path(__file__).parents[1] / "docs" / "cli" / "control-plane.md"
+    ).read_text(encoding="utf-8")
+    for heading in (
+        "### Describe deployment ownership",
+        "### Connect the operator harness",
+        "### Expose the management plane",
+        "### Integrate read-only telemetry",
+        "### Publish tailnet surfaces",
+    ):
+        assert heading in text
+    for parts in CONTROL_PLANE_LEAVES:
+        assert "`%s`" % " ".join(parts) in text
+    assert "tailscale serve reset" in text
+    assert "never" in text
+
+
+def test_control_plane_configuration_notes_match_runtime_contract():
+    sync = harness._build_parser().parse_args(
+        ["sync", "openclaw", "--config", "router.toml"]
+    )
+    restart = harness._build_parser().parse_args(["restart", "openclaw"])
+    status = harness._build_parser().parse_args(["status", "openclaw"])
+    controller_serve = controller._build_parser().parse_args(["serve"])
+    controller_status = controller._build_parser().parse_args(["status"])
+    collector_inspect = collectors.build_parser().parse_args(
+        ["inspect", "--config", "collector.json"]
+    )
+    edge_render = edge.build_parser().parse_args(["render"])
+
+    assert sync.base_url == "http://127.0.0.1:8000/v1"
+    assert sync.timeout_seconds == harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+    assert restart.timeout_seconds == harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS
+    assert status.max_output_bytes == harness.DEFAULT_STATUS_MAX_OUTPUT_BYTES
+    assert controller_serve.host == controller.DEFAULT_HOST
+    assert controller_serve.port == controller.DEFAULT_PORT
+    assert controller_serve.auth_token_env == controller.DEFAULT_AUTH_TOKEN_ENV
+    assert controller_status.max_response_bytes == (
+        controller.DEFAULT_STATUS_MAX_RESPONSE_BYTES
+    )
+    assert collector_inspect.timeout == 5.0
+    assert edge_render.host == edge.DEFAULT_TARGET_HOST
+    assert edge.DEFAULT_TIMEOUT_SECONDS == 15.0
+
+    assert "controller" in _leaf("harness", "status", "openclaw").transports
+    assert _leaf("topology", "resolve").transports == ()
+    assert _leaf("collectors", "inspect").transports == ()
+    assert _leaf("edge", "up").transports == ("local",)
 
 
 def test_setup_host_configuration_notes_match_runtime_contract():
@@ -558,6 +765,71 @@ def test_setup_host_mutations_preview_or_use_shared_confirmation(
 
     assert cli.main([*parts, "--confirm"]) == 0
     assert "--confirm" not in calls[-1]
+
+
+@pytest.mark.parametrize("parts", CONTROL_PLANE_GUARDED_MUTATIONS)
+def test_control_plane_mutations_preview_or_use_shared_confirmation(
+    parts, monkeypatch, capsys
+):
+    calls = []
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: calls.append(tuple(argv)) or 0,
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+
+    assert cli.main(list(parts)) == 3
+    assert not calls
+    assert "confirmation required" in capsys.readouterr().err
+
+    assert cli.main([*parts, "--dry-run"]) == 0
+    assert calls[-1][-1] == "--dry-run"
+
+    assert cli.main([*parts, "--confirm"]) == 0
+    assert "--confirm" not in calls[-1]
+
+
+def test_collectors_configure_gates_only_the_output_write(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: calls.append(tuple(argv)) or 0,
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    inline = [
+        "collectors",
+        "configure",
+        "--name",
+        "local-gap",
+        "--endpoint",
+        "http://127.0.0.1:9100/capabilities",
+        "--capability",
+        "gpu-gap",
+    ]
+
+    assert cli.main(inline) == 0
+    assert calls
+
+    calls.clear()
+    assert cli.main([*inline, "--output", "collector.json"]) == 3
+    assert not calls
+    assert "confirmation required" in capsys.readouterr().err
+
+    assert cli.main([*inline, "--output", "collector.json", "--confirm"]) == 0
+    assert "--confirm" not in calls[-1]
+
+
+def test_controller_unauthenticated_loopback_flag_is_hidden_and_refused(capsys):
+    assert cli.main(["controller", "serve", "--help"]) == 0
+    help_text = capsys.readouterr().out
+    assert "--allow-unauthenticated-loopback" not in help_text
+
+    assert cli.main(["controller", "serve", "--allow-unauthenticated-loopback"]) == 2
+    error = capsys.readouterr().err
+    assert "was removed" in error
+    assert "Configure the token named by --auth-token-env" in error
 
 
 def test_eval_configuration_notes_match_runtime_defaults():

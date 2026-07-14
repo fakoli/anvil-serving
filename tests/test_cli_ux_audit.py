@@ -33,6 +33,19 @@ def _attest(record, dimension):
     )
 
 
+def _failing_record(document, dimension):
+    return next(
+        record
+        for record in document["records"]
+        if audit_cli_ux._status(
+            record["dimensions"][dimension],
+            path=record["path"],
+            dimension=dimension,
+        )
+        == "fail"
+    )
+
+
 def test_checked_in_cli_ux_audit():
     manifest, audit = _documents()
 
@@ -67,11 +80,12 @@ def test_cli_ux_audit_rejects_failure_budget_regression():
 def test_cli_ux_audit_rejects_slack_after_an_improvement():
     manifest, audit = _documents()
     slack = deepcopy(audit)
-    slack["records"][0]["dimensions"]["help"] = "pass"
-    slack["records"][0]["evidence"]["help"] = [
+    record = _failing_record(slack, "help")
+    record["dimensions"]["help"] = "pass"
+    record["evidence"]["help"] = [
         "tests/test_cli.py::test_every_visible_command_path_exposes_help"
     ]
-    _attest(slack["records"][0], "help")
+    _attest(record, "help")
 
     with pytest.raises(audit_cli_ux.AuditError, match="budget must equal current failures"):
         audit_cli_ux.validate_audit(manifest, slack)
@@ -80,23 +94,25 @@ def test_cli_ux_audit_rejects_slack_after_an_improvement():
 def test_cli_ux_audit_rejects_fabricated_or_unbound_pass_evidence():
     manifest, audit = _documents()
     fabricated = deepcopy(audit)
-    fabricated["records"][0]["dimensions"]["help"] = "pass"
+    record = _failing_record(fabricated, "help")
+    record["dimensions"]["help"] = "pass"
     fabricated["maximum_failures"]["help"] -= 1
-    fabricated["records"][0]["evidence"]["help"] = [
+    record["evidence"]["help"] = [
         "tests/no_such_test.py::test_invented"
     ]
-    _attest(fabricated["records"][0], "help")
+    _attest(record, "help")
 
     with pytest.raises(audit_cli_ux.AuditError, match="does not exist"):
         audit_cli_ux.validate_audit(manifest, fabricated)
 
     self_referential = deepcopy(audit)
-    self_referential["records"][0]["dimensions"]["help"] = "pass"
+    record = _failing_record(self_referential, "help")
+    record["dimensions"]["help"] = "pass"
     self_referential["maximum_failures"]["help"] -= 1
-    self_referential["records"][0]["evidence"]["help"] = [
+    record["evidence"]["help"] = [
         "tests/test_cli_ux_audit.py::test_checked_in_cli_ux_audit"
     ]
-    _attest(self_referential["records"][0], "help")
+    _attest(record, "help")
     with pytest.raises(audit_cli_ux.AuditError, match="invalid pytest node ID"):
         audit_cli_ux.validate_audit(manifest, self_referential)
 
@@ -106,10 +122,11 @@ def test_cli_ux_audit_rejects_fabricated_or_unbound_pass_evidence():
         "tests\\test_cli.py::test_every_visible_command_path_exposes_help",
     ):
         malformed = deepcopy(audit)
-        malformed["records"][0]["dimensions"]["help"] = "pass"
+        record = _failing_record(malformed, "help")
+        record["dimensions"]["help"] = "pass"
         malformed["maximum_failures"]["help"] -= 1
-        malformed["records"][0]["evidence"]["help"] = [fake_node]
-        _attest(malformed["records"][0], "help")
+        record["evidence"]["help"] = [fake_node]
+        _attest(record, "help")
         with pytest.raises(audit_cli_ux.AuditError, match="invalid pytest node ID"):
             audit_cli_ux.validate_audit(manifest, malformed)
 
@@ -207,7 +224,7 @@ def test_cli_ux_audit_refresh_requires_reattestation_after_manifest_drift():
 def test_cli_ux_audit_attestation_binds_evidence_and_na_reason():
     manifest, audit = _documents()
     reviewed = deepcopy(audit)
-    record = reviewed["records"][0]
+    record = _failing_record(reviewed, "help")
     record["dimensions"]["help"] = "pass"
     reviewed["maximum_failures"]["help"] -= 1
     record["evidence"]["help"] = [
@@ -221,7 +238,7 @@ def test_cli_ux_audit_attestation_binds_evidence_and_na_reason():
         audit_cli_ux.validate_audit(manifest, reviewed)
 
     not_applicable = deepcopy(audit)
-    record = not_applicable["records"][0]
+    record = _failing_record(not_applicable, "preview")
     record["dimensions"]["preview"] = {
         "status": "not-applicable",
         "reason": "Read-only operation.",
