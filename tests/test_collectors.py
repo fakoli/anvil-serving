@@ -132,13 +132,39 @@ def test_capabilities_without_configuration_reports_not_configured(capsys) -> No
     assert payload["capability_status"] == "unsupported"
 
 
-def test_public_cli_exposes_only_read_only_adapter_actions(capsys) -> None:
+def test_public_cli_exposes_bounded_adapter_actions(capsys) -> None:
     assert cli.main(["collectors", "--help"]) == 0
     help_text = capsys.readouterr().out
     for action in ("configure", "validate", "capabilities", "inspect"):
         assert action in help_text
     for forbidden in ("install", "launch", "start", "stop", "restart"):
         assert forbidden not in help_text
+
+
+def test_public_cli_guards_collector_config_writes(tmp_path, capsys) -> None:
+    output = tmp_path / "collector.json"
+    args = [
+        "collectors",
+        "configure",
+        "--name",
+        "local-gap",
+        "--endpoint",
+        "http://127.0.0.1:9100/capabilities",
+        "--capability",
+        "gpu-gap",
+        "--output",
+        str(output),
+    ]
+
+    assert cli.main(args) == 3
+    assert not output.exists()
+    error = capsys.readouterr().err
+    assert "confirmation required" in error
+    assert "rerun the same command with --confirm" in error
+    assert "collectors configure --confirm" not in error
+
+    assert cli.main([*args, "--confirm"]) == 0
+    assert output.is_file()
 
 
 def test_config_file_rejects_unknown_fields(tmp_path: Path) -> None:

@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,32 @@ def test_manifest_is_checked_in_and_matches_deterministic_regeneration():
 def test_manifest_is_byte_stable():
     assert render_manifest() == render_manifest()
     assert manifest_data()["schema_version"] == 2
+
+
+def test_visible_commands_link_to_existing_reference_pages_and_headings():
+    root = MANIFEST_PATH.parent.parent
+    headings_by_path: dict[Path, set[str]] = {}
+
+    for record in manifest_data()["commands"]:
+        if not record["visible"]:
+            continue
+        relative, _, fragment = record["docs_anchor"].partition("#")
+        path = root / relative
+        assert path.is_file(), f"{record['path']} links to missing docs page {relative}"
+        if not fragment:
+            continue
+        if path not in headings_by_path:
+            slugs = set()
+            for line in path.read_text(encoding="utf-8").splitlines():
+                match = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", line)
+                if not match:
+                    continue
+                slug = re.sub(r"[^\w -]", "", match.group(1).casefold())
+                slugs.add(re.sub(r"[\s]+", "-", slug).strip("-"))
+            headings_by_path[path] = slugs
+        assert fragment in headings_by_path[path], (
+            f"{record['path']} links to missing heading #{fragment} in {relative}"
+        )
 
 
 def test_manifest_records_recursive_paths_metadata_and_tombstones():
