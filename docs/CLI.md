@@ -114,8 +114,8 @@ required operands, choices, and defaults.
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--since`<br>`--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
-| `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run` |
-| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--out`<br>`--hf-roots`<br>`--model-dirs` |
+| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--volume`<br>`--image`<br>`--revision`<br>`--include`<br>`--exclude`<br>`--token-env`<br>`--token-file`<br>`--no-token` |
 | `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
 | `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
 | `models recipes list` | List recorded serve recipes. | `read` / `bounded` | `--registry` |
@@ -125,7 +125,7 @@ required operands, choices, and defaults.
 | `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry` |
 | `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--container` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
-| `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute`<br>`--yes`<br>`--mixture`<br>`--include-servable`<br>`--allow-empty-mixture`<br>`--self-check` |
+| `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute`<br>`--mixture`<br>`--include-servable`<br>`--allow-empty-mixture`<br>`--self-check` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
 | `eval usage` | Analyze recorded usage. | `read` / `bounded` | - |
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--confirm` |
@@ -180,11 +180,11 @@ required operands, choices, and defaults.
 | `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness status` | Show harness status | `read` / `bounded` | - |
 | `harness status openclaw` | Show harness status for OpenClaw. | `read` / `bounded` | - |
-| `mcp` | Expose bounded MCP management tools. | `read` / `bounded` | `--list-tools` |
-| `mcp serve` | Run the MCP management server. | `read` / `protocol` | `--list-tools` |
-| `mcp tools` | List bounded MCP tools. | `read` / `bounded` | `--list-tools` |
+| `mcp` | Expose bounded MCP management tools. | `read` / `bounded` | - |
+| `mcp serve` | Run the MCP management server. | `read` / `protocol` | - |
+| `mcp tools` | List bounded MCP tools. | `read` / `bounded` | - |
 | `controller` | Manage the private controller service. | `read` / `bounded` | - |
-| `controller serve` | Run the private controller. | `process` / `foreground` | `--allow-unauthenticated-loopback` |
+| `controller serve` | Run the private controller. | `process` / `foreground` | - |
 | `controller status` | Probe controller health. | `read` / `bounded` | - |
 | `host` | Inspect and repair declared host operations. | `read` / `bounded` | - |
 | `host status` | Show structured host status. | `read` / `bounded` | - |
@@ -243,6 +243,7 @@ shown by focused help. Common moves include:
 <!-- BEGIN GENERATED CLI TOMBSTONES -->
 | Removed path | Replacement |
 |---|---|
+| `models cache prune --yes` | `--confirm` |
 | `models recipe` | `models recipes` |
 | `models recipe list` | `models recipes list` |
 | `models recipe show` | `models recipes show` |

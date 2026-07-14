@@ -1959,23 +1959,24 @@ def tool_models_inventory(args: dict) -> dict:
                 "synced": False,
                 "dry_run": True,
                 "catalog_dir": os.path.abspath(catalog_dir),
-                "command": argv,
+                "command": [*argv, "--dry-run"],
             })
-        run_result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+        apply_argv = [*argv, "--confirm"]
+        run_result = _run_argv(apply_argv, confirm=True, timeout=timeout_seconds)
         try:
             inventory = models.load_model_catalog(catalog_dir)
         except models.CatalogNotFound as exc:
             raise ToolError(
                 "catalog_not_found",
                 "models sync completed but no catalog was found; check sync output and --out",
-                {"catalog_dir": exc.catalog_dir, "command": argv, "stdout": run_result.get("stdout", ""), "stderr": run_result.get("stderr", "")},
+                {"catalog_dir": exc.catalog_dir, "command": apply_argv, "stdout": run_result.get("stdout", ""), "stderr": run_result.get("stderr", "")},
             )
         except models.CatalogError as exc:
             raise ToolError("bad_catalog", str(exc), exc.details)
         return _ok({
             "synced": True,
             "dry_run": False,
-            "command": argv,
+            "command": apply_argv,
             "returncode": run_result["returncode"],
             "stdout": run_result["stdout"],
             "stderr": run_result["stderr"],
@@ -1988,7 +1989,7 @@ def tool_models_inventory(args: dict) -> dict:
         raise ToolError(
             "catalog_not_found",
             "model catalog not found; run the command from error.details.command first",
-            {"catalog_dir": exc.catalog_dir, "command": argv},
+            {"catalog_dir": exc.catalog_dir, "command": [*argv, "--confirm"]},
         )
     except models.CatalogError as exc:
         raise ToolError("bad_catalog", str(exc), exc.details)
