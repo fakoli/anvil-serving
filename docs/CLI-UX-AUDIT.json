@@ -1801,14 +1801,14 @@
     },
     {
       "attestations": {
-        "confirmation": "sha256:dd45bd700cbdd66bdd6a7e9cc888d45cf8cb9531942b557908699443697b60a0",
-        "docs": "sha256:3e8a4c17e122d9731422b312290398a745fb0f5971112a619ce030c12a8b4b3f",
-        "errors": "sha256:41c908b0e39b5128520602a128687362e4501f9dfd5570af9029f521c6dc2bb6",
-        "grammar": "sha256:7049b6e5d13d69497bfd12e69111dd1ab71b99d52583bf369e1c5d1082b35f1a",
-        "help": "sha256:4a1f787c1606e43fa76805fa50536c1a444e508f8ef737b172612843b3d0b7c7",
-        "output": "sha256:55f41dfd26a8fa7e18892dfc6a52fd39e46c36c0e0e57f2e6e35f9244331f0a3",
-        "parser_tests": "sha256:decb14a298cf82d159ce5bc0153645cb59f76150bd77d175470656afcd395b9d",
-        "preview": "sha256:9d87eff427c084cbd538568655b716e1052394e14a394c4c801bafaa689a1bd2"
+        "confirmation": "sha256:170c651d640303ad629c3923417a244192b2704baf36746b6d92178e785540b7",
+        "docs": "sha256:2fbee6996d0c392f59516cad0546d073259473400427cd09a4351f1b2deebf85",
+        "errors": "sha256:9f956eb1dd382956e84d57c593d795330fc773fddb4be64264f7369453a48e14",
+        "grammar": "sha256:8c8477aa84597386051e82701ba21f336134e71afa45d2659813024ec28b578a",
+        "help": "sha256:699e3073ca8792d8e854d83e33947c3f7905b073632438554da67f67416b4042",
+        "output": "sha256:a8a66a0ffaafa581e81d5d967c59ce4bafaf6656b5cd67d0f0776a0e053d1f87",
+        "parser_tests": "sha256:2bd0d115c6a18df79d9a79e10cb240ba24720496c4b1e08b26e868f3539103a1",
+        "preview": "sha256:6453fa61d3496c800dd69f5208ca2367d92b8ac250da85c22d7296f29f9d1d89"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1844,37 +1844,43 @@
           "tests/test_models.py::test_cache_prune_scan_failure_is_structured_json"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
           "tests/test_models.py::test_models_cache_prune_only_confirms_execute_and_propagates_authorization"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_models_cache_prune_help_uses_canonical_usage"
         ],
         "output": [
           "tests/test_models.py::test_cache_prune_json_preserves_broad_wipe_refusal"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
           "tests/test_models.py::test_models_cache_prune_only_confirms_execute_and_propagates_authorization"
         ],
         "preview": [
           "tests/test_models.py::test_cache_prune_dry_run_reports_plan_without_deleting",
           "tests/test_models.py::test_cache_prune_default_dry_run_does_not_create_catalog_directory"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:dd1a8a605f15af3bfc8d7d80daa44e75433d34a7455eede08fef890bfbdd248b",
+      "manifest_fingerprint": "sha256:b196efd290be2a765a30df1ff338d99fed6364a41bcfd23414dc301317e093a9",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models cache prune"
     },
     {
       "attestations": {
-        "configuration": "sha256:316a300d1cc130db01236e9c075427fe2b8231601d60773a739429edb542eee2",
-        "confirmation": "sha256:07035fceafcdc2a7171f00c08d006e29b970e21f8079a94cb472d0ac28838575",
-        "docs": "sha256:e2faeb7c203559d3415c92c8012b088678a0e55497671c7825ef6e8312837e54",
-        "errors": "sha256:a8dc3ed0905eeeb3e96fd864edcf76966b956a69e54f03a9365db385fe059e4a",
-        "grammar": "sha256:4b27ae8be3c18e5e2d072b23f09d14101deb8d588372ba28d742cbfc044e213a",
-        "help": "sha256:34b3375e48e3b142397c20f64c181bf1b0c4eb9e9c31ce55921b124a958a025f",
-        "parser_tests": "sha256:11f9e1b0ff5685afa0be440d9ffe6e1c60b1f9f21d27a78b161d80329fc08528",
-        "preview": "sha256:7b192494d252030f28d02909a09f9c04be15d07ba575197c0b73d23b4a33b8cf"
+        "configuration": "sha256:0380bebf38950c0706db068b70d4fd4fb731505fd398d095dd7511290bef79ef",
+        "confirmation": "sha256:c8eee3d020ad5226406847162a2a418248c9b5ba06d6eaf112099fb58e4020f4",
+        "docs": "sha256:3a9f4b991987b5554420392655ff327aa28d6197e3f2a3eff8138896842adaf8",
+        "errors": "sha256:4e9ae595cf7ebe83f1fa14dd4773695d820fe1b2f8c3fdc9a1fe2a2b69595063",
+        "grammar": "sha256:a1f15ed92df29ee96698057840813a1598a1e3a6c88e10de977438167b51c659",
+        "help": "sha256:5563cc08f2ff8ecdb185627226e0fd8806162acb70dea23832b1c4c2bd18ddf4",
+        "parser_tests": "sha256:8ef71c01740676f9fec696c90c52e69848c2e3bbb83eda8c3ae0def32ab8d917",
+        "preview": "sha256:8227dc52a938ee003157cd0ef21703f99ac69784a28cd27cdb74e7dde3c07bda"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1913,32 +1919,38 @@
           "tests/test_models.py::test_pull_missing_docker_binary_is_clean_127"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
           "tests/test_models.py::test_pull_dispatches_through_top_level_cli"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_pull_help_documents_flags_and_rationale"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
           "tests/test_models.py::test_pull_dispatches_through_top_level_cli"
         ],
         "preview": [
           "tests/test_models.py::test_pull_dry_run_prints_command_and_runs_nothing"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:d95d17f250e624a0bfdeca1d18c396bd97f758fcb563dc8a57949ae14c7ab2e7",
+      "manifest_fingerprint": "sha256:6b84b11530f7d90413b9577106ff21c69bb0d0b27dc6f55d8e7a282c0acb8ee5",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models pull"
     },
     {
       "attestations": {
-        "confirmation": "sha256:328e05dc00ed02e964e127851fc9650deef0332b1efd9188c46bc7ad5f363a56",
-        "docs": "sha256:ef9912541d0cc163cefe3a76566802b30749155e655a257ff5727294f9be3c53",
-        "errors": "sha256:7e2e72573eb84114f071339fa97b17fccebeb7d09e8dc54af40aba286dd1b79c",
-        "grammar": "sha256:6d248e5b9acb5f5ebdd0e0493762550da8f39ed31fe2d960939d9159d61bcc24",
-        "help": "sha256:4acffc380926dbbc8fc44ef7deebcac5706748e0d0b3177eef5aadf9670fe48f",
-        "parser_tests": "sha256:e167837aee76e1d2857f4ceb878264b0659cb4798b27784b9b36734d390f95d1",
-        "preview": "sha256:fed920b4a134bb1846b4b25ba988ead16248da6327091270e182acb01f1c073d"
+        "confirmation": "sha256:1f8a632715bea5f1cb6aaf581b18a7d1688f4fc89ffdade1bc270890594dac1b",
+        "docs": "sha256:8804cf46a29da0bc78cbe38b72d0030c594717c34e17f96e709fdb7723c1de1c",
+        "errors": "sha256:4500de220e4ac81caeba16eb3a92f61cb1b22439184208cfc9622b00e30576e8",
+        "grammar": "sha256:7f5ee9c6c9c15430c1a96893f81df4988b34022f5b1f7bc05c0a3eabb6bbf019",
+        "help": "sha256:e8091b032c1468c633e0494cdd716f0407b314dac84ecaf1601d58d01aaf152f",
+        "parser_tests": "sha256:6b3c298ac3ce356569e1ed00b2d5ed905c8d3d85d613b5bf09be819cf12ad5e3",
+        "preview": "sha256:856535fa282d6427518d68e083ece315dde36add6ec9d3a2436e0ba7f9d7d08a"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1972,32 +1984,40 @@
           "tests/test_models.py::test_recipe_write_rejects_unsupported_value_before_backup"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_recipe_leaf_help_is_actionable"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
         ],
         "preview": [
           "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:81d92aef66a0c6a7872487e01b3b19301600e297a0ece91992c78e80c41cf722",
+      "manifest_fingerprint": "sha256:1230474d9590ba8ac0ae000b55a599079acdbf9109ae3c2d6e3673dc2bf98bed",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes create"
     },
     {
       "attestations": {
-        "confirmation": "sha256:03b7f5d6e75ffe06a05e4b0bf58a2109ebe730799fdfabd535f084c0c8122b58",
-        "docs": "sha256:018a269f05e6af89fe552fb686a61fbaac2a3aadb7d38218daf157e46af15d5b",
-        "errors": "sha256:41ef4055a4d6bf9a0887c83a633694b5841457568a7b69e911e34d698eb96ef0",
-        "grammar": "sha256:407dbe418a7dd3a39be90dd09022da7a0cdc62759a5e1cfbc59e5afd122e2c5c",
-        "help": "sha256:0dc720779b902b519aa738af26b78eb0de1ef5dfc7f1ada2e9fac518f807b37a",
-        "parser_tests": "sha256:dfc5bbbffc844e468e6bcee7812245d3c0bee8491ec32efaaa12ea06867be51a",
-        "preview": "sha256:006142c77eecd0ad4996a10fa9e6d5f1b715ace50b3683d9fa6c5dcf3cdbeed1"
+        "confirmation": "sha256:72c24ddf025d92f758b5c201be1f20fe92beeae53ecedefacccc64d40b9a9664",
+        "docs": "sha256:12ee2a30e22783f1ec320377ed9e0c84732bedce559e0c2dc70327eb703db001",
+        "errors": "sha256:693a9cd2437bceea2bdc8db20966d9cc3510e85f229dacca8c59314f5ccc6b2d",
+        "grammar": "sha256:530eda30a5d11fb2a3aa3c2bc7fd0c5913000cd0ad85c2f903a2666ebb4b13cb",
+        "help": "sha256:a2ccd9aed659cfb8c0060a96365eb4b3505166f5e30e7a60932d2785f8c4ad4d",
+        "parser_tests": "sha256:926b7f7c9898bc3a51c0899f93095a2805470f3186ea97d7216b534c386868a8",
+        "preview": "sha256:970015442b09b20dc695da14f957245874e070a3444fb44409eb380f27cec7b5"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2031,31 +2051,39 @@
           "tests/test_models.py::test_recipe_write_rejects_unsupported_value_before_backup"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_recipe_leaf_help_is_actionable"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
         ],
         "preview": [
           "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:4c2388d84732a1a70ab7d6f22195da22e0ea0fc504f0001ad64436c4e6ac56e9",
+      "manifest_fingerprint": "sha256:3190b45c4d9d6d073a4d0b98c43496a27957d2680bb728bf211f0577635d7659",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes delete"
     },
     {
       "attestations": {
-        "configuration": "sha256:1896582f034cd85de4ab164163c401c0d9b95ccc4453936fc049e57a607a2396",
-        "docs": "sha256:916501a07541b964dfda58a4939a326488f92dd7252ff89be11a387f9bf09881",
-        "errors": "sha256:8dd9e6d1b3cc4b3b91e9b582a6f9e99d4dc83f31418a09b95d8f4fc6c9d09965",
-        "grammar": "sha256:abac97bcd67d4482253060d2be83f76d063553d5db3ef4d0c29ff74c39fccacc",
-        "help": "sha256:66375062997765708ce02ddeba29f101db02f61482656239db8aaed3371aaf92",
-        "parser_tests": "sha256:34aac0463333c8ab44d89b1879a05aae2cba6d7bf3b5e281a6770d55460aa68d"
+        "configuration": "sha256:01c4e6b20bdf74fa61f718dba3cc43aba384733ef3cf6a8154ffb6936a606bf7",
+        "docs": "sha256:60484309721ff357a85b91d99285e22acd93d471725b5aa6c5e2bbd96b27ce93",
+        "errors": "sha256:cfe018b549217400bc8da6d8c6b8d5262bbe059410fabd4ca3f6cc1f6b609d55",
+        "grammar": "sha256:47b107af7c40969dc8efb4aee9c1a797d47a85b21270b54b81442d18bf977b87",
+        "help": "sha256:69c4b4c7a801aa228227ef251bf8e3f0b568423ef54f798f87e6878c6cc3af4b",
+        "parser_tests": "sha256:8c61492b38bdb68e432d026d7657c226515172f8d7eaed3dfb153170ce9a1235"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2080,6 +2108,7 @@
       "docs_anchor": "docs/cli/models.md#discover-recipes",
       "evidence": {
         "configuration": [
+          "tests/test_cli_help_ux.py::test_recipe_configuration_notes_match_runtime_precedence",
           "tests/test_models.py::test_recipe_default_registry_resolves_without_explicit_flag"
         ],
         "docs": [
@@ -2089,28 +2118,36 @@
           "tests/test_models.py::test_recipe_malformed_registry_is_clean_error"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_list_tables_recorded_recipes"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_recipe_leaf_help_is_actionable"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_list_tables_recorded_recipes"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:d3a2ecfc5f2847466ec9b81e8b7b9a669da83142b15fbe205f3a7bc242e88ff8",
+      "manifest_fingerprint": "sha256:619686cc118da17f7a9dc1c55fcb261bc01abcc70e9ba61cb095c70b8c86f29b",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models recipes list"
     },
     {
       "attestations": {
-        "confirmation": "sha256:6056174296f16ec4e1f760422df7795b23fcf53c3dba813b2a6735460aea0f04",
-        "docs": "sha256:723c1e78b86a688eaf65b387d12dcf26d062f4d1b52aad2d3e8f71340e20d0ee",
-        "grammar": "sha256:21fd76990831d3bd30b20e8237d225bd5ebeb28705fdab3b3d82a178c21a9297",
-        "help": "sha256:dbce492df699cbdb6a2d14e98620c178fdfbb715af561699d7721e17af057334",
-        "parser_tests": "sha256:63d0f12f5268c514b3584239d1d8c1ef7589bb634a45803520892dfd3dc69b29",
-        "preview": "sha256:1f495783de8850c8dd2b76c9e9eadcad74aa3f97260be6dabd08faee9226f3f5"
+        "confirmation": "sha256:723e73709b4131656c60a24c3122d6cc7a92c137e00a2e20219127f70a548ac2",
+        "docs": "sha256:5f917fbdcf13170f2886c6344bf6501e4691ddf531e92f5d9ab9c71fd0b9cde7",
+        "grammar": "sha256:8a2953ce2918ec30d4649c1958ba1f76ca6b4a5d017b4cc447d8c176c9c2d571",
+        "help": "sha256:483ebd6b67e80f8ddf0264898cec22a26307721d34b8ca56e70aaf218e38d690",
+        "parser_tests": "sha256:d5781bd52f74390b6a72359aacf3cd345698ba363bb1d402e00f2c796c383236",
+        "preview": "sha256:1e67e6a372c2c5bdad8254b4a1619afe2acf38f012cb779c76aa9f4fcacaebdb"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2141,30 +2178,38 @@
           "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_load_dispatches_through_canonical_cli"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_recipe_leaf_help_is_actionable"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_load_dispatches_through_canonical_cli"
         ],
         "preview": [
           "tests/test_models.py::test_recipe_load_dry_run_selects_recipe_without_docker"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:de0511a9bf46944ceb12a85397c86106952bd4bcca807fce471ac933d9835320",
+      "manifest_fingerprint": "sha256:0909ad52d102b91dda6b4cc451e7147ea47e7a8be5b5f065df0c8eeaef116eb0",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes load"
     },
     {
       "attestations": {
-        "docs": "sha256:35956c119ee45af17ea796b05b78dae239aa2ac9a037c251856acc250447a299",
-        "errors": "sha256:700b881e840c0e28496b4882962496c6c1a839def8a6268407ddb93ec37a463f",
-        "grammar": "sha256:cc636848ff9171ba16d06ad28da33cd1accc12631af893e7263e39cee3b9a429",
-        "help": "sha256:ebb6a42daa3cf18869a2101eb2595e83a8d36e1ce54eef249c9a8ef8064d37e3",
-        "parser_tests": "sha256:b02388f1994a72cca2c3c50d98b6300a0890c167a80b4b41dac8d957fa5e716d"
+        "docs": "sha256:c134fa869b99e1ca59b4a15880c9ac3dcb60385b971eec42ee838909996be304",
+        "errors": "sha256:79de46086a26b075e11a878809041984438d1d391717675221a5570a9de515aa",
+        "grammar": "sha256:1499c7ec9bbc8cc44ae81e7e6fff8f9bde746b7c549b69a7e09e84bd89c32612",
+        "help": "sha256:b5ebf547266bdcf989b05bc405891a320d94b39ba25d43b6a42eb233a0a7d8a3",
+        "parser_tests": "sha256:b4d090293c62987e75d357ce8bf88c939db354632a85c25129312ee8ca9871d3"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2195,29 +2240,37 @@
           "tests/test_models.py::test_recipe_show_unknown_model_is_clean_error"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_dispatches_through_cli"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_recipe_leaf_help_is_actionable"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_dispatches_through_cli"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:896206a65e406344c41ea65c40d84e87a5ec87987f946b6947ab57b24b397429",
+      "manifest_fingerprint": "sha256:609c871955cff1a7c4d7a982562bab402b5ceca3913f3f8af4cdc4d73c523ad6",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models recipes show"
     },
     {
       "attestations": {
-        "confirmation": "sha256:91f79e70e8db7e4db4ce00ab9439528a2e78a261e56b0438c6af19f16f267706",
-        "docs": "sha256:7cec974d17db92799f2a53149b28baf3ff1cfddaa5aa2f125fbc12e093dc447d",
-        "errors": "sha256:87e1271b80b03a118b0da796369337e57a084a2c8713ece3e50d748bd1552816",
-        "grammar": "sha256:f4d348ec3a8e35d5d3dd19f0b726e7d45f33bae1920b8105b06c7609472bc2e7",
-        "help": "sha256:ad07a84f865b6973bc90e136e92ee2eb26c668f872fe37e75a74818762df7539",
-        "parser_tests": "sha256:4565721a7a727da17c0d35c5b0e9f16afb76c00c3af8121b449a4f28edb24f8a",
-        "preview": "sha256:77ef0b008286959e27c2b4d82839fe2369d187d01b5a4f0216558e380867b954"
+        "confirmation": "sha256:32c6870dadd4d9785f8b7aaad33d604432a4414112ca495ad06e6aa13fc8c654",
+        "docs": "sha256:762a8bafe20bc0e8995ed2b4863f3146262709d5a48902d2beb636bba53a5f4b",
+        "errors": "sha256:abcc1c80a0e0d4e9d7a43dc23ef450385190f1571b28b630bb3c1ad5a0130475",
+        "grammar": "sha256:751ad2ce6e7cfcafd1937f0e4aa014913a5d05ebf328cb1ca235a2792dd0ba9a",
+        "help": "sha256:8a8f6a72a0113455b580f2c1728d0eafe65d5a1793a5a8dbd0444499cf22fa5b",
+        "parser_tests": "sha256:27354f7853371844c3c174accc2a7c7d3634a0cb97ca7b8f020e3d22149fc489",
+        "preview": "sha256:d79338d808c6ad9b8bffb8a88e0789dd1f9dfa1231e9e28f7950cce1fd63b1e5"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2251,30 +2304,38 @@
           "tests/test_models.py::test_recipe_write_rejects_unsupported_value_before_backup"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_recipe_leaf_help_is_actionable"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_recipe_reviewed_examples_reach_the_real_action_parser",
           "tests/test_models.py::test_recipe_create_update_delete_crud_with_backups"
         ],
         "preview": [
           "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:8806da272e11f1fa070024a39de60f57591385bd7cda9df1ed7cf1543f8e1dae",
+      "manifest_fingerprint": "sha256:ca06b69acb7a7abd38477abe953857059815d259a605a15abb3ba4ce86253813",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes update"
     },
     {
       "attestations": {
-        "docs": "sha256:8f5c0f265366f7016035ab6192bec5ef7780e35a678365384aa84197ead8f2c0",
-        "grammar": "sha256:38d0fea27e520ed2f20f27dd503c5535cd4fa8e61ea4a9d3bc1bd60be49b5e80",
-        "help": "sha256:8a73294d94db5a65da722e40a97c206a8d879f7a56c68046aea41c5b0382bccb",
-        "output": "sha256:34cbd7d0d631002218fb93c3e22c083dd435ec37126ba0ca2b5263b19abcbcaf",
-        "parser_tests": "sha256:83e54a59fdaf138c2e7342bb6ab60dcf859eb47abec561cc87cfe9aabb347a73"
+        "docs": "sha256:81012245209b971480514ee5cd9c2ec79dddd19b3be06bdeb3d53b890653a997",
+        "grammar": "sha256:b69da40f01a85ae08cbc8343eeb45d7cd5620b228cc9cde7e77fd90922bacbd3",
+        "help": "sha256:ee0c100a7c8126f3b53f71b3a3b761a86ade1b0fcf1026e8b5e2c0ec992c4de5",
+        "output": "sha256:c76ee82c4513a8ddf5854d31208734da082559759a4233b0dee620326c6fdc99",
+        "parser_tests": "sha256:a15b0fd4b25b8e80605641547d5fc9086b96144d91d2d4cddb88d70a0ee63403"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2302,40 +2363,46 @@
           "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
           "tests/test_models.py::test_models_score_dispatches_canonically_and_root_score_refuses"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_models_score_help_uses_canonical_usage"
         ],
         "output": [
           "tests/test_models.py::test_models_score_dispatches_canonically_and_root_score_refuses"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
           "tests/test_models.py::test_models_score_dispatches_canonically_and_root_score_refuses"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:d8ad5a017d99468fa56b640455af7b968500015d00f75c2b098e388badc78927",
+      "manifest_fingerprint": "sha256:cdb38502e3186c222eb33316df9f0fb94dbe1bddc8ae8cddbedc1fabeeac332c",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models score"
     },
     {
       "attestations": {
-        "configuration": "sha256:6afaf5d98f0c5db84919ad9362aaa50324a1c2505efe8e3c5f5a8c8e5879a42d",
-        "confirmation": "sha256:b1022941594798d7637f04ad1688dfea3f412c920e263e3ef7f5c980bdc01eb5",
-        "docs": "sha256:c34895a8be1fc80fc5d0481eae848b3b414e4be6a3ce11dc079ca70bd977c581",
-        "drift_protection": "sha256:171512294d6377663b184253b5037b5096c6ab096c65bac9a9e3e5c889e40f67",
-        "errors": "sha256:4a7ccf443658513ae3ef3a06ca80d9c4e2ada8f78136e937c746964c695063f6",
-        "grammar": "sha256:6713e24d7b3ff1509f78f38402b20e523129dca38033f877d4e3466c909de470",
-        "help": "sha256:7da1bed468c7671599129cc2b19ef262b2646a01d53c07b2139bebad30af8cc9",
-        "linux": "sha256:dc02557f688cc659683ccafb57caad19206e08b02bea422eec7ba8c797d03338",
-        "macos": "sha256:535cfa4965a23074eb270ee6f8f55cfbaa8eea759b7a6b4f5cf4204bbc82a2bd",
-        "output": "sha256:b7f82d88d764143a2efea65cf917f3e0ea212c62b04b5015dc96d222c6922a7c",
-        "parser_tests": "sha256:a4ec0b3307273b09053e7aa30aab54c35ad6a607b0e1bd28d52f129cd5f6cd3b",
-        "preview": "sha256:afd6eaacc02b65daad9490cda4ba442e441b84c6cdf4d3578a878ad07efa8168",
-        "remote_parity": "sha256:6932c4e80421e4d61cf21fe5256b0cf1fdc37d1424135206c3d428d9cdfaff33",
-        "rollback": "sha256:9d005c4e580781c75c236cbe025c45c47fe4b5636f924f086d7f8600099f4c79",
-        "windows": "sha256:5e214e12174d2db4e0effb4fa9aca388eed2286f454f2af89d3d696d84d40084"
+        "configuration": "sha256:c255b8840c4d56f5a13be8c655b8120447184a2f7024b262f8efe3bbf1f25205",
+        "confirmation": "sha256:0ccefc576c01fddbc1d54a3e6b3eba007175e9848eadff362aff077a4f9e8a27",
+        "docs": "sha256:bb8297b12701965af7fa300eebee4e327f2792d913451759cbdcc92fd044ffab",
+        "drift_protection": "sha256:c1f0d507a6ec11ae142c3ac004d5a7ccba25fab08cbef25fd6fae0a314466ff4",
+        "errors": "sha256:bcad398c143fe7e96526be35262fc81236d209b61703672c5bddf6c5cb59c693",
+        "grammar": "sha256:6d184e2fa9db363c88e2b878783f83aa1f02fd3f5eb3fd10172309cb74f21c14",
+        "help": "sha256:327611abbaf2fe2f992603aa95d243d6731af2f043b2fbf02e70cff052a94c55",
+        "linux": "sha256:53da5025a181cdfa811667f479b16f7f363cb02c3b55549891a5f6aecce19c8c",
+        "macos": "sha256:47ff4784128d78f41660c1fee31d29f99c80a6122e1cd30f39ec1289c28cb0a5",
+        "output": "sha256:0ba23fddae4878464c12504199f2dd42318526d4781933a261e2921799b72d95",
+        "parser_tests": "sha256:34d438ba24740f1d7a9963d6e8605427e5ee12a8ea1bb15639db09b04cca33e6",
+        "preview": "sha256:bcf5d7df84386ff50ddc45235a5c0b6e05ef72cb079e57724c365ed12400ab6f",
+        "remote_parity": "sha256:93d890849be8983d0724dc05958f0a55382070c71b2a2094f98e88ed9179d970",
+        "rollback": "sha256:025261fe4c6f2ec7bf658494cc8aa4fb907aca84c1163dc8906783696c14cd87",
+        "windows": "sha256:f27bf1ad2f0234cc01eed3e57ea710ba08fc85241dc8bb7a694f9bae65efe1f0"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2381,9 +2448,11 @@
           "tests/test_models.py::test_models_sync_failed_rollback_names_backup_and_recovery_command"
         ],
         "grammar": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
           "tests/test_models.py::test_models_sync_action_still_accepted"
         ],
         "help": [
+          "tests/test_cli_help_ux.py::test_models_leaf_help_has_reviewed_navigation_contract",
           "tests/test_models.py::test_models_sync_help_documents_sync_flags"
         ],
         "linux": [
@@ -2396,6 +2465,7 @@
           "tests/test_models.py::test_models_sync_json_captures_child_output_in_one_document"
         ],
         "parser_tests": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_examples_resolve_to_the_documented_leaf",
           "tests/test_models.py::test_models_sync_still_dispatches"
         ],
         "preview": [
@@ -2409,10 +2479,11 @@
           "tests/test_models.py::test_models_sync_replacement_failure_restores_existing_catalog"
         ],
         "windows": [
+          "tests/test_cli_help_ux.py::test_models_reviewed_help_is_windows_console_safe",
           "tests/test_models.py::test_sync_source_platform_labels_native_hosts"
         ]
       },
-      "manifest_fingerprint": "sha256:6214f6ccc35a86cbc7624c2613b4a7aeee6905eb2f4a2513535cc8c3203fbc06",
+      "manifest_fingerprint": "sha256:f543468c77654a39c91981de1af75831a90c70c4258f1e05ab65112c576b4167",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models sync"

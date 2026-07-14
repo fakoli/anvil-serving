@@ -1075,6 +1075,7 @@ def test_models_cli_docs_cover_each_operator_workflow():
         encoding="utf-8"
     )
     for heading in (
+        "## Switch Heavy to another model",
         "## Catalog sync",
         "## Artifact pull",
         "### Discover recipes",
