@@ -27,6 +27,13 @@ All notable changes to this project are documented here. The format is based on
   and ratcheted in the exhaustive per-leaf UX audit; deterministic local merge-gate
   routing now mirrors the repository's CI and strict documentation checks.
 
+- **Model and recipe commands now use the same task-oriented reference layout.**
+  Catalog, artifact, scoring, recipe CRUD/load, and cache-prune help pages show
+  copyable examples, configuration precedence, behavior boundaries, global options,
+  and direct documentation links. The model guide now leads with the safe Heavy swap:
+  discover a compatible recipe, inspect it, preview `serves switch heavy MODEL`, then
+  apply the reviewed command with `--confirm`.
+
 - **Evaluation is split into explicit capacity and quality workflows.**
   `eval benchmark capacity` measures endpoint performance, while `eval benchmark quality`
   produces repeated protocol-v3 correctness evidence. Model-family reasoning controls fail closed
