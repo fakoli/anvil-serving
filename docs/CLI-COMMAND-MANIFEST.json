@@ -5511,11 +5511,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview resolves paths without scanning model data or writing files.",
+        "Apply stages a complete catalog and preserves the prior catalog as a numbered backup."
+      ],
+      "configuration_notes": [
+        "--out defaults to ./model-library in the current directory.",
+        "--hf-roots and --model-dirs accept platform-separated paths (: on Linux/macOS; ; on Windows)."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#catalog-sync",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models sync --out ./model-library --dry-run",
+          "summary": "Preview the catalog sources and replacement target."
+        },
+        {
+          "invocation": "anvil-serving models sync --out ./model-library --confirm",
+          "summary": "Build and atomically replace the local catalog."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5711,11 +5726,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Downloads are resumable and never place token values on the command line.",
+        "Downloaded bytes remain in the Docker volume; there is no automatic rollback."
+      ],
+      "configuration_notes": [
+        "--volume defaults to the ext4-native vllm-hfcache Docker volume.",
+        "The token comes from --token-env, then --token-file; --no-token explicitly disables authentication."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#artifact-pull",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models pull openai/gpt-oss-120b --dry-run",
+          "summary": "Preview the named-volume download without reading a token."
+        },
+        {
+          "invocation": "anvil-serving models pull openai/gpt-oss-120b --confirm",
+          "summary": "Download the model into the default Docker volume."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5961,11 +5991,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Scoring is read-only and does not pull, load, or promote a model.",
+        "A ranking is evidence for an operator decision, not an automatic deployment change."
+      ],
+      "configuration_notes": [
+        "Local catalog evidence is included unless --no-local is set.",
+        "Use --json for the stable result envelope."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#model-scoring",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models score",
+          "summary": "Rank available candidates using retained benchmark evidence."
+        },
+        {
+          "invocation": "anvil-serving models score --no-local --json",
+          "summary": "Inspect evidence-only rankings as structured output."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6256,11 +6301,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "The activates column identifies recipes eligible for roles such as heavy.",
+        "Listing is read-only and does not inspect or start containers."
+      ],
+      "configuration_notes": [
+        "--registry overrides project, operator-home, and packaged registries.",
+        "Without --registry, the first existing registry in precedence order is used."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#discover-recipes",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models recipes list",
+          "summary": "List recipes from the highest-precedence registry."
+        },
+        {
+          "invocation": "anvil-serving models recipes list --registry ./serve-recipes.local.toml",
+          "summary": "List recipes from one explicit operator registry."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6416,11 +6476,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Shows engine, evidence, activation roles, and the reproducible Docker command.",
+        "For an activatable role, output includes the exact serves switch preview command."
+      ],
+      "configuration_notes": [
+        "--registry follows the same precedence as recipes list when omitted.",
+        "MODEL accepts an exact identifier or an unambiguous basename."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#discover-recipes",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models recipes show gpt-oss-120b",
+          "summary": "Inspect one recipe by exact model id or unique basename."
+        },
+        {
+          "invocation": "anvil-serving models recipes show gpt-oss-120b --registry ./serve-recipes.local.toml",
+          "summary": "Inspect the recipe resolved from an explicit registry."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6576,11 +6651,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview validates the complete proposed recipe without writing.",
+        "Apply writes atomically and refuses duplicate model identifiers."
+      ],
+      "configuration_notes": [
+        "--recipe-file must contain exactly one [[recipe]] block.",
+        "--registry is required and must name an operator-owned registry."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models recipes create --recipe-file ./candidate.toml --registry ./serve-recipes.local.toml --dry-run",
+          "summary": "Validate and preview one new recipe."
+        },
+        {
+          "invocation": "anvil-serving models recipes create --recipe-file ./candidate.toml --registry ./serve-recipes.local.toml --confirm",
+          "summary": "Create the recipe in an operator-owned registry."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6766,11 +6856,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview shows both the selected model and complete proposed replacement.",
+        "Apply checks registry drift and preserves a numbered backup before writing."
+      ],
+      "configuration_notes": [
+        "MODEL selects the current entry by exact identifier or unique basename.",
+        "The replacement file must contain exactly one complete [[recipe]] block."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models recipes update MODEL --recipe-file ./candidate.toml --registry ./serve-recipes.local.toml --dry-run",
+          "summary": "Preview replacement of one selected recipe."
+        },
+        {
+          "invocation": "anvil-serving models recipes update MODEL --recipe-file ./candidate.toml --registry ./serve-recipes.local.toml --confirm",
+          "summary": "Atomically replace the selected recipe."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6956,11 +7061,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview prints the complete recipe selected for deletion.",
+        "Apply checks registry drift and preserves a numbered backup before writing."
+      ],
+      "configuration_notes": [
+        "MODEL selects an exact identifier or unambiguous basename.",
+        "--registry is required; packaged defaults are never mutated implicitly."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models recipes delete MODEL --registry ./serve-recipes.local.toml --dry-run",
+          "summary": "Preview removal of one recipe."
+        },
+        {
+          "invocation": "anvil-serving models recipes delete MODEL --registry ./serve-recipes.local.toml --confirm",
+          "summary": "Delete the selected recipe after confirmation."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -7136,11 +7256,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "When the recipe declares a port, load binds it to 127.0.0.1 and does not promote the model.",
+        "Run eval preflight next, then use serves switch only after human review."
+      ],
+      "configuration_notes": [
+        "--registry follows project, operator-home, then packaged precedence when omitted.",
+        "--container must be a new Docker container name."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#load-a-recipe",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models recipes load MODEL --container candidate-heavy --dry-run",
+          "summary": "Preview a loopback-bound candidate container."
+        },
+        {
+          "invocation": "anvil-serving models recipes load MODEL --container candidate-heavy --confirm",
+          "summary": "Start the candidate without changing router policy."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -7471,11 +7606,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "The default is a read-only plan; deletion additionally requires --execute and --confirm.",
+        "Deletion has no automatic rollback and fails closed on an unsafe empty mixture."
+      ],
+      "configuration_notes": [
+        "--mixture protects a comma-separated set of model identifiers.",
+        "--include-servable deliberately broadens deletion eligibility."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#cache-prune",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving models cache prune --dry-run",
+          "summary": "Inspect protected and deletable cache entries."
+        },
+        {
+          "invocation": "anvil-serving models cache prune --mixture MODEL --execute --confirm",
+          "summary": "Delete only the reviewed candidates while protecting MODEL."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [

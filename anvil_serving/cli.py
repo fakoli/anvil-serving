@@ -397,11 +397,38 @@ def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> Non
     if usage:
         print("\nUsage:")
         for line in usage:
-            print("  %s" % line)
+            print(
+                textwrap.fill(
+                    line,
+                    width=help_width,
+                    initial_indent="  ",
+                    subsequent_indent="    ",
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+            )
     print("\nExamples:")
     for example in node.examples:
-        print("  %s" % example.invocation)
-        print("    %s" % example.summary)
+        print(
+            textwrap.fill(
+                example.invocation,
+                width=help_width,
+                initial_indent="  ",
+                subsequent_indent="    ",
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+        )
+        print(
+            textwrap.fill(
+                example.summary,
+                width=help_width,
+                initial_indent="    ",
+                subsequent_indent="    ",
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+        )
     if node.configuration_notes:
         print("\nConfiguration:")
         for note in node.configuration_notes:
@@ -430,7 +457,22 @@ def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> Non
             )
     if local_sections:
         print()
-        print("\n".join(local_sections))
+        for line in local_sections:
+            stripped = line.strip()
+            if not stripped or len(line) <= help_width:
+                print(line)
+                continue
+            indent = line[: len(line) - len(line.lstrip())]
+            print(
+                textwrap.fill(
+                    stripped,
+                    width=help_width,
+                    initial_indent=indent,
+                    subsequent_indent=indent + "  ",
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+            )
 
     global_options = COMMAND_TREE.global_options
     if node.execution_policy != "resource-owner":
