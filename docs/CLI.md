@@ -3,7 +3,7 @@
 `anvil-serving` is a single stdlib-only CLI (Python >= 3.11) that fronts every product surface:
 the quality-gated router, the local GPU serve lifecycle, the model catalog, the quality loop, the
 MCP/controller control plane, and the voice pipeline. This page is the complete verb reference for
-v0.13.1. Run `anvil-serving --help` for the grouped live list, examples, and typo suggestions.
+v0.13.2. Run `anvil-serving --help` for the grouped live list, examples, and typo suggestions.
 Run `anvil-serving <verb> --help`, or parser-backed focused action help such as
 `anvil-serving router logs --help`, for the relevant flag set. Use `127.0.0.1` in local URLs,
 never `localhost`.
@@ -663,7 +663,7 @@ anvil-serving init --single-model [--model PATH] [--catalog-dir DIR] [--gpu IDX|
 ```
 
 **Default (no flags): scaffold the full operational config set (ADR-0020).** Bare
-`anvil-serving init` scaffolds the whole operational set into the operator config home
+`anvil-serving init` scaffolds every canonical config plus the whole operational set into the operator config home
 (`~/.anvil-serving`, honoring `ANVIL_SERVING_HOME`; override with `--out-dir`) — the default
 search dir for `serves`/`router` — so a fresh machine runs `anvil-serving serves up --group voice`
 (or any group) with **zero hand-assembly**. The set ships as **package data** inside the wheel
@@ -671,6 +671,11 @@ search dir for `serves`/`router` — so a fresh machine runs `anvil-serving serv
 `examples/fakoli-dark/` + the reference voice manifest under `examples/voice/`, kept in lockstep by
 `scripts/sync_scaffold_templates.py` + a drift-guard test), resolved via `importlib.resources` — so
 `init` works from a normal `pip`/`uv tool install`, not just a source checkout. It comprises:
+
+- **Router/config family:** `router.toml` (the local-only default), `example.toml`,
+  `example-docker.toml`, `example-flexibility.toml`, `example-with-cloud.toml`, `modes.toml`,
+  and the `serve-recipes.toml` registry. The cloud example is inert unless explicitly selected
+  and supplied with its named credential environment variable.
 
 - **Manifests:** `serves.toml` (with the group tags `voice` / `fast-only` / `heavy-only` /
   `embedding` / `llm-stack` / `comfy`), `serves.voice.toml`, `serves.comfyui.toml`, and the
@@ -684,8 +689,8 @@ Host-specific values are written as **clearly-marked placeholders** — GPU UUID
 (`GPU-REPLACE-WITH-*-GPU-UUID`), the tailnet address (`REPLACE-WITH-YOUR-TAILNET-IP`) — and
 **secrets are never written** (it ships `.env.example`, not `.env`). Every file is backed up to a
 numbered `.anvil.bak.N` sibling before it is overwritten, so an existing operator file is never
-clobbered silently. The router config is chosen separately (see `configs/example*.toml`); the home
-scaffold provides the serve/edge surface, not a router profile.
+clobbered silently. `router.toml` is the default local-only template; selecting the cloud example,
+applying a measured profile, or promoting a router config remains an explicit operator action.
 
 > The `--home` flag is a **deprecated** hidden alias for this default for one release (it prints a
 > deprecation note); run `init` with no flag instead.

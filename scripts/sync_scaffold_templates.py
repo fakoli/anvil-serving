@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Sync anvil_serving/_scaffold_templates/ from the canonical examples/ tree.
+"""Sync anvil_serving/_scaffold_templates/ from canonical configs and examples.
 
 `anvil-serving init` (default: full home scaffold) ships its reference config
 set as PACKAGE DATA under `anvil_serving/_scaffold_templates/` so an installed
 tool can resolve the files via importlib.resources (fixes #252 — the source
-tree's `examples/` is NOT shipped in the wheel). The canonical copies remain
-`examples/fakoli-dark/` + `examples/voice/`; this package dir is a byte-for-byte
-MIRROR of the subset `init` needs.
+tree's `configs/` and `examples/` are NOT shipped in the wheel). The canonical
+copies remain under `configs/`, `examples/fakoli-dark/`, and `examples/voice/`;
+this package dir is a byte-for-byte MIRROR of the subset `init` needs.
 
-Run this whenever a mirrored source file under examples/ changes:
+Run this whenever a mirrored source file under configs/ or examples/ changes:
 
     python scripts/sync_scaffold_templates.py            # rewrite the mirror
     python scripts/sync_scaffold_templates.py --check    # CI/test: nonzero if stale

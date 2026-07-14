@@ -1,0 +1,1052 @@
+# anvil-serving — serve recipe registry
+# =============================================================================
+# A repeatable record of HOW to serve each model on our hardware: the exact
+# reproducible config (GPU, engine, image, env, flags, quant), the MEASURED
+# stats (throughput, VRAM, context, preflight), a provenance flag, and the
+# intent / work-classes each config is best suited for. So when we want to
+# "pull out this model again," we have the settings AND the numbers on record.
+#
+# status:
+#   "verified"   — measured on OUR hardware (a real serve + preflight/benchmark here).
+#                  These are reproducible: copy the [recipe.serve] block and go.
+#   "unverified" — an external prior (e.g. local-inference-lab/rtx6kpro via
+#                  `anvil-serving eval benchmark external`) or a config we have NOT measured
+#                  on-box. Treat as advisory only — PREFLIGHT before trusting.
+#
+# Fields align with the `anvil_serving.external_benchmarks` schema (model, engine,
+# quantization, gpu_model, vram_gb, context_tokens, throughput_tok_s, ...) so a row
+# here and an external prior can be compared directly. Enrich external priors with:
+#   anvil-serving eval benchmark external import <snapshot.json> --source rtx6kpro
+#   anvil-serving eval benchmark external compare <our-benchmark.json>
+# A row graduates unverified -> verified once we measure it on-box (preflight ALL
+# PASS + a benchmark number).
+
+schema = "anvil-serving.serve-recipes/v1"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED — Qwen3.6-27B-NVFP4 : previous OpenClaw Talk fast-tier control
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/Qwen3.6-27B-NVFP4"
+status = "verified"
+source = "previous live fakoli-dark fast tier + fast-tier-llm-bakeoff-2026-07 control rerun"
+family = "qwen3.6"
+total_params_b = 27
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Previous fast-local control capped context at 32768 and max-num-seqs at 4 to stay inside the 5090 budget."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"
+  quantization = "modelopt_fp4"
+  context_tokens = 32768
+  port = 30003
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--served-model-name qwen36-27b",
+    "--kv-cache-dtype fp8",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 4",
+    "--gpu-memory-utilization 0.85",
+  ]
+
+  [recipe.measured]
+  voice_baseline = "Fast-tier bakeoff control: voice total 1130.21 ms, LLM stage 814.83 ms; loaded-endpoint TTFT 6203.94 ms, E2E 9041.91 ms, approx decode 67.65 tok/s."
+  route_proof = "previous fast-local / qwen36-27b / chat-fast via fakoli-dark router"
+
+  [recipe.intent]
+  suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
+  mode = "agentic"
+  rationale = "Previous OpenClaw Talk baseline and control: local, tool-capable, session-memory path worked, but the 35B-A3B bakeoff candidate beat it on latency."
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/nvidia/Qwen3.6-27B-NVFP4",
+    "https://recipes.vllm.ai/Qwen/Qwen3.6-27B",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1t5dya8/qwen36_27b_nvfp4_mtp_on_a_single_rtx_5090_200k/",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1sv8eua/qwen3627b_at_80_tps_with_218k_context_window_on/",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED — gpt-oss-120b : the flexibility-mode quality ceiling-raise (T014/T015)
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "openai/gpt-oss-120b"
+status = "verified"
+source = "measured on fakoli-dark, 2026-07-03 — preflight ALL PASS + benchmark"
+family = "gpt-oss"
+total_params_b = 116.8
+active_params_b = 5.1        # MoE: 128 experts, top-4 routing; MXFP4 MoE + bf16 attention
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+  arch = "sm_120"
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"   # fakoli-dark heavy card
+  vram_total_gb = 96
+  vram_weights_gb = 66
+  vram_note = "66 GiB weights; full 131072-ctx fp8 KV fits easily (~5 GiB) -> 5.69x max concurrency at 128k"
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"   # ENTRYPOINT is ["vllm","serve"] -> pass model as POSITIONAL, do NOT add another 'serve'
+  quantization = "mxfp4"               # auto-detected as gpt_oss_mxfp4; MoE backend = MARLIN (FlashInfer-TRTLLM MXFP4 is sm_100-only)
+  context_tokens = 131072
+  port = 30002
+  # env: FLASHINFER_CUDA_ARCH_LIST=12.0f is MAKE-OR-BREAK on sm_120 — the 'f' suffix.
+  # Plain '12.0' -> runtime "Feature 'cvt.e2m1x2.f32' not supported on .target 'sm_120'".
+  env = [
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+    "VLLM_USE_V2_MODEL_RUNNER=0",       # WSL2 UVA fix
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  ]
+  flags = [
+    "--kv-cache-dtype fp8",
+    "--tool-call-parser openai",
+    "--enable-auto-tool-choice",
+    "--gpu-memory-utilization 0.88",
+    "--max-model-len 131072",
+  ]
+  # DO NOT add --enforce-eager: measured eager=33.6 tok/s vs CUDA-graphs=183 (5.4x).
+  # CUDA graphs capture cleanly on sm_120 (83 piecewise + 83 full-decode) and are
+  # stable under a 12-concurrent stress. (The NVIDIA-forum recipe's mandatory
+  # --enforce-eager was for a custom build; it does NOT apply to this stock nightly.)
+
+  [recipe.measured]
+  throughput_single_tok_s = 183.2      # warmed, reasoning_effort=low, 700-tok generation
+  throughput_eager_tok_s = 33.6        # reference only (with --enforce-eager) — NOT recommended
+  preflight = "ALL PASS — smoke(coding), structured-JSON, needle@128k, 20/20 tool calls"
+  stable_under_load = "12-concurrent burst: 12/12, no crash / NaN / CUDA error"
+  reasoning = "reasoning-by-default (parser=openai_gptoss); gate via reasoning_effort, NOT enable_thinking; needs adequate max_tokens"
+
+  [recipe.intent]
+  suited = ["flexibility", "quality", "long-context", "planning", "review"]
+  not_suited = ["agentic-interactive"]  # 183 tok/s single-stream; the agentic heavy qwen35-awq does ~268 w/ NEXTN spec-decode
+  mode = "flexibility"
+  rationale = "A 120B-class quality ceiling-raise for NON-agentic single-turn work, where prefix/radix cache is irrelevant."
+
+  [recipe.download]
+  note = "HF repo is 182 GB = 3 copies (root MXFP4 60.8 / metal 60.8 / original 60.8). vLLM needs ONLY root."
+  command = "anvil-serving models pull openai/gpt-oss-120b --token-env HF_TOKEN   # then hf --exclude 'metal/*' --exclude 'original/*'"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED (prior) — dense Qwen3-32B-NVFP4 : heavy-tier NVFP4 candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/Qwen3-32B-NVFP4"     # RedHatAI variant also cached — OMIT --quantization for that one (compressed-tensors auto-detect)
+status = "verified"
+source = "prior fakoli-dark heavy-tier trial (dense NVFP4)"
+family = "qwen3"
+total_params_b = 32
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+  arch = "sm_120"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"
+  managed_serve = "voice-qwen3-32b"
+  served_model_name = "qwen3-32b-nvfp4"
+  quantization = "modelopt_fp4"        # NVIDIA nvidia/* checkpoints take --quantization modelopt_fp4; RedHatAI *-NVFP4 => OMIT (auto)
+  context_tokens = 32768
+  port = 39000
+  note = "Voice A/B managed serve uses the experiment compose service voice-qwen3-32b on an opt-in 39xxx port; it does not replace fast-local."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--served-model-name qwen3-32b-nvfp4",
+    "--quantization modelopt_fp4",
+    "--kv-cache-dtype fp8",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 4",
+    "--gpu-memory-utilization 0.85",
+  ]
+
+  [recipe.measured]
+  throughput_single_tok_s = 340        # ~1.8x faster than FP8 (190) — the FP4:FP8 hardware ceiling on sm_120
+  preflight = "validated in trial; NOT swapped into prod (pending measured A/B vs the qwen35-awq incumbent)"
+
+  [recipe.intent]
+  suited = ["heavy", "quality", "agentic-candidate"]
+  mode = "either"
+  rationale = "DENSE (not MoE) so it sidesteps the sm_120 MoE-NVFP4 grouped-GEMM crash; NVFP4 ~1.8x faster than FP8, ~half the VRAM."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIED — Qwen3.6-35B-A3B-NVFP4 : promoted Fast-tier recommendation
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/Qwen3.6-35B-A3B-NVFP4"
+status = "verified"
+source = "fast-tier-llm-bakeoff-2026-07 locally measured recommendation; human-approved Fast-tier promotion"
+family = "qwen3.6"
+total_params_b = 35
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Promoted Fast recipe. The locally measured 32K / max-num-seqs 2 vLLM recipe passed the Fast bakeoff hard gates on the RTX 5090."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"
+  quantization = "modelopt_fp4"
+  context_tokens = 32768
+  port = 30003
+  note = "Production Fast recipe on port 30003. The historical experiment service used port 39010 for bakeoff evidence."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--served-model-name qwen36-35b-a3b-nvfp4",
+    "--quantization modelopt_fp4",
+    "--kv-cache-dtype fp8",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 2",
+    "--gpu-memory-utilization 0.85",
+  ]
+
+  [recipe.bakeoff]
+  required = true
+  variant_budget = 1
+  context_targets = [32768]
+  score_role = "Fast-tier MoE Qwen alternative; compare quality/context gain against baseline latency and sm_120 stability."
+  source_status = "locally-verified"
+
+  [recipe.measured]
+  voice_total_ms = 377.52
+  voice_llm_stage_ms = 165.40
+  loaded_endpoint_ttft_ms = 1489.36
+  loaded_endpoint_e2e_ms = 2302.37
+  approx_decode_tok_s = 236.16
+  hard_gates = "loads on Fakoli Dark RTX 5090; Heavy not disrupted; voice cycle pass; tool pass; session pass; 32K context target preserved"
+
+  [recipe.intent]
+  suited = ["chat-fast", "voice", "agentic-conversation", "low-latency"]
+  mode = "agentic"
+  rationale = "Promoted Fast recipe after beating the 27B production control on measured voice and loaded-endpoint latency while preserving tool and session behavior."
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "https://recipes.vllm.ai/Qwen/Qwen3.6-35B-A3B",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1ts6j6j/nvidiaqwen3635ba3bnvfp4_hugging_face/",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+    "docs/findings/2026-07-08-fast-tier-promotion.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Gemma-4-31B-IT-NVFP4 : required dense/near-dense bakeoff candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/Gemma-4-31B-IT-NVFP4"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 registry (community prior). MEASURED 2026-07-11: does NOT fit the RTX 5090 32GB under vllm-openai:gemma4-unified — six configs (gmu 0.88-0.94, 32k->16k, modality-zeroing, --language-model-only, eager) all failed KV allocation (best -0.66 GiB); WSL2-forced legacy-runner sliding-window KV pricing is the structural cause. Untested: llama.cpp GGUF (cand-gemma4-31b-llamacpp staged in compose), PRO 6000, NGC 26.04 image. See docs/findings/2026-07-10-blackwell-local-model-bakeoff.md"
+family = "gemma4"
+total_params_b = 31
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Required bakeoff candidate. Expected KV pressure is high; begin with FP8 KV and reduced context before testing long-context targets. The Gemma 4 vLLM image currently needs integer GPU ids during model inspection; this recipe uses device 0, which fakoli-dark status evidence maps to the RTX 5090."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:gemma4-unified"
+  quantization = "modelopt_fp4"
+  context_tokens = 32768
+  note = "Start with the NVIDIA NVFP4 checkpoint and FP8 KV; validate Gemma tool parser/template before any voice recommendation. The experiment compose exposes FAST_GEMMA4_MAX_MODEL_LEN, FAST_GEMMA4_MAX_NUM_SEQS, and FAST_GEMMA4_GPU_MEMORY_UTILIZATION for reduced-context retries after the 32K profile."
+  flags = [
+    "--served-model-name gemma4-31b-it-nvfp4",
+    "--quantization modelopt_fp4",
+    "--kv-cache-dtype fp8",
+    "--enable-auto-tool-choice",
+    "--reasoning-parser gemma4",
+    "--tool-call-parser gemma4",
+    "--chat-template examples/tool_chat_template_gemma4.jinja",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 2",
+    "--gpu-memory-utilization 0.88",
+  ]
+
+  [recipe.bakeoff]
+  required = true
+  variant_budget = 3
+  context_targets = [32768, 65536, 131072]
+  score_role = "Dense/near-dense Gemma quality candidate; test whether quality/context beats Qwen baseline at acceptable voice latency."
+  source_status = "official-plus-community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/nvidia/Gemma-4-31B-IT-NVFP4",
+    "https://build.nvidia.com/google/gemma-4-31b-it/modelcard",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1sbivxj/gemma431b_nvfp4_inference_numbers_on_1x_rtx_pro/",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1sffapb/might_be_an_amateur_question_but_how_do_i_get_the/",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — GLM-4.7-Flash : required Fast-tier bakeoff candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "zai-org/GLM-4.7-Flash"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 registry; official/community prior only, not measured on fakoli-dark"
+family = "glm4.7"
+total_params_b = 30
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Required bakeoff candidate. Community reports around llama.cpp quality are mixed; prefer SGLang/vLLM first, then GGUF only with explicit caveat tracking."
+
+  [recipe.serve]
+  engine = "sglang"
+  image = "lmsysorg/sglang:latest"
+  quantization = "bf16-or-gguf"
+  context_tokens = 32768
+  note = "Research SGLang/vLLM model-card recipe first. GGUF/llama.cpp uses the Anvil-managed cached unsloth/GLM-4.7-Flash-GGUF:UD-Q4_K_XL artifact by explicit -m path with repeat penalty disabled after SGLang BF16 loadability is checked."
+  flags = [
+    "--served-model-name glm-4.7-flash",
+    "--tool-call-parser glm47",
+    "--reasoning-parser glm45",
+    "--context-length 32768",
+    "--max-running-requests 2",
+    "--mem-fraction-static 0.85",
+    "--trust-remote-code",
+  ]
+
+  [recipe.bakeoff]
+  required = true
+  variant_budget = 3
+  context_targets = [32768, 65536]
+  score_role = "Tool/agent MoE candidate; test whether published quality gains survive local serving and voice latency."
+  source_status = "official-plus-community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/zai-org/GLM-4.7-Flash",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1qh5wdq/zaiorgglm47flash_hugging_face/",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1qih9r8/current_glm47flash_implementation_confirmed_to_be/",
+    "https://agentnativedev.medium.com/glm-4-7-flash-on-24gb-gpu-llama-ccp-vllm-sglang-transformers-b3358d2f0e78",
+    "https://huggingface.co/unsloth/GLM-4.7-Flash-GGUF",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Devstral-Small-2-24B-Instruct-2512 : required coding-agent candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "mistralai/Devstral-Small-2-24B-Instruct-2512"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 registry; official/community prior only, not measured on fakoli-dark"
+family = "devstral"
+total_params_b = 24
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+  vram_note = "Required bakeoff candidate. FP8 and GGUF paths should fit more easily than 31B/35B candidates; validate tool quality and voice latency."
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly"
+  quantization = "fp8"
+  context_tokens = 32768
+  note = "Start with official FP8 checkpoint; 32K may exceed RTX 5090 KV headroom, so the experiment compose exposes FAST_DEVSTRAL_SMALL2_MAX_MODEL_LEN, FAST_DEVSTRAL_SMALL2_MAX_NUM_SEQS, and FAST_DEVSTRAL_SMALL2_GPU_MEMORY_UTILIZATION for the reduced-context retry. Test llama.cpp GGUF Q5/Q6 when a sourced quant is available."
+  flags = [
+    "--served-model-name devstral-small-2-24b",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser mistral",
+    "--trust-remote-code",
+    "--max-model-len 32768",
+    "--max-num-seqs 4",
+    "--gpu-memory-utilization 0.85",
+  ]
+
+  [recipe.bakeoff]
+  required = true
+  variant_budget = 3
+  context_targets = [32768, 65536, 131072]
+  score_role = "Agentic coding candidate; compare tool quality/intelligence against Qwen baseline while watching latency."
+  source_status = "official-plus-community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512",
+    "https://mistral.ai/news/devstral/",
+  ]
+  community = [
+    "https://www.reddit.com/r/LocalLLaMA/comments/1piabn8/devstralsmall224binstruct2512_on_hugging_face/",
+    "https://huggingface.co/bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF",
+    "https://unsloth.ai/docs/basics/inference-and-deployment/llama-server-and-openai-endpoint",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED / OPTIONAL — Qwen3-30B-A3B : fallback only
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+status = "unverified"
+source = "fast-tier-llm-bakeoff-2026-07:T001 optional fallback; use only if a primary candidate fails or a stronger sourced recipe appears"
+family = "qwen3"
+total_params_b = 30
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  gpu_uuid = "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1"
+  vram_total_gb = 32
+
+  [recipe.serve]
+  engine = "vllm-or-llamacpp"
+  quantization = "nvfp4-or-gguf"
+  context_tokens = 32768
+  note = "Optional fallback candidate. Do not count it as one of the required five unless a required model cannot run."
+
+  [recipe.bakeoff]
+  required = false
+  variant_budget = 2
+  context_targets = [32768, 65536]
+  score_role = "Fallback speed/quality reference if the primary set leaves a gap."
+  source_status = "community-prior"
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507",
+  ]
+  community = [
+    "https://huggingface.co/Qwen/Qwen3-30B-A3B-Instruct-2507/discussions/24",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1qh5wdq/zaiorgglm47flash_hugging_face/",
+  ]
+  local = [
+    "docs/findings/2026-07-08-fast-tier-llm-bakeoff.md",
+  ]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Gemma 4 12B IT : dense Gemma voice-latency scout
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "google/gemma-4-12B-it"
+status = "unverified"
+source = "voice-latency-model-ab:T002 shortlist; Google/vLLM docs only, not measured on fakoli-dark"
+family = "gemma4"
+total_params_b = 12
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+  arch = "sm_120"
+  vram_total_gb = 96
+  vram_note = "First serve should target the 96 GB card to avoid conflating model behavior with 5090 memory pressure; 5090 use requires a separate reduced-context or quantized plan."
+
+  [recipe.serve]
+  engine = "vllm"
+  managed_serve = "voice-gemma4-12b"
+  served_model_name = "gemma4-12b-it"
+  image = "vllm/vllm-openai:gemma4-unified"
+  quantization = "bf16"
+  context_tokens = 32768
+  port = 39001
+  note = "Requires Gemma 4-capable vLLM image/nightly and Gemma 4 chat template/parser validation before tool-call testing."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--served-model-name gemma4-12b-it",
+    "--enable-auto-tool-choice",
+    "--reasoning-parser gemma4",
+    "--tool-call-parser gemma4",
+    "--chat-template examples/tool_chat_template_gemma4.jinja",
+    "--max-model-len 32768",
+  ]
+
+  [recipe.intent]
+  suited = ["voice-candidate", "gemma-scout", "low-latency"]
+  mode = "experiment"
+  rationale = "Dense 12B Gemma-class candidate with expected first-audio upside from smaller dense size and MTP; tool protocol and quality are the main risks."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — Gemma 4 E4B IT : ultra-fast Gemma lower-bound scout
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "google/gemma-4-E4B-it"
+status = "unverified"
+source = "voice-latency-model-ab:T002 shortlist; use only as a latency lower-bound scout"
+family = "gemma4"
+total_params_b = 4
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  vram_total_gb = 32
+  vram_note = "Low memory risk; quality and tool-use reliability are the expected limiting factors."
+
+  [recipe.serve]
+  engine = "vllm"
+  managed_serve = "voice-gemma4-e4b"
+  served_model_name = "gemma4-e4b-it"
+  image = "vllm/vllm-openai:gemma4-unified"
+  quantization = "bf16"
+  context_tokens = 32768
+  port = 39002
+  note = "Human-gated experiment only. Do not promote without live Talk memory/tool/session validation."
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--served-model-name gemma4-e4b-it",
+    "--enable-auto-tool-choice",
+    "--reasoning-parser gemma4",
+    "--tool-call-parser gemma4",
+    "--max-model-len 32768",
+  ]
+
+  [recipe.intent]
+  suited = ["voice-candidate", "latency-floor"]
+  mode = "experiment"
+  rationale = "Useful for measuring the fastest plausible Gemma Talk path; likely too small to trust until tool-call and conversation-memory validation pass."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED / PARKED — Qwen3.6-27B (GDN hybrid) : flexibility-only quality candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "Qwen/Qwen3.6-27B"           # FP8 + NVFP4 variants cached in the volume
+status = "unverified"
+source = "fakoli-dark trial (PARKED) — quality measured, serving path blocked"
+family = "qwen3.6"
+total_params_b = 27
+
+  [recipe.serve]
+  engine = "vllm"                      # or llama.cpp — but both hit the GDN re-prefill wall on sm_120
+  quantization = "nvfp4"
+  note = "GDN-hybrid (Gated-DeltaNet): NO prefix/radix-cache serving path on sm_120 (SGLang/AWQ/vLLM-APC all blocked, vLLM #26201/#45238). Preflight the large-prefill path before trusting."
+
+  [recipe.measured]
+  quality_note = "MEASURED planning-quality WIN: 0.66 vs 0.43 for the incumbent — a real quality lift"
+  preflight = "NOT re-validated; parked pending a cached serving path"
+
+  [recipe.intent]
+  suited = ["flexibility", "quality"]
+  mode = "flexibility"
+  rationale = "Prefix cache is load-bearing for AGENTIC work but IRRELEVANT for single-turn FLEXIBILITY work — so a GDN hybrid becomes viable precisely in flexibility mode. Cache-off is a feature here, not a bug."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Add new recipes above. External priors (unverified) can also be pulled from
+# local-inference-lab/rtx6kpro and other sources via `anvil-serving eval benchmark external`;
+# copy a row here (status="unverified", source=...) to keep it alongside our verified
+# recipes, then graduate it to "verified" once measured on-box.
+
+[[recipe]]
+model = "nvidia/Qwen3.5-122B-A10B-NVFP4"
+status = "verified"
+source = "measured on fakoli-dark 2026-07-10 — anvil preflight ALL PASS + benchmark (benchmark-20260710T230943Z)"
+family = "qwen3.5"
+total_params_b = 122
+active_params_b = 10        # MoE: 122B total, ~10B active per token
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 96
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "nvcr.io/nvidia/vllm:26.04-py3"
+  managed_serve = "heavy-qwen35-122b"
+  served_model_name = "qwen35-122b-a10b-nvfp4"
+  quantization = "modelopt_fp4"
+  port = 39017
+  env = [
+    "CUDA_VISIBLE_DEVICES=1",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "CUDA_VERSION=13.2.1.009",
+    "CUDA_DRIVER_VERSION=595.58.03",
+    "CUDA_ARCH_LIST=7.5 8.0 8.6 9.0 10.0 12.0",
+    "CUDA_COMPONENT_LIST=cccl crt nvrtc driver-dev culibos-dev cudart cudart-dev nvcc tileiras",
+    "VLLM_VERSION=0.19.0+6bc3197f",
+    "CUDA_HOME=/usr/local/cuda",
+    "VLLM_FLASH_ATTN_SRC_DIR=/opt/vllm/vllm-flash-attn/",
+  ]
+  flags = [
+    "--served-model-name qwen35-122b-a10b-nvfp4",
+    "--trust-remote-code",
+    "--quantization modelopt_fp4",
+    "--kv-cache-dtype fp8",
+    "--tensor-parallel-size 1",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--max-model-len 131072",
+    "--max-num-seqs 1",
+    "--gpu-memory-utilization 0.95",
+    "--language-model-only",
+    "--enable-prefix-caching",
+    "--host 0.0.0.0",
+    "--port 39017",
+  ]
+  context_tokens = 131072
+
+  [recipe.measured]
+  throughput_single_tok_s = 38.8            # 10 req, concurrency 1, 8192-ctx conservative bench
+  ttft_p50_ms = 223.4
+  throughput_probe_tok_s = 41.5             # 2 req, 1024-ctx recipe-record probe
+  longctx_100k_ttft_p50_s = 28.0            # 3 req, 100000-ctx bench
+  longctx_100k_throughput_tok_s = 8.06
+  vram_used_gb = 94.1                        # PRO 6000 at gpu_memory_utilization 0.95
+  model_weights_gb = 72.35
+  kv_cache_tokens = 354960                   # fp8 KV; 8.97x concurrency @ 131072
+  host_ram_peak_gb = 6.0                     # WSL VM; swap ~0 (no OOM)
+  cold_start_s = 250                         # weights 76.8s + torch.compile 71s + engine init 138s
+  cuda_graphs = "captured (PIECEWISE=2, FULL=1)"
+  preflight = "ALL PASS (smoke, structured JSON, needle@128k, tool-batch x20)"
+  context_validation = "128k needle PASS (sentinel retrieved)"
+  tool_calls = "PASS (preflight 20/20 clean + manual system_status(hostname=fakoli-dark))"
+  reasoning = "PASS (enable_thinking: reasoning field populated & clean, no tag leak, final answer distinct)"
+  caveats = "fp8 KV uncalibrated q/k scale=1.0 (checkpoint ships no scales) — possible FP8-attention accuracy note"
+
+  [recipe.intent]
+  suited = [
+    "quality",
+    "long-context",
+    "planning",
+    "review",
+    "research",
+  ]
+  mode = "flexibility"
+  rationale = "gpt-oss-120b heavy baseline measures 183.2 tok/s (agentic-fast); this 122B-A10B NVFP4 trades single-stream throughput (~38.8 tok/s @8k ctx) for a full 131072-ctx window (8.97x concurrency, 128k needle verified), separated reasoning, and clean tool-calling. Suited to quality/long-context/planning/review, NOT latency-sensitive chat. CANDIDATE only — not promoted to heavy-local."
+
+[[recipe]]
+model = "olka-fi/Qwen3.5-122B-A10B-MXFP4"
+status = "verified"
+source = "measured on fakoli-dark 2026-07-12 — full preflight + standard throughput + deterministic planning suite"
+family = "qwen3.5"
+total_params_b = 122
+active_params_b = 10
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 96
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e"
+  managed_serve = "heavy-qwen35-122b-mxfp4"
+  served_model_name = "qwen35-122b-mxfp4"
+  quantization = "compressed-tensors MXFP4; Marlin W4A16 fallback on sm_120"
+  port = 30004
+  context_tokens = 131072
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--revision 345839ea666a70f5035672f7c88afcba6281921f",
+    "--served-model-name qwen35-122b-mxfp4",
+    "--quantization compressed-tensors",
+    "--kv-cache-dtype fp8",
+    "--reasoning-parser qwen3",
+    "--enable-auto-tool-choice",
+    "--tool-call-parser qwen3_coder",
+    "--trust-remote-code",
+    "--max-model-len 131072",
+    "--max-num-seqs 2",
+    "--gpu-memory-utilization 0.90",
+  ]
+  note = "The compose entrypoint removes the sm_120-incompatible FlashInfer cute_dsl module so vLLM selects MarlinMxFp4LinearKernel and MarlinExperts. This verifies a serving recipe, not routing eligibility."
+
+  [recipe.measured]
+  throughput_single_tok_s = 30.5706
+  ttft_p50_ms = 720.79
+  ttft_p95_ms = 974.40
+  e2e_p50_ms = 1066.43
+  e2e_p95_ms = 1327.91
+  standard_requests = "10/10 completed; 8192 context; max_tokens=256; thinking disabled"
+  preflight = "ALL PASS — smoke, structured JSON, needle@128k (25.8 s), tool batch 20/20"
+  deterministic_planning_eval = "1/5 passed; milestone-execution session-evals suite"
+  vram_used_mib_after_benchmark = 89336
+  caveats = "The Marlin W4A16 path was 21% slower than the prior local NVFP4 result and did not reproduce external llama.cpp MXFP4_MOE speed. FP8 KV remains an accuracy caveat without calibrated scales."
+
+  [recipe.intent]
+  suited = ["benchmark-candidate", "long-context-experiment"]
+  not_suited = ["promoted-heavy", "planning", "review"]
+  mode = "flexibility"
+  rationale = "Serving correctness and 131K context passed, but throughput regressed versus local NVFP4 and deterministic planning passed only 1/5. Keep reproducible for engine/weight A/B; do not promote."
+
+  [recipe.sources]
+  official = [
+    "https://huggingface.co/Qwen/Qwen3.5-122B-A10B",
+  ]
+  community = [
+    "https://huggingface.co/olka-fi/Qwen3.5-122B-A10B-MXFP4",
+    "https://www.reddit.com/r/LocalLLaMA/comments/1roiyvo/rtx6k_server_450w_qwen35122ba10b_mxfp4_moe/",
+    "https://www.reddit.com/r/LocalLLM/comments/1re8si5/qwen35122ba10b_vs_old_codernext80b_both_at_nvfp4/",
+  ]
+  local = [
+    "docs/findings/2026-07-12-qwen35-122b-mxfp4-benchmark.md",
+    "docs/findings/2026-07-12-qwen35-122b-mxfp4-evidence/standard-throughput.json",
+    "docs/findings/2026-07-12-qwen35-122b-mxfp4-evidence/deterministic-planning-eval.json",
+  ]
+
+# ─── 2026-07-10 Blackwell local-model bakeoff (evidence:
+# docs/findings/2026-07-10-blackwell-local-model-bakeoff.md) ─────────────────
+
+[[recipe]]
+model = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4"
+status = "verified"
+source = "measured on fakoli-dark 2026-07-11 — preflight ALL PASS + bakeoff (clean re-measure on WSL 2.7.10)"
+family = "nemotron3"
+total_params_b = 30
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  vram_total_gb = 32
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "nvcr.io/nvidia/vllm:26.04-py3"
+  managed_serve = "cand-nemotron3-nano-30b"
+  served_model_name = "nemotron3-nano-30b-a3b-nvfp4"
+  quantization = "modelopt_fp4"
+  port = 39020
+  context_tokens = 131072
+  note = "THREE mandatory workarounds: (1) --compilation-config '{\"cudagraph_mode\":\"PIECEWISE\"}' — FULL graphs hang engine init at 131k (upstream vLLM #34094 class); (2) the model card's nano_v3 reasoning-parser plugin (bind-mounted) — without it think-text leaks into content and breaks JSON/tool extraction; (3) --mamba-ssm-cache-dtype float16. Disable thinking for small budgets (gotcha #6)."
+
+  [recipe.measured]
+  throughput_single_tok_s = 15.0
+  ttft_warm_p50_ms = 1681
+  context_validation = "131072 pass (needle retrieved)"
+  tool_calls = "PASS (preflight 20/20)"
+  intelligence_checks = "1/2 (idle-host re-measure; 0/2 on the pre-fix concurrent-load run)"
+  preflight = "ALL PASS"
+  caveats = "single-request TTFT was erratic (17-41 s) on WSL 2.6.2; resolved by WSL 2.7.10 — treat WSL >= 2.7 as part of the recipe"
+
+  [recipe.intent]
+  suited = ["long-context", "experimental"]
+  mode = "flexibility"
+  rationale = "Functional at full 131k with workarounds, but 15 tok/s single-stream decode is far below the fast-tier incumbent. Keep experimental; revisit on newer engine releases."
+
+[[recipe]]
+model = "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4"
+status = "unverified"
+source = "measured on fakoli-dark 2026-07-11 — vLLM nightly v0.23.1rc1 ONLY (unsupported on <=0.19/NGC 26.04). Kept unverified pending a fully-passing preflight on a PINNED stable >=0.23 release (the nightly needle probe 400s beyond the 64k claim; see preflight-transcripts.md)"
+family = "nemotron3-omni"
+total_params_b = 30
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  vram_total_gb = 32
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly (v0.23.1rc1 at measurement; pin a stable >=0.23 release)"
+  managed_serve = "cand-nemotron3-omni-30b"
+  served_model_name = "nemotron3-omni-30b-a3b-nvfp4"
+  quantization = "modelopt (auto-detected modelopt_mixed)"
+  port = 39021
+  context_tokens = 65536
+  note = "Arch NemotronH_Nano_Omni_Reasoning_V3 is NOT in vLLM 0.19 (NGC 26.04), and the NGC release-notes --hf-overrides masquerade FAILS on this NVFP4 checkpoint (scale-key mismatch). Nightly serves it natively: --reasoning-parser nemotron_v3 --enable-auto-tool-choice --tool-call-parser qwen3_coder. Sound encoder (AVLM) initializes; multimodal input quality NOT tested."
+
+  [recipe.measured]
+  throughput_single_tok_s = 27.3
+  ttft_warm_p50_ms = 675
+  context_validation = "65536 pass (TTFT 3.1 s full prefill)"
+  tool_calls = "PASS (20/20)"
+  intelligence_checks = "0/2"
+  preflight = "pass within window (needle probe exceeds 64k claim by design)"
+
+  [recipe.intent]
+  suited = ["multimodal", "experimental"]
+  mode = "flexibility"
+  rationale = "Only multimodal-capable candidate that serves. Keep experimental until a stable engine release lists the arch."
+
+[[recipe]]
+model = "deepreinforce-ai/Ornith-1.0-35B-FP8"
+status = "unverified"
+source = "measured on fakoli-dark 2026-07-11 — bakeoff suites ALL PASS thinking-disabled; preflight default-mode shows thinking-starvation artifacts (rerun preflight --no-thinking to graduate to verified)"
+family = "ornith"
+total_params_b = 35
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "nvcr.io/nvidia/vllm:26.04-py3"
+  managed_serve = "cand-ornith-35b-fp8"
+  served_model_name = "ornith-1.0-35b-fp8"
+  quantization = "compressed-tensors FP8 — OMIT --quantization (gotcha #18)"
+  port = 39022
+  context_tokens = 131072
+  note = "qwen3_5_moe arch (Gated-DeltaNet hybrid): fla/ops shape warning at load, no instability observed. qwen3 reasoning + qwen3_coder tool parsers. Default thinking EMPTIES small-budget responses — tier config must disable thinking or budget >=4096."
+
+  [recipe.measured]
+  throughput_single_tok_s = 29.2
+  context_validation = "131072 pass — needle 11.9 s; full-prefill TTFT 13.1 s (fastest measured 131k full-prefill; heavy baseline 25.2 s). See preflight-transcripts.md"
+  tool_calls = "PASS (20/20)"
+  intelligence_checks = "1/2"
+  caveats = "vendor-reported SOTA claims not verified and not used"
+
+  [recipe.intent]
+  suited = ["planning", "review", "long-context", "quality"]
+  mode = "flexibility"
+  rationale = "Retain as agentic/long-context specialist. NOT promoted to heavy-local."
+
+[[recipe]]
+model = "dervig/m51Lab-MiniMax-M2.7-REAP-139B-A10B-NVFP4"
+status = "unverified"
+source = "measured on fakoli-dark 2026-07-11 — bakeoff clean sweep thinking-disabled (intelligence 2/2); preflight default-mode shows think-leak artifacts (no reasoning parser configured); COMMUNITY REAP checkpoint, provenance unaudited"
+family = "minimax-m2.7"
+total_params_b = 139
+active_params_b = 10
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "nvcr.io/nvidia/vllm:26.04-py3"
+  managed_serve = "cand-minimax-m27-reap"
+  served_model_name = "minimax-m27-reap-139b-nvfp4"
+  quantization = "compressed-tensors NVFP4 — OMIT --quantization (gotcha #18)"
+  port = 39023
+  context_tokens = 65536
+  note = "minimax_m2 arch, custom_code, --tool-call-parser minimax_m2. 94.3 GB VRAM at 64k/1-seq — NO headroom for 131k on 96 GB. Configure a reasoning parser or disable thinking (default mode leaks think-text)."
+
+  [recipe.measured]
+  throughput_single_tok_s = 97.2
+  ttft_warm_p50_ms = 86
+  context_validation = "65536 pass (TTFT 14.3 s full prefill)"
+  tool_calls = "PASS"
+  intelligence_checks = "2/2 — only candidate matching the heavy baseline"
+  vram_used_gb = 94.3   # operator nvidia-smi capture (94,332 MiB); see preflight-transcripts.md
+  caveats = "community expert-pruned (REAP) checkpoint of MiniMax-M2.7 — not an official release; long-tail quality unaudited; decode ~half the gpt-oss-120b production baseline"
+
+  [recipe.intent]
+  suited = ["quality", "planning", "review"]
+  mode = "flexibility"
+  rationale = "Best measured heavy-role candidate of the 2026-07-10 bakeoff. NOT promoted — community provenance, VRAM ceiling, and decode gap vs production baseline all need resolution first."
+
+# ─── 2026-07-11 bakeoff extension (evidence: same finding, extension section) ──
+
+[[recipe]]
+model = "nvidia/NVIDIA-Nemotron-Labs-3-Puzzle-75B-A9B-NVFP4"
+status = "verified"
+source = "measured on fakoli-dark 2026-07-11 — preflight ALL PASS (incl. needle@128k) + full bakeoff sweep + MTP A/B"
+family = "nemotron3-puzzle"
+total_params_b = 75
+active_params_b = 9
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly (v0.23.1rc1 at measurement; pin a stable release before any role)"
+  managed_serve = "cand-nemotron3-puzzle-75b"
+  served_model_name = "nemotron3-puzzle-75b-nvfp4"
+  quantization = "modelopt (auto-detected modelopt_mixed)"
+  port = 39026
+  context_tokens = 131072
+  note = "Hybrid Mamba2/LatentMoE with trained MTP. Speculative config method=mtp n=3 (model card; n>3 has sm_120 crash/OOM reports). Engine auto-disables prefix caching for the Mamba+MTP combo (upstream #39809). nemotron_v3 reasoning parser + qwen3_coder tools. Card's 262k+ contexts unproven here; 131k verified."
+
+  [recipe.measured]
+  throughput_longgen_mtp3_tok_s = 137.0
+  throughput_longgen_nomtp_tok_s = 91.4
+  mtp_speedup = 1.50
+  context_validation = "131072 pass (needle@128k 13.8 s; full-prefill TTFT 13.9 s)"
+  tool_calls = "PASS (preflight 20/20)"
+  intelligence_checks = "2/2"
+  preflight = "ALL PASS"
+  caveats = "long-generation A/B probe (3x1024 tokens, temp 0); the standard short-completion benchmark under-generates for MTP comparison — see candidate-nemotron-puzzle-75b-mtp-ab-longgen.json"
+
+  [recipe.intent]
+  suited = ["quality", "planning", "review", "long-context"]
+  mode = "flexibility"
+  rationale = "Best measured heavy-role candidate of the 2026-07 bakeoff: official NVIDIA checkpoint, perfect suite sweep at 131k, 137 tok/s with MTP (1.50x verified). NOT promoted — requires a pinned stable engine release and an operator decision."
+
+[[recipe]]
+model = "sakamakismile/Qwen3.6-27B-Text-NVFP4-MTP"
+status = "verified"
+source = "measured on fakoli-dark 2026-07-11 — preflight ALL PASS + bakeoff sweep incl. 262,144-token context + MTP A/B. COMMUNITY checkpoint (ModelOpt NVFP4, bf16 MTP head preserved; official NVFP4 drops the head)"
+family = "qwen3.6"
+total_params_b = 27
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "vllm/vllm-openai:nightly (v0.23.1rc1 at measurement; pin a stable release before any role)"
+  managed_serve = "cand-qwen36-heavy-mtp"
+  served_model_name = "qwen36-27b-nvfp4-mtp"
+  quantization = "modelopt (--quantization modelopt)"
+  port = 39027
+  context_tokens = 262144
+  note = "Dense 27B at its NATIVE 262k window with ~14 GB weights — the big-KV heavy experiment. Speculative config method=qwen3_5_mtp n=3 (checkpoint README, author-tested on this GPU class). --language-model-only REQUIRED (text-only conversion has no image processor). Prefix caching OFF with MTP (upstream #43559 accuracy drop, #38182 hit-length halving, #40756 crash)."
+
+  [recipe.measured]
+  throughput_longgen_mtp3_tok_s = 95.0
+  throughput_longgen_nomtp_tok_s = 69.9
+  mtp_speedup = 1.36
+  context_validation = "262144-token window verified (usage 261,949 prompt tokens; TTFT ~124 s; largest of the exercise). Sub-window targets ballooned to the cap by a harness sizing bug - see failures.md"
+  tool_calls = "PASS (preflight 20/20)"
+  intelligence_checks = "2/2"
+  preflight = "ALL PASS"
+  caveats = "community checkpoint; author-reported 1.74x MTP speedup not reproduced (we measured 1.36x at 262k/2-seq) — direction consistent, magnitude config-dependent"
+
+  [recipe.intent]
+  suited = ["long-context", "quality", "planning"]
+  mode = "flexibility"
+  rationale = "The community-favorite Qwen3.6-27B in a 262k big-KV heavy configuration with working MTP. NOT promoted — community provenance and engine pin need operator decisions."
+
+[[recipe]]
+model = "unsloth/Qwen3.5-35B-A3B-GGUF (Q4_K_M)"
+status = "unverified"
+source = "measured on fakoli-dark 2026-07-11 — bakeoff suites pass (intelligence 2/2) at 64k; preflight needle probe 400s beyond the 64k window (graduate via eval preflight --needle-ctx 60000)"
+family = "qwen3.5"
+total_params_b = 35
+active_params_b = 3
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  vram_total_gb = 32
+
+  [recipe.serve]
+  engine = "llamacpp"
+  image = "ghcr.io/ggml-org/llama.cpp:server-cuda"
+  managed_serve = "cand-qwen35-35b-llamacpp"
+  served_model_name = "qwen35-35b-a3b-q4km-gguf"
+  quantization = "GGUF Q4_K_M (~20.6 GB, two split parts)"
+  port = 39028
+  context_tokens = 65536
+  note = "GDN-hybrid MoE: KV is tiny, 64k is nearly free on 32 GB. unsloth non-thinking sampling defaults baked into the serve (temp 0.7 top-p 0.8 top-k 20 presence 1.5). llama.cpp does not advertise max_model_len — pass --max-model-len to eval benchmark or context probes overshoot the window (observed). Mount the cache volume at /root/.cache/huggingface too (this build's -hf downloads land in the HF hub layout)."
+
+  [recipe.measured]
+  throughput_single_tok_s = 147
+  ttft_warm_p50_ms = 178
+  prefill_tok_s = 4458
+  context_validation = "65536-token window verified (TTFT 8.1 s, warm: 17.5k of 59k tokens prefix-cached)"
+  tool_calls = "PASS (preflight 20/20)"
+  intelligence_checks = "2/2"
+  caveats = "decode below the community 5090 reference (214 tok/s, newer build) — build freshness matters on this arch; llama.cpp MTP (--spec-type draft-mtp, MTP-GGUF artifacts) untested"
+
+  [recipe.intent]
+  suited = ["chat-fast", "agentic-conversation", "quality"]
+  mode = "flexibility"
+  rationale = "Strongest fast-tier candidate measured: matches the heavy baseline's intelligence sweep at fast-tier latency. NOT promoted; graduation preflight and an MTP pass are the obvious next steps."
+
+[[recipe]]
+model = "unsloth/gemma-4-E4B-it-qat-GGUF (UD-Q4_K_XL)"
+status = "unverified"
+source = "measured on fakoli-dark 2026-07-11 — suites pass (intelligence 1/2) at 64k; needle probe beyond window (graduate via --needle-ctx 60000). QAT UD-Q4_K_XL chosen over naive Q4_K_M per unsloth KLD data"
+family = "gemma4-e4b"
+total_params_b = 8
+
+  [recipe.hardware]
+  gpu = "NVIDIA GeForce RTX 5090"
+  arch = "sm_120"
+  vram_total_gb = 32
+
+  [recipe.serve]
+  engine = "llamacpp"
+  image = "ghcr.io/ggml-org/llama.cpp:server-cuda"
+  managed_serve = "cand-gemma4-e4b-llamacpp"
+  served_model_name = "gemma4-e4b-q4-gguf"
+  quantization = "GGUF UD-Q4_K_XL (QAT, ~4.2 GB)"
+  port = 39029
+  context_tokens = 65536
+  note = "Gemma sampling defaults baked in (temp 1.0 top-p 0.95 top-k 64). iSWA KV handled natively. Default-mode probes can route ALL output to reasoning_content (a zero-completion-token artifact — send enable_thinking false). Standing llama.cpp caveat: PLE (per-layer embeddings) reportedly not wired into the forward pass for E-class Gemma (upstream #22243, open) — quality may trail vLLM/transformers for the same weights."
+
+  [recipe.measured]
+  throughput_single_tok_s = 97.0
+  ttft_warm_p50_ms = 61
+  context_validation = "65536-token window verified (TTFT 6.4 s cold)"
+  tool_calls = "PASS (preflight 20/20)"
+  intelligence_checks = "1/2"
+
+  [recipe.intent]
+  suited = ["voice", "low-latency", "chat-fast"]
+  mode = "flexibility"
+  rationale = "Low-latency small-model specialist (61 ms TTFT). NOT promoted; check PLE issue status before any quality-sensitive role."
