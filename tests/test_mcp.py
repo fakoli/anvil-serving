@@ -939,7 +939,9 @@ def test_models_inventory_missing_catalog_points_to_sync(tmp_path):
     assert env["ok"] is False
     assert env["error"]["code"] == "catalog_not_found"
     assert "error.details.command" in env["error"]["message"]
-    assert env["error"]["details"]["command"][-3:] == ["sync", "--out", str(catalog)]
+    assert env["error"]["details"]["command"][-4:] == [
+        "sync", "--out", str(catalog), "--confirm",
+    ]
 
 
 def test_models_inventory_sync_preview_is_argv(tmp_path):
@@ -958,6 +960,8 @@ def test_models_inventory_sync_preview_is_argv(tmp_path):
     assert cmd[3:7] == ["models", "sync", "--out", str(catalog)]
     assert "--hf-roots" in cmd and "C:/hf-cache" in cmd
     assert "--model-dirs" in cmd and "D:/models" in cmd
+    assert cmd[-1] == "--dry-run"
+    assert "--confirm" not in cmd
 
 
 def test_models_inventory_confirmed_sync_returns_catalog_counts(tmp_path, monkeypatch):
@@ -965,6 +969,8 @@ def test_models_inventory_confirmed_sync_returns_catalog_counts(tmp_path, monkey
 
     def fake_run(argv, **kwargs):
         assert argv[3:7] == ["models", "sync", "--out", str(catalog)]
+        assert argv[-1] == "--confirm"
+        assert "--dry-run" not in argv
         cards = catalog / "cards"
         cards.mkdir(parents=True)
         (catalog / "INDEX.md").write_text("# generated\n", encoding="utf-8")
