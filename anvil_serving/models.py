@@ -4,8 +4,8 @@ Two sub-actions:
   * ``sync`` — scan HF caches + model dirs, pull cards, build the catalog (-> `_sync.py`).
   * ``pull`` — download a Hugging Face repo INTO A NAMED DOCKER VOLUME so it's ready
     to serve natively (see ``pull_main`` / ``build_pull_argv`` below).
-  * ``recipe`` — READ recorded serve recipes (``recipe list`` / ``recipe show <model>``);
-    the GENERATE half is ``benchmark --recipe-out``.
+  * ``recipe`` — manage recorded serve recipes (list/show/create/update/delete/load);
+    benchmark ``--recipe-out`` remains the evidence-producing generate path.
 
 Why ``pull`` mounts a NAMED VOLUME and not a host ``C:/…`` path (CLAUDE.md gotcha #15):
 on this Windows + WSL2 + Docker box, serving weights from a ``C:/…`` bind mount reads
@@ -21,6 +21,7 @@ import subprocess
 import tomllib
 import sys
 from . import config
+from . import guard
 from . import serve_recipes
 HERE = os.path.dirname(__file__)
 
@@ -406,6 +407,46 @@ def _print_recipe_show(recipe):
         print("  " + str(download["command"]))
 
 
+def _recipe_registry(path, *, require_existing=True):
+    if require_existing and not os.path.exists(path):
+        raise serve_recipes.RecipeError("serve-recipe registry not found: %s" % path)
+    if not os.path.exists(path):
+        return {"schema": serve_recipes.REGISTRY_SCHEMA, "recipe": []}
+    try:
+        return serve_recipes.load_registry(path)
+    except (tomllib.TOMLDecodeError, OSError) as exc:
+        raise serve_recipes.RecipeError(
+            "cannot read serve-recipe registry %s: %s" % (path, exc)
+        ) from exc
+
+
+def _write_recipe_registry(path, registry, *, expected_digest):
+    """Lock, reject state drift, back up, then atomically rewrite a registry."""
+    # Render before backup so malformed operator input fails without creating
+    # recovery artifacts for a mutation that never began.
+    serve_recipes.format_registry(registry)
+    with serve_recipes.registry_lock(path):
+        if serve_recipes.registry_digest(path) != expected_digest:
+            raise serve_recipes.RecipeError(
+                "serve-recipe registry changed after it was read; retry the command"
+            )
+        backup = guard.backup_file(path)
+        serve_recipes.write_registry(path, registry)
+        return backup
+
+
+def _confirm_recipe_mutation(action, model, *, confirm, dry_run):
+    if dry_run:
+        return True
+    if guard.confirm(
+        "Apply recipe %s for %r?" % (action, model),
+        force=confirm,
+    ):
+        return True
+    print("recipe mutation cancelled", file=sys.stderr)
+    return False
+
+
 def _recipe_main(argv):
     ap = argparse.ArgumentParser(prog="anvil-serving models recipes")
     sub = ap.add_subparsers(dest="recipe_action", required=True)
@@ -414,16 +455,50 @@ def _recipe_main(argv):
     p_show = sub.add_parser("show", help="reproducible docker run + measured stats for a model")
     p_show.add_argument("model", help="model id (exact or basename, e.g. gpt-oss-120b)")
     p_show.add_argument("--registry", default=None, help="registry TOML (default: %s)" % DEFAULT_REGISTRY)
+    for action, summary in (
+        ("create", "add exactly one recipe from a TOML file"),
+        ("update", "replace a selected recipe from a TOML file"),
+    ):
+        parser = sub.add_parser(action, help=summary)
+        if action == "update":
+            parser.add_argument("model", help="current model id or unambiguous basename")
+        parser.add_argument("--recipe-file", required=True, metavar="PATH",
+                            help="TOML containing exactly one [[recipe]] table")
+        parser.add_argument("--registry", required=True, metavar="TOML",
+                            help="operator-owned registry TOML to mutate")
+        parser.add_argument("--dry-run", action="store_true",
+                            help="validate and preview without writing")
+        parser.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+    p_delete = sub.add_parser("delete", help="remove one recipe from an operator registry")
+    p_delete.add_argument("model", help="model id or unambiguous basename")
+    p_delete.add_argument("--registry", required=True, metavar="TOML",
+                          help="operator-owned registry TOML to mutate")
+    p_delete.add_argument("--dry-run", action="store_true",
+                          help="preview without writing")
+    p_delete.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
+    p_load = sub.add_parser("load", help="start a named local container from one recipe")
+    p_load.add_argument("model", help="model id or unambiguous basename")
+    p_load.add_argument("--container", required=True, metavar="NAME",
+                        help="new Docker container name for this loaded recipe")
+    p_load.add_argument("--registry", default=None, help="registry TOML (default: %s)" % DEFAULT_REGISTRY)
+    p_load.add_argument("--dry-run", action="store_true",
+                        help="print the exact docker command without starting it")
+    p_load.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
 
     registry_path = a.registry or _default_registry()
-    if not os.path.exists(registry_path):
-        print("serve-recipe registry not found: %s" % registry_path, file=sys.stderr)
-        return 1
     try:
-        registry = serve_recipes.load_registry(registry_path)
-    except (tomllib.TOMLDecodeError, OSError) as exc:
-        print("cannot read serve-recipe registry %s: %s" % (registry_path, exc), file=sys.stderr)
+        registry = _recipe_registry(
+            registry_path,
+            require_existing=a.recipe_action != "create",
+        )
+        registry_digest = (
+            serve_recipes.registry_digest(registry_path)
+            if a.recipe_action in {"create", "update", "delete"}
+            else None
+        )
+    except serve_recipes.RecipeError as exc:
+        print(str(exc), file=sys.stderr)
         return 1
 
     if a.recipe_action == "list":
@@ -435,6 +510,82 @@ def _recipe_main(argv):
             print("no serve recipe for %r in %s" % (a.model, registry_path), file=sys.stderr)
             return 1
         _print_recipe_show(recipe)
+        return 0
+    if a.recipe_action in {"create", "update"}:
+        try:
+            replacement = serve_recipes.load_recipe_file(a.recipe_file)
+            if a.recipe_action == "create":
+                updated = serve_recipes.create_recipe(registry, replacement)
+                model = replacement["model"]
+            else:
+                updated, _previous = serve_recipes.update_recipe(registry, a.model, replacement)
+                model = replacement["model"]
+        except serve_recipes.RecipeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        if a.dry_run:
+            print("would %s recipe %r in %s" % (a.recipe_action, model, registry_path))
+            return 0
+        if not _confirm_recipe_mutation(a.recipe_action, model, confirm=a.confirm, dry_run=False):
+            return 3
+        try:
+            backup = _write_recipe_registry(
+                registry_path, updated, expected_digest=registry_digest
+            )
+        except (OSError, serve_recipes.RecipeError) as exc:
+            print("cannot write serve-recipe registry %s: %s" % (registry_path, exc), file=sys.stderr)
+            return 1
+        print("%sd recipe %r in %s" % ("create" if a.recipe_action == "create" else "update", model, registry_path))
+        if backup:
+            print("backup: %s" % backup)
+        return 0
+    if a.recipe_action == "delete":
+        try:
+            updated, deleted = serve_recipes.delete_recipe(registry, a.model)
+        except serve_recipes.RecipeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        if a.dry_run:
+            print("would delete recipe %r from %s" % (deleted["model"], registry_path))
+            return 0
+        if not _confirm_recipe_mutation("delete", deleted["model"], confirm=a.confirm, dry_run=False):
+            return 3
+        try:
+            backup = _write_recipe_registry(
+                registry_path, updated, expected_digest=registry_digest
+            )
+        except (OSError, serve_recipes.RecipeError) as exc:
+            print("cannot write serve-recipe registry %s: %s" % (registry_path, exc), file=sys.stderr)
+            return 1
+        print("deleted recipe %r from %s" % (deleted["model"], registry_path))
+        if backup:
+            print("backup: %s" % backup)
+        return 0
+    if a.recipe_action == "load":
+        try:
+            recipe = serve_recipes.find_recipe(registry, a.model)
+            if recipe is None:
+                raise serve_recipes.RecipeError("no serve recipe for %r in %s" % (a.model, registry_path))
+            command = serve_recipes.docker_run_argv(recipe, container=a.container)
+        except serve_recipes.RecipeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        printable = shlex.join(command)
+        if a.dry_run:
+            print("would load recipe %r as container %r:" % (recipe["model"], a.container))
+            print(printable)
+            return 0
+        if not _confirm_recipe_mutation("load", recipe["model"], confirm=a.confirm, dry_run=False):
+            return 3
+        print("loading recipe %r as container %r" % (recipe["model"], a.container))
+        print("$ " + printable)
+        _command, rc = serve_recipes.load_recipe(recipe, a.container)
+        if rc:
+            print("recipe load failed with docker exit code %s" % rc, file=sys.stderr)
+            return rc
+        port = recipe.get("serve", {}).get("port")
+        if port:
+            print("next: preflight before trusting this serve: anvil-serving eval preflight --base-url http://127.0.0.1:%s/v1 --model %s --confirm" % (port, recipe["model"]))
         return 0
     return 2
 
@@ -465,7 +616,7 @@ def main(argv):
     sync.add_argument("--model-dirs", default="", help="extra plain model dirs (os.pathsep-separated)")
 
     sub.add_parser("pull", help="download a Hugging Face repo into a named Docker volume")
-    sub.add_parser("recipe", help="list or show recorded serve recipes")
+    sub.add_parser("recipe", help="create, inspect, edit, delete, or load serve recipes")
     sub.add_parser("cache", help="model cache inspection and cleanup helpers")
     sub.add_parser("score", help="rank models for roles from benchmark evidence")
 

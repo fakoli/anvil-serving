@@ -137,13 +137,14 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 |---------|---------|
 | `anvil-serving router run` | Start the Anthropic/OpenAI router front door. |
 | `anvil-serving router` | Manage the deployed router container, token, logs, reloads, and profile promotion. |
+| `anvil-serving router endpoint` | Show the live router listen address/port and this node's Tailscale MagicDNS name. |
 
 **Local serving tools** — stand up and validate the tiers the router routes across:
 
 | Command | Purpose |
 |---------|---------|
 | `anvil-serving serves` | Manage local model serves through Docker Compose. |
-| `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and inspect recorded serve recipes (`recipes`). |
+| `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and select, manage, or guarded-load recorded serve recipes (`recipes`). |
 | `anvil-serving serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
 | `anvil-serving init` | Scaffold the full operational config home (or a single-model bring-up with `--single-model`). |
 | `anvil-serving eval preflight` | Correctness-check a model endpoint before trusting it. |
@@ -152,6 +153,7 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | `anvil-serving serves multiplex` | Swap a single resident model on one GPU (SGLang and vLLM backends). |
 | `anvil-serving models cache prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |
 | `anvil-serving doctor` | Preflight the environment a router deploy depends on (Python, Docker, Compose, GPU runtime). |
+| `anvil-serving upgrade` | Upgrade an installed CLI to the newest stable PyPI release through its owning package manager. |
 | `anvil-serving host doctor` | Inspect WSL/Docker Desktop host safety settings (memory caps, mmap gotchas). |
 | `anvil-serving host gpu-sharing inspect` | Inspect CUDA Green Context and MPS capability without changing GPU state. |
 | `anvil-serving host gpu-sharing probe` | Audit and run the confirmation-gated Docker CUDA prerequisite probe on an exact GPU UUID. |

@@ -5,6 +5,7 @@ callables, so CI never touches real docker, a real GPU, or the network. The writ
 is proven round-trip-safe by parsing its output back through `tomllib`.
 """
 import json
+from datetime import date
 import tomllib
 from types import SimpleNamespace
 
@@ -95,6 +96,95 @@ def test_append_recipe_stays_parseable(tmp_path):
     assert data["schema"] == "v1"
     assert [r["model"] for r in data["recipe"]] == ["a/one", "openai/gpt-oss-120b"]
     assert data["recipe"][1] == _RECIPE
+
+
+def test_registry_lock_refuses_concurrent_writer(tmp_path):
+    path = tmp_path / "serve-recipes.toml"
+    with sr.registry_lock(path):
+        with pytest.raises(sr.RecipeError, match="another process"):
+            with sr.registry_lock(path):
+                pass
+
+
+def test_registry_writer_quotes_non_bare_keys_and_rejects_unsupported_scalars():
+    registry = {
+        "schema": sr.REGISTRY_SCHEMA,
+        "recipe": [{"model": "org/model", "custom key": {"value.with.dot": "ok"}}],
+    }
+    rendered = sr.format_registry(registry)
+    assert tomllib.loads(rendered) == registry
+
+    with pytest.raises(sr.RecipeError, match="unsupported TOML scalar type"):
+        sr.format_registry({"recipe": [{"model": "org/model", "published": date.today()}]})
+
+
+def test_mutable_registry_create_update_delete_and_atomic_write(tmp_path):
+    path = tmp_path / "serve-recipes.toml"
+    registry = {"schema": sr.REGISTRY_SCHEMA, "recipe": []}
+    created = sr.create_recipe(registry, {"model": "org/one", "status": "unverified"})
+    sr.write_registry(path, created)
+    loaded = sr.load_registry(path)
+    assert loaded["recipe"][0]["model"] == "org/one"
+
+    updated, previous = sr.update_recipe(
+        loaded,
+        "one",
+        {"model": "org/two", "status": "verified", "serve": {"image": "example/image"}},
+    )
+    assert previous["model"] == "org/one"
+    remaining, deleted = sr.delete_recipe(updated, "org/two")
+    assert deleted["status"] == "verified"
+    assert remaining["recipe"] == []
+
+
+def test_create_recipe_rejects_duplicate_or_ambiguous_selectors():
+    registry = {
+        "recipe": [
+            {"model": "org-a/model", "status": "verified"},
+            {"model": "org-b/model", "status": "verified"},
+        ]
+    }
+    with pytest.raises(sr.RecipeError, match="ambiguous"):
+        sr.find_recipe_index(registry, "model")
+    with pytest.raises(sr.RecipeError, match="already exists"):
+        sr.create_recipe(registry, {"model": "org-a/model"})
+
+
+def test_load_recipe_file_requires_one_recipe(tmp_path):
+    path = tmp_path / "recipes.toml"
+    path.write_text('schema = "x"\n', encoding="utf-8")
+    with pytest.raises(sr.RecipeError, match="exactly one"):
+        sr.load_recipe_file(path)
+
+
+def test_docker_run_argv_uses_named_container_and_loopback_port():
+    argv = sr.docker_run_argv(_RECIPE, container="heavy-candidate")
+    assert argv[:6] == ["docker", "run", "-d", "--name", "heavy-candidate", "--gpus"]
+    assert ["-p", "127.0.0.1:30002:30002"] == argv[argv.index("-p"):argv.index("-p") + 2]
+    assert argv[argv.index("vllm/vllm-openai:nightly") + 1] == "openai/gpt-oss-120b"
+
+
+def test_load_recipe_runs_once_with_argv_seam():
+    calls = []
+
+    def fake_run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    argv, rc = sr.load_recipe(_RECIPE, "heavy-candidate", _run=fake_run)
+    assert rc == 0
+    assert calls == [(argv, {"check": False})]
+
+
+def test_docker_run_argv_refuses_unsafe_container_and_env():
+    with pytest.raises(sr.RecipeError, match="container name"):
+        sr.docker_run_argv(_RECIPE, container="bad name")
+    unsafe = {**_RECIPE, "serve": {**_RECIPE["serve"], "env": ["BAD\nVALUE=1"]}}
+    with pytest.raises(sr.RecipeError, match="NAME=value"):
+        sr.docker_run_argv(unsafe, container="safe")
+    option_image = {**_RECIPE, "serve": {**_RECIPE["serve"], "image": "--privileged"}}
+    with pytest.raises(sr.RecipeError, match="not an option"):
+        sr.docker_run_argv(option_image, container="safe")
 
 
 # ---- READ: find_recipe (exact + basename) ------------------------------------------
