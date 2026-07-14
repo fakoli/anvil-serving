@@ -103,7 +103,7 @@
         "eval-preflight": 24,
         "eval-usage": 7,
         "host-gpus": 3,
-        "init": 29,
+        "init": 30,
         "mcp-serve": 24,
         "mcp-tools": 9,
         "models-cache-prune": 9,
@@ -121,10 +121,10 @@
         "examples": 52,
         "implementation": 167,
         "skills": 4,
-        "tests": 160,
+        "tests": 161,
         "tooling": 28
       },
-      "files_scanned": 471,
+      "files_scanned": 472,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

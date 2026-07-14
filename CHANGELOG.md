@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Guarded recipe-based model switching.** `anvil-serving serves switch ROLE` lists validated
+  activation-ready recipes without prompting; `--recipe MODEL --confirm` performs the reviewed
+  Compose/container/router transition with exact loopback bindings, cross-platform locks,
+  operation-owned router artifact snapshots, compare-and-swap drift protection, fresh gate
+  evidence, bounded failure handling, and automatic rollback only while router state is known.
+
 ### Changed
 
 - **A single CLI interaction contract is the adopted migration target.** ADR-0021 codifies resource-first

@@ -73,7 +73,7 @@ anvil-serving models recipes load MODEL --container my-candidate --registry ./se
 
 `load` starts a new, explicitly named Docker container bound to loopback. It does not
 change router policy or promote the candidate. Validate it with
-[`eval preflight`](eval.md#preflight), then use [`serves promote`](serves.md#promote-a-recipe)
+[`eval preflight`](eval.md#preflight), then use [`serves switch`](serves.md#switch-heavy-by-recipe)
 only after human review.
 
 ## Catalog and artifacts

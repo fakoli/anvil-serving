@@ -359,4 +359,4 @@ def test_shipped_registry_reconstructs_gpt_oss(request):
     assert recipe["measured"]["throughput_single_tok_s"] == pytest.approx(183.2)
     cmd = sr.reconstruct_docker_run(recipe)
     assert cmd.startswith("docker run -d --gpus device=GPU-d0f446cf")
-    assert "vllm/vllm-openai:nightly openai/gpt-oss-120b" in cmd
+    assert "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e openai/gpt-oss-120b" in cmd

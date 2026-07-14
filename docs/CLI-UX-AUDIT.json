@@ -23,7 +23,9 @@
   },
   "records": [
     {
-      "attestations": {},
+      "attestations": {
+        "journaling": "sha256:4a8b0b4b67083e03488bab39c87abd5474cb35fcd5ca213af637b913cd6b6b73"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
@@ -33,7 +35,10 @@
         "errors": "fail",
         "grammar": "fail",
         "help": "fail",
-        "journaling": "fail",
+        "journaling": {
+          "reason": "Read-only capability discovery does not mutate state, so no recovery journal is created.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
@@ -1531,10 +1536,12 @@
       "path": "models recipes delete"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:84d2cd3d5515912155f5069f21a8c0661c4fe71df8c7b25acb93a3e72513e52f"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "fail",
         "drift_protection": "fail",
@@ -1553,7 +1560,11 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/models.md#recipes",
-      "evidence": {},
+      "evidence": {
+        "configuration": [
+          "tests/test_models.py::test_recipe_default_registry_resolves_without_explicit_flag"
+        ]
+      },
       "manifest_fingerprint": "sha256:a43b2de69dd4883bfda3c02ff53122e9e45cedcd97e047a7f96675b3f8222fc9",
       "mutation_class": "read",
       "output_policy": "bounded",
@@ -2256,7 +2267,10 @@
       "path": "serves multiplex"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "preview": "sha256:7d930cb5ff1828ae7b3139f05594d965024a85a9f6d8370334e1d607efffb52d",
+        "remote_parity": "sha256:23925df8644bd88664fbb7e6ce19871cb6f47f250d31b5cf0c17719f0b5a5d1f"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
@@ -2271,14 +2285,21 @@
         "macos": "fail",
         "output": "fail",
         "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
+        "preview": "pass",
+        "remote_parity": "pass",
         "rollback": "fail",
         "timeout": "fail",
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
+      "evidence": {
+        "preview": [
+          "tests/test_serves.py::test_cmd_promote_dry_run_prints_complete_transaction"
+        ],
+        "remote_parity": [
+          "tests/test_serves_switch.py::test_existing_promote_leaf_retains_controller_tool_parity"
+        ]
+      },
       "manifest_fingerprint": "sha256:6e13f6425bdef2d9241c44226629210301f5b61aebd3289bbf10a851382ab882",
       "mutation_class": "mutate",
       "output_policy": "bounded",
@@ -2370,6 +2391,116 @@
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "serves status"
+    },
+    {
+      "attestations": {
+        "boundedness": "sha256:84a0050dd07ad8c9cf481f3e070a7147cd4e4939b8f6404af6a1fa103460c7ff",
+        "confirmation": "sha256:a9d8f2ea62f8208dd020f216cf695b4950483fb2321cdb59e4df0fe201c79387",
+        "docs": "sha256:405395b0bbcfd1231ff1caf54a1a29cbe9ea3f5c6d98ce5bb89484288cfb0699",
+        "drift_protection": "sha256:c341c99dc5f84f761e1e19f50be042b3328bb1d02a27dfb12784310ba85cec07",
+        "errors": "sha256:347992565622b400058029d6d409b34a1e2040921be9ef5dd8d8d769d8e65a2c",
+        "grammar": "sha256:adfe3c7668252f1e5f61fea705d5a55fe8ce88a7a4ae0a1f0217cbad761db50a",
+        "help": "sha256:cdf16e45ed76e4314aaddc5d50e0db4e446b1678909b0574dccf0ccaa0d81d31",
+        "linux": "sha256:2611a028650e31998182c7579ceedc4984fba8df8ca20c2e687d802b0469da91",
+        "macos": "sha256:6df847321bebb2cdfe8ba60aacbeaa6fbf234e7bf0c954c5be3dfff89a53c3e6",
+        "output": "sha256:71d3af9b05eaf8d3545e8699e60575291776e6df26a19f798eb6836a78ff4663",
+        "parser_tests": "sha256:81a395ae7b21d725a2a86c3e1fcd7e900d22d68d5d6228b3ed9d1713330df961",
+        "rollback": "sha256:5d236542016fab026f6593b932815706e6bed49eed52a2b5664b4788bf540b96",
+        "timeout": "sha256:707c2ccd68178e8cd838d20f61b53f7ec38a559672c7871e4894bf27853fc659",
+        "windows": "sha256:81fc786caaf83ed03086bcc9ebc389b6c90cebf1f16a443bc8cb49d4ccda60e8"
+      },
+      "dimensions": {
+        "boundedness": "pass",
+        "configuration": "fail",
+        "confirmation": "pass",
+        "docs": "pass",
+        "drift_protection": "pass",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "pass",
+        "macos": "pass",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "pass",
+        "timeout": "pass",
+        "windows": "pass"
+      },
+      "docs_anchor": "docs/cli/serves.md",
+      "evidence": {
+        "boundedness": [
+          "tests/test_serves_switch.py::test_switch_manifest_declares_bounded_confirmed_interface"
+        ],
+        "confirmation": [
+          "tests/test_serves_switch.py::test_switch_listing_is_confirmation_free_but_recipe_selection_is_guarded",
+          "tests/test_serves_switch.py::test_switch_manifest_declares_bounded_confirmed_interface"
+        ],
+        "docs": [
+          "tests/test_serves_switch.py::test_switch_docs_show_preview_apply_and_both_reference_models"
+        ],
+        "drift_protection": [
+          "tests/test_serves_switch.py::test_compose_activation_binds_effective_image_command_env_gpu_and_port",
+          "tests/test_serves_switch.py::test_direct_promotions_share_one_transaction_lock",
+          "tests/test_serves_switch.py::test_promote_compares_deployed_state_to_pretransaction_artifact_digest",
+          "tests/test_serves_switch.py::test_promotion_config_validation_rejects_unaffected_router_changes",
+          "tests/test_serves_switch.py::test_promotion_artifacts_are_snapshotted_into_operation_directory",
+          "tests/test_serves_switch.py::test_promotion_profiles_may_differ_only_on_affected_tiers",
+          "tests/test_serves_switch.py::test_router_cas_advances_so_post_promote_failure_can_rollback",
+          "tests/test_serves_switch.py::test_router_switch_state_requires_an_exact_config_and_profile_pair",
+          "tests/test_serves_switch.py::test_running_container_must_match_recipe_launch_inputs",
+          "tests/test_serves_switch.py::test_shipped_heavy_activation_metadata_matches_reference_promotion",
+          "tests/test_serves_switch.py::test_switch_refuses_manifest_identity_drift",
+          "tests/test_serves_switch.py::test_switch_refuses_invalid_topology_before_target_noop"
+        ],
+        "errors": [
+          "tests/test_serves_switch.py::test_registry_loader_rejects_malformed_recipe_rows",
+          "tests/test_serves_switch.py::test_switch_choices_reject_unknown_role_and_show_available",
+          "tests/test_serves_switch.py::test_switch_refuses_manifest_identity_drift",
+          "tests/test_serves_switch.py::test_switch_refuses_recipe_without_activation_mapping",
+          "tests/test_serves_switch.py::test_switch_refuses_unsafe_role_name"
+        ],
+        "grammar": [
+          "tests/test_serves_switch.py::test_switch_parser_requires_role_and_recipe"
+        ],
+        "help": [
+          "tests/test_serves_switch.py::test_switch_help_names_role_recipe_and_preview_options"
+        ],
+        "linux": [
+          "tests/test_serves_switch.py::test_switch_lock_uses_posix_flock_for_linux_and_macos",
+          "tests/test_serves_switch.py::test_switch_paths_and_dispatch_are_platform_neutral"
+        ],
+        "macos": [
+          "tests/test_serves_switch.py::test_switch_lock_uses_posix_flock_for_linux_and_macos",
+          "tests/test_serves_switch.py::test_switch_paths_and_dispatch_are_platform_neutral"
+        ],
+        "output": [
+          "tests/test_serves_switch.py::test_switch_choices_label_ready_and_blocked_rows",
+          "tests/test_serves_switch.py::test_switch_resolves_recipe_and_reuses_guarded_promotion"
+        ],
+        "parser_tests": [
+          "tests/test_serves_switch.py::test_switch_parser_requires_role_and_recipe"
+        ],
+        "rollback": [
+          "tests/test_serves_switch.py::test_router_cas_advances_so_post_promote_failure_can_rollback",
+          "tests/test_serves_switch.py::test_switch_reference_plan_has_finite_timeouts_and_automatic_rollback",
+          "tests/test_serves_switch.py::test_switch_selects_rollback_direction_from_recipe",
+          "tests/test_serves_switch.py::test_uncertain_router_state_blocks_opposite_container_recovery"
+        ],
+        "timeout": [
+          "tests/test_serves_switch.py::test_switch_reference_plan_has_finite_timeouts_and_automatic_rollback"
+        ],
+        "windows": [
+          "tests/test_serves_switch.py::test_switch_lock_uses_windows_byte_range_lock",
+          "tests/test_serves_switch.py::test_switch_paths_and_dispatch_are_platform_neutral"
+        ]
+      },
+      "manifest_fingerprint": "sha256:1b78ade1fc8e3e037e198336276e45f9dbbd39046a1f1d1c23fa0aa20f5e0106",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "serves switch"
     },
     {
       "attestations": {},

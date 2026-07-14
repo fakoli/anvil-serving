@@ -4181,6 +4181,203 @@
         },
         {
           "flags": [
+            "--registry"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serve-recipe registry TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--recipe"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Recipe model id or unique basename.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "serves switch",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "model-serve",
+      "summary": "Switch a deployment role to an activation-ready recipe.",
+      "tombstone": null,
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/serves.md",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": true,
+      "handler": "anvil_serving.serves:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serve manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--rollback"
           ],
           "output_policy": null,
