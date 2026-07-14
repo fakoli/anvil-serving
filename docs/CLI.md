@@ -638,12 +638,39 @@ anvil-serving serves multiplex --port 8000 --ram-cap-gb 48
 anvil-serving init [--model PATH] [--catalog-dir DIR] [--gpu IDX|UUID] [--served-name NAME]
                    [--tier-id ID] [--port N] [--context N] [--engine sglang|vllm]
                    [--disable-thinking] [--bind ADDR|--expose-lan] [--out-dir DIR]
+anvil-serving init --home [--out-dir DIR]
 ```
 
 Generic onboarding (ADR-0003): detects GPUs and a local model (default: the biggest loadable entry
 from the `models sync` catalog in `--catalog-dir`, default `./model-library`), and writes a
 consistent `docker-compose.yml` + `serves.toml` + `router.toml` + `operator-topology.toml`
 bring-up, then prints the remaining manual steps (`serves up`, `serves status`, `router run`).
+
+**`--home`: scaffold the full operational config set.** For a multi-tier machine, `init --home`
+scaffolds the whole operational set into the operator config home (`~/.anvil-serving`, honoring
+`ANVIL_SERVING_HOME`; override with `--out-dir`) — the default search dir for `serves`/`router`
+— so a fresh machine runs `anvil-serving serves up --group voice` (or any group) with **zero
+hand-assembly**. The set is copied from the shipped reference instance
+(`examples/fakoli-dark/` + the reference voice manifest under `examples/voice/`) so it stays in
+lockstep, and comprises:
+
+- **Manifests:** `serves.toml` (with the group tags `voice` / `fast-only` / `heavy-only` /
+  `embedding` / `llm-stack` / `comfy`), `serves.voice.toml`, `serves.comfyui.toml`, and the
+  `voice.toml` voice manifest.
+- **Compose:** `docker-compose.yml`, `docker-compose.voice-audio.yml`, `docker-compose.comfyui.yml`.
+- **Topology + env:** `operator-topology.toml`, `.env.example`.
+- **Tailnet edge (ADR-0019):** `edge.toml` (the `/v1` + `/comfyui` route map for
+  `anvil-serving edge`).
+
+Host-specific values are written as **clearly-marked placeholders** — GPU UUIDs
+(`GPU-REPLACE-WITH-*-GPU-UUID`), the tailnet address (`REPLACE-WITH-YOUR-TAILNET-IP`) — and
+**secrets are never written** (it ships `.env.example`, not `.env`). Like single-file `init`,
+every file is backed up to a numbered `.anvil.bak.N` sibling before it is overwritten, so an
+existing operator file is never clobbered silently. The router config is chosen separately (see
+`configs/example*.toml`); `init --home` scaffolds the serve/edge surface, not a router profile.
+
+`init --home` requires the shipped `examples/` tree beside the install (run it from a source
+checkout); it fails loud rather than writing a partial set if that tree is absent.
 
 The generated topology is an offline-valid generic base. It uses stable `local-*` identifiers and
 `127.0.0.1`, and does not inspect or record the machine hostname, operating system, network,
@@ -655,6 +682,11 @@ declared explicitly.
 ```bash
 anvil-serving init --catalog-dir ./model-library --gpu 0
 anvil-serving topology validate --topology ./operator-topology.toml
+
+# Full operational set into ~/.anvil-serving, then bring up a group with no hand-assembly:
+anvil-serving init --home
+anvil-serving serves groups
+anvil-serving serves up --group voice
 ```
 
 ### `doctor`

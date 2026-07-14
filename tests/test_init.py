@@ -261,3 +261,110 @@ def test_cli_dispatches_init_and_refuses_removed_onboard(tmp_path, monkeypatch, 
     assert os.path.isfile(out1 / "router.toml")
     assert cli.main(["onboard", "--model", "/w/model"]) == 2
     assert "was removed; use `init`" in capsys.readouterr().err
+
+
+# ---- init --home: full operational config-set scaffold ---------------------------
+
+# The reference-instance host values that MUST NOT ride onto a fresh machine.
+_REAL_HOST_VALUES = (
+    "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+    "100.87.34.66",
+)
+_EXPECTED_HOME_FILES = {
+    "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
+    "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.comfyui.yml",
+    "operator-topology.toml", ".env.example", "voice.toml", "edge.toml",
+}
+
+
+def test_scaffold_home_writes_the_full_set(tmp_path):
+    result = init.scaffold_home(out_dir=str(tmp_path))
+    written = {os.path.basename(p) for p in result["written"]}
+    assert written == _EXPECTED_HOME_FILES
+    for name in _EXPECTED_HOME_FILES:
+        assert os.path.isfile(tmp_path / name), name
+
+
+def test_scaffold_home_group_tags_resolve(tmp_path):
+    init.scaffold_home(out_dir=str(tmp_path))
+    serves_set = serves.load_manifest_set(str(tmp_path / "serves.toml"))
+    summary = serves.groups_summary(serves_set)
+    groups = {row["group"] for row in summary["groups"]}
+    # The full operational group vocabulary must resolve from the scaffold alone.
+    assert {"voice", "fast-only", "heavy-only", "embedding", "llm-stack", "comfy"} <= groups
+    # `serves up --group voice` must resolve the STT/TTS serves with zero editing.
+    voice_members = serves.resolve_group(serves_set, "voice")
+    assert {s["name"] for s in voice_members} == {"stt", "tts"}
+
+
+def test_scaffold_home_writes_placeholders_not_real_host_values(tmp_path):
+    init.scaffold_home(out_dir=str(tmp_path))
+    for name in _EXPECTED_HOME_FILES:
+        text = (tmp_path / name).read_text(encoding="utf-8")
+        for real in _REAL_HOST_VALUES:
+            assert real not in text, f"{name} leaked reference host value {real}"
+    # The placeholders the operator is told to edit are actually present.
+    compose = (tmp_path / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "GPU-REPLACE-WITH-HEAVY-GPU-UUID" in compose
+    assert "GPU-REPLACE-WITH-FAST-GPU-UUID" in compose
+
+
+def test_scaffold_home_never_writes_secrets_only_env_example(tmp_path):
+    init.scaffold_home(out_dir=str(tmp_path))
+    # Ships the template, never a populated `.env`; and the template holds no
+    # filled-in secret values (keys present, values empty).
+    assert not os.path.exists(tmp_path / ".env")
+    env = (tmp_path / ".env.example").read_text(encoding="utf-8")
+    for line in env.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        assert value.strip() == "", f".env.example ships a non-empty secret: {line}"
+
+
+def test_scaffold_home_backs_up_before_overwrite(tmp_path):
+    # Pre-place an operator-edited file; the scaffold must back it up, not clobber.
+    (tmp_path / "serves.toml").write_text("# operator hand edits\n", encoding="utf-8")
+    result = init.scaffold_home(out_dir=str(tmp_path))
+    backed = {os.path.basename(p) for p, _ in result["backed_up"]}
+    assert "serves.toml" in backed
+    bak = tmp_path / "serves.toml.anvil.bak.1"
+    assert bak.is_file()
+    assert bak.read_text(encoding="utf-8") == "# operator hand edits\n"
+    # Second run stacks a new numbered backup rather than overwriting bak.1.
+    init.scaffold_home(out_dir=str(tmp_path))
+    assert (tmp_path / "serves.toml.anvil.bak.2").is_file()
+
+
+def test_scaffold_home_edge_config_parses_and_matches_canonical_routes(tmp_path):
+    from anvil_serving import edge
+    init.scaffold_home(out_dir=str(tmp_path))
+    cfg = edge.load_config(str(tmp_path / "edge.toml"))
+    mounts = {route.mount for route in cfg.routes}
+    assert mounts == {mount for mount, _ in edge.DEFAULT_ROUTES}
+
+
+def test_scaffold_home_is_idempotent_no_backup_on_first_run(tmp_path):
+    result = init.scaffold_home(out_dir=str(tmp_path))
+    assert result["backed_up"] == []  # clean target: nothing to back up
+
+
+def test_init_cli_home_writes_set(tmp_path):
+    rc = init.main(["--home", "--out-dir", str(tmp_path)])
+    assert rc == 0
+    assert os.path.isfile(tmp_path / "serves.toml")
+    assert os.path.isfile(tmp_path / "edge.toml")
+
+
+def test_init_home_missing_examples_fails_loud(tmp_path, monkeypatch):
+    # A wheel-style install without the shipped examples tree must fail loud,
+    # never write a partial set.
+    monkeypatch.setattr(
+        init, "_HOME_SET",
+        (("serves.toml", str(tmp_path / "absent" / "serves.toml")),))
+    with pytest.raises(init.InitError) as exc:
+        init.scaffold_home(out_dir=str(tmp_path / "out"))
+    assert "reference examples" in str(exc.value)
+    assert not os.path.exists(tmp_path / "out")
