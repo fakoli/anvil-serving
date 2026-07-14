@@ -17,6 +17,16 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **Model-serve commands now share one reviewed, task-oriented help system.** Every
+  `serves` leaf presents exact usage, concrete examples, configuration precedence,
+  behavior and safety notes, local arguments, global options, and its owning reference
+  page in a width-bounded layout. Heavy model selection is the direct
+  `serves switch heavy MODEL` preview/apply flow; `serves rm` and `serves adopt` now use
+  only the canonical `--confirm` spelling, with explicit migration errors for `--yes`.
+  Command examples and guidance are versioned in the machine manifest, parser-tested,
+  and ratcheted in the exhaustive per-leaf UX audit; deterministic local merge-gate
+  routing now mirrors the repository's CI and strict documentation checks.
+
 - **Evaluation is split into explicit capacity and quality workflows.**
   `eval benchmark capacity` measures endpoint performance, while `eval benchmark quality`
   produces repeated protocol-v3 correctness evidence. Model-family reasoning controls fail closed
