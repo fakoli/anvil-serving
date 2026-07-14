@@ -38,3 +38,4 @@ people and the chat logs.
 | [0016](0016-runtime-tier-readiness.md) | Runtime tier readiness excludes stopped serves without config rewrites | Accepted |
 | [0017](0017-gpu-residency-reservations.md) | GPU residency reservations: declarative VRAM ledger enforced by serve lifecycle verbs | Accepted |
 | [0018](0018-router-transition-safety.md) | Router transition safety for slow single-workstation model swaps | Accepted |
+| [0019](0019-anvil-serving-owns-the-tailnet-edge.md) | anvil-serving owns the tailnet edge: a `tailscale serve` path-router (`/v1` → router, `/comfyui`) in front of the unchanged router | Accepted |

@@ -67,6 +67,7 @@ _HANDLER_PROGS = {
     "anvil_serving.controller": "anvil-serving controller",
     "anvil_serving.collectors": "anvil-serving collectors",
     "anvil_serving.doctor": "anvil-serving doctor",
+    "anvil_serving.edge": "anvil-serving edge",
     "anvil_serving.eval": "anvil-serving eval",
     "anvil_serving.external_benchmarks.cli": "anvil-serving eval benchmark external",
     "anvil_serving.gpus": "anvil-serving host gpus",
