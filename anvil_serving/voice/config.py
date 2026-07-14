@@ -53,6 +53,7 @@ except ModuleNotFoundError:  # pragma: no cover - guarded by requires-python >=3
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_CONFIG = os.path.join(REPO_ROOT, "examples", "voice", "voice.example.toml")
 CONFIG_HOME_CONFIG = "~/.anvil-serving/voice.toml"
+MAX_MANIFEST_BYTES = 1024 * 1024
 
 _ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 # Q2 hardening: `realtime_token` is listed explicitly (not just `token`) --
@@ -324,9 +325,17 @@ def load_raw_manifest(path: str | None = None) -> dict:
     config_path = _resolve_config_path(path)
     try:
         with open(config_path, "rb") as f:
-            data = tomllib.load(f)
+            payload = f.read(MAX_MANIFEST_BYTES + 1)
+        if len(payload) > MAX_MANIFEST_BYTES:
+            raise ConfigError(
+                "voice manifest exceeds %d bytes: %s"
+                % (MAX_MANIFEST_BYTES, config_path)
+            )
+        data = tomllib.loads(payload.decode("utf-8"))
     except FileNotFoundError:
         raise ConfigError("config not found: %s" % config_path)
+    except UnicodeDecodeError as exc:
+        raise ConfigError("voice manifest is not valid UTF-8: %s" % config_path) from exc
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError("cannot parse %s: %s" % (config_path, exc))
     if isinstance(data, dict):

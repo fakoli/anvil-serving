@@ -43,6 +43,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -359,9 +360,19 @@ def _load_candidate_overlay(path: Optional[str]) -> Optional[dict]:
         raise voice_config.ConfigError("tomllib unavailable (need Python >= 3.11)")
     try:
         with open(path, "rb") as f:
-            return tomllib.load(f)
+            payload = f.read(voice_config.MAX_MANIFEST_BYTES + 1)
+        if len(payload) > voice_config.MAX_MANIFEST_BYTES:
+            raise voice_config.ConfigError(
+                "candidate overlay exceeds %d bytes: %s"
+                % (voice_config.MAX_MANIFEST_BYTES, path)
+            )
+        return tomllib.loads(payload.decode("utf-8"))
     except FileNotFoundError:
         raise voice_config.ConfigError("candidate overlay not found: %s" % path)
+    except UnicodeDecodeError as exc:
+        raise voice_config.ConfigError(
+            "candidate overlay is not valid UTF-8: %s" % path
+        ) from exc
     except tomllib.TOMLDecodeError as exc:
         raise voice_config.ConfigError("cannot parse candidate overlay %s: %s" % (path, exc))
 
@@ -459,9 +470,30 @@ def _write_benchmark_evidence(path: str, evidence: dict) -> str:
     parent = os.path.dirname(target)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    with open(target, "w", encoding="utf-8") as f:
-        f.write(json.dumps(evidence, indent=2, sort_keys=True))
-        f.write("\n")
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            dir=parent or ".",
+            prefix=".%s." % os.path.basename(target),
+            suffix=".tmp",
+            delete=False,
+        ) as f:
+            temporary = f.name
+            f.write(json.dumps(evidence, indent=2, sort_keys=True))
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, target)
+        temporary = None
+    finally:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
     return target
 
 
@@ -482,6 +514,7 @@ def cmd_up(args):
         "up",
         dry_run=getattr(args, "dry_run", False),
         targets=targets,
+        timeout_seconds=args.timeout_seconds,
     )
     _print_audio_lifecycle(result)
     return result["returncode"]
@@ -504,6 +537,7 @@ def cmd_down(args):
         "down",
         dry_run=getattr(args, "dry_run", False),
         targets=targets,
+        timeout_seconds=args.timeout_seconds,
     )
     _print_audio_lifecycle(result)
     return result["returncode"]
@@ -944,15 +978,23 @@ def cmd_benchmark(args):
         print(
             "voice benchmark: could not reach the configured STT/LLM/TTS serves (%s); "
             "bring them up with `anvil-serving voice audio up` first. Nothing was measured. "
-            "Active config: %s" % (exc, summary)
+            "Active config: %s" % (exc, summary),
+            file=sys.stderr,
         )
-        return 0
+        return 1
     if evidence_target:
         evidence = result.get("evidence") if isinstance(result, dict) else None
         if not isinstance(evidence, dict):
             print("voice benchmark: benchmark result did not include structured evidence", file=sys.stderr)
             return 1
-        _write_benchmark_evidence(evidence_target, evidence)
+        try:
+            _write_benchmark_evidence(evidence_target, evidence)
+        except (OSError, TypeError, ValueError) as exc:
+            print(
+                "voice benchmark: could not write evidence atomically (%s)" % exc,
+                file=sys.stderr,
+            )
+            return 1
         print("voice benchmark: evidence written %s" % evidence_target)
     print(voice_benchmark.to_json(result))
     return 0
@@ -1004,6 +1046,18 @@ def _bounded_ready_timeout(value: str) -> float:
         raise argparse.ArgumentTypeError("ready timeout must be a number")
     if not math.isfinite(timeout) or timeout < 0.1 or timeout > 60.0:
         raise argparse.ArgumentTypeError("ready timeout must be between 0.1 and 60 seconds")
+    return timeout
+
+
+def _bounded_operation_timeout(value: str) -> float:
+    try:
+        timeout = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("operation timeout must be a number")
+    if not math.isfinite(timeout) or timeout < 1.0 or timeout > 7200.0:
+        raise argparse.ArgumentTypeError(
+            "operation timeout must be between 1 and 7200 seconds"
+        )
     return timeout
 
 
@@ -1189,20 +1243,46 @@ def build_parser():
     sp = audio_sub.add_parser("up", help="bring up the Dark-owned STT/TTS serves")
     add_audio_resolution(sp)
     add_dry_run(sp)
+    sp.add_argument(
+        "--timeout-seconds",
+        type=_bounded_operation_timeout,
+        default=300.0,
+        metavar="SECONDS",
+        help="overall managed/native lifecycle deadline from 1 through 7200 seconds",
+    )
     sp.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
 
     sp = audio_sub.add_parser("down", help="tear down the Dark-owned STT/TTS serves")
     add_audio_resolution(sp)
     add_dry_run(sp)
+    sp.add_argument(
+        "--timeout-seconds",
+        type=_bounded_operation_timeout,
+        default=300.0,
+        metavar="SECONDS",
+        help="overall managed/native lifecycle deadline from 1 through 7200 seconds",
+    )
     sp.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
 
     sp = audio_sub.add_parser("status", help="show bounded STT/TTS lifecycle status")
     add_audio_resolution(sp)
-    sp.add_argument("--ready-timeout", type=_bounded_ready_timeout, default=3.0)
+    sp.add_argument(
+        "--ready-timeout",
+        type=_bounded_ready_timeout,
+        default=3.0,
+        metavar="SECONDS",
+        help="per-serve readiness deadline from 0.1 through 60 seconds",
+    )
 
     sp = audio_sub.add_parser("logs", help="show bounded STT/TTS lifecycle logs")
     add_audio_resolution(sp)
-    sp.add_argument("--tail", type=_bounded_tail, default=200)
+    sp.add_argument(
+        "--tail",
+        type=_bounded_tail,
+        default=200,
+        metavar="LINES",
+        help="maximum lines per serve, from 1 through 5000",
+    )
 
     proxy = sub.add_parser("proxy", help="manage the Mini-owned realtime proxy")
     proxy_sub = proxy.add_subparsers(
@@ -1259,7 +1339,13 @@ def build_parser():
     sp = proxy_sub.add_parser("logs", help="show bounded realtime proxy logs")
     add_proxy_resolution(sp)
     add_proxy_process_files(sp)
-    sp.add_argument("--tail", type=_bounded_tail, default=200)
+    sp.add_argument(
+        "--tail",
+        type=_bounded_tail,
+        default=200,
+        metavar="LINES",
+        help="maximum proxy log lines, from 1 through 5000",
+    )
 
     sp = sub.add_parser("benchmark", help="replay a recorded session end-to-end and report latency")
     add_config(sp)

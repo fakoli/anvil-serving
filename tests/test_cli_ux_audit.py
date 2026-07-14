@@ -46,6 +46,14 @@ def _failing_record(document, dimension):
     )
 
 
+def _dimension_with_failures(document):
+    return next(
+        dimension
+        for dimension in audit_cli_ux.DIMENSIONS
+        if document["maximum_failures"][dimension] > 0
+    )
+
+
 def test_checked_in_cli_ux_audit():
     manifest, audit = _documents()
 
@@ -71,21 +79,25 @@ def test_cli_ux_audit_rejects_missing_and_duplicate_leaves():
 def test_cli_ux_audit_rejects_failure_budget_regression():
     manifest, audit = _documents()
     regressed = deepcopy(audit)
-    regressed["maximum_failures"]["help"] -= 1
+    dimension = _dimension_with_failures(regressed)
+    regressed["maximum_failures"][dimension] -= 1
 
-    with pytest.raises(audit_cli_ux.AuditError, match="help failures increased"):
+    with pytest.raises(
+        audit_cli_ux.AuditError, match=rf"{dimension} failures increased"
+    ):
         audit_cli_ux.validate_audit(manifest, regressed)
 
 
 def test_cli_ux_audit_rejects_slack_after_an_improvement():
     manifest, audit = _documents()
     slack = deepcopy(audit)
-    record = _failing_record(slack, "help")
-    record["dimensions"]["help"] = "pass"
-    record["evidence"]["help"] = [
+    dimension = _dimension_with_failures(slack)
+    record = _failing_record(slack, dimension)
+    record["dimensions"][dimension] = "pass"
+    record["evidence"][dimension] = [
         "tests/test_cli.py::test_every_visible_command_path_exposes_help"
     ]
-    _attest(record, "help")
+    _attest(record, dimension)
 
     with pytest.raises(audit_cli_ux.AuditError, match="budget must equal current failures"):
         audit_cli_ux.validate_audit(manifest, slack)
@@ -94,25 +106,26 @@ def test_cli_ux_audit_rejects_slack_after_an_improvement():
 def test_cli_ux_audit_rejects_fabricated_or_unbound_pass_evidence():
     manifest, audit = _documents()
     fabricated = deepcopy(audit)
-    record = _failing_record(fabricated, "help")
-    record["dimensions"]["help"] = "pass"
-    fabricated["maximum_failures"]["help"] -= 1
-    record["evidence"]["help"] = [
+    dimension = _dimension_with_failures(fabricated)
+    record = _failing_record(fabricated, dimension)
+    record["dimensions"][dimension] = "pass"
+    fabricated["maximum_failures"][dimension] -= 1
+    record["evidence"][dimension] = [
         "tests/no_such_test.py::test_invented"
     ]
-    _attest(record, "help")
+    _attest(record, dimension)
 
     with pytest.raises(audit_cli_ux.AuditError, match="does not exist"):
         audit_cli_ux.validate_audit(manifest, fabricated)
 
     self_referential = deepcopy(audit)
-    record = _failing_record(self_referential, "help")
-    record["dimensions"]["help"] = "pass"
-    self_referential["maximum_failures"]["help"] -= 1
-    record["evidence"]["help"] = [
+    record = _failing_record(self_referential, dimension)
+    record["dimensions"][dimension] = "pass"
+    self_referential["maximum_failures"][dimension] -= 1
+    record["evidence"][dimension] = [
         "tests/test_cli_ux_audit.py::test_checked_in_cli_ux_audit"
     ]
-    _attest(record, "help")
+    _attest(record, dimension)
     with pytest.raises(audit_cli_ux.AuditError, match="invalid pytest node ID"):
         audit_cli_ux.validate_audit(manifest, self_referential)
 
@@ -122,11 +135,11 @@ def test_cli_ux_audit_rejects_fabricated_or_unbound_pass_evidence():
         "tests\\test_cli.py::test_every_visible_command_path_exposes_help",
     ):
         malformed = deepcopy(audit)
-        record = _failing_record(malformed, "help")
-        record["dimensions"]["help"] = "pass"
-        malformed["maximum_failures"]["help"] -= 1
-        record["evidence"]["help"] = [fake_node]
-        _attest(record, "help")
+        record = _failing_record(malformed, dimension)
+        record["dimensions"][dimension] = "pass"
+        malformed["maximum_failures"][dimension] -= 1
+        record["evidence"][dimension] = [fake_node]
+        _attest(record, dimension)
         with pytest.raises(audit_cli_ux.AuditError, match="invalid pytest node ID"):
             audit_cli_ux.validate_audit(manifest, malformed)
 
@@ -224,14 +237,15 @@ def test_cli_ux_audit_refresh_requires_reattestation_after_manifest_drift():
 def test_cli_ux_audit_attestation_binds_evidence_and_na_reason():
     manifest, audit = _documents()
     reviewed = deepcopy(audit)
-    record = _failing_record(reviewed, "help")
-    record["dimensions"]["help"] = "pass"
-    reviewed["maximum_failures"]["help"] -= 1
-    record["evidence"]["help"] = [
+    dimension = _dimension_with_failures(reviewed)
+    record = _failing_record(reviewed, dimension)
+    record["dimensions"][dimension] = "pass"
+    reviewed["maximum_failures"][dimension] -= 1
+    record["evidence"][dimension] = [
         "tests/test_cli.py::test_every_visible_command_path_exposes_help"
     ]
-    _attest(record, "help")
-    record["evidence"]["help"] = [
+    _attest(record, dimension)
+    record["evidence"][dimension] = [
         "tests/test_cli.py::test_python_version_guard_allows_supported_interpreter"
     ]
     with pytest.raises(audit_cli_ux.AuditError, match="decision, and evidence"):

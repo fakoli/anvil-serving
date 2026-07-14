@@ -14580,13 +14580,28 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run resolves both owners and renders each lifecycle action without starting a process or container.",
+        "Apply refuses split STT/TTS ownership, remote local execution, runtime mismatches, and model workloads on Mini unless topology explicitly permits an experiment."
+      ],
+      "configuration_notes": [
+        "--topology is required; --profile selects one manifest overlay such as dark-audio without changing the base manifest.",
+        "The overall lifecycle deadline defaults to 300 seconds and accepts values from 1 through 7200 seconds."
+      ],
       "coowned_resource_roles": [
         "tts-serve"
       ],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice audio up --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --dry-run",
+          "summary": "Preview Dark-owned STT and TTS lifecycle actions."
+        },
+        {
+          "invocation": "anvil-serving voice audio up --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --timeout-seconds 300 --confirm",
+          "summary": "Start the reviewed audio serves on their declared owner."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -14737,13 +14752,48 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Overall lifecycle deadline.",
+          "tombstone": null,
+          "value_name": "SECONDS"
         }
       ],
       "output_policy": "bounded",
       "path": "voice audio up",
       "recovery_capable": false,
       "remote_operation": {
-        "allowed_arguments": [],
+        "allowed_arguments": [
+          "config",
+          "profile",
+          "dry_run",
+          "timeout_seconds"
+        ],
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "up"
@@ -14762,13 +14812,28 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run performs ownership and configuration validation but executes no stop command.",
+        "Apply stops only manifest-declared managed or native serves and reports each result independently."
+      ],
+      "configuration_notes": [
+        "The selected topology and profile must resolve the same STT/TTS host and a runtime compatible with each lifecycle declaration.",
+        "The overall lifecycle deadline defaults to 300 seconds; external entries are reported and skipped because Anvil does not own them."
+      ],
       "coowned_resource_roles": [
         "tts-serve"
       ],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice audio down --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --dry-run",
+          "summary": "Preview audio shutdown on the declared model owner."
+        },
+        {
+          "invocation": "anvil-serving voice audio down --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --confirm",
+          "summary": "Stop only the reviewed STT and TTS serves."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -14919,13 +14984,48 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Overall lifecycle deadline.",
+          "tombstone": null,
+          "value_name": "SECONDS"
         }
       ],
       "output_policy": "bounded",
       "path": "voice audio down",
       "recovery_capable": false,
       "remote_operation": {
-        "allowed_arguments": [],
+        "allowed_arguments": [
+          "config",
+          "profile",
+          "dry_run",
+          "timeout_seconds"
+        ],
         "confirmed_arguments": {},
         "fixed_arguments": {
           "action": "down"
@@ -14944,13 +15044,28 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Status reads native PID state or managed-container readiness and returns nonzero when a required serve is not ready.",
+        "External endpoints are described from configuration; the command never starts or stops an audio serve."
+      ],
+      "configuration_notes": [
+        "--ready-timeout defaults to 3 seconds per managed serve and accepts values from 0.1 through 60 seconds.",
+        "Topology is required; target and transport selectors may narrow the declared co-owner without changing the manifest."
+      ],
       "coowned_resource_roles": [
         "tts-serve"
       ],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice audio status --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio",
+          "summary": "Inspect Dark-owned STT and TTS readiness."
+        },
+        {
+          "invocation": "anvil-serving voice audio status --topology ~/.anvil-serving/operator-topology.toml --target host:dark --ready-timeout 5 --json",
+          "summary": "Require bounded readiness from an explicit audio owner."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15081,6 +15196,36 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--ready-timeout"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Per-serve readiness deadline.",
+          "tombstone": null,
+          "value_name": "SECONDS"
         }
       ],
       "output_policy": "bounded",
@@ -15111,13 +15256,28 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Logs are read-only and report external lifecycle entries as having no Anvil-owned log stream.",
+        "Missing, timed-out, or unconfigured owned logs are explicit failures rather than unbounded waits."
+      ],
+      "configuration_notes": [
+        "--tail defaults to 200 lines per serve and accepts values from 1 through 5000.",
+        "Native file reads are capped at 1 MiB; managed logs use the selected manifest serve name."
+      ],
       "coowned_resource_roles": [
         "tts-serve"
       ],
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice audio logs --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio",
+          "summary": "Read the latest bounded logs for both audio serves."
+        },
+        {
+          "invocation": "anvil-serving voice audio logs --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --tail 50",
+          "summary": "Limit each owned audio log to 50 lines."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15248,6 +15408,36 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum lines per audio serve.",
+          "tombstone": null,
+          "value_name": "LINES"
         }
       ],
       "output_policy": "bounded",
@@ -15423,14 +15613,29 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Run probes the router, STT, and TTS endpoints before binding and refuses unreachable or unhealthy dependencies.",
+        "The authenticated WebSocket proxy stays in the foreground until interrupted, then closes the server and session pool cleanly."
+      ],
+      "configuration_notes": [
+        "The topology must resolve the realtime proxy locally on a native runtime; Mini-local STT/TTS proxy endpoints must point onward to Dark.",
+        "--candidate-overlay applies after --profile for this process only, and --candidate records an explicit identity in startup output."
+      ],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy",
+          "summary": "Run the Mini-owned realtime proxy in the foreground."
+        },
+        {
+          "invocation": "anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --candidate voice-candidate --candidate-overlay candidate.toml",
+          "summary": "Run one labeled candidate overlay without changing the manifest."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15560,6 +15765,46 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--candidate"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Candidate identity recorded in logs.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--candidate-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Candidate TOML overlay for this run.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "foreground",
@@ -15575,14 +15820,29 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run prints the exact owned-process plan without spawning a child or writing PID state.",
+        "Apply starts one background proxy and refuses stale, foreign, or mismatched ownership state."
+      ],
+      "configuration_notes": [
+        "The default owned records are ~/.anvil-serving/run/voice-proxy.pid and voice-proxy.log; override both together when isolating an instance.",
+        "Topology must resolve the proxy to a local native runtime and the manifest listener must match the declared proxy endpoint."
+      ],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice proxy up --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --dry-run",
+          "summary": "Preview the owned background proxy launch."
+        },
+        {
+          "invocation": "anvil-serving voice proxy up --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --confirm",
+          "summary": "Start the reviewed Mini proxy process."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15732,6 +15992,46 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--pid-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned proxy PID record.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--log-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded proxy process log.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -15764,14 +16064,29 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run resolves ownership and process identity without sending a signal or deleting a PID record.",
+        "Apply refuses a foreign or reused PID and treats an already-stopped owned instance as an explicit no-op."
+      ],
+      "configuration_notes": [
+        "--pid-file and --log-file must identify the same owned instance used by proxy up.",
+        "Topology and manifest listener identity are revalidated before process state is changed."
+      ],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice proxy down --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --dry-run",
+          "summary": "Preview shutdown of the owned proxy process."
+        },
+        {
+          "invocation": "anvil-serving voice proxy down --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --confirm",
+          "summary": "Stop the reviewed Mini proxy process."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15921,6 +16236,46 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--pid-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned proxy PID record.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--log-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded proxy process log.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -15953,14 +16308,29 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run renders both lifecycle phases without mutating process state.",
+        "Apply stops only a verified owned process, then launches the same resolved configuration and reports both outcomes."
+      ],
+      "configuration_notes": [
+        "Restart uses the same topology, profile, PID record, and bounded log path as proxy up and down.",
+        "Custom --pid-file and --log-file values isolate a named instance but do not weaken ownership validation."
+      ],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice proxy restart --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --dry-run",
+          "summary": "Preview the owned stop-and-start sequence."
+        },
+        {
+          "invocation": "anvil-serving voice proxy restart --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --confirm",
+          "summary": "Restart the reviewed Mini proxy instance."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -16110,6 +16480,46 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--pid-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned proxy PID record.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--log-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded proxy process log.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -16142,14 +16552,29 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Status is read-only and distinguishes running, stopped, stale, and foreign process records.",
+        "It never starts the proxy, signals a PID, probes model endpoints, or tails the log file."
+      ],
+      "configuration_notes": [
+        "Status resolves the proxy owner and defaults to the standard PID and log records under ~/.anvil-serving/run.",
+        "The selected manifest listener must match the topology endpoint before PID state is trusted."
+      ],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice proxy status --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy",
+          "summary": "Inspect the default owned proxy instance."
+        },
+        {
+          "invocation": "anvil-serving voice proxy status --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --pid-file ~/.anvil-serving/run/voice-proxy.pid --json",
+          "summary": "Read one explicit PID record as structured output."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -16279,6 +16704,46 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--pid-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned proxy PID record.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--log-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded proxy process log.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -16310,14 +16775,29 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Logs are read-only and return the requested tail rather than following an unbounded stream.",
+        "Missing or foreign owned-process state is reported explicitly without starting or stopping the proxy."
+      ],
+      "configuration_notes": [
+        "--tail defaults to 200 lines and accepts values from 1 through 5000.",
+        "--log-file selects an owned bounded log after topology and manifest identity are validated."
+      ],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice proxy logs --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy",
+          "summary": "Read the latest bounded proxy log."
+        },
+        {
+          "invocation": "anvil-serving voice proxy logs --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --tail 50",
+          "summary": "Limit proxy output to 50 lines."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -16447,6 +16927,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--pid-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned proxy PID record.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--log-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded proxy process log.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--tail"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum proxy log lines.",
+          "tombstone": null,
+          "value_name": "LINES"
         }
       ],
       "output_policy": "bounded",
@@ -16479,14 +17009,29 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run prints both exact routes without binding a socket or contacting Dark.",
+        "Apply forwards bytes in the foreground until interrupted; it never runs STT or TTS models on Mini."
+      ],
+      "configuration_notes": [
+        "Topology supplies Mini-local listen ports and Dark target addresses unless explicit STT/TTS host and port flags override them.",
+        "The listener is restricted to 127.0.0.1; localhost, wildcard targets, and public target IPs are rejected."
+      ],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice proxy bridge --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --dry-run",
+          "summary": "Render Mini-local STT/TTS forwarding routes."
+        },
+        {
+          "invocation": "anvil-serving voice proxy bridge --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy",
+          "summary": "Run the Mini-to-Dark TCP bridge in the foreground."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -16616,6 +17161,106 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--listen-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Mini-local listen address.",
+          "tombstone": null,
+          "value_name": "ADDRESS"
+        },
+        {
+          "flags": [
+            "--stt-listen-port"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Mini-local STT proxy port.",
+          "tombstone": null,
+          "value_name": "PORT"
+        },
+        {
+          "flags": [
+            "--stt-target-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Dark STT target host.",
+          "tombstone": null,
+          "value_name": "HOST"
+        },
+        {
+          "flags": [
+            "--stt-target-port"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Dark STT target port.",
+          "tombstone": null,
+          "value_name": "PORT"
+        },
+        {
+          "flags": [
+            "--tts-listen-port"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Mini-local TTS proxy port.",
+          "tombstone": null,
+          "value_name": "PORT"
+        },
+        {
+          "flags": [
+            "--tts-target-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Dark TTS target host.",
+          "tombstone": null,
+          "value_name": "HOST"
+        },
+        {
+          "flags": [
+            "--tts-target-port"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Dark TTS target port.",
+          "tombstone": null,
+          "value_name": "PORT"
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Render bridge routes without binding sockets.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "foreground",
@@ -16631,14 +17276,29 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Benchmark replays one end-to-end STT, router, and TTS session and prints latency, quality, and resolved identity.",
+        "Unreachable dependencies or missing structured evidence return nonzero and never create a successful measurement record."
+      ],
+      "configuration_notes": [
+        "Candidate overlay or loaded-candidate flags apply only to this run; --candidate-base-url and --candidate-model must be supplied together.",
+        "--evidence-out is restricted to the workspace or configured benchmark evidence root and never rewrites the voice manifest."
+      ],
       "coowned_resource_roles": [
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/cli/voice.md",
-      "examples": [],
+      "docs_anchor": "docs/cli/voice.md#benchmark",
+      "examples": [
+        {
+          "invocation": "anvil-serving voice benchmark --profile mini-dark-audio-proxy --candidate current-fast",
+          "summary": "Benchmark the resolved voice cascade with a labeled candidate."
+        },
+        {
+          "invocation": "anvil-serving voice benchmark --candidate-base-url http://127.0.0.1:30001/v1 --candidate-model MODEL --evidence-out artifacts/voice/candidate.json",
+          "summary": "Measure one already-loaded candidate and retain structured evidence."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -16768,6 +17428,86 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--candidate"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Candidate identity recorded in evidence.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--candidate-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Candidate TOML overlay for this run.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--candidate-base-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Already-loaded candidate API URL.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--candidate-model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Model served at the candidate URL.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--candidate-api-key-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Candidate bearer-token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--evidence-out"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Structured evidence JSON destination.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -16928,11 +17668,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "List validates the base manifest and prints declared profile names without resolving topology or contacting endpoints.",
+        "An empty catalog is reported explicitly and does not create or modify a profile."
+      ],
+      "configuration_notes": [
+        "--config defaults to ~/.anvil-serving/voice.toml when present, then the packaged example.",
+        "Profiles are named overlays under [voice.profiles.<name>] and contain no secret values."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#profiles",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice profiles list",
+          "summary": "List profiles from the resolved default voice manifest."
+        },
+        {
+          "invocation": "anvil-serving voice profiles list --config ~/.anvil-serving/voice.toml",
+          "summary": "List profiles from one explicit operator manifest."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17060,6 +17815,16 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -17073,11 +17838,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Validation is offline and checks the fully resolved profile schema and endpoint declarations.",
+        "It does not resolve deployment ownership, start a service, probe a URL, or promote a profile."
+      ],
+      "configuration_notes": [
+        "--profile is required and must name one overlay declared by the selected voice manifest.",
+        "The selected overlay is merged before validation; the base manifest on disk is never rewritten."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#profiles",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice profiles validate --profile dark-audio",
+          "summary": "Validate the Dark-owned audio profile."
+        },
+        {
+          "invocation": "anvil-serving voice profiles validate --config ~/.anvil-serving/voice.toml --profile mini-dark-audio-proxy",
+          "summary": "Validate the reference Mini proxy overlay in an operator manifest."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17205,6 +17985,26 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Voice manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named voice profile overlay.",
+          "tombstone": null,
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -17363,11 +18163,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Validation is offline and rejects inline secrets, credential-bearing URLs, unsafe container loopback, and malformed service values.",
+        "It does not contact Docker, Hugging Face, the router, a model endpoint, or the realtime proxy."
+      ],
+      "configuration_notes": [
+        "--config defaults to the packaged example when available; installed environments without it must pass a path.",
+        "The manifest references credentials by environment-variable name and requires explicit /v1 and /v1/realtime URLs."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice sidecar validate --config sidecar.toml",
+          "summary": "Validate one explicit sidecar manifest offline."
+        },
+        {
+          "invocation": "anvil-serving voice sidecar validate --config sidecar.toml --json",
+          "summary": "Return validation in the stable result envelope."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17495,6 +18310,16 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Sidecar manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -17508,11 +18333,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Command validates first, then prints shell-quoted argv without launching a process.",
+        "Machine output preserves argv boundaries so operators do not need to parse a rendered shell string."
+      ],
+      "configuration_notes": [
+        "--with-auth adds a $ENV_VAR token reference from api_key_env; it never reads or prints the token value.",
+        "The host command uses the manifest's same-host router URL, model ids, and streaming declaration."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice sidecar command --config sidecar.toml",
+          "summary": "Render a shell-safe host command."
+        },
+        {
+          "invocation": "anvil-serving voice sidecar command --config sidecar.toml --with-auth --json",
+          "summary": "Render argv with an environment-variable token reference."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17638,6 +18478,26 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Sidecar manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--with-auth"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include the referenced router-token argument.",
           "tombstone": null,
           "value_name": null
         }
@@ -17653,11 +18513,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Compose prints a loopback-published service skeleton and never invokes Docker or writes a compose file.",
+        "--with-auth emits only ${ENV_VAR} expansion and a matching environment reference, never a credential literal."
+      ],
+      "configuration_notes": [
+        "--service-name defaults to speech-to-speech and must be a valid Docker Compose service identifier.",
+        "Container routing uses container_base_url and rejects 127.0.0.1 because container loopback is not the host router."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving voice sidecar compose --config sidecar.toml",
+          "summary": "Render a loopback-bound Compose service skeleton."
+        },
+        {
+          "invocation": "anvil-serving voice sidecar compose --config sidecar.toml --service-name voice-sidecar --with-auth",
+          "summary": "Render a named service with an environment reference."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17783,6 +18658,36 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Sidecar manifest TOML.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--service-name"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Rendered Compose service name.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--with-auth"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include the referenced router-token argument.",
           "tombstone": null,
           "value_name": null
         }

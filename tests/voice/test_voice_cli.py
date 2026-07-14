@@ -147,6 +147,53 @@ def test_audio_lifecycle_rejects_invalid_timeout(timeout):
         voice_cli.execute_audio_lifecycle({}, "up", timeout_seconds=timeout)
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["audio", "up", "--timeout-seconds", "0"],
+        ["audio", "up", "--timeout-seconds", "nan"],
+        ["audio", "down", "--timeout-seconds", "7200.1"],
+    ],
+)
+def test_audio_lifecycle_cli_rejects_invalid_timeout(argv):
+    with pytest.raises(SystemExit) as exc:
+        voice_cli.build_parser().parse_args(argv)
+
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("action", ["up", "down"])
+def test_audio_lifecycle_cli_forwards_one_overall_timeout(action, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        voice_cli,
+        "_resolve_audio_operation",
+        lambda args: ({"voice": {"name": "test"}}, None, None, 0),
+    )
+    monkeypatch.setattr(voice_cli.voice_config, "describe", lambda data: "test")
+
+    def fake_execute(data, selected_action, **kwargs):
+        seen.update(kwargs)
+        return {
+            "action": selected_action,
+            "dry_run": kwargs["dry_run"],
+            "returncode": 0,
+            "serves": [],
+        }
+
+    monkeypatch.setattr(voice_cli, "execute_audio_lifecycle", fake_execute)
+
+    assert voice_cli.main(["audio", action, "--timeout-seconds", "12.5"]) == 0
+    assert seen["timeout_seconds"] == 12.5
+
+
+def test_audio_lifecycle_cli_defaults_to_five_minute_timeout():
+    parser = voice_cli.build_parser()
+
+    assert parser.parse_args(["audio", "up"]).timeout_seconds == 300.0
+    assert parser.parse_args(["audio", "down"]).timeout_seconds == 300.0
+
+
 def test_no_subcommand_errors(capsys):
     with pytest.raises(SystemExit) as exc:
         voice_cli.main([])
@@ -154,7 +201,15 @@ def test_no_subcommand_errors(capsys):
 
 
 @pytest.mark.parametrize("action", [["audio", "up"], ["audio", "down"], ["benchmark"]])
-def test_each_subcommand_validates_and_reports_ok(action, manifest_path, capsys):
+def test_each_subcommand_validates_and_reports_ok(
+    action, manifest_path, monkeypatch, capsys
+):
+    if action == ["benchmark"]:
+        monkeypatch.setattr(
+            voice_cli.voice_benchmark,
+            "run_benchmark_from_manifest",
+            lambda data, **kwargs: {"ok": True},
+        )
     argv = (
         _audio_command(action[1], "--config", manifest_path)
         if action[0] == "audio" else [*action, "--config", manifest_path]
@@ -1182,6 +1237,55 @@ model = "gemma-3n-e4b-it"
     assert "evidence written" in out
 
 
+def test_candidate_overlay_rejects_oversized_input(tmp_path):
+    oversized = tmp_path / "oversized-candidate.toml"
+    oversized.write_bytes(b"x" * (voice_cli.voice_config.MAX_MANIFEST_BYTES + 1))
+
+    with pytest.raises(voice_cli.voice_config.ConfigError, match="exceeds"):
+        voice_cli._load_candidate_overlay(str(oversized))
+
+
+def test_benchmark_evidence_write_is_atomic_on_replace_failure(tmp_path, monkeypatch):
+    evidence_root = tmp_path / "evidence-root"
+    evidence_root.mkdir()
+    target = evidence_root / "voice.json"
+    target.write_text('{"old": true}\n', encoding="utf-8")
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(evidence_root))
+    monkeypatch.setattr(
+        voice_cli.os,
+        "replace",
+        lambda source, destination: (_ for _ in ()).throw(OSError("replace failed")),
+    )
+
+    with pytest.raises(OSError, match="replace failed"):
+        voice_cli._write_benchmark_evidence(str(target), {"new": True})
+
+    assert target.read_text(encoding="utf-8") == '{"old": true}\n'
+    assert list(evidence_root.glob(".*.tmp")) == []
+
+
+def test_cmd_benchmark_reports_unserializable_evidence_without_traceback(
+    manifest_path, tmp_path, monkeypatch, capsys
+):
+    evidence_root = tmp_path / "evidence-root"
+    evidence_root.mkdir()
+    target = evidence_root / "voice.json"
+    monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(evidence_root))
+    monkeypatch.setattr(
+        voice_cli.voice_benchmark,
+        "run_benchmark_from_manifest",
+        lambda data, **kwargs: {"evidence": {"invalid": object()}},
+    )
+
+    rc = voice_cli.main(
+        ["benchmark", "--config", manifest_path, "--evidence-out", str(target)]
+    )
+
+    assert rc == 1
+    assert "could not write evidence atomically" in capsys.readouterr().err
+    assert not target.exists()
+
+
 def test_cmd_benchmark_targets_loaded_candidate_without_mutating_manifest(
     manifest_path, monkeypatch, capsys
 ):
@@ -1249,14 +1353,15 @@ def test_cmd_benchmark_missing_endpoint_error_includes_active_config(
 
     rc = voice_cli.main(["benchmark", "--config", manifest_path])
 
-    assert rc == 0
-    out = capsys.readouterr().out
-    assert "connection refused" in out
-    assert "profile=-" in out
-    assert "llm_model=chat" in out
-    assert "llm_base_url=http://127.0.0.1:8000/v1" in out
-    assert "stt_model=parakeet-tdt-0.6b-v3" in out
-    assert "tts_model=kokoro-82m" in out
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "connection refused" in err
+    assert "Nothing was measured" in err
+    assert "profile=-" in err
+    assert "llm_model=chat" in err
+    assert "llm_base_url=http://127.0.0.1:8000/v1" in err
+    assert "stt_model=parakeet-tdt-0.6b-v3" in err
+    assert "tts_model=kokoro-82m" in err
 
 
 def test_cmd_benchmark_help_lists_profile_candidate_overlay_and_evidence_options(capsys):
@@ -1571,7 +1676,13 @@ def test_voice_sidecar_nested_help_dispatches(capsys):
     rc = anvil_cli.main(["voice", "sidecar", "validate", "--help"])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "usage: anvil-serving voice sidecar validate" in out
+    assert out.startswith(
+        "anvil-serving voice sidecar validate\nValidate a sidecar manifest.\n"
+    )
+    assert "\nUsage:" in out
+    assert "\nExamples:" in out
+    assert "\nConfiguration:" in out
+    assert "\nBehavior:" in out
     assert "--config" in out
     assert "--topology" not in out
     assert "--json" in out
