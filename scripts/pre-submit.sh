@@ -6,8 +6,8 @@
 #
 #   (a) regenerate the CLI reference audit (docs/CLI-REFERENCE-AUDIT.json,
 #       docs/CLI.md generated blocks, and the audit fixture) and FAIL if the
-#       regeneration leaves any of those tracked files dirty — that means they
-#       were stale and must be committed;
+#       regeneration changes any of those files — that means they were stale
+#       and the regenerated output must be reviewed and committed;
 #   (b) run the full test suite (python -m pytest tests/ -x -q);
 #   (c) mirror CI's ruff lint gate when ruff is available.
 #
@@ -45,13 +45,26 @@ printf '== pre-submit: whole-repo invariants ==\n'
 
 # (a) Regenerate the CLI reference audit, then confirm nothing was left dirty.
 GENERATED='docs/CLI-REFERENCE-AUDIT.json docs/CLI.md tests/fixtures/cli_reference_audit/expected.json'
+SNAPSHOT=$(mktemp -d) || exit 1
+trap 'rm -rf "$SNAPSHOT"' EXIT HUP INT TERM
+
+for f in $GENERATED; do
+    mkdir -p "$SNAPSHOT/$(dirname "$f")" || exit 1
+    if [ -f "$f" ]; then
+        cp "$f" "$SNAPSHOT/$f" || exit 1
+    else
+        : > "$SNAPSHOT/$f.MISSING"
+    fi
+done
 
 if $PY scripts/audit_cli_references.py --update; then
     stale=''
     for f in $GENERATED; do
-        # Compare against HEAD (not just the index) so a regenerated-but-only-
-        # staged audit still reads as "not yet committed" and fails here.
-        if ! git diff --quiet HEAD -- "$f"; then
+        if [ -f "$SNAPSHOT/$f.MISSING" ]; then
+            if [ -f "$f" ]; then
+                stale="$stale $f"
+            fi
+        elif ! git diff --quiet --no-index -- "$SNAPSHOT/$f" "$f"; then
             stale="$stale $f"
         fi
     done

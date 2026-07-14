@@ -7,7 +7,7 @@
 > *Run local where it is measured safe. Verify risky local output. Keep cloud explicit.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/fakoli/anvil-serving/blob/main/LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.12.0-blue.svg)](https://github.com/fakoli/anvil-serving/blob/main/CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.13.0-blue.svg)](https://github.com/fakoli/anvil-serving/blob/main/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 anvil-serving sits between coding agents and local/cloud model tiers. It speaks Anthropic Messages

@@ -6,7 +6,7 @@ verification, configured cloud fallback, or clean exhaustion for gateway handoff
 `anvil-serving router run`, point your harness at `http://127.0.0.1:8000`, and you get *local where it is
 measured safe, explicit escalation where it is not*.
 
-The router is **shipped** on `main`. The source tree is versioned v0.12.0, while published tags and
+The router is **shipped** on `main`. The source tree is versioned v0.13.0, while published tags and
 package releases can lag `main`. Main includes the OpenClaw MCP/control-plane work:
 `anvil-serving mcp serve` for same-host stdio MCP and
 `anvil-serving controller serve` for split-host operation over a private, token-authenticated
