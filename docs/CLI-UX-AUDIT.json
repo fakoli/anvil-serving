@@ -2,24 +2,24 @@
   "enforcement": "ratchet",
   "manifest_schema_version": 3,
   "maximum_failures": {
-    "boundedness": 103,
-    "configuration": 77,
-    "confirmation": 96,
+    "boundedness": 95,
+    "configuration": 57,
+    "confirmation": 93,
     "docs": 49,
     "drift_protection": 102,
-    "errors": 95,
+    "errors": 83,
     "grammar": 49,
     "help": 49,
     "journaling": 103,
     "linux": 102,
     "macos": 102,
-    "output": 100,
+    "output": 81,
     "parser_tests": 49,
-    "preview": 96,
-    "remote_parity": 102,
-    "rollback": 102,
-    "timeout": 103,
-    "windows": 88
+    "preview": 90,
+    "remote_parity": 101,
+    "rollback": 99,
+    "timeout": 101,
+    "windows": 68
   },
   "records": [
     {
@@ -377,110 +377,157 @@
     },
     {
       "attestations": {
-        "docs": "sha256:d41a24b8f348f574739a85354649ea4a2f83dafcd86fc5c5b3dae09f95c8fc08",
-        "grammar": "sha256:0f7ff018aa3ce77f189dbb3c447a7a65e423ed2ccbb92643abc0baddba5cecb6",
-        "help": "sha256:9ac099b66b8b568bdd49cb3e13a4f2272772b6d30ad7d8421b3e89cda7b00093",
-        "parser_tests": "sha256:fee2c5eded71c7e4b1bafa671c6b0bc8031c45fefabb8ffdaa52bcd6c53c85f5"
+        "boundedness": "sha256:01963d3f45157e927407ef0587d39e7fed7bebf72eb37a3ab4f25950f9558b2c",
+        "configuration": "sha256:6004e8b81a039747645010537de1e5a798d7044e1867316fef72cfda9152f881",
+        "docs": "sha256:ded04a0b2845e43da18e5f81baec34c723e242d66eedac60ba15764cc94a2cf4",
+        "errors": "sha256:0c605a5cdab54505091fa2ec0b6903ec38cf8921ac867402889c4d0ddd0b7509",
+        "grammar": "sha256:f45457f197d34cd3f0bbfabab3d951bfcf13b9b88f0c861d14542345515ed231",
+        "help": "sha256:61b3cc2aa80531515e2b85a90dd652a4a075d8f596a08c8e0f5b37030b9b430f",
+        "output": "sha256:392f2aa9d0f405e6791473c62ea047c77b66aaa40f395af2c73e2549a3a5688d",
+        "parser_tests": "sha256:67e00f7e0d40dc3be30d07061c59d6369bcc5b00d49f5186379c460c21ee2954",
+        "preview": "sha256:9a371c7fc3c69ef20379bd4dc06d95dd3a3acb93837105a44cf3841a3ba3e47d",
+        "windows": "sha256:a5a424c9be67ad7e24bd5234faf955d5b355a30283b3a30162ef8258e39e1395"
       },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
-        "preview": "fail",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#benchmark",
       "evidence": {
+        "boundedness": [
+          "tests/test_benchmark.py::test_sampled_and_fixed_ctx_never_exceed_max_model_len_minus_headroom"
+        ],
+        "configuration": [
+          "tests/test_eval.py::test_resolve_endpoint_target_supports_manifest_and_direct_inputs",
+          "tests/test_eval.py::test_resolve_endpoint_target_rejects_incomplete_modes"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_benchmark.py::test_benchmark_rejects_invalid_output_before_live_work"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_benchmark.py::test_benchmark_artifact_json_out_writes_summary_and_metrics"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_benchmark.py::test_canonical_dry_runs_do_not_probe_or_write"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:540550f4b8a7c2c63ee219c5576a38c62af63dcbcb349a577223692dcf18abeb",
+      "manifest_fingerprint": "sha256:f1629317649fd50808f06072de278f7b799ec4779aaf43a610f690820ed55a3c",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark capacity"
     },
     {
       "attestations": {
-        "docs": "sha256:1564ca116f0c9a4da4e82babbd1bae08e85d3b8d0ce893a16929075527af350b",
-        "grammar": "sha256:c11bc6600f1147efaeff8c77422d324c65ee7e854c88aa6558335f123c3fb8f0",
-        "help": "sha256:ff08d4540652f149c58de8c92f6bc4f6059734db1a6ab3c23418bdc13dda3d36",
-        "parser_tests": "sha256:b3021369330d59822269aeceb3f80889cb75ff2d379b257d7bed4c92ba6cbf21"
+        "boundedness": "sha256:c3c17350382444351aa28f6a35ce530ced2045eae21359c41f66587a392eedad",
+        "configuration": "sha256:6da29fa7850137bf96087ce7b9675c3e6015212dde3477f589e37db0cf985709",
+        "docs": "sha256:b13e7142118e10da041431114d39eb0efa8b3c5a3e7c7df06261f2f4f7578cf1",
+        "errors": "sha256:6e696bc98cdfb8eebff973d5f6cf94b2d4cc8eccef0f58f63f019afebe148706",
+        "grammar": "sha256:4374be19a0f1fd5ba47403077353731cf5c8666c38535ab87f940464d70c42bc",
+        "help": "sha256:9ca9850b0fa6e424eb93e375f77e15bafa6ed542b77cb269b5c8a704b68372c0",
+        "output": "sha256:250bbccf5580a8e1d9bad2371301ef564b18fc41fbf28da53947b23d73ba5075",
+        "parser_tests": "sha256:40316692d44725257c30062ff5da7555819ed5326ad46e3e597a454e523e9362",
+        "windows": "sha256:df7c6194e61cdb440d3d8d9c1d6f27fd66f11c0876b54fc169b44aaf9ba74a4f"
       },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
       "evidence": {
+        "boundedness": [
+          "tests/test_benchmark_evidence.py::test_artifact_read_is_bounded"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_benchmark_evidence.py::test_compare_fails_closed_for_missing_material_fields"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_benchmark_evidence.py::test_compare_cli_fails_on_mismatch_unless_acknowledged"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:8b7a935c1b70c953d49374a56faf727d57bd32f85bdd40609ff3817e2075f6a7",
+      "manifest_fingerprint": "sha256:d67d64438c8eb23d7a5874dd4e39f056cf898566e4745991cecf771622ec54a7",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark evidence compare"
     },
     {
       "attestations": {
-        "docs": "sha256:897a6e880fb7976e99350db8f9f263049711659e3a008c5a504ba02c9b8a3b0e",
-        "grammar": "sha256:6dbc0ef81b4fcf39e0c9c1f9ff7999f837cd899641c9f906510f75251e089a86",
-        "help": "sha256:d2fe6f7f3f2990b219bdc4b14c6400ca8c807046db475647d6acf570d3f1ec81",
-        "parser_tests": "sha256:772ca1acd261473d9cf37e1a488d67c8ab3eebabe1f6d2a2ed9506b785979058"
+        "boundedness": "sha256:f61af7b499b89635680a2b2b6346f35967c711df0bf0ee537cc810c63ef533a6",
+        "configuration": "sha256:8beb5cbd093b0a924a9745f0a535182120cdff822b195815cdf9c045b0de9329",
+        "docs": "sha256:bda95016e7a2b76550f3fbc4238ad17f4f471aeaa48a081203a563342cdd45be",
+        "grammar": "sha256:04c98fc0d5c7d83b9d2ff15c5fe9cd505ebc1b20f52082b2a2fd3988b1b918ee",
+        "help": "sha256:0d3e5a1fe2c5734dd33eff4ee95eac4630b9b928778be878cb136863bc2f20f6",
+        "output": "sha256:9bcde17c8640a7b0ae5a3628f9f2518fb3b7f131d208580869ad02f566a35abc",
+        "parser_tests": "sha256:c81b46c1209afc73bf6b8eac9463978ffa9fade981d052a026e73e0609646675",
+        "windows": "sha256:c3053742abf7a688ea7132b00866b3fbadaaa638e2b8c67e2a7d58a84e0b5f3e"
       },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
@@ -490,141 +537,191 @@
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
       "evidence": {
+        "boundedness": [
+          "tests/test_benchmark_evidence.py::test_discovery_scan_cap_is_applied_before_collecting_entire_tree",
+          "tests/test_benchmark_evidence.py::test_artifact_read_is_bounded"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_benchmark_evidence.py::test_cli_evidence_list_emits_structured_json"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:92f1050f324653e0733a1350d25758eeae4d170f2e2a371b04480b92b5d5a00e",
+      "manifest_fingerprint": "sha256:614c3442842f0329f7e9016e987a6db32ddc06fdd4491a09fe728724770d1a9a",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark evidence list"
     },
     {
       "attestations": {
-        "docs": "sha256:2fed762c5eebdfb6a8558e4904f5f26d1f901277fb11f3232dbd3fc79404f3e7",
-        "grammar": "sha256:8b97672a0a6e403a40871aada80c512adb2d401945780fc32bbfd4bce647d353",
-        "help": "sha256:8d6f9ea2caab9490f9384306790e0df8a47b51158712542a69de976ba5397e35",
-        "parser_tests": "sha256:9819767d516c91c6f94cbfbe86320db8164d4cbcf09664ca419e793d1247e99e"
+        "boundedness": "sha256:0ade5d6336c367b53e60a1eb05672941afb395f2805713cd62a52836e51f2ca3",
+        "configuration": "sha256:e21be4cede914c4ec67db451ab457ca28970d1328f3cc2c0cb1696f9b22d44bf",
+        "docs": "sha256:0c24718e9a07e584c43efc1ef21c63acf4fe240cb303d6976d9b1fe3497c9850",
+        "errors": "sha256:e2968d72e6993b8b0a43d163859768e42dc9ba2d4f6ad6e6decb6147011095c0",
+        "grammar": "sha256:aaa5a5179b7bfd895a7cdf6b226aa8f79d83f71e02a676bed6e02e291eba85aa",
+        "help": "sha256:90feafd5b912f2c954c1063dca87c984e04ccfa2cce243c0de7d6637020f3443",
+        "output": "sha256:99b1c48dec041a87088c96918c7481ad2db5e63a27ffb4aeaabacb5f3b6ee577",
+        "parser_tests": "sha256:36eac76fc24b25b8204851780b1fc7bc4f03a8698a36c5316e9474d3a9e0a8f7",
+        "windows": "sha256:32d36695863d3d357d5b527cde930bddee6a3fa7799616ec1c9fa601f4ed1422"
       },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
       "evidence": {
+        "boundedness": [
+          "tests/test_benchmark_evidence.py::test_artifact_read_is_bounded"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_benchmark_evidence.py::test_unknown_thinking_mode_and_malformed_optional_metric_fail_closed"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_benchmark_evidence.py::test_summarize_capacity_artifact_is_prompt_free"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:4fbe80683cfc17e54f351fff7ed0aa98678231808a677129b16577baf5be542e",
+      "manifest_fingerprint": "sha256:0a096619a3993530e904b4338997025899a6a5d9dece707b22b650131e7c8913",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark evidence show"
     },
     {
       "attestations": {
-        "docs": "sha256:39eac28c42028f0024b301aa64a0bf4d1bdb932fe9bd695c8b5c73bd98f05f77",
-        "grammar": "sha256:489269b74903ea60eef74d94234ae25a6849dc4356d71501d55bc559bc9cec78",
-        "help": "sha256:7ba9448a462a5f6eff6fd589a5194da5fa0877e2e3a7c867c42ae28f01addd12",
-        "parser_tests": "sha256:3f29cb2279ffa2a222be43658531059b0b46dbdedb89625a430590c96d303381"
+        "configuration": "sha256:4a227cd17c97ee5b2cb40a50f4ec4aa1ef1c31f3895b95e6ab699efea535bf16",
+        "docs": "sha256:1e0155f3d48681a870974da6be7aed96840e915bb1cf085d866ac85d5320668a",
+        "errors": "sha256:4ddbeae468dd024aeb0c8304d940d9dffbbcdc99dc1532a81de94946188b6d86",
+        "grammar": "sha256:eeeddfaa00bdab0395a6555d62ef0ef69577801c3d0751415831411effcc367e",
+        "help": "sha256:d05b3bddccfa568d66fd7ed6ce5bd88d5a6a517b4fed24a63ca60ead23724935",
+        "output": "sha256:af40cf5783b328af6058980f187d0112504bf98aa281c09b8a4320c589f5647f",
+        "parser_tests": "sha256:b49da89b75b2918bb6b10691f31ab6380c3017588b6384eff58c82e3389d76da",
+        "windows": "sha256:bb523caf72c4505862149672c2a48e2376b94f8b120149999a8b7b683aac2efc"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_compare_reports_nearest_external_rows_when_no_exact_match"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_compare_command_finds_exact_match"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:63255a2ac35b469c026da892111368d6092e8797002ea21e66878b1aa9f79a3d",
+      "manifest_fingerprint": "sha256:b4a485acb847ee62466b6c9986fb34e1ab44e73705dd1af3e3ee489092346cdf",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external compare"
     },
     {
       "attestations": {
-        "docs": "sha256:44956c50882252fcc8bf894d6645bb619ba6ff499b55d1b168eee2abf1907ea6",
-        "grammar": "sha256:9a1fd17614333538b96996286334a65cc48d08a4900c083c18f2fecb1c26285d",
-        "help": "sha256:fcb8dfacba3e73151bda81388dcef0a433de9947da91dcbeb4d1581438ff44b7",
-        "parser_tests": "sha256:fa2f0e1c8f91f9262cd71293d7808bdaf4bfee06baee0c8d764558b31f58abb0"
+        "configuration": "sha256:74a59ad9f6ec90ed48b92b951bbe0499889d286172e88f01a91dc01834e4a57b",
+        "docs": "sha256:af5709bd4e34a28b73c44a9e3ac74dad9b3cae04c36cb6e7f411650c4cf0d4fc",
+        "grammar": "sha256:02700040171c8aea143ecb66e72d66d5eed8e6d99f62b853ca989410e6632ead",
+        "help": "sha256:ba86a72a4d07d720388696b465b304ae3f730b3cb6d27d3419f07ecbe8436eca",
+        "output": "sha256:22e585f9144dff05f347a76badad91b2d11097c35bac323ee1719caf9ffee2d9",
+        "parser_tests": "sha256:eea4df538d93e2d243684785fa6fac61027fffef3d7daa4dc7827b3c7fb1694f",
+        "rollback": "sha256:ed24775423ba6f640a353166d81dd88282e1cd4572d3e08ab4da9cd595b92cb6",
+        "windows": "sha256:f52bda34f8ad46b71437fac46a7d616f19bc295b3a84c1ead5fdc923c48643cc"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
@@ -634,45 +731,58 @@
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": "pass",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_external_export_is_atomic_and_backs_up_existing_target"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "rollback": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_external_export_is_atomic_and_backs_up_existing_target"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:638a7085886576a2cbb8d23b93599ed8cd5ea45495af287269dde01fdcc5841e",
+      "manifest_fingerprint": "sha256:3f36d5b26c5f826e70d8e03ddea087e0d0f6564c9787a5c51b8ffcd032b40c92",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external export"
     },
     {
       "attestations": {
-        "docs": "sha256:fddfe2f2ddd202a90c7129b8f0ff38ab7fe443a53137dcf4d19f6b08ce836d51",
-        "grammar": "sha256:eb355f0bb6e0be03dadd22a2fac13294e1bb375657351f857a63491daf3fad29",
-        "help": "sha256:3aeac9d4518428ccd7647972abf8f4d3a655c732841ee51cb41c018bd95f9bb0",
-        "parser_tests": "sha256:f15dd063836a4340acac5b80abdd9efa914608024970042cce36141c5dd3267f"
+        "configuration": "sha256:ce69be6de68cc384b7260ae35cd0982da44f4758fa25e16baa12928777596022",
+        "docs": "sha256:1747e111ace0ca96923fec9173807ec6df4b8dc67d155827fd1f45a850f801cb",
+        "grammar": "sha256:3f5064790c51d5c80c7aba559898cef3bb4ea0565556352fc0f7d16f58cee263",
+        "help": "sha256:c3eacf5ddb08699ffb65947ed0fb592df2874d63d3375c317caaf6ccfcc1857d",
+        "parser_tests": "sha256:668a5e7c69230ba7cf1058ae1b1d21df75b9be5602751b8ac32311f69993124a",
+        "windows": "sha256:962fb7c4f9059e5cbb99ae720198b88fc4fa0b9f10437f3ac2b09eda3a6dcc2d"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
@@ -688,87 +798,123 @@
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:8002cb1bca8346303ad87f86968141c7517471e033bac8a47531611c937cbfde",
+      "manifest_fingerprint": "sha256:c81c4b735d7c29950a799d9ff5bcb40b7e2e81eaf7fe61d0863db296e8a0d20d",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external fetch"
     },
     {
       "attestations": {
-        "docs": "sha256:7110c33b553edcf0fe904e6682f0ecb554d8a854a4e515f3b697139686eedc22",
-        "grammar": "sha256:2f8c446bfbab196663ead1b70385510cd40b07502875357bceb38139fadad970",
-        "help": "sha256:8edbc3c9d72b408e8e127bc717804dacaba55d8448a9915c942d4757df5bc6d2",
-        "parser_tests": "sha256:92155eb1db7a6a6ced369c5fe97551ba0835e9eda3bbd703cc9293c7cf8c1ebb"
+        "boundedness": "sha256:5228eea758b6d5d93eee24333e4d56e462dba1e2f63bc140df6052f7136666c9",
+        "configuration": "sha256:ab2368c5e2df9a823f6a58adf81aa636635cab31ed990737c0af33500420490a",
+        "confirmation": "sha256:b92845c82ef2cfe7edd6df0e5f2ab68e1de599bf2b9c848e66692b58fd2a6108",
+        "docs": "sha256:285d98bd7a20024092dd99120cf36d8bfcb6eb97f61649109cfc567601eeec4e",
+        "errors": "sha256:1d65d667649bbec4e1f7b3672a6440cfc94737cd8c1c48756086d6237a90fc8f",
+        "grammar": "sha256:64578339aebfee62ec954ac86f760f40e80fd322ff1dfbf4ef04b89614a1ee14",
+        "help": "sha256:0cd9a3739cdbebf755a4e8b2b69644a6fcdb2dc1989b0771064c6eadd844520a",
+        "output": "sha256:5fac94521ac13cd71744e4ebfc394efcec5bff46031fa78380a58e6a09e1fb9f",
+        "parser_tests": "sha256:117ac199a773c09ba19b16cc982c8a58b1d109933f6e3cd96daf010ab0c4c4b8",
+        "preview": "sha256:d859733dadec60c3cad2667a1b4cd136e6cccaadfc19cb1e43ba14d3e867b911",
+        "windows": "sha256:30c3207abde7f1aebcdd823f7b614309f2b1926cd7840261296be09da26194db"
       },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": "pass",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
-        "preview": "fail",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "boundedness": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_external_import_refuses_oversized_input_before_db_write"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
+        "confirmation": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_external_import_requires_confirmation_but_dry_run_never_writes"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_import_marks_snapshot_failed_when_insert_rows_raises",
+          "tests/external_benchmarks/test_external_benchmarks.py::test_external_import_refuses_oversized_input_before_db_write"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_import_mode_stores_raw_snapshot_and_sha256"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_external_import_requires_confirmation_but_dry_run_never_writes"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:88f3af77e8906fdbf6054df737e9e200175b88d765ed72bccddbff1aabdf3236",
+      "manifest_fingerprint": "sha256:755fbd1cc8d66f9fbb7ea48fa130a2823682c839cc2b16bc8fa557f574f30b03",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external import"
     },
     {
       "attestations": {
-        "docs": "sha256:7e25148e64f912256b3b742e7a349dc463cc74f93679cd6396f4df86bf1899f6",
-        "grammar": "sha256:e69b97e853fe08dbdd61f10e3aeaff2743f773f23c2ac2fbd750d1b19460e27a",
-        "help": "sha256:ee487d7bb60b39474f5c28414ee7f8ddd55d5fe9715002696b91dc52a565f5d3",
-        "parser_tests": "sha256:f1386ce664f86a0d1e5cceddce515ddee2af2382fbe19a18a50cc489da74b281"
+        "configuration": "sha256:6cdd6572aabd2886bc70fddc8c9baf74ed92d237ea4d631af0f2edd2aa0b7ed8",
+        "docs": "sha256:9172e1ed32e1f595f254e3e23f87da31c9ecada292e12fe9e36b83dc8c32898e",
+        "grammar": "sha256:3edc8c355d9432ebd717de7be40d242ff08f43ebce588ea453b82710bd3047a4",
+        "help": "sha256:360b58e3c53ab7ef53766c285b5299e7c67a4dd6bea9c8bc64f3f7986068b51d",
+        "output": "sha256:a9eaad6e6029e85518e1f1e8cc44a11494e5d6f85e0782fe2be846a707c54b87",
+        "parser_tests": "sha256:02a3eb2291e133696e02561261bee238114fc328475a055bad81c1718756d595",
+        "windows": "sha256:2a4d0c1c53f57e2b65b35d08c30d120c1779c97f43abb07b7840fbad7db864bd"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
@@ -778,45 +924,56 @@
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_schema_initialization_creates_expected_tables"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:ddbbcae405843d09c34189d9eb573541c0808dc52411d68f1974f8b643fb3bd2",
+      "manifest_fingerprint": "sha256:9d995ac46f3b4a3f41d7a4b41618a0a2e940adcb7723417719d79a642882b23a",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external init"
     },
     {
       "attestations": {
-        "docs": "sha256:ed4bf65e084880b1712ab675c3b4b8c805d16eb29af2fcc23bd679437cb1e5f1",
-        "grammar": "sha256:352daeef2c0a9834a84b526c5e3f1ee064ba68145e5b1cfc81b7532c286d0dd0",
-        "help": "sha256:5286f20c320a833c192b2f6db66a03f967f53090bf8feb0819c431748d886f55",
-        "parser_tests": "sha256:60146899b4e02aeefce96a697a02a1c0f785e68f40f6de2f6cb00555092d14c6"
+        "configuration": "sha256:6d330c9bcd56db766637f932cd87ac70a6a182a88dbb04b3539ba0df6b6b3556",
+        "docs": "sha256:4d004ea08b58aa13e0aa233154660636328f5dbb6a4818a367b82afdbf5e193e",
+        "grammar": "sha256:996cf201b6de577d781d28bede1808e520249fd72a1410625ec966a6153750d4",
+        "help": "sha256:e2f5396fab53dcf0d4b10de47e0b74c3060c4abedfd863ff02bf4833279a1ee8",
+        "output": "sha256:20e7938e24f3f15294f92949fe4536abfc4bd9e63c8b54397cafcd316a735e50",
+        "parser_tests": "sha256:30fda9d687e0056413592f8885fc13ac21f7f7b6e19d0a1e4b7efa27ff6eb844",
+        "windows": "sha256:b873068fe291b26b5e16acbb43ad629f98a648b333d6b849290713545b65f56b"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
@@ -826,93 +983,119 @@
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_rtx6kpro_list_filters_by_source_and_gpu"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:99f538b8337a9b8e797142fbbaedc356b391fdd98ad62cc72fb32461a414633c",
+      "manifest_fingerprint": "sha256:9d91a81befaa7cfe6e43f4e88652fefd953ff5f0eb08e9f726cbceeae6a1ba8d",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external list"
     },
     {
       "attestations": {
-        "docs": "sha256:76c6ba8e6d90082bf4e301206972094b2464637dcf7f929390f56e11aefbae1d",
-        "grammar": "sha256:0522543b4af4cabc6eb8abe15a37a713bfee350b03ca20acba53bac3716c1753",
-        "help": "sha256:a35b4672ec6482b735a7ddb88fe499ec19ffb64b7a9135f60340307ebaf65b69",
-        "parser_tests": "sha256:0549c77a1846272264a523c047afaed4b7ca09c9971aa9bdc8a48335794e632c"
+        "configuration": "sha256:29ef55d9384d3cd77347b933cc1e8f32a05a7d50013429556d8ac1a6ff238643",
+        "docs": "sha256:99541219c4295876d003abf0976e8a978edd752587c8e3888f038a61626656e0",
+        "errors": "sha256:c50598a4b5228583d1e998bebe7fede173e9d076dafe0d8240eef36a23249f1e",
+        "grammar": "sha256:9310fc3857c8db06b759c0e822f0be5603f435a8fb32a4df5947c58b0966adba",
+        "help": "sha256:552a92e22e142eabc64b92d40af737bbe6df22e9e00a15e025252a55798b3498",
+        "output": "sha256:8a538c056956be9748c166f3766ba7d2009e0935412c017408427895d6282cf3",
+        "parser_tests": "sha256:d203256354391808f61eb1c4f0d17c2d9d877f1d470280d4556dfd82f4dbab9f",
+        "windows": "sha256:9c47dfdb93c5e1cdd240b6559f6187514b89ce6f0eceb3d5972569b0c320f7e2"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/external_benchmarks/test_bakeoff_notebook.py::test_record_rejects_non_ranking_protocol_evidence"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_bakeoff_notebook.py::test_cli_add_list_render"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:7493fc3c294c1d58865471ce0bb029a576bbada860b8545498c0a73d451d7c28",
+      "manifest_fingerprint": "sha256:43c9c9a0f6eea19772da1cbd2574f6a799f9e28edb5c8d84170619c3a9e08e3d",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external notebook add"
     },
     {
       "attestations": {
-        "docs": "sha256:b665ec85b20165145c817c8ac6ab76577ad7dcf236dc59a9467cad2500c9a600",
-        "grammar": "sha256:99a78ac8483f80aa03a2d3b4c79e7848e7d2dd1a60e6bf580241f066b18f49a8",
-        "help": "sha256:52ef03fdb660f0fe4096477e14dc5e5c1190a85b319dd582140742067522a7a3",
-        "parser_tests": "sha256:f7b9f204f72e15161e2576bb1e2796283fa74bb1f12e95d0969fe097ff40ccef"
+        "configuration": "sha256:f18619fb1fc3d96936d1e7d1a47aa6562f19c43c18ff5cb28362b7331e7c2364",
+        "docs": "sha256:1c407d672a5b299266d072c4ac4d1c738275224417d015391091f8c6327f5f96",
+        "grammar": "sha256:930ba7dcf95ad482f2a33c6d38129e69f70cfa58ddf5b32ae05a6e602b7e5ece",
+        "help": "sha256:d9ef61b2e2b77cd6cd5f54c7b524e90bcccd0c4543d858ad77990c05cfbcdb2c",
+        "output": "sha256:0c75f23ccf201c5ea6cc23541b7032aba90997640524122894e9d22ca8a05f3c",
+        "parser_tests": "sha256:3b9d84fe12988d63e97291bec5180cd3ea807b3d1689c31c6b1f64782283d615",
+        "windows": "sha256:493857862ac9371cdbc37ab23087c04fb436ce343323901722e618bd946a746c"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
@@ -922,93 +1105,119 @@
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_bakeoff_notebook.py::test_cli_add_list_render"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:2c52da554b9ec5ab25cc2a4853c1fc40788940e4c4dab9894a7f02d11dc19a8a",
+      "manifest_fingerprint": "sha256:ed690e4f0d18d3be0fa336215736d976f7355e0f81bd09c4c6a0de39922ea2a0",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external notebook list"
     },
     {
       "attestations": {
-        "docs": "sha256:5cbe3825cc5a17ee734f06e5f49dac6de9162599c84eb41f17f6bde6be3cb011",
-        "grammar": "sha256:8424aaa2b8bc4702c21a07da56fdef114794ed2a42c3b715ab68dc209f48da91",
-        "help": "sha256:f6c3deffa7a31eee7edf981b56e52dac970e4c2daf1ce55398250c2f67439c54",
-        "parser_tests": "sha256:6b89c1bd54f5d6fa44f3d0b04cf2daacc8594e07daf59ab5f3df3205506adabf"
+        "configuration": "sha256:9040247a605437e53d1feb74e8496658d96b09780afd94da7190bdff18e4d1e6",
+        "docs": "sha256:a59c938b4f44cecd06f4a72fdbf08422cb21ead3a12cf829724d40e764ba325e",
+        "errors": "sha256:a2ab4a848633843f3f21517556318f7871d27d50096ca2a8ec07cd6b8ec57146",
+        "grammar": "sha256:4d46b148b12784ecaffebce1c39050fd262f32bafbb7392c73496e447d497557",
+        "help": "sha256:01072450fba14735a56fb9f102a2c43a780ebc4ecd29e6c853b4dfd4d93e2695",
+        "output": "sha256:c17dc83145313351b17576cfac315dfafa6f3a417d94a4161a9c4b5140497c2c",
+        "parser_tests": "sha256:bd2e831bc72d1a17fe8274c0bcf993a8ac48916b0029d500175f65206fdc904f",
+        "windows": "sha256:4ee570a2e72e55dab4fcb70ff709f7eac481ec2c77fa4304bfe69156c0dc13bb"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/external_benchmarks/test_bakeoff_notebook.py::test_score_run_is_total_on_bad_input"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_bakeoff_notebook.py::test_cli_add_list_render"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:c8d108c43abaa78f6515b75ca63f9928be7b31f838127dab8d29ad4f5a4a24d4",
+      "manifest_fingerprint": "sha256:93862830242ff4851fdb26eca8784948dfa9421735215c3d2d4cb25bb052b3e3",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external notebook render"
     },
     {
       "attestations": {
-        "docs": "sha256:56e844248974f3bd9d89cf675d3b1a8e4a28318cc6f38c22db89d560d7b86c97",
-        "grammar": "sha256:79bc78b52316b59c8fb16cee3ad4fa7a8c8cb0d0ed6d2907386cf655006fbd17",
-        "help": "sha256:0e911901ba5f12fc3494f1e1726752be4937e80c429f5bf6dea0bbb71c79f627",
-        "parser_tests": "sha256:46f6ef29d447196abdee28e2892d4496bb82d2286f1a9a71fbc8019d08ca4678"
+        "configuration": "sha256:0b63dd16251bb253f45187b4e25cf5fe7a2f9ff15086e3e22235dc01ca01c398",
+        "docs": "sha256:607dda03805d75e9c9c574cf5cf10f1fe84c124ce5b26f41d53177552c7c205a",
+        "grammar": "sha256:e5d397e2d0e69c3c2f45878fff3b2b8bc55c221fda389207fac237b803cc67a2",
+        "help": "sha256:03bdd2686927da2e8fa1ca2d6bcc324a9d7d2bc9dc9ed442e0612fc34529d7f9",
+        "output": "sha256:ec3fce79743ee722a393030ec5eee82cfddf678c0f139b23a22f9a76033f50b7",
+        "parser_tests": "sha256:9c33fadaddb8e1062d23a69fb6a0723ff384783da80b7b9a012af6c913228398",
+        "windows": "sha256:473b05509465eba00f887b5575c6e3226877ae61082c08b9b60bd73a26188024"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
@@ -1018,45 +1227,56 @@
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_report_command_emits_markdown_with_expected_columns"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:8ae97b0326615041ce54bc714dfde65081eb55217e01e6890fafb7583c8de13c",
+      "manifest_fingerprint": "sha256:212cdd7f6a6647011de9029f36ce8ce0d847259972cfd66deb125d636e783071",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external report"
     },
     {
       "attestations": {
-        "docs": "sha256:8babf5bac61c63c13786836cff1a58411a1d873e6895eecf1341e5b1b6155adb",
-        "grammar": "sha256:36c4a21691db6acc6bfebbfce5835b5f8ece56ce0ab23e25b1d8f17bc4e41a14",
-        "help": "sha256:bb6333acdd4f6c27d0011ece9928567f28f30bc2005899887b5b06ad0dbc46f9",
-        "parser_tests": "sha256:9c4c52c8515ca7e159d9285aad95401ac1564030c110806410d343704db1716b"
+        "configuration": "sha256:0f02bbb6afd53f91722bf6451445074bd933f663ac798f7bca0e3bdff39fb8c3",
+        "docs": "sha256:e978cd2a7ee6932e56bcc937f0682aa8cf9a4070a083f529afdde1bebe7932a2",
+        "grammar": "sha256:ae73ed13b8ec3c3297eb916a5fdde65a7570e973f43d3c43c4cbb71fa8a9dd77",
+        "help": "sha256:6dedf9ef184062aae3189b96803a37848698f4d75859fda991af80feb93d0960",
+        "output": "sha256:f2643617717dd83c8a608ce713b46f241ed2120d46205e8b4b0227121391a403",
+        "parser_tests": "sha256:49050fb97045ce79eafd4cd78c2895b9773f96a0bf07bfda02c8a47e610f57b4",
+        "windows": "sha256:4f748fb806405f3d785390877319aba55029803bf267d2fe9ebbc0d84cddddde"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
@@ -1066,271 +1286,422 @@
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_eval_configuration_notes_match_runtime_defaults"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/external_benchmarks/test_external_benchmarks.py::test_rtx6kpro_source_is_registered_and_cli_source_choice_is_visible"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:e181bed8e7aec028a4ff4ed0c5631fa2efa925b4c846cb6bb0a19bf1d35a40df",
+      "manifest_fingerprint": "sha256:36c0e78b459670b2ea74901857d93dfca037f6ad6a69eeb1e48d157da018499e",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external sources"
     },
     {
       "attestations": {
-        "docs": "sha256:15c55c94f6064413ea555a76b5ddaac0f2e8d43b8136ae3ea99a96e9ea725b63",
-        "grammar": "sha256:fc44fd59dd196b9221bd52dd4290d4f9cff4d73304aab7c30f84cacd9b48aca9",
-        "help": "sha256:e070fba69d0a2f4ab83a0cbc9098fdc3f7b298a79914a2b407c37ce627da34a5",
-        "parser_tests": "sha256:9dd0347294aab139f500923f34687ca23038f2a662ec0ce8b3f2665c9b54a434"
+        "boundedness": "sha256:7b416d8aef14c004b2fe09f945eb92eec6410c6faff46bf6f0e99fa4bf973936",
+        "configuration": "sha256:bb07edb5d143f08fb03fce2c6f8faaccfc4ebec251f448793a6264758cc58c9f",
+        "docs": "sha256:15b7da5feaa2483ed9598adf5f4aadbf54b8e8ed85030134fddf9fb3e6d74a39",
+        "errors": "sha256:1b6cc4fdfe765ba3f2320c08279af4268897be6021d1e8fd5bfcbc66178b00dd",
+        "grammar": "sha256:23739b78b8cc93e1d87a05fbaf054698447f850065c1e9fb89e7aae09e19d1ab",
+        "help": "sha256:e2c856694038a743e3eedb6678dfd7248482a39c8c706a4c8107cf0c22822dc2",
+        "output": "sha256:d93e15288ee28cc6387b5e230d52d024936bb033480029e772738226fe178e47",
+        "parser_tests": "sha256:5116162cfa19100d4e87265f5af2b2f0600bfa820315839dfd7db7097987ffd1",
+        "preview": "sha256:5653cb89b1976098efcef3e5c668e0d128a9baecd7a069b9aab8701730730257",
+        "windows": "sha256:bc918d75b237d814df07c3a82039e21a02163a3d30b8951736c4b15998255c15"
       },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
-        "preview": "fail",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md#benchmark",
       "evidence": {
+        "boundedness": [
+          "tests/test_benchmark.py::test_suite_file_rejects_resource_exhausting_budgets",
+          "tests/test_benchmark.py::test_cli_rejects_aggregate_quality_token_plan"
+        ],
+        "configuration": [
+          "tests/test_eval.py::test_resolve_endpoint_target_supports_manifest_and_direct_inputs",
+          "tests/test_eval.py::test_resolve_endpoint_target_rejects_incomplete_modes"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_benchmark.py::test_suite_file_rejects_malformed_specs",
+          "tests/test_benchmark.py::test_suite_file_malformed_spec_exits_before_any_request"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_benchmark.py::test_repaired_suite_repeats_and_retains_full_visible_answers"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_benchmark.py::test_canonical_dry_runs_do_not_probe_or_write"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:8611d5c72a63cbc0d8155a908ddb5d879484db65e58e226f61847676dea3b3b9",
+      "manifest_fingerprint": "sha256:9f7bd3570b0a41dd869b8678f7962f9377698a792412a7a41fa2b48ebe73e829",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark quality"
     },
     {
       "attestations": {
-        "docs": "sha256:fea4359281e1fb41a05ce44418de0e989de0a4e3c6a5bdb5c752004045fd494b",
-        "grammar": "sha256:2db3b273ae4d9414099c7cd545e97a3532dcdb28916bc2081b32eb85210455d6",
-        "help": "sha256:c59a4b19d2f4114d0bc2bfddb4accc1144732f8e0ea6676248838ad3974e2635",
-        "parser_tests": "sha256:a48160686ec8b9c35995724490bde96da1cd3ba1e8036cbecbea81454a005537"
+        "configuration": "sha256:d879de898daf83dfa2a3ac0e6b2d07ed206674202db057b9fa4ed635de8db5ab",
+        "docs": "sha256:631af6e501df97b350fe288158cad87936ae5b3f66550a6afb67e44e333c6091",
+        "errors": "sha256:437d1579fdbf2d603f9a8c073691ab90746b279030cad838bed53f69ad48289f",
+        "grammar": "sha256:be275d45b5f2053223efd995bc6b2b4b304d97928f387a3147c79ee5eed4a3ff",
+        "help": "sha256:467fac6e11ceb1ff2c733b5fa5c9fbdace33c66383cd11270bad4bf839313928",
+        "output": "sha256:d71450a442ba735b9587eeb971ee2a1f7a5c800c64ec8882d392cd3371219f94",
+        "parser_tests": "sha256:bb245f8845406ea30234b62557f140032ae5794650d0bd5d61452739225b2489",
+        "rollback": "sha256:defb190fc4b7ae20267465cc3ec983670609ea8e15cfc563a6ad8dbdd53f70b9",
+        "windows": "sha256:35ba72d2dafcad7e903b46867e99f1719f69dbddef745861e19bd5c448d9d52d"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": "pass",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md",
       "evidence": {
+        "configuration": [
+          "tests/test_eval.py::test_bootstrap_builds_replay_command"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/router/test_profile_bootstrap.py::test_unknown_schema_still_rejected"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/router/test_profile_bootstrap.py::test_profile_json_is_byte_stable"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "rollback": [
+          "tests/router/test_profile_bootstrap.py::test_atomic_profile_write_preserves_existing_target_on_replace_failure"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:6b39fe4708760c869d34796972b42b4c1ea7ca5ee4a15b6f85adfafd4fcf97b4",
+      "manifest_fingerprint": "sha256:6964237daa9150eeb2d0537ad2b0ffa373a37f74e341ce70f09d7c48f97be006",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval bootstrap"
     },
     {
       "attestations": {
-        "docs": "sha256:569780a0cccad2dc27cd84b092bb22a5ba8a1b33cff69754eb0c408f17fe2913",
-        "grammar": "sha256:3623a9ab5b392250e2beb56cb9aabe3949acb5eb5f1aac8bc2a61ab539c62608",
-        "help": "sha256:5e9c5f1b905a7d982cb7533ac3ebae76630c1fe5e50158efb967c2b95fb1ab35",
-        "parser_tests": "sha256:37c6ae02280a7906ee547bb06461293aa12224a917e92af98a6ae5a1d626bc3f"
+        "configuration": "sha256:4467ac9adc7beed1837fa017755726721c6a34bcf8e79380c5c9a5948a7088c0",
+        "confirmation": "sha256:944ea21d370b0bc9f2e394da2ffe7bfb5a5203d19bfc05d244d487bdabd0ede6",
+        "docs": "sha256:a2703b9a9a86ab6dec697a55f2437804ab7ca7cff14ad79695035e626be6a402",
+        "errors": "sha256:417d31d0eb7c0cde0383479f05608a78847fe8add6fc20607f4069eb9b5ab226",
+        "grammar": "sha256:eb4cc119d22d25d1928db5cc753f9bee88fa6219776c6f2d2765a715b624bc47",
+        "help": "sha256:6b5ccb16e79650afe5e279b9e5bad629a5832bf2c84646ed2f2af9ada6a0ea26",
+        "output": "sha256:7944b6fef6f6c2f8c5c50448bc36da7aaa5130238f8d07e398a781f3f20c2460",
+        "parser_tests": "sha256:ca0bd96b064267e67aa14446fb9c5e7078d72f56399b5c9cee7423072d915592",
+        "preview": "sha256:6ec50561f57a1280547a85676e6420f8de8dbced10baf33429d77fd2677bf9d4",
+        "windows": "sha256:cefeb314244d8e1eae469a8c717afff5290b7c4c7f27cae18c831f6edbac21e0"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
-        "preview": "fail",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md",
       "evidence": {
+        "configuration": [
+          "tests/test_cli.py::test_calibrate_requires_a_config_selector",
+          "tests/test_cli.py::test_calibrate_rejects_endpoint_that_differs_from_config"
+        ],
+        "confirmation": [
+          "tests/test_cli.py::test_calibrate_refuses_without_confirmation"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_cli.py::test_calibrate_malformed_endpoint_is_a_clean_error",
+          "tests/test_cli.py::test_calibrate_rejects_missing_out_dir_before_running_batch"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_cli.py::test_calibrate_wires_run_live_and_prints_promote"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_cli.py::test_calibrate_dry_run_never_calls_tiers_judge_or_writer"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:a7652170a326fa9969081fd7372f2faa5e99fccd65ef7b811106e8b904bf7ee7",
+      "manifest_fingerprint": "sha256:3345eb673b716a3ae9e736b81750c6f67f9cbf76ec04687fb8dd11d67ce0dcfa",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval calibrate"
     },
     {
       "attestations": {
-        "docs": "sha256:d2069cf4b2c6f8f4e9003525991eb97808e28b722aa7181192e61904c0709bb8",
-        "grammar": "sha256:0b63fad2cbf15481284abc6051c41f30a5acb94f460aa78770533a099f943c4d",
-        "help": "sha256:8588341cc94f9152174b8d09e58127284bcaa93e6c6ab6b3f5b0d722d82d43bd",
-        "parser_tests": "sha256:45bf0cfba058821019919a176a0322fcd46a28446af078f7a64b6ae20e62e433"
+        "boundedness": "sha256:d67b89b774effc1dbc9cefc30d104db8f4a670ea861fe4c477bab031c0b6a2f0",
+        "configuration": "sha256:28fc064a9403cab977fb73df3643e61f8fd20169d2132204400424a153f520dc",
+        "confirmation": "sha256:9c83d6738cceb427446cf9e43d3010e4d6b49dc9d3a0f7f3f236cf07d63bef7d",
+        "docs": "sha256:0c12b16c6947d80d34b85dfd25ef52af641a126c3f8c8ff12b4d3e22045fde5f",
+        "errors": "sha256:81c47716da726bff89699da12ee13477f64ab812f20b40e5bcb4be75760daf0b",
+        "grammar": "sha256:1479e326e9e40d0009a0e52c70e3583f08388ba0c5b949ca7f5e1664e4ee398c",
+        "help": "sha256:cafcf3f2aaae24f1fc8bdd1fb71f76d1a52ccd0ff44ea5ffde58ca2c8e59288a",
+        "output": "sha256:064ec9bc044fbc2a394271b22808d8172ca1a8657f0f8151cc0ad25ce746baaf",
+        "parser_tests": "sha256:73ee3ecf35bdee825c7e0668bae9803a824d70aa8725db429d981922c0c761cc",
+        "preview": "sha256:a352e9ac7f7ffcb1d9ea38177faba59baebd95dcfad34dea7a61742fcb55800c",
+        "remote_parity": "sha256:88bc2ba622df7bc54d05dac34f92cfe40bf6cda383d6445fa4a5c4dbb1a561dd",
+        "timeout": "sha256:d1f52634f48644c9ff58e4c0732bfeedde9f3869a8cf14a535bcb87ea58d8bed",
+        "windows": "sha256:446d1f9e0fe159cb631ad84c4499e4a5b1201e09998db1a6d119d38444a20235"
       },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": "pass",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
-        "preview": "fail",
-        "remote_parity": "fail",
+        "preview": "pass",
+        "remote_parity": "pass",
         "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "timeout": "pass",
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md",
       "evidence": {
+        "boundedness": [
+          "tests/test_preflight.py::test_preflight_rejects_unsafe_bounds"
+        ],
+        "configuration": [
+          "tests/test_eval.py::test_resolve_endpoint_target_supports_manifest_and_direct_inputs",
+          "tests/test_eval.py::test_resolve_endpoint_target_rejects_incomplete_modes"
+        ],
+        "confirmation": [
+          "tests/test_cli.py::test_cli_remote_eval_dispatches_confirmed_typed_probe"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_preflight.py::test_preflight_rejects_invalid_output_before_live_probe",
+          "tests/test_preflight.py::test_preflight_rejects_wrong_model_family_control"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_preflight.py::test_preflight_main_records_model_controls_and_budget",
+          "tests/test_preflight.py::test_atomic_preflight_write_preserves_existing_target_on_replace_failure"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_preflight.py::test_preflight_dry_run_never_requests_or_writes"
+        ],
+        "remote_parity": [
+          "tests/test_cli.py::test_cli_remote_eval_dispatches_confirmed_typed_probe",
+          "tests/test_mcp_preflight_parity.py::test_preflight_probe_schema_matches_local_bounds_and_controls"
+        ],
+        "timeout": [
+          "tests/test_preflight.py::test_preflight_rejects_unsafe_bounds",
+          "tests/test_cli.py::test_remote_transport_timeout_covers_declared_workload_deadline"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:75f4d37687e574f249bda383f63d03f2a3dfd67fbdb986d767c21e7e318e7907",
+      "manifest_fingerprint": "sha256:58da69b0c21a3fde2b2a4588f196380770655050b29473f1e0fafa646bb4d57b",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval preflight"
     },
     {
       "attestations": {
-        "docs": "sha256:2d006100257baab46e0896c37be0204eaf7f6adc2ed9f273284d4c8a4c0b7cda",
-        "grammar": "sha256:1130ecb7d899a71949d812c5256f203f6bbbdb050b95bfefb4b7ae6736caf24d",
-        "help": "sha256:cb430520aa1d9d427d269c9d5761aba6e9ed3532ee531ea2ba79d72ccb4f2d98",
-        "parser_tests": "sha256:16a9afcb7d893038893eb4834cd01046049bb7c23f7e7a8a5f3e7c1129251e55"
+        "boundedness": "sha256:6ad9c25f46213d2eb7c8d8c609cf0b56bf3c57b63079155c0c231b62b3515142",
+        "configuration": "sha256:f673fdd2be3214153cfb17130f439a8e9e731d12b13ba4906ff509c006d46fc6",
+        "docs": "sha256:3f5febe14bd524debe2d108ff80a6ce10b797a557340a98efb4d541f394be175",
+        "errors": "sha256:27df8f9f72f6b2be9415e667cd3dd203a469d459350b523d8121be96082c6b66",
+        "grammar": "sha256:ab6c3829f9219ca65e3da1aea2342bac7a6e4dba25c33d7a2497b16b2f9b4339",
+        "help": "sha256:9e3644cb4a1090644ef6c5958cc99c158e4841427e83d49dcd3c3884b3ff776c",
+        "output": "sha256:006f5b8e44d6c33535f892e46052ef4e15787044087d7ba99b46d050896b965f",
+        "parser_tests": "sha256:af8ab257b7644a9a7ab457ecddc69105a624548b1b9b833d9ceed51ea437bc14",
+        "preview": "sha256:99aba6af0844ecaf9e01529909340c6f7e368b8b9e322405f6c1b02274b3d80b",
+        "rollback": "sha256:a735aec7c199dae2f3ac3d15c6e94a54db7e6a33faeffced763f154e0f4ef161",
+        "timeout": "sha256:4cfa12076765b17b0d280e0c261555aec113ab3f06c09c70e6732cf63e919158",
+        "windows": "sha256:38645bfece29951c8251fb6b814299fecc3cd2c26e4aa9a22fdb903804e6d972"
       },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
         "confirmation": "fail",
         "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
+        "errors": "pass",
         "grammar": "pass",
         "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
+        "output": "pass",
         "parser_tests": "pass",
-        "preview": "fail",
+        "preview": "pass",
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": "pass",
+        "timeout": "pass",
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/eval.md",
       "evidence": {
+        "boundedness": [
+          "tests/test_profile.py::test_usage_log_discovery_rejects_oversized_file",
+          "tests/test_profile.py::test_usage_log_parser_rejects_oversized_line"
+        ],
+        "configuration": [
+          "tests/test_profile.py::test_usage_dry_run_resolves_paths_without_spawning"
+        ],
         "docs": [
-          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
-          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+          "tests/test_cli_help_ux.py::test_eval_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_profile.py::test_usage_child_failure_preserves_existing_pair_and_cleans_staging",
+          "tests/test_profile.py::test_usage_log_discovery_fails_closed_on_unreadable_directory"
         ],
         "grammar": [
-          "tests/test_command_tree.py::test_declared_tree_is_valid"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
         ],
         "help": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_profile.py::test_usage_passes_resolved_log_root_to_both_children"
         ],
         "parser_tests": [
-          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+          "tests/test_cli_help_ux.py::test_eval_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_profile.py::test_usage_dry_run_resolves_paths_without_spawning"
+        ],
+        "rollback": [
+          "tests/test_profile.py::test_usage_second_replace_failure_rolls_back_existing_pair"
+        ],
+        "timeout": [
+          "tests/test_profile.py::test_usage_timeout_preserves_existing_pair"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_eval_reviewed_help_is_windows_console_safe"
         ]
       },
-      "manifest_fingerprint": "sha256:233e0bf12aebef5100ae08ffa86672f63bb72a14b944d28f86daffc67bfa8d00",
+      "manifest_fingerprint": "sha256:2e2206601eae086098eb942082715fba2936fdfa485ada2b66a0b283abd170d6",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval usage"
