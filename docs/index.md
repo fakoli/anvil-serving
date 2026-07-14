@@ -34,7 +34,8 @@ device topologies.
 **Operating a deployment?**
 
 1. [Getting started](GETTING-STARTED.md) (Track B) — route real local tiers.
-2. [Configuration reference](CONFIGURATION.md) and [CLI reference](CLI.md) — every knob and verb.
+2. [Configuration reference](CONFIGURATION.md) and [CLI reference](CLI.md) — every knob and a
+   task-oriented map of every verb, including [model recipes](cli/models.md#recipes).
 3. [Operator playbooks](OPERATOR-PLAYBOOKS.md) — MCP/controller workflows for day-to-day
    operations.
 4. [Device topologies](DEVICE-TOPOLOGIES.md) and [Troubleshooting](TROUBLESHOOTING.md) — grow the
@@ -85,7 +86,7 @@ device topologies.
 | [Getting started](GETTING-STARTED.md) | Evaluate the front door, then route real local tiers. |
 | [Architecture](ARCHITECTURE.md) | The concise system overview: request path, tier ladder, quality profile, deployment shapes. |
 | [Configuration reference](CONFIGURATION.md) | Every `[server]`/`[router]`/tier/mode key, env vars, and the shipped example configs. |
-| [CLI reference](CLI.md) | Every verb, subcommand, and key flag. |
+| [CLI reference](CLI.md) | Navigate every verb by router, serves, models and recipes, evaluation, host, control-plane, or voice workflow. |
 | [Troubleshooting](TROUBLESHOOTING.md) | Symptom-first fixes: 503 exhaustion, preflight failures, empty responses, auth. |
 | [Quality-gated router](QUALITY-GATED-ROUTER.md) | The full design reference: intents, routing, verification, and fallback. |
 | [Terminology](TERMINOLOGY.md) | Product naming, user-facing terms, and technical definitions. |
