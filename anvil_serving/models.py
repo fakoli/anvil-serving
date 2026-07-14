@@ -574,7 +574,7 @@ def _print_recipe_mutation_plan(
     print("deferred until apply: confirmation and registry drift recheck")
 
 
-def _recipe_main(argv):
+def _build_recipe_parser():
     ap = argparse.ArgumentParser(
         prog="anvil-serving models recipes",
         description="Discover, edit, and load reusable model serve recipes.",
@@ -681,7 +681,11 @@ def _recipe_main(argv):
     p_load.add_argument("--dry-run", action="store_true",
                         help="print the exact docker command without starting it")
     p_load.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
-    a = ap.parse_args(argv)
+    return ap
+
+
+def _recipe_main(argv):
+    a = _build_recipe_parser().parse_args(argv)
 
     registry_path = a.registry or _default_registry()
     try:

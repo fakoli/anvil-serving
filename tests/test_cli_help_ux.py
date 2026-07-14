@@ -1,4 +1,4 @@
-"""Reviewed navigation contract for the model-serve command family."""
+"""Reviewed navigation contract for model-serving and recipe command families."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import shlex
 
 import pytest
 
-from anvil_serving import cli, multiplexer, serves
+from anvil_serving import cli, models, multiplexer, serves
 from anvil_serving.command_tree import COMMAND_TREE, CommandNode
 
 
@@ -24,20 +24,38 @@ SERVES_LEAVES = (
     "multiplex",
 )
 
+MODELS_LEAVES = (
+    ("sync",),
+    ("pull",),
+    ("score",),
+    ("recipes", "list"),
+    ("recipes", "show"),
+    ("recipes", "create"),
+    ("recipes", "update"),
+    ("recipes", "delete"),
+    ("recipes", "load"),
+    ("cache", "prune"),
+)
+
 
 def _serves_leaf(action: str) -> CommandNode:
     family = next(node for node in COMMAND_TREE.nodes if node.name == "serves")
     return next(node for node in family.children if node.name == action)
 
 
-@pytest.mark.parametrize("action", SERVES_LEAVES)
-def test_serves_leaf_help_has_reviewed_navigation_contract(action, capsys):
-    node = _serves_leaf(action)
+def _leaf(*parts: str) -> CommandNode:
+    siblings = COMMAND_TREE.nodes
+    node = None
+    for part in parts:
+        node = next(item for item in siblings if item.name == part)
+        siblings = node.children
+    assert node is not None
+    return node
 
-    assert cli.main(["serves", action, "--help"]) == 0
-    text = capsys.readouterr().out
 
-    assert text.startswith(f"anvil-serving serves {action}\n{node.summary}\n")
+def _assert_reviewed_help(path: tuple[str, ...], node: CommandNode, text: str) -> None:
+    command = " ".join(("anvil-serving", *path))
+    assert text.startswith(f"{command}\n{node.summary}\n")
     for heading in (
         "Usage:",
         "Examples:",
@@ -53,11 +71,33 @@ def test_serves_leaf_help_has_reviewed_navigation_contract(action, capsys):
     assert "Dispatcher options:" not in text
     assert "usage:" not in text
     assert node.examples
+    normalized_text = " ".join(text.split())
     for example in node.examples:
-        assert example.invocation in text
-        assert example.summary in text
+        assert " ".join(example.invocation.split()) in normalized_text
+        assert " ".join(example.summary.split()) in normalized_text
     reviewed_detail = text[text.index("Configuration:") :]
     assert all(len(line) <= 100 for line in reviewed_detail.splitlines())
+
+
+@pytest.mark.parametrize("action", SERVES_LEAVES)
+def test_serves_leaf_help_has_reviewed_navigation_contract(action, capsys):
+    node = _serves_leaf(action)
+
+    assert cli.main(["serves", action, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    _assert_reviewed_help(("serves", action), node, text)
+
+
+@pytest.mark.parametrize("parts", MODELS_LEAVES)
+def test_models_leaf_help_has_reviewed_navigation_contract(parts, capsys):
+    node = _leaf("models", *parts)
+    path = ("models", *parts)
+
+    assert cli.main([*path, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    _assert_reviewed_help(path, node, text)
 
 
 @pytest.mark.parametrize("action", SERVES_LEAVES)
@@ -70,6 +110,60 @@ def test_serves_reviewed_examples_resolve_to_the_documented_leaf(action):
         assert unknown is None
         assert tuple(item.name for item in path) == ("serves", action)
         assert cli._tombstone(path, rest) is None
+
+
+@pytest.mark.parametrize("parts", MODELS_LEAVES)
+def test_models_reviewed_examples_resolve_to_the_documented_leaf(parts):
+    node = _leaf("models", *parts)
+    expected_path = ("models", *parts)
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        assert tokens[0] == "anvil-serving"
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        assert tuple(item.name for item in path) == expected_path
+        assert cli._tombstone(path, rest) is None
+
+
+@pytest.mark.parametrize(
+    "parts",
+    tuple(parts for parts in MODELS_LEAVES if parts[0] == "recipes"),
+)
+def test_recipe_reviewed_examples_reach_the_real_action_parser(parts):
+    node = _leaf("models", *parts)
+    parser = models._build_recipe_parser()
+    for example in node.examples:
+        arguments = shlex.split(example.invocation, posix=True)[3:]
+        parsed = parser.parse_args(arguments)
+        assert parsed.recipe_action == parts[-1]
+
+
+@pytest.mark.parametrize("parts", MODELS_LEAVES)
+def test_models_reviewed_help_is_windows_console_safe(parts, monkeypatch, capsys):
+    monkeypatch.setenv("COLUMNS", "72")
+
+    assert cli.main(["models", *parts, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    text.encode("cp1252")
+    reviewed_detail = text[text.index("Configuration:") :]
+    assert all(len(line) <= 72 for line in reviewed_detail.splitlines())
+
+
+def test_recipe_configuration_notes_match_runtime_precedence(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    config_home = tmp_path / "operator-home"
+    config_home.mkdir()
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
+
+    operator_registry = config_home / "serve-recipes.toml"
+    operator_registry.write_text('schema = "operator"\n', encoding="utf-8")
+    assert models._default_registry() == str(operator_registry)
+
+    project_registry = tmp_path / "configs" / "serve-recipes.toml"
+    project_registry.parent.mkdir()
+    project_registry.write_text('schema = "project"\n', encoding="utf-8")
+    assert models._default_registry() == str(project_registry)
 
 
 @pytest.mark.parametrize(
@@ -159,3 +253,12 @@ def test_reviewed_help_respects_a_narrow_terminal(monkeypatch, capsys):
 
     reviewed_detail = text[text.index("Configuration:") :]
     assert all(len(line) <= 72 for line in reviewed_detail.splitlines())
+
+
+def test_reviewed_help_caps_an_oversized_terminal(monkeypatch, capsys):
+    monkeypatch.setenv("COLUMNS", "1000000")
+
+    assert cli.main(["models", "pull", "--help"]) == 0
+    text = capsys.readouterr().out
+
+    assert all(len(line) <= 100 for line in text.splitlines())
