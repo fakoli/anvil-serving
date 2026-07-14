@@ -21,7 +21,7 @@ All notable changes to this project are documented here. The format is based on
   single-model quick bring-up into the CWD moved behind **`--single-model`**. The old `--home`
   flag is a hidden, deprecated alias for the new default for one release (prints a deprecation
   note), then is removed. No-overwrite-without-backup and placeholder-only (no secrets/real UUIDs)
-  behavior are unchanged. See [ADR-0020](docs/adr/0020-init-defaults-to-home-scaffold-shipped-as-package-data.md).
+  behavior are unchanged. See [ADR-0020](adr/0020-init-defaults-to-home-scaffold-shipped-as-package-data.md).
 
 ### Fixed
 
