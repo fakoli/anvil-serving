@@ -8,6 +8,28 @@ from a known working engine configuration to a candidate container; use
 [`serves switch`](serves.md#switch-heavy-by-recipe) when the candidate is ready to
 replace a deployed role.
 
+## Switch Heavy to another model
+
+You switch the `heavy` role to a recorded recipe; you do not edit the active
+Compose service by hand.
+
+```bash
+anvil-serving models recipes list
+anvil-serving models recipes show MODEL
+anvil-serving serves switch heavy MODEL --dry-run
+anvil-serving serves switch heavy MODEL --confirm
+```
+
+`list` shows which recipes activate `heavy`. `show` resolves the exact model id or
+unique basename and prints the engine configuration plus the same switch-preview
+command. The dry run validates the activation plan without changing the running
+service; `--confirm` applies the reviewed switch.
+
+If the model does not have a compatible recorded recipe yet, create or update an
+operator recipe first. A recipe is the complete known-working model-and-engine
+configuration, so changing only its `model` field is not treated as a safe model
+swap.
+
 ## Choose a workflow
 
 | Goal | Start here | Then |

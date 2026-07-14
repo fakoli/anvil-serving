@@ -868,6 +868,24 @@ def build_command_tree() -> CommandTree:
                     _option("--model-dirs", summary="Additional plain model directories.", value_name="PATHS"),
                 ),
                 docs_anchor=f"{MODELS_DOC}#catalog-sync",
+                examples=(
+                    _example(
+                        "anvil-serving models sync --out ./model-library --dry-run",
+                        "Preview the catalog sources and replacement target.",
+                    ),
+                    _example(
+                        "anvil-serving models sync --out ./model-library --confirm",
+                        "Build and atomically replace the local catalog.",
+                    ),
+                ),
+                configuration_notes=(
+                    "--out defaults to ./model-library in the current directory.",
+                    "--hf-roots and --model-dirs accept platform-separated paths (: on Linux/macOS; ; on Windows).",
+                ),
+                behavior_notes=(
+                    "Preview resolves paths without scanning model data or writing files.",
+                    "Apply stages a complete catalog and preserves the prior catalog as a numbered backup.",
+                ),
             ),
             _resource_node(
                 "pull", "Pull a model artifact.", "anvil_serving.models",
@@ -883,15 +901,218 @@ def build_command_tree() -> CommandTree:
                     _option("--no-token", summary="Pull without forwarding an HF token."),
                 ),
                 docs_anchor=f"{MODELS_DOC}#artifact-pull",
+                examples=(
+                    _example(
+                        "anvil-serving models pull openai/gpt-oss-120b --dry-run",
+                        "Preview the named-volume download without reading a token.",
+                    ),
+                    _example(
+                        "anvil-serving models pull openai/gpt-oss-120b --confirm",
+                        "Download the model into the default Docker volume.",
+                    ),
+                ),
+                configuration_notes=(
+                    "--volume defaults to the ext4-native vllm-hfcache Docker volume.",
+                    "The token comes from --token-env, then --token-file; --no-token explicitly disables authentication.",
+                ),
+                behavior_notes=(
+                    "Downloads are resumable and never place token values on the command line.",
+                    "Downloaded bytes remain in the Docker volume; there is no automatic rollback.",
+                ),
             ),
-            _resource_node("score", "Rank models from benchmark evidence.", "anvil_serving.models", role="model-catalog", docs_anchor=f"{MODELS_DOC}#model-scoring"),
+            _resource_node(
+                "score",
+                "Rank models from benchmark evidence.",
+                "anvil_serving.models",
+                role="model-catalog",
+                docs_anchor=f"{MODELS_DOC}#model-scoring",
+                examples=(
+                    _example(
+                        "anvil-serving models score",
+                        "Rank available candidates using retained benchmark evidence.",
+                    ),
+                    _example(
+                        "anvil-serving models score --no-local --json",
+                        "Inspect evidence-only rankings as structured output.",
+                    ),
+                ),
+                configuration_notes=(
+                    "Local catalog evidence is included unless --no-local is set.",
+                    "Use --json for the stable result envelope.",
+                ),
+                behavior_notes=(
+                    "Scoring is read-only and does not pull, load, or promote a model.",
+                    "A ranking is evidence for an operator decision, not an automatic deployment change.",
+                ),
+            ),
             _node("recipes", "Manage recorded serve recipes.", children=(
-                _resource_node("list", "List recorded serve recipes.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "list"), options=(recipe_registry_option,), docs_anchor=f"{MODELS_DOC}#discover-recipes"),
-                _resource_node("show", "Show one recorded serve recipe.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "show"), options=(recipe_registry_option,), docs_anchor=f"{MODELS_DOC}#discover-recipes"),
-                _resource_node("create", "Create one recipe in an operator registry.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "create"), options=confirm_options + (recipe_registry_option, recipe_file_option), docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe"),
-                _resource_node("update", "Update one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "update"), options=confirm_options + (recipe_registry_option, recipe_file_option), docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe"),
-                _resource_node("delete", "Delete one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "delete"), options=confirm_options + (recipe_registry_option,), docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe"),
-                _resource_node("load", "Load one recipe into a named local container.", "anvil_serving.models", role="model-serve", mutation="mutate", gpu=True, argv_prefix=("recipe", "load"), options=confirm_options + (recipe_registry_option, recipe_container_option), docs_anchor=f"{MODELS_DOC}#load-a-recipe"),
+                _resource_node(
+                    "list",
+                    "List recorded serve recipes.",
+                    "anvil_serving.models",
+                    role="model-catalog",
+                    argv_prefix=("recipe", "list"),
+                    options=(recipe_registry_option,),
+                    docs_anchor=f"{MODELS_DOC}#discover-recipes",
+                    examples=(
+                        _example(
+                            "anvil-serving models recipes list",
+                            "List recipes from the highest-precedence registry.",
+                        ),
+                        _example(
+                            "anvil-serving models recipes list --registry ./serve-recipes.local.toml",
+                            "List recipes from one explicit operator registry.",
+                        ),
+                    ),
+                    configuration_notes=(
+                        "--registry overrides project, operator-home, and packaged registries.",
+                        "Without --registry, the first existing registry in precedence order is used.",
+                    ),
+                    behavior_notes=(
+                        "The activates column identifies recipes eligible for roles such as heavy.",
+                        "Listing is read-only and does not inspect or start containers.",
+                    ),
+                ),
+                _resource_node(
+                    "show",
+                    "Show one recorded serve recipe.",
+                    "anvil_serving.models",
+                    role="model-catalog",
+                    argv_prefix=("recipe", "show"),
+                    options=(recipe_registry_option,),
+                    docs_anchor=f"{MODELS_DOC}#discover-recipes",
+                    examples=(
+                        _example(
+                            "anvil-serving models recipes show gpt-oss-120b",
+                            "Inspect one recipe by exact model id or unique basename.",
+                        ),
+                        _example(
+                            "anvil-serving models recipes show gpt-oss-120b --registry ./serve-recipes.local.toml",
+                            "Inspect the recipe resolved from an explicit registry.",
+                        ),
+                    ),
+                    configuration_notes=(
+                        "--registry follows the same precedence as recipes list when omitted.",
+                        "MODEL accepts an exact identifier or an unambiguous basename.",
+                    ),
+                    behavior_notes=(
+                        "Shows engine, evidence, activation roles, and the reproducible Docker command.",
+                        "For an activatable role, output includes the exact serves switch preview command.",
+                    ),
+                ),
+                _resource_node(
+                    "create",
+                    "Create one recipe in an operator registry.",
+                    "anvil_serving.models",
+                    role="model-catalog",
+                    mutation="mutate",
+                    argv_prefix=("recipe", "create"),
+                    options=confirm_options + (recipe_registry_option, recipe_file_option),
+                    docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe",
+                    examples=(
+                        _example(
+                            "anvil-serving models recipes create --recipe-file ./candidate.toml --registry ./serve-recipes.local.toml --dry-run",
+                            "Validate and preview one new recipe.",
+                        ),
+                        _example(
+                            "anvil-serving models recipes create --recipe-file ./candidate.toml --registry ./serve-recipes.local.toml --confirm",
+                            "Create the recipe in an operator-owned registry.",
+                        ),
+                    ),
+                    configuration_notes=(
+                        "--recipe-file must contain exactly one [[recipe]] block.",
+                        "--registry is required and must name an operator-owned registry.",
+                    ),
+                    behavior_notes=(
+                        "Preview validates the complete proposed recipe without writing.",
+                        "Apply writes atomically and refuses duplicate model identifiers.",
+                    ),
+                ),
+                _resource_node(
+                    "update",
+                    "Update one selected recipe.",
+                    "anvil_serving.models",
+                    role="model-catalog",
+                    mutation="mutate",
+                    argv_prefix=("recipe", "update"),
+                    options=confirm_options + (recipe_registry_option, recipe_file_option),
+                    docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe",
+                    examples=(
+                        _example(
+                            "anvil-serving models recipes update MODEL --recipe-file ./candidate.toml --registry ./serve-recipes.local.toml --dry-run",
+                            "Preview replacement of one selected recipe.",
+                        ),
+                        _example(
+                            "anvil-serving models recipes update MODEL --recipe-file ./candidate.toml --registry ./serve-recipes.local.toml --confirm",
+                            "Atomically replace the selected recipe.",
+                        ),
+                    ),
+                    configuration_notes=(
+                        "MODEL selects the current entry by exact identifier or unique basename.",
+                        "The replacement file must contain exactly one complete [[recipe]] block.",
+                    ),
+                    behavior_notes=(
+                        "Preview shows both the selected model and complete proposed replacement.",
+                        "Apply checks registry drift and preserves a numbered backup before writing.",
+                    ),
+                ),
+                _resource_node(
+                    "delete",
+                    "Delete one selected recipe.",
+                    "anvil_serving.models",
+                    role="model-catalog",
+                    mutation="mutate",
+                    argv_prefix=("recipe", "delete"),
+                    options=confirm_options + (recipe_registry_option,),
+                    docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe",
+                    examples=(
+                        _example(
+                            "anvil-serving models recipes delete MODEL --registry ./serve-recipes.local.toml --dry-run",
+                            "Preview removal of one recipe.",
+                        ),
+                        _example(
+                            "anvil-serving models recipes delete MODEL --registry ./serve-recipes.local.toml --confirm",
+                            "Delete the selected recipe after confirmation.",
+                        ),
+                    ),
+                    configuration_notes=(
+                        "MODEL selects an exact identifier or unambiguous basename.",
+                        "--registry is required; packaged defaults are never mutated implicitly.",
+                    ),
+                    behavior_notes=(
+                        "Preview prints the complete recipe selected for deletion.",
+                        "Apply checks registry drift and preserves a numbered backup before writing.",
+                    ),
+                ),
+                _resource_node(
+                    "load",
+                    "Load one recipe into a named local container.",
+                    "anvil_serving.models",
+                    role="model-serve",
+                    mutation="mutate",
+                    gpu=True,
+                    argv_prefix=("recipe", "load"),
+                    options=confirm_options + (recipe_registry_option, recipe_container_option),
+                    docs_anchor=f"{MODELS_DOC}#load-a-recipe",
+                    examples=(
+                        _example(
+                            "anvil-serving models recipes load MODEL --container candidate-heavy --dry-run",
+                            "Preview a loopback-bound candidate container.",
+                        ),
+                        _example(
+                            "anvil-serving models recipes load MODEL --container candidate-heavy --confirm",
+                            "Start the candidate without changing router policy.",
+                        ),
+                    ),
+                    configuration_notes=(
+                        "--registry follows project, operator-home, then packaged precedence when omitted.",
+                        "--container must be a new Docker container name.",
+                    ),
+                    behavior_notes=(
+                        "When the recipe declares a port, load binds it to 127.0.0.1 and does not promote the model.",
+                        "Run eval preflight next, then use serves switch only after human review.",
+                    ),
+                ),
             ), docs_anchor=f"{MODELS_DOC}#recipes"),
             _node("cache", "Manage model cache storage.", children=(
                 _resource_node(
@@ -907,6 +1128,24 @@ def build_command_tree() -> CommandTree:
                         _option("--include-servable", summary="Also delete candidates servable elsewhere."),
                         _option("--allow-empty-mixture", summary="Allow a broad wipe with no protected mixture."),
                         _option("--self-check", summary="Run the non-destructive internal self-check."),
+                    ),
+                    examples=(
+                        _example(
+                            "anvil-serving models cache prune --dry-run",
+                            "Inspect protected and deletable cache entries.",
+                        ),
+                        _example(
+                            "anvil-serving models cache prune --mixture MODEL --execute --confirm",
+                            "Delete only the reviewed candidates while protecting MODEL.",
+                        ),
+                    ),
+                    configuration_notes=(
+                        "--mixture protects a comma-separated set of model identifiers.",
+                        "--include-servable deliberately broadens deletion eligibility.",
+                    ),
+                    behavior_notes=(
+                        "The default is a read-only plan; deletion additionally requires --execute and --confirm.",
+                        "Deletion has no automatic rollback and fails closed on an unsafe empty mixture.",
                     ),
                 ),
             ), docs_anchor=f"{MODELS_DOC}#cache-prune"),
