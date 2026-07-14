@@ -157,6 +157,13 @@ export ANTHROPIC_MODEL="planning"   # an intent preset, sent verbatim in the mod
 Cloud credentials go in env vars only — never in config files. The front door binds
 `127.0.0.1` by default; see `SECURITY.md` before binding publicly.
 
+**Before `anvil submit` or opening a PR, run `scripts/pre-submit.sh`.** It regenerates the
+CLI reference audit (docs/CLI-REFERENCE-AUDIT.json) and runs the full test suite — the
+whole-repo invariants that task-scoped verification can miss. A red pre-submit means **do
+not submit**: fix it (commit a regenerated audit, make the suite green) first. This exists
+because adding/removing a file without regenerating the audit passes narrow task checks but
+reds the global `test_repository_scope_inventories_match` at the review gate.
+
 ---
 
 ## The hard-won gotchas (don't relearn these)
