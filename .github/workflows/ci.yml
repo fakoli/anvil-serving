@@ -17,6 +17,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  cli-ux-audit:
+    name: CLI UX audit ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate current audit
+        run: python scripts/audit_cli_ux.py --check
+      - name: Reject audit regressions from trusted history
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if git cat-file -e "$BASE_SHA:docs/CLI-UX-AUDIT.json"; then
+            git show "$BASE_SHA:docs/CLI-UX-AUDIT.json" > "$RUNNER_TEMP/CLI-UX-AUDIT.json"
+            python scripts/audit_cli_ux.py --check --baseline-audit "$RUNNER_TEMP/CLI-UX-AUDIT.json"
+          else
+            echo "No base audit exists; validating initial bootstrap only."
+          fi
+
   test:
     name: test (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}

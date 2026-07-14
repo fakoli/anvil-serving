@@ -202,13 +202,22 @@ console encodings, while JSON remains UTF-8-safe and ASCII-compatible where prac
 
 ### 8. Every verb must prove the contract
 
-The command manifest is the inventory. A versioned `docs/CLI-UX-AUDIT.json` will contain exactly one
+The command manifest is the inventory. The versioned `docs/CLI-UX-AUDIT.json` contains exactly one
 record per visible leaf. Grammar, help, configuration, output, errors, boundedness, docs, and parser
 tests are always `pass` or `fail`. Preview, confirmation, drift protection, timeout, rollback,
 journaling, remote parity, and each OS are `pass`, `fail`, or `not-applicable` with a non-empty
-reason. Evidence fields name the tests and documentation anchor. CI will reject missing, duplicate,
-stale, or failing records. Until that schema and check land, this ADR is the accepted migration
-target, not a claim that every existing verb already complies.
+reason. Evidence fields name the tests and documentation anchor.
+
+The audit lands as an explicit migration ratchet: CI rejects missing, duplicate, or stale records,
+invalid evidence, command-manifest fingerprint drift, and any per-dimension failure count above its
+checked-in maximum. Bootstrap conservatively marks every contract dimension as failing; only a
+focused review may record a pass or a reviewed `not-applicable`. Each reviewed command-family change
+binds the dimension, decision or `not-applicable` rationale, and dimension-specific test evidence to
+the current command-manifest fingerprint, then lowers the corresponding failure maxima. Refreshing
+derived metadata cannot renew that attestation. New leaves must either pass immediately or pay for every new failure by removing an
+existing failure in the same dimension. When all maxima reach zero, the audit switches to `strict`;
+strict mode rejects every failing record and any nonzero maximum. The ratchet is a migration record,
+not a claim that every existing verb already complies.
 
 A leaf is complete only when focused help reaches the real parser, examples parse, the docs anchor
 exists, all applicable dimensions pass, every `not-applicable` has been reviewed, and behavior tests
