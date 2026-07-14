@@ -8,6 +8,7 @@ import shlex
 import pytest
 
 from anvil_serving import (
+    benchmark_evidence,
     cli,
     models,
     multiplexer,
@@ -16,6 +17,7 @@ from anvil_serving import (
     serves,
 )
 from anvil_serving.command_tree import COMMAND_TREE, CommandNode
+from anvil_serving.external_benchmarks import store as external_benchmark_store
 from anvil_serving.router import serve as router_serve
 
 
@@ -65,6 +67,29 @@ ROUTER_LEAVES = (
 
 ROUTER_MANAGE_LEAVES = tuple(
     action for action in ROUTER_LEAVES if action not in {"run", "endpoint"}
+)
+
+EVAL_LEAVES = (
+    ("usage",),
+    ("preflight",),
+    ("bootstrap",),
+    ("calibrate",),
+    ("benchmark", "capacity"),
+    ("benchmark", "quality"),
+    ("benchmark", "evidence", "list"),
+    ("benchmark", "evidence", "show"),
+    ("benchmark", "evidence", "compare"),
+    ("benchmark", "external", "init"),
+    ("benchmark", "external", "sources"),
+    ("benchmark", "external", "fetch"),
+    ("benchmark", "external", "import"),
+    ("benchmark", "external", "list"),
+    ("benchmark", "external", "report"),
+    ("benchmark", "external", "export"),
+    ("benchmark", "external", "compare"),
+    ("benchmark", "external", "notebook", "add"),
+    ("benchmark", "external", "notebook", "list"),
+    ("benchmark", "external", "notebook", "render"),
 )
 
 
@@ -140,6 +165,20 @@ def test_router_leaf_help_has_reviewed_navigation_contract(action, capsys):
     _assert_reviewed_help(("router", action), node, text)
 
 
+@pytest.mark.parametrize("parts", EVAL_LEAVES)
+def test_eval_leaf_help_has_reviewed_navigation_contract(parts, capsys):
+    node = _leaf("eval", *parts)
+    path = ("eval", *parts)
+
+    assert cli.main([*path, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    _assert_reviewed_help(path, node, text)
+    assert len(node.examples) == 2
+    assert len(node.configuration_notes) == 2
+    assert len(node.behavior_notes) == 2
+
+
 @pytest.mark.parametrize("action", SERVES_LEAVES)
 def test_serves_reviewed_examples_resolve_to_the_documented_leaf(action):
     node = _serves_leaf(action)
@@ -175,6 +214,26 @@ def test_router_reviewed_examples_resolve_to_the_documented_leaf(action):
         assert unknown is None
         assert tuple(item.name for item in path) == ("router", action)
         assert cli._tombstone(path, rest) is None
+
+
+@pytest.mark.parametrize("parts", EVAL_LEAVES)
+def test_eval_reviewed_examples_resolve_and_use_real_parser_flags(parts, capsys):
+    node = _leaf("eval", *parts)
+    expected_path = ("eval", *parts)
+
+    assert cli.main([*expected_path, "--help"]) == 0
+    help_text = capsys.readouterr().out
+
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        assert tokens[0] == "anvil-serving"
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        assert tuple(item.name for item in path) == expected_path
+        assert cli._tombstone(path, rest) is None
+        for token in rest:
+            if token.startswith("--"):
+                assert token.split("=", 1)[0] in help_text
 
 
 @pytest.mark.parametrize("action", ROUTER_MANAGE_LEAVES)
@@ -257,8 +316,7 @@ def test_models_reviewed_help_is_windows_console_safe(parts, monkeypatch, capsys
     text = capsys.readouterr().out
 
     text.encode("cp1252")
-    reviewed_detail = text[text.index("Configuration:") :]
-    assert all(len(line) <= 72 for line in reviewed_detail.splitlines())
+    assert all(len(line) <= 72 for line in text.splitlines())
 
 
 @pytest.mark.parametrize("action", ROUTER_LEAVES)
@@ -271,6 +329,17 @@ def test_router_reviewed_help_is_windows_console_safe(action, monkeypatch, capsy
     text.encode("cp1252")
     reviewed_detail = text[text.index("Configuration:") :]
     assert all(len(line) <= 72 for line in reviewed_detail.splitlines())
+
+
+@pytest.mark.parametrize("parts", EVAL_LEAVES)
+def test_eval_reviewed_help_is_windows_console_safe(parts, monkeypatch, capsys):
+    monkeypatch.setenv("COLUMNS", "60")
+
+    assert cli.main(["eval", *parts, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    text.encode("cp1252")
+    assert all(len(line) <= 60 for line in text.splitlines())
 
 
 def test_recipe_configuration_notes_match_runtime_precedence(tmp_path, monkeypatch):
@@ -303,6 +372,43 @@ def test_router_docs_group_every_operator_task():
     for action in ROUTER_LEAVES:
         assert f"`router {action}`" in text
     assert "router token --reveal --confirm" in text
+
+
+def test_eval_docs_group_every_operator_task():
+    text = (Path(__file__).parents[1] / "docs" / "cli" / "eval.md").read_text(
+        encoding="utf-8"
+    )
+    for heading in (
+        "### Prepare and gate",
+        "### Measure and inspect",
+        "### Build reviewable profiles",
+        "### Manage external priors",
+        "### Retain comparison runs",
+    ):
+        assert heading in text
+    for parts in EVAL_LEAVES:
+        assert "`eval %s`" % " ".join(parts) in text
+
+
+def test_eval_configuration_notes_match_runtime_defaults():
+    evidence_parser = benchmark_evidence._parser()
+    evidence_list = evidence_parser.parse_args(["list"])
+    evidence_show = evidence_parser.parse_args(["show", "artifact.json"])
+    evidence_compare = evidence_parser.parse_args(["compare", "artifact.json"])
+
+    assert evidence_list.root == benchmark_evidence.DEFAULT_ROOT
+    assert evidence_list.limit == benchmark_evidence.DEFAULT_LIMIT
+    assert evidence_show.format == "human"
+    assert evidence_compare.allow_mismatch is False
+
+    for parts in EVAL_LEAVES:
+        if parts[:2] == ("benchmark", "external"):
+            notes = " ".join(_leaf("eval", *parts).configuration_notes)
+            assert external_benchmark_store.DEFAULT_DB in notes
+
+    assert "controller" in _leaf("eval", "preflight").transports
+    assert _leaf("eval", "benchmark", "capacity").transports == ("local",)
+    assert _leaf("eval", "benchmark", "quality").transports == ("local",)
 
 
 def test_router_transition_configuration_matches_runtime_precedence():
