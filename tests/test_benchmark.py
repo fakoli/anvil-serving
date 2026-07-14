@@ -437,7 +437,7 @@ def test_bakeoff_evidence_records_identity_context_score_and_failures(monkeypatc
         "--serve-command", "anvil-serving serves up fast-qwen36-35b-a3b",
     ])
 
-    assert rc == 0
+    assert rc == 1
     evidence = json.loads(out.read_text(encoding="utf-8"))
     assert evidence["schema"] == "anvil-serving.fast-tier-bakeoff/v1"
     assert evidence["identity"] == {
@@ -501,6 +501,7 @@ def test_bakeoff_tool_suite_records_tool_call(monkeypatch, tmp_path):
             "latency_s": 0.12,
             "response": {
                 "choices": [{
+                    "finish_reason": "tool_calls",
                     "message": {
                         "tool_calls": [{
                             "id": "call_1",
@@ -521,6 +522,7 @@ def test_bakeoff_tool_suite_records_tool_call(monkeypatch, tmp_path):
         "--candidate-id", "glm47-flash",
         "--config-id", "sglang-32k",
         "--suite", "tool",
+        "--eval-repetitions", "1",
         "--evidence-out", str(out),
     ])
 
@@ -539,6 +541,7 @@ def test_bakeoff_tool_suite_rejects_plain_text_tool_claim(monkeypatch, tmp_path)
             "latency_s": 0.12,
             "response": {
                 "choices": [{
+                    "finish_reason": "stop",
                     "message": {"content": "I called record_weather_zip with 98101."}
                 }]
             },
@@ -553,16 +556,19 @@ def test_bakeoff_tool_suite_rejects_plain_text_tool_claim(monkeypatch, tmp_path)
         "--candidate-id", "glm47-flash",
         "--config-id", "sglang-32k",
         "--suite", "tool",
+        "--eval-repetitions", "1",
         "--evidence-out", str(out),
     ])
 
-    assert rc == 0
+    assert rc == 1
     evidence = json.loads(out.read_text(encoding="utf-8"))
     assert evidence["tool"]["status"] == "failed"
     assert evidence["tool"]["checks"][0]["tool_call_count"] == 0
     assert evidence["failures"] == [{
         "suite": "tool",
         "error": "response did not include tool_calls",
+        "failure_classes": ["deterministic_check_failed"],
+        "pass_rate": 0.0,
     }]
 
 
@@ -579,6 +585,7 @@ def test_bakeoff_session_intelligence_and_thinking_evidence(monkeypatch, tmp_pat
             "latency_s": 0.10,
             "response": {
                 "choices": [{
+                    "finish_reason": "stop",
                     "message": {"content": next(responses)}
                 }]
             },
@@ -593,6 +600,7 @@ def test_bakeoff_session_intelligence_and_thinking_evidence(monkeypatch, tmp_pat
         "--candidate-id", "glm47-flash",
         "--config-id", "llamacpp-q6-32k",
         "--suite", "session,intelligence",
+        "--eval-repetitions", "1",
         "--thinking-mode", "disabled",
         "--evidence-out", str(out),
     ])
@@ -675,6 +683,7 @@ def _suite_main_args(tmp_path, spec_path, out_name="suite-evidence.json"):
         "--candidate-id", "glm47-flash",
         "--config-id", "sglang-32k",
         "--suite", "tool",  # built-in suites still run alongside the external spec
+        "--eval-repetitions", "1",
         "--suite-file", spec_path,
         "--evidence-out", str(out),
     ]
@@ -693,7 +702,10 @@ def test_suite_file_runs_external_evals_into_evidence(monkeypatch, tmp_path):
             }]}
         else:
             message = {"content": "--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n"}
-        return {"latency_s": 0.1, "response": {"choices": [{"message": message}]}}
+        finish = "tool_calls" if tools else "stop"
+        return {"latency_s": 0.1, "response": {"choices": [{
+            "finish_reason": finish, "message": message,
+        }]}}
 
     monkeypatch.setattr(bm, "post_chat", fake_post_chat)
     spec_path = _write_spec(tmp_path, _SUITE_SPEC)
@@ -735,13 +747,15 @@ def test_suite_file_failed_checks_land_in_failures(monkeypatch, tmp_path):
     def fake_post_chat(*args, **kwargs):
         # plain text: fails the diff checks on eval 1 AND the expect_tool on eval 2
         return {"latency_s": 0.1,
-                "response": {"choices": [{"message": {"content": "no diff here"}}]}}
+                "response": {"choices": [{
+                    "finish_reason": "stop", "message": {"content": "no diff here"},
+                }]}}
 
     monkeypatch.setattr(bm, "post_chat", fake_post_chat)
     out, argv = _suite_main_args(tmp_path, _write_spec(tmp_path, _SUITE_SPEC))
     rc = bm.main(argv)
 
-    assert rc == 0  # failures are evidence, not a crash
+    assert rc == 1  # artifact is retained, but the quality gate failed
     evidence = json.loads(out.read_text(encoding="utf-8"))
     section = evidence["suites"]["planning-regression"]
     assert section["status"] == "failed"
@@ -761,7 +775,7 @@ def test_suite_file_request_error_is_recorded_per_eval(monkeypatch, tmp_path):
     out, argv = _suite_main_args(tmp_path, _write_spec(tmp_path, spec))
     rc = bm.main(argv)
 
-    assert rc == 0
+    assert rc == 1
     evidence = json.loads(out.read_text(encoding="utf-8"))
     check = evidence["suites"]["planning-regression"]["checks"][0]
     assert check["status"] == "failed"
@@ -805,7 +819,7 @@ def test_repaired_suite_classifies_reasoning_budget_exhaustion(monkeypatch, tmp_
         "--evidence-out", str(out),
     ])
 
-    assert rc == 0
+    assert rc == 1
     evidence = json.loads(out.read_text(encoding="utf-8"))
     check = evidence["suites"]["s"]["checks"][0]
     assert check["status"] == "failed"
@@ -821,12 +835,40 @@ def test_repaired_suite_classifies_reasoning_budget_exhaustion(monkeypatch, tmp_
             "visible_answer_tokens": 128,
             "reasoning_headroom_tokens": 512,
             "max_completion_tokens": 640,
-            "legacy_total_budget": False,
+                "legacy_max_tokens_as_visible": False,
         }
     assert evidence["thinking"]["control_mechanism"] == "reasoning_effort"
     assert evidence["thinking"]["reasoning_effort"] == "high"
     assert evidence["evaluation_protocol"]["records_finish_reason"] is True
     assert evidence["failures"][0]["failure_classes"] == ["reasoning_budget_exhausted"]
+
+
+def test_matching_marker_with_length_finish_is_not_a_quality_pass(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.1,
+            "response": {"choices": [{
+                "finish_reason": "length",
+                "message": {"content": "x"},
+            }]},
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "length-marker.json"
+    rc = bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:39033/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "repaired-v3",
+        "--suite-file", _write_spec(tmp_path, _one_eval()),
+        "--output", str(out),
+    ])
+
+    assert rc == 1
+    attempt = json.loads(out.read_text(encoding="utf-8"))["suites"]["s"]["checks"][0]["attempts"][0]
+    assert attempt["status"] == "failed"
+    assert attempt["failure_class"] == "visible_answer_budget_exhausted"
 
 
 def test_tool_eval_preserves_reasoning_budget_exhaustion_class(monkeypatch, tmp_path):
@@ -862,7 +904,7 @@ def test_tool_eval_preserves_reasoning_budget_exhaustion_class(monkeypatch, tmp_
         "--evidence-out", str(out),
     ])
 
-    assert rc == 0
+    assert rc == 1
     attempt = json.loads(out.read_text(encoding="utf-8"))["suites"]["s"]["checks"][0]["attempts"][0]
     assert attempt["tool_call"]["valid"] is False
     assert attempt["failure_class"] == "reasoning_budget_exhausted"
@@ -1046,6 +1088,96 @@ def test_suite_file_rejects_too_many_evals(tmp_path):
         bm.load_suite_spec(_write_spec(tmp_path, spec))
 
 
+def test_suite_file_rejects_unexecuted_context_bucket(tmp_path):
+    with pytest.raises(ValueError, match="context_bucket cannot be executed faithfully"):
+        bm.load_suite_spec(
+            _write_spec(tmp_path, _one_eval(context_bucket="64k"))
+        )
+
+
+@pytest.mark.parametrize("spec, message", [
+    (
+        dict(
+            _one_eval(),
+            evidence_use="ranking",
+            validator_strength="exact_choice",
+        ),
+        "exact_choice requires",
+    ),
+    (
+        dict(
+            _one_eval(checks=[{
+                "name": "answer",
+                "matches_regex": "B",
+            }]),
+            evidence_use="ranking",
+            validator_strength="exact_choice",
+        ),
+        "anchored with",
+    ),
+    (
+        dict(
+            _one_eval(),
+            evidence_use="ranking",
+            validator_strength="typed_structure",
+        ),
+        "typed_structure requires expect_tool",
+    ),
+    (
+        dict(
+            _one_eval(),
+            evidence_use="ranking",
+            validator_strength="independent_judge",
+        ),
+        "independent_judge is not executable yet",
+    ),
+])
+def test_ranking_suite_validator_strength_is_structurally_enforced(
+        tmp_path, spec, message):
+    with pytest.raises(ValueError, match=message):
+        bm.load_suite_spec(_write_spec(tmp_path, spec))
+
+
+@pytest.mark.parametrize("spec", [
+    dict(
+        _one_eval(checks=[{
+            "name": "answer",
+            "matches_regex": r"^\s*B\s*$",
+        }]),
+        evidence_use="ranking",
+        validator_strength="exact_choice",
+    ),
+    {
+        "suite": "s",
+        "evidence_use": "ranking",
+        "validator_strength": "typed_structure",
+        "evals": [{
+            "id": "tool",
+            "prompt": "Call choose with choice B.",
+            "tools": [{
+                "type": "function",
+                "function": {
+                    "name": "choose",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"choice": {"type": "string"}},
+                        "required": ["choice"],
+                    },
+                },
+            }],
+            "expect_tool": {
+                "name": "choose",
+                "required_args": {"choice": "B"},
+            },
+        }],
+    },
+])
+def test_ranking_suite_accepts_executable_strong_validators(tmp_path, spec):
+    loaded = bm.load_suite_spec(_write_spec(tmp_path, spec))
+
+    assert loaded["evidence_use"] == "ranking"
+
+
 def test_cli_rejects_aggregate_quality_token_plan(tmp_path):
     spec = dict(_SUITE_SPEC, evals=[
         _one_eval(id="eval-%d" % index, max_tokens=65536)["evals"][0]
@@ -1072,7 +1204,10 @@ def test_suite_file_without_suite_flag_runs_only_the_external_suite(monkeypatch,
 
     def fake_post_chat(*args, **kwargs):
         return {"latency_s": 0.1,
-                "response": {"choices": [{"message": {"content": "+timeout = 45 --- +++"}}]}}
+                "response": {"choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": "+timeout = 45 --- +++"},
+                }]}}
 
     monkeypatch.setattr(bm, "stream_chat", boom_stream_chat)
     monkeypatch.setattr(bm, "post_chat", fake_post_chat)
@@ -1117,7 +1252,10 @@ def test_suite_file_fixture_matches_session_evals_plugin_shape(monkeypatch, tmp_
             }]}
         else:
             message = {"content": "Run git fetch then rebase. --- +++ @@"}
-        return {"latency_s": 0.1, "response": {"choices": [{"message": message}]}}
+        finish = "tool_calls" if tools else "stop"
+        return {"latency_s": 0.1, "response": {"choices": [{
+            "finish_reason": finish, "message": message,
+        }]}}
 
     monkeypatch.setattr(bm, "post_chat", fake_post_chat)
     out = tmp_path / "fixture-evidence.json"
@@ -1135,7 +1273,11 @@ def test_suite_file_fixture_matches_session_evals_plugin_shape(monkeypatch, tmp_
     section = json.loads(out.read_text(encoding="utf-8"))["suites"]["merge-safety"]
     assert section["status"] == "passed"
     assert [c["id"] for c in section["checks"]] == ["fetch_before_merge", "diff_review", "zip_tool"]
-    assert section["checks"][2]["tool_call"]["valid"] is True
+    assert section["checks"][2]["attempt_count"] == 3
+    assert all(
+        attempt["tool_call"]["valid"] is True
+        for attempt in section["checks"][2]["attempts"]
+    )
 
 
 def test_suite_file_malformed_spec_exits_before_any_request(monkeypatch, tmp_path):
@@ -1148,6 +1290,212 @@ def test_suite_file_malformed_spec_exits_before_any_request(monkeypatch, tmp_pat
     with pytest.raises(SystemExit) as exc:
         bm.main(argv)
     assert exc.value.code == 2
+
+
+def test_unknown_quality_suite_exits_before_any_request(monkeypatch, tmp_path):
+    def boom(*args, **kwargs):
+        raise AssertionError("unknown suite must fail before network access")
+
+    monkeypatch.setattr(bm, "post_chat", boom)
+    monkeypatch.setattr(bm, "stream_chat", boom)
+    out = tmp_path / "unknown.json"
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite", "not-a-suite",
+            "--output", str(out),
+        ])
+    assert exc.value.code == 2
+    assert not out.exists()
+
+
+def test_quality_tool_and_session_default_to_three_retained_attempts(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        if kwargs.get("tools"):
+            message = {"tool_calls": [{
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "record_weather_zip",
+                    "arguments": '{"zip": "98101"}',
+                },
+            }]}
+            finish = "tool_calls"
+        else:
+            message = {"content": "RIVER-918"}
+            finish = "stop"
+        return {
+            "latency_s": 0.1,
+            "response": {"choices": [{"finish_reason": finish, "message": message}]},
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "repeated-builtins.json"
+    assert bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "config",
+        "--suite", "tool,session",
+        "--output", str(out),
+    ]) == 0
+
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    for section in ("tool", "session"):
+        check = evidence[section]["checks"][0]
+        assert check["attempt_count"] == 3
+        assert check["pass_count"] == 3
+        assert len(check["attempts"]) == 3
+    assert evidence["session"]["checks"][0]["attempts"][0]["content"] == "RIVER-918"
+
+
+def test_canonical_dry_runs_do_not_probe_or_write(monkeypatch, tmp_path, capsys):
+    def boom(*args, **kwargs):
+        raise AssertionError("dry-run must not access the endpoint")
+
+    monkeypatch.setattr(bm, "detect_max_model_len", boom)
+    monkeypatch.setattr(bm, "post_chat", boom)
+    monkeypatch.setattr(bm, "stream_chat", boom)
+
+    quality_out = tmp_path / "quality.json"
+    assert bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "config",
+        "--suite", "tool",
+        "--output", str(quality_out),
+        "--dry-run",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["workload"] == "quality"
+    assert not quality_out.exists()
+
+    capacity_out = tmp_path / "capacity.json"
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "candidate",
+        "--output", str(capacity_out),
+        "--dry-run",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["workload"] == "capacity"
+    assert not capacity_out.exists()
+
+
+def test_benchmark_rejects_invalid_output_before_live_work(monkeypatch, tmp_path):
+    def boom(*args, **kwargs):
+        raise AssertionError("invalid output must fail before endpoint access")
+
+    monkeypatch.setattr(bm, "detect_max_model_len", boom)
+    out = tmp_path / "missing" / "capacity.json"
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", "candidate",
+            "--output", str(out),
+        ])
+    assert exc.value.code == 2
+
+
+def test_notebook_metadata_is_validated_before_live_work(monkeypatch, tmp_path):
+    def boom(*args, **kwargs):
+        raise AssertionError("notebook validation must precede endpoint access")
+
+    monkeypatch.setattr(bm, "post_chat", boom)
+    suite = tmp_path / "ranking.json"
+    suite.write_text(json.dumps({
+        "suite": "ranking",
+        "evidence_use": "ranking",
+        "validator_strength": "exact_choice",
+        "evals": [{
+            "id": "choice",
+            "prompt": "Reply only A.",
+            "checks": [{"name": "exact", "matches_regex": "^A$"}],
+        }],
+    }), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite-file", str(suite),
+            "--notebook", str(tmp_path / "notebook.json"),
+        ])
+    assert exc.value.code == 2
+
+
+def test_notebook_rejects_diagnostic_suite_before_live_work(
+    monkeypatch, tmp_path, capsys
+):
+    def boom(*args, **kwargs):
+        raise AssertionError("notebook eligibility must precede endpoint access")
+
+    monkeypatch.setattr(bm, "post_chat", boom)
+    suite = tmp_path / "diagnostic.json"
+    suite.write_text(json.dumps({
+        "suite": "diagnostic",
+        "evidence_use": "diagnostic",
+        "validator_strength": "deterministic_marker",
+        "evals": [{
+            "id": "marker",
+            "prompt": "Reply only A.",
+            "checks": [{"name": "marker", "contains": "A"}],
+        }],
+    }), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite-file", str(suite),
+            "--notebook", str(tmp_path / "notebook.json"),
+            "--notebook-task", "heavy",
+            "--notebook-hardware", "gpu",
+        ])
+    assert exc.value.code == 2
+    assert "evidence_use=ranking" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("model,extra,expected", [
+    ("openai/gpt-oss-120b", ["--thinking-mode", "disabled"], "does not use Qwen"),
+    ("openai/gpt-oss-120b", ["--reasoning-effort", "minimal"], "low, medium, or high"),
+    ("Qwen/Qwen3.6-27B", ["--reasoning-effort", "high"], "chat-template thinking control"),
+])
+def test_model_family_rejects_known_ignored_reasoning_controls(
+    model, extra, expected, capsys
+):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", model,
+            *extra,
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+    assert expected in capsys.readouterr().err
+
+
+def test_gpt_oss_accepts_published_reasoning_effort(monkeypatch, capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "openai/gpt-oss-120b",
+        "--reasoning-effort", "low",
+        "--dry-run",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["workload"] == "capacity"
 
 
 def test_bakeoff_voice_suite_records_supplied_metrics(tmp_path):

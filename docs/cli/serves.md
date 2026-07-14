@@ -68,14 +68,16 @@ For the common model-selection path, choose the deployment role and recipe direc
 
 ```bash
 anvil-serving serves switch heavy
-anvil-serving serves switch heavy --recipe ThinkingCap-Qwen3.6-27B-FP8 --dry-run
-anvil-serving serves switch heavy --recipe ThinkingCap-Qwen3.6-27B-FP8 --confirm
-anvil-serving serves switch heavy --recipe gpt-oss-120b --confirm
+anvil-serving serves switch heavy ThinkingCap-Qwen3.6-27B-FP8 --dry-run
+anvil-serving serves switch heavy ThinkingCap-Qwen3.6-27B-FP8 --confirm
+anvil-serving serves switch heavy gpt-oss-120b --confirm
 ```
 
-With no `--recipe`, the command lists the resolved registry path and marks each declared
+With no `MODEL`, the command lists the resolved registry path and marks each declared
 choice `ready` or `blocked` after validating its plan and effective Compose service; listing
-does not prompt for confirmation. `switch` accepts a full model id or an unambiguous basename. It only accepts recipes
+does not prompt for confirmation. `switch` accepts a full model id or an unambiguous basename
+as the second positional argument. The older `--recipe MODEL` spelling remains supported for
+compatibility. It only accepts recipes
 with a matching `[recipe.activation.ROLE]` entry, and verifies that the recipe's managed
 serve and served-model identity match the referenced promotion plan before any mutation.
 The existing promotion transaction still owns quiesce, drain, preflight, router update,

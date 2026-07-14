@@ -2258,7 +2258,7 @@ def test_benchmark_artifact_confirmed_run_writes_json_and_returns_metrics(tmp_pa
     assert "--json-out" in seen["argv"]
     assert seen["capture_output"] is True
     assert seen["text"] is True
-    assert seen["timeout"] == 30
+    assert seen["timeout"] == 90
 
 
 def test_benchmark_artifact_confirmed_run_rejects_stale_json(tmp_path, monkeypatch):
@@ -2281,7 +2281,8 @@ def test_benchmark_artifact_confirmed_run_rejects_stale_json(tmp_path, monkeypat
 
     assert env["ok"] is False
     assert env["error"]["code"] == "artifact_not_written"
-    assert not artifact_path.exists()
+    assert artifact_path.exists()
+    assert json.loads(artifact_path.read_text(encoding="utf-8"))["run_id"] == "old-run"
 
 
 def test_external_bench_sources_and_report_are_advisory_only(tmp_path, monkeypatch):
@@ -2733,9 +2734,9 @@ def test_operator_workflow_fixture_produces_valid_result_packet(tmp_path, monkey
     def fake_run(argv, capture_output=True, text=True, timeout=None):
         assert capture_output is True
         assert text is True
-        assert timeout == 30
         module = argv[argv.index("-m") + 1]
         if module == "anvil_serving.preflight":
+            assert timeout == 125
             args = next(step["arguments"] for step in fixture["steps"] if step["tool"]["name"] == "preflight_probe")
             assert_arg(argv, "--base-url", args["base_url"])
             assert_arg(argv, "--model", args["model"])
@@ -2744,6 +2745,7 @@ def test_operator_workflow_fixture_produces_valid_result_packet(tmp_path, monkey
             assert "--no-thinking" in argv
             return proc(0, json.dumps(fixture["preflight_result"]) + "\n", "")
         if module == "anvil_serving.benchmark":
+            assert timeout == 90
             args = next(step["arguments"] for step in fixture["steps"] if step["tool"]["name"] == "benchmark_artifact")
             assert_arg(argv, "--base-url", args["base_url"])
             assert_arg(argv, "--model", args["model"])
@@ -3375,6 +3377,24 @@ def test_confirmed_probe_nonzero_returncode_is_tool_error(monkeypatch):
     assert env["ok"] is False
     assert env["error"]["code"] == "command_failed"
     assert env["error"]["details"]["returncode"] == 1
+
+
+def test_preflight_probe_rejects_aggregate_deadline_over_transport_cap(monkeypatch):
+    monkeypatch.setattr(
+        mcp.subprocess,
+        "run",
+        lambda *args, **kwargs: pytest.fail("unbounded workload reached subprocess"),
+    )
+    env = mcp.call_tool("preflight_probe", {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "checks": "smoke,json,needle,tools",
+        "timeout_seconds": 3600,
+        "confirm": True,
+    })
+    assert env["ok"] is False
+    assert env["error"]["code"] == "bad_argument"
+    assert "exceeds 7200 seconds" in env["error"]["message"]
 
 
 def test_mcp_proxy_main_requires_env_token(monkeypatch, capsys):

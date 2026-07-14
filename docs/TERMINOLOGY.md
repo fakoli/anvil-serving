@@ -39,6 +39,7 @@ profile, reference integration, product differentiator, and local serving tools.
   `long-context`, `ocr`, and `vision`.
 - Say **OpenClaw reference integration** when describing the plugin path.
 - Say **local serving tools** for `eval usage`, `models`, `serves`, `init`,
-  `eval preflight`, `eval benchmark run`, `eval benchmark external`,
+  `eval preflight`, `eval benchmark capacity`, `eval benchmark quality`,
+  `eval benchmark external`,
   `serves multiplex`, `models cache prune`, `models score`, `doctor`, and `host`.
 - Say **control plane** for `mcp serve`, `mcp tools`, `controller`, and `harness`.

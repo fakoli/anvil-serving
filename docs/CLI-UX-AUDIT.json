@@ -5,16 +5,16 @@
     "boundedness": 103,
     "configuration": 101,
     "confirmation": 96,
-    "docs": 93,
+    "docs": 73,
     "drift_protection": 102,
     "errors": 95,
-    "grammar": 93,
-    "help": 93,
+    "grammar": 73,
+    "help": 73,
     "journaling": 103,
     "linux": 102,
     "macos": 102,
     "output": 100,
-    "parser_tests": 93,
+    "parser_tests": 73,
     "preview": 96,
     "remote_parity": 102,
     "rollback": 102,
@@ -376,427 +376,26 @@
       "path": "edge up"
     },
     {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+      "attestations": {
+        "docs": "sha256:a295227e807c6008ab87d75faed53afdc1e87662541b386eb37ae7e27be61d3f",
+        "grammar": "sha256:69c5b35f242880f3715b9608a7048dd8f0be9f2f31406ec7c7970be5a24e4e17",
+        "help": "sha256:2e87866d5265338d27383f2d73dc050bc716aa1fd225100290b537419316d061",
+        "parser_tests": "sha256:cb96fec86c1b505cd148698c155fe0411b2848383713bc2dde888f71b18b137f"
       },
-      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:17d340364c234131a60992d65981c17dda8f6cd011bbbdd86928cb2174ab06f8",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark evidence compare"
-    },
-    {
-      "attestations": {},
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:92f058bcb42c3a05fef489cfc183dfbba66025d7cca108f12a087746e798cd61",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark evidence list"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:adbc5c33bdcecda33b2e8efed3e0e40390e581275b8b430993a61c3e6a974cb7",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark evidence show"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:423e3bcb14863326ea202be7cd90387288bdc4cfce206e5a610684c359446a46",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark external compare"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:10333433a05f58e791c60cec73dcfd3b1fbf47d90dcfd4212b30451a507b7d48",
-      "mutation_class": "mutate",
-      "output_policy": "bounded",
-      "path": "eval benchmark external export"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:023776634e23502c1dff61594f8b143e7cf1718e4bfc574c304d0b7672bb5030",
-      "mutation_class": "mutate",
-      "output_policy": "bounded",
-      "path": "eval benchmark external fetch"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:760428313c70adaf3f74436e4ec01d0269fa4c68eb413a3a4eaf2eb33f7f6490",
-      "mutation_class": "mutate",
-      "output_policy": "bounded",
-      "path": "eval benchmark external import"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:e193ea1222a0c8f48a950f1bde6e834b1d372c130b5e26ee775939c0e39ed5bf",
-      "mutation_class": "mutate",
-      "output_policy": "bounded",
-      "path": "eval benchmark external init"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:0fa5de6115194385332d473d7ca6ec32cd14b48b085ca1caf455ec37788e71b4",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark external list"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:a2eeba314c3846981868f7edab23e1dfc34bd5563555a36eeefee556c300f7c2",
-      "mutation_class": "mutate",
-      "output_policy": "bounded",
-      "path": "eval benchmark external notebook add"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:f5c42d0989c98350bd477882eddc9ad3df7d44e40209acef0759789de91e85c8",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark external notebook list"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:62f3f0e36cc59c53f1fe1fb158e84e279cfa05ae1d32f46461de70bffdbd4e21",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark external notebook render"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:d54983c8e4a0faa17e4dadbf3fd8e4cc8863a51af283254f55a2fff8c093e342",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark external report"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
-      },
-      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:0d75351fad14baaeb19d0609da0275c06ea8c5b37712b962b9eb3b1bedb88660",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval benchmark external sources"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -804,28 +403,767 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/eval.md#benchmark",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:1bf5a55d902fabb0ef1bc4f9fe82fa166892b0628aa47f9d321aa54a2f6f8931",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:f70c0bf3dd443edb42bc19ec4d2652c76361fd32cd45c0ee6ad215f09a263b36",
       "mutation_class": "mutate",
       "output_policy": "bounded",
-      "path": "eval benchmark run"
+      "path": "eval benchmark capacity"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "docs": "sha256:6daa08711da6095d28c0b7e609c61a240770b1816f1a8d70c0488b7fb8b9a369",
+        "grammar": "sha256:8710c3742a95248a42b8281615358be77d20c5ba705ac46a7320bbf7f86d8c9a",
+        "help": "sha256:262300c90109cf36741a8998d5e2574a268580690bffda9c0415759794014078",
+        "parser_tests": "sha256:f37acf37b804e4784168b3faf1b678a4072be33cf03e16b145dd2b1e61022435"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:17d340364c234131a60992d65981c17dda8f6cd011bbbdd86928cb2174ab06f8",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark evidence compare"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:97c722ed19bc4a41ce70e98209f6a85f8c73ddde3bdb2a86bfa19561e784f596",
+        "grammar": "sha256:0ce917511c2dadfbed46f912ad26f33dba93da0a313eb3d8a661ab5220eca199",
+        "help": "sha256:653263c84acd131771807f8c2fe17842c9bd5d6b515a86264d1170c0b0e5f23a",
+        "parser_tests": "sha256:6625abcab4a57f1dbec39e855e6976905e951caf6daec8afb3ce978faa8cee6c"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:92f058bcb42c3a05fef489cfc183dfbba66025d7cca108f12a087746e798cd61",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark evidence list"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:1f8d838eaa5df9c493bcd24d6ea4f0ee270a32bef1d9e4399790229844dd2d5e",
+        "grammar": "sha256:030fc03b9a576f0a1a40cb2190dba6d9571e5de56017638674160826d8cbc588",
+        "help": "sha256:ba86c9d6a506ca6bfb4359c8339c74b4dd21f5aa0595b0e7d357b7f408416383",
+        "parser_tests": "sha256:cea4f52b5dc9a22dc0e683c48f1fce0bb811ef4b521715b3bcacee51ad07d019"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:adbc5c33bdcecda33b2e8efed3e0e40390e581275b8b430993a61c3e6a974cb7",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark evidence show"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:ec00ceb7420c3b5e9203a388056ec575895936d29da2570b99fe39fad3231a5c",
+        "grammar": "sha256:b53549a5e0a28d934e0e1300453b34164ccdb95937e412d130715925ff92392b",
+        "help": "sha256:979ace38bf183efae7699c7ca3c96a8c89a9e9c5b47a32bfa4c3e1258d59cfbb",
+        "parser_tests": "sha256:af318d6b45f2a7857fbe9e1394b4738ae87e6f15bafe123836a04859749c3f20"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:0bd59ab935f3d25a51e8a07e4e796267aae85cb7bbf90f02817c53580f8c10db",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark external compare"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:5bc4d4a817c5a9d2ad57471210e9135d7290c2801143d5dc0c0a89faeecf0807",
+        "grammar": "sha256:a0711b456f3454982d23da2e80cd0df7d667a6a81d4fe407f27cd097dd2d2efd",
+        "help": "sha256:e95a7dca4c17dfe91c5594e5f9a3c5508f186ce2d2699476a60944969f681631",
+        "parser_tests": "sha256:81e19c9934bafba95bcb2d0db65bf2b1827c43ec34d3167cbcb04d8e4b1d8759"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:2f20ca7faeba21422182715b1b21d0c26f098396fc8a8cad1e324ee009b0630a",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "eval benchmark external export"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:b1644818cae264106b36f0a1ba57999c6f6a3adfdd2a5b5247209941869248d5",
+        "grammar": "sha256:4a7e9b2c6c4d2ff342a3817a346bc978bec513f95336a3f76a0c0ce0bc4940c9",
+        "help": "sha256:fb63a72f70a679b9495c6f96ebd3d23bb0dfd678a51e9a9f601428435ce8be4f",
+        "parser_tests": "sha256:647a439c3082534bc5a4b2cdf8dbb431061c41f26906659d0fc3fb250de0c772"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:b72afff6be3d7d892acabbd2ad6f08dfd15d6f4478b559f9b1c7de646ba01185",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "eval benchmark external fetch"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:4f8a3db4c32cf404b2b4d88aba7e1172c3f5cd2494efd3a22a23813ccfc21afb",
+        "grammar": "sha256:fd1e2108dad631e0873cab0e145111167dfd1d8e046a2cc0c4bc96198e16ee61",
+        "help": "sha256:ce3e837335cceb6daecf47218285f0dd42167fdc10ba92a37b133888b777c199",
+        "parser_tests": "sha256:c0ced7636c78217a639e5f4f872975da8d257f3c981ffc544ccec9ac6652931d"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e101858433d6a1f9cbe2683f7c946722d993e7ac0cf239b99689efb32d3b50fb",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "eval benchmark external import"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:441b09b409a0c14667b3c4df05f65f888e7293822285ac3d72ca682f229ac0a7",
+        "grammar": "sha256:eb2e9196d27425a1a9300f8dc14b0eb4bf60b59ab1504767b6d04650f8630091",
+        "help": "sha256:08a24e4fadf8a7542a1636338e7f5eb9c856b2c50aa4c63f4742d00e85a11b43",
+        "parser_tests": "sha256:84de74bbc3edc9daadbb86d3efec46ee4ddced4e3f7022dd19f1e17128c1092a"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:2f69a73a474cd3f9ef3f605ffc74c722e0f6e6f57f1c0da3f77b91df1d1a501a",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "eval benchmark external init"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:d1dce338d92e53dbdd8fbcaeae4ed21d8f01e52aaadaf0cc1c45002777f2ba48",
+        "grammar": "sha256:00bc54e1ed1e04536f6520e3a4aa19cb1bac8d87ce5bf07f1bba1b9a0b3597cb",
+        "help": "sha256:2aa4decc0087ff4f5b5923fb7d9cd6614c4f8d20fc7da260e28201639bca65e8",
+        "parser_tests": "sha256:5fa989572acabe3fc9cf77ba053c4455acae984a800be70ddca8129b54005043"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:1fd616c738b3e62949e7e69fc33f5383d002595e12d0747066e0649d1332acba",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark external list"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:5815a5896ec287ea8977a5b7afad0d720fd14857f83f299581cc9d11da7e63e3",
+        "grammar": "sha256:24f3e6110df185b6982b257fb42bc3bf84fd136ddbdc51753eb5d084587a30d7",
+        "help": "sha256:a7b5f7774235cc018b66caeb57aea946201dc920344c4db38f58c51656fbd2bf",
+        "parser_tests": "sha256:a85c16adf86b2d3d2cfc870e218579b3c3c55e7c9fae39bcddedda356e3cad84"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:cf6e71a6f7a662f741c66d9a6ef0a325d372bb9155263e46eb5f04cb73f7a0ea",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "eval benchmark external notebook add"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:ec935494ee26d8e5d7b47e19da05ec03b0216a5475496348fb0d121d210eee09",
+        "grammar": "sha256:6c438bbb668002e9799e4616e6d7ee72c1fe6d32ad5630ed101695b47cc0e17e",
+        "help": "sha256:a8e9e89a4135588c359537fdcc36f6d703868e12533a317f1b26dde04f9466ca",
+        "parser_tests": "sha256:a0473c0f7a2d23701adf8203d820b525648f2d6d6ee636e4d3f96530e4e372b0"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:5f5deca07be9330bef1a080aede39e7a8277b2d2edd527f0a938aac364f030ba",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark external notebook list"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:b82a504554405c733f44dd6a5d41e63376518baca22bab0255058f2ea04a37dc",
+        "grammar": "sha256:56798470f7f38110e1b0681d65506fcacc5b53b51919872ee37226e41f2bc380",
+        "help": "sha256:7be00c6982a56b6fd5f4811e3b97eb2bedf00d1f7d5018ccfd2addab7b174e5a",
+        "parser_tests": "sha256:247197c3f73bbedda8d237faa1a7b5763798d104a5fd074092ee87be3a9c1319"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:944980aeda1832f1ddc220919b084a81b0eaea4fb9fe4dcd456a6dc99f3565c8",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark external notebook render"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:712ac486a0831a95fd9f72f3e6e0e96f490a31f3a6963914e13e22572861061d",
+        "grammar": "sha256:f9ddfe673b1102459e48498ba6d3b4c08250efa30bd03debf6f626535575c3b6",
+        "help": "sha256:6c06a5ee89b27826887e4dd384db75a4cdf709dcd272be7e766ad601630b5c67",
+        "parser_tests": "sha256:74b7aed2defcd2561d4317651f1f17e5bfcf066fe8e5665653f03e09a14bc434"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:8c74f49e071a044308d228e95824cbeff8493a30e4fba7cefebab3be3f5436f8",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark external report"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:9da217632e5e6f49d1f91faa2be41644da90e48f85ad8c993bc0cb3890d43280",
+        "grammar": "sha256:ec04cceb878ad3e5c55773f4cc536184158a3e775cc87e6bb8955ee0b55a87b8",
+        "help": "sha256:d4e4bc0aed0f28b612b1129458dbf2bfb1a20c97e98b287186e38ae0b83069f1",
+        "parser_tests": "sha256:daf9a90836b8971f84ab37cd927d85e6b53dba0cc8f29bae11e211d7992a7e25"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:c789952a04dd6c2e0ad459f2ae5c230cf07d84df2353f3781e89aedecc9f215b",
+      "mutation_class": "read",
+      "output_policy": "bounded",
+      "path": "eval benchmark external sources"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:b4fa984da4862b5c342c71cd66ef42833bced462cf5b9677e24a0d0ad12eced1",
+        "grammar": "sha256:fa2cdb69eb5227d727ef5ff214d91f1e436725e2e0f819f9727cd3b5ad41f289",
+        "help": "sha256:c5da71a9d98267ae37b88f56e0fb20a2262a3325e8ab2ca8f23211c6d0b59c51",
+        "parser_tests": "sha256:4ceaf38fefe7a04d74d49210f8bcf51ff33add1c2655e0f2ee3aa45683cf9fc2"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
+        "preview": "fail",
+        "remote_parity": "fail",
+        "rollback": "fail",
+        "timeout": "fail",
+        "windows": "fail"
+      },
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:c29ab9e09f1d8bfe41e745b07ee5aa8f13363cab879f8eb83a7fb8d07f781110",
+      "mutation_class": "mutate",
+      "output_policy": "bounded",
+      "path": "eval benchmark quality"
+    },
+    {
+      "attestations": {
+        "docs": "sha256:bfe1b44086427cd5a68427bcb61fdf4693e9eecade6e6d0d31eb5a41090ca2ac",
+        "grammar": "sha256:0bd1d7cf06bfbb335f8c6e3d643189aa5f9556efc410b89ddcdf0dc89e1769ce",
+        "help": "sha256:ded6f87a1b9cfbb6ce57a03f0c8f0852fd230a36d43e82248f4fb0596999c230",
+        "parser_tests": "sha256:3be4b5167791105a35184211c3e6dbf6120e3e89b574f7ea47391e3334837dbc"
+      },
+      "dimensions": {
+        "boundedness": "fail",
+        "configuration": "fail",
+        "confirmation": "fail",
+        "docs": "pass",
+        "drift_protection": "fail",
+        "errors": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": "fail",
+        "linux": "fail",
+        "macos": "fail",
+        "output": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -833,28 +1171,47 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/eval.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:8638ecac7c42445eaa1a12a4b1e502a46c49689b62e9f7eb398ae3b310c6ad51",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:c88dbbf1959f3c9b54deaf52b84c23a18486fb4fcf33787e817718a1a8d4bd35",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval bootstrap"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "docs": "sha256:8e3a4e4cf8b38d9d03f79565df66001317f419fec293cf46670f1b7b96ccd6b3",
+        "grammar": "sha256:765a8e2dc49864239d6395669de0e4b226785ce44829da034cf56dec3e61153f",
+        "help": "sha256:d22f5168842b6912f430c3f3f9059d2f35ad804996e558eab0032fd621a7b587",
+        "parser_tests": "sha256:9a591d46b605691d2aba10847a11efae4f35ac9033988003fbdf4aebb0b233af"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -862,28 +1219,47 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/eval.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:1863b603eecc253a99fdb03d560b3bbeaca5f8ae01fa16d711e7dd03d1ac8cd9",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e673cba7c9f9aeb246811dbd61e993bd967a3c5d44110d66d441d2062d2caa94",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval calibrate"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "docs": "sha256:edae8aa08cb98e0c2ab219f485b3d5cca68665644a1cff9ff59d488aed9060ef",
+        "grammar": "sha256:f74d294ac958f8dfac98e17661200bad251cf3ec723f1a702969c9611e1e25c4",
+        "help": "sha256:faa9858ee54a87149b4b0159f1746683f0b624080c365d9a3a1853e13088fbd2",
+        "parser_tests": "sha256:511824cd0edaccc13c44f87d441b5044aaa6eff5f9059189b158d8218b7c6e4c"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -891,57 +1267,47 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/eval.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:cc234d68c557d927dcbe3c27dae1128d113cbaf830dfa135193c287aa3257186",
-      "mutation_class": "read",
-      "output_policy": "bounded",
-      "path": "eval planning"
-    },
-    {
-      "attestations": {},
-      "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
-        "linux": "fail",
-        "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
       },
-      "docs_anchor": "docs/cli/eval.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:5b6ce850f8cb7a20f76f720ee01d7f5443671678514c8be7eac3edbae343036b",
+      "manifest_fingerprint": "sha256:c1359fd68e59fbe964d9745aa10bd96910d62f1c22182facc55b221564496524",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval preflight"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "docs": "sha256:79cdd3fb1d8915f5437576a936904e7bdd53c5ea7146e400bbd9231bece7f12f",
+        "grammar": "sha256:4b1ab18c891b604f186cd505d6a45964c219120a46454ef82308672312b38922",
+        "help": "sha256:bcda75dd7cb6c28c3aaf446a7a2f17dd85751bc2a453210a1b6c359dbb5e424b",
+        "parser_tests": "sha256:ac720f57dc2eb44aed3b622e988afe0ff2cf1f8153967ccd43f955ba0c01b070"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -949,9 +1315,23 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/eval.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:17c903d806ed83a1b164152276669f786a1d574199fb9c328b885a6003f8bf49",
-      "mutation_class": "read",
+      "evidence": {
+        "docs": [
+          "tests/test_cli.py::test_cli_reference_routes_recipes_and_eval_by_workflow",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_command_tree.py::test_declared_tree_is_valid"
+        ],
+        "help": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ],
+        "parser_tests": [
+          "tests/test_cli.py::test_every_visible_command_path_exposes_help"
+        ]
+      },
+      "manifest_fingerprint": "sha256:898ebef81a1e946cb49c2f29079e4b5c42c2dc585d8550bb26d3eccd3afed5ad",
+      "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval usage"
     },
@@ -1943,19 +2323,19 @@
       "attestations": {
         "configuration": "sha256:c8bab2814b2632c3ef7e0546c0cb655f50f2ce1cf217dca5ce81c65a113eb617",
         "confirmation": "sha256:bb3910b950a7ba40ed1023e4deb1c457105623bdf8fd38c4a9054e1854cee028",
+        "docs": "sha256:2fda041baffd7a199a2d5c1a001ed534866eb56cb6dd44e4483ab0f3e4b140f4",
         "drift_protection": "sha256:84b38635dc71169f3c4116657b906d74129ff933c770677a3c21bfa0a94e1051",
         "errors": "sha256:8e9c9af32230973a4a2d617c941dde504f1b47cc66f97feb3b1157baff8d1b48",
         "grammar": "sha256:1c8883322a843c7d7e43fa3263ff59003247c319cdad54bf1093a9dabd22cfc0",
         "help": "sha256:e421480cfc0301e0bbf848c04ab4b775e4f4e00423048736d5e37c1ddc5dbb4b",
         "linux": "sha256:06a059d7b8870991ddf6619de0f627e088f172b305a923c55cfdd8ad616fd5ff",
         "macos": "sha256:32ff3a5289a56a557a26ba5c6d80a35d59b8550f0e725a2d2a0c2b0d0137a5dd",
+        "output": "sha256:280722605a018461db1c34751c12ec09a5c3b0c7283b10a0933d0a4ba88fde95",
         "parser_tests": "sha256:2b6aaf95cdf2b7c00cc726b3dcb64cad38c1edd5860d5bede05f16fc6e7906ff",
         "preview": "sha256:26e0a6353c01dc769e46575c650ce678db1bfb198bc6ec9ed759bb9e1d499ea6",
         "remote_parity": "sha256:3f60f3d61541007b47536a1eb5b1984da233e69c4d7c458f664964849615c4b1",
         "rollback": "sha256:aa1aace71ee6331a578bdaba112ce3b7940f3ddd40ee0bc0371480136afce731",
-        "windows": "sha256:37503b4c5d53239e8d7fd3d09422bdbf86d9f49fd1715f340f784dba90cfec8e",
-        "docs": "sha256:2fda041baffd7a199a2d5c1a001ed534866eb56cb6dd44e4483ab0f3e4b140f4",
-        "output": "sha256:280722605a018461db1c34751c12ec09a5c3b0c7283b10a0933d0a4ba88fde95"
+        "windows": "sha256:37503b4c5d53239e8d7fd3d09422bdbf86d9f49fd1715f340f784dba90cfec8e"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1987,6 +2367,9 @@
         "confirmation": [
           "tests/test_models.py::test_models_sync_apply_requires_shared_confirmation"
         ],
+        "docs": [
+          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
+        ],
         "drift_protection": [
           "tests/test_models.py::test_models_sync_refuses_concurrent_writer"
         ],
@@ -2009,6 +2392,9 @@
         "macos": [
           "tests/test_models.py::test_sync_source_platform_labels_native_hosts"
         ],
+        "output": [
+          "tests/test_models.py::test_models_sync_json_captures_child_output_in_one_document"
+        ],
         "parser_tests": [
           "tests/test_models.py::test_models_sync_still_dispatches"
         ],
@@ -2021,12 +2407,6 @@
         ],
         "rollback": [
           "tests/test_models.py::test_models_sync_replacement_failure_restores_existing_catalog"
-        ],
-        "docs": [
-          "tests/test_models.py::test_models_cli_docs_cover_each_operator_workflow"
-        ],
-        "output": [
-          "tests/test_models.py::test_models_sync_json_captures_child_output_in_one_document"
         ],
         "windows": [
           "tests/test_models.py::test_sync_source_platform_labels_native_hosts"
@@ -2721,12 +3101,12 @@
         "docs": "sha256:405395b0bbcfd1231ff1caf54a1a29cbe9ea3f5c6d98ce5bb89484288cfb0699",
         "drift_protection": "sha256:c341c99dc5f84f761e1e19f50be042b3328bb1d02a27dfb12784310ba85cec07",
         "errors": "sha256:347992565622b400058029d6d409b34a1e2040921be9ef5dd8d8d769d8e65a2c",
-        "grammar": "sha256:adfe3c7668252f1e5f61fea705d5a55fe8ce88a7a4ae0a1f0217cbad761db50a",
+        "grammar": "sha256:b84f246bcbd4ed3af66a1bb51668091c387890cc07cc0d357b09e3ce9307fd10",
         "help": "sha256:cdf16e45ed76e4314aaddc5d50e0db4e446b1678909b0574dccf0ccaa0d81d31",
         "linux": "sha256:2611a028650e31998182c7579ceedc4984fba8df8ca20c2e687d802b0469da91",
         "macos": "sha256:6df847321bebb2cdfe8ba60aacbeaa6fbf234e7bf0c954c5be3dfff89a53c3e6",
         "output": "sha256:71d3af9b05eaf8d3545e8699e60575291776e6df26a19f798eb6836a78ff4663",
-        "parser_tests": "sha256:81a395ae7b21d725a2a86c3e1fcd7e900d22d68d5d6228b3ed9d1713330df961",
+        "parser_tests": "sha256:e8be459c1bcc83417cf9c28d90a5557b1c8e1d4eb2e5d09aafb734e058e3d013",
         "rollback": "sha256:5d236542016fab026f6593b932815706e6bed49eed52a2b5664b4788bf540b96",
         "timeout": "sha256:707c2ccd68178e8cd838d20f61b53f7ec38a559672c7871e4894bf27853fc659",
         "windows": "sha256:81fc786caaf83ed03086bcc9ebc389b6c90cebf1f16a443bc8cb49d4ccda60e8"
@@ -2785,7 +3165,7 @@
           "tests/test_serves_switch.py::test_switch_refuses_unsafe_role_name"
         ],
         "grammar": [
-          "tests/test_serves_switch.py::test_switch_parser_requires_role_and_recipe"
+          "tests/test_serves_switch.py::test_switch_parser_accepts_positional_recipe"
         ],
         "help": [
           "tests/test_serves_switch.py::test_switch_help_names_role_recipe_and_preview_options"
@@ -2803,7 +3183,7 @@
           "tests/test_serves_switch.py::test_switch_resolves_recipe_and_reuses_guarded_promotion"
         ],
         "parser_tests": [
-          "tests/test_serves_switch.py::test_switch_parser_requires_role_and_recipe"
+          "tests/test_serves_switch.py::test_switch_parser_accepts_positional_recipe"
         ],
         "rollback": [
           "tests/test_serves_switch.py::test_router_cas_advances_so_post_promote_failure_can_rollback",

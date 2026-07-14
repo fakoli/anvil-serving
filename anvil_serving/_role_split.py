@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """role_split.py - split Claude Code per-call context/generation by ROLE.
 
 Splits assistant calls by isSidechain (subagent vs main orchestrator) and by model,
@@ -7,9 +7,13 @@ rather than the orchestrator's long-context tail. Stdlib only.
 """
 import json
 import os
-import glob
 import sys
 from collections import defaultdict
+
+try:
+    from .usage_logs import discover_jsonl_logs, iter_json_objects
+except ImportError:
+    from usage_logs import discover_jsonl_logs, iter_json_objects
 
 PROJECTS = os.environ.get("ANVIL_CLAUDE_LOGS") or os.path.expanduser("~/.claude/projects")
 
@@ -29,7 +33,7 @@ def summarize(ctx, out):
 
 def main():
     out_path = sys.argv[sys.argv.index("--out")+1] if "--out" in sys.argv else None
-    files = glob.glob(os.path.join(PROJECTS,"**","*.jsonl"), recursive=True)
+    files = discover_jsonl_logs(PROJECTS)
     groups = defaultdict(lambda: ([],[]))   # key -> (ctx_list, out_list)
     by_model = defaultdict(lambda: ([],[]))
     seen_sidechain_field = 0; total = 0
@@ -37,14 +41,9 @@ def main():
     ceilings = [16384, 32768, 65536, 131072, 262144]
     sub_ctx_all = []
     for f in files:
-        try: fh=open(f, encoding="utf-8", errors="replace")
-        except Exception: continue
-        with fh:
-            for line in fh:
-                line=line.strip()
-                if not line: continue
-                try: d=json.loads(line)
-                except Exception: continue
+        try:
+            records = iter_json_objects(f)
+            for d in records:
                 if d.get("type")!="assistant": continue
                 m=d.get("message")
                 if not isinstance(m,dict): continue
@@ -60,6 +59,8 @@ def main():
                 by_model[model][0].append(ctx); by_model[model][1].append(ot)
                 if role=="subagent":
                     sub_ctx_all.append(ctx)
+        except (OSError, ValueError):
+            raise
     res = dict(
         total_assistant_calls=total,
         records_with_isSidechain_field=seen_sidechain_field,

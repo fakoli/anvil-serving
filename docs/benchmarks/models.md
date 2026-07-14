@@ -205,7 +205,7 @@ model's `reasoning_effort` control rather than Qwen's `enable_thinking` field.
 
 **Gotcha.** The old 0/5 deterministic planning result is invalid for cross-model
 quality comparison: four cases returned no visible answer after hidden reasoning
-consumed the completion budget. A valid protocol-v2 quality rerun is still
+consumed the completion budget. A valid comparison-grade protocol-v3 quality rerun is still
 needed. The 29.87 aggregate tok/s short run is an operational batch number, not
 a contradiction of the controlled decode result. The production Compose service
 uses the repository name and a mutable nightly image without enforcing the

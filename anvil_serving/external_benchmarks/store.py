@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from .. import guard
 from . import schema
 
 DEFAULT_DB = ".anvil/benchmarks.sqlite"
@@ -295,7 +296,20 @@ def export_rows(
     if out_path:
         out = fs_path(out_path)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(rows, indent=2, sort_keys=True), encoding="utf-8")
+        if out.is_symlink() or (out.exists() and not out.is_file()):
+            raise ValueError("export target must be a regular file: %s" % out)
+        payload = (json.dumps(rows, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        fd, temporary = tempfile.mkstemp(prefix=".%s." % out.name, dir=str(out.parent))
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            guard.backup_file(str(out))
+            os.replace(temporary, out)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
     return rows
 
 
@@ -410,6 +424,52 @@ _BAKEOFF_COLS = (
 )
 
 
+def validate_bakeoff_evidence(evidence: Mapping[str, Any]) -> None:
+    """Require protocol-v3 ranking evidence before it enters the notebook."""
+    if evidence.get("schema") != "anvil-serving.fast-tier-bakeoff/v1":
+        raise ValueError("bakeoff evidence must use schema anvil-serving.fast-tier-bakeoff/v1")
+    protocol = evidence.get("evaluation_protocol")
+    if not isinstance(protocol, Mapping) or protocol.get("version") != 3:
+        raise ValueError("bakeoff notebook requires evaluation protocol version 3")
+    suites = evidence.get("suites")
+    if not isinstance(suites, Mapping) or not suites:
+        raise ValueError("bakeoff notebook requires an explicit ranking suite")
+    eligible = 0
+    for name, raw_suite in suites.items():
+        if not isinstance(raw_suite, Mapping):
+            continue
+        if raw_suite.get("evidence_use") != "ranking":
+            continue
+        if raw_suite.get("validator_strength") not in {"exact_choice", "typed_structure"}:
+            raise ValueError(
+                "ranking suite %r requires exact_choice or typed_structure validation" % name
+            )
+        checks = raw_suite.get("checks")
+        if not isinstance(checks, list) or not checks:
+            raise ValueError("ranking suite %r has no executed checks" % name)
+        for index, check in enumerate(checks):
+            if not isinstance(check, Mapping):
+                raise ValueError("ranking suite %r check %d is malformed" % (name, index))
+            attempts = check.get("attempt_count")
+            passes = check.get("pass_count")
+            if not isinstance(attempts, int) or isinstance(attempts, bool) or attempts < 3:
+                raise ValueError(
+                    "ranking suite %r check %d requires at least 3 attempts" % (name, index)
+                )
+            if (
+                not isinstance(passes, int) or isinstance(passes, bool)
+                or passes < 0 or passes > attempts
+            ):
+                raise ValueError(
+                    "ranking suite %r check %d has invalid pass_count" % (name, index)
+                )
+        eligible += 1
+    if not eligible:
+        raise ValueError(
+            "bakeoff notebook requires a ranking suite with a strong deterministic validator"
+        )
+
+
 def record_bakeoff_run(
     db_path: str | os.PathLike[str],
     evidence: Mapping[str, Any],
@@ -426,6 +486,7 @@ def record_bakeoff_run(
     re-derives what the bakeoff already computed. A serve fingerprint is
     upserted from identity+recipe when enough fields are present.
     """
+    validate_bakeoff_evidence(evidence)
     identity = dict(evidence.get("identity") or {})
     scores = dict(evidence.get("score_inputs") or {})
     failures = evidence.get("failures") or []

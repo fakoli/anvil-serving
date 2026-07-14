@@ -171,6 +171,8 @@ def _suite_summary(name: str, raw: object) -> dict[str, Any]:
         "source": _text(suite.get("source")),
         "source_sha256": _immutable_sha256(suite.get("source_sha256")),
         "validation_errors": validation_errors,
+        "evidence_use": _text(suite.get("evidence_use")) or "diagnostic",
+        "validator_strength": _text(suite.get("validator_strength")) or "deterministic_marker",
     }
 
 
@@ -209,6 +211,12 @@ def _validate_summary(summary: Mapping[str, Any]) -> list[str]:
     headroom = protocol.get("reasoning_headroom_tokens")
     if headroom is not None and (not isinstance(headroom, int) or headroom < 0):
         errors.append("protocol.reasoning_headroom_tokens must be a non-negative integer")
+    minimum_pass_rate = protocol.get("minimum_pass_rate")
+    if minimum_pass_rate is not None and (
+            not isinstance(minimum_pass_rate, (int, float))
+            or isinstance(minimum_pass_rate, bool)
+            or not 0 < minimum_pass_rate <= 1):
+        errors.append("protocol.minimum_pass_rate must be greater than 0 and at most 1")
     if protocol.get("no_thinking") is True and protocol.get("thinking_mode") != "disabled":
         errors.append("protocol.no_thinking=true conflicts with thinking_mode")
     thinking_mode = protocol.get("thinking_mode")
@@ -222,6 +230,17 @@ def _validate_summary(summary: Mapping[str, Any]) -> list[str]:
         suite_map = _mapping(suite)
         for error in _list(suite_map.get("validation_errors")):
             errors.append(f"suite {suite_map.get('name')}: {error}")
+        if suite_map.get("items") == 0:
+            errors.append(f"suite {suite_map.get('name')} has no executable checks")
+        if suite_map.get("attempts") == 0:
+            errors.append(f"suite {suite_map.get('name')} has no executed attempts")
+        if suite_map.get("status") not in {"passed", "failed"}:
+            errors.append(f"suite {suite_map.get('name')} has an invalid status")
+        if suite_map.get("evidence_use") not in {"diagnostic", "ranking"}:
+            errors.append(f"suite {suite_map.get('name')} has an invalid evidence_use")
+        if suite_map.get("validator_strength") not in {
+                "deterministic_marker", "exact_choice", "typed_structure"}:
+            errors.append(f"suite {suite_map.get('name')} has an invalid validator_strength")
     return errors
 
 
@@ -237,7 +256,11 @@ def _numeric_shape_errors(groups: Sequence[tuple[str, Mapping[str, Any], Sequenc
 def _artifact_kind(raw: Mapping[str, Any]) -> str | None:
     schema = _text(raw.get("schema")) or ""
     benchmark_schema = schema in BENCHMARK_SCHEMAS
-    if benchmark_schema and isinstance(raw.get("suites"), Mapping) and raw.get("suites"):
+    if benchmark_schema and (
+            isinstance(raw.get("suites"), Mapping) and raw.get("suites")
+            or any(isinstance(raw.get(name), Mapping) for name in (
+                "intelligence", "tool", "session", "voice"
+            ))):
         return "quality"
     if benchmark_schema and isinstance(raw.get("metrics"), Mapping):
         return "capacity"
@@ -364,10 +387,15 @@ def summarize_artifact(path: str | Path) -> dict[str, Any]:
             "repetitions": _number(protocol.get("repetitions")),
             "visible_answer_tokens": _number(protocol.get("visible_answer_tokens")),
             "reasoning_headroom_tokens": _number(protocol.get("reasoning_headroom_tokens")),
+            "minimum_pass_rate": _number(protocol.get("minimum_pass_rate")),
             "thinking_mode": _text(thinking.get("mode")),
             "no_thinking": _bool(serve_flags.get("no_thinking")),
             "control_mechanism": _text(thinking.get("control_mechanism")),
             "thinking_control_status": _text(thinking.get("control_status")),
+            "thinking_control_evidence": _text(thinking.get("control_evidence")),
+            "thinking_control_evidence_sha256": _immutable_sha256(
+                thinking.get("control_evidence_sha256")
+            ),
         },
         "quality": {"suites": suites},
         "speculative": {
@@ -493,12 +521,14 @@ def _distinct(summaries: Sequence[Mapping[str, Any]], path: Sequence[str]) -> li
     return [] if observed == [None] else observed
 
 
-def _suite_signature(summary: Mapping[str, Any]) -> tuple[tuple[str, str | None], ...]:
+def _suite_signature(summary: Mapping[str, Any]) -> tuple[tuple[str, str | None, str, str], ...]:
     suites = _list(_mapping(summary.get("quality")).get("suites"))
     return tuple(
         (
             str(_mapping(item).get("name") or ""),
             _immutable_sha256(_mapping(item).get("source_sha256")),
+            str(_mapping(item).get("evidence_use") or "diagnostic"),
+            str(_mapping(item).get("validator_strength") or "deterministic_marker"),
         )
         for item in suites
     )
@@ -531,10 +561,7 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
         "repetitions": ("protocol", "repetitions"),
         "visible_answer_tokens": ("protocol", "visible_answer_tokens"),
         "reasoning_headroom_tokens": ("protocol", "reasoning_headroom_tokens"),
-        "thinking_mode": ("protocol", "thinking_mode"),
-        "no_thinking": ("protocol", "no_thinking"),
-        "thinking_control": ("protocol", "control_mechanism"),
-        "thinking_control_status": ("protocol", "thinking_control_status"),
+        "minimum_pass_rate": ("protocol", "minimum_pass_rate"),
         "shared_prefix_burst": ("workload", "shared_prefix_burst"),
         "cache_policy": ("workload", "cache_policy"),
         "prompt_set_id": ("workload", "prompt_set_id"),
@@ -545,7 +572,15 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
         for name, field_path in fields.items()
         if len(values := _distinct(summaries, field_path)) > 1
     }
-    suite_signatures: list[tuple[tuple[str, str | None], ...]] = []
+    if all(summary.get("kind") == "capacity" for summary in summaries):
+        for name, field_path in {
+            "thinking_mode": ("protocol", "thinking_mode"),
+            "no_thinking": ("protocol", "no_thinking"),
+        }.items():
+            values = _distinct(summaries, field_path)
+            if len(values) > 1:
+                differences[name] = values
+    suite_signatures: list[tuple[tuple[str, str | None, str, str], ...]] = []
     for summary in summaries:
         signature = _suite_signature(summary)
         if signature not in suite_signatures:
@@ -559,6 +594,13 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
     provenance_fields = {
         "engine": ("provenance", "engine"),
         "recipe_ref": ("provenance", "recipe_ref"),
+        "thinking_mode": ("protocol", "thinking_mode"),
+        "thinking_control": ("protocol", "control_mechanism"),
+        "thinking_control_status": ("protocol", "thinking_control_status"),
+        "thinking_control_evidence": ("protocol", "thinking_control_evidence"),
+        "thinking_control_evidence_sha256": (
+            "protocol", "thinking_control_evidence_sha256"
+        ),
     }
     provenance_differences = {
         name: values
@@ -576,8 +618,11 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
         "quality": (
             "model", "protocol.version", "protocol.repetitions",
             "protocol.visible_answer_tokens", "protocol.reasoning_headroom_tokens",
+            "protocol.minimum_pass_rate",
             "protocol.thinking_mode", "protocol.control_mechanism",
-            "protocol.thinking_control_status", "provenance.recipe_ref",
+            "protocol.thinking_control_status",
+            "protocol.thinking_control_evidence_sha256",
+            "provenance.recipe_ref",
             "provenance.engine", "provenance.gpu",
         ),
         "speculative": (
@@ -617,6 +662,35 @@ def compare_artifacts(paths: Iterable[str | Path]) -> dict[str, Any]:
             unknown_fields.setdefault("protocol.thinking_control_status", []).append(
                 str(summary.get("path"))
             )
+        if _mapping(summary.get("protocol")).get("version") != 3:
+            unknown_fields.setdefault("protocol.version=3", []).append(
+                str(summary.get("path"))
+            )
+        repetitions = _mapping(summary.get("protocol")).get("repetitions")
+        if not isinstance(repetitions, int) or repetitions < 3:
+            unknown_fields.setdefault("protocol.repetitions>=3", []).append(
+                str(summary.get("path"))
+            )
+        non_ranking = [
+            str(_mapping(suite).get("name") or "unnamed-suite")
+            for suite in _list(_mapping(summary.get("quality")).get("suites"))
+            if _mapping(suite).get("evidence_use") != "ranking"
+        ]
+        if non_ranking:
+            unknown_fields.setdefault("suites.evidence_use=ranking", []).append(
+                str(summary.get("path"))
+            )
+        weak_validators = [
+            str(_mapping(suite).get("name") or "unnamed-suite")
+            for suite in _list(_mapping(summary.get("quality")).get("suites"))
+            if _mapping(suite).get("validator_strength") not in {
+                "exact_choice", "typed_structure"
+            }
+        ]
+        if weak_validators:
+            unknown_fields.setdefault("suites.strong_validator", []).append(
+                str(summary.get("path"))
+            )
     invalid_artifacts = {
         str(summary.get("path")): list(summary.get("validation_errors") or [])
         for summary in summaries
@@ -637,7 +711,12 @@ def _compact_row(summary: Mapping[str, Any]) -> list[str]:
     capacity = _mapping(summary.get("capacity"))
     protocol = _mapping(summary.get("protocol"))
     suites = _list(_mapping(summary.get("quality")).get("suites"))
-    quality = ",".join(
+    stable = ",".join(
+        f"{item.get('threshold_passed_items')}/{item.get('items')}"
+        for item in suites
+        if isinstance(item, Mapping)
+    ) or "-"
+    perfect = ",".join(
         f"{item.get('fully_correct_items')}/{item.get('items')}"
         for item in suites
         if isinstance(item, Mapping)
@@ -648,7 +727,8 @@ def _compact_row(summary: Mapping[str, Any]) -> list[str]:
         _format_number(capacity.get("concurrency")),
         _format_number(capacity.get("ttft_p50_ms")),
         _format_number(capacity.get("aggregate_output_tok_s")),
-        quality,
+        stable,
+        perfect,
         _format_number(protocol.get("repetitions")),
         _format_number(protocol.get("reasoning_headroom_tokens")),
         str(summary.get("path") or "-"),
@@ -687,7 +767,7 @@ def _print_table(headers: Sequence[str], rows: Sequence[Sequence[str]]) -> None:
 def _render_list(result: Mapping[str, Any]) -> None:
     artifacts = [_mapping(item) for item in _list(result.get("artifacts"))]
     _print_table(
-        ("KIND", "MODEL", "C", "TTFT_MS", "TOK_S", "QUALITY", "REPS", "HEADROOM", "PATH"),
+        ("KIND", "MODEL", "C", "TTFT_MS", "TOK_S", "STABLE", "PERFECT", "REPS", "HEADROOM", "PATH"),
         [_compact_row(item) for item in artifacts],
     )
     print(
@@ -698,7 +778,7 @@ def _render_list(result: Mapping[str, Any]) -> None:
 
 def _render_show(summary: Mapping[str, Any]) -> None:
     _print_table(
-        ("KIND", "MODEL", "C", "TTFT_MS", "TOK_S", "QUALITY", "REPS", "HEADROOM", "PATH"),
+        ("KIND", "MODEL", "C", "TTFT_MS", "TOK_S", "STABLE", "PERFECT", "REPS", "HEADROOM", "PATH"),
         [_compact_row(summary)],
     )
     print(json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=True))
@@ -707,7 +787,7 @@ def _render_show(summary: Mapping[str, Any]) -> None:
 def _render_compare(result: Mapping[str, Any]) -> None:
     artifacts = [_mapping(item) for item in _list(result.get("artifacts"))]
     _print_table(
-        ("KIND", "MODEL", "C", "TTFT_MS", "TOK_S", "QUALITY", "REPS", "HEADROOM", "PATH"),
+        ("KIND", "MODEL", "C", "TTFT_MS", "TOK_S", "STABLE", "PERFECT", "REPS", "HEADROOM", "PATH"),
         [_compact_row(item) for item in artifacts],
     )
     differences = _mapping(result.get("differences"))

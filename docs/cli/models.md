@@ -15,7 +15,7 @@ replace a deployed role.
 | See models already on this host | `models sync --dry-run` | Apply with `--confirm`, then inspect `model-library/INDEX.md`. |
 | Download a Hugging Face model | `models pull REPO --dry-run` | Apply with `--confirm`. |
 | Find a known working serve configuration | `models recipes list` | Inspect it with `models recipes show MODEL`. |
-| Replace the deployed Heavy recipe | `models recipes list` | Choose a row that activates `heavy`, inspect it, then preview `serves switch heavy --recipe MODEL --dry-run`. |
+| Replace the deployed Heavy recipe | `models recipes list` | Choose a row that activates `heavy`, inspect it, then preview `serves switch heavy MODEL --dry-run`. |
 | Add or revise an operator recipe | `models recipes create|update ... --dry-run` | Apply with `--confirm`; retain the numbered backup. |
 | Start a candidate without changing routing | `models recipes load MODEL --container NAME --dry-run` | Apply, run `eval preflight`, then review a `serves switch`. |
 | Reclaim cache space | `models cache prune --dry-run` | Add `--execute --confirm` only after reviewing the protected mixture. |

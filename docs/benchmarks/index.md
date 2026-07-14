@@ -24,7 +24,7 @@ changes a router profile or production deployment; promotion remains human-gated
 | Heavy quality with tuned reasoning | [ThinkingCap Qwen3.6-27B FP8](models.md#thinkingcap-qwen36-27b-fp8) | Best repeated tuned quality in this round: 9/10 stable MMLU-Pro items at 4K reasoning headroom | Slower than Nemotron at its useful operating point; not router-promoted |
 | Heavy quality with a tight 1K reasoning budget | [Nemotron 3 Super 120B NVFP4](models.md#nemotron-3-super-120b-nvfp4) | 8/10 stable MMLU-Pro and 5/5 stable ARC at 1K; strong latency/quality balance | Served and tested at 131K, not its advertised 1M maximum |
 | Qwen throughput and large validated context | [Qwen3.6-27B community NVFP4 + MTP](models.md#qwen36-27b-community-nvfp4-mtp) | Fastest short-request Qwen variant tested here; 262K needle and five sessions passed | Needed 8K reasoning headroom for its best quality result |
-| Controlled long-generation throughput | [GPT-OSS-120B](models.md#gpt-oss-120b) | Established 183.2 tok/s control | No valid protocol-v2 quality result yet |
+| Controlled long-generation throughput | [GPT-OSS-120B](models.md#gpt-oss-120b) | Established 183.2 tok/s control | No valid comparison-grade protocol-v3 quality result yet |
 | Low short-request latency | [Mistral Small 4 119B NVFP4](models.md#mistral-small-4-119b-nvfp4) | 0.30 s TTFT at concurrency 1 and 1.85 s at concurrency 5 | Only 5/10 stable MMLU-Pro items at its tuned 2K point |
 
 The current resident **Heavy quality challenger** is **ThinkingCap** at

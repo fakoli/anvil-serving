@@ -149,7 +149,8 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | `anvil-serving serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
 | `anvil-serving init` | Scaffold every canonical router/config template plus the full operational config home (or a single-model bring-up with `--single-model`). |
 | `anvil-serving eval preflight` | Correctness-check a model endpoint before trusting it. |
-| `anvil-serving eval benchmark run` | Replay representative traffic and measure capacity. |
+| `anvil-serving eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. |
+| `anvil-serving eval benchmark quality` | Run repeated quality suites with model-aware reasoning evidence. |
 | `anvil-serving eval benchmark external` | Import and compare external inference benchmark priors. |
 | `anvil-serving serves multiplex` | Swap a single resident model on one GPU (SGLang and vLLM backends). |
 | `anvil-serving models cache prune` | Plan Hugging Face cache cleanup (plan-only, never deletes on its own). |

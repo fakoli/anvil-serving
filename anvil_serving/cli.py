@@ -758,7 +758,7 @@ def _dispatch_remote_tool(
             plan.transport_endpoint,
             auth_env=plan.transport_auth_env,
             allowed_operations=plan.transport_allowed_operations,
-            timeout_seconds=_remote_transport_timeout(arguments),
+            timeout_seconds=_remote_transport_timeout(arguments, tool_name=remote.tool),
         )
     ssh = _ssh_recovery_transport(plan) if plan.transport == "ssh" or allow_ssh_fallback else None
     operation = Operation(plan.command.name, arguments, tool_name=remote.tool)
@@ -814,11 +814,27 @@ def _dispatch_remote_tool(
     return 0
 
 
-def _remote_transport_timeout(arguments: Mapping[str, object]) -> float:
+def _remote_transport_timeout(
+    arguments: Mapping[str, object], *, tool_name: str | None = None
+) -> float:
     """Keep the HTTP deadline outside the bounded remote workload deadline."""
     workload_timeout = arguments.get("timeout_seconds")
     if isinstance(workload_timeout, (int, float)) and not isinstance(workload_timeout, bool):
-        return min(MAX_TIMEOUT_SECONDS, max(60.0, float(workload_timeout) + 5.0))
+        if arguments.get("dry_run") is True:
+            return 60.0
+        multiplier = 1
+        if tool_name == "preflight_probe":
+            checks = arguments.get("checks", "smoke,json,needle,tools")
+            if isinstance(checks, str):
+                multiplier = max(1, len([item for item in checks.split(",") if item.strip()]))
+        required = float(workload_timeout) * multiplier + 5.0
+        if required > MAX_TIMEOUT_SECONDS:
+            raise TransportError(
+                "remote workload deadline exceeds %.0f seconds; reduce checks or "
+                "timeout_seconds" % MAX_TIMEOUT_SECONDS,
+                code="remote_timeout_exceeded",
+            )
+        return max(60.0, required)
     return max(60.0, DEFAULT_TIMEOUT_SECONDS)
 
 
@@ -873,6 +889,30 @@ def _ssh_recovery_transport(plan: ExecutionPlan) -> SSHRecoveryTransport:
         raise TransportError(str(exc), code="ssh_transport_invalid") from None
 
 
+def _policy_positionals(node: CommandNode, policy_args: Sequence[str]) -> tuple[str, ...]:
+    """Return positional tokens after accounting for declared option values."""
+    value_flags = {
+        flag
+        for option in (*COMMAND_TREE.global_options, *node.options)
+        if option.value_name is not None
+        for flag in option.flags
+    }
+    positionals = []
+    consume_value = False
+    for token in policy_args:
+        if consume_value:
+            consume_value = False
+            continue
+        if token == "--":
+            break
+        if token.startswith("-"):
+            flag, separator, _value = token.partition("=")
+            consume_value = not separator and flag in value_flags
+            continue
+        positionals.append(token)
+    return tuple(positionals)
+
+
 def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> bool:
     has_conditional_gate = any(option.requires_confirmation for option in node.options)
     mutation_gate = node.mutation_class == "mutate" and not has_conditional_gate and any(
@@ -887,7 +927,13 @@ def _requires_confirmation(node: CommandNode, policy_args: Sequence[str]) -> boo
         )
         for option in node.options
     )
-    return mutation_gate or option_gate
+    positional_switch_gate = (
+        node.name == "switch"
+        and node.handler is not None
+        and node.handler.module == "anvil_serving.serves"
+        and len(_policy_positionals(node, policy_args)) >= 2
+    )
+    return mutation_gate or option_gate or positional_switch_gate
 
 
 def _confirm(

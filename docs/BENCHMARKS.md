@@ -36,7 +36,8 @@ candidate run and render the comparison:
 
 ```bash
 # append a bakeoff run (alongside --evidence-out)
-anvil-serving eval benchmark run --bakeoff --candidate-id C --config-id CFG \n  --notebook .anvil/benchmarks.sqlite --notebook-task fast-tier --notebook-hardware rtx4090
+anvil-serving eval benchmark quality --candidate-id C --config-id CFG \
+  --notebook .anvil/benchmarks.sqlite --notebook-task fast-tier --notebook-hardware rtx4090
 
 # render the candidate matrix + rubric + win/lose/hold determination
 anvil-serving eval benchmark external notebook render --task fast-tier --hardware rtx4090 --baseline current
@@ -50,7 +51,7 @@ Externally-authored eval suites (e.g. a session-evals `suite.json`) run through 
 same deterministic check engine with `--suite-file`:
 
 ```bash
-anvil-serving eval benchmark run --bakeoff --candidate-id C --config-id CFG \
+anvil-serving eval benchmark quality --candidate-id C --config-id CFG \
   --suite-file ~/.anvil-serving/eval-data/2026-07-11-planning-regression/suite.json \
   --evidence-out evidence.json
 ```
@@ -69,7 +70,7 @@ before any request is sent.
 
 Cross-model reasoning runs should also select the model family's actual control
 (`--thinking-mode` or `--reasoning-effort`), set equal visible-answer allocations,
-record explicit reasoning headroom, and use repeated attempts. Protocol-v2
+record explicit reasoning headroom, and use repeated attempts. Protocol-v3
 artifacts retain the full visible answer, finish reason, reasoning-channel
 metadata, per-attempt budgets, pass rates, and distinct classifications for
 reasoning exhaustion, visible-answer exhaustion, and an ordinary wrong visible
@@ -178,7 +179,7 @@ and should retain finish-reason/reasoning metadata. See the
 
 **Historical operator verdict for these artifacts: the protocol was broken.** Do not
 use the reported Qwen 1/5, Nemotron 0/5, or GPT-OSS 0/5 results for model
-ranking or promotion. Protocol-v2 support now adds reasoning controls, explicit
+ranking or promotion. Protocol-v3 now adds reasoning controls, explicit
 visible/reasoning allocations, finish/reasoning metadata, robust deterministic
 regex checks, failure classification, and repeated runs; only new artifacts
 that actually use those fields are eligible for comparison. This verdict does
@@ -250,7 +251,7 @@ reasoning-headroom tokens to reach a one-pass 9/10 calibration and was slower
 than ThinkingCap's 4K operating point. See the
 [dated finding and raw artifacts](findings/2026-07-12-qwen36-protocol-v2-comparison.md).
 
-Protocol-v2 external suites are fail-closed and resource-bounded: no more than
+Protocol-v3 external suites are fail-closed and resource-bounded: no more than
 100 evals, 20 repetitions per item, 500 aggregate attempts, 65,536 completion
 tokens per attempt, or 2,000,000 requested quality tokens per run. Regex checks
 accept only a conservative deterministic-marker subset (literals, anchors,

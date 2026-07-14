@@ -127,30 +127,30 @@ required operands, choices, and defaults.
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
 | `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute`<br>`--mixture`<br>`--include-servable`<br>`--allow-empty-mixture`<br>`--self-check` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
-| `eval usage` | Analyze recorded usage. | `read` / `bounded` | - |
-| `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--confirm` |
-| `eval planning` | Run planning evaluation. | `read` / `bounded` | - |
-| `eval bootstrap` | Bootstrap a quality profile. | `mutate` / `bounded` | - |
-| `eval calibrate` | Calibrate a reviewable quality profile. | `mutate` / `bounded` | - |
+| `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--logs-dir`<br>`--out-dir`<br>`--analysis-timeout` |
+| `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--checks`<br>`--needle-ctx`<br>`--tool-batch`<br>`--reasoning-evidence`<br>`--allowed-finish-reasons`<br>`--output` |
+| `eval bootstrap` | Build a candidate quality profile from retained fixtures. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `eval calibrate` | Measure local tiers into a reviewable candidate profile. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
-| `eval benchmark run` | Run an endpoint benchmark. | `mutate` / `bounded` | `--confirm` |
+| `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--requests`<br>`--concurrency`<br>`--ctx-tokens`<br>`--max-tokens`<br>`--max-model-len`<br>`--burst`<br>`--engine`<br>`--gpu`<br>`--output` |
+| `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--manifest`<br>`--recipe`<br>`--registry`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--timeout-seconds`<br>`--thinking-mode`<br>`--reasoning-effort`<br>`--visible-answer-tokens`<br>`--reasoning-headroom-tokens`<br>`--suite`<br>`--suite-file`<br>`--candidate-id`<br>`--config-id`<br>`--eval-repetitions`<br>`--eval-min-pass-rate`<br>`--engine`<br>`--gpu`<br>`--source-recipe`<br>`--control-status`<br>`--control-evidence`<br>`--output` |
 | `eval benchmark evidence` | Inspect retained local benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark evidence list` | List retained local benchmark artifacts. | `read` / `bounded` | - |
 | `eval benchmark evidence show` | Show a normalized benchmark artifact summary. | `read` / `bounded` | - |
 | `eval benchmark evidence compare` | Compare artifacts and flag workload mismatches. | `read` / `bounded` | - |
 | `eval benchmark external` | Manage external benchmark evidence. | `read` / `bounded` | - |
-| `eval benchmark external init` | Initialize benchmark evidence storage. | `mutate` / `bounded` | - |
-| `eval benchmark external sources` | List benchmark sources. | `read` / `bounded` | - |
-| `eval benchmark external fetch` | Fetch and import benchmark evidence. | `mutate` / `bounded` | - |
-| `eval benchmark external import` | Import saved benchmark evidence. | `mutate` / `bounded` | - |
-| `eval benchmark external list` | List normalized benchmark evidence. | `read` / `bounded` | - |
-| `eval benchmark external report` | Render a benchmark report. | `read` / `bounded` | - |
-| `eval benchmark external export` | Export benchmark evidence. | `mutate` / `bounded` | - |
-| `eval benchmark external compare` | Compare local benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark external init` | Initialize benchmark evidence storage. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db` |
+| `eval benchmark external sources` | List benchmark sources. | `read` / `bounded` | `--db` |
+| `eval benchmark external fetch` | Fetch and import benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db`<br>`--source`<br>`--url` |
+| `eval benchmark external import` | Import saved benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db`<br>`--source`<br>`--file` |
+| `eval benchmark external list` | List normalized benchmark evidence. | `read` / `bounded` | `--db`<br>`--gpu`<br>`--model`<br>`--source`<br>`--top` |
+| `eval benchmark external report` | Render a benchmark report. | `read` / `bounded` | `--db`<br>`--gpu`<br>`--model`<br>`--source`<br>`--format` |
+| `eval benchmark external export` | Export benchmark evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db`<br>`--out`<br>`--format` |
+| `eval benchmark external compare` | Compare local benchmark evidence. | `read` / `bounded` | `--db`<br>`--local`<br>`--gpu` |
 | `eval benchmark external notebook` | Record, list, or render model-bakeoff notebook runs. | `read` / `bounded` | - |
-| `eval benchmark external notebook add` | Record a bakeoff evidence run. | `mutate` / `bounded` | - |
-| `eval benchmark external notebook list` | List recorded bakeoff runs. | `read` / `bounded` | - |
-| `eval benchmark external notebook render` | Render the bakeoff comparison. | `read` / `bounded` | - |
+| `eval benchmark external notebook add` | Record a bakeoff evidence run. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--db`<br>`--evidence`<br>`--task`<br>`--hardware` |
+| `eval benchmark external notebook list` | List recorded bakeoff runs. | `read` / `bounded` | `--db`<br>`--task`<br>`--hardware`<br>`--format`<br>`--all` |
+| `eval benchmark external notebook render` | Render the bakeoff comparison. | `read` / `bounded` | `--db`<br>`--task`<br>`--hardware`<br>`--format`<br>`--baseline` |
 | `voice` | Manage audio and realtime proxy operations. | `read` / `bounded` | - |
 | `voice audio` | Manage Dark-owned STT/TTS lifecycle. | `read` / `bounded` | - |
 | `voice audio up` | Start audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -247,6 +247,9 @@ shown by focused help. Common moves include:
 | `models recipe` | `models recipes` |
 | `models recipe list` | `models recipes list` |
 | `models recipe show` | `models recipes show` |
+| `eval planning` | `eval benchmark quality --suite-file PATH` |
+| `eval calibrate --i-understand-this-calls-real-tiers` | `--confirm` |
+| `eval benchmark run` | `eval benchmark capacity or eval benchmark quality` |
 | `voice up` | `voice audio up` |
 | `voice down` | `voice audio down` |
 | `voice run` | `voice proxy run` |
@@ -267,7 +270,7 @@ shown by focused help. Common moves include:
 | `score` | `models score` |
 | `profile` | `eval usage` |
 | `preflight` | `eval preflight` |
-| `benchmark` | `eval benchmark run` |
+| `benchmark` | `eval benchmark capacity` |
 | `external-bench` | `eval benchmark external` |
 | `calibrate` | `eval calibrate` |
 | `gpus` | `host gpus` |
