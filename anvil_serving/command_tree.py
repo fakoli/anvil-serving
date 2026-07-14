@@ -10,7 +10,7 @@ from dataclasses import dataclass, field, replace
 import importlib
 import json
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Mapping
 
 
 MANIFEST_SCHEMA_VERSION = 3
@@ -377,6 +377,20 @@ def _inherit_docs_anchor(node: CommandNode, parent_anchor: str = CLI_DOC) -> Com
         docs_anchor=docs_anchor,
         children=tuple(_inherit_docs_anchor(child, docs_anchor) for child in node.children),
     )
+
+
+def _with_review_metadata(
+    node: CommandNode,
+    metadata: Mapping[str, Mapping[str, object]],
+    parent: tuple[str, ...] = (),
+) -> CommandNode:
+    """Apply reviewed help metadata to a subtree by canonical command path."""
+    path = (*parent, node.name)
+    children = tuple(
+        _with_review_metadata(child, metadata, path) for child in node.children
+    )
+    updates = dict(metadata.get(" ".join(path), {}))
+    return replace(node, children=children, **updates)
 
 
 def build_command_tree() -> CommandTree:
@@ -1530,6 +1544,370 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor=EVAL_DOC,
     )
+    eval_target_configuration = (
+        "Choose --recipe [--registry], --tier [--manifest], or direct --base-url plus --model; recipe selection cannot be combined with the others.",
+        "Run on the evaluation resource owner and use 127.0.0.1 there; controller execution is available only where focused help advertises it.",
+    )
+    external_db_configuration = (
+        "--db selects the SQLite evidence store; the default is .anvil/benchmarks.sqlite relative to the invocation directory.",
+        "External rows retain source and snapshot provenance separately from local evaluation artifacts.",
+    )
+    external_advisory_behavior = (
+        "External benchmark rows are advisory priors and never count as promotion-quality evidence.",
+        "Read operations do not change router policy, model serves, or the local quality profile.",
+    )
+    eval_review_metadata = {
+        "eval usage": {
+            "examples": (
+                _example(
+                    "anvil-serving eval usage --logs-dir ~/.claude/projects --out-dir .anvil/usage --dry-run",
+                    "Preview the resolved log source and paired output artifacts.",
+                ),
+                _example(
+                    "anvil-serving eval usage --logs-dir ~/.claude/projects --out-dir .anvil/usage --analysis-timeout 300 --confirm",
+                    "Analyze recorded sessions with a bounded child-process deadline.",
+                ),
+            ),
+            "configuration_notes": (
+                "--logs-dir defaults to ANVIL_CLAUDE_LOGS or the detected Claude Code session directory.",
+                "--out-dir must already exist and defaults to the invocation directory.",
+            ),
+            "behavior_notes": (
+                "Dry-run resolves inputs and outputs without reading logs or writing artifacts.",
+                "Apply replaces usage_aggregate.json and role_split.json as one rollback-safe pair.",
+            ),
+        },
+        "eval preflight": {
+            "examples": (
+                _example(
+                    "anvil-serving eval preflight --tier heavy --checks smoke,json,needle,tools --dry-run",
+                    "Validate the Heavy target and complete functional gate plan.",
+                ),
+                _example(
+                    "anvil-serving eval preflight --tier heavy --visible-answer-tokens 256 --reasoning-headroom-tokens 4096 --output preflight-heavy.json --confirm",
+                    "Run a budgeted Heavy preflight and retain atomic gate evidence.",
+                ),
+            ),
+            "configuration_notes": eval_target_configuration,
+            "behavior_notes": (
+                "Dry-run validates target, checks, budgets, and output without sending model requests.",
+                "Apply records visible output, finish reason, reasoning evidence, and every selected check before returning the gate result.",
+            ),
+        },
+        "eval bootstrap": {
+            "examples": (
+                _example(
+                    "anvil-serving eval bootstrap --eval-data tests/fixtures/eval-data --out candidate-profile.json --dry-run",
+                    "Preview replaying retained fixtures into a candidate profile.",
+                ),
+                _example(
+                    "anvil-serving eval bootstrap --eval-data tests/fixtures/eval-data --out candidate-profile.json --confirm",
+                    "Write the reviewed candidate profile without promoting it.",
+                ),
+            ),
+            "configuration_notes": (
+                "--eval-data must name an existing retained-fixture directory and --out must have an existing parent directory.",
+                "An existing output is refused unless --overwrite is selected; replacement creates a numbered backup.",
+            ),
+            "behavior_notes": (
+                "Dry-run validates the replay plan without reading fixtures through the evaluator or writing output.",
+                "Apply writes only a candidate quality profile; it never changes the deployed router profile.",
+            ),
+        },
+        "eval calibrate": {
+            "examples": (
+                _example(
+                    "anvil-serving eval calibrate --config configs/example.toml --eval-data tests/fixtures/eval-data --out candidate-profile.json --endpoint fast-local=http://127.0.0.1:30001/v1 --endpoint heavy-local=http://127.0.0.1:30000/v1 --dry-run",
+                    "Validate every selected local tier and the independent-judge plan.",
+                ),
+                _example(
+                    "anvil-serving eval calibrate --mode agentic --eval-data tests/fixtures/eval-data --out candidate-profile.json --endpoint fast-local=http://127.0.0.1:30001/v1 --endpoint heavy-local=http://127.0.0.1:30000/v1 --confirm",
+                    "Measure the confirmed agentic-mode tiers into a candidate profile.",
+                ),
+            ),
+            "configuration_notes": (
+                "Select tiers with --config, --mode, ANVIL_MODE, or the active modes manifest; an explicit --config bypasses mode resolution.",
+                "Repeat --endpoint TIER=URL for every local tier, exactly matching the selected router configuration.",
+            ),
+            "behavior_notes": (
+                "Dry-run validates selectors, endpoints, fixture data, and output without calling tiers or the judge.",
+                "Apply uses an independent Agent-SDK judge and writes only a reviewable candidate; it never promotes routing trust.",
+            ),
+        },
+        "eval benchmark capacity": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark capacity --tier heavy --requests 10 --concurrency 1 --dry-run",
+                    "Preview a bounded single-stream Heavy capacity run.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark capacity --tier heavy --requests 60 --concurrency 5 --ctx-tokens 8192 --max-tokens 256 --output heavy-capacity.json --confirm",
+                    "Measure loaded Heavy latency and throughput into an artifact.",
+                ),
+            ),
+            "configuration_notes": eval_target_configuration,
+            "behavior_notes": (
+                "Dry-run validates target, request shape, concurrency, budgets, and output without sending requests.",
+                "Capacity evidence measures serving behavior, not answer quality; short mixed-prompt throughput is not a controlled decode rate.",
+            ),
+        },
+        "eval benchmark quality": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark quality --tier heavy --suite intelligence --eval-repetitions 3 --dry-run",
+                    "Preview a repeated built-in Heavy quality suite.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark quality --tier heavy --suite-file suite.json --candidate-id MODEL --config-id heavy-v1 --control-status verified --control-evidence reasoning-control.json --output heavy-quality.json --confirm",
+                    "Run a comparison-grade external suite with reasoning-control evidence.",
+                ),
+            ),
+            "configuration_notes": eval_target_configuration,
+            "behavior_notes": (
+                "Quality runs default to three attempts per check and retain the declared suite and control provenance.",
+                "Failed gates still write inspectable evidence first; no quality result promotes a model automatically.",
+            ),
+        },
+        "eval benchmark evidence list": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark evidence list",
+                    "List normalized artifacts below the default findings root.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark evidence list --root evidence --kind quality --model MODEL --format json",
+                    "Filter retained quality evidence and emit stable JSON.",
+                ),
+            ),
+            "configuration_notes": (
+                "--root defaults to docs/findings and --limit defaults to 100 artifacts.",
+                "Filters match normalized model, suite, and artifact-kind metadata without reading model prompts into output.",
+            ),
+            "behavior_notes": (
+                "Discovery is bounded, path-ordered, and read-only.",
+                "Unsafe, unreadable, and unrecognized files are skipped and counted instead of being ranked.",
+            ),
+        },
+        "eval benchmark evidence show": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark evidence show heavy-quality.json",
+                    "Show one normalized human-readable artifact summary.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark evidence show heavy-quality.json --format json",
+                    "Emit the normalized summary as stable JSON.",
+                ),
+            ),
+            "configuration_notes": (
+                "ARTIFACT is one retained local benchmark JSON path; --format selects human or JSON output.",
+                "Normalization understands capacity, quality, speculative, and legacy benchmark evidence without exposing prompts.",
+            ),
+            "behavior_notes": (
+                "The command is read-only and never rewrites the source artifact.",
+                "Malformed or unsupported evidence fails closed with a concise artifact error.",
+            ),
+        },
+        "eval benchmark evidence compare": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark evidence compare baseline.json candidate.json",
+                    "Compare two artifacts and fail when their workloads do not match.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark evidence compare baseline.json candidate.json --allow-mismatch --format json",
+                    "Inspect a known mismatch in JSON without treating it as a command failure.",
+                ),
+            ),
+            "configuration_notes": (
+                "Pass one or more artifact paths; --format selects human or JSON output.",
+                "--allow-mismatch changes only the exit status after mismatch details are reported.",
+            ),
+            "behavior_notes": (
+                "Comparison fails closed on material workload, provenance, or protocol incompatibilities by default.",
+                "The command reports comparability and deltas but never converts advisory or diagnostic evidence into a ranking.",
+            ),
+        },
+        "eval benchmark external init": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external init --db .anvil/benchmarks.sqlite --dry-run",
+                    "Preview creation of the local external-evidence store.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external init --db .anvil/benchmarks.sqlite --confirm",
+                    "Initialize the reviewed SQLite evidence store.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": (
+                "Dry-run resolves the store path without creating directories, tables, or files.",
+                "Apply initializes only local evidence storage and does not fetch benchmark data.",
+            ),
+        },
+        "eval benchmark external sources": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external sources",
+                    "List registered adapters and their latest snapshot state.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external sources --db .anvil/benchmarks.sqlite",
+                    "Inspect adapters in one explicit evidence store.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": external_advisory_behavior,
+        },
+        "eval benchmark external fetch": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external fetch --source llmrequirements --url https://llmrequirements.com/data/db.json --dry-run",
+                    "Validate a live snapshot source without network access.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external fetch --source llmrequirements --url https://llmrequirements.com/data/db.json --confirm",
+                    "Fetch and import the reviewed bounded snapshot.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": (
+                "Fetch accepts only absolute HTTP(S) URLs, caps responses at 16 MiB, and uses a 30-second request deadline.",
+                "The raw snapshot is retained even when parsing fails; imported rows remain advisory-only.",
+            ),
+        },
+        "eval benchmark external import": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external import --source millstone --file tests/fixtures/external_benchmarks/millstone_sample.json --dry-run",
+                    "Check the retained snapshot path and size without changing the evidence store.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external import --source millstone --file tests/fixtures/external_benchmarks/millstone_sample.json --confirm",
+                    "Import the reviewed local snapshot and retain its provenance.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": (
+                "Import reads at most 16 MiB from one local JSON, CSV, Markdown, or HTML snapshot.",
+                "Parser failures preserve the raw snapshot and record the failure instead of discarding provenance.",
+            ),
+        },
+        "eval benchmark external list": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external list --top 20",
+                    "List the newest normalized external benchmark rows.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external list --gpu \"RTX PRO 6000\" --source rtx6kpro --top 10",
+                    "Filter bounded rows by normalized hardware and source.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": external_advisory_behavior,
+        },
+        "eval benchmark external report": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external report --gpu \"RTX PRO 6000\" --format markdown",
+                    "Render a filtered Markdown evidence table.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external report --model qwen --format json",
+                    "Emit filtered normalized rows as JSON.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": external_advisory_behavior,
+        },
+        "eval benchmark external export": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external export --out external-benchmarks.json --dry-run",
+                    "Validate the export destination without reading or writing rows.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external export --out external-benchmarks.json --format json --confirm",
+                    "Export normalized advisory rows to reviewed JSON.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": (
+                "Dry-run validates the destination before reading the store or writing output.",
+                "Apply writes atomically and preserves an existing regular file as a numbered backup.",
+            ),
+        },
+        "eval benchmark external compare": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external compare --local heavy-capacity.json",
+                    "Compare one local capacity artifact with its nearest external prior.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external compare --local heavy-capacity.json --gpu \"RTX PRO 6000\"",
+                    "Provide an explicit hardware fallback for prior matching.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": (
+                "Matching considers normalized GPU, model, engine, quantization, context, and concurrency.",
+                "Methodology mismatches are called out and the comparison remains advisory-only.",
+            ),
+        },
+        "eval benchmark external notebook add": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external notebook add --evidence heavy-quality.json --task heavy-tier --hardware rtx-pro-6000 --dry-run",
+                    "Validate one ranking-grade quality artifact and notebook identity.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external notebook add --evidence heavy-quality.json --task heavy-tier --hardware rtx-pro-6000 --confirm",
+                    "Append the reviewed quality run to the local notebook.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": (
+                "Only protocol-v3 ranking evidence with a strong validator and repeated attempts is accepted.",
+                "Dry-run validates evidence and identifiers without appending a notebook row.",
+            ),
+        },
+        "eval benchmark external notebook list": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external notebook list --task heavy-tier --hardware rtx-pro-6000",
+                    "List the latest retained run for each Heavy candidate.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external notebook list --task heavy-tier --all --format json",
+                    "Inspect the complete append history as JSON.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": (
+                "The default view returns the latest run per candidate; --all includes full append history.",
+                "Notebook rows summarize local quality evidence but never promote a model or change routing state.",
+            ),
+        },
+        "eval benchmark external notebook render": {
+            "examples": (
+                _example(
+                    "anvil-serving eval benchmark external notebook render --task heavy-tier --hardware rtx-pro-6000 --baseline current-heavy",
+                    "Render the Heavy comparison matrix against an explicit baseline.",
+                ),
+                _example(
+                    "anvil-serving eval benchmark external notebook render --task heavy-tier --format json",
+                    "Emit notebook scores and verdicts as JSON.",
+                ),
+            ),
+            "configuration_notes": external_db_configuration,
+            "behavior_notes": (
+                "Rendering uses the latest retained run per candidate and an optional baseline identifier.",
+                "Verdicts summarize retained evidence only; they do not change model serves or router trust.",
+            ),
+        },
+    }
+    eval_node = _with_review_metadata(eval_node, eval_review_metadata)
     voice = _node(
         "voice", "Manage audio and realtime proxy operations.",
         children=(
