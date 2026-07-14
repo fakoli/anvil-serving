@@ -5,6 +5,7 @@ import pytest
 
 from anvil_serving.command_tree import (
     COMMAND_TREE,
+    CommandExample,
     CommandNode,
     CommandOption,
     CommandTree,
@@ -25,7 +26,7 @@ def test_manifest_is_checked_in_and_matches_deterministic_regeneration():
 
 def test_manifest_is_byte_stable():
     assert render_manifest() == render_manifest()
-    assert manifest_data()["schema_version"] == 2
+    assert manifest_data()["schema_version"] == 3
 
 
 def test_visible_commands_link_to_existing_reference_pages_and_headings():
@@ -70,6 +71,18 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["voice proxy up"]["remote_operation"]["tool"] == "voice_proxy_manage"
     assert records["voice proxy logs"]["output_policy"] == "bounded"
     assert records["serves render"]["gpu_role_required"] is True
+    assert records["serves render"]["examples"]
+    assert records["serves render"]["configuration_notes"]
+    assert records["serves render"]["behavior_notes"]
+    assert not any(
+        "--dry-run" in option["flags"]
+        for option in records["serves render"]["options"]
+    )
+    for path in ("serves rm", "serves adopt"):
+        removed_yes = next(
+            option for option in records[path]["options"] if "--yes" in option["flags"]
+        )
+        assert removed_yes["tombstone"]["replacement"] == "--confirm"
     assert records["serve"]["tombstone"]["replacement"] == "router run"
     assert records["mcp"]["handler"] is None
     assert records["mcp"]["tombstone"]["replacement"] == "mcp serve"
@@ -216,3 +229,45 @@ def test_manifest_drift_is_detected(tmp_path: Path):
 
 def test_declared_tree_is_valid():
     validate_command_tree(COMMAND_TREE)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        (
+            "examples",
+            ("not-an-example",),
+            "must be a CommandExample",
+        ),
+        (
+            "examples",
+            (CommandExample("anvil-serving init", "broken\nsummary"),),
+            "summary must be one line",
+        ),
+        (
+            "configuration_notes",
+            (None,),
+            "configuration notes must be non-empty one-line text",
+        ),
+        (
+            "configuration_notes",
+            ("broken\nconfiguration",),
+            "configuration notes must be non-empty one-line text",
+        ),
+        (
+            "behavior_notes",
+            ("broken\nbehavior",),
+            "behavior notes must be non-empty one-line text",
+        ),
+    ),
+)
+def test_reviewed_help_metadata_must_be_one_line(field, value, message):
+    node = CommandNode(
+        "init",
+        "Initialize.",
+        handler=HandlerRef("anvil_serving.init"),
+        **{field: value},
+    )
+
+    with pytest.raises(CommandTreeError, match=message):
+        validate_command_tree(CommandTree(nodes=(node,), global_options=()))

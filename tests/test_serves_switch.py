@@ -882,5 +882,5 @@ def test_positional_switch_requires_dispatcher_confirmation(capsys):
 def test_switch_help_leads_with_positional_workflow(capsys):
     assert cli.main(["serves", "switch", "--help"]) == 0
     output = capsys.readouterr().out
-    assert "serves switch heavy MODEL --dry-run" in output
+    assert "serves switch heavy gpt-oss-120b --dry-run" in output
     assert "ROLE [MODEL]" in output
