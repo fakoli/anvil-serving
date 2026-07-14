@@ -3,23 +3,23 @@
   "manifest_schema_version": 3,
   "maximum_failures": {
     "boundedness": 103,
-    "configuration": 91,
+    "configuration": 77,
     "confirmation": 96,
-    "docs": 63,
+    "docs": 49,
     "drift_protection": 102,
     "errors": 95,
-    "grammar": 63,
-    "help": 63,
+    "grammar": 49,
+    "help": 49,
     "journaling": 103,
     "linux": 102,
     "macos": 102,
     "output": 100,
-    "parser_tests": 63,
+    "parser_tests": 49,
     "preview": 96,
     "remote_parity": 102,
     "rollback": 102,
     "timeout": 103,
-    "windows": 102
+    "windows": 88
   },
   "records": [
     {
@@ -2489,407 +2489,804 @@
       "path": "models sync"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:a66c56d9dcd32cf44ad4090be5e2bb89a8eabb6328690ecf1d7162d7496cefbe",
+        "docs": "sha256:b0c7a0faf24321e36cc39ab5d3e1440a89bcd2f03dc48fe6fe188748eb7934b8",
+        "grammar": "sha256:d8948380f7f69302a9b9bf526e6c7a6da79c961b1ca31e83f5cccb856add988c",
+        "help": "sha256:56f721ff2851d3e9b6ce74aebda198593fc015603c451d7b91ab42bf4275e51d",
+        "parser_tests": "sha256:90cd4c839fe0d2e65893b2392e6b3424d45dca7fa900520360e9a7b67a1dc210",
+        "windows": "sha256:432bb2b388dde365ce91d43c174c7c2b0cedc640780ace1b42ae3427da21bc55"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:b3d4cd9a43922ce1256f2caadf7e17a6b9e249e7e20fd1d1a6068b421ba91447",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_manage_configuration_notes_match_parser_defaults",
+          "tests/test_router_manage.py::test_resolve_compose_prefers_config_home"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:ab7d6d08dd2548cc554a1fd39bf3f0a217b0e843ca28f8f8faaf161f94e5dbd1",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router down"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:d0ba9e489ed36923d9c3a73096826b1a3184b2cf3a2ddabeca0a018a5d4dd46e",
+        "docs": "sha256:7c36fde1dc7089c79fd99c7e87ff0685bac2995fd89f999fafa06795c0b998d3",
+        "grammar": "sha256:230b86bd1d4c132b1df3fa944f9fc3d623475b0763012aca2e1b8f6124c4ecf5",
+        "help": "sha256:f439a591578e54207fd858810d22c1b1cea518158e379435b3697a4d20bdac67",
+        "parser_tests": "sha256:a05065f716e1de9a2d6f61352cc8e7af2d3e8ba6bcb77d41aa54b8a5b7fcda3a",
+        "windows": "sha256:4afd9271c41f756e464149415f784c72f480305b58788946eea0985eb8342133"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:f39910e2bbf65b1efaeb525808947d28713cf11767e74c0d3c5b7f1d088d6760",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_transition_configuration_matches_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:423bd9d243e23e10f33ccda66c8c96a715e4b2a04cb0d8e56de2f0cd55376915",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router drain"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:7396a5718b84169ec31fbc5c180641e164ba8d5055db92cfcabc5c3ac30a0575",
+        "docs": "sha256:dbbd63603787f33ce7d452f9a021e8ba2921e690b845fd6222873f324e7a97d9",
+        "grammar": "sha256:c58617bf371525fb32539816ceca576a84bdfb4ada226d66e72b3bb459206f47",
+        "help": "sha256:dac24ba10eb349f7ca9c60e7a9ea36f0e47d11c946c48168ef11df7c1b5fb426",
+        "parser_tests": "sha256:eed689082a333cc4f093c93944f25a08d1f4a2ffaf03252efc09b378bb5a71e3",
+        "windows": "sha256:5d74821a0e354f9f78f66bbef3146547368d25ec62e350d82c16a7812cd19f52"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:1a6345f0503aa6e72a7e815ea5539862aba4c4ee5bfd1c5e275e2571e9bc1b31",
+      "evidence": {
+        "configuration": [
+          "tests/test_router_endpoint.py::test_explicit_host_and_port_override_docker_binding",
+          "tests/test_router_endpoint.py::test_top_level_cli_dispatch_does_not_forward_endpoint_action"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_endpoint_examples_reach_the_real_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_endpoint_examples_reach_the_real_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:b521760bf9cd8578fcf8bcb01c36053e175d3a28056a421539e4406a4b3b5bb7",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router endpoint"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:c1aaf62e598aef5c1a154e1099dfb8b23848cb7aa04caeb1305aad55548f5dd4",
+        "docs": "sha256:766f8f58d54a567d5cd79a3e52724f7ed7b8e7d3af7f0feb45e2205db22339d4",
+        "grammar": "sha256:017e857b54438d548ea68463a98ef4381e62127caec99c944c5b1989a02ce12b",
+        "help": "sha256:c4bdfef50b6ce5462e059d34746d51607b5fe96dab8ff2bb3c7e63075b82ad8c",
+        "parser_tests": "sha256:993cb50eb1bf50d60c4db759ba1c29104475fd3f030ea3c936a153961d9ba883",
+        "windows": "sha256:803e2dbb3969a06da1d4289002067ee7b2c05f97a99468fe03a4dc784d3344ea"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:185dd17ac0ed0f571ad2ac79a09ef1cc2f2fa6b7c19f20ff97db8864a1f201db",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_manage_configuration_notes_match_parser_defaults"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e68123ead7ab5362b63a62594664a6ef5a1be0f5672a42f909b68f934de8e604",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router logs"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:222d9112656d3fd394b0294d4c6aabdff708ba86a60e065d3680533c875860fa",
+        "docs": "sha256:488b05702d035833ca0912830f3065f4f0f984a15750da6fda190dfb1b800983",
+        "grammar": "sha256:037d3e63de2302478f1c9d01694264e6929e9930bfe3925052416d4916a8c70a",
+        "help": "sha256:e9ff56fa2a0d7f1c82e051e0faa0c4a82ec8a0e36b3ddc265af6218ff33cab58",
+        "parser_tests": "sha256:15b126aac6188319db5e8b70e994d5bef8b7e25704c782bd6df7b70a5a7436c5",
+        "windows": "sha256:571a443345dfedd635a9ec0bacb7dfba604205e9d520c2a6d221bb2233a0fde6"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:a1fc17b1d7f24a4153e82e288fce65ec4592a383de593548fe35212269b8bd79",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_manage_configuration_notes_match_parser_defaults"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:4a2177d70ebe1d4c661b9e4b0db52452212c8e539a418d2daf5014e50bee6a09",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router promote"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:cf1fa5eb888c79c0f6980e08c3325872cebfac6409d2223f4de78d9fd185ef5c",
+        "docs": "sha256:be9e04cb8e309ca589d188b00086beb855d68da899588a03a88809939bb1905d",
+        "grammar": "sha256:fec49a3a6d773b083dd1c5809f46b959c91fcccc2ae4bd86485ba07b735ccb75",
+        "help": "sha256:382b9823112cb69c58aefaea0482bfd5ce8270bb7c92fcc1921d234ef5ec19e0",
+        "parser_tests": "sha256:5fa61e4903a0859c5be1151cbee0ecf287dc84aaf1d80ea152e9b4b5fcbe146e",
+        "windows": "sha256:588fd14f6a8d47844db70c1a008944b761c3f449085bc6310fd3c0599396e2c8"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:ab1071b7cd888c23dd91fbb80aaf0461febe4978407942bc95e98f6e6ef95836",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_transition_configuration_matches_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:a1b9a89c6d2fad3368b22d6d6af17c0f4fae88e5f0909fab038d9dac3534f0bf",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router quiesce"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:e7b20627ffe6c23448f36bd2467768e8c9880b151c1cbdc5342be040c1eaab15",
+        "docs": "sha256:032d9f88c98fe4da9da364313e6266047e40a752da5b22a4a81312dbd66b3bf3",
+        "grammar": "sha256:884748722fe81c3595ca048fd5ad58217b82932202a32b0ff06ba037c3ab0320",
+        "help": "sha256:24d151d2ead85ec7a48e72cfa1c2b2d9f480e6c367dffcdf7611f03fd968468a",
+        "parser_tests": "sha256:1c7fa120cd719acb7819902d7ad586000f45d6f81de56ff173916d7c5cc67ab1",
+        "windows": "sha256:5e375ef096e9c01cde4c94e9fc8439f8871a2a6cccf51508bb3102e5c6481da1"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:8e0d7b0a3c8a0f2b6f1376d6258c11f1d5268f0f312c3b35c32ed1a562458168",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_transition_configuration_matches_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:14d47afef2ebb964e8c5fe1000c8a338e81ac290cefd3c114677817ca8a8c44e",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router readmit"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:eca05aff0394cd0dcbe29ba29b253cf8c692298a31237a59c01e05d5418f263f",
+        "docs": "sha256:e39630b5bacfebd27ec3e4ceea0e0774ff12409db7629859edaa7d93e8fa137e",
+        "grammar": "sha256:49a0a1855e186e95a3eeb2f229196a3638ba7e439803d7dfedfd5d338158bfc9",
+        "help": "sha256:7b2c30c8a1221e6b7da87aa91ddbe578764c144ae517813c8daf84c81ab9ca43",
+        "parser_tests": "sha256:f7a5708c38ec914bc0a811a77944fdf0a0f97121050eafc5c61b6c00afe65993",
+        "windows": "sha256:b6e94f44741741115b4b96279d422d0a5c9b30ed9eb2f2746e69c1f614bd68f9"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:14b5b33c5c4ff8fe264df2f30d5b583ca7f16b98e4017484d4390918c9ca1df9",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_manage_configuration_notes_match_parser_defaults"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:d87bda6ed4bfe0a59b5bfe8c8b9894c4b086299222807ca8f2d2e56eb58868cb",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router reload"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:37e0e94231938839ba9c5b172c903036035ff45d8e1fff19433e608171a987bd",
+        "docs": "sha256:60c7cd814c0077d8b23c9011f932d300fe9067b2f41ba5bf10985539c8ff166a",
+        "grammar": "sha256:4b7816905f27bf8d57508a739fd204297abafab94838bf6527a8177f6a234534",
+        "help": "sha256:90790a919c9eb091fab73c7823d5b4dc6f8c5ca4e4139bee8990de9b452eabd5",
+        "parser_tests": "sha256:b02c912a9cf780e29808d2ce334f33d9ff45f8c63309f83b1b3f2ba2685f3cd2",
+        "windows": "sha256:989516d0005af29098ae04563068af27a19ce4de2d82545dd2d84be5428ab35f"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:bd702c98f7d595e8c261bf8b64bd07d6299298f8067d8b5a95889ae727ca34ee",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_manage_configuration_notes_match_parser_defaults"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:8bcf9130efd96a8a4cf5ffaae734167cc3a9f5b7ec56dba53b4a9fde76df6a55",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router restart"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:ec923c7ac17de984e9e97b5650076fce11c8a7954f929f4dc6e470086b2b31da",
+        "docs": "sha256:39f0c31476a290958274271dbf2bcb8a51a5eadb8ca8a412165c46acada4fb04",
+        "grammar": "sha256:a18a4c41d771f0346f92000d4dac107135e7c8c1a6217a737f1e2f8a45bc9416",
+        "help": "sha256:310411202ed3722d921aa48889653afa3712d083f1ac3e37c039b1daded3d456",
+        "parser_tests": "sha256:77582deafa4e35ed7a1207f82686729f0ae2e6d6e33a152d78f2fa743d760b4b",
+        "windows": "sha256:37ef37c8db42710ac1a839ce8fae68b8e9e19f8f38d997a8ec6beaa80e539e33"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:fba8734ebe8899f0e7d6dc70ae97354fe30ccae9a61b3309c1de8a7723f2b87d",
+      "evidence": {
+        "configuration": [
+          "tests/router/test_serve.py::test_resolve_mode_flag_wins_over_env_and_active_mode",
+          "tests/router/test_serve.py::test_resolve_serve_config_explicit_config_bypasses_modes"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_router_run_examples_reach_the_real_parser"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf",
+          "tests/test_cli_help_ux.py::test_router_run_examples_reach_the_real_parser"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:fee4799c29a1f0af0add39307561ee8bd5940b295fd280baecef4f0a9839a1dd",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "router run"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:783cdf48a6c3d03c23cf2d0b14cb51eb280ab4755bd2fca717f79b9ea014931d",
+        "docs": "sha256:4888a24e0bf9d4003f84960568837d522b6ac1228719ecd8153d9d908594b8a5",
+        "grammar": "sha256:3cce589839b31bec13ad514a1ee5035eda4e2e08b27df50cf24cd1237a026798",
+        "help": "sha256:b3b2301eb84934885e46b9a74a6c7298757ebb025636d891df5aa29e3a9e8850",
+        "parser_tests": "sha256:775803be32333783d8a3743e9178527afa67074ee7bfd2c54fa6af2e8e6c56a3",
+        "windows": "sha256:beed95c50d2042d9f7f4e93c67fef9567a2734a89c27948035b57639e7659477"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:81b63ab84190b54f8e2ca3310ef5c2cac7711ffa9b329a99fe6370f7bb4df66f",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_manage_configuration_notes_match_parser_defaults"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:650483c8a29da5fa8acf8e39235a74dfeb22dfcf2a16f48791f995fe807a1777",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router status"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:4bf26372db8c30aff0e5a107467c04f4b45d7b50fd6b1f28c0e8ad59d6df9533",
+        "docs": "sha256:2144995bd70038ea5b6992947192a3e8be08e08e449bb540f79fe97d677910c8",
+        "grammar": "sha256:f3a0374fd9f0d67478146ea3a37abf50400437d2b8320a9abcf4bc6b70ae1f47",
+        "help": "sha256:a177bd2a9a6816c8913565d59aec91976486eea0554083076152281cc2126d3e",
+        "parser_tests": "sha256:01d56d84f59295f344db7739e838880c74538dec18b975f1b2abd3c60b3a7d7f",
+        "windows": "sha256:d9dbe490da19626d00db778beb07b443b08e101491b37fc7123dae08fbe66c68"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:3db5bb4746422ec6792488cf24668c340936923d1380b0b57feafbaa6c49b734",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_manage_configuration_notes_match_parser_defaults"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:7ac838cb417d9442c97233dd0f3181664b144c8f45f562123d1f4f9703a612ac",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router token"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:be7a1b3b735025328c894238d52eaf0ed5a1710231ebacda63e33ec9a665714f",
+        "docs": "sha256:e798f5c2a0d40359081c5d3b3a5c9563a8d07e2cea99f70191aa8f337178f753",
+        "grammar": "sha256:55ebfeddce9e04dcaa3601abba0687183d80c264891ffba643d54ec39e6bab9c",
+        "help": "sha256:ed54e533b76b49b351ad86711f6b20152f925cffaad1799c9539ec987fbd1f14",
+        "parser_tests": "sha256:05364059abe31078f0970beb228d5a179565a2c54dccd354f9b9c2c4641816ee",
+        "windows": "sha256:5e90e41daa194103f26e9cec082f90798a5628b8a0a4ce98d99871cf39d976d0"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:dd3b5856e3d8ee740564b273c101c41d427b0eead0679a593cb3cbbcfeaaab02",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_transition_configuration_matches_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:a8202b88fcc8b1c675cfbb4df9ce53936ad73e4e86129e8974a0f3d5dd848288",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router transition-status"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:94dd33f0dcf5e039354c67bdbc78fb33e0a81a6a0d7b06f84535d79ee6006cef",
+        "docs": "sha256:a1c22c6122ab13491e1a6a790915bef176bc292e0981c605a8ba57cfd1fbfbc7",
+        "grammar": "sha256:a19b4894c219f340a0e4054b9c9de1ea22e6345b6d3ed2447ae36d5497545901",
+        "help": "sha256:a5a929e20b98460c3b88c922f3fba3884c75bba040a061cb20f3e2cb6a89b2bf",
+        "parser_tests": "sha256:40b791f231cd128b11f13ee43d6bd84e11ca52ccba7035b5225d93e03a14dd6c",
+        "windows": "sha256:5a9da1683448e595f956c31fd9096d2a4efc92ddee8fca8793d584d296a0b2e0"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/router.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:78002d9028d4668fa3acb079fdcc98a81cbdba1d84417738e9352b9580900952",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_router_manage_configuration_notes_match_parser_defaults",
+          "tests/test_router_manage.py::test_default_env_file_prefers_config_home_then_legacy",
+          "tests/test_router_manage.py::test_resolve_compose_prefers_config_home"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_router_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_router_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_router_manage_examples_reach_the_real_action_parser",
+          "tests/test_cli_help_ux.py::test_router_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_router_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:eb2081858813509d0928ed61a7742613b23980be18b0eee1888d7caad7f4b574",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router up"

@@ -291,11 +291,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Runs in the foreground until interrupted.",
+        "The default bind is 127.0.0.1; a non-loopback bind requires an operator-provided authentication layer."
+      ],
+      "configuration_notes": [
+        "--config selects an exact TOML and bypasses mode resolution.",
+        "Mode precedence is --mode, ANVIL_MODE, modes manifest, then the built-in default."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router run --config configs/example.toml",
+          "summary": "Run one exact router configuration in the foreground."
+        },
+        {
+          "invocation": "anvil-serving router run --mode agentic --host 127.0.0.1 --port 8000",
+          "summary": "Resolve agentic mode and bind it to loopback."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -481,11 +496,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview prints the exact lifecycle command without invoking Docker.",
+        "Apply changes Compose service state after confirmation."
+      ],
+      "configuration_notes": [
+        "--compose overrides the operator-home Compose file and packaged example.",
+        "--service defaults to router; router up also detects a conventional environment file."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router up --dry-run",
+          "summary": "Preview the deployed router up operation."
+        },
+        {
+          "invocation": "anvil-serving router up --confirm",
+          "summary": "Apply the reviewed router up operation."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -666,11 +696,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview prints the exact lifecycle command without invoking Docker.",
+        "Apply changes Compose service state after confirmation."
+      ],
+      "configuration_notes": [
+        "--compose overrides the operator-home Compose file and packaged example.",
+        "--service defaults to the router Compose service."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router down --dry-run",
+          "summary": "Preview the deployed router down operation."
+        },
+        {
+          "invocation": "anvil-serving router down --confirm",
+          "summary": "Apply the reviewed router down operation."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -850,11 +895,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview prints the exact lifecycle command without invoking Docker.",
+        "Apply verifies the restarted container stays running unless --no-verify is set."
+      ],
+      "configuration_notes": [
+        "--container defaults to the deployed anvil-router container.",
+        "Global target options select the resource owner when the router is remote."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router restart --dry-run",
+          "summary": "Preview the deployed router restart operation."
+        },
+        {
+          "invocation": "anvil-serving router restart --confirm",
+          "summary": "Apply the reviewed router restart operation."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1034,11 +1094,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview prints the exact lifecycle command without invoking Docker.",
+        "Apply verifies the restarted container stays running unless --no-verify is set."
+      ],
+      "configuration_notes": [
+        "--container defaults to the deployed anvil-router container.",
+        "Global target options select the resource owner when the router is remote."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router reload --dry-run",
+          "summary": "Preview the deployed router reload operation."
+        },
+        {
+          "invocation": "anvil-serving router reload --confirm",
+          "summary": "Apply the reviewed router reload operation."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1218,11 +1293,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview and --validate-only do not write router configuration.",
+        "Promotion validates with the deployed image and never replaces the independent human quality gate."
+      ],
+      "configuration_notes": [
+        "--profile is required; --config optionally promotes a matching router configuration.",
+        "Container, image, volume, and destination flags default to the deployed router layout."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router promote --profile ./candidate-profile.json --dry-run",
+          "summary": "Validate and preview a reviewed profile promotion."
+        },
+        {
+          "invocation": "anvil-serving router promote --profile ./candidate-profile.json --confirm",
+          "summary": "Write the reviewed profile and reload the router."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1439,11 +1529,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Endpoint discovery is read-only and does not change router or tailnet state.",
+        "Human output includes listen address, local URL, source, running state, and DNS availability."
+      ],
+      "configuration_notes": [
+        "--host and --port override discovered container or configured bindings.",
+        "--container defaults to anvil-router; --no-tailscale skips MagicDNS discovery."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router endpoint",
+          "summary": "Show the configured listen address and Tailscale DNS name."
+        },
+        {
+          "invocation": "anvil-serving router endpoint --no-tailscale --json",
+          "summary": "Inspect the local endpoint without Tailscale discovery."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1628,11 +1733,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Status is read-only and bounded; it does not follow logs or restart the router.",
+        "Missing or stopped containers return explicit state instead of mutating deployment state."
+      ],
+      "configuration_notes": [
+        "--container defaults to the deployed anvil-router container.",
+        "Global target and transport options select the resource owner when needed."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router status",
+          "summary": "Show bounded status for the deployed router."
+        },
+        {
+          "invocation": "anvil-serving router status --json",
+          "summary": "Read router status through the stable result envelope."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1788,11 +1908,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Transition status is read-only and does not quiesce, drain, or readmit a tier.",
+        "Use it between transition steps to verify router-owned state."
+      ],
+      "configuration_notes": [
+        "--router-url overrides ANVIL_ROUTER_URL and the default http://127.0.0.1:8000.",
+        "--tier narrows the result to one tier when supplied."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router transition-status",
+          "summary": "Show transition state for every router tier."
+        },
+        {
+          "invocation": "anvil-serving router transition-status --tier heavy-local",
+          "summary": "Show transition state for one tier."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1971,11 +2106,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview performs no transition; apply requires shared confirmation.",
+        "Use transition-status between steps to verify router-owned state."
+      ],
+      "configuration_notes": [
+        "--router-url overrides ANVIL_ROUTER_URL and the default http://127.0.0.1:8000.",
+        "--tier is required and identifies the router tier to mutate."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router quiesce --tier heavy-local --dry-run",
+          "summary": "Preview the Heavy tier quiesce operation."
+        },
+        {
+          "invocation": "anvil-serving router quiesce --tier heavy-local --confirm",
+          "summary": "Apply the reviewed Heavy tier quiesce operation."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2176,11 +2326,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Drain waits only for an already-quiesced tier and does not change admission state.",
+        "Use transition-status between steps to verify router-owned state."
+      ],
+      "configuration_notes": [
+        "--router-url overrides ANVIL_ROUTER_URL and the default http://127.0.0.1:8000.",
+        "--tier and a positive --timeout are required for a bounded drain."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router drain --tier heavy-local --timeout 120",
+          "summary": "Wait up to 120 seconds for Heavy requests to finish."
+        },
+        {
+          "invocation": "anvil-serving router drain --tier heavy-local --timeout 300 --router-url http://127.0.0.1:8000",
+          "summary": "Drain through one explicit private router URL."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2371,11 +2536,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Preview performs no transition; apply requires shared confirmation.",
+        "Readmit checks current readiness before returning the tier to service."
+      ],
+      "configuration_notes": [
+        "--router-url overrides ANVIL_ROUTER_URL and the default http://127.0.0.1:8000.",
+        "--tier is required and identifies the router tier to mutate."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router readmit --tier heavy-local --dry-run",
+          "summary": "Preview the Heavy tier readmit operation."
+        },
+        {
+          "invocation": "anvil-serving router readmit --tier heavy-local --confirm",
+          "summary": "Apply the reviewed Heavy tier readmit operation."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2576,11 +2756,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Without --follow, output is bounded and returns after the selected log window.",
+        "--follow is an explicit foreground stream and is incompatible with structured JSON output."
+      ],
+      "configuration_notes": [
+        "--container defaults to anvil-router; --tail defaults to 200 lines.",
+        "--since accepts Docker timestamp or relative-duration forms such as 10m or 1h."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router logs --tail 200 --since 10m",
+          "summary": "Read a bounded recent log window."
+        },
+        {
+          "invocation": "anvil-serving router logs --follow",
+          "summary": "Follow new router log output until interrupted."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2749,11 +2944,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "The default command never prints the token value.",
+        "--reveal is local-only and requires confirmation; avoid using it in logs or automation."
+      ],
+      "configuration_notes": [
+        "--container defaults to the deployed anvil-router container.",
+        "Token values are resolved from deployment state and are not read from command arguments."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/router.md",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving router token",
+          "summary": "Inspect whether the deployed router token is configured."
+        },
+        {
+          "invocation": "anvil-serving router token --reveal --confirm",
+          "summary": "Reveal the local token only after explicit confirmation."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [

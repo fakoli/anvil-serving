@@ -34,6 +34,12 @@ All notable changes to this project are documented here. The format is based on
   discover a compatible recipe, inspect it, preview `serves switch heavy MODEL`, then
   apply the reviewed command with `--confirm`.
 
+- **Router commands now use grouped, task-oriented help and documentation.** Every
+  router leaf presents exact examples, configuration precedence, behavior and safety
+  boundaries, global target options, and its reference link. The router guide groups
+  foreground/discovery, deployment lifecycle, tier transitions, and credential tasks;
+  endpoint discovery now uses the same real-parser reviewed renderer as other leaves.
+
 - **Evaluation is split into explicit capacity and quality workflows.**
   `eval benchmark capacity` measures endpoint performance, while `eval benchmark quality`
   produces repeated protocol-v3 correctness evidence. Model-family reasoning controls fail closed
