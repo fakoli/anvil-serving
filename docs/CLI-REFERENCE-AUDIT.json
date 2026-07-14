@@ -31,7 +31,7 @@
         "eval-preflight": 20,
         "eval-usage": 5,
         "host-gpus": 0,
-        "init": 11,
+        "init": 19,
         "mcp-serve": 21,
         "mcp-tools": 8,
         "models-cache-prune": 7,
@@ -45,10 +45,10 @@
         "voice-sidecar": 9
       },
       "files_by_category": {
-        "docs": 50,
+        "docs": 51,
         "tooling": 5
       },
-      "files_scanned": 55,
+      "files_scanned": 56,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -103,7 +103,7 @@
         "eval-preflight": 27,
         "eval-usage": 8,
         "host-gpus": 2,
-        "init": 21,
+        "init": 32,
         "mcp-serve": 25,
         "mcp-tools": 9,
         "models-cache-prune": 10,
@@ -112,19 +112,19 @@
         "router-run": 57,
         "serves-multiplex": 6,
         "serves-render": 15,
-        "voice-audio": 32,
+        "voice-audio": 36,
         "voice-proxy": 42,
         "voice-sidecar": 30
       },
       "files_by_category": {
-        "docs": 50,
+        "docs": 51,
         "examples": 52,
-        "implementation": 150,
+        "implementation": 158,
         "skills": 4,
         "tests": 157,
-        "tooling": 26
+        "tooling": 27
       },
-      "files_scanned": 439,
+      "files_scanned": 449,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

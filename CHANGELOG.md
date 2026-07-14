@@ -6,6 +6,30 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING (pre-1.0, operator-requested): `anvil-serving init` now defaults to the full
+  operational home scaffold.** Bare `init` scaffolds the whole config set (all `serves*.toml`,
+  compose files, `operator-topology.toml`, voice manifest, `.env.example`, and the ADR-0019
+  `edge.toml`) into the config home (`~/.anvil-serving`, honoring `ANVIL_SERVING_HOME`; override
+  with `--out-dir`) so a fresh machine runs `serves up --group NAME` with zero hand-assembly. The
+  single-model quick bring-up into the CWD moved behind **`--single-model`**. The old `--home`
+  flag is a hidden, deprecated alias for the new default for one release (prints a deprecation
+  note), then is removed. No-overwrite-without-backup and placeholder-only (no secrets/real UUIDs)
+  behavior are unchanged. See [ADR-0020](docs/adr/0020-init-defaults-to-home-scaffold-shipped-as-package-data.md).
+
+### Fixed
+
+- **`init` works as an installed tool, not just from a source checkout (fixes #252).** The home
+  scaffold resolved its reference files via `__file__/../examples`, a path that only exists in a
+  git checkout — the `examples/` tree is not shipped in the wheel — so `uv tool install` /
+  `pip install`ed `anvil-serving init` failed with *"the shipped reference examples are not
+  available next to this install."* The reference set now ships as **package data** under
+  `anvil_serving/_scaffold_templates/` and resolves via `importlib.resources`, working identically
+  from a wheel install and a source checkout. The mirror is kept byte-identical to the canonical
+  `examples/` copies by `scripts/sync_scaffold_templates.py` and a drift-guard test, and a
+  packaged-path test resolves the set the way an installed tool does so the regression cannot return.
+
 ### Added
 
 - **Router transition safety for slow single-workstation model swaps.** Promotion,
