@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Guarded `anvil-serving upgrade` self-update command.** Resolves the newest stable PyPI
+  release, preserves `uv tool` / `pipx` / `pip` package-manager ownership, supports a no-write
+  dry run, requires confirmation before mutation, rejects downgrades, verifies the resulting CLI
+  version, and refuses to detach editable source installs unless explicitly allowed.
+- **Cross-platform `anvil-serving router endpoint` discovery.** Reports the deployed router's
+  actual Docker listen address/port, a connectable local URL, running state, and the node's
+  Tailscale MagicDNS name on Linux, macOS, and Windows, with explicit overrides and honest
+  fallbacks when Docker or Tailscale is unavailable.
+- **Dedicated OCR lifecycle group.** The shipped and packaged Fakoli Dark manifests now expose
+  `--group ocr`, so operators can stop or start PaddleOCR independently through `serves down/up`
+  without targeting the full `llm-stack` group.
+
 ## [0.13.0] - 2026-07-13
 
 ### Changed

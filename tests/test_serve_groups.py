@@ -337,7 +337,7 @@ def test_shipped_example_manifests_authored_groups():
     assert by_name["fast"] == {"fast-only", "llm-stack"}
     assert by_name["embeddings"] == {"embedding", "llm-stack"}
     assert by_name["reranker"] == {"embedding", "llm-stack"}
-    assert by_name["ocr"] == {"llm-stack"}
+    assert by_name["ocr"] == {"ocr", "llm-stack"}
     assert by_name["vision"] == {"llm-stack"}
     assert by_name["stt"] == {"voice"}
     assert by_name["tts"] == {"voice"}
@@ -356,5 +356,6 @@ def test_shipped_example_group_catalog():
     s = serves.load_manifest_set(serves.EXAMPLE_MANIFEST)
     catalog = {row["group"]: row["serves"] for row in serves.groups_summary(s)["groups"]}
     assert catalog["llm-stack"] == ["fast", "embeddings", "reranker", "ocr", "vision", "heavy"]
+    assert catalog["ocr"] == ["ocr"]
     assert catalog["voice"] == ["stt", "tts"]
     assert catalog["comfy"] == ["comfyui"]
