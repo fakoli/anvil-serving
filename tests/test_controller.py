@@ -242,6 +242,20 @@ def test_controller_status_rejects_missing_capability(monkeypatch, capsys):
     assert "router_status" in capsys.readouterr().err
 
 
+def test_controller_status_parser_accepts_repeatable_required_operations():
+    args = controller._build_parser().parse_args(
+        [
+            "status",
+            "--require-operation",
+            "host_summary",
+            "--require-operation",
+            "router-status",
+        ]
+    )
+
+    assert args.require_operation == ["host_summary", "router-status"]
+
+
 def test_controller_allowlist_filters_catalog_and_dispatch():
     calls = []
 

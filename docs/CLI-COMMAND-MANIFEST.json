@@ -18976,11 +18976,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run loads the router configuration and renders the complete payload without writing or restarting OpenClaw.",
+        "Apply preserves unrelated operator configuration, writes a backup when a target exists, and restarts only when --restart is explicit."
+      ],
+      "configuration_notes": [
+        "--base-url defaults to http://127.0.0.1:8000/v1; a remote gateway needs the router address it can actually reach.",
+        "Remote sync uses OpenSSH, merges Anvil-owned keys by default, and bounds each SSH or SCP call with --timeout-seconds."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving harness sync openclaw --config configs/example.toml --dry-run",
+          "summary": "Render and validate the OpenClaw integration without writing or restarting."
+        },
+        {
+          "invocation": "anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --base-url http://100.87.34.66:8000/v1 --skills --confirm",
+          "summary": "Merge the reviewed provider and workbench configuration on a remote gateway."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -19131,6 +19146,196 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router configuration used to render presets.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--out"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local OpenClaw configuration destination.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--base-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router front-door URL visible to OpenClaw.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--api-key-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Router bearer-token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--gateway-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Remote OpenClaw gateway reached with OpenSSH.",
+          "tombstone": null,
+          "value_name": "HOST"
+        },
+        {
+          "flags": [
+            "--gateway-user"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SSH user for the remote gateway.",
+          "tombstone": null,
+          "value_name": "USER"
+        },
+        {
+          "flags": [
+            "--gateway-path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Remote OpenClaw configuration path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--overwrite"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Replace the target instead of merging Anvil-owned keys.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--restart"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Restart OpenClaw after applying configuration.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Per-process SSH, SCP, or OpenClaw timeout.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--skills"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include the workbench skill and Anvil agent roles.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--skill-dir"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Gateway-visible OpenClaw skill directory.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--voice"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include OpenClaw Talk configuration for Anvil Voice.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--voice-realtime-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Anvil Voice realtime WebSocket URL.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--voice-model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Model used by the realtime voice session.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--voice-consult-model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "OpenClaw model used for forced consults.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--voice-consult-thinking-level"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Thinking level used for forced consults.",
+          "tombstone": null,
+          "value_name": "LEVEL"
+        },
+        {
+          "flags": [
+            "--voice-consult-bootstrap-context-mode"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Forced-consult bootstrap context mode.",
+          "tombstone": null,
+          "value_name": "MODE"
+        },
+        {
+          "flags": [
+            "--voice-api-key-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Anvil Voice bearer-token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
         }
       ],
       "output_policy": "bounded",
@@ -19319,11 +19524,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Dry-run executes nothing and prints the exact argv that apply would run.",
+        "Apply issues one bounded restart command and stops on missing tools, timeout, or a nonzero result."
+      ],
+      "configuration_notes": [
+        "Without --gateway-host the local openclaw executable is used; remote execution uses strict-host-key OpenSSH.",
+        "--timeout-seconds defaults to 120 and accepts values from 1 through 7200."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving harness restart openclaw --dry-run",
+          "summary": "Show the fixed local OpenClaw restart command."
+        },
+        {
+          "invocation": "anvil-serving harness restart openclaw --gateway-host fakoli-mini --confirm",
+          "summary": "Restart one reviewed remote gateway through bounded SSH."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -19474,6 +19694,36 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--gateway-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Remote OpenClaw gateway reached with OpenSSH.",
+          "tombstone": null,
+          "value_name": "HOST"
+        },
+        {
+          "flags": [
+            "--gateway-user"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SSH user for the remote gateway.",
+          "tombstone": null,
+          "value_name": "USER"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded restart command timeout.",
+          "tombstone": null,
+          "value_name": "SECONDS"
         }
       ],
       "output_policy": "bounded",
@@ -19648,11 +19898,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Status is read-only and invokes openclaw gateway status --json without a shell.",
+        "Oversized output is truncated explicitly and unavailable or timed-out gateways return a bounded failure result."
+      ],
+      "configuration_notes": [
+        "The local subprocess timeout defaults to 120 seconds and captured stdout and stderr each default to 65536 bytes.",
+        "Global topology and target options select the declared gateway owner when status is not local."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#harness",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving harness status openclaw",
+          "summary": "Read bounded status from the local OpenClaw gateway."
+        },
+        {
+          "invocation": "anvil-serving harness status openclaw --topology operator-topology.toml --target host:mini --json",
+          "summary": "Read gateway-owned status through the declared controller transport."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -19783,6 +20048,26 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded status command timeout.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--max-output-bytes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum captured stdout and stderr bytes.",
+          "tombstone": null,
+          "value_name": "BYTES"
         }
       ],
       "output_policy": "bounded",
@@ -19970,11 +20255,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "The server speaks newline-delimited JSON-RPC on stdio and runs until EOF or interruption.",
+        "Proxy mode forwards only tools/list and tools/call and rejects controller tool contracts that are not a valid local subset."
+      ],
+      "configuration_notes": [
+        "--controller-url and --auth-env must be supplied together; the token value is read only from the named environment variable.",
+        "Proxy URLs must resolve to loopback, private, or tailnet scope and use the controller's authenticated HTTP endpoint."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#mcp",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving mcp serve",
+          "summary": "Run the local stdio MCP server until its input stream closes."
+        },
+        {
+          "invocation": "anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVIL_CONTROLLER_TOKEN",
+          "summary": "Proxy MCP tool listing and calls to a private authenticated controller."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -20118,6 +20418,26 @@
             "replacement": "mcp tools"
           },
           "value_name": null
+        },
+        {
+          "flags": [
+            "--controller-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Private controller URL for proxy mode.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Controller token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
         }
       ],
       "output_policy": "protocol",
@@ -20141,11 +20461,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Listing tools is read-only and never calls a tool, reads a credential, or contacts a controller.",
+        "Each declaration includes its bounded input schema and the shared target-context contract."
+      ],
+      "configuration_notes": [
+        "The catalog is generated from the same local declarations used by stdio MCP and the HTTP controller.",
+        "Use controller status --require-operation to verify a deployed controller exposes a required subset."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#mcp",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving mcp tools",
+          "summary": "List every bounded management tool and its input schema."
+        },
+        {
+          "invocation": "anvil-serving mcp tools --json",
+          "summary": "Wrap the tool catalog in the stable CLI result envelope."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -20618,11 +20953,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "The controller runs in the foreground and reuses the MCP tool schemas and implementations.",
+        "--allow-operation is repeatable and restricts the served catalog instead of creating a second operation definition."
+      ],
+      "configuration_notes": [
+        "The default bind is 127.0.0.1:8765 and the default token environment variable is ANVIL_CONTROLLER_TOKEN.",
+        "Private and tailnet binds require authentication; public or wildcard binds additionally require --allow-public-bind."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#controller",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving controller serve --host 127.0.0.1 --port 8765 --auth-token-env ANVIL_CONTROLLER_TOKEN",
+          "summary": "Run the authenticated private controller on loopback."
+        },
+        {
+          "invocation": "anvil-serving controller serve --host 100.64.0.10 --allow-operation host_summary --auth-token-env ANVIL_CONTROLLER_TOKEN",
+          "summary": "Expose one allowlisted operation on a tailnet address."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -20756,6 +21106,56 @@
         },
         {
           "flags": [
+            "--host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit controller bind address.",
+          "tombstone": null,
+          "value_name": "ADDRESS"
+        },
+        {
+          "flags": [
+            "--port"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Controller listen port.",
+          "tombstone": null,
+          "value_name": "PORT"
+        },
+        {
+          "flags": [
+            "--auth-token-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Controller token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--allow-public-bind"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Permit an authenticated public or wildcard bind.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--allow-operation"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allowed controller operation; repeatable.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
             "--allow-unauthenticated-loopback"
           ],
           "output_policy": null,
@@ -20781,11 +21181,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Status performs bounded authenticated reads of /health and /tools/list and never calls a management tool.",
+        "It validates controller identity, unique tool declarations, and every repeatable --require-operation selector."
+      ],
+      "configuration_notes": [
+        "The token comes from --auth-token-env; --timeout must be greater than zero and no more than 60 seconds.",
+        "Response capture defaults to 65536 bytes and may not exceed the controller's 1 MiB request-body ceiling."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#controller",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving controller status --url http://127.0.0.1:8765",
+          "summary": "Probe the default authenticated controller health and catalog."
+        },
+        {
+          "invocation": "anvil-serving controller status --url http://100.64.0.10:8765 --require-operation host_summary",
+          "summary": "Require one management capability on a tailnet controller."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -20916,6 +21331,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Controller base URL.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--auth-token-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Controller token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--timeout"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Per-request timeout in seconds.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--max-response-bytes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum response body bytes.",
+          "tombstone": null,
+          "value_name": "BYTES"
+        },
+        {
+          "flags": [
+            "--require-operation"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Required controller capability; repeatable.",
+          "tombstone": null,
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -23768,11 +24233,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Show validates and renders the complete declaration without probing a host or opening a transport.",
+        "Output includes stable resource ownership and token environment-variable names, never token values."
+      ],
+      "configuration_notes": [
+        "--topology is required and --topology-overlay applies one partial deployment overlay before rendering.",
+        "Topology files declare hosts, runtimes, resources, transports, and capacity policy; they do not contain credentials."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#topology",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving topology show --topology operator-topology.toml",
+          "summary": "Show validated deployment ownership and transports."
+        },
+        {
+          "invocation": "anvil-serving topology show --topology operator-topology.toml --topology-overlay deployments/dark.toml",
+          "summary": "Show the base topology with one partial deployment overlay."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -23913,11 +24393,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Validation is offline and never contacts a controller, SSH host, model serve, or router.",
+        "Schema errors are returned as structured records and produce a nonzero exit without partial execution."
+      ],
+      "configuration_notes": [
+        "The base topology is required; an overlay may refine deployment values but must remain schema-valid after merge.",
+        "Validation uses the same loader and invariants as execution-plan resolution."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#topology",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving topology validate --topology operator-topology.toml",
+          "summary": "Validate one deployment topology offline."
+        },
+        {
+          "invocation": "anvil-serving topology validate --topology operator-topology.toml --topology-overlay deployments/mini.toml",
+          "summary": "Validate the merged base and overlay declaration."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -24058,11 +24553,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Resolve computes and prints an execution plan without importing the command handler or executing the operation.",
+        "The plan records ownership, runtime, transport, endpoint, capacity decision, and any explicit override warning."
+      ],
+      "configuration_notes": [
+        "--command must name one visible canonical leaf; host, runtime, target, and transport selectors narrow resolution.",
+        "--experimental-model-workload only permits a resource that the topology itself declares experimental on a model-free host."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#topology",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving topology resolve --topology operator-topology.toml --command \"host status\"",
+          "summary": "Resolve one canonical leaf using automatic transport selection."
+        },
+        {
+          "invocation": "anvil-serving topology resolve --topology operator-topology.toml --command \"host status\" --target host:dark --transport controller",
+          "summary": "Explain the explicit owner and controller execution plan."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -24190,6 +24700,16 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--command"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Canonical visible command leaf.",
+          "tombstone": null,
+          "value_name": "COMMAND"
         }
       ],
       "output_policy": "bounded",
@@ -24348,11 +24868,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Without --output the command only validates and prints normalized JSON, so no confirmation is required.",
+        "--output is confirmation-gated and atomically replaces the destination without contacting the collector."
+      ],
+      "configuration_notes": [
+        "Use either --config or inline fields; inline configuration requires --name, --endpoint, and at least one --capability.",
+        "Endpoints must use an explicit loopback, private, or tailnet IP; non-loopback endpoints require --auth-env."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving collectors configure --name local-gap --endpoint http://127.0.0.1:9100/capabilities --capability gpu-gap",
+          "summary": "Validate and print one inline collector configuration."
+        },
+        {
+          "invocation": "anvil-serving collectors configure --name local-gap --endpoint http://127.0.0.1:9100/capabilities --capability gpu-gap --output collector.json --confirm",
+          "summary": "Atomically write the reviewed collector configuration."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -24573,11 +25108,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Validation performs no network request and never reads the environment variable named by auth_env.",
+        "The normalized configuration is returned on success; malformed input produces a structured invalid result."
+      ],
+      "configuration_notes": [
+        "Saved configurations are capped at 256 KiB and reject unknown fields or unsupported adapter identifiers.",
+        "Capabilities use lowercase identifiers and may contain letters, digits, underscores, or hyphens."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving collectors validate --config collector.json",
+          "summary": "Validate one saved collector configuration offline."
+        },
+        {
+          "invocation": "anvil-serving collectors validate --name local-gap --endpoint http://127.0.0.1:9100/capabilities --capability gpu-gap",
+          "summary": "Validate an inline collector declaration."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -24778,11 +25328,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Capabilities is offline and does not claim that a declared capability is currently reachable.",
+        "The command is read-only and never starts, stops, configures, or probes the external service."
+      ],
+      "configuration_notes": [
+        "With no configuration the command returns the explicit not-configured and unsupported state.",
+        "Configured capability reporting accepts the same saved-file or inline inputs as validation."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving collectors capabilities",
+          "summary": "Report that no optional collector has been configured."
+        },
+        {
+          "invocation": "anvil-serving collectors capabilities --config collector.json",
+          "summary": "List the capabilities declared by one saved adapter."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -24983,11 +25548,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Inspection disables proxies and redirects, reads at most 256 KiB, and performs exactly one GET request.",
+        "Missing capabilities, authentication failures, and invalid responses return an explicit degraded result without mutating the service."
+      ],
+      "configuration_notes": [
+        "--timeout defaults to 5 seconds and must be greater than zero and no more than 60 seconds.",
+        "Authenticated endpoints read the bearer token from --auth-env; credential values are redacted from every result."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#collectors",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving collectors inspect --config collector.json --timeout 5",
+          "summary": "Perform one bounded read from the configured collector."
+        },
+        {
+          "invocation": "anvil-serving collectors inspect --name local-gap --endpoint http://127.0.0.1:9100/capabilities --capability gpu-gap --timeout 10",
+          "summary": "Inspect one inline loopback adapter declaration."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -25682,11 +26262,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Render never invokes tailscale serve and prints the exact argv that edge up would apply.",
+        "The displayed endpoint uses the node's discovered MagicDNS name when Tailscale status is available."
+      ],
+      "configuration_notes": [
+        "Resolution order is built-in defaults, optional [edge] TOML, then repeatable --map overrides; MOUNT=off removes one route.",
+        "Port-only targets use --host, which defaults to 127.0.0.1; the HTTPS listener defaults to 443."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving edge render",
+          "summary": "Render the built-in /v1 and /comfyui Tailscale Serve plan."
+        },
+        {
+          "invocation": "anvil-serving edge render --config edge.toml --map /dashboard=8766",
+          "summary": "Render a configured route map with one command-line override."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -25871,11 +26466,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Status is read-only; missing, timed-out, unconfigured, or invalid Tailscale status is represented as an empty live map.",
+        "A mount is marked managed only when both its path and live proxy target exactly match the resolved configuration."
+      ],
+      "configuration_notes": [
+        "Status resolves the same config, host, HTTPS port, and --map precedence used by render and apply.",
+        "Tailscale status calls use a fixed 15-second subprocess timeout."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving edge status",
+          "summary": "Compare live Tailscale Serve mappings with the built-in route map."
+        },
+        {
+          "invocation": "anvil-serving edge status --config edge.toml --json",
+          "summary": "Classify configured and live mappings in the stable result envelope."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -26060,11 +26670,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "Up is additive and idempotent: it sets each resolved managed mount without resetting unrelated mappings.",
+        "Apply attempts each planned command once, records every result, and returns nonzero if any route fails or times out."
+      ],
+      "configuration_notes": [
+        "Use --config and repeatable --map overrides to define only the mounts Anvil owns; the default targets remain loopback.",
+        "Each tailscale subprocess has a fixed 15-second timeout and the public mutation gate is --confirm."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving edge up --dry-run",
+          "summary": "Preview the built-in additive Tailscale Serve plan."
+        },
+        {
+          "invocation": "anvil-serving edge up --config edge.toml --confirm",
+          "summary": "Apply the reviewed managed route map."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -26269,11 +26894,26 @@
       "visible": true
     },
     {
-      "behavior_notes": [],
-      "configuration_notes": [],
+      "behavior_notes": [
+        "A route is removed only when both the live mount and target exactly match the resolved Anvil-owned mapping.",
+        "Absent, changed, and operator-owned mappings are preserved; each planned removal is attempted once with a 15-second timeout."
+      ],
+      "configuration_notes": [
+        "Down resolves the same route map as up and compares it with live status before planning removal.",
+        "--confirm authorizes only the exact per-mount off commands shown by --dry-run; tailscale serve reset is never used."
+      ],
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/control-plane.md#edge",
-      "examples": [],
+      "examples": [
+        {
+          "invocation": "anvil-serving edge down --dry-run",
+          "summary": "Preview removal of currently matching managed mounts."
+        },
+        {
+          "invocation": "anvil-serving edge down --config edge.toml --confirm",
+          "summary": "Remove only live mappings still owned by the reviewed config."
+        }
+      ],
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [

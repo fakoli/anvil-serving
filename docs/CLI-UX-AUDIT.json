@@ -2,201 +2,528 @@
   "enforcement": "ratchet",
   "manifest_schema_version": 3,
   "maximum_failures": {
-    "boundedness": 89,
-    "configuration": 43,
-    "confirmation": 80,
-    "docs": 35,
-    "drift_protection": 91,
+    "boundedness": 86,
+    "configuration": 25,
+    "confirmation": 62,
+    "docs": 17,
+    "drift_protection": 78,
     "errors": 71,
-    "grammar": 35,
-    "help": 35,
-    "journaling": 96,
+    "grammar": 17,
+    "help": 17,
+    "journaling": 84,
     "linux": 102,
     "macos": 102,
     "output": 69,
-    "parser_tests": 35,
-    "preview": 77,
+    "parser_tests": 17,
+    "preview": 59,
     "remote_parity": 90,
-    "rollback": 90,
-    "timeout": 99,
-    "windows": 54
+    "rollback": 77,
+    "timeout": 87,
+    "windows": 36
   },
   "records": [
     {
       "attestations": {
-        "journaling": "sha256:74a85fb02d135c3715468ec22a9b730c3acfcf75d13c6670efcb3263d58f2981"
+        "configuration": "sha256:cec22fb807a38111e68fc0c85fb51b3e6e42f7319b8a82d8947d470b54d7993d",
+        "confirmation": "sha256:27388ba2cd43e8cd7e57a20adf34b1bc9265ae3ef2d690ed5c0b577d82c835ca",
+        "docs": "sha256:e90925417c7efdc3e5c18cc694f6061cc9bee90ead6a633482910bd54a3f5c0d",
+        "drift_protection": "sha256:927422a9203e1c2cfa464ad6838267d1846b8d144f922b217b23b6d15737b803",
+        "grammar": "sha256:ea078846048c98115e2f92e20cfe01f938bc8cda9cc18cc5b65c319cdf22ee59",
+        "help": "sha256:2d107b5e408d28ec90405e8b1fbc1a9f3c4904252bbe1fc3a07b418182f5d5c2",
+        "journaling": "sha256:18bc4a1afeff6e7b1260b1b9a24402ee5fd464d736a71a46ebd569cb5f3e6517",
+        "parser_tests": "sha256:241e7aa10e77aa447bba06ea4e049b7a9743d797234829a5cf1144ed0f75ba99",
+        "preview": "sha256:b83c4d7eae7d46b76ed3b200f3b0c7a8d179a84e7df9144c6ad481b0864e3ea7",
+        "rollback": "sha256:e9b23f6c1ecf96ee9d809e5b83a442d6e2fe08ee2be8743b1ca52e3fb5aa1d89",
+        "timeout": "sha256:a03fdb0a3f1f1a39f6fbf14e2a9a213528450378f00ea494d2285325073f7aa9",
+        "windows": "sha256:dc8c43ae62697d11de1ecfd26727cda96a80746ba59b87baeeb1e2b1812e96a5"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": {
-          "reason": "Read-only capability discovery does not mutate state, so no recovery journal is created.",
+          "reason": "This command is read-only and performs no state mutation.",
           "status": "not-applicable"
         },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only local bounded parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#collectors",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:36754b219f932c066c2ad0fedaa1ec3bb78e19f2fd749b9535015e1e62537ff3",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:560f508a68405c46f5b4cfb501e817827f1996c3df81c941f12c1b45eb6e7fb5",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "collectors capabilities"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:78022a1226c01a448bfddd7eb32264db2c688676c4aac9c894209b1ac9f42513",
+        "confirmation": "sha256:e64aa89a981a48e2ed6aa1990691ded7e7c0d48fdb8e5d7fae313692a46ef7a0",
+        "docs": "sha256:1df07db6dc031ca10dc3af13622328e21dd69bc2d70300a1930ae57decd514a8",
+        "grammar": "sha256:ccf42701b5e927f2f657ae27682543f287a67c7e8cb3aad418665b7be7f46ae9",
+        "help": "sha256:17454b936a0d0594ce0ad9ffb84cf0b2f8a90ddfa266e75bfe8288b09d88c661",
+        "parser_tests": "sha256:a8c0cbb4c7bbeabcdf7e93b1a0565b217ba20bb39ebcff2ea6c16bae3d8a83e4",
+        "preview": "sha256:9acf715b81c53056697cf88137a039e734e29e2cadd2a4a51a0185086b833140",
+        "windows": "sha256:027622427519ea06cdc84d3c15051537ba72121dcb28ba005f93d5547eecd38c"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#collectors",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:c550e2d26c94489ab854b029815275db42f52f0b2f2352e39c78f3d0843ff84d",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_collectors_configure_gates_only_the_output_write"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_collectors_configure_gates_only_the_output_write"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:f096d4b39da8d9dc48daca0632faa513d0479e1e8cac1b201c97d8ae4c4db6bb",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "collectors configure"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:6b3aa162cba7ac2e8bebcc64fc7cb823ed9b41a4f1a9e1fb84da250aeabb2552",
+        "configuration": "sha256:4a79fbb90ca9cdeaa855b8ce3e0d77f982760490cc98b4fa179b2edf62568bde",
+        "confirmation": "sha256:612d9f65fd6cc865359b9cd2200e9275144b64028abe2832ab669d8cc09c06c4",
+        "docs": "sha256:e8ef6f208c472d0cc8410820e9144414c361b31ae951b12242a4397ea9136f36",
+        "drift_protection": "sha256:295eb559717f86998c815b590fd571acc22704b0c963e3fcc61069845cb35767",
+        "grammar": "sha256:5ce00e2e5281c318deb6589815e122f5626faecbd5e8bcd762fad037305ce029",
+        "help": "sha256:91a98d9cb53fe2f4ed08ecbb3a5f3cb1bc1bc39148220876a2de79c95a3791b9",
+        "journaling": "sha256:fdf8c8e7a8d16c60752397205f6f8c70c648e654901ab193387484e5e84771e2",
+        "parser_tests": "sha256:7c433d967b00f9a9d1d249b6026c8360130c66ce05d641a770d8d7661f69b17c",
+        "preview": "sha256:332d4da03cfba248bbcd22d53a19a92c93096698b483d6ece7573cb05b0d9d58",
+        "rollback": "sha256:5a37892a266f19ac181cf2aa78a09457017d413c67e90f037a66e8321bcea9ec",
+        "timeout": "sha256:76c3c27aeb9a9d915970d5081c144489495b6a6a6da9735abdeb32b960311e07",
+        "windows": "sha256:5efd116a8c8da6faeecb26bd3d21a739fa72292c9ad7c800e18a8be4fe738e1c"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": "pass",
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#collectors",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:913f6ae05e15dfb09d17f0ef85b29d2117d54b453b78ab571781115d26dc2898",
+      "evidence": {
+        "boundedness": [
+          "tests/test_collectors.py::test_library_inspection_enforces_timeout_bounds"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [
+          "tests/test_collectors.py::test_library_inspection_enforces_timeout_bounds"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:ad1fdaf87e35f35a276375feaddadd4bf454d2faf07692af44601a26ddc1dfcd",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "collectors inspect"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:3aa45ff33fdff2294d603bf0344c35f0805d96bb4b99eac34fe05855d7021ec8",
+        "confirmation": "sha256:8410fcb655f5ef6357956e4150576dded506a84c8cae440edfb9e3243560b128",
+        "docs": "sha256:0398060adef368e11858a82d3534ca5d6e2d6b370cdb0966a8758a5c9dc13b23",
+        "drift_protection": "sha256:3822703b3fdfd089b2735324a3c0408f596a243ef099410dbe334985cfd0bbc0",
+        "grammar": "sha256:e4d9700412407d4e76caf939cfa176ad7fc2e56f1e4fffb623b060458a1a8769",
+        "help": "sha256:b1bd05dfb4dc97a8deeb46fa995242847bd67fa9d1a7b38239e51ca363d737c2",
+        "journaling": "sha256:a82f8fdcca3e226f110f14e0fbb7237401ef59f9ed56400ea28c25613baaabc3",
+        "parser_tests": "sha256:8780e9a748765a0afcd6c5bc165f0407094faccdff6c2ee303ee38fea67f8fa6",
+        "preview": "sha256:e0a69f2d26bb57063d988849ed52684d75faa2d32326dc2f72b19309a19432f4",
+        "rollback": "sha256:cc3e7c49a60b99ffd0f8d897e0b52e91add08b566fb3ba9cd7bc94b0e707e648",
+        "timeout": "sha256:cc020b4c4519835c98e773549cdf2f451a3102b2abc338dc82ab07f2a4843a02",
+        "windows": "sha256:ea97d430278b461c464091188b962fc27a1c5a2bcd83af917499897d042d6d0b"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only local bounded parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#collectors",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:a3bd2df17beb985e7eef2eb82bfa68999c98abdc045e20468b76d43a7220048b",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:c01d3e775d25ccf9968d45df70bc7f632b09370b0ac18aa9cbb11cf70d85cc5d",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "collectors validate"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:7dc394b400ded78d54112c596b5d5f6d21da4becc6d844c531085e83984bcea0",
+        "confirmation": "sha256:96efcd629c2e331c95da84d112ff7567073d86ec98c47caf0df6c7aa369ae120",
+        "docs": "sha256:29927f477f10c05bbfb4038ee4ac05a98513a67c1cf4dcf225948f01708c78b2",
+        "drift_protection": "sha256:8583cb925e7561aebad40fe8fce06c8ed37bd386a266d90b7c49b068ec5c9da7",
+        "grammar": "sha256:7487aded5c53b185fadad0b11255389b91db8b73634225f2f153b616889f6739",
+        "help": "sha256:7dd15eda75a296a4aee823c0a4263b9df51ecbae8b62e814a3ef1ec6dd469d04",
+        "journaling": "sha256:6a65f0fa6e284ca4f33201a54266759df8eaa254baf2d9715e4cc80e22577fa3",
+        "parser_tests": "sha256:0f38c326d7cd60f641edd8f3343ec99472090761f5646341e349e79d4f9e30f6",
+        "preview": "sha256:04280e05e9b704532976570b42484d7954e745b4d2fbf75bd046c7db5000976f",
+        "rollback": "sha256:b51606ca5dbed71edbe21c80cdac0c533a94931eeb6ef1dcf651290d9b220dae",
+        "timeout": "sha256:6f129ddf036ea3cc9fe6c414c039c7aa5694abdf994e66befbc21f935e91f9ab",
+        "windows": "sha256:7d87be364f03a040bef9581b411197721d2251f7bcd61c7a936ecd9e06da943c"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This foreground protocol or service intentionally runs until shutdown rather than completing within a command timeout.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#controller",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:34ddb3e8eb28e148dbb1137e6ea2e9228d1827fbea761b6a08808d3c58dd167d",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:a362a3cde251f79fc36b4fa7779950eabd732af8e1e9c9cdeb408c9aafde3630",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "controller serve"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:c7415b5bce741bf061889687a575970d747e955f40d0cbd9ccdef3d380eb914b",
+        "configuration": "sha256:82e567b45ed6dcdef004c95c05480e8933916880912176a92e3d6b9825dd89c7",
+        "confirmation": "sha256:6953c68545fda9d32c056dc7c0a672f2bf871937adbd5da1eb46101e54f340c5",
+        "docs": "sha256:424f58afe248f3beb86843f665ce8b723b2e634b5c13b65850751819b448b17e",
+        "drift_protection": "sha256:6f5d01778c88c43d87a027f6970a327493c392e74de5bc7bf5de1d693b303fa3",
+        "grammar": "sha256:464408649e1eb6b264aee050173a3417c93ebb6528794e0c2116cf7cefa9d2fe",
+        "help": "sha256:b95d569c1019ea08a4b272054d822e392d48b776f906e0cd3678f71eaf785cad",
+        "journaling": "sha256:269e866bd25ee98a653b06837200e5a017a12dc4fd55f49273734f236b2262e8",
+        "parser_tests": "sha256:c32b6bb68e1ec389aa260f3c0b2cc407bfac55dc0e447c1692c70bbbeef12017",
+        "preview": "sha256:a880381c9d3218728a572034c6ea94c521976ab75b2f33415911ab4249fa1832",
+        "rollback": "sha256:a5872af4fa50905e8a83d73ada8f472878384e1a918f71130d8914b7da95ca26",
+        "timeout": "sha256:0f89719f44e82cf3896b1df51477e37492a2ea8e73040f6823da43c4c7a646de",
+        "windows": "sha256:0c86f2c1ff8df476da84cad0e36802823b35660eef6d9fade06ae53795b0b2c2"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": "pass",
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#controller",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:a49f93c001ad86e970739539c767f4601cab72df9511d6d76ee871ad35949632",
+      "evidence": {
+        "boundedness": [
+          "tests/test_controller.py::test_controller_status_uses_bounded_authenticated_health_probe"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [
+          "tests/test_controller.py::test_controller_status_uses_bounded_authenticated_health_probe"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:629cf8b4f5cae05913686bfb287900afdc5c759d6d3e95587efa129435421aba",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "controller status"
@@ -387,117 +714,300 @@
       "path": "doctor"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:54c1c915ebd6e90e6afa09510a3a1593e48bccc2fa02a93d314bbb1a269d7a66",
+        "confirmation": "sha256:8fa664650f90d6f800b6ce7aa78691aac5adf157a85f51180a588fca4bbe7309",
+        "docs": "sha256:ecb4eb2a1275215223f5e510793699a8c0134dd3c3cf007e602c0febb63aa45b",
+        "grammar": "sha256:d79dc618538ead5c9f760e9a63e65bc05ed2efa57595215cbe68634761d44bac",
+        "help": "sha256:084e5c7665ce362b8b26d47ad589a5b0b9753469e129305d4cf64e06975c4078",
+        "parser_tests": "sha256:9ab0eb163abd6508cda112e3fa86b7bb5a9d95b1709b57ba62c3039f12c7188d",
+        "preview": "sha256:9835358b666c3d229d9ba3c8fc36a0a91e6576f49c53847f3dc14be03a06e165",
+        "windows": "sha256:85480dcd1d1daa260c60e989d4086325f091970460e1007cdbcbcbcb4ee86cb5"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#edge",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:4dcc93751e1d9d13e7fe51bd420fef5d01193eb4a50b0fbf47a5705340a4f26a",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_control_plane_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_control_plane_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e72a075a7c5e48d8f388bc0b692e5f4da2466840343aba79a5be149c3ee38b04",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "edge down"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:dd555e1eb3cccf1acc973a7f1c5bb3a96a3e97994c521a542f9ffe160f7f08c3",
+        "confirmation": "sha256:ae0f03936c409fc027889b15ef957985dd9da9dbeff6a7844c5ed9120baedc2a",
+        "docs": "sha256:30d5ab54f12eb4c503fe4a7749b7f576ba7f73f6e1013b7bf9aa2abf0f908163",
+        "drift_protection": "sha256:4459eae1f41d29ccc727b53e70d23b685bb8ff41cbce20930584b1577633c1fd",
+        "grammar": "sha256:8059edf75e3a48505472d8fdb9ea0580dfc493eae0d80a92e0aa3a2177ee1fbe",
+        "help": "sha256:bf76eb2bead4b256ac7c281213bb7de7176ffc0a606013fc1f69bc2914d04606",
+        "journaling": "sha256:de6b503bc77df1d24df3498cd84589ae69b96acd281c53aee0de95800bdc2694",
+        "parser_tests": "sha256:fe264be62756f98bfe6240277566c1cd2503e80aa31842d29ca4f9fff16671a7",
+        "preview": "sha256:07dca449a4a411183340037496c404e22be61c04d0de7cf3a936986bb59e953d",
+        "rollback": "sha256:5e36b958f8244a8e1bad5cd058a759522db7de07b721f399e9125589098bd9ae",
+        "timeout": "sha256:3bd9045f8f712c859baaa12eb98e00fc22cf74ddc28ed823bfcb87ff92c1ea80",
+        "windows": "sha256:5f07b4d20b9cff92f0f391a4e0543642886409fca21fd686f824fd22fa96d386"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only local bounded parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#edge",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:354b117d21ccbc52d4f26e0f66e8f185a2b178d00155043ca93bf26cc2a1fff8",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e1928c73118911905b5645693afd09aea56bfa63f0c7b7a723f599ac70ff60e4",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "edge render"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:9c7949050f27b3d6a432861da2a755176fcf23c44ba301ee39c39c22abe397c8",
+        "confirmation": "sha256:e069b1f03bb1eddf9d23b14252af5114ac59556778241e062a86c6d892f22e2f",
+        "docs": "sha256:14e3708b3833e189880494302503b809865783c7643836d6340a3812bfd904c4",
+        "drift_protection": "sha256:798c8bb445d1c8105f020c6b94804f0860c7f5f463371a1aafb57f632a638c07",
+        "grammar": "sha256:6fb2448ab879b2641242a2978864ab37f92217b0744b9db3c7b31fa88bd6aa6e",
+        "help": "sha256:b00afee04a08e814b4cef004d741070229fa360f6b01ad68281bf220a8e58524",
+        "journaling": "sha256:2c81e3100c6d75dfe62f16601f1865a0167234c517adbeed5d279002ce3aef43",
+        "parser_tests": "sha256:4a7cdeea12e86efbda31823b18c0a5d153462c38ecaad9d18b7dbd9bafdc18d5",
+        "preview": "sha256:2752a2b172aa1ab79477c05bf268c6cef153dedf2bfe73dcffb83f893163672d",
+        "rollback": "sha256:3771b0cfbb97855913cad40b1a03936128dfc520ff4f365c5946afdd335bdf42",
+        "windows": "sha256:2e62cae5becb2bd80b160cf64e7373359a1d62c9f6a29a21618a5b53d6849cd4"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#edge",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:e022467523b9a656c572d44ef7720686499f00c96e80c68a4e32d00a350714aa",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:accbb4d4e43050f4f79d25feedfd6e3613777e7af655cc0896fa8b3ff598b783",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "edge status"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:935ec6d659f0a54d5ee4fb9ec164ec1bb02f9e342f4b17fde6c48984b686a80d",
+        "confirmation": "sha256:059c52797241742f90619f60234b2c4cbf71c08f4f0a7ed89953cf294864584c",
+        "docs": "sha256:e4746902543c1b6fb868c8c29ca91acf129324831f426802db303f9208ed827f",
+        "grammar": "sha256:1c29b513b619e58cd644e132a5bb0519c0cb196f6bdc0df2aaaa85a0b96d65e6",
+        "help": "sha256:69ed3c1a07dc4117bdccc2d90441adac4a238277452e27d16f07233d2f94a931",
+        "parser_tests": "sha256:b902d48424d4624ebc9b255847d78095cb1c0998c3930ff9c808c665c34df46b",
+        "preview": "sha256:1b5e5d9069ec36437c1ae37cc27e68b1c08575f3ad7622cafd223ac921ff1f2b",
+        "windows": "sha256:2758320cdf3af0a298112f5d9ca8cc79c1e2b56d32f20a918910ee7c30d08eea"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#edge",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:34bac390a96ff9f36eab21fe5efe5ad768cfe271f5d1d97db5d471f116fd70ab",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_control_plane_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_control_plane_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:c8b51aac16d3d3bc847d940085c8bafd3677d2b8d56719cbf990efe6acfca850",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "edge up"
@@ -1834,88 +2344,221 @@
       "path": "eval usage"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:ff588b9c99c4b4efd6e905123f541c9d72bf595fb374c5002dbf20f1debab439",
+        "confirmation": "sha256:7b566c21a2880b31541c54fb61d04c4594c6809f1eb5e5bb4d93df9cb68d853e",
+        "docs": "sha256:995de8c6bae94e958acaf2848c1f8052fa4af0e57ca57b7d045a3a830eda8139",
+        "grammar": "sha256:7fa2ca58db04ea9c1f5e00f55d3dc2e4c0817d6abf9a7fa3c560a167e2ba5555",
+        "help": "sha256:510ac274701fe05d7a2a4c759d06dd9926d293c795e16b33bbb9e8693a1f902b",
+        "parser_tests": "sha256:72586ea124ee0828546d90187a952054b2d3cb849b1a8631934d26788e7f9688",
+        "preview": "sha256:071aed52708d7dc1eb585cff6489a6e61a72a4e325dac9458664a1d441e3a61f",
+        "windows": "sha256:7cd2e10eb59bbee064074ca1f46e93bcb5baff12a6cce80be2ae4ca5c33755fd"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#harness",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:07bab74dc2e3be6fb918d08f0f0decddb7adf99d1ec1c5b0fdbeb597b2fa168b",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_control_plane_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_control_plane_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:5356af12be98db10ac82a520dd76498124e7a302151c3f8f871853f1a58b4afa",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "harness restart openclaw"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:d26ce41dc4220bce59fb69c6d7acfff277b796f1c9ab77004bd8b15cf0857051",
+        "configuration": "sha256:c97fe507dfb2471330177f206493a73cbf6e965078c479d6a3d9cea8ad7e3d74",
+        "confirmation": "sha256:186d368d344b269c38bc101a4cf2e410ac06372323db0e8c1408b94d0d503db8",
+        "docs": "sha256:bb8d063048c288f1345e5a30344038b450dc0a90f4c037ad2dd17229f1dd5c52",
+        "drift_protection": "sha256:3d7932c2183f8fc699f715336994f580ea316d0081ccaf02511356f69cc74e56",
+        "grammar": "sha256:19859fad2bc9d54e8dac33f2464e46bbf80c84a2576f1250accc76bdc9121566",
+        "help": "sha256:e12fea9a19624fa742d680406bff9bf30372cff17e8877e16f29cf161a1d07c3",
+        "journaling": "sha256:263bd308f546f6119e761d360a5963c1d00bc3eb041867c7a9dd1f86b3399872",
+        "parser_tests": "sha256:a04b23db2aaa4dea9ae4d5f881fff2c0b8bc7113d18e0341bc001568576805a1",
+        "preview": "sha256:947e2d36e8c8da677164fe4979548314e6b561e9680cf4ded86a6aa262349826",
+        "rollback": "sha256:b3ea766e14cd6647f645e48360153a5b045084dbaefbef2dfd9cdd44b0f82087",
+        "timeout": "sha256:34408cf705409c0f25cd38c24cb6a85c7f42fc543bb4ddaa0c1eb1a987f7ac91",
+        "windows": "sha256:5d0ed10aa3b575a2a607b643c0c5dafc7760de256d53c054ca002fcc6441280c"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": "pass",
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#harness",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:81c55a076636bbfce312eac130c20048d01315c4d68fa79bd4ca93053156b226",
+      "evidence": {
+        "boundedness": [
+          "tests/test_harness.py::test_openclaw_status_is_bounded_and_parses_json"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [
+          "tests/test_harness.py::test_openclaw_status_is_bounded_and_parses_json"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:a672b269834e87e80c3332f2ecec0ba1a202a5a3b7f21a0d39d5ecf4b66967a4",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "harness status openclaw"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:db61cf75279db013daac16f4615febd7bceadd2774c4f8f6f2593d600eff98dc",
+        "confirmation": "sha256:1cf6cb4a5d26fe9f3d1b138c7ea0d5f4faf6ca228bb3bf8695a92f3f1c96810c",
+        "docs": "sha256:b338294c0a01766e3b879eaca26ccdfc6fcc84fc268dcc766c64ff3283d30bfb",
+        "grammar": "sha256:ecf068703350513c5b9aa027c7e1559eb10062c0e79eb5ed59e3b5f4e056b30a",
+        "help": "sha256:efcc1b43c3954fb304b317b522e64d07d7580c09d20a5699e8134854183e5dfe",
+        "parser_tests": "sha256:c8270748a73ca58ad8f819692075d301d178ef4d2fe8ade522e6952096b0feed",
+        "preview": "sha256:9d90e6dac0308c7e97b04247ac0340b596310dbc68d5b6228d9563f49179b79c",
+        "windows": "sha256:cff957c09e5531747cbd145d18994a024bc80eca044c58140633e5fa1e97ca7d"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#harness",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:86f6671ca7023726578b3e64a6bec01e5933851fbf5996e6733b4e50b234fbd2",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_control_plane_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_control_plane_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:792d4de0a1705f65ed4965fb5ee724aaab7ba1fe8e584d6ae4e5bcc128a42643",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "harness sync openclaw"
@@ -2862,59 +3505,175 @@
       "path": "init"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:7c28a6ceced62fe896a8929afda98767f2e5adce7d40d3fd14763bfabc2e8543",
+        "confirmation": "sha256:2f42022b0090a10118d193ad160aaa77dbc666b2620e9912b592f69e4f3cd6ac",
+        "docs": "sha256:2f44935605485f06b43e3695959400349d4e5436729fc277ca71b574533a135a",
+        "drift_protection": "sha256:52b0e6f8624c8b3fbec113b59e27a075d785172ad789b58271c8e041830b441d",
+        "grammar": "sha256:d6dc768e38fdfca5d5becdbac55ce4c397e5596ecd769962e8bb11147fbf7af7",
+        "help": "sha256:bb5e5e54a53a0e84afabbeff53f1ae387e57dd717dc519acd32044f78ae2eb56",
+        "journaling": "sha256:4f045c5bca021b9c79305507672c252827421023a2781078edae6c49d36445f5",
+        "parser_tests": "sha256:c15deb045b8f90753b1b9fb02680e4cd2f90a6fe1724380666c0917fd2869fbb",
+        "preview": "sha256:7422e190d58fe7fbd114a267e252410eee292fd14350bedb85ac9bac8c697776",
+        "rollback": "sha256:f061f04ee86bdf6ca9791585408bb661ed75766b488ab786537ef2bd22a5dc4f",
+        "timeout": "sha256:300ad51e04714bee943e6066c93c7fef33548cfd40f104906ebe136fda8fe51d",
+        "windows": "sha256:86866ba7ffe14fc769f9e077367b42e9d2b4afea2447faaef87eee186f312867"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command runs a foreground service and does not perform a discrete durable mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This foreground protocol or service intentionally runs until shutdown rather than completing within a command timeout.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#mcp",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:5c6ae3340dd1fb2cc4673fab06a9ed8f4cfa983a7d3ca0f5c951d6f426dfa338",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e36bdd5362d10dd85566c22377c1e04c29610c55a9d62974ce6f075a02a41544",
       "mutation_class": "read",
       "output_policy": "protocol",
       "path": "mcp serve"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:e5c643591b7fd9f16876a43799118d6ac8734e422fedacf909377b4e18287ce0",
+        "confirmation": "sha256:3c5ad9b047533dac069c03dd769479d488ecfe683f723a14cb9d7216e56e5533",
+        "docs": "sha256:86ef098cb2a58cfdff0051309e78c3245462004b9e4ed4fadc9c155565b7e24a",
+        "drift_protection": "sha256:0c380dcd2de62cd1d679a5fa266e1471d3a4ec1752819a3f326a7abb116dc9a5",
+        "grammar": "sha256:9ab2a7d47c30168af3d468476d576cbb506c1e518d6fc3a203732ea5ec49648d",
+        "help": "sha256:7a36e785b6a473e46743aa73f8265c925a8f4f71b8d9cb7e2ad819657ac5e55d",
+        "journaling": "sha256:8c159a89571c1809b3a3e9bd0902abbea39e14f1495d6a247df7bd1e689926c9",
+        "parser_tests": "sha256:861753cd7e753f61bf9ed4dc2bda5b5d02134115880c0c5460251d99a06435af",
+        "preview": "sha256:3a76259a83bc781cb111aea1c22a2d6917fdb45a052a18ade3e23e9d89e39b35",
+        "rollback": "sha256:3239020cd2ecb00f1a6fb6a547f66452a49ab66d515dc128c2dfbf4fad4a5557",
+        "timeout": "sha256:f3dbf793feb0bd29a130a63c5b72f5df0f7027b852f6afd44db4f50248c134e2",
+        "windows": "sha256:8f7f2fc2ecb445843ba648434f16bd109106a989f8a87f26fc07d32975f6a9bd"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only local bounded parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#mcp",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:15b41375100d4564901d92402ec226f0f79fbf8f4dda4eb269bf85ca1a68d248",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:fbb36f33afb532fef60abf6126e3ea83d2ec25c0b1365009c92fe3eebf07b337",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "mcp tools"
@@ -5052,88 +5811,262 @@
       "path": "serves up"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:4132af8ff2f88d05aa53eaaaf84ae746127e4e7f8abb50f4e690fceab8b8980e",
+        "confirmation": "sha256:a24f97948e1e409c817077b766b0896411238e1760c81ffc37a543e9e2c75532",
+        "docs": "sha256:678b23acf5d485f964ab48353faadedfd0256895f7e34aaf2d913ad0206c5288",
+        "drift_protection": "sha256:8acf347ec80143f5142bbc9c8b30c5a70ec20f19dacb4416976dce040269c307",
+        "grammar": "sha256:1ac50e9866653af4580e07ab00d3f136e9aac707dd3fc2f20f4f1ed005d5e5f8",
+        "help": "sha256:39141996a575358db54babb726ea6b0176213f501c045119feeb41c6ce466ba3",
+        "journaling": "sha256:ac848728c73dd24caa371c9921b7c3cd14af40e285b8eb12d7a362ef6793458f",
+        "parser_tests": "sha256:3ad160ce5c2eed92498bc501652dc48e9ec93fc842bca89b2a84b0a583724f4a",
+        "preview": "sha256:ab60245ab4a6603d45b72f1cf5adc4053a167aa11d597e16119161dc944e7efa",
+        "rollback": "sha256:45978344d014a7309787ba3fddb31d9c90508b0faed126f7dad45b8ff052a122",
+        "timeout": "sha256:ce11e6864678206d0b1a35d635c9b3332207b3715f27568be5443a02eca8db39",
+        "windows": "sha256:fc617bee9220748c60ab841b0a2df0d4e61aedf5c4bca9594136118e56858fa4"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only local bounded parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#topology",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:61c5377ea1a5a826d6e511876dad0ed7c786350319541d27bc7acaba29dd5881",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:1452d33410e4de59faeebf260b5751409b7f2525a6bf22eb66163338bda8b924",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "topology resolve"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:42a4e05873ccec1f0bc64130f46abf9b3ca34b277ee9a6d2da039e59e87861ea",
+        "confirmation": "sha256:a83be6afde86eec232839af13bafbc2ada26f7ae4a39b8a6d47c8f054c750527",
+        "docs": "sha256:9a55a012083c7ce073177ad20bd61b7bcae937097715bcf76a6154ee1b3ec68e",
+        "drift_protection": "sha256:a5faab07e0e039df7b845c094b626acb4db03c4070056939f407b7c864ddde16",
+        "grammar": "sha256:d10ecc718780ee33af650d9dd50a55377477bda3b4cd708400de5451ab47b7bd",
+        "help": "sha256:b688782f9e437b1f4f75c0e621bb54b0a65640633bcea17f4246ee3590665c3f",
+        "journaling": "sha256:0f0d00019dd28fc260730a7a50c132107cee8a5abdae42cc1ee6643c4b62383c",
+        "parser_tests": "sha256:81ea6956a3c6fd787b607d37ceda5da3bc5599270d884570c498ae924e5c5f05",
+        "preview": "sha256:42205302723bcd5db6426e3523306d03c2f069f0aea1233522e21ef043a2f90b",
+        "rollback": "sha256:e893167efc3d43cb3574abe5af14da3f4e9dd866b1852e225c58301ccb7f57a1",
+        "timeout": "sha256:94abaa5d1e56ced29e29fd4b7c9dc6b0efd5bd4d730b1130656b79d7a75dfdb3",
+        "windows": "sha256:ecdacfa9685bbc7986232928123aa2789cf539566bf5f3094ce6b9b352c0e810"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only local bounded parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#topology",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:04a832e852a6962e01a5103700cc63acb04d64e24a3a7c6d50f4c6226c22443f",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:1978dfabc1a3529be9928cf1cf5cd401b5d26a0caab333bfbcce062a9920bc49",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "topology show"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:63ef9158765bb22d58e669f47e796c81e0206b630a4edbc76e4d462a350515a4",
+        "confirmation": "sha256:dfd7aae4319a23959ca70d4dfe38e396a4da2232a9a9f4fc3b9efe9dde03c4fe",
+        "docs": "sha256:8056154a8f370112f58669158b8348c2ffef0288d5cee3c976292514a6952aa9",
+        "drift_protection": "sha256:c77b25f95bd2f55b01e2551083bd34ddfbbc3096e95ac6216d4c0fe016dd8c10",
+        "grammar": "sha256:e9abc59a3da9bac3be04e94a6e1485138a0151b9d2d2d99952e094699c7cb0b2",
+        "help": "sha256:47ed71b8fa8aa338da1172f7f9e5f6aa73f92ae0bd26559026b7f097877be6cf",
+        "journaling": "sha256:24b8f9002798f872fe778740380c3fac906eafe80517df7ce2596b5cb7b49b95",
+        "parser_tests": "sha256:c0f78903f85172431abf4ef692f43e2e0d102214d35eb909c1baae82015bbfc8",
+        "preview": "sha256:d1ff22340aec8e14e4609e554ab4e619ad018289493fa6fd962fe746d2e48dde",
+        "rollback": "sha256:4192dba51bf33f59ec1a895c1e13f0eb92c4eedf9b151c4d0ec8bf7dc23921b9",
+        "timeout": "sha256:5fa5e17c9bca368247c80a7822b19acd16cf573f7199e56bfff08a1114e12d05",
+        "windows": "sha256:9bb5130814079f6a47cbf574986570953a43ec884d416ee86a45b469217811f6"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only local bounded parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/control-plane.md#topology",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:ab5197bca271c86e0a3f8720d7165998ce514b16e46af08992a1b0b770cd4004",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_control_plane_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_control_plane_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_control_plane_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_cli_help_ux.py::test_mcp_serve_help_hides_compatibility_tool_listing_alias",
+          "tests/test_cli_help_ux.py::test_topology_help_explains_every_leaf_owned_resolution_selector"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_control_plane_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:0b4a19a2ec9e4e1d338f5f7533bffa8c8f0c98c132dc3d9b426522f4b148e21e",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "topology validate"

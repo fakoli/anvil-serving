@@ -1964,8 +1964,38 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor=VOICE_CLI_DOC,
     )
+    harness_sync_options = confirm_options + (
+        _option("--config", summary="Router configuration used to render presets.", value_name="PATH"),
+        _option("--out", summary="Local OpenClaw configuration destination.", value_name="PATH"),
+        _option("--base-url", summary="Router front-door URL visible to OpenClaw.", value_name="URL"),
+        _option("--api-key-env", summary="Router bearer-token environment variable.", value_name="ENV"),
+        _option("--gateway-host", summary="Remote OpenClaw gateway reached with OpenSSH.", value_name="HOST"),
+        _option("--gateway-user", summary="SSH user for the remote gateway.", value_name="USER"),
+        _option("--gateway-path", summary="Remote OpenClaw configuration path.", value_name="PATH"),
+        _option("--overwrite", summary="Replace the target instead of merging Anvil-owned keys."),
+        _option("--restart", summary="Restart OpenClaw after applying configuration."),
+        _option("--timeout-seconds", summary="Per-process SSH, SCP, or OpenClaw timeout.", value_name="SECONDS"),
+        _option("--skills", summary="Include the workbench skill and Anvil agent roles."),
+        _option("--skill-dir", summary="Gateway-visible OpenClaw skill directory.", value_name="PATH"),
+        _option("--voice", summary="Include OpenClaw Talk configuration for Anvil Voice."),
+        _option("--voice-realtime-url", summary="Anvil Voice realtime WebSocket URL.", value_name="URL"),
+        _option("--voice-model", summary="Model used by the realtime voice session.", value_name="MODEL"),
+        _option("--voice-consult-model", summary="OpenClaw model used for forced consults.", value_name="MODEL"),
+        _option("--voice-consult-thinking-level", summary="Thinking level used for forced consults.", value_name="LEVEL"),
+        _option("--voice-consult-bootstrap-context-mode", summary="Forced-consult bootstrap context mode.", value_name="MODE"),
+        _option("--voice-api-key-env", summary="Anvil Voice bearer-token environment variable.", value_name="ENV"),
+    )
+    harness_restart_options = confirm_options + (
+        _option("--gateway-host", summary="Remote OpenClaw gateway reached with OpenSSH.", value_name="HOST"),
+        _option("--gateway-user", summary="SSH user for the remote gateway.", value_name="USER"),
+        _option("--timeout-seconds", summary="Bounded restart command timeout.", value_name="SECONDS"),
+    )
+    harness_status_options = (
+        _option("--timeout-seconds", summary="Bounded status command timeout.", value_name="SECONDS"),
+        _option("--max-output-bytes", summary="Maximum captured stdout and stderr bytes.", value_name="BYTES"),
+    )
     harness_operations = (
-        ("sync", "Synchronize harness configuration", "mutate", False, _remote(
+        ("sync", "Synchronize harness configuration", "mutate", False, harness_sync_options, _remote(
             "openclaw_sync", confirmed=(("confirm", True),),
             allowed=(
                 "config", "base_url", "api_key_env", "out", "overwrite",
@@ -1975,11 +2005,11 @@ def build_command_tree() -> CommandTree:
                 "timeout_seconds",
             ),
         )),
-        ("restart", "Restart the harness", "mutate", True, _remote(
+        ("restart", "Restart the harness", "mutate", True, harness_restart_options, _remote(
             "openclaw_gateway_restart", confirmed=(("confirm", True),),
             allowed=("dry_run", "timeout_seconds"),
         )),
-        ("status", "Show harness status", "read", False, _remote(
+        ("status", "Show harness status", "read", False, harness_status_options, _remote(
             "openclaw_gateway_status", allowed=("timeout_seconds", "max_output_bytes"),
         )),
     )
@@ -1987,19 +2017,59 @@ def build_command_tree() -> CommandTree:
         _node(action, summary, children=(_resource_node(
             "openclaw", f"{summary} for OpenClaw.", "anvil_serving.harness", role="gateway",
             mutation=mutation, recovery=recovery,
-            options=confirm_options if mutation == "mutate" else (),
+            options=options,
             remote_operation=remote_operation,
         ),), docs_anchor=f"{CONTROL_PLANE_DOC}#harness")
-        for action, summary, mutation, recovery, remote_operation in harness_operations
+        for action, summary, mutation, recovery, options, remote_operation in harness_operations
     ), docs_anchor=f"{CONTROL_PLANE_DOC}#harness")
     mcp = _node("mcp", "Expose bounded MCP management tools.", children=(
-        _resource_node("serve", "Run the MCP management server.", "anvil_serving.mcp", role="operator", argv_prefix=(), output_policy="protocol", remote_operation=_remote(mode="mcp-bridge")),
+        _resource_node(
+            "serve",
+            "Run the MCP management server.",
+            "anvil_serving.mcp",
+            role="operator",
+            argv_prefix=(),
+            options=(
+                _option("--controller-url", summary="Private controller URL for proxy mode.", value_name="URL"),
+                _option("--auth-env", summary="Controller token environment variable.", value_name="ENV"),
+            ),
+            output_policy="protocol",
+            remote_operation=_remote(mode="mcp-bridge"),
+        ),
         _resource_node("tools", "List bounded MCP tools.", "anvil_serving.mcp", role="operator", argv_prefix=("list-tools",), remote_operation=_remote(mode="mcp-bridge")),
         _node("list-tools", "Removed MCP tool-listing command.", tombstone=removed("mcp tools"), visible=False),
     ), options=(_removed_option("--list-tools", replacement="mcp tools"),), tombstone=removed("mcp serve"), docs_anchor=f"{CONTROL_PLANE_DOC}#mcp")
     controller = _node("controller", "Manage the private controller service.", children=(
-        _resource_node("serve", "Run the private controller.", "anvil_serving.controller", role="controller", mutation="process", options=(_removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),), output_policy="foreground"),
-        _resource_node("status", "Probe controller health.", "anvil_serving.controller", role="controller", remote_operation=_remote(mode="controller-status")),
+        _resource_node(
+            "serve",
+            "Run the private controller.",
+            "anvil_serving.controller",
+            role="controller",
+            mutation="process",
+            options=(
+                _option("--host", summary="Explicit controller bind address.", value_name="ADDRESS"),
+                _option("--port", summary="Controller listen port.", value_name="PORT"),
+                _option("--auth-token-env", summary="Controller token environment variable.", value_name="ENV"),
+                _option("--allow-public-bind", summary="Permit an authenticated public or wildcard bind."),
+                _option("--allow-operation", summary="Allowed controller operation; repeatable.", value_name="NAME"),
+                _removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),
+            ),
+            output_policy="foreground",
+        ),
+        _resource_node(
+            "status",
+            "Probe controller health.",
+            "anvil_serving.controller",
+            role="controller",
+            options=(
+                _option("--url", summary="Controller base URL.", value_name="URL"),
+                _option("--auth-token-env", summary="Controller token environment variable.", value_name="ENV"),
+                _option("--timeout", summary="Per-request timeout in seconds.", value_name="SECONDS"),
+                _option("--max-response-bytes", summary="Maximum response body bytes.", value_name="BYTES"),
+                _option("--require-operation", summary="Required controller capability; repeatable.", value_name="NAME"),
+            ),
+            remote_operation=_remote(mode="controller-status"),
+        ),
     ), docs_anchor=f"{CONTROL_PLANE_DOC}#controller")
     gpu_sharing = _node(
         "gpu-sharing",
@@ -2157,14 +2227,34 @@ def build_command_tree() -> CommandTree:
         children=(*host_read_actions, *host_repairs, host_reclaim),
         docs_anchor=f"{HOST_DOC}#command-map",
     )
-    topology = _node("topology", "Inspect and resolve deployment topology.", children=tuple(
-        _node(action, summary, handler=_handler("anvil_serving.topology_cli", argv_prefix=(action,)), docs_anchor=f"{CONTROL_PLANE_DOC}#topology")
-        for action, summary in (
-            ("show", "Show a validated topology summary."),
-            ("validate", "Validate a topology offline."),
-            ("resolve", "Resolve one canonical command against a topology."),
-        )
-    ), docs_anchor=f"{CONTROL_PLANE_DOC}#topology")
+    topology = _node(
+        "topology",
+        "Inspect and resolve deployment topology.",
+        children=(
+            _node(
+                "show",
+                "Show a validated topology summary.",
+                handler=_handler("anvil_serving.topology_cli", argv_prefix=("show",)),
+                docs_anchor=f"{CONTROL_PLANE_DOC}#topology",
+            ),
+            _node(
+                "validate",
+                "Validate a topology offline.",
+                handler=_handler("anvil_serving.topology_cli", argv_prefix=("validate",)),
+                docs_anchor=f"{CONTROL_PLANE_DOC}#topology",
+            ),
+            _node(
+                "resolve",
+                "Resolve one canonical command against a topology.",
+                handler=_handler("anvil_serving.topology_cli", argv_prefix=("resolve",)),
+                options=(
+                    _option("--command", summary="Canonical visible command leaf.", value_name="COMMAND"),
+                ),
+                docs_anchor=f"{CONTROL_PLANE_DOC}#topology",
+            ),
+        ),
+        docs_anchor=f"{CONTROL_PLANE_DOC}#topology",
+    )
     collector_input_options = (
         _option("--config", summary="Collector configuration JSON.", value_name="PATH"),
         _option("--name", summary="Inline collector name.", value_name="NAME"),
@@ -2555,6 +2645,373 @@ def build_command_tree() -> CommandTree:
         docs_anchor=f"{CONTROL_PLANE_DOC}#edge",
     )
 
+    control_plane_review_metadata = {
+        "harness sync openclaw": {
+            "examples": (
+                _example(
+                    "anvil-serving harness sync openclaw --config configs/example.toml --dry-run",
+                    "Render and validate the OpenClaw integration without writing or restarting.",
+                ),
+                _example(
+                    "anvil-serving harness sync openclaw --config configs/example.toml --gateway-host fakoli-mini --base-url http://100.87.34.66:8000/v1 --skills --confirm",
+                    "Merge the reviewed provider and workbench configuration on a remote gateway.",
+                ),
+            ),
+            "configuration_notes": (
+                "--base-url defaults to http://127.0.0.1:8000/v1; a remote gateway needs the router address it can actually reach.",
+                "Remote sync uses OpenSSH, merges Anvil-owned keys by default, and bounds each SSH or SCP call with --timeout-seconds.",
+            ),
+            "behavior_notes": (
+                "Dry-run loads the router configuration and renders the complete payload without writing or restarting OpenClaw.",
+                "Apply preserves unrelated operator configuration, writes a backup when a target exists, and restarts only when --restart is explicit.",
+            ),
+        },
+        "harness restart openclaw": {
+            "examples": (
+                _example(
+                    "anvil-serving harness restart openclaw --dry-run",
+                    "Show the fixed local OpenClaw restart command.",
+                ),
+                _example(
+                    "anvil-serving harness restart openclaw --gateway-host fakoli-mini --confirm",
+                    "Restart one reviewed remote gateway through bounded SSH.",
+                ),
+            ),
+            "configuration_notes": (
+                "Without --gateway-host the local openclaw executable is used; remote execution uses strict-host-key OpenSSH.",
+                "--timeout-seconds defaults to 120 and accepts values from 1 through 7200.",
+            ),
+            "behavior_notes": (
+                "Dry-run executes nothing and prints the exact argv that apply would run.",
+                "Apply issues one bounded restart command and stops on missing tools, timeout, or a nonzero result.",
+            ),
+        },
+        "harness status openclaw": {
+            "examples": (
+                _example(
+                    "anvil-serving harness status openclaw",
+                    "Read bounded status from the local OpenClaw gateway.",
+                ),
+                _example(
+                    "anvil-serving harness status openclaw --topology operator-topology.toml --target host:mini --json",
+                    "Read gateway-owned status through the declared controller transport.",
+                ),
+            ),
+            "configuration_notes": (
+                "The local subprocess timeout defaults to 120 seconds and captured stdout and stderr each default to 65536 bytes.",
+                "Global topology and target options select the declared gateway owner when status is not local.",
+            ),
+            "behavior_notes": (
+                "Status is read-only and invokes openclaw gateway status --json without a shell.",
+                "Oversized output is truncated explicitly and unavailable or timed-out gateways return a bounded failure result.",
+            ),
+        },
+        "mcp serve": {
+            "examples": (
+                _example(
+                    "anvil-serving mcp serve",
+                    "Run the local stdio MCP server until its input stream closes.",
+                ),
+                _example(
+                    "anvil-serving mcp serve --controller-url http://100.64.0.10:8765 --auth-env ANVIL_CONTROLLER_TOKEN",
+                    "Proxy MCP tool listing and calls to a private authenticated controller.",
+                ),
+            ),
+            "configuration_notes": (
+                "--controller-url and --auth-env must be supplied together; the token value is read only from the named environment variable.",
+                "Proxy URLs must resolve to loopback, private, or tailnet scope and use the controller's authenticated HTTP endpoint.",
+            ),
+            "behavior_notes": (
+                "The server speaks newline-delimited JSON-RPC on stdio and runs until EOF or interruption.",
+                "Proxy mode forwards only tools/list and tools/call and rejects controller tool contracts that are not a valid local subset.",
+            ),
+        },
+        "mcp tools": {
+            "examples": (
+                _example(
+                    "anvil-serving mcp tools",
+                    "List every bounded management tool and its input schema.",
+                ),
+                _example(
+                    "anvil-serving mcp tools --json",
+                    "Wrap the tool catalog in the stable CLI result envelope.",
+                ),
+            ),
+            "configuration_notes": (
+                "The catalog is generated from the same local declarations used by stdio MCP and the HTTP controller.",
+                "Use controller status --require-operation to verify a deployed controller exposes a required subset.",
+            ),
+            "behavior_notes": (
+                "Listing tools is read-only and never calls a tool, reads a credential, or contacts a controller.",
+                "Each declaration includes its bounded input schema and the shared target-context contract.",
+            ),
+        },
+        "controller serve": {
+            "examples": (
+                _example(
+                    "anvil-serving controller serve --host 127.0.0.1 --port 8765 --auth-token-env ANVIL_CONTROLLER_TOKEN",
+                    "Run the authenticated private controller on loopback.",
+                ),
+                _example(
+                    "anvil-serving controller serve --host 100.64.0.10 --allow-operation host_summary --auth-token-env ANVIL_CONTROLLER_TOKEN",
+                    "Expose one allowlisted operation on a tailnet address.",
+                ),
+            ),
+            "configuration_notes": (
+                "The default bind is 127.0.0.1:8765 and the default token environment variable is ANVIL_CONTROLLER_TOKEN.",
+                "Private and tailnet binds require authentication; public or wildcard binds additionally require --allow-public-bind.",
+            ),
+            "behavior_notes": (
+                "The controller runs in the foreground and reuses the MCP tool schemas and implementations.",
+                "--allow-operation is repeatable and restricts the served catalog instead of creating a second operation definition.",
+            ),
+        },
+        "controller status": {
+            "examples": (
+                _example(
+                    "anvil-serving controller status --url http://127.0.0.1:8765",
+                    "Probe the default authenticated controller health and catalog.",
+                ),
+                _example(
+                    "anvil-serving controller status --url http://100.64.0.10:8765 --require-operation host_summary",
+                    "Require one management capability on a tailnet controller.",
+                ),
+            ),
+            "configuration_notes": (
+                "The token comes from --auth-token-env; --timeout must be greater than zero and no more than 60 seconds.",
+                "Response capture defaults to 65536 bytes and may not exceed the controller's 1 MiB request-body ceiling.",
+            ),
+            "behavior_notes": (
+                "Status performs bounded authenticated reads of /health and /tools/list and never calls a management tool.",
+                "It validates controller identity, unique tool declarations, and every repeatable --require-operation selector.",
+            ),
+        },
+        "topology show": {
+            "examples": (
+                _example(
+                    "anvil-serving topology show --topology operator-topology.toml",
+                    "Show validated deployment ownership and transports.",
+                ),
+                _example(
+                    "anvil-serving topology show --topology operator-topology.toml --topology-overlay deployments/dark.toml",
+                    "Show the base topology with one partial deployment overlay.",
+                ),
+            ),
+            "configuration_notes": (
+                "--topology is required and --topology-overlay applies one partial deployment overlay before rendering.",
+                "Topology files declare hosts, runtimes, resources, transports, and capacity policy; they do not contain credentials.",
+            ),
+            "behavior_notes": (
+                "Show validates and renders the complete declaration without probing a host or opening a transport.",
+                "Output includes stable resource ownership and token environment-variable names, never token values.",
+            ),
+        },
+        "topology validate": {
+            "examples": (
+                _example(
+                    "anvil-serving topology validate --topology operator-topology.toml",
+                    "Validate one deployment topology offline.",
+                ),
+                _example(
+                    "anvil-serving topology validate --topology operator-topology.toml --topology-overlay deployments/mini.toml",
+                    "Validate the merged base and overlay declaration.",
+                ),
+            ),
+            "configuration_notes": (
+                "The base topology is required; an overlay may refine deployment values but must remain schema-valid after merge.",
+                "Validation uses the same loader and invariants as execution-plan resolution.",
+            ),
+            "behavior_notes": (
+                "Validation is offline and never contacts a controller, SSH host, model serve, or router.",
+                "Schema errors are returned as structured records and produce a nonzero exit without partial execution.",
+            ),
+        },
+        "topology resolve": {
+            "examples": (
+                _example(
+                    "anvil-serving topology resolve --topology operator-topology.toml --command \"host status\"",
+                    "Resolve one canonical leaf using automatic transport selection.",
+                ),
+                _example(
+                    "anvil-serving topology resolve --topology operator-topology.toml --command \"host status\" --target host:dark --transport controller",
+                    "Explain the explicit owner and controller execution plan.",
+                ),
+            ),
+            "configuration_notes": (
+                "--command must name one visible canonical leaf; host, runtime, target, and transport selectors narrow resolution.",
+                "--experimental-model-workload only permits a resource that the topology itself declares experimental on a model-free host.",
+            ),
+            "behavior_notes": (
+                "Resolve computes and prints an execution plan without importing the command handler or executing the operation.",
+                "The plan records ownership, runtime, transport, endpoint, capacity decision, and any explicit override warning.",
+            ),
+        },
+        "collectors configure": {
+            "examples": (
+                _example(
+                    "anvil-serving collectors configure --name local-gap --endpoint http://127.0.0.1:9100/capabilities --capability gpu-gap",
+                    "Validate and print one inline collector configuration.",
+                ),
+                _example(
+                    "anvil-serving collectors configure --name local-gap --endpoint http://127.0.0.1:9100/capabilities --capability gpu-gap --output collector.json --confirm",
+                    "Atomically write the reviewed collector configuration.",
+                ),
+            ),
+            "configuration_notes": (
+                "Use either --config or inline fields; inline configuration requires --name, --endpoint, and at least one --capability.",
+                "Endpoints must use an explicit loopback, private, or tailnet IP; non-loopback endpoints require --auth-env.",
+            ),
+            "behavior_notes": (
+                "Without --output the command only validates and prints normalized JSON, so no confirmation is required.",
+                "--output is confirmation-gated and atomically replaces the destination without contacting the collector.",
+            ),
+        },
+        "collectors validate": {
+            "examples": (
+                _example(
+                    "anvil-serving collectors validate --config collector.json",
+                    "Validate one saved collector configuration offline.",
+                ),
+                _example(
+                    "anvil-serving collectors validate --name local-gap --endpoint http://127.0.0.1:9100/capabilities --capability gpu-gap",
+                    "Validate an inline collector declaration.",
+                ),
+            ),
+            "configuration_notes": (
+                "Saved configurations are capped at 256 KiB and reject unknown fields or unsupported adapter identifiers.",
+                "Capabilities use lowercase identifiers and may contain letters, digits, underscores, or hyphens.",
+            ),
+            "behavior_notes": (
+                "Validation performs no network request and never reads the environment variable named by auth_env.",
+                "The normalized configuration is returned on success; malformed input produces a structured invalid result.",
+            ),
+        },
+        "collectors capabilities": {
+            "examples": (
+                _example(
+                    "anvil-serving collectors capabilities",
+                    "Report that no optional collector has been configured.",
+                ),
+                _example(
+                    "anvil-serving collectors capabilities --config collector.json",
+                    "List the capabilities declared by one saved adapter.",
+                ),
+            ),
+            "configuration_notes": (
+                "With no configuration the command returns the explicit not-configured and unsupported state.",
+                "Configured capability reporting accepts the same saved-file or inline inputs as validation.",
+            ),
+            "behavior_notes": (
+                "Capabilities is offline and does not claim that a declared capability is currently reachable.",
+                "The command is read-only and never starts, stops, configures, or probes the external service.",
+            ),
+        },
+        "collectors inspect": {
+            "examples": (
+                _example(
+                    "anvil-serving collectors inspect --config collector.json --timeout 5",
+                    "Perform one bounded read from the configured collector.",
+                ),
+                _example(
+                    "anvil-serving collectors inspect --name local-gap --endpoint http://127.0.0.1:9100/capabilities --capability gpu-gap --timeout 10",
+                    "Inspect one inline loopback adapter declaration.",
+                ),
+            ),
+            "configuration_notes": (
+                "--timeout defaults to 5 seconds and must be greater than zero and no more than 60 seconds.",
+                "Authenticated endpoints read the bearer token from --auth-env; credential values are redacted from every result.",
+            ),
+            "behavior_notes": (
+                "Inspection disables proxies and redirects, reads at most 256 KiB, and performs exactly one GET request.",
+                "Missing capabilities, authentication failures, and invalid responses return an explicit degraded result without mutating the service.",
+            ),
+        },
+        "edge render": {
+            "examples": (
+                _example(
+                    "anvil-serving edge render",
+                    "Render the built-in /v1 and /comfyui Tailscale Serve plan.",
+                ),
+                _example(
+                    "anvil-serving edge render --config edge.toml --map /dashboard=8766",
+                    "Render a configured route map with one command-line override.",
+                ),
+            ),
+            "configuration_notes": (
+                "Resolution order is built-in defaults, optional [edge] TOML, then repeatable --map overrides; MOUNT=off removes one route.",
+                "Port-only targets use --host, which defaults to 127.0.0.1; the HTTPS listener defaults to 443.",
+            ),
+            "behavior_notes": (
+                "Render never invokes tailscale serve and prints the exact argv that edge up would apply.",
+                "The displayed endpoint uses the node's discovered MagicDNS name when Tailscale status is available.",
+            ),
+        },
+        "edge status": {
+            "examples": (
+                _example(
+                    "anvil-serving edge status",
+                    "Compare live Tailscale Serve mappings with the built-in route map.",
+                ),
+                _example(
+                    "anvil-serving edge status --config edge.toml --json",
+                    "Classify configured and live mappings in the stable result envelope.",
+                ),
+            ),
+            "configuration_notes": (
+                "Status resolves the same config, host, HTTPS port, and --map precedence used by render and apply.",
+                "Tailscale status calls use a fixed 15-second subprocess timeout.",
+            ),
+            "behavior_notes": (
+                "Status is read-only; missing, timed-out, unconfigured, or invalid Tailscale status is represented as an empty live map.",
+                "A mount is marked managed only when both its path and live proxy target exactly match the resolved configuration.",
+            ),
+        },
+        "edge up": {
+            "examples": (
+                _example(
+                    "anvil-serving edge up --dry-run",
+                    "Preview the built-in additive Tailscale Serve plan.",
+                ),
+                _example(
+                    "anvil-serving edge up --config edge.toml --confirm",
+                    "Apply the reviewed managed route map.",
+                ),
+            ),
+            "configuration_notes": (
+                "Use --config and repeatable --map overrides to define only the mounts Anvil owns; the default targets remain loopback.",
+                "Each tailscale subprocess has a fixed 15-second timeout and the public mutation gate is --confirm.",
+            ),
+            "behavior_notes": (
+                "Up is additive and idempotent: it sets each resolved managed mount without resetting unrelated mappings.",
+                "Apply attempts each planned command once, records every result, and returns nonzero if any route fails or times out.",
+            ),
+        },
+        "edge down": {
+            "examples": (
+                _example(
+                    "anvil-serving edge down --dry-run",
+                    "Preview removal of currently matching managed mounts.",
+                ),
+                _example(
+                    "anvil-serving edge down --config edge.toml --confirm",
+                    "Remove only live mappings still owned by the reviewed config.",
+                ),
+            ),
+            "configuration_notes": (
+                "Down resolves the same route map as up and compares it with live status before planning removal.",
+                "--confirm authorizes only the exact per-mount off commands shown by --dry-run; tailscale serve reset is never used.",
+            ),
+            "behavior_notes": (
+                "A route is removed only when both the live mount and target exactly match the resolved Anvil-owned mapping.",
+                "Absent, changed, and operator-owned mappings are preserved; each planned removal is attempted once with a 15-second timeout.",
+            ),
+        },
+    }
+    review_metadata = {
+        **setup_host_review_metadata,
+        **control_plane_review_metadata,
+    }
+
     top_level_nodes = (
             _node(
                 "init",
@@ -2629,7 +3086,7 @@ def build_command_tree() -> CommandTree:
         )
     tree = CommandTree(
         nodes=tuple(
-            _with_review_metadata(_inherit_docs_anchor(node), setup_host_review_metadata)
+            _with_review_metadata(_inherit_docs_anchor(node), review_metadata)
             for node in top_level_nodes
         ),
         global_options=GLOBAL_OPTIONS,
