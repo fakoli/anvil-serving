@@ -203,7 +203,7 @@ anvil-serving host reclaim --watch --threshold-gb 40 --interval 30 --confirm
 ```
 
 This is a symptom-relief valve, not the sizing fix — if the VM cap itself is wrong, size it with
-`host doctor` / `host wsl-config` ([CLI.md → host](CLI.md#host)).
+`host doctor` / `host wsl-config` ([CLI reference → host](cli/host.md#host)).
 
 ## 401/403 from the router
 

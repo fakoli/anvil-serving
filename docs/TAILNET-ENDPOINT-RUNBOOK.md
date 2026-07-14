@@ -16,7 +16,7 @@ ComfyUI UI path-routing options.
 > idempotent, dry-runnable, and removes only the mappings it manages. The commands below
 > remain accurate as the underlying mechanism the verb renders. See
 > [ADR-0019](adr/0019-anvil-serving-owns-the-tailnet-edge.md) and
-> [`edge` in the CLI reference](CLI.md#edge).
+> [`edge` in the CLI reference](cli/control-plane.md#edge).
 >
 > Binding the front door to the tailnet (the section immediately below) is still a
 > `router run --host` choice; it is orthogonal to the `edge` verb, which fronts loopback
