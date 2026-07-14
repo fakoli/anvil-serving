@@ -3,7 +3,7 @@
 `anvil-serving` is a single stdlib-only CLI (Python >= 3.11) that fronts every product surface:
 the quality-gated router, the local GPU serve lifecycle, the model catalog, the quality loop, the
 MCP/controller control plane, and the voice pipeline. This page is the complete verb reference for
-v0.12.0. Run `anvil-serving --help` for the grouped live list, examples, and typo suggestions.
+v0.13.0. Run `anvil-serving --help` for the grouped live list, examples, and typo suggestions.
 Run `anvil-serving <verb> --help`, or parser-backed focused action help such as
 `anvil-serving router logs --help`, for the relevant flag set. Use `127.0.0.1` in local URLs,
 never `localhost`.
