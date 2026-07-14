@@ -127,7 +127,7 @@ def test_top_level_version_reports_installed_version(flag, capsys):
 def test_command_manifest_is_terminal_and_machine_readable(capsys):
     assert cli.main(["--command-manifest"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     assert any(record["path"] == "topology resolve" for record in payload["commands"])
 
     assert cli.main(["--command-manifest", "router", "status"]) == 2
