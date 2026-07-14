@@ -25,11 +25,11 @@
         "voice-up-down": 3
       },
       "canonical_counts": {
-        "eval-benchmark-external": 26,
+        "eval-benchmark-external": 48,
         "eval-benchmark-run": 1,
-        "eval-calibrate": 7,
-        "eval-preflight": 20,
-        "eval-usage": 5,
+        "eval-calibrate": 9,
+        "eval-preflight": 22,
+        "eval-usage": 7,
         "host-gpus": 1,
         "init": 16,
         "mcp-serve": 20,
@@ -97,11 +97,11 @@
         "voice-up-down": 3
       },
       "canonical_counts": {
-        "eval-benchmark-external": 40,
+        "eval-benchmark-external": 84,
         "eval-benchmark-run": 3,
-        "eval-calibrate": 23,
-        "eval-preflight": 32,
-        "eval-usage": 13,
+        "eval-calibrate": 27,
+        "eval-preflight": 36,
+        "eval-usage": 17,
         "host-gpus": 3,
         "init": 31,
         "mcp-serve": 24,

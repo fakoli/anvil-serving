@@ -158,6 +158,37 @@ def _command_name(path: Sequence[CommandNode]) -> str:
     return " ".join(node.name for node in path)
 
 
+def _help_width() -> int:
+    """Return one stable, bounded width for every human help surface."""
+    return min(
+        100,
+        max(60, shutil.get_terminal_size(fallback=(100, 24)).columns),
+    )
+
+
+def _print_help_table(
+    rows: Sequence[tuple[str, str]], *, minimum_label_width: int = 15
+) -> None:
+    """Render aligned help rows while wrapping descriptions for the terminal."""
+    if not rows:
+        return
+    help_width = _help_width()
+    label_width = max(minimum_label_width, *(len(label) for label, _summary in rows))
+    label_width = min(label_width, max(minimum_label_width, help_width // 2))
+    for label, summary in rows:
+        prefix = "  %-*s " % (label_width, label)
+        print(
+            textwrap.fill(
+                summary,
+                width=help_width,
+                initial_indent=prefix,
+                subsequent_indent=" " * len(prefix),
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+        )
+
+
 def _resolve(argv: Sequence[str]):
     """Resolve path tokens before any command module is imported."""
     nodes: Sequence[CommandNode] = COMMAND_TREE.nodes
@@ -180,7 +211,14 @@ def _resolve(argv: Sequence[str]):
 
 
 def _print_help() -> None:
-    print("anvil-serving - quality-gated local-model router and serving workbench")
+    print(
+        textwrap.fill(
+            "anvil-serving - quality-gated local-model router and serving workbench",
+            width=_help_width(),
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+    )
     print()
     print("Usage:")
     print("  anvil-serving <command> [options]")
@@ -188,10 +226,15 @@ def _print_help() -> None:
     print("  anvil-serving --version")
     print()
     print("Global options:")
-    print("  %-20s %s" % ("--command-manifest", "Print the machine-readable command manifest and exit."))
-    print("  %-20s %s" % ("-V, --version", "Print the installed version and exit."))
-    for option in COMMAND_TREE.global_options:
-        print("  %-20s %s" % (", ".join(option.flags), option.summary))
+    global_rows = [
+        ("--command-manifest", "Print the machine-readable command manifest and exit."),
+        ("-V, --version", "Print the installed version and exit."),
+    ]
+    global_rows.extend(
+        (", ".join(option.flags), option.summary)
+        for option in COMMAND_TREE.global_options
+    )
+    _print_help_table(global_rows, minimum_label_width=20)
     print()
     root_nodes = _visible(COMMAND_TREE.nodes)
     groups = list(_GROUP_ORDER)
@@ -201,13 +244,15 @@ def _print_help() -> None:
         if not members:
             continue
         print("%s:" % group)
-        for node in members:
-            print("  %-15s %s" % (node.name, node.summary))
+        _print_help_table(
+            [(node.name, node.summary) for node in members],
+            minimum_label_width=15,
+        )
     print()
     print("Examples:")
     print("  anvil-serving router run --config configs/example.toml")
     print("  anvil-serving serves status")
-    print("  anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model local")
+    print("  anvil-serving eval preflight --tier heavy --dry-run")
     print("  anvil-serving eval benchmark external list")
     print("  anvil-serving mcp tools")
     print()
@@ -217,17 +262,36 @@ def _print_help() -> None:
 def _print_focused_help(path: Sequence[CommandNode]) -> None:
     node = path[-1]
     command = _command_name(path)
-    print("anvil-serving %s - %s" % (command, node.summary))
+    print(
+        textwrap.fill(
+            "anvil-serving %s - %s" % (command, node.summary),
+            width=_help_width(),
+            subsequent_indent="  ",
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+    )
     print()
     print("Usage:")
     suffix = " <action>" if _visible(node.children) else ""
-    print("  anvil-serving %s%s [options]" % (command, suffix))
+    print(
+        textwrap.fill(
+            "anvil-serving %s%s [options]" % (command, suffix),
+            width=_help_width(),
+            initial_indent="  ",
+            subsequent_indent="    ",
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+    )
     children = _visible(node.children)
     if children:
         print()
         print("Actions:")
-        for child in children:
-            print("  %-15s %s" % (child.name, child.summary))
+        _print_help_table(
+            [(child.name, child.summary) for child in children],
+            minimum_label_width=15,
+        )
     supports_resolution = node.execution_policy == "resource-owner" or any(
         descendant.execution_policy == "resource-owner"
         for descendant in _walk_nodes(node.children)
@@ -254,9 +318,7 @@ def _print_focused_help(path: Sequence[CommandNode]) -> None:
             if option.value_name is not None:
                 label += " " + option.value_name
             rendered_options.append((label, option.summary))
-        width = max(20, *(len(label) for label, _summary in rendered_options))
-        for label, summary in rendered_options:
-            print("  %-*s %s" % (width, label, summary))
+        _print_help_table(rendered_options, minimum_label_width=20)
     print()
     print("Docs: %s" % node.docs_anchor)
 
@@ -384,17 +446,21 @@ def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> Non
     """Render a reviewed leaf with stable navigation and human-first sections."""
     node = path[-1]
     command = _command_name(path)
-    help_width = min(
-        100,
-        max(60, shutil.get_terminal_size(fallback=(100, 24)).columns),
-    )
+    help_width = _help_width()
     usage, local_sections = _normalized_leaf_sections(
         rendered,
         hidden_flags=_hidden_leaf_help_flags(path),
     )
 
     print("anvil-serving %s" % command)
-    print(node.summary)
+    print(
+        textwrap.fill(
+            node.summary,
+            width=help_width,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+    )
     if usage:
         print("\nUsage:")
         for line in usage:
@@ -493,21 +559,13 @@ def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> Non
         if "--confirm" in option.flags and option.tombstone is None
     )
     print("\nGlobal options:")
+    rendered_global_options = []
     for option in (*global_options, *dispatcher_options):
         label = ", ".join(option.flags)
         if option.value_name:
             label += " " + option.value_name
-        prefix = "  %-40s " % label
-        print(
-            textwrap.fill(
-                option.summary,
-                width=help_width,
-                initial_indent=prefix,
-                subsequent_indent=" " * len(prefix),
-                break_long_words=False,
-                break_on_hyphens=False,
-            )
-        )
+        rendered_global_options.append((label, option.summary))
+    _print_help_table(rendered_global_options, minimum_label_width=20)
     print("\nDocs: %s" % node.docs_anchor)
 
 
@@ -558,11 +616,13 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
             if not resolution_flags.intersection(option.flags)
         )
     print("\nDispatcher options:")
+    rendered_dispatcher_options = []
     for option in (*global_options, *dispatcher_options):
         label = ", ".join(option.flags)
         if option.value_name:
             label += " " + option.value_name
-        print("  %-40s %s" % (label, option.summary))
+        rendered_dispatcher_options.append((label, option.summary))
+    _print_help_table(rendered_dispatcher_options, minimum_label_width=20)
     print("\nDocs: %s" % node.docs_anchor)
     return True
 
