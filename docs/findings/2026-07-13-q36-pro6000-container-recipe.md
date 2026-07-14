@@ -8,6 +8,7 @@ an experiment, not a Heavy-tier promotion or routing change.
 
 - Overall operational result: **PASS**
 - Arithmetic smoke result: **PASS**, with and without MTP
+- Repeated MMLU-Pro sanity slice: **8/10 stable; 16/20 attempts passed**
 - Reasoning-heavy result: **FAIL at the tested 1,024, 2,048, and 4,096 output-token budgets**
 - Recommendation: **needs more data; do not promote**
 - Container recipe: `examples/fakoli-dark/q36/README.md`
@@ -140,10 +141,77 @@ the correct intermediate values but never satisfied the requested final-answer
 contract. Treat this as an output-control/verbosity failure, not a wrong final
 integer and not a passed intelligence result.
 
+## Repeated MMLU-Pro sanity slice
+
+The checked-in ten-category slice from
+[`TIGER-Lab/MMLU-Pro`](https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro)
+ran twice. The fixture pins dataset revision
+`b189ec765aa7ed75c8acfea42df31fdae71f97be`, validation rows 5, 10, 15,
+20, 25, 30, 35, 40, 45, and 65. The official dataset API still reported that
+revision when observed on 2026-07-13; its 2026-05-02 update was 72 days old,
+so this report classifies the source as **aging**. This is a multidomain sanity
+slice, not a full MMLU-Pro score.
+
+The repaired protocol allocated 256 visible-answer tokens plus 4,096 reasoning
+headroom tokens as one 4,352-token API cap, repeated every item twice, and
+required both attempts to pass the deterministic `FINAL=<letter>` validator.
+The model did not grade itself. q36 ran greedy at allocated context 32,768,
+FP16 KV, MTP off, and state cache off. Every request started at depth zero and
+reported zero cached prompt tokens.
+
+| Repetition | Stable score | Attempts | Prompt tokens | Completion tokens | Weighted prefill | Median prefill | Weighted decode | Attempt latency sum |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 8/10 | 8/10 | 1,425 | 27,693 | 1,715.4 tok/s | 2,503.0 tok/s | 248.7 tok/s | 112.343 s |
+| 2 | 8/10 | 8/10 | 1,425 | 27,693 | 2,536.5 tok/s | 2,497.0 tok/s | 248.5 tok/s | 112.127 s |
+
+Weighted rates are total tokens divided by the sum of each request's measured
+token time. Repetition one's lower weighted prefill is almost entirely the
+first post-preflight request: 93 prompt tokens at 291 tok/s versus 1,793 tok/s
+on repetition two. Decode was stable across the two repetitions. The complete
+bakeoff wall time was 224.476 seconds.
+
+| Category | Result r1/r2 | Allocated ctx | Prompt | Generated | Prefill r1/r2 | Decode r1/r2 | Finish r1/r2 |
+|---|---|---:|---:|---:|---:|---:|---|
+| Health | pass/pass | 32,768 | 93 | 2,125 | 291 / 1,793 | 249.5 / 250.1 | stop/stop |
+| Physics | pass/pass | 32,768 | 153 | 1,484 | 2,631 / 2,639 | 250.4 / 249.4 | stop/stop |
+| Business | pass/pass | 32,768 | 226 | 2,091 | 3,665 / 3,683 | 250.6 / 250.6 | stop/stop |
+| Biology | pass/pass | 32,768 | 134 | 1,740 | 2,395 / 2,401 | 251.3 / 250.6 | stop/stop |
+| Chemistry | fail/fail | 32,768 | 113 | 4,352 | 2,062 / 2,064 | 249.8 / 249.5 | length/length |
+| Computer science | fail/fail | 32,768 | 176 | 4,352 | 2,947 / 2,969 | 248.7 / 247.9 | length/length |
+| Economics | pass/pass | 32,768 | 106 | 1,953 | 2,001 / 2,016 | 248.7 / 248.3 | stop/stop |
+| Engineering | pass/pass | 32,768 | 147 | 4,172 | 2,611 / 2,593 | 246.8 / 246.3 | stop/stop |
+| Philosophy | pass/pass | 32,768 | 118 | 2,090 | 2,120 / 2,127 | 247.3 / 247.1 | stop/stop |
+| Law | pass/pass | 32,768 | 159 | 3,334 | 2,844 / 2,839 | 246.4 / 248.0 | stop/stop |
+
+All ten paired outputs were byte-identical within the unchanged MTP-off server
+process. The eight completed categories all matched the independent fixture.
+Chemistry and computer science consumed the entire cap in visible `<think>`
+content and never emitted `FINAL=`, so their four attempts are classified as
+`visible_answer_budget_exhausted`, not wrong completed answers.
+
+The scoped, reasoning-enabled coding smoke preflight passed with `stop` at the
+same 4,352-token cap. The generic structured-JSON preflight remains
+incompatible with this baseline because q36 places `<think>` in OpenAI
+`content`; per-request `chat_template_kwargs.enable_thinking=false` did not
+suppress it. q36 documents server-level `--hide-think` for that behavior. The
+failed default and attempted-disabled artifacts are retained rather than hidden,
+and the server was not recreated with `--hide-think` during the measured run.
+
+Raw full responses, finish reasons, independent checks, and budgets are in
+[q36-mmlu-pro-10-r2.json](2026-07-13-q36-pro6000-container-recipe-evidence/q36-mmlu-pro-10-r2.json).
+Every correlated q36 prompt/prefill and generation/decode line is in
+[q36-mmlu-engine-timings.json](2026-07-13-q36-pro6000-container-recipe-evidence/q36-mmlu-engine-timings.json).
+Preflight artifacts are
+[scoped smoke pass](2026-07-13-q36-pro6000-container-recipe-evidence/q36-mmlu-preflight-smoke.json),
+[default structured failure](2026-07-13-q36-pro6000-container-recipe-evidence/q36-mmlu-preflight.json),
+and [attempted per-request disable failure](2026-07-13-q36-pro6000-container-recipe-evidence/q36-mmlu-preflight-thinking-disabled.json).
+
 ## Limits and disposition
 
 - One host and one physical PRO 6000 were tested.
 - Only MTP depth 1 was characterized; depths 2 and 3 remain future axes.
+- MMLU-Pro used two repetitions at the 4,352-token cap; chemistry and computer
+  science need a larger-budget calibration before quality comparison.
 - The HTTP server is sequential, so no concurrent-serving claim is made.
 - State caching and KV quantization were intentionally disabled.
 - The 262K row proves allocation plus a short request, not a full-depth needle.

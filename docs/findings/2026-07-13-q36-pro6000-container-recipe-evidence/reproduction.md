@@ -70,3 +70,47 @@ docker run --rm --gpus all `
 The physical GPU index is host-specific. On the recorded dual-GPU Docker
 Desktop host, index 0 was the occupied RTX 5090 and index 1 was the RTX PRO
 6000. Confirm the inventory before reuse.
+
+## Repeated MMLU-Pro slice
+
+The MMLU run keeps the restored 32K, FP16-KV, MTP-off baseline. First run the
+scoped reasoning-enabled preflight:
+
+```powershell
+anvil-serving eval preflight `
+  --base-url http://127.0.0.1:39040/v1 `
+  --model qwen3.6-35b-a3b `
+  --checks smoke `
+  --thinking-mode default `
+  --visible-answer-tokens 256 `
+  --reasoning-headroom-tokens 4096 `
+  --reasoning-evidence any `
+  --allowed-finish-reasons stop `
+  --confirm
+```
+
+Then run the ten-category slice twice:
+
+```powershell
+anvil-serving eval benchmark run `
+  --base-url http://127.0.0.1:39040/v1 `
+  --model qwen3.6-35b-a3b `
+  --max-model-len 32768 `
+  --thinking-mode default `
+  --visible-answer-tokens 256 `
+  --reasoning-headroom-tokens 4096 `
+  --eval-repetitions 2 `
+  --eval-min-pass-rate 1.0 `
+  --bakeoff `
+  --suite-file tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json `
+  --candidate-id q36-qwen36-35b-a3b-mxfp4 `
+  --config-id q36-pro6000-mtp-off-fp16kv-32k `
+  --source-recipe examples/fakoli-dark/docker-compose.q36.yml `
+  --confirm
+```
+
+The generic structured-JSON preflight is expected to fail with this baseline:
+q36 emits the visible `<think>` region in OpenAI `content` and documents
+server-level `--hide-think`, not the harness's per-request
+`chat_template_kwargs.enable_thinking` control. Do not report that compatibility
+failure as an MMLU answer failure.
