@@ -2,24 +2,24 @@
   "enforcement": "ratchet",
   "manifest_schema_version": 3,
   "maximum_failures": {
-    "boundedness": 86,
-    "configuration": 25,
-    "confirmation": 62,
-    "docs": 17,
-    "drift_protection": 78,
-    "errors": 71,
-    "grammar": 17,
-    "help": 17,
-    "journaling": 84,
+    "boundedness": 85,
+    "configuration": 8,
+    "confirmation": 45,
+    "docs": 0,
+    "drift_protection": 66,
+    "errors": 70,
+    "grammar": 0,
+    "help": 0,
+    "journaling": 72,
     "linux": 102,
     "macos": 102,
     "output": 69,
-    "parser_tests": 17,
-    "preview": 59,
+    "parser_tests": 0,
+    "preview": 43,
     "remote_parity": 90,
-    "rollback": 77,
-    "timeout": 87,
-    "windows": 36
+    "rollback": 65,
+    "timeout": 80,
+    "windows": 19
   },
   "records": [
     {
@@ -6155,494 +6155,1313 @@
       "path": "upgrade"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:312bb1799b43d5e6e80870bdfe291d778294d44dfbe5ac8e1d1eb66ea4778f09",
+        "confirmation": "sha256:b97407a2788691b6666638a8b6df2748c2e1a6c9e19a5297c1a8ac3ccfd77638",
+        "docs": "sha256:6285e2ce953b7e9597c4233a205c6a0afffb51a42bb4380b348b9c4fc71936df",
+        "grammar": "sha256:45a9a380b55445463ac04ed701fee99bbcf1da38d7affff542f2d4c6f1a5e09e",
+        "help": "sha256:d1b9d625f8b23c40f79d577a7d922aedffe8940c3970172e174de0defbfb6498",
+        "parser_tests": "sha256:a679a253924d45467526af7e7623f500ae7b802763d743855bd5bc5230a5215f",
+        "preview": "sha256:8c0a2d0f38d05c46cdb1bd489f570f9259abde5253ec29df002d88e3f1b21c47",
+        "windows": "sha256:96e9cf9749126c7e1aa139ac6723ea35162f894e7487574372ea3997f033e442"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:8565ed496c4b117a0793c4f0134b46a62670f37f7d2df08e76c28cc085c868c1",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:2b9cf738eac6c2ec14de0ab9f98eeef3b6427365a925fceb87987eed37f66513",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice audio down"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:7d1ed16d49d6cc496c3a600a911d85e15d2d8a2de18d2762b6145d60f3689983",
+        "configuration": "sha256:3305d75e25711745a22aac5b17a5a06ac262a602107f4d0bb2f7f405d1d746b4",
+        "confirmation": "sha256:b1c960d2292027944f823c9a5cd08a57c0380e71deae0de08a488e6e3c62e2c7",
+        "docs": "sha256:eaf3f434f9ea3d09ffc409afff8d25e854ccaaf67494d1993b32f82fcc419a98",
+        "drift_protection": "sha256:242746a17907833f44a2628ff89b824b863659a9389c1be687ae22f416f1283f",
+        "grammar": "sha256:e6fd02945627c39c0f64ccc960a5195b9e21c9f43ff8f1ce5250c1696ef8260e",
+        "help": "sha256:ef6eb9af8c9ed408feae5f5b1de31aa54ccd1e6468609fe0e27e83a2aee687a2",
+        "journaling": "sha256:8bf71b5b81e0a56e62fc349808f6ca290d6f4c767177d701749e05e9460f78c1",
+        "parser_tests": "sha256:420402e395c9c7e68705843570a85f77c2ce976c1833597393d7a878549104e9",
+        "preview": "sha256:7453876fd0c4acc0fc82dbf709d7f2525b60a6eb48bbd9aeab15f58912a42f8a",
+        "rollback": "sha256:494424a76423326a2b5358e3799b115705485bdb6cf0a92e4db42bf4f7a4b342",
+        "windows": "sha256:80014201bf192d454c12c7caa4ca0d7ae26cbf8fdff6724e374dc83962581d43"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:dbff00555342d0ba26fc59fb6ac4564e2c8c8358a2f4b13c9c80cba635ad425f",
+      "evidence": {
+        "boundedness": [
+          "tests/voice/test_voice_cli.py::test_native_audio_log_tail_bounds_bytes_as_well_as_lines"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:ad281155560e4a051451b5aa4404530e236ea523aca8cda222f9d27399076a57",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice audio logs"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:1cfea1147ec790c8cb7b006d0be4fa5e3e99ad5753a5c48ad461d823923f1924",
+        "confirmation": "sha256:9c044cf6e3001ffee2854321d0857d6c2e18f780c88b6a3d6bb51c918a1ec2f9",
+        "docs": "sha256:83099b5ea820a9397b966d53b6806bc8fd199dbeaeeabaa7772195a488e0006e",
+        "drift_protection": "sha256:0529c4802975ca7aff79e014817cf18058804ab4f80793ca6564526cdda373cb",
+        "grammar": "sha256:82cfdb058acedf6036491f72f5c583ea76cf8c77e07f9673ac35bdb466250e4f",
+        "help": "sha256:be08a8ac29209dba4252fb1a8e01e5caf1a3c2bdb165abe97f29920dc72f9f8e",
+        "journaling": "sha256:53a27eba4b388ed07488d16e9ea12a830560f8f8151968ad1d537f0a6f93615c",
+        "parser_tests": "sha256:1893b5cf1f4ac04de8021840908639cdd5d6c4cdade9efcc4838b8dc2e070212",
+        "preview": "sha256:4bf3e8b3e4b93e8605753fcbcca7404680e782c6ddb72262b68603bb3a222f65",
+        "rollback": "sha256:317ea38c502bb14f47b4d2526a95acc21f8c9e6db8c6bcf6babd675f192c4d32",
+        "windows": "sha256:2027a1652602764ad76a2f53884d1e34477fca4be540bf6a73ea4c01fc234863"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:48bd1b935c364857870b7c644764eb09c8fcd8bcfaad2ce8c2cd3fe237dbc4de",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:5b9f02d721dc25682cfcaa113474bee002e599a75008eadff780c50cea7f687d",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice audio status"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:fd5be091dab31304f29fa8f9bd753fec5feb6315e0e647f469a61d4c12068c1d",
+        "confirmation": "sha256:5ba0db9ff9d61fd7a9995b867934025dcf85f8299239a458791da3d3d1be3e47",
+        "docs": "sha256:9e73ff1f9e432a321f5fb9a9a7c1f2dd21d5da254ef20672b1f48bce155f15e2",
+        "grammar": "sha256:a22ba11ef01e9a2fdb6ea0c3731a18b78f415941c30d4829844240800e676061",
+        "help": "sha256:b0d6ab035f794c43990d11caddf478a932765873d6a4b7c515ae391d6ca4eb1f",
+        "parser_tests": "sha256:eebace9406cd83098cb557288c049ac4f8dbc4905000360ffe03bf316e34f78c",
+        "preview": "sha256:b002e48b9069f5e90dffa1b10d488ab7bef01e876c89447ede89b11279b1a4b9",
+        "windows": "sha256:8834de3c40f14c88adae19a35eab0536aeae2e42824aede17908925ee2d74b8b"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:3aee3c66a25bcdc92fb05af4d757bf2c174122d335df2b94b0917016582af09d",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:269b3ae24b40f1aeed9bd36599f5d7a41f93878593364030a579761285c31720",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice audio up"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:ac7755bf94bfe7c7351a4a9f681fe8cb4c34aaf20943abb30ddd906cd782ab6f",
+        "confirmation": "sha256:0f949db82425f55fe55b0f32c5296319d8e442475761fc2fa3f24ccd7df2556b",
+        "docs": "sha256:b8e9977cdf903d7e1c40f5e6a3760127c225cbe6a2607d4e3d10f356569b916f",
+        "drift_protection": "sha256:56614a461282401bb260ff8a9eba2ad7d3eaf915325c850dd6df0a5fe0faf83a",
+        "errors": "sha256:15982beddf1c846372a6793df849e30be33601131365775a8c0ff2c9c47a6114",
+        "grammar": "sha256:628408580ff73a05e9cfade147b619eb0e90aa3f1f1a7db334a8cf94e21d4354",
+        "help": "sha256:dbe462fe5a062bc865ba686e4b1f53920b41c9a67acf7e16be3e8469ffeefafd",
+        "journaling": "sha256:34445d3290567593fb3c54380bd9e45c3b7bfd185bf60da2369fdd808e052e36",
+        "parser_tests": "sha256:79dbbda05070f08b49a7818d7bc32f5e3cf16387c2150774ee55206837c6a43c",
+        "preview": "sha256:2cb8435b55474736fd62aeb80f2bb441713eb55b650a8b5be1df36b381b783f4",
+        "rollback": "sha256:e0db7df00e5fd8c9499c7b679844b14f751fe036ac638f74a33e37fd4fdd30fe",
+        "windows": "sha256:d823b5b4ba470dca2f683b5d02e845ac42e672fda3a6442c5c07f422a6367557"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/voice.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:1becf7f5b63a485b795df3d3b61e0aeccfd7475c23874ac66fe96d6542728a13",
+      "docs_anchor": "docs/cli/voice.md#benchmark",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/voice/test_voice_cli.py::test_cmd_benchmark_missing_endpoint_error_includes_active_config"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:eb46cda9193b00ac9fb7774f4e678e07c994da1115acba62832a5ba35805deb1",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice benchmark"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:ad606c9b871c6a41f8e89c6b7e00417740d8e87a46f8a0b391bdf3295912c9e5",
+        "confirmation": "sha256:78c56b16b6b381cafad373fba21825c86f85b3a510a1e6a1ead752dcd370c250",
+        "docs": "sha256:3775ed8017f79fc51bbbda5fdbc495ba2943687fed412b7186c0ab58a264ab52",
+        "drift_protection": "sha256:e13fcd57f007a0b91cf88912b73c2358db6434a0f2d9425d2e886b1f6064e3dd",
+        "grammar": "sha256:f6043862336fd1ea660216c7921e4778bdb8b525d3bda431a7e09df8d3a584e4",
+        "help": "sha256:416142be81ea93d7b945bbf0a20b1aa20c4626862313ab134b6f873d69f9de10",
+        "journaling": "sha256:2f8cd01104f20ebee7176b42a5ca5a7e5b1bd48f2b2caacd33223dd93ad8cfa7",
+        "parser_tests": "sha256:0bbed5f3328e5345ad25363975f13448b670c2745f372677321f1ba0803f452e",
+        "preview": "sha256:9383f917618724c065a3a2ab29c9819c30880ce34b6e4d64f7d9c91a3a4de09d",
+        "rollback": "sha256:c8aff9f9fed2e0fac2ae008410539f5b9ed5aa0f50efcdb6cef12b21e4d80847",
+        "timeout": "sha256:07c71d46aa6c0b3d03aae6a15a8061e88ae9d9284e2aad96c18841b3add731d3",
+        "windows": "sha256:ac891ee6164f7b9fdb7cd0c442ff52e9d5931a5a8668987c0eeb131ebdb54af0"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only bounded local parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#profiles",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:3b2f20408f1e6f0e80abb5579f91cc86bba5ab8900603b68bf0c6449d9f0b992",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_profile_examples_reach_the_real_adapter"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:1f1fad28b783c8f0444681d4432253981bb55a0fb08921d81693ec0f5669e4c6",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice profiles list"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:e17c19ee8e120f83bcb9559f569add53a4681eb111f119f55a26dde8606b753f",
+        "confirmation": "sha256:fc5d2f22c82567c2f9198998aae63eec5d0e0c782a660151ef9065f1336b5a39",
+        "docs": "sha256:fbdedbf8f35331b2f45d5349581de65cff95cd1670f27a4458986b97e1578b22",
+        "drift_protection": "sha256:6a951c8b3807df1d63d4305e433bff24005dea1d3f581ca144a262086f559f65",
+        "grammar": "sha256:988f5995b05ba04d136511324034059b7b8a9777463072e49209ad79646f43e1",
+        "help": "sha256:7430cc07d614642ea13ba036f5e0013838df05311b9b4b5e4b8ca44748682788",
+        "journaling": "sha256:dd9c83d3671136c04274853a312750ed4903dee077d43c9e9e18091bbcf5d493",
+        "parser_tests": "sha256:102cacc4232486dae6396634a84e944bf0c84818c5fb01d18d928db8c6f94477",
+        "preview": "sha256:10bd069c4842523d98e8feae0e1713ba3a9a5a4a36fc2dd0d9321c56b533c10d",
+        "rollback": "sha256:2a739ec6f33b39f3bf8f24364cc3122bacc06259375e61e8a7cd906a1d7d03c6",
+        "timeout": "sha256:8cde73f5facd9a885b48a4eb1ce6524434ee9eaf3fcb9aaa3c318f805e6a0afa",
+        "windows": "sha256:ac2cb74015c902599b1a9553d09eee62e34a75ba59d1da44a22c4628445d60ce"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only bounded local parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#profiles",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:60db3bbb1b9c1a037a98e4396dca3cfbbe2f626342fafd7289f6f8ed0b0c34ec",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_profile_examples_reach_the_real_adapter"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:4ee54945561a87d04d505eb18fcf50536ea5b6512cc8be448a3d7f616a228252",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice profiles validate"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:a88d912cb9d2229491c29f01154264f66296d76d6687e594446adfb4cf2bd77e",
+        "confirmation": "sha256:4d2f05b19d93c2dcab29d0af5265c84e8eec4b89b6ca6954d41215ddf9917221",
+        "docs": "sha256:83ec5ac9766dda69a8867321f09dcc54a930d778c94d67746f762e0bb9020e34",
+        "drift_protection": "sha256:641224c8dc469f4810fe3d32bd6c189614f5bebb47620a939b65ee1950b35de6",
+        "grammar": "sha256:1415eed27b26b1a08a9d91b9dea69cd577d2bd983cfa30d40987d77b3019cf74",
+        "help": "sha256:602443795ffe6912374f609b8d42e8f3131a19d8e9a28c26580559a62ff95ad8",
+        "journaling": "sha256:4593db4f6a93b36e3fa41bb7695784eff6b0b2b4ae0e57c8749e3d9587d3d577",
+        "parser_tests": "sha256:767f09021b864dac699da54435940f15419e1b554ef4c6a8b216357fd5959b75",
+        "preview": "sha256:988de6ec0c5198a61243111f945ec3c973f75d494a0f106a37ef94c7c94567ba",
+        "rollback": "sha256:b7a4fbcccf274b19987eee76fcc547d4bc57e5baab5ffd8e711addd3a1165dcf",
+        "timeout": "sha256:609dc5b5dddb4c1b1c94cd0b69a750fc8582080118e772b908615f603d7ca386",
+        "windows": "sha256:5a64558838e5b34f81fb116d137de152c715d31533b119e5b1519a2fc2da88b2"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command runs a foreground process and does not perform a discrete durable lifecycle mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command runs a foreground process and does not perform a discrete durable lifecycle mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command runs a foreground process and does not perform a discrete durable lifecycle mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command runs a foreground process and does not perform a discrete durable lifecycle mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This foreground command intentionally runs until interruption rather than completing within a command timeout.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:d9443d045300bc560c636d599e7894260ecd73a56fe38e1f1a53b5ff47175f11",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/voice/test_voice_cli.py::test_bridge_dry_run_prints_default_routes"
+        ],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:0a3a9576275e3d4a6a9365efb92f5058eea364618a29868e6f6f988c2a07e8a8",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "voice proxy bridge"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:2d67849203a211a284c7758e5b428b2ddf6ad7b004710b8d2a60c480104d5d23",
+        "confirmation": "sha256:a957c5553437b993c2d6af5f00db5e93c60c8c2d51fda066b2343c32fd37892e",
+        "docs": "sha256:6a193a0d336256c4d1037e500d2124da96c89190f724a556830dc54bb1534716",
+        "grammar": "sha256:35cff9ff0dd419ee99cd10d93bd0f18880905c302c1a4cff2c987ae47ea878de",
+        "help": "sha256:1ff2b5aaf03035b0b3531a8451e46e6299c28747874782e296e411b598c1fe7c",
+        "parser_tests": "sha256:ea249e4fe9ccce264a6a666c859a43b39fe4b13cfaada6c151273837f744e02a",
+        "preview": "sha256:0fcb08789b3744c19a7d4506a8010edfc021683f0e12099fef92f16bcfa5c5ad",
+        "windows": "sha256:eea4dcb2431e1d4971aff4795bc6fdad14594f3f073c609129e55a6cc812781f"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:b09c5b65acf86c2b38e1071c1a69005d8b341f1e416e1ef2d88f204d2f0e22ef",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:8dd819f7ac79fdde1b7dbc0bd3c82523c78c7568c96b115f3ffd1c3c12f0bfd9",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice proxy down"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:54daad670f01122023e036a743ee503cc203beace77b6988e1657d6e9268a3e1",
+        "confirmation": "sha256:22bc05e22fbb19e289811df8d6d3cda0e5111f6fa2f1806a1b423ab23f7448f4",
+        "docs": "sha256:7c6e8d9502335d1b2c35b6738889a21799531265a221de27026446244c09bd80",
+        "drift_protection": "sha256:534ad38e6adf529a8e0acdd0bf98313e6ed1a4be178279b1077da67806440d66",
+        "grammar": "sha256:299f35ff6543a88dcc8039345e2efa1282a43c18959e4ad88aca379c3853c5b2",
+        "help": "sha256:340ebf1199bbd72ee8559c33f8e76796d246b00b4435c0aba79db43fcd2aee0d",
+        "journaling": "sha256:fafbb7c73a126d813ae41c41b03fe9d6d1a00c4047d8b6210e26433dcde9f92e",
+        "parser_tests": "sha256:384b9f0666f9f93ee9a2082c80290e00065fb0bc4551e86d14ed2d63c322bc23",
+        "preview": "sha256:23c31263d657a28910eb9b91883ef7a73670310373f2e4534572f5443bd74d30",
+        "rollback": "sha256:4f37c423a3ddecab5389e34bae78042ed5149976b1f225d751988a46dd06d053",
+        "windows": "sha256:b72c5ef586fd258d4cb163cde6cf9af31060207cee4ee58016de3c8b76cf4c6b"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:a06fd06bc06f7b27c2094deea3a0f103853bc4ff1ed594198e2ce3a0d7991b84",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:d7a4d526a7d8bd1d705932732f5403ca364be9dda91d76062dc44f4de0394907",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice proxy logs"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:a32fbba20bb9b02a74fbe108f8a07773cfd8d656a6b78230852275f15213058f",
+        "confirmation": "sha256:f07151b133d3f80b63a85d84c2ccfff912c6094812228dad6464103a3b21818c",
+        "docs": "sha256:38a2ae6ebb21afe23a69c08ce40c82607437cb2a6862eb3880f2a9cec4bd03c0",
+        "grammar": "sha256:45a464ee89ef254ee4d3b42e69d63e349d571c6924540ad9028db6c75e5ce744",
+        "help": "sha256:050ab03be62b7d6f5112c7cc60505b69ec6980af8aa94f2eb43c690b3af3b1cb",
+        "parser_tests": "sha256:014899698da547ef008c82e51aa02f0a2431db8557bb2256f9db6e7298a3ed9d",
+        "preview": "sha256:3da71d7905c813da7bd0b0391b07e799fdc208771143e0af964e16e94153c333",
+        "windows": "sha256:3c04ef3be0a153a8aed361e21de9c92daec35b27bc0e3f42dfcaa1bc23fdf278"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:e8018e39951e2579a924d36dd5f7b84e5727ed83ed2409184b9ff4e9de8d7df2",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:1045bfdf5ccf988a527e20801de233f28336901e85f6cbf84f0fc52c3539caa6",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice proxy restart"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:226cdf965b67b9423f90515ee20ae06ea51df4467e07461c1c7a9cb9194ec7a4",
+        "confirmation": "sha256:2b258ce631a7e6b85b3b688e8d93c84262df4a9a359b35c01b8a3bc5ad930e61",
+        "docs": "sha256:641dbac49184c08aab281adead183c057e8b8bc02ebea2f02edc13cb96630d62",
+        "drift_protection": "sha256:5454fa1f3bb47003b238a9f2e13defbbbf2518148138daf81157be1b87f977f8",
+        "grammar": "sha256:4104d5aaa6c85d1cd84e38a6998dcf5c46377afa15cbf6f4a7b2fbbd5ded14f6",
+        "help": "sha256:b2ea246a674f0eaed6a0f80176c01d62ef1c37730c4bba80acaff7e9dfa1d0b1",
+        "journaling": "sha256:949b5c79e4a1c7a3409326a4cbc778cce14cf835276821ff08a9cbfd666eb1b2",
+        "parser_tests": "sha256:58a90003ec6f14f402d5a1c80b1ec6af7c4dda607d0d5982a8a618c00249750e",
+        "rollback": "sha256:919d2a8bb835192dc0b35864445b419f0b2bf73a179f5ca197ec4a6a3adceaa4",
+        "timeout": "sha256:8ba357a793a0b1716f41bc6968547b1f37747095ab4f543a4a16d79612bbd8c4",
+        "windows": "sha256:375008534320808343b837525b0c081e221f850c672276c9d0e53088781e0ee4"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command runs a foreground process and does not perform a discrete durable lifecycle mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command runs a foreground process and does not perform a discrete durable lifecycle mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command runs a foreground process and does not perform a discrete durable lifecycle mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command runs a foreground process and does not perform a discrete durable lifecycle mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This foreground command intentionally runs until interruption rather than completing within a command timeout.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:3f539e551a2809a45f699e2f59cc855342c3b690be890531b36a3f08349d3eb2",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:bf82467f1caec7b336ae2b4d2726c2233ed7ef80327e72fc5f8020502e7857e4",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "voice proxy run"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:2e5d6b42bd1618b5e742f1ea03a9b49e1284853f4c8323d455109b31892f1675",
+        "confirmation": "sha256:991f91c9b19161c9b40aac7953d22a822bb67dddd3f333e26c6fdbc37f720e9a",
+        "docs": "sha256:096b51dfe715f72fab5b292ff7e95ca91e6068b04f9783a69b33ab0e23eb0921",
+        "drift_protection": "sha256:4375652551d8dfb30a7b20d0758a465e6e0504665bf0b2e7aef698c9f9479b41",
+        "grammar": "sha256:36315d240539038264e931d02ebffd18ff1c0735b01a009cc98779e16aca7b6a",
+        "help": "sha256:be5598c41d0cb8a3cf80fd7a5765e5ebc4c52866f147bb8a2e89c00568720722",
+        "journaling": "sha256:d7623fbe3df87882d07d28d56b8728330c9151f3329759b2946d7dc65ec466c6",
+        "parser_tests": "sha256:f6d2083e23c749d78d4b77e13f72567cefd695d4991bdb7cb7dac94df7685f08",
+        "preview": "sha256:dd3ece80632475a224dc45eca612a1fb478872451eab008b2b4a5c925abf872b",
+        "rollback": "sha256:8c0d2f1ed0fdbc1241a8df778912dc2dfd8eff2a252bb44cc00f2bc9c7ffd0ff",
+        "windows": "sha256:92a6dab5ccd9d8f4829399c730f4df10e8814c1524e51769bd4bad4cebfa0a8c"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:360ece448cedc19bed5b2594ab973e790e0d4e74d85294fff30af37283d7b835",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:9ecdfe8921a112548a22f2465348a77a595df0333b96d2a0f21b37b9af1197fc",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice proxy status"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:208068782e26a1271b147ce320ab721981e1b755f6d3b0ad5a4836ca5448ff45",
+        "confirmation": "sha256:97aa3fa0b8a14c01cfb11cfcfee6a30a3540618114a0e701129e7915fa1f6477",
+        "docs": "sha256:ef442e799e4b22979c0eb238e09b061bcd9433c9d2c02edf22d44256ec60cfe8",
+        "grammar": "sha256:5ee64b0fc9f3c6d53a11fd8dd40a1720e4d237123b5d7ac56c488634c78e4274",
+        "help": "sha256:9fa300bd5c50db9575e7f31a8d4cffb92b8f8309d62d2811a33af9cc347e0ac5",
+        "parser_tests": "sha256:9eec0ec6a5c8f6a96e10ab8d88e609a6da354287d70dcb02b0ec2a6a1d6dba6e",
+        "preview": "sha256:bfbfd2f12fc5154d4923091b2bc139b8242a321dcc963cb802db31fb0571f29f",
+        "windows": "sha256:945cf3639528d1564f18f1c3d68ff88241b43c6dc995845a71b5eb0b4de309dd"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:ea407ed9c7cb8bb6aa9c527959837ff9c98fa48c895c4068fd4b909219e55256",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_voice_mutations_preview_or_use_shared_confirmation"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:0c50a2392d0371b7b5394922adc9a8cb7ca606a56d6a39c5e79c2c1bf3ec15a5",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice proxy up"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:d3b92ed118bfab41f77be610e60de5290077508e27f423e01b0681b745c651b6",
+        "confirmation": "sha256:27f27d455bb2ecfe4203c3c7652846cf37490d03960063d41244705fff53fb4e",
+        "docs": "sha256:552f3c56f618e5ac97dd168821fb810ed6d35449b7aab7c4f75a479fb6bdb5c6",
+        "drift_protection": "sha256:71555d669f0dc7d0a4b6911fc5e360e103da5845ee344556d67b1e9894e3ef14",
+        "grammar": "sha256:4703d2c43bf0640983dc3413fcedef5493fe034e33b9a68606010725087783fb",
+        "help": "sha256:418b73b4949427bc3b6c98af60eb8986859a8708f60b6235007126ef5828a952",
+        "journaling": "sha256:8cb44e3a84ecb1f261f6ad20aefaede1a1a95a59009c103b32a9e64c7d7c5ce9",
+        "parser_tests": "sha256:5929d519fb9f6fd0bcd1e3ac6730c42da4d09cbfb17bad20bc9ece8065cf5a84",
+        "preview": "sha256:3776828f8cefd15fbb98f25fef101ab14dc5fec2b150c2d5d477671c8095ec4b",
+        "rollback": "sha256:62082676aa44e0159c480804fe86c897040653e4dd5af8e7f6879f2943072de4",
+        "timeout": "sha256:cf4211508eeb74523c35f4d70ca704e086d0401fb3e5927f42044966927b1c76",
+        "windows": "sha256:fc524809059a6aab8f62ad76b057662c8c79079f3e1a68b5ea1fea61f24ead95"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only bounded local parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:6bbc82b1265a5ca958c3ecc066a63db73f175737b23b766d8f83ba4316cf97b9",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e7d62850438b512f50e5a204119d3856cbd395b6cc9e64fad88251d556911ab3",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice sidecar command"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:e598c07ff4b410117189fdc20904bed4058973b2d520ae5a682240ee3eddf37f",
+        "confirmation": "sha256:287e1f766efa6ceeb6b594c0d73d6fe82197f74ec39f3b6ca23547eaf8dd7d45",
+        "docs": "sha256:5e47748d129662820ef5b9f7d5101564925d08daa2225046b0efed29e128e510",
+        "drift_protection": "sha256:c4089bbba5e61532654bc3c4b6b81057e26831a0a825ff051159e2b3ec451377",
+        "grammar": "sha256:e509eba6c3e1a8458392b813dfdce178bd0c916ebbeb7910af70642616c42b68",
+        "help": "sha256:11612399ce4ddb096cbd4131cd9b1d16ba4575698376cc469749c4e88f90ec61",
+        "journaling": "sha256:b4a4e394ba241dde68f3ed057fcc177fc5b403a7c9eff24b684fb6dbcc095261",
+        "parser_tests": "sha256:5aad7019443b75545a27af2533fd07319970efba8e1ef9ae518b92396d4775e5",
+        "preview": "sha256:e5be6e0d553c23d932c07198ec698d1fd0603e9ee82d31ac9a3c1c10b981924e",
+        "rollback": "sha256:79e5c8aa1c76dde5b24f91a39fef4f1259936f68d8993f08bf0e86ccea75a965",
+        "timeout": "sha256:f19b4cf60949fe17fe0c027839f20a5d39560811311a7a5a660b205117f88f49",
+        "windows": "sha256:4f966da3956e9da9af16ace922a72c4523a3cf96808b10d79b895a6e0ff1a453"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only bounded local parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:76eddce5cd860e042096ac5b252446361fdbf3414b8dd48352a9613034d447f9",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:4a0c9bebd76dc6e73b4dcf1714125a4a044348593f53fa85bb3b475e620cd364",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice sidecar compose"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:74ecdf44e006ca0510be22121b4718cc0480d468421d06a6d4d21ba11c605b76",
+        "confirmation": "sha256:f0a55cccf78edb84abc6fab94ad126b6f19746615aad85069e9bc3a81158ac7e",
+        "docs": "sha256:345efb2ef5e966ada3181459c9ed7b4965fb630d9d86a0f8ec89be3ca0f302d4",
+        "drift_protection": "sha256:a432dbd4d89257e7a471fe5fc8601f9ee310ceff46f72a8a2f390e564efca5c2",
+        "grammar": "sha256:4586c00e88012a7ac89caa4b61f8a05839f86e42ae002425498d1a22f82558f8",
+        "help": "sha256:79e1f767cfeee0edc88426b347d3ac1b2ffc72f017270091c9ae1320ad1d5431",
+        "journaling": "sha256:08d76a501f23822e81c2a31a501eba2f1d45702b533207caf34bd7c393d3b891",
+        "parser_tests": "sha256:7a99bffbd25a9908227b65b15e376df81ef2432bdfa205fd73df333752398914",
+        "preview": "sha256:11f498d7f86a7d0b7cb135970da8fbd730efb31125368ee3573a63ab422da42e",
+        "rollback": "sha256:12065272ca2c3592fa8a3ade001d04454e45c69eebc867f12b3d303a005d1ddc",
+        "timeout": "sha256:eb4fbd4b3bee9421095dc6bcf43ce3dde787581f419c50b3656107afbdc83a75",
+        "windows": "sha256:920d19058110463ea104fc9f288ed42ec108c5781d32d730bd3f7a56394c6bfa"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "rollback": {
+          "reason": "This command is read-only with respect to serving and process state.",
+          "status": "not-applicable"
+        },
+        "timeout": {
+          "reason": "This command performs only bounded local parsing or rendering and opens no process or network transport.",
+          "status": "not-applicable"
+        },
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:d624b7e5f26a805706320c0bc5ef9af53b3840cd26764aa2e51dee05248af4d9",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_voice_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_voice_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_voice_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_examples_reach_the_real_leaf_parser"
+        ],
+        "preview": [],
+        "rollback": [],
+        "timeout": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_voice_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:c365aed76554cba3565bc81643e4a6d134d5d00c1ffd9c36573e3a6ae48ca908",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice sidecar validate"

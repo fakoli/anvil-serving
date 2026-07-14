@@ -23,11 +23,13 @@ from anvil_serving import (
     router_manage,
     serves,
     topology_cli,
+    voice_sidecar,
 )
 from anvil_serving.command_tree import COMMAND_TREE, CommandNode, HandlerRef
 from anvil_serving.external_benchmarks import store as external_benchmark_store
 from anvil_serving.observability.dashboard import app as dashboard_app
 from anvil_serving.router import serve as router_serve
+from anvil_serving.voice import cli as voice_cli
 
 
 SERVES_LEAVES = (
@@ -155,6 +157,34 @@ CONTROL_PLANE_GUARDED_MUTATIONS = (
     ("edge", "down"),
 )
 
+VOICE_LEAVES = (
+    ("audio", "up"),
+    ("audio", "down"),
+    ("audio", "status"),
+    ("audio", "logs"),
+    ("proxy", "run"),
+    ("proxy", "up"),
+    ("proxy", "down"),
+    ("proxy", "restart"),
+    ("proxy", "status"),
+    ("proxy", "logs"),
+    ("proxy", "bridge"),
+    ("benchmark",),
+    ("profiles", "list"),
+    ("profiles", "validate"),
+    ("sidecar", "validate"),
+    ("sidecar", "command"),
+    ("sidecar", "compose"),
+)
+
+VOICE_GUARDED_MUTATIONS = (
+    ("audio", "up"),
+    ("audio", "down"),
+    ("proxy", "up"),
+    ("proxy", "down"),
+    ("proxy", "restart"),
+)
+
 
 def _serves_leaf(action: str) -> CommandNode:
     family = next(node for node in COMMAND_TREE.nodes if node.name == "serves")
@@ -263,6 +293,20 @@ def test_control_plane_leaf_help_has_reviewed_navigation_contract(parts, capsys)
     text = capsys.readouterr().out
 
     _assert_reviewed_help(parts, node, text)
+    assert len(node.examples) == 2
+    assert len(node.configuration_notes) == 2
+    assert len(node.behavior_notes) == 2
+
+
+@pytest.mark.parametrize("parts", VOICE_LEAVES)
+def test_voice_leaf_help_has_reviewed_navigation_contract(parts, capsys):
+    node = _leaf("voice", *parts)
+    path = ("voice", *parts)
+
+    assert cli.main([*path, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    _assert_reviewed_help(path, node, text)
     assert len(node.examples) == 2
     assert len(node.configuration_notes) == 2
     assert len(node.behavior_notes) == 2
@@ -444,6 +488,69 @@ def test_control_plane_reviewed_examples_reach_the_real_leaf_parser(parts):
         parser.parse_args([*cli._handler_argv(path), *rest])
 
 
+@pytest.mark.parametrize("parts", VOICE_LEAVES)
+def test_voice_reviewed_examples_resolve_and_use_real_parser_flags(parts, capsys):
+    node = _leaf("voice", *parts)
+    expected_path = ("voice", *parts)
+
+    assert cli.main([*expected_path, "--help"]) == 0
+    help_text = capsys.readouterr().out
+
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        assert tokens[0] == "anvil-serving"
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        assert tuple(item.name for item in path) == expected_path
+        assert cli._tombstone(path, rest) is None
+        if "--target" in rest:
+            assert "--topology" in rest
+        for token in rest:
+            if token.startswith("--"):
+                assert token.split("=", 1)[0] in help_text
+
+
+@pytest.mark.parametrize(
+    "parts",
+    tuple(parts for parts in VOICE_LEAVES if parts[0] != "profiles"),
+)
+def test_voice_reviewed_examples_reach_the_real_leaf_parser(parts):
+    node = _leaf("voice", *parts)
+    parser = (
+        voice_sidecar.build_parser()
+        if node.handler.module == "anvil_serving.voice_sidecar"
+        else voice_cli.build_parser()
+    )
+
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        rest = tuple(
+            token for token in rest if token not in {"--json", "--quiet", "--verbose"}
+        )
+        parser.parse_args([*cli._handler_argv(path), *rest])
+
+
+@pytest.mark.parametrize("parts", (("profiles", "list"), ("profiles", "validate")))
+def test_voice_profile_examples_reach_the_real_adapter(parts, monkeypatch):
+    node = _leaf("voice", *parts)
+    captured = []
+    monkeypatch.setattr(
+        voice_cli,
+        "main",
+        lambda argv: captured.append(tuple(argv)) or 0,
+    )
+    handler = getattr(voice_cli, node.handler.attribute)
+
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        assert handler(list(rest)) == 0
+        assert captured[-1][0] == "profiles"
+
+
 @pytest.mark.parametrize("action", ROUTER_MANAGE_LEAVES)
 def test_router_manage_examples_reach_the_real_action_parser(action):
     node = _leaf("router", action)
@@ -576,6 +683,17 @@ def test_control_plane_reviewed_help_is_windows_console_safe(
     assert all(len(line) <= 60 for line in text.splitlines())
 
 
+@pytest.mark.parametrize("parts", VOICE_LEAVES)
+def test_voice_reviewed_help_is_windows_console_safe(parts, monkeypatch, capsys):
+    monkeypatch.setenv("COLUMNS", "60")
+
+    assert cli.main(["voice", *parts, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    text.encode("cp1252")
+    assert all(len(line) <= 60 for line in text.splitlines())
+
+
 def test_recipe_configuration_notes_match_runtime_precedence(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     config_home = tmp_path / "operator-home"
@@ -658,6 +776,41 @@ def test_control_plane_docs_group_every_operator_task():
         assert "`%s`" % " ".join(parts) in text
     assert "tailscale serve reset" in text
     assert "never" in text
+
+
+def test_voice_docs_group_every_operator_task():
+    text = (Path(__file__).parents[1] / "docs" / "cli" / "voice.md").read_text(
+        encoding="utf-8"
+    )
+    for heading in (
+        "### Operate Dark-owned audio serves",
+        "### Operate the Mini realtime layer",
+        "### Evaluate and inspect configuration",
+        "### Prepare the optional sidecar",
+    ):
+        assert heading in text
+    for parts in VOICE_LEAVES:
+        assert "`voice %s`" % " ".join(parts) in text
+    assert "127.0.0.1:30110" in text
+    assert "not local\nmodel serves" in text
+
+
+def test_voice_configuration_notes_match_runtime_contract():
+    audio_status = voice_cli.build_parser().parse_args(["audio", "status"])
+    audio_logs = voice_cli.build_parser().parse_args(["audio", "logs"])
+    proxy_logs = voice_cli.build_parser().parse_args(["proxy", "logs"])
+    proxy_run = voice_cli.build_parser().parse_args(["proxy", "run"])
+    sidecar_compose = voice_sidecar.build_parser().parse_args(["compose"])
+
+    assert audio_status.ready_timeout == 3.0
+    assert audio_logs.tail == 200
+    assert proxy_logs.tail == 200
+    assert proxy_run.transport == "auto"
+    assert sidecar_compose.service_name == "speech-to-speech"
+    assert voice_cli.ENDPOINT_PROBE_TIMEOUT_S == 3.0
+    assert _leaf("voice", "audio", "up").coowned_resource_roles == ("tts-serve",)
+    assert _leaf("voice", "proxy", "run").execution_runtime_roles == ("native",)
+    assert _leaf("voice", "proxy", "bridge").output_policy == "foreground"
 
 
 def test_control_plane_configuration_notes_match_runtime_contract():
@@ -818,6 +971,29 @@ def test_collectors_configure_gates_only_the_output_write(monkeypatch, capsys):
     assert "confirmation required" in capsys.readouterr().err
 
     assert cli.main([*inline, "--output", "collector.json", "--confirm"]) == 0
+    assert "--confirm" not in calls[-1]
+
+
+@pytest.mark.parametrize("parts", VOICE_GUARDED_MUTATIONS)
+def test_voice_mutations_preview_or_use_shared_confirmation(
+    parts, monkeypatch, capsys
+):
+    calls = []
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: calls.append(tuple(argv)) or 0,
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+
+    assert cli.main(["voice", *parts]) == 3
+    assert not calls
+    assert "confirmation required" in capsys.readouterr().err
+
+    assert cli.main(["voice", *parts, "--dry-run"]) == 0
+    assert calls[-1][-1] == "--dry-run"
+
+    assert cli.main(["voice", *parts, "--confirm"]) == 0
     assert "--confirm" not in calls[-1]
 
 
