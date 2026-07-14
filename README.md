@@ -9,7 +9,7 @@
 > *Run local where it is measured safe. Verify risky local output. Keep cloud explicit.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-0.13.1-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-0.13.2-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
 
@@ -146,7 +146,7 @@ focused action flags, and `anvil-serving --version` to verify the installed buil
 | `anvil-serving serves` | Manage local model serves through Docker Compose. |
 | `anvil-serving models` | Catalog cached models (`sync`), pull Hugging Face repos into a named Docker volume (`pull`), and select, manage, or guarded-load recorded serve recipes (`recipes`). |
 | `anvil-serving serves render` | Render a tuned SGLang/vLLM docker-compose for a GPU and model. |
-| `anvil-serving init` | Scaffold the full operational config home (or a single-model bring-up with `--single-model`). |
+| `anvil-serving init` | Scaffold every canonical router/config template plus the full operational config home (or a single-model bring-up with `--single-model`). |
 | `anvil-serving eval preflight` | Correctness-check a model endpoint before trusting it. |
 | `anvil-serving eval benchmark run` | Replay representative traffic and measure capacity. |
 | `anvil-serving eval benchmark external` | Import and compare external inference benchmark priors. |
@@ -211,7 +211,7 @@ See [SECURITY.md](SECURITY.md) for the threat model and vulnerability reporting 
 
 ## Status
 
-**The source tree is versioned 0.13.1, while published tags and package releases can lag `main`.**
+**The source tree is versioned 0.13.2, while published tags and package releases can lag `main`.**
 The router, local serving tools, host management, router/serve/voice lifecycle verbs, harness sync,
 and OpenClaw MCP/controller control plane all ship on `main`. Install from a clone when evaluating
 those main-only surfaces. The control plane keeps the request data plane clean: OpenClaw's hook

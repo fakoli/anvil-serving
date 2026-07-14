@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-07-14
+
+### Changed
+
+- **`anvil-serving init` now creates the complete canonical config family.** The full home
+  scaffold includes a default `router.toml`, all local/container/flexibility/cloud router examples,
+  the mode manifest, and the serve-recipe registry alongside the existing serve, Compose, voice,
+  topology, environment, and edge files. The cloud config remains inert unless explicitly selected.
+- **Local router image tag advanced to `anvil-serving:0.13.2`.** The Dockerfile, reference compose
+  file, packaged scaffold, and guarded router-management default stay in lockstep with this patch
+  release. Build the image locally from this checkout; no container registry artifact is published.
+
 ## [0.13.1] - 2026-07-14
 
 ### Added
@@ -893,7 +905,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v0.13.2...HEAD
+[0.13.2]: https://github.com/fakoli/anvil-serving/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/fakoli/anvil-serving/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/fakoli/anvil-serving/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/fakoli/anvil-serving/compare/v0.10.0...v0.12.0
