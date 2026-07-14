@@ -5,8 +5,12 @@ serves natively, avoiding the 9P bind-mount tax — CLAUDE.md gotcha #15).
 Every test is HERMETIC: docker is never invoked (subprocess is mocked or we
 stay on --dry-run). No real docker, no network.
 """
-import pytest
+import importlib
 import json
+from pathlib import Path
+import sys
+
+import pytest
 
 from anvil_serving import cache_prune, cli, guard, models, serve_recipes
 
@@ -96,6 +100,10 @@ def test_pull_dry_run_prints_command_and_runs_nothing(capsys):
     assert rc == 0
     assert called == []  # nothing executed
     out = capsys.readouterr().out
+    assert "MODEL ARTIFACT PULL PLAN" in out
+    assert "ordered actions:" in out
+    assert "deferred until apply:" in out
+    assert "rollback: none automatic" in out
     assert "docker run --rm" in out
     assert "-v vllm-hfcache:/root/.cache/huggingface" in out
     assert "--entrypoint hf" in out
@@ -123,7 +131,8 @@ def test_pull_dry_run_token_env_shows_name_only_not_value(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "-e HF_TOKEN" in out
     assert "hf_supersecret_value" not in out  # the VALUE is never printed
-    assert "MY_HF_TOKEN" not in out           # nor the source var name
+    assert "token environment variable: MY_HF_TOKEN" in out
+    assert "token dotenv fallback:" in out
 
 
 # --------------------------------------------------------------------------- #
@@ -152,6 +161,31 @@ def test_pull_nonzero_docker_exit_surfaces_clean_rc():
     rc = models.run_pull("openai/gpt-oss-120b", _run=lambda *a, **k: 17,
                          _environ={"HF_TOKEN": "hf_secret"})
     assert rc == 17  # docker failure passed through, not a traceback
+
+
+def test_pull_rejects_image_option_injection(capsys):
+    assert models.pull_main([
+        "some/repo", "--image=--privileged", "--dry-run"
+    ]) == 2
+    assert "must be a Docker image reference" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("args", "label"),
+    [
+        (["org/model", "--revision=--help"], "revision"),
+        (["org/model", "--include=--help"], "include"),
+        (["org/model", "--exclude=--help"], "exclude"),
+    ],
+)
+def test_pull_rejects_hf_option_injection(args, label, capsys):
+    assert models.pull_main([*args, "--dry-run"]) == 2
+    assert "%s must be a value" % label in capsys.readouterr().err
+
+
+def test_pull_rejects_repository_option_injection(capsys):
+    assert models.run_pull("--local-dir", revision="attacker/huge-repo", dry_run=True) == 2
+    assert "repository must be a value" in capsys.readouterr().err
 
 
 def test_pull_missing_docker_binary_is_clean_127(capsys):
@@ -295,6 +329,346 @@ def test_models_sync_help_documents_sync_flags(capsys):
     assert "--out" in out
     assert "--hf-roots" in out
     assert "--model-dirs" in out
+    assert "--dry-run" in out
+    assert "Examples:" in out
+
+
+def _write_fake_catalog(staging):
+    cards = Path(staging) / "cards"
+    cards.mkdir(parents=True, exist_ok=True)
+    (cards / "owner__model.json").write_text(
+        '{"id":"owner/model","format":"safetensors"}\n',
+        encoding="utf-8",
+    )
+    (Path(staging) / "INDEX.md").write_text("# generated\n", encoding="utf-8")
+
+
+def test_models_sync_dry_run_resolves_plan_without_writing_or_scanning(
+    tmp_path, monkeypatch, capsys
+):
+    calls = []
+    output = tmp_path / "catalog"
+    monkeypatch.setattr(
+        models.subprocess,
+        "run",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert cli.main([
+        "models", "sync", "--out", str(output), "--dry-run",
+    ]) == 0
+
+    out = capsys.readouterr().out
+    assert "MODEL CATALOG SYNC PLAN" in out
+    assert str(output) in out
+    assert "deferred until apply" in out
+    assert "model-card fetches" in out
+    assert calls == []
+    assert not output.exists()
+
+
+def test_models_sync_dry_run_resolves_environment_model_dirs(
+    tmp_path, monkeypatch, capsys
+):
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    monkeypatch.setenv("ANVIL_MODEL_DIRS", str(model_dir))
+
+    assert models.main([
+        "sync", "--out", str(tmp_path / "catalog"), "--dry-run",
+    ]) == 0
+    assert str(model_dir) in capsys.readouterr().out
+
+
+def test_models_sync_dry_run_resolves_environment_hf_roots(
+    tmp_path, monkeypatch, capsys
+):
+    hf_root = tmp_path / "hf-root"
+    hf_root.mkdir()
+    monkeypatch.setenv("ANVIL_HF_ROOTS", str(hf_root))
+
+    assert models.main([
+        "sync", "--out", str(tmp_path / "catalog"), "--dry-run",
+    ]) == 0
+    assert str(hf_root) in capsys.readouterr().out
+
+
+def test_models_sync_apply_requires_shared_confirmation(tmp_path, monkeypatch, capsys):
+    calls = []
+    output = tmp_path / "catalog"
+
+    def fake_sync(*args, **kwargs):
+        calls.append((args, kwargs))
+        staging = kwargs["env"]["ANVIL_MODELS_OUT"]
+        _write_fake_catalog(staging)
+        return models.subprocess.CompletedProcess(args[0], 0, "", "")
+
+    monkeypatch.setattr(
+        models.subprocess,
+        "run",
+        fake_sync,
+    )
+
+    assert cli.main(["models", "sync", "--out", str(output)]) == 3
+    assert "confirmation required" in capsys.readouterr().err
+    assert calls == []
+    assert not output.exists()
+
+    assert cli.main([
+        "models", "sync", "--out", str(output), "--confirm",
+    ]) == 0
+    assert len(calls) == 1
+    assert (output / "cards").is_dir()
+
+
+def test_models_sync_replaces_catalog_without_retaining_stale_cards(
+    tmp_path, monkeypatch
+):
+    output = tmp_path / "catalog"
+    cards = output / "cards"
+    cards.mkdir(parents=True)
+    (cards / "removed.json").write_text('{"id":"removed/model"}\n', encoding="utf-8")
+    (output / "INDEX.md").write_text("# old\n", encoding="utf-8")
+
+    def fake_sync(_argv, *, env, **_kwargs):
+        staged_cards = models.os.path.join(env["ANVIL_MODELS_OUT"], "cards")
+        with open(models.os.path.join(staged_cards, "current.json"), "w", encoding="utf-8") as handle:
+            handle.write('{"id":"current/model","model_type":"qwen3","format":"safetensors"}\n')
+        with open(models.os.path.join(env["ANVIL_MODELS_OUT"], "INDEX.md"), "w", encoding="utf-8") as handle:
+            handle.write("# generated\n")
+        return models.subprocess.CompletedProcess(_argv, 0, "", "")
+
+    monkeypatch.setattr(models.subprocess, "run", fake_sync)
+    assert models.main(["sync", "--out", str(output)]) == 0
+
+    assert not (output / "cards" / "removed.json").exists()
+    assert (output / "cards" / "current.json").is_file()
+    assert (tmp_path / "catalog.anvil.bak.1" / "cards" / "removed.json").is_file()
+
+
+def test_models_sync_failure_preserves_existing_catalog(tmp_path, monkeypatch):
+    output = tmp_path / "catalog"
+    cards = output / "cards"
+    cards.mkdir(parents=True)
+    original = cards / "current.json"
+    original.write_text('{"id":"current/model"}\n', encoding="utf-8")
+    (output / "INDEX.md").write_text("# current\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        models.subprocess,
+        "run",
+        lambda *args, **_kwargs: models.subprocess.CompletedProcess(args[0], 17, "", ""),
+    )
+
+    assert models.main(["sync", "--out", str(output)]) == 17
+    assert original.read_text(encoding="utf-8") == '{"id":"current/model"}\n'
+    assert not list(tmp_path.glob("catalog.anvil.bak.*"))
+    assert not list(tmp_path.glob(".catalog.anvil-sync-*"))
+
+
+def test_models_sync_replacement_failure_restores_existing_catalog(
+    tmp_path, monkeypatch, capsys
+):
+    output = tmp_path / "catalog"
+    cards = output / "cards"
+    cards.mkdir(parents=True)
+    original = cards / "current.json"
+    original.write_text('{"id":"current/model"}\n', encoding="utf-8")
+    (output / "INDEX.md").write_text("# current\n", encoding="utf-8")
+
+    def fake_sync(_argv, *, env, **_kwargs):
+        staged = models.os.path.join(env["ANVIL_MODELS_OUT"], "cards", "new.json")
+        with open(staged, "w", encoding="utf-8") as handle:
+            handle.write('{"id":"new/model","format":"safetensors"}\n')
+        with open(models.os.path.join(env["ANVIL_MODELS_OUT"], "INDEX.md"), "w", encoding="utf-8") as handle:
+            handle.write("# generated\n")
+        return models.subprocess.CompletedProcess(_argv, 0, "", "")
+
+    real_replace = models.os.replace
+    calls = []
+
+    def fail_install(source, destination):
+        calls.append((source, destination))
+        if len(calls) == 2:
+            raise OSError("simulated install failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(models.subprocess, "run", fake_sync)
+    monkeypatch.setattr(models.os, "replace", fail_install)
+
+    assert models.main(["sync", "--out", str(output)]) == 1
+    assert original.read_text(encoding="utf-8") == '{"id":"current/model"}\n'
+    assert not (cards / "new.json").exists()
+    assert not list(tmp_path.glob("catalog.anvil.bak.*"))
+    assert not list(tmp_path.glob(".catalog.anvil-sync-*"))
+    assert "cannot replace model catalog" in capsys.readouterr().err
+
+
+def test_models_sync_failed_rollback_names_backup_and_recovery_command(
+    tmp_path, monkeypatch, capsys
+):
+    output = tmp_path / "catalog"
+    _write_fake_catalog(output)
+
+    def fake_sync(*args, **kwargs):
+        _write_fake_catalog(kwargs["env"]["ANVIL_MODELS_OUT"])
+        return models.subprocess.CompletedProcess(args[0], 0, "", "")
+
+    real_replace = models.os.replace
+    calls = []
+
+    def fail_install_and_restore(source, destination):
+        calls.append((source, destination))
+        if len(calls) >= 2:
+            raise OSError("simulated replacement failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(models.subprocess, "run", fake_sync)
+    monkeypatch.setattr(models.os, "replace", fail_install_and_restore)
+
+    assert models.main(["sync", "--out", str(output)]) == 5
+    backup = tmp_path / "catalog.anvil.bak.1"
+    assert backup.is_dir()
+    err = capsys.readouterr().err
+    assert str(backup) in err
+    assert "recovery command:" in err
+    assert not list(tmp_path.glob(".catalog.anvil-sync-*"))
+
+
+def test_models_sync_refuses_unmanaged_existing_directory(tmp_path, capsys):
+    output = tmp_path / "important"
+    output.mkdir()
+    important = output / "important.txt"
+    important.write_text("keep me\n", encoding="utf-8")
+
+    assert models.main(["sync", "--out", str(output), "--dry-run"]) == 3
+    assert important.read_text(encoding="utf-8") == "keep me\n"
+    assert "not an anvil model catalog" in capsys.readouterr().err
+
+
+def test_models_sync_refuses_current_working_directory(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    assert models.main(["sync", "--out", ".", "--dry-run"]) == 3
+    assert "current working directory" in capsys.readouterr().err
+
+
+def test_models_sync_refuses_concurrent_writer(tmp_path, capsys):
+    output = str(tmp_path / "catalog")
+    with models._catalog_lock(output):
+        assert models.main(["sync", "--out", output]) == 4
+    assert "already in progress" in capsys.readouterr().err
+
+
+def test_models_sync_invalid_staging_preserves_existing_catalog(
+    tmp_path, monkeypatch, capsys
+):
+    output = tmp_path / "catalog"
+    cards = output / "cards"
+    cards.mkdir(parents=True)
+    original = cards / "current.json"
+    original.write_text('{"id":"current/model"}\n', encoding="utf-8")
+    (output / "INDEX.md").write_text("# current\n", encoding="utf-8")
+    def fake_invalid(*args, **kwargs):
+        staging = Path(kwargs["env"]["ANVIL_MODELS_OUT"])
+        (staging / "INDEX.md").write_text("# generated\n", encoding="utf-8")
+        (staging / "cards" / "bad.json").write_text("{}\n", encoding="utf-8")
+        return models.subprocess.CompletedProcess(args[0], 0, "", "")
+
+    monkeypatch.setattr(models.subprocess, "run", fake_invalid)
+
+    assert models.main(["sync", "--out", str(output)]) == 1
+    assert original.is_file()
+    assert not list(tmp_path.glob("catalog.anvil.bak.*"))
+    assert "without a non-empty id and format" in capsys.readouterr().err
+
+
+def test_models_sync_worker_launch_error_is_structured_and_cleans_staging(
+    tmp_path, monkeypatch, capsys
+):
+    output = tmp_path / "catalog"
+
+    def fail_launch(*_args, **_kwargs):
+        raise OSError("cannot launch worker")
+
+    monkeypatch.setattr(models.subprocess, "run", fail_launch)
+    assert cli.main([
+        "models", "sync", "--out", str(output), "--confirm", "--json",
+    ]) == 4
+    envelope = json.loads(capsys.readouterr().out)
+    assert envelope["ok"] is False
+    assert "cannot launch model catalog worker" in envelope["error"]["message"]
+    assert not list(tmp_path.glob(".catalog.anvil-sync-*"))
+
+
+def test_models_sync_bad_parent_is_clean_error(tmp_path, capsys):
+    parent = tmp_path / "not-a-directory"
+    parent.write_text("file\n", encoding="utf-8")
+    output = parent / "catalog"
+    assert models.main(["sync", "--out", str(output)]) == 1
+    assert "cannot prepare model catalog output" in capsys.readouterr().err
+
+
+def test_models_sync_json_captures_child_output_in_one_document(
+    tmp_path, monkeypatch, capsys
+):
+    output = tmp_path / "catalog"
+
+    def fake_sync(*args, **kwargs):
+        staging = kwargs["env"]["ANVIL_MODELS_OUT"]
+        _write_fake_catalog(staging)
+        return models.subprocess.CompletedProcess(args[0], 0, "RAW CHILD OUTPUT\n", "")
+
+    monkeypatch.setattr(models.subprocess, "run", fake_sync)
+    assert cli.main([
+        "models", "sync", "--out", str(output), "--confirm", "--json",
+    ]) == 0
+
+    envelope = json.loads(capsys.readouterr().out)
+    assert envelope["ok"] is True
+    assert "RAW CHILD OUTPUT" in envelope["data"]
+
+
+def test_sync_worker_returns_nonzero_when_any_model_summary_fails(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setenv("ANVIL_MODELS_OUT", str(tmp_path / "staging"))
+    sys.modules.pop("anvil_serving._sync", None)
+    sync_worker = importlib.import_module("anvil_serving._sync")
+    monkeypatch.setattr(
+        sync_worker,
+        "discover",
+        lambda: [("org", "broken", str(tmp_path / "model"), "dir")],
+    )
+    monkeypatch.setattr(
+        sync_worker,
+        "summarize",
+        lambda *_args: (_ for _ in ()).throw(ValueError("bad config")),
+    )
+
+    assert sync_worker.main() == 1
+    assert "ERROR org/broken: bad config" in capsys.readouterr().err
+    sys.modules.pop("anvil_serving._sync", None)
+
+
+@pytest.mark.parametrize(
+    ("path", "os_name", "platform_name", "expected"),
+    [
+        ("C:/models/model", "nt", "win32", "windows"),
+        ("/Users/operator/models/model", "posix", "darwin", "macos"),
+        ("/srv/models/model", "posix", "linux", "linux"),
+        ("/mnt/c/Users/operator/models/model", "posix", "linux", "windows-wsl"),
+    ],
+)
+def test_sync_source_platform_labels_native_hosts(
+    tmp_path, monkeypatch, path, os_name, platform_name, expected
+):
+    monkeypatch.setenv("ANVIL_MODELS_OUT", str(tmp_path / "staging"))
+    sys.modules.pop("anvil_serving._sync", None)
+    sync_worker = importlib.import_module("anvil_serving._sync")
+    assert sync_worker._source_platform(
+        path, os_name=os_name, platform_name=platform_name
+    ) == expected
+    sys.modules.pop("anvil_serving._sync", None)
 
 
 def test_models_cache_prune_help_uses_canonical_usage(capsys):
@@ -305,6 +679,31 @@ def test_models_cache_prune_help_uses_canonical_usage(capsys):
     assert "usage: anvil-serving models cache prune" in out
     assert "--mixture" in out
     assert "--dry-run" in out
+
+
+def test_cache_prune_default_dry_run_does_not_create_catalog_directory(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    sys.modules.pop("anvil_serving._sync", None)
+    sync_worker = importlib.import_module("anvil_serving._sync")
+    sync_worker.ROOTS = []
+    assert cache_prune.main(["--dry-run"]) == 0
+    assert not (tmp_path / "model-library").exists()
+    assert "DRY-RUN" in capsys.readouterr().out
+
+
+def test_cache_prune_scan_failure_is_structured_json(monkeypatch, capsys):
+    sync_worker = importlib.import_module("anvil_serving._sync")
+    monkeypatch.setattr(
+        sync_worker,
+        "discover",
+        lambda: (_ for _ in ()).throw(PermissionError("scan denied")),
+    )
+    assert cli.main(["models", "cache", "prune", "--dry-run", "--json"]) == 1
+    envelope = json.loads(capsys.readouterr().out)
+    assert envelope["ok"] is False
+    assert "cache scan failed: scan denied" in envelope["error"]["message"]
 
 
 def test_models_cache_prune_only_confirms_execute_and_propagates_authorization(
@@ -329,6 +728,87 @@ def test_models_cache_prune_only_confirms_execute_and_propagates_authorization(
         "models", "cache", "prune", "--execute", "--confirm"
     ]) == 0
     assert seen[-1] == (["--execute"], True)
+
+    assert cli.main([
+        "models", "cache", "prune", "--execute", "--dry-run",
+    ]) == 0
+    assert seen[-1] == (["--execute", "--dry-run"], False)
+
+
+def test_models_cache_prune_removed_yes_points_to_confirm(capsys):
+    assert cli.main(["models", "cache", "prune", "--yes"]) == 2
+    err = capsys.readouterr().err
+    assert "--yes" in err
+    assert "--confirm" in err
+    assert "was removed" in err
+
+
+def test_cache_prune_direct_execute_requires_confirmation_before_scan(capsys):
+    scanned = []
+
+    assert cache_prune.main(
+        ["--execute"], scan=lambda: scanned.append(True) or []
+    ) == 3
+    assert scanned == []
+    assert "--confirm" in capsys.readouterr().err
+
+
+def test_cache_prune_metadata_caveat_is_not_current_host_deletion_proof():
+    plan = cache_prune.classify_rows([{
+        "id": "org/fp8-moe",
+        "format": "safetensors",
+        "sm120_caveat": "unsafe only on sm_120",
+        "local_path": "ignored",
+    }], mixture=[])
+    assert plan["candidates"][0]["reason"] == "incompatible-sm120"
+    assert plan["candidates"][0]["dead_everywhere"] is False
+
+
+def test_cache_prune_delete_failure_returns_partial(monkeypatch, capsys):
+    monkeypatch.setattr(cache_prune, "execute_plan", lambda *_args, **_kwargs: {
+        "dry_run": False,
+        "include_servable": False,
+        "deleted": [],
+        "would_delete": [],
+        "kept": [],
+        "skipped": [{"id": "org/model", "reason": "refused:rmtree-error:PermissionError"}],
+        "reclaimed_bytes": 0,
+        "planned_bytes": 1,
+        "reclaimed_gb": 0.0,
+    })
+    assert cache_prune.main(["--execute", "--confirm"], scan=lambda: []) == 5
+    assert "undeleted candidates" in capsys.readouterr().err
+
+
+def test_cache_prune_json_preserves_broad_wipe_refusal(capsys):
+    assert cli.main([
+        "models", "cache", "prune", "--execute", "--include-servable",
+        "--confirm", "--json",
+    ]) == 2
+    envelope = json.loads(capsys.readouterr().out)
+    assert envelope["ok"] is False
+    assert "REFUSING broad wipe" in envelope["error"]["message"]
+
+
+def test_cache_prune_dry_run_reports_plan_without_deleting(tmp_path, capsys):
+    candidate = tmp_path / "model"
+    candidate.mkdir()
+    rows = [{
+        "id": "org/model",
+        "format": "safetensors",
+        "local_path": str(candidate),
+        "dead_everywhere": True,
+        "size_bytes": 1,
+        "size_gb": 0.0,
+    }]
+    assert cache_prune.main(["--dry-run"], scan=lambda: rows) == 0
+    assert candidate.is_dir()
+    out = capsys.readouterr().out
+    assert "would delete" in out
+    assert "SCAN ROOTS" in out
+    assert "ordered apply actions:" in out
+    assert "drift note:" in out
+    assert "rollback: none automatic" in out
 
 
 def test_models_score_help_uses_canonical_usage(capsys):
@@ -361,6 +841,21 @@ def test_pull_dispatches_through_top_level_cli(monkeypatch, capsys):
     assert "-v vllm-hfcache:/root/.cache/huggingface" in out
 
 
+def test_pull_apply_requires_shared_confirmation(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(
+        models,
+        "pull_main",
+        lambda argv: calls.append(list(argv)) or 0,
+    )
+    command = ["models", "pull", "openai/gpt-oss-120b"]
+    assert cli.main(command) == 3
+    assert calls == []
+    assert "confirmation required" in capsys.readouterr().err
+    assert cli.main([*command, "--confirm"]) == 0
+    assert calls == [["openai/gpt-oss-120b"]]
+
+
 def test_pull_help_documents_flags_and_rationale(capsys):
     with pytest.raises(SystemExit) as exc:
         models.pull_main(["--help"])
@@ -377,7 +872,14 @@ def test_pull_help_documents_flags_and_rationale(capsys):
 def test_models_sync_still_dispatches(tmp_path, monkeypatch):
     """The pre-existing `sync` action is untouched by the pull branch."""
     calls = []
-    monkeypatch.setattr(models.subprocess, "call", lambda *a, **k: calls.append((a, k)) or 0)
+
+    def fake_sync(*args, **kwargs):
+        calls.append((args, kwargs))
+        staging = kwargs["env"]["ANVIL_MODELS_OUT"]
+        _write_fake_catalog(staging)
+        return models.subprocess.CompletedProcess(args[0], 0, "", "")
+
+    monkeypatch.setattr(models.subprocess, "run", fake_sync)
     rc = models.main(["sync", "--out", str(tmp_path / "model-library")])
     assert rc == 0
     assert len(calls) == 1  # _sync.py was shelled out exactly once
@@ -390,6 +892,8 @@ def test_build_sync_argv_includes_optional_roots(tmp_path):
     assert argv[3:7] == ["models", "sync", "--out", out]
     assert argv[argv.index("--hf-roots") + 1] == "C:/hf"
     assert argv[argv.index("--model-dirs") + 1] == "D:/models"
+    assert "--confirm" not in argv
+    assert "--dry-run" not in argv
 
 
 def test_models_import_does_not_create_default_catalog_dir(tmp_path, monkeypatch):
@@ -474,6 +978,7 @@ def test_recipe_list_tables_recorded_recipes(request, capsys):
     assert rc == 0
     # header + the three shipped rows.
     assert "status" in out and "throughput" in out and "intent" in out
+    assert "activates" in out and "heavy" in out
     assert "openai/gpt-oss-120b" in out
     assert "183.2 tok/s" in out
     assert "nvidia/Qwen3-32B-NVFP4" in out
@@ -492,6 +997,10 @@ def test_recipe_show_prints_reconstructed_command_and_stats(request, capsys):
     # intent + download surfaced.
     assert "flexibility" in out
     assert "anvil-serving models pull openai/gpt-oss-120b" in out
+    assert "activation:" in out
+    assert "direction: rollback" in out
+    assert "compose_service: heavy-gptoss-rollback" in out
+    assert "serves switch heavy --recipe openai/gpt-oss-120b --dry-run" in out
 
 
 def test_recipe_show_unknown_model_is_clean_error(request, capsys):
@@ -516,6 +1025,33 @@ def test_recipe_default_registry_resolves_without_explicit_flag(request, capsys)
     assert "openai/gpt-oss-120b" in out
 
 
+def test_recipe_default_registry_uses_packaged_data_outside_checkout(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty-home"))
+    rc = models.main(["recipe", "list"])
+    assert rc == 0
+    assert "openai/gpt-oss-120b" in capsys.readouterr().out
+
+
+def test_recipe_default_registry_prefers_operator_config_home(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    home = tmp_path / "anvil-home"
+    home.mkdir()
+    (home / "serve-recipes.toml").write_text(
+        'schema="x"\n[[recipe]]\nmodel="operator/model"\nstatus="verified"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    assert models.main(["recipe", "list"]) == 0
+    out = capsys.readouterr().out
+    assert "operator/model" in out
+    assert "openai/gpt-oss-120b" not in out
+
+
 def test_recipe_dispatches_through_cli(request, capsys):
     rc = cli.main(["models", "recipes", "show", "gpt-oss-120b",
                    "--registry", _registry(request)])
@@ -524,20 +1060,50 @@ def test_recipe_dispatches_through_cli(request, capsys):
     assert "docker run -d" in out
 
 
+@pytest.mark.parametrize("action", ["list", "show", "create", "update", "delete", "load"])
+def test_recipe_leaf_help_is_actionable(action, capsys):
+    with pytest.raises(SystemExit) as exc:
+        models.main(["recipe", action, "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "Examples:" in out
+    assert "anvil-serving models recipes %s" % action in out
+
+
+def test_models_cli_docs_cover_each_operator_workflow():
+    text = (Path(__file__).parents[1] / "docs" / "cli" / "models.md").read_text(
+        encoding="utf-8"
+    )
+    for heading in (
+        "## Catalog sync",
+        "## Artifact pull",
+        "### Discover recipes",
+        "### Create, update, or delete a recipe",
+        "### Load a recipe",
+        "## Model scoring",
+        "## Cache prune",
+    ):
+        assert heading in text
+    assert 'flags = ["--served-model-name org/model"]' in text
+    assert "Choose a row that activates `heavy`" in text
+
+
 def test_models_sync_action_still_accepted(monkeypatch, tmp_path):
     # Additive change must not break `models sync`: it still shells out to _sync.py.
     calls = {}
 
-    def fake_call(cmd, env=None):
+    def fake_call(cmd, env=None, **_kwargs):
         calls["cmd"] = cmd
         calls["env"] = env
-        return 0
+        _write_fake_catalog(env["ANVIL_MODELS_OUT"])
+        return models.subprocess.CompletedProcess(cmd, 0, "", "")
 
-    monkeypatch.setattr(models.subprocess, "call", fake_call)
+    monkeypatch.setattr(models.subprocess, "run", fake_call)
     rc = models.main(["sync", "--out", str(tmp_path / "lib")])
     assert rc == 0
     assert calls["cmd"][1].endswith("_sync.py")
-    assert calls["env"]["ANVIL_MODELS_OUT"] == str(tmp_path / "lib")
+    assert calls["env"]["ANVIL_MODELS_OUT"].startswith(str(tmp_path / ".lib.anvil-sync-"))
+    assert (tmp_path / "lib" / "cards").is_dir()
 
 
 def test_recipe_list_shows_aggregate_throughput(tmp_path, capsys):
@@ -599,7 +1165,34 @@ def test_recipe_crud_dry_run_never_writes(tmp_path, capsys):
     assert models.main(["recipe", "create", "--registry", str(registry),
                         "--recipe-file", str(recipe), "--dry-run"]) == 0
     assert not registry.exists()
-    assert "would create recipe" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "RECIPE CREATE PLAN" in out
+    assert "proposed registry entry" in out
+    assert "image = \"example/image\"" in out
+    assert "recipe input digest" in out
+    assert "manual recovery: remove the newly created registry" in out
+    assert "create backup" not in out
+
+    registry.write_text(
+        'schema = "x"\n[[recipe]]\nmodel = "org/model"\n\n'
+        '[recipe.serve]\nimage = "example/image"\n',
+        encoding="utf-8",
+    )
+    before = registry.read_text(encoding="utf-8")
+    _recipe_input(recipe, "org/model-v2")
+    assert models.main([
+        "recipe", "update", "org/model", "--registry", str(registry),
+        "--recipe-file", str(recipe), "--dry-run",
+    ]) == 0
+    assert "RECIPE UPDATE PLAN" in capsys.readouterr().out
+    assert registry.read_text(encoding="utf-8") == before
+    assert models.main([
+        "recipe", "delete", "org/model", "--registry", str(registry), "--dry-run",
+    ]) == 0
+    delete_out = capsys.readouterr().out
+    assert "recipe selected for deletion" in delete_out
+    assert "proposed registry entry" not in delete_out
+    assert registry.read_text(encoding="utf-8") == before
 
 
 def test_recipe_write_refuses_state_drift_without_backup(tmp_path):
@@ -645,9 +1238,11 @@ def test_recipe_load_dry_run_selects_recipe_without_docker(request, capsys):
                       "--registry", _registry(request), "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0
-    assert "would load recipe" in out
+    assert "RECIPE LOAD PLAN" in out
     assert "--name recipe-heavy" in out
     assert "127.0.0.1:30002:30002" in out
+    assert "ownership condition:" in out
+    assert "not performed by load: health check and eval preflight" in out
 
 
 def test_recipe_load_dispatches_through_canonical_cli(request, capsys):
@@ -656,7 +1251,7 @@ def test_recipe_load_dispatches_through_canonical_cli(request, capsys):
         "--registry", _registry(request), "--dry-run",
     ])
     assert rc == 0
-    assert "would load recipe" in capsys.readouterr().out
+    assert "RECIPE LOAD PLAN" in capsys.readouterr().out
 
 
 def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys):

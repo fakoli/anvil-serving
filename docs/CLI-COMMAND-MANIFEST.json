@@ -5248,164 +5248,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md",
-      "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
-      "gpu_role_required": false,
-      "handler": "anvil_serving.models:main",
-      "mutation_class": "mutate",
-      "options": [
-        {
-          "flags": [
-            "--topology"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Topology document used for target resolution.",
-          "tombstone": null,
-          "value_name": "PATH"
-        },
-        {
-          "flags": [
-            "--topology-overlay"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Deployment overlay applied to the topology.",
-          "tombstone": null,
-          "value_name": "PATH"
-        },
-        {
-          "flags": [
-            "--command-host"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Declared command host.",
-          "tombstone": null,
-          "value_name": "host:ID"
-        },
-        {
-          "flags": [
-            "--command-runtime"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Declared command runtime.",
-          "tombstone": null,
-          "value_name": "runtime:ID"
-        },
-        {
-          "flags": [
-            "--target"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Explicit resource-owner target.",
-          "tombstone": null,
-          "value_name": "host:ID|host-role:ROLE"
-        },
-        {
-          "flags": [
-            "--transport"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Execution transport.",
-          "tombstone": null,
-          "value_name": "auto|local|controller|ssh"
-        },
-        {
-          "flags": [
-            "--allow-ssh-fallback"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--experimental-model-workload"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--json"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Emit the machine-readable result envelope.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--quiet"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Suppress nonessential human output.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--verbose"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Include diagnostic human output.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "-h",
-            "--help"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Show focused help and exit.",
-          "tombstone": null,
-          "value_name": null
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "tombstone": null,
-          "value_name": null
-        }
-      ],
-      "output_policy": "bounded",
-      "path": "models sync",
-      "recovery_capable": false,
-      "remote_operation": null,
-      "resource_role": "model-catalog",
-      "summary": "Sync the model catalog.",
-      "tombstone": null,
-      "transports": [
-        "local"
-      ],
-      "visible": true
-    },
-    {
-      "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md",
+      "docs_anchor": "docs/cli/models.md#catalog-sync",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5556,6 +5399,283 @@
           "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--out"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Catalog output directory.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--hf-roots"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Additional Hugging Face cache roots.",
+          "tombstone": null,
+          "value_name": "PATHS"
+        },
+        {
+          "flags": [
+            "--model-dirs"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Additional plain model directories.",
+          "tombstone": null,
+          "value_name": "PATHS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "models sync",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "model-catalog",
+      "summary": "Sync the model catalog.",
+      "tombstone": null,
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/models.md#artifact-pull",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.models:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--volume"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Named Docker volume for model bytes.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--image"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Container image that provides the hf CLI.",
+          "tombstone": null,
+          "value_name": "IMAGE"
+        },
+        {
+          "flags": [
+            "--revision"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Repository revision, branch, or tag.",
+          "tombstone": null,
+          "value_name": "REVISION"
+        },
+        {
+          "flags": [
+            "--include"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Glob of repository files to include.",
+          "tombstone": null,
+          "value_name": "GLOB"
+        },
+        {
+          "flags": [
+            "--exclude"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Glob of repository files to exclude.",
+          "tombstone": null,
+          "value_name": "GLOB"
+        },
+        {
+          "flags": [
+            "--token-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Environment variable containing the HF token.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--token-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Dotenv fallback for the HF token.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--no-token"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Pull without forwarding an HF token.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -5572,7 +5692,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md",
+      "docs_anchor": "docs/cli/models.md#model-scoring",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5861,7 +5981,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md#recipes",
+      "docs_anchor": "docs/cli/models.md#discover-recipes",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6018,7 +6138,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md#recipes",
+      "docs_anchor": "docs/cli/models.md#discover-recipes",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6175,7 +6295,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md#recipes",
+      "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6362,7 +6482,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md#recipes",
+      "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6549,7 +6669,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md#recipes",
+      "docs_anchor": "docs/cli/models.md#create-update-or-delete-a-recipe",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6726,7 +6846,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/models.md#recipes",
+      "docs_anchor": "docs/cli/models.md#load-a-recipe",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -7223,8 +7343,11 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Acknowledge cache deletion.",
-          "tombstone": null,
+          "summary": "Removed option.",
+          "tombstone": {
+            "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+            "replacement": "--confirm"
+          },
           "value_name": null
         },
         {

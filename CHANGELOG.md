@@ -16,6 +16,18 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **Model operations now share one preview/apply grammar.** Catalog sync has a
+  no-write preview, shared confirmation, output ownership checks, an output-specific
+  lock, validated staged replacement, and numbered backup; worker or install failures
+  leave the active catalog intact, setup/launch failures are bounded, failed rollback
+  names its preserved recovery artifact, and child output remains valid under CLI JSON mode;
+  installed builds resolve the packaged recipe registry after project/config-home
+  locations; recipe leaf help and plans expose runnable preview/apply and recovery
+  details and reject ignored `serve.args`; and cache deletion uses the canonical
+  `--confirm` gate, refuses to infer
+  current-host deletability from metadata alone, and returns partial status for failed
+  removals. The former `--yes` spelling returns migration guidance.
+
 - **A single CLI interaction contract is the adopted migration target.** ADR-0021 codifies resource-first
   grammar, contextual help, configuration precedence, complete dry-run plans, shared confirmation,
   transactional recovery, stable JSON, actionable errors, and cross-platform behavior. A versioned

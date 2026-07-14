@@ -63,6 +63,12 @@ def test_format_recipe_round_trips_through_tomllib():
     assert parsed["recipe"] == [_RECIPE]  # exact round-trip, types preserved
 
 
+def test_recipe_rejects_ignored_serve_args_with_flags_recovery():
+    recipe = {"model": "org/model", "serve": {"image": "example/image", "args": ["--x"]}}
+    with pytest.raises(sr.RecipeError, match=r"serve\.flags"):
+        sr.validate_recipe(recipe)
+
+
 def test_format_recipe_emits_recipe_array_header_and_nested_tables():
     block = sr.format_recipe(_RECIPE)
     assert block.startswith("[[recipe]]\n")

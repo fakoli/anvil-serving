@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """cache_prune.py - PLAN (not execute) the pruning of the local HF model caches.
 
 Scans the local caches (via _sync.discover, the real merged scanner), classifies
@@ -28,7 +28,6 @@ Stdlib only; dicts/tables in-out.
 """
 import os
 import sys
-import json
 import argparse
 import shutil
 
@@ -60,7 +59,10 @@ def classify_rows(rows, mixture):
         if fmt == "GGUF":
             reason, dead = "incompatible-gguf", False    # llama.cpp fallback exists
         elif caveat and fmt == "safetensors":
-            reason, dead = "incompatible-sm120", True     # dead by every engine here
+            # A metadata caveat is a recipe warning, not current-host proof. Only
+            # an upstream hardware-matched probe may set dead_everywhere=True.
+            reason = "incompatible-sm120"
+            dead = bool(r.get("dead_everywhere", False))
         else:
             reason, dead = "purposeless", False           # servable, simply unused
         size_gb = float(r.get("size_gb") or 0.0)
@@ -269,16 +271,42 @@ def _render(plan, mixture):
     return "\n".join(lines)
 
 
+def _render_preview_contract(*, scan):
+    lines = ["", "SCAN ROOTS"]
+    if scan is _default_scan:
+        from . import _sync
+        if _sync.ROOTS:
+            lines.extend("  %s: %s" % (kind, path) for path, kind in _sync.ROOTS)
+        else:
+            lines.append("  (auto-detected none)")
+    else:
+        lines.append("  (custom injected scan source)")
+    lines.extend([
+        "ordered apply actions: confirm; rescan roots once; rebuild plan; validate each target; delete once",
+        "deferred until apply: confirmation, fresh scan, final path validation, and directory deletion",
+        "drift note: apply rescans; its candidates may differ from this preview",
+        "rollback: none automatic; deletion is irreversible unless model bytes exist elsewhere",
+    ])
+    return "\n".join(lines)
+
+
 def main(argv=None, scan=_default_scan, *, prog="anvil-serving models cache prune"):
-    ap = argparse.ArgumentParser(prog=prog,
-                                 description="Plan (and optionally execute) pruning of local HF model caches.")
+    ap = argparse.ArgumentParser(
+        prog=prog,
+        description="Plan (and optionally execute) pruning of local HF model caches.\n\n"
+                    "Examples:\n"
+                    "  anvil-serving models cache prune --mixture MODEL --dry-run\n"
+                    "  anvil-serving models cache prune --mixture MODEL --execute --confirm",
+        epilog="The default plan keeps candidates that remain servable elsewhere. "
+               "--include-servable deliberately broadens deletion; --dry-run always wins.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     ap.add_argument("--mixture", default="",
                     help="comma-separated model ids to PROTECT (never removed). "
                          "Empty => nothing protected (an explicit, echoed choice).")
-    ap.add_argument("--json", action="store_true", help="emit the plan dict as JSON")
     ap.add_argument("--execute", action="store_true",
                     help="ACTUALLY DELETE candidate directories. Default ABSENT "
-                         "=> safe dry-run. Requires --yes. By default deletes "
+                         "=> safe dry-run. Requires --confirm. By default deletes "
                          "ONLY dead_everywhere candidates (servable tiers KEPT).")
     # default=None (NOT True): with store_true an unset flag is None, a set flag
     # True. That makes the literal gate `args.execute and not args.dry_run`
@@ -295,9 +323,7 @@ def main(argv=None, scan=_default_scan, *, prog="anvil-serving models cache prun
                     help="permit an --execute --include-servable broad wipe when "
                          "NO --mixture is protected (otherwise such a wipe is "
                          "refused, since it would take servable models too).")
-    ap.add_argument("--yes", action="store_true",
-                    help="required confirmation gate alongside --execute "
-                         "(without it, --execute refuses and deletes nothing).")
+    ap.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--self-check", action="store_true",
                     help="run the internal self-check (no real cache/GPU/network), "
                          "print 'self-check OK', and exit 0")
@@ -307,10 +333,16 @@ def main(argv=None, scan=_default_scan, *, prog="anvil-serving models cache prun
         print("self-check OK")
         return 0
     mixture = {m.strip() for m in args.mixture.split(",") if m.strip()}
-    # Gate 1: real deletion needs BOTH --execute AND --yes.
-    if args.execute and not (args.yes or guard.confirmation_authorized()):
-        print("refusing to delete without --yes (this DELETES directories)")
-        return 2
+    # Gate 1: real deletion needs BOTH --execute AND shared CLI confirmation.
+    # --dry-run always wins, so a command that explicitly previews an execute
+    # request never needs authorization and never reaches rmtree.
+    real_delete = bool(args.execute and not args.dry_run)
+    if real_delete and not (args.confirm or guard.confirmation_authorized()):
+        print(
+            "confirmation required; rerun the same command with --confirm",
+            file=sys.stderr,
+        )
+        return 3
     # Gate 2 (checked BEFORE any scan): a broad wipe -- --execute with
     # --include-servable and an EMPTY mixture -- protects NOTHING and would also
     # take servable GGUF/safetensors. Refuse unless explicitly allowed.
@@ -318,36 +350,34 @@ def main(argv=None, scan=_default_scan, *, prog="anvil-serving models cache prun
         print("REFUSING broad wipe: --execute --include-servable with an EMPTY "
               "--mixture protects nothing and would delete servable GGUF/"
               "safetensors too. Re-run with --allow-empty-mixture to override, "
-              "or pass --mixture to protect your models.")
+              "or pass --mixture to protect your models.", file=sys.stderr)
         return 2
     # Build the plan ONCE here; execute_plan consumes this OBJECT and never
     # re-scans/re-classifies (so no path outside the freshly-built plan can be
     # deleted).
-    plan = build_plan(mixture, scan=scan)
+    try:
+        plan = build_plan(mixture, scan=scan)
+    except (OSError, ValueError) as exc:
+        print("cache scan failed: %s" % exc, file=sys.stderr)
+        return 1
     # Gate 3: a requested protect id that did NOT match the scan means we cannot
-    # honor that protection -- ABORT before deleting anything (warning printed
-    # FIRST / surfaced in --json). Never delete after a failed-to-match protect id.
+    # honor that protection -- ABORT before deleting anything. stderr becomes
+    # the actionable error message in the shared JSON envelope.
     unmatched = sorted(mixture - set(plan["protected"]))
     if args.execute and unmatched:
-        if args.json:
-            print(json.dumps({"error": "unmatched-protect-ids",
-                              "unmatched": unmatched, "plan": plan,
-                              "mixture": sorted(mixture)}, indent=2))
-        else:
-            print("ABORT: requested protect id(s) NOT found in scan -- refusing "
-                  "to delete (cannot honor protection): %s" % unmatched)
+        print("ABORT: requested protect id(s) NOT found in scan -- refusing "
+              "to delete (cannot honor protection): %s" % unmatched, file=sys.stderr)
         return 2
+    # Render the freshly scanned apply plan before any deletion. A prior
+    # dry-run is advisory because apply deliberately rescans for current state.
+    print(_render(plan, mixture))
+    if not real_delete:
+        print(_render_preview_contract(scan=scan))
+    print()
     # Honor --dry-run: it OVERRIDES --execute. Real deletion only when --execute
     # is set AND --dry-run was not.
-    real_delete = bool(args.execute and not args.dry_run)
     report = execute_plan(plan, dry_run=not real_delete,
                           include_servable=args.include_servable)
-    if args.json:
-        print(json.dumps({"plan": plan, "report": report,
-                          "mixture": sorted(mixture)}, indent=2))
-        return 0
-    print(_render(plan, mixture))
-    print()
     if real_delete:
         print("reclaimed {b} bytes ({g} GB)".format(
             b=report["reclaimed_bytes"], g=report["reclaimed_gb"]))
@@ -363,6 +393,16 @@ def main(argv=None, scan=_default_scan, *, prog="anvil-serving models cache prun
             k=[e["id"] for e in report["kept"]]))
     if report["skipped"]:
         print("skipped: {s}".format(s=report["skipped"]))
+    failed = [
+        item for item in report["skipped"]
+        if item.get("reason") != "gone"
+    ]
+    if real_delete and failed:
+        print(
+            "cache prune completed with undeleted candidates: %s" % failed,
+            file=sys.stderr,
+        )
+        return 5
     return 0
 
 
@@ -373,9 +413,11 @@ def _selfcheck():
     rows = [
         {"id": "keep/me", "format": "safetensors", "size_gb": 10.0, "sm120_caveat": None},
         {"id": "g/coder", "format": "GGUF", "size_gb": 20.0, "sm120_caveat": None},
-        {"id": "fp8/moe", "format": "safetensors", "size_gb": 80.0, "sm120_caveat": cav},
+        {"id": "fp8/moe", "format": "safetensors", "size_gb": 80.0,
+         "sm120_caveat": cav, "dead_everywhere": True},
         {"id": "unused/dense", "format": "safetensors", "size_gb": 30.0, "sm120_caveat": None},
-        {"id": "fp8/protected", "format": "safetensors", "size_gb": 40.0, "sm120_caveat": cav},
+        {"id": "fp8/protected", "format": "safetensors", "size_gb": 40.0,
+         "sm120_caveat": cav, "dead_everywhere": True},
     ]
     plan = build_plan(mixture, rows=rows)
     cands = plan["candidates"]
@@ -480,7 +522,9 @@ def _selfcheck():
                 out.append({"id": ident, "owner": ident.split("/")[0],
                             "model_type": "llama", "format": fmt,
                             "size_bytes": nb, "size_gb": round(nb / 1e9, 1),
-                            "sm120_caveat": c, "local_path": p})
+                            "sm120_caveat": c,
+                            "dead_everywhere": ident == "fp8/moe",
+                            "local_path": p})
             return out
 
         inj = [(root, "hf")]
@@ -570,34 +614,27 @@ def _selfcheck():
         #     cache). Re-make candidate dirs first so an accidental deletion would
         #     show up; these gates must touch NOTHING. ---
         import io
-        from contextlib import redirect_stdout
+        from contextlib import redirect_stderr, redirect_stdout
         d_coder = _mk(root, "models--g--coder")
         d_moe = _mk(root, "models--fp8--moe")
         # Empty mixture + --include-servable broad wipe is REFUSED (non-zero),
         # BEFORE any scan; nothing is deleted.
         buf = io.StringIO()
-        with redirect_stdout(buf):
-            rc_wipe = main(["--execute", "--yes", "--include-servable"], scan=tmp_scan)
+        with redirect_stderr(buf):
+            rc_wipe = main(["--execute", "--confirm", "--include-servable"], scan=tmp_scan)
         assert rc_wipe != 0 and "REFUSING" in buf.getvalue(), (rc_wipe, buf.getvalue())
         assert os.path.isdir(d_coder) and os.path.isdir(d_moe), "wipe must delete nothing"
         # An unmatched protect id ABORTS (non-zero) with the warning printed FIRST.
         buf = io.StringIO()
-        with redirect_stdout(buf):
-            rc_un = main(["--mixture", "ghost/missing", "--execute", "--yes"], scan=tmp_scan)
+        with redirect_stderr(buf):
+            rc_un = main(["--mixture", "ghost/missing", "--execute", "--confirm"], scan=tmp_scan)
         assert rc_un != 0 and buf.getvalue().lstrip().startswith("ABORT"), \
             (rc_un, buf.getvalue())
-        # ...and is surfaced in --json too.
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            rc_unj = main(["--mixture", "ghost/missing", "--execute", "--yes",
-                           "--json"], scan=tmp_scan)
-        assert rc_unj != 0 and '"unmatched-protect-ids"' in buf.getvalue(), \
-            (rc_unj, buf.getvalue())
         assert os.path.isdir(d_coder) and os.path.isdir(d_moe), "abort must delete nothing"
-        # --dry-run OVERRIDES --execute: even with --execute --yes, nothing deletes.
+        # --dry-run OVERRIDES --execute: even with --execute, nothing deletes.
         buf = io.StringIO()
         with redirect_stdout(buf):
-            rc_dry = main(["--mixture", "keep/me", "--execute", "--yes",
+            rc_dry = main(["--mixture", "keep/me", "--execute",
                            "--dry-run"], scan=tmp_scan)
         assert rc_dry == 0 and "DRY-RUN" in buf.getvalue(), (rc_dry, buf.getvalue())
         assert os.path.isdir(d_moe), "--dry-run override must not delete"

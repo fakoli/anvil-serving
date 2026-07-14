@@ -493,16 +493,39 @@ def build_command_tree() -> CommandTree:
     models = _node(
         "models", "Manage model catalog, artifacts, and recipes.",
         children=(
-            _resource_node("sync", "Sync the model catalog.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=action_options),
-            _resource_node("pull", "Pull a model artifact.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options),
-            _resource_node("score", "Rank models from benchmark evidence.", "anvil_serving.models", role="model-catalog"),
+            _resource_node(
+                "sync", "Sync the model catalog.", "anvil_serving.models",
+                role="model-catalog", mutation="mutate",
+                options=confirm_options + (
+                    _option("--out", summary="Catalog output directory.", value_name="PATH"),
+                    _option("--hf-roots", summary="Additional Hugging Face cache roots.", value_name="PATHS"),
+                    _option("--model-dirs", summary="Additional plain model directories.", value_name="PATHS"),
+                ),
+                docs_anchor=f"{MODELS_DOC}#catalog-sync",
+            ),
+            _resource_node(
+                "pull", "Pull a model artifact.", "anvil_serving.models",
+                role="model-catalog", mutation="mutate",
+                options=confirm_options + (
+                    _option("--volume", summary="Named Docker volume for model bytes.", value_name="NAME"),
+                    _option("--image", summary="Container image that provides the hf CLI.", value_name="IMAGE"),
+                    _option("--revision", summary="Repository revision, branch, or tag.", value_name="REVISION"),
+                    _option("--include", summary="Glob of repository files to include.", value_name="GLOB"),
+                    _option("--exclude", summary="Glob of repository files to exclude.", value_name="GLOB"),
+                    _option("--token-env", summary="Environment variable containing the HF token.", value_name="ENV"),
+                    _option("--token-file", summary="Dotenv fallback for the HF token.", value_name="PATH"),
+                    _option("--no-token", summary="Pull without forwarding an HF token."),
+                ),
+                docs_anchor=f"{MODELS_DOC}#artifact-pull",
+            ),
+            _resource_node("score", "Rank models from benchmark evidence.", "anvil_serving.models", role="model-catalog", docs_anchor=f"{MODELS_DOC}#model-scoring"),
             _node("recipes", "Manage recorded serve recipes.", children=(
-                _resource_node("list", "List recorded serve recipes.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "list"), options=(recipe_registry_option,)),
-                _resource_node("show", "Show one recorded serve recipe.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "show"), options=(recipe_registry_option,)),
-                _resource_node("create", "Create one recipe in an operator registry.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "create"), options=confirm_options + (recipe_registry_option, recipe_file_option)),
-                _resource_node("update", "Update one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "update"), options=confirm_options + (recipe_registry_option, recipe_file_option)),
-                _resource_node("delete", "Delete one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "delete"), options=confirm_options + (recipe_registry_option,)),
-                _resource_node("load", "Load one recipe into a named local container.", "anvil_serving.models", role="model-serve", mutation="mutate", gpu=True, argv_prefix=("recipe", "load"), options=confirm_options + (recipe_registry_option, recipe_container_option)),
+                _resource_node("list", "List recorded serve recipes.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "list"), options=(recipe_registry_option,), docs_anchor=f"{MODELS_DOC}#discover-recipes"),
+                _resource_node("show", "Show one recorded serve recipe.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "show"), options=(recipe_registry_option,), docs_anchor=f"{MODELS_DOC}#discover-recipes"),
+                _resource_node("create", "Create one recipe in an operator registry.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "create"), options=confirm_options + (recipe_registry_option, recipe_file_option), docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe"),
+                _resource_node("update", "Update one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "update"), options=confirm_options + (recipe_registry_option, recipe_file_option), docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe"),
+                _resource_node("delete", "Delete one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "delete"), options=confirm_options + (recipe_registry_option,), docs_anchor=f"{MODELS_DOC}#create-update-or-delete-a-recipe"),
+                _resource_node("load", "Load one recipe into a named local container.", "anvil_serving.models", role="model-serve", mutation="mutate", gpu=True, argv_prefix=("recipe", "load"), options=confirm_options + (recipe_registry_option, recipe_container_option), docs_anchor=f"{MODELS_DOC}#load-a-recipe"),
             ), docs_anchor=f"{MODELS_DOC}#recipes"),
             _node("cache", "Manage model cache storage.", children=(
                 _resource_node(
@@ -513,7 +536,7 @@ def build_command_tree() -> CommandTree:
                     mutation="mutate",
                     options=confirm_options + (
                         _option("--execute", summary="Delete the planned cache candidates.", requires_confirmation=True),
-                        _option("--yes", summary="Acknowledge cache deletion."),
+                        _removed_option("--yes", replacement="--confirm"),
                         _option("--mixture", summary="Comma-separated model ids to protect.", value_name="MODELS"),
                         _option("--include-servable", summary="Also delete candidates servable elsewhere."),
                         _option("--allow-empty-mixture", summary="Allow a broad wipe with no protected mixture."),
