@@ -1,0 +1,123 @@
+# ComfyUI on-demand tenant manifest (gpu-reservations:T012, F006).
+#
+# SEPARATE from serves.toml on purpose — the same isolation rule that keeps the voice
+# sidecars in serves.voice.toml (docs/VOICE.md "Keep audio serves out of the shared
+# model-serves manifest"): generic `serves down` / serves_manage hygiene over the shared
+# LLM manifest must never stop the ComfyUI tenant, and ComfyUI lifecycle commands must
+# never recreate the LLM tiers. Manage it with:
+#
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml up comfyui
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml status
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml down comfyui
+#
+# ALWAYS name `comfyui` on up/down. The other [[serve]] rows below are LEDGER MIRRORS,
+# not lifecycle targets (see below).
+#
+# ── ADR-0017 ledger: same dark-fast budget as serves.toml — KEEP IN SYNC ──
+# The reservation ledger is derived per manifest, so this manifest re-declares the
+# dark-fast capacity row AND mirrors the serves.toml reservations that live on the same
+# physical card. Without the mirrors this manifest's ledger would see an empty card and
+# admit ComfyUI while the 5090 is actually full — the mirrors make `serves up comfyui`
+# admission HONEST: committed VRAM is derived from the mirrors' live docker container
+# state, exactly like in serves.toml. tests/test_serves.py asserts these rows stay in
+# sync with serves.toml (capacity, containers, vram_mib, residency).
+[[gpu_roles]]
+id = "dark-fast"
+vram_mib = 32607
+reserve_mib = 4608
+
+# ── The tenant ──
+# ComfyUI v0.27.1 (pinned image obeliks/comfyui:0.27.1-cu128 — see the compose header
+# for the pin provenance). `on-demand` residency (ADR-0017 §1): started per image/video
+# task, released by `serves down comfyui` (stopping the container IS the release), and
+# the only residency class allowed to evict — `serves up comfyui --evict` drains and
+# stops the `vision` evictable slot via the T005/ADR-0018 transition when the ledger is
+# short. vram_mib 12288 is the vision-sized slot the F006 design gives the tenant;
+# docker-compose.comfyui.yml enforces it engine-side with `--reserve-vram 19.84`
+# (= (32607 - 12288) MiB in GB) — change them together.
+#
+# engine "image" is the truthful non-chat-LLM label (the audio/embedding/reranker
+# precedent, ADR-0017 §7): ComfyUI serves an image/video-generation graph UI + API,
+# NOT OpenAI chat completions — LLM tooling (preflight, promotion gates, render) must
+# not target it. health "/system_stats" is ComfyUI's cheap readiness endpoint (the UI
+# root also answers 200, but /system_stats proves the API layer is up).
+[[serve]]
+name = "comfyui"
+container = "comfyui"
+port = 8188
+model = "comfyui-v0.27.1"      # UI/API tenant, not a served-model-name; label = pinned app version
+engine = "image"
+health = "/system_stats"
+gpu_role = "dark-fast"
+vram_mib = 12288
+residency = "on-demand"
+groups = ["comfy"]             # serve groups (serves up/down/status --group)
+up = "docker compose -f {dir}/docker-compose.comfyui.yml up -d comfyui"
+
+# ── Ledger mirrors of the serves.toml reservations on the same card ──
+# READ-ONLY rows: no `up` command (nothing here can start them), same name/container/
+# vram_mib/residency as serves.toml so the derived ledger matches the main manifest's.
+# Their committed state comes from live docker state; when a resident is down, its
+# VRAM is honestly free here too. DO NOT `serves down` a mirror from this manifest —
+# lifecycle for these serves belongs to serves.toml (that stop would be real: the
+# container names are the production ones).
+[[serve]]
+name = "fast"                  # mirror — lifecycle in serves.toml
+container = "vllm-gemma4-e4b-fast"
+port = 30003
+model = "gemma4-e4b-it"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 14336
+residency = "resident"
+
+[[serve]]
+name = "embeddings"            # mirror — lifecycle in serves.toml
+container = "vllm-qwen3-embedding"
+port = 30005
+model = "qwen3-embedding-0.6b"
+engine = "embedding"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 3200
+residency = "resident"
+
+[[serve]]
+name = "reranker"              # mirror — lifecycle in serves.toml
+container = "vllm-qwen3-reranker"
+port = 30006
+model = "qwen3-reranker-0.6b"
+engine = "reranker"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 3456
+residency = "resident"
+
+[[serve]]
+name = "ocr"                   # mirror — lifecycle in serves.toml
+container = "vllm-paddleocr-vl"
+port = 30007
+model = "paddleocr-vl-1.6"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 5120
+residency = "resident"
+
+# vision is the evictable slot ComfyUI displaces. Mirroring its router_tier lets
+# `serves up comfyui --evict` run the FULL T005 flow from this manifest: quiesce +
+# bounded drain of router tier vision-local (ADR-0018) before the container stops.
+# After ComfyUI's task, restore with serves.toml (`serves up vision`) and readmit the
+# tier (`router readmit --tier vision-local`).
+[[serve]]
+name = "vision"                # mirror — lifecycle in serves.toml
+container = "vllm-qwen3-vl-vision"
+port = 30008
+model = "qwen3-vl-4b-instruct"
+engine = "vllm"
+health = "/health"
+gpu_role = "dark-fast"
+vram_mib = 12288
+residency = "evictable"
+router_tier = "vision-local"

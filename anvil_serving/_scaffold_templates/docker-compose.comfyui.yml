@@ -1,0 +1,102 @@
+# ComfyUI on-demand tenant on the multi-tenant RTX 5090 (gpu-reservations:T012, F006).
+#
+# OWN compose project on purpose (`name: comfyui`, like `anvil-voice-audio`): ComfyUI is
+# an on-demand image/video-generation tenant, not an LLM tier, so it must never be
+# recreated/stopped by compose operations over the shared fakoli-dark project. Its serve
+# entry lives in the dedicated `serves.comfyui.toml` manifest next to this file (NOT the
+# shared serves.toml — the same isolation rule that keeps the voice sidecars out of it,
+# docs/VOICE.md "Keep audio serves out of the shared model-serves manifest").
+#
+# Manage ONLY through the product surface (never raw `docker`):
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml up comfyui
+#   anvil-serving serves --manifest examples/fakoli-dark/serves.comfyui.toml down comfyui
+# `serves up` admits the declared ADR-0017 `on-demand` reservation against the dark-fast
+# ledger BEFORE any container command runs; `serves down` stops the container, which IS
+# the reservation release (the ledger is derived from docker state).
+#
+# IMAGE PIN: ComfyUI v0.27.1 (Comfy-Org/ComfyUI tag v0.27.1) via the version-pinned
+# community CUDA build docker.io/obeliks/comfyui:0.27.1-cu128 — cu128 is the CUDA line
+# proven on this box's Blackwell sm_120 cards (the kokoro TTS sidecar runs latest-cu128).
+# Tag existence verified against the registry on 2026-07-13 (amd64 manifest
+# sha256:c32bc9b8c229bc18d8634c82cfee198906fd817052ef3f4d8e811c167643f5d3; OCI label
+# org.opencontainers.image.version=0.27.1-cu128). There is no first-party Comfy-Org
+# image; upstream README documents source installs only.
+#
+# VOLUMES (CLAUDE.md gotcha #15 — NO C:/ bind mounts for model paths, 9P is a
+# ~15 MB/s read path): the 61 GiB model library lives in the named volume
+# `comfyui-models` (D:-backed ext4 inside the docker-desktop VM), migrated once from
+# the retired Windows portable install — see docs/COMFYUI-MIGRATION-RUNBOOK.md.
+# Outputs, saved workflows (user state), and input uploads persist on the second
+# named volume `comfyui-user` (subpath mounts). Both are `external: true` so
+# `docker compose down -v` can never delete them; the runbook creates them.
+#
+# VRAM (ADR-0017): serves.comfyui.toml declares gpu_role "dark-fast" / vram_mib 12288 /
+# residency "on-demand" — the same 12288 MiB slot as the `vision` serve it displaces
+# (vision is the ledger's evictable tenant; `serves up comfyui --evict` drains and stops
+# it via the T005/ADR-0018 flow when the slot is occupied). The budget is enforced
+# engine-side with `--reserve-vram 19.84`: ComfyUI subtracts that many GB from the
+# card's 31.84 GB total before sizing model loads, so its working set stays inside the
+# admitted 12288 MiB (32607 - 12288 = 20319 MiB = 19.84 GB reserved for everything
+# else). Wan2.2-14B video workflows will lean on ComfyUI's smart offload at this
+# budget; free residents first (serves.toml) for full-speed runs and override
+# COMFYUI_EXTRA_ARGS only together with a matching vram_mib change in the manifest.
+#
+# Publish: loopback-only by default (ADR-0004, 127.0.0.1:8188). Opt in to tailnet
+# exposure by setting COMFYUI_PUBLISH to this host's tailnet address (e.g.
+# 100.87.34.66) before `serves up`. Never bind localhost (gotcha #1) or 0.0.0.0.
+name: comfyui
+
+services:
+  comfyui:
+    image: ${COMFYUI_IMAGE:-obeliks/comfyui:0.27.1-cu128}
+    container_name: comfyui
+    # On-demand tenant: never auto-resurrect — a restart policy reviving the container
+    # would silently re-take the 12288 MiB reservation the ledger thought was released.
+    restart: "no"
+    ports:
+      - "${COMFYUI_PUBLISH:-127.0.0.1}:8188:8188"
+    volumes:
+      - "comfyui-models:/app/models"
+      - type: volume
+        source: comfyui-user
+        target: /app/output
+        volume:
+          subpath: output
+      - type: volume
+        source: comfyui-user
+        target: /app/user
+        volume:
+          subpath: user
+      - type: volume
+        source: comfyui-user
+        target: /app/input
+        volume:
+          subpath: input
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      # Pin the RTX 5090 by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
+      CUDA_VISIBLE_DEVICES: ${COMFYUI_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      # Bind 0.0.0.0 INSIDE the container namespace; the host publish line above is the
+      # only exposure control (loopback by default).
+      COMFYUI_ADDRESS: "0.0.0.0"
+      COMFYUI_PORT: "8188"
+      # ADR-0017 engine-side budget enforcement — see the VRAM note in the header.
+      COMFYUI_EXTRA_ARGS: ${COMFYUI_EXTRA_ARGS:---reserve-vram 19.84}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${COMFYUI_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]   # RTX 5090
+              capabilities: [gpu]
+
+volumes:
+  # Model library (migrated portable install). External so `down -v` can never delete
+  # 61 GiB of weights; created by docs/COMFYUI-MIGRATION-RUNBOOK.md.
+  comfyui-models:
+    external: true
+  # Outputs + saved workflows + input uploads. External for the same reason: generated
+  # work must survive project teardown. Subpath layout (output/, user/, input/) is
+  # created by the runbook (docker does not create missing subpaths on mount).
+  comfyui-user:
+    external: true

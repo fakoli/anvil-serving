@@ -1,6 +1,16 @@
-"""anvil-serving init (alias: onboard) — generate a consistent local bring-up (genericity:T006).
+"""anvil-serving init (alias: onboard) — scaffold a local anvil-serving config.
 
-Detects GPUs (`gpus.py`), picks a model from a `models sync` catalog (or an
+`init` with NO flags scaffolds the FULL operational config set into the config
+home (~/.anvil-serving) via `scaffold_home()` — every manifest, compose file,
+topology, `.env.example`, and the tailnet-edge config — so a fresh machine runs
+`anvil-serving serves up --group NAME` with zero hand-assembly. Those files ship
+as PACKAGE DATA under `anvil_serving/_scaffold_templates/` and resolve via
+importlib.resources, so `init` works from a normal `pip`/`uv tool install`, not
+just a source checkout (the #252 packaging regression this module's default path
+now guards against).
+
+`init --single-model` keeps the one-model quick start (genericity:T006): it
+detects GPUs (`gpus.py`), picks a model from a `models sync` catalog (or an
 explicit `--model`), and writes four mutually-consistent files into the CWD:
 
   ./docker-compose.yml   the SGLang/vLLM serve (via `deploy.render()`)
@@ -18,6 +28,7 @@ GPU pinning falls back with a printed warning (never a silent mis-pin) when
 `nvidia-smi` is absent (T007).
 """
 import argparse
+import importlib.resources as _resources
 import json
 import os
 import sys
@@ -37,24 +48,28 @@ class InitError(Exception):
 
 
 # --------------------------------------------------------------------------- #
-# init --home: scaffold the FULL operational config set into ~/.anvil-serving
+# init (default): scaffold the FULL operational config set into ~/.anvil-serving
 # --------------------------------------------------------------------------- #
-# The single-file `init` above is the one-model quick start. `init --home`
-# scaffolds the whole operational set — every manifest, compose file, topology,
-# .env template, and the tailnet-edge config — so a fresh machine can run
-# `anvil-serving serves up --group voice` (or any group) with zero hand-assembly.
+# `init` with no flags scaffolds the whole operational set — every manifest,
+# compose file, topology, .env template, and the tailnet-edge config — so a
+# fresh machine can run `anvil-serving serves up --group voice` (or any group)
+# with zero hand-assembly. (The single-model quick start moved behind
+# `init --single-model`; see `run()` below.)
 #
 # Source of truth: the shipped reference instance under examples/fakoli-dark/
-# (and the reference voice manifest under examples/voice/). The set is COPIED
-# from those canonical files at scaffold time — not hand-duplicated here — so it
-# stays in lockstep with the reference example. Real host-specific values (the
-# reference machine's two GPU UUIDs and its tailnet address) are rewritten to
-# clearly-marked placeholders on the way out; secrets are never written (the
-# scaffold ships `.env.example`, whose values are empty, never `.env`).
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_EXAMPLES_DIR = os.path.join(_HERE, os.pardir, "examples")
-_FAKOLI_DARK = os.path.join(_EXAMPLES_DIR, "fakoli-dark")
-_VOICE_DIR = os.path.join(_EXAMPLES_DIR, "voice")
+# (and the reference voice manifest under examples/voice/). Those canonical
+# files are MIRRORED verbatim into this package's `_scaffold_templates/` data
+# dir (so the set ships INSIDE the wheel and resolves via importlib.resources
+# from any install location — not just a source checkout, the #252 regression).
+# The mirror is kept byte-identical to examples/ by scripts/sync_scaffold_templates.py
+# and guarded against drift by tests/test_init.py::test_scaffold_templates_match_examples.
+#
+# At scaffold time each template is read from the package and its real
+# host-specific values (the reference machine's two GPU UUIDs and its tailnet
+# address) are rewritten to clearly-marked placeholders; secrets are never
+# written (the scaffold ships `.env.example`, whose values are empty, never
+# `.env`).
+_TEMPLATES_PACKAGE = "anvil_serving._scaffold_templates"
 
 # (real value in the reference instance, clearly-marked placeholder). Applied to
 # every scaffolded file so one machine's identity never rides onto a fresh host.
@@ -64,22 +79,41 @@ _SANITIZE = (
     ("100.87.34.66", "REPLACE-WITH-YOUR-TAILNET-IP"),
 )
 
-# Destination filename -> canonical source file (copied through _sanitize).
+# (destination filename in the scaffold, template filename in _scaffold_templates/,
+#  canonical source path under the repo root the mirror is synced from).
 # `edge.toml` is generated from edge.py's canonical routes (see below), so it is
-# not listed here.
-_HOME_SET = (
-    ("serves.toml", os.path.join(_FAKOLI_DARK, "serves.toml")),
-    ("serves.voice.toml", os.path.join(_FAKOLI_DARK, "serves.voice.toml")),
-    ("serves.comfyui.toml", os.path.join(_FAKOLI_DARK, "serves.comfyui.toml")),
-    ("docker-compose.yml", os.path.join(_FAKOLI_DARK, "docker-compose.yml")),
-    ("docker-compose.voice-audio.yml",
-     os.path.join(_FAKOLI_DARK, "docker-compose.voice-audio.yml")),
-    ("docker-compose.comfyui.yml",
-     os.path.join(_FAKOLI_DARK, "docker-compose.comfyui.yml")),
-    ("operator-topology.toml", os.path.join(_FAKOLI_DARK, "operator-topology.toml")),
-    (".env.example", os.path.join(_FAKOLI_DARK, ".env.example")),
-    ("voice.toml", os.path.join(_VOICE_DIR, "voice.example.toml")),
+# not listed here. The source-path column is used only by the drift-guard test
+# and the sync script; runtime resolution reads the middle column as PACKAGE
+# DATA via importlib.resources — never `__file__`/../examples (the #252 bug).
+_SCAFFOLD_TEMPLATES = (
+    ("serves.toml", "serves.toml", "examples/fakoli-dark/serves.toml"),
+    ("serves.voice.toml", "serves.voice.toml", "examples/fakoli-dark/serves.voice.toml"),
+    ("serves.comfyui.toml", "serves.comfyui.toml", "examples/fakoli-dark/serves.comfyui.toml"),
+    ("docker-compose.yml", "docker-compose.yml", "examples/fakoli-dark/docker-compose.yml"),
+    ("docker-compose.voice-audio.yml", "docker-compose.voice-audio.yml",
+     "examples/fakoli-dark/docker-compose.voice-audio.yml"),
+    ("docker-compose.comfyui.yml", "docker-compose.comfyui.yml",
+     "examples/fakoli-dark/docker-compose.comfyui.yml"),
+    ("operator-topology.toml", "operator-topology.toml",
+     "examples/fakoli-dark/operator-topology.toml"),
+    (".env.example", "env.example", "examples/fakoli-dark/.env.example"),
+    ("voice.toml", "voice.example.toml", "examples/voice/voice.example.toml"),
 )
+
+
+def _templates_root():
+    """The packaged `_scaffold_templates/` dir as an importlib.resources Traversable.
+
+    Resolves relative to the INSTALLED `anvil_serving` package — works identically
+    from a `pip`/`uv tool install`ed wheel and a source checkout, which is the
+    whole point of shipping the set as package data (fixes #252, where init read
+    `__file__/../examples`, a path that only exists in a source checkout)."""
+    return _resources.files(_TEMPLATES_PACKAGE)
+
+
+def _read_template(template_name):
+    """Read one packaged scaffold template as text (UTF-8)."""
+    return _templates_root().joinpath(template_name).read_text(encoding="utf-8")
 
 
 def _sanitize(text):
@@ -97,7 +131,7 @@ def render_edge_config():
     `edge.DEFAULT_ROUTES`.
     """
     lines = [
-        "# anvil-serving tailnet edge config (ADR-0019) — generated by `init --home`.",
+        "# anvil-serving tailnet edge config (ADR-0019) — generated by `anvil-serving init`.",
         "# `anvil-serving edge {render,status,up,down}` path-routes the host's single",
         "# MagicDNS name to local services. Additive + idempotent; `down` removes only",
         "# the mounts it manages, never an operator-set `tailscale serve` mapping.",
@@ -117,22 +151,22 @@ def render_edge_config():
 def _home_plan():
     """Build the ordered (dest_name, text) list for the home scaffold.
 
-    Reads + sanitizes every canonical source, then appends the generated
-    `edge.toml`. Raises InitError if any canonical source is missing (e.g. a
-    wheel install without the shipped examples tree) — fail loud, never write a
-    partial set.
+    Reads + sanitizes every packaged template, then appends the generated
+    `edge.toml`. Raises InitError if any packaged template is missing — that
+    would mean a broken install (the templates ship as package data), so fail
+    loud rather than write a partial set.
     """
-    missing = [src for _, src in _HOME_SET if not os.path.isfile(src)]
+    root = _templates_root()
+    missing = [tmpl for _dest, tmpl, _src in _SCAFFOLD_TEMPLATES
+               if not root.joinpath(tmpl).is_file()]
     if missing:
         raise InitError(
-            "cannot scaffold the home config set — the shipped reference examples "
-            "are not available next to this install (missing: %s). Run `init --home` "
-            "from a source checkout of anvil-serving."
-            % ", ".join(sorted(os.path.basename(s) for s in missing)))
-    plan = []
-    for dest_name, src in _HOME_SET:
-        with open(src, encoding="utf-8") as f:
-            plan.append((dest_name, _sanitize(f.read())))
+            "cannot scaffold the home config set — the packaged reference templates "
+            "are not available in this install (missing: %s). This indicates a broken "
+            "anvil-serving install; reinstall the package."
+            % ", ".join(sorted(missing)))
+    plan = [(dest_name, _sanitize(_read_template(tmpl)))
+            for dest_name, tmpl, _src in _SCAFFOLD_TEMPLATES]
     plan.append(("edge.toml", render_edge_config()))
     return plan
 
@@ -146,7 +180,7 @@ def scaffold_home(out_dir=None):
     override (e.g. a temp dir for verification).
 
     Every file is backed up (guard.backup_file → numbered `.anvil.bak.N`) before
-    it is overwritten, exactly like single-file `init`: an existing operator file
+    it is overwritten, exactly like `init --single-model`: an existing operator file
     is NEVER clobbered silently, and a backup that cannot be written aborts the
     whole scaffold rather than proceeding without a revert path. Returns a dict
     describing what was written for the CLI to report and tests to assert on.
@@ -402,10 +436,10 @@ def run(model=None, gpu="0", catalog_dir="./model-library", out_dir=".",
 def main(argv):
     ap = argparse.ArgumentParser(
         prog="anvil-serving init",
-        description="Detect GPUs + a local model, and write a consistent "
-                    "./docker-compose.yml + ./serves.toml + ./router.toml + "
-                    "./operator-topology.toml bring-up "
-                    "(alias: onboard).")
+        description="Scaffold the FULL operational config set into the config home "
+                    "(~/.anvil-serving) so `serves up --group NAME` works with zero "
+                    "hand-assembly. Use --single-model for a one-model quick bring-up "
+                    "into the CWD instead (alias: onboard).")
     ap.add_argument("--model", default=None,
                     help="local model dir mounted into the container "
                          "(default: pick the biggest loadable entry from --catalog-dir)")
@@ -425,17 +459,25 @@ def main(argv):
                          "auto from the catalog's thinking_default)")
     ap.add_argument("--bind", default=None, help="publish address (default: 127.0.0.1)")
     ap.add_argument("--expose-lan", action="store_true", help="shorthand for --bind 0.0.0.0")
-    ap.add_argument("--home", action="store_true",
-                    help="scaffold the FULL operational config set (all manifests, "
-                         "compose files, topology, .env.example, tailnet-edge config) "
-                         "into ~/.anvil-serving so `serves up --group NAME` works with "
-                         "zero hand-assembly (default --out-dir: the config home)")
+    ap.add_argument("--single-model", action="store_true",
+                    help="scaffold a single-model quick bring-up (docker-compose.yml + "
+                         "serves.toml + router.toml + operator-topology.toml) into the "
+                         "CWD instead of the full operational config home. The --model/"
+                         "--catalog-dir/--gpu/--port/etc. flags apply to this mode.")
+    # `--home` is now the DEFAULT (no-flag) behavior. Kept as a hidden, deprecated
+    # alias for one release so existing `init --home` invocations still work.
+    ap.add_argument("--home", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--out-dir", default=None,
-                    help="where to write the files (default: CWD; with --home, the "
-                         "operator config home ~/.anvil-serving)")
+                    help="where to write the files (default: the config home "
+                         "~/.anvil-serving; with --single-model, the CWD)")
     a = ap.parse_args(argv)
 
-    if a.home:
+    if not a.single_model:
+        # Default behavior: scaffold the full operational config home.
+        if a.home:
+            print("[anvil-serving] note: `--home` is now the default and is deprecated; "
+                  "run `init` with no flag (use `--single-model` for the old CWD "
+                  "single-model bring-up).", file=sys.stderr)
         return _main_home(a)
 
     bind = a.bind or (_deploy.LAN_BIND if a.expose_lan else _deploy.LOOPBACK_BIND)
@@ -476,7 +518,7 @@ def main(argv):
 
 
 def _main_home(a):
-    """`init --home`: scaffold the full operational config set into the config home."""
+    """Scaffold the full operational config set into the config home (the `init` default)."""
     try:
         result = scaffold_home(out_dir=a.out_dir)
     except InitError as e:
