@@ -8,8 +8,9 @@ import os
 
 import pytest
 
-from anvil_serving import init, deploy, serves
+from anvil_serving import init, deploy, serve_recipes, serves
 from anvil_serving.router import config as router_config
+from anvil_serving.router import modes as router_modes
 from anvil_serving.topology import load_topology
 
 
@@ -275,6 +276,9 @@ _REAL_HOST_VALUES = (
     "100.87.34.66",
 )
 _EXPECTED_HOME_FILES = {
+    "router.toml", "example.toml", "example-docker.toml",
+    "example-flexibility.toml", "example-with-cloud.toml", "modes.toml",
+    "serve-recipes.toml",
     "serves.toml", "serves.voice.toml", "serves.comfyui.toml",
     "docker-compose.yml", "docker-compose.voice-audio.yml", "docker-compose.comfyui.yml",
     "operator-topology.toml", ".env.example", "voice.toml", "edge.toml",
@@ -299,6 +303,29 @@ def test_scaffold_home_group_tags_resolve(tmp_path):
     # `serves up --group voice` must resolve the STT/TTS serves with zero editing.
     voice_members = serves.resolve_group(serves_set, "voice")
     assert {s["name"] for s in voice_members} == {"stt", "tts"}
+
+
+def test_scaffold_home_router_configs_modes_and_recipes_parse(tmp_path):
+    init.scaffold_home(out_dir=str(tmp_path))
+
+    for name in (
+        "router.toml",
+        "example.toml",
+        "example-docker.toml",
+        "example-flexibility.toml",
+        "example-with-cloud.toml",
+    ):
+        cfg = router_config.load(str(tmp_path / name))
+        assert cfg.tiers, name
+
+    modes = router_modes.load_modes_manifest(str(tmp_path / "modes.toml"))
+    assert modes.active_mode == "agentic"
+    assert modes.paths["agentic"] == str(tmp_path / "example.toml")
+    assert modes.paths["flexibility"] == str(tmp_path / "example-flexibility.toml")
+
+    registry = serve_recipes.load_registry(str(tmp_path / "serve-recipes.toml"))
+    assert registry["schema"] == serve_recipes.REGISTRY_SCHEMA
+    assert registry["recipe"]
 
 
 def test_scaffold_home_writes_placeholders_not_real_host_values(tmp_path):
@@ -360,8 +387,7 @@ def test_init_cli_no_flags_defaults_to_home_scaffold(tmp_path):
     assert rc == 0
     written = {p.name for p in tmp_path.iterdir()}
     assert _EXPECTED_HOME_FILES <= written
-    # It must NOT emit the single-model router.toml — that is behind --single-model.
-    assert not os.path.isfile(tmp_path / "router.toml")
+    assert os.path.isfile(tmp_path / "router.toml")
 
 
 def test_init_cli_home_alias_still_writes_set_with_deprecation_note(tmp_path, capsys):

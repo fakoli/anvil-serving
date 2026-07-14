@@ -5,14 +5,14 @@
 # unless-stopped`) alongside the compose-defined serves (ADR-0002). Docker is an
 # ADDITIONAL deployment option -- `pip install anvil-serving` still works unchanged.
 #
-# Build (from repo root): docker build -t anvil-serving:0.13.1 .
+# Build (from repo root): docker build -t anvil-serving:0.13.2 .
 # Run:   docker run -p 127.0.0.1:8000:8000 \
 #          -e ANVIL_ROUTER_TOKEN \
 #          -v ./configs/example-docker.toml:/etc/anvil/config.toml:ro \
-#          anvil-serving:0.13.1
+#          anvil-serving:0.13.2
 FROM python:3.11-slim
 
-ARG ANVIL_SERVING_VERSION=0.13.1
+ARG ANVIL_SERVING_VERSION=0.13.2
 LABEL org.opencontainers.image.title="anvil-serving" \
       org.opencontainers.image.version="${ANVIL_SERVING_VERSION}"
 

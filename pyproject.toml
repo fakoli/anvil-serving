@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anvil-serving"
-version = "0.13.1"
+version = "0.13.2"
 description = "A quality-gated local-model router for coding harnesses — local where it's proven, cloud where it isn't, verified with automatic fallback."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -72,8 +72,8 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
 # Ship the canonical Tier-0 keyword taxonomy (tier0_keywords.json) inside the
 # wheel so classify.py can load it at runtime from an installed package.
 "anvil_serving.router" = ["*.json"]
-# Ship the canonical reference config templates (mirrored from examples/ by
-# scripts/sync_scaffold_templates.py) INSIDE the wheel so `anvil-serving init`
+# Ship the canonical reference config templates (mirrored from configs/ and
+# examples/ by scripts/sync_scaffold_templates.py) INSIDE the wheel so `anvil-serving init`
 # resolves them via importlib.resources from any install location — not just a
 # source checkout. Without this the installed `init` (default home scaffold)
 # cannot find its templates (the #252 packaging regression).

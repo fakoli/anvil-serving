@@ -1,0 +1,37 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# MODE MANIFEST (optional) — the global two-mode switch (ADR-0011 / flexibility:T012)
+#
+# anvil runs exactly ONE mode of operation at a time; the whole router binds that
+# mode's tiers + presets + serving config:
+#
+#   • agentic     — SGLang cache-friendly agent config (prefix/radix cache is
+#                   load-bearing for multi-turn tool loops; ADR-0008).
+#   • flexibility — cache-irrelevant single-turn quality generation on any-engine
+#                   specialized tiers (ADR-0010).
+#
+# HOW THIS FILE IS USED (it is NOT auto-discovered):
+#   Point ANVIL_MODES_CONFIG at a copy of this file, then run `anvil-serving router run`.
+#       export ANVIL_MODES_CONFIG=/etc/anvil/modes.toml
+#       anvil-serving router run                 # -> active_mode below (here: agentic)
+#       anvil-serving router run --mode flexibility   # flag overrides active_mode
+#       ANVIL_MODE=flexibility anvil-serving router run  # env overrides active_mode
+#
+# PRECEDENCE for the active mode:
+#       --mode FLAG  >  ANVIL_MODE env  >  [modes].active_mode  >  built-in default (agentic)
+#
+# PRECEDENCE for a mode's config PATH:
+#       ANVIL_CONFIG_<MODE> env  >  the [modes].<mode> entry below  >  built-in default
+#   (built-in defaults: configs/example.toml for agentic, configs/example-flexibility.toml
+#    for flexibility — resolved in a source checkout).
+#
+# The [modes].<mode> paths are OPTIONAL: omit them to accept the built-in default
+# (or an ANVIL_CONFIG_<MODE> override). Relative paths resolve against THIS file's
+# directory, so a manifest is portable.
+# ─────────────────────────────────────────────────────────────────────────────
+[modes]
+active_mode = "agentic"                       # default mode when neither --mode nor ANVIL_MODE is set
+
+# Per-mode config-path overrides (optional). Each mode's config file is untouched
+# and isolated — switching modes is a config reload/restart, never per-request.
+agentic     = "example.toml"                  # the SGLang cache-friendly agent config
+flexibility = "example-flexibility.toml"      # the any-engine single-turn quality config

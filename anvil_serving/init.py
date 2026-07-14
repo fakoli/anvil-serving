@@ -1,9 +1,10 @@
 """anvil-serving init (alias: onboard) — scaffold a local anvil-serving config.
 
 `init` with NO flags scaffolds the FULL operational config set into the config
-home (~/.anvil-serving) via `scaffold_home()` — every manifest, compose file,
-topology, `.env.example`, and the tailnet-edge config — so a fresh machine runs
-`anvil-serving serves up --group NAME` with zero hand-assembly. Those files ship
+home (~/.anvil-serving) via `scaffold_home()` — every router/config template,
+manifest, compose file, topology, `.env.example`, and the tailnet-edge config —
+so a fresh machine runs `anvil-serving serves up --group NAME` with zero
+hand-assembly. Those files ship
 as PACKAGE DATA under `anvil_serving/_scaffold_templates/` and resolve via
 importlib.resources, so `init` works from a normal `pip`/`uv tool install`, not
 just a source checkout (the #252 packaging regression this module's default path
@@ -50,8 +51,9 @@ class InitError(Exception):
 # --------------------------------------------------------------------------- #
 # init (default): scaffold the FULL operational config set into ~/.anvil-serving
 # --------------------------------------------------------------------------- #
-# `init` with no flags scaffolds the whole operational set — every manifest,
-# compose file, topology, .env template, and the tailnet-edge config — so a
+# `init` with no flags scaffolds the whole operational set — every canonical
+# router/config template, manifest, compose file, topology, .env template, and
+# the tailnet-edge config — so a
 # fresh machine can run `anvil-serving serves up --group voice` (or any group)
 # with zero hand-assembly. (The single-model quick start moved behind
 # `init --single-model`; see `run()` below.)
@@ -86,6 +88,18 @@ _SANITIZE = (
 # and the sync script; runtime resolution reads the middle column as PACKAGE
 # DATA via importlib.resources — never `__file__`/../examples (the #252 bug).
 _SCAFFOLD_TEMPLATES = (
+    # Canonical product configs. `router.toml` is the operator-friendly default
+    # alias; the example-named copies preserve the documented config family and
+    # keep modes.toml's relative paths valid in an installed-tool scaffold.
+    ("router.toml", "router.toml", "configs/example.toml"),
+    ("example.toml", "example.toml", "configs/example.toml"),
+    ("example-docker.toml", "example-docker.toml", "configs/example-docker.toml"),
+    ("example-flexibility.toml", "example-flexibility.toml",
+     "configs/example-flexibility.toml"),
+    ("example-with-cloud.toml", "example-with-cloud.toml",
+     "configs/example-with-cloud.toml"),
+    ("modes.toml", "modes.toml", "configs/modes.example.toml"),
+    ("serve-recipes.toml", "serve-recipes.toml", "configs/serve-recipes.toml"),
     ("serves.toml", "serves.toml", "examples/fakoli-dark/serves.toml"),
     ("serves.voice.toml", "serves.voice.toml", "examples/fakoli-dark/serves.voice.toml"),
     ("serves.comfyui.toml", "serves.comfyui.toml", "examples/fakoli-dark/serves.comfyui.toml"),
@@ -172,7 +186,7 @@ def _home_plan():
 
 
 def scaffold_home(out_dir=None):
-    """Scaffold the full operational config set into `out_dir`.
+    """Scaffold the complete canonical config set into `out_dir`.
 
     `out_dir` defaults to the operator config home (`~/.anvil-serving`, honoring
     ANVIL_SERVING_HOME) — the default search dir for `serves up` etc. — so a
@@ -518,14 +532,14 @@ def main(argv):
 
 
 def _main_home(a):
-    """Scaffold the full operational config set into the config home (the `init` default)."""
+    """Scaffold every canonical config into the config home (the `init` default)."""
     try:
         result = scaffold_home(out_dir=a.out_dir)
     except InitError as e:
         print(f"[anvil-serving] {e}", file=sys.stderr)
         return 2
 
-    print("scaffolded the operational config set into %s:" % result["out_dir"])
+    print("scaffolded the complete config set into %s:" % result["out_dir"])
     for path in result["written"]:
         print("  " + os.path.basename(path))
     if result["backed_up"]:
@@ -546,7 +560,10 @@ def _main_home(a):
     print("  2. anvil-serving serves groups          # see the resolvable groups")
     print("  3. anvil-serving serves up --group voice   # (or llm-stack / comfy / ...)")
     print("  4. anvil-serving serves status")
-    print("  5. anvil-serving router run             # front door on 127.0.0.1:8000")
+    router_path = os.path.join(result["out_dir"], "router.toml")
+    print("  5. anvil-serving router run --config %s"
+          "   # front door on 127.0.0.1:8000" % router_path)
+    edge_path = os.path.join(result["out_dir"], "edge.toml")
     print("  6. Optional tailnet edge (ADR-0019): anvil-serving edge render "
-          "--config %s/edge.toml" % result["out_dir"])
+          "--config %s" % edge_path)
     return 0
