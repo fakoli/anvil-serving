@@ -9,12 +9,25 @@ All notable changes to this project are documented here. The format is based on
 ### Added
 
 - **Guarded recipe-based model switching.** `anvil-serving serves switch ROLE` lists validated
-  activation-ready recipes without prompting; `--recipe MODEL --confirm` performs the reviewed
+  activation-ready recipes without prompting; `serves switch ROLE MODEL --confirm` performs the reviewed
   Compose/container/router transition with exact loopback bindings, cross-platform locks,
   operation-owned router artifact snapshots, compare-and-swap drift protection, fresh gate
   evidence, bounded failure handling, and automatic rollback only while router state is known.
+  The earlier `--recipe MODEL` spelling remains available as a compatibility alias.
 
 ### Changed
+
+- **Evaluation is split into explicit capacity and quality workflows.**
+  `eval benchmark capacity` measures endpoint performance, while `eval benchmark quality`
+  produces repeated protocol-v3 correctness evidence. Model-family reasoning controls fail closed
+  where incompatibility is known; artifacts retain visible/reasoning budgets, full visible output,
+  finish reasons, provenance, and per-attempt failure classification; ranking suites must declare
+  stronger validators; malformed or resource-exhausting suites fail before requests; failed gates
+  still retain atomic evidence. Requested output paths and notebook eligibility are validated before
+  live work, remote aggregate deadlines cannot exceed the transport cap, and `eval preflight`
+  exposes the same bounds and controls locally and through the controller. Usage-log analysis now
+  has bounded recursive input scanning, per-child deadlines, and rollback-safe paired output commits.
+  The former `eval benchmark run` and `eval planning` forms return exact migration guidance.
 
 - **Model operations now share one preview/apply grammar.** Catalog sync has a
   no-write preview, shared confirmation, output ownership checks, an output-specific

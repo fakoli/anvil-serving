@@ -25,11 +25,11 @@
         "voice-up-down": 3
       },
       "canonical_counts": {
-        "eval-benchmark-external": 23,
-        "eval-benchmark-run": 16,
+        "eval-benchmark-external": 26,
+        "eval-benchmark-run": 1,
         "eval-calibrate": 7,
-        "eval-preflight": 16,
-        "eval-usage": 4,
+        "eval-preflight": 20,
+        "eval-usage": 5,
         "host-gpus": 1,
         "init": 16,
         "mcp-serve": 20,
@@ -45,10 +45,10 @@
         "voice-sidecar": 9
       },
       "files_by_category": {
-        "docs": 60,
+        "docs": 61,
         "tooling": 5
       },
-      "files_scanned": 65,
+      "files_scanned": 66,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -97,11 +97,11 @@
         "voice-up-down": 3
       },
       "canonical_counts": {
-        "eval-benchmark-external": 38,
-        "eval-benchmark-run": 22,
-        "eval-calibrate": 17,
-        "eval-preflight": 24,
-        "eval-usage": 7,
+        "eval-benchmark-external": 40,
+        "eval-benchmark-run": 3,
+        "eval-calibrate": 23,
+        "eval-preflight": 32,
+        "eval-usage": 13,
         "host-gpus": 3,
         "init": 30,
         "mcp-serve": 24,
@@ -117,14 +117,14 @@
         "voice-sidecar": 30
       },
       "files_by_category": {
-        "docs": 60,
+        "docs": 61,
         "examples": 52,
         "implementation": 167,
         "skills": 4,
         "tests": 161,
         "tooling": 28
       },
-      "files_scanned": 472,
+      "files_scanned": 473,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

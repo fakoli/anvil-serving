@@ -132,6 +132,13 @@ gpu_role = "dark-heavy"
 workload = "llm"
 
 [[resources]]
+id = "evaluation"
+role = "evaluation"
+host = "fakoli-dark"
+runtime = "dark-docker"
+workload = "service"
+
+[[resources]]
 id = "dark-stt"
 role = "stt-serve"
 host = "fakoli-dark"
@@ -174,7 +181,7 @@ host = "fakoli-dark"
 runtime = "dark-docker"
 endpoint = "http://192.0.2.20:8766"
 auth_env = "ANVIL_CONTROLLER_TOKEN"
-allowed_operations = ["router-status", "serves-status", "voice-status", "voice-audio-up", "voice-audio-down", "voice-audio-status", "voice-audio-logs"]
+allowed_operations = ["router-status", "serves-status", "eval-preflight", "voice-status", "voice-audio-up", "voice-audio-down", "voice-audio-status", "voice-audio-logs"]
 # The controller is the durable Tailscale path. SSH is only a credential-free
 # bootstrap/recovery transport; verify its placeholder host key before use.
 [[transports]]

@@ -371,6 +371,10 @@ def _safe_probe_url(base_url: str) -> str:
         raise ToolError("bad_base_url", "base_url must not contain credentials; use api_key_env")
     if parsed.query or parsed.fragment:
         raise ToolError("bad_base_url", "base_url must not contain query strings or fragments")
+    try:
+        parsed.port
+    except ValueError as exc:
+        raise ToolError("bad_base_url", "base_url has an invalid port", {"error": str(exc)}) from None
     if parsed.hostname.strip().lower() == "localhost":
         raise ToolError("bad_base_url", "use 127.0.0.1 or a private/tailnet host, not localhost")
     host = parsed.hostname
@@ -2325,17 +2329,42 @@ def tool_openclaw_gateway_status(args: dict) -> dict:
 
 
 def tool_preflight_probe(args: dict) -> dict:
+    from .model_controls import validate_reasoning_control
+
     base_url = _safe_probe_url(_str_arg(args, "base_url", required=True))
     model = _str_arg(args, "model", required=True)
     api_key_env = _probe_api_key_env(args)
-    needle_ctx = _bounded_int_arg(args, "needle_ctx", 128000, min_value=1, max_value=262144)
-    tool_batch = _bounded_int_arg(args, "tool_batch", 20, min_value=1, max_value=100)
+    needle_ctx = _bounded_int_arg(args, "needle_ctx", 128000, min_value=1, max_value=1000000)
+    tool_batch = _bounded_int_arg(args, "tool_batch", 20, min_value=1, max_value=128)
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
     checks = _str_arg(args, "checks") or "smoke,json,needle,tools"
+    selected_checks = [item.strip() for item in checks.split(",") if item.strip()]
+    unknown_checks = sorted(set(selected_checks) - {"smoke", "json", "needle", "tools"})
+    if not selected_checks or unknown_checks:
+        raise ToolError(
+            "bad_argument",
+            "checks must select smoke,json,needle,tools",
+            {"unknown": unknown_checks},
+        )
     thinking_mode = _str_arg(args, "thinking_mode") or "default"
     if thinking_mode not in {"default", "enabled", "disabled", "unsupported"}:
         raise ToolError("bad_argument", "thinking_mode has an unsupported value")
     reasoning_effort = _str_arg(args, "reasoning_effort")
+    if no_thinking:
+        if thinking_mode not in {"default", "disabled"} or reasoning_effort:
+            raise ToolError("bad_argument", "no_thinking conflicts with explicit thinking controls")
+        thinking_mode = "disabled"
+    if reasoning_effort and thinking_mode != "default":
+        raise ToolError("bad_argument", "reasoning_effort cannot be combined with thinking_mode")
+    try:
+        validate_reasoning_control(
+            model,
+            thinking_mode=thinking_mode,
+            no_thinking=no_thinking,
+            reasoning_effort=reasoning_effort or None,
+        )
+    except ValueError as exc:
+        raise ToolError("bad_argument", str(exc)) from None
     reasoning_evidence = _str_arg(args, "reasoning_evidence") or "any"
     if reasoning_evidence not in {"any", "required", "forbidden"}:
         raise ToolError("bad_argument", "reasoning_evidence has an unsupported value")
@@ -2347,21 +2376,39 @@ def tool_preflight_probe(args: dict) -> dict:
     )
     if visible_tokens + reasoning_tokens > 65536:
         raise ToolError("bad_argument", "combined completion allocation exceeds 65536")
+    allowed_finish_reasons = _str_arg(args, "allowed_finish_reasons") or "stop,tool_calls"
+    if not any(item.strip() for item in allowed_finish_reasons.split(",")):
+        raise ToolError("bad_argument", "allowed_finish_reasons cannot be empty")
+    dry_run = _arg_bool(args.get("dry_run"), False, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
-    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 1800, min_value=1, max_value=7200)
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 900, min_value=1, max_value=3600)
+    operation_timeout = timeout_seconds * len(selected_checks) + 5
+    if operation_timeout > 7200:
+        raise ToolError(
+            "bad_argument",
+            "preflight workload deadline exceeds 7200 seconds; reduce checks or "
+            "timeout_seconds",
+        )
     argv = [sys.executable, "-m", "anvil_serving.preflight", "--base-url", base_url,
             "--model", model, "--needle-ctx", str(needle_ctx), "--tool-batch", str(tool_batch),
             "--checks", checks, "--thinking-mode", thinking_mode,
             "--visible-answer-tokens", str(visible_tokens),
             "--reasoning-headroom-tokens", str(reasoning_tokens),
-            "--reasoning-evidence", reasoning_evidence]
+            "--reasoning-evidence", reasoning_evidence,
+            "--allowed-finish-reasons", allowed_finish_reasons,
+            "--timeout-seconds", str(timeout_seconds)]
     if api_key_env:
         argv += ["--api-key-env", api_key_env]
     if no_thinking:
         argv.append("--no-thinking")
     if reasoning_effort:
         argv += ["--reasoning-effort", reasoning_effort]
-    return _ok(_run_argv(argv, confirm=confirm, timeout=timeout_seconds))
+    if dry_run:
+        argv.append("--dry-run")
+        result = _run_argv(argv, confirm=True, timeout=min(operation_timeout, 60))
+        return _ok({"applied": False, "dry_run": True, **result})
+    result = _run_argv(argv, confirm=confirm, timeout=operation_timeout)
+    return _ok({"applied": bool(confirm), "dry_run": not confirm, **result})
 
 
 def tool_benchmark_probe(args: dict) -> dict:
@@ -2374,15 +2421,24 @@ def tool_benchmark_probe(args: dict) -> dict:
     ctx_tokens = _bounded_int_arg(args, "ctx_tokens", 0, min_value=0, max_value=262144)
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
-    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 1800, min_value=1, max_value=7200)
-    argv = [sys.executable, "-m", "anvil_serving.benchmark", "--base-url", base_url,
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 900, min_value=1, max_value=1800)
+    waves = (requests + concurrency - 1) // concurrency
+    operation_timeout = timeout_seconds * waves + 30
+    if operation_timeout > 7200:
+        raise ToolError(
+            "bad_argument",
+            "benchmark workload deadline exceeds 7200 seconds; reduce requests or timeout_seconds",
+        )
+    argv = [sys.executable, "-m", "anvil_serving.benchmark", "capacity",
+            "--base-url", base_url,
             "--model", model, "--requests", str(requests), "--concurrency", str(concurrency),
-            "--max-tokens", str(max_tokens), "--ctx-tokens", str(ctx_tokens)]
+            "--max-tokens", str(max_tokens), "--ctx-tokens", str(ctx_tokens),
+            "--timeout-seconds", str(timeout_seconds)]
     if api_key_env:
         argv += ["--api-key-env", api_key_env]
     if no_thinking:
         argv.append("--no-thinking")
-    return _ok(_run_argv(argv, confirm=confirm, timeout=timeout_seconds))
+    return _ok(_run_argv(argv, confirm=confirm, timeout=operation_timeout))
 
 
 def tool_benchmark_artifact(args: dict) -> dict:
@@ -2398,11 +2454,21 @@ def tool_benchmark_artifact(args: dict) -> dict:
     max_model_len = _bounded_int_arg(args, "max_model_len", 0, min_value=0, max_value=1048576)
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
-    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 1800, min_value=1, max_value=7200)
-    argv = [sys.executable, "-m", "anvil_serving.benchmark", "--base-url", base_url,
+    timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 900, min_value=1, max_value=1800)
+    effective_requests = burst or requests
+    effective_concurrency = burst or concurrency
+    waves = (effective_requests + effective_concurrency - 1) // effective_concurrency
+    operation_timeout = timeout_seconds * waves + 30
+    if operation_timeout > 7200:
+        raise ToolError(
+            "bad_argument",
+            "benchmark workload deadline exceeds 7200 seconds; reduce requests or timeout_seconds",
+        )
+    argv = [sys.executable, "-m", "anvil_serving.benchmark", "capacity",
+            "--base-url", base_url,
             "--model", model, "--requests", str(requests), "--concurrency", str(concurrency),
             "--max-tokens", str(max_tokens), "--ctx-tokens", str(ctx_tokens),
-            "--json-out", artifact_path]
+            "--timeout-seconds", str(timeout_seconds), "--json-out", artifact_path]
     if burst:
         argv += ["--burst", str(burst)]
     if max_model_len:
@@ -2424,12 +2490,19 @@ def tool_benchmark_artifact(args: dict) -> dict:
     parent = os.path.dirname(artifact_path)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    if os.path.exists(artifact_path):
-        try:
-            os.remove(artifact_path)
-        except OSError as exc:
-            raise ToolError("artifact_remove_failed", str(exc), {"artifact_path": artifact_path})
-    result = _run_argv(argv, confirm=True, timeout=timeout_seconds)
+    before = None
+    if os.path.isfile(artifact_path):
+        stat = os.stat(artifact_path)
+        before = (stat.st_mtime_ns, stat.st_size)
+    result = _run_argv(argv, confirm=True, timeout=operation_timeout)
+    if before is not None and os.path.isfile(artifact_path):
+        stat = os.stat(artifact_path)
+        if (stat.st_mtime_ns, stat.st_size) == before:
+            raise ToolError(
+                "artifact_not_written",
+                "benchmark completed but did not replace the existing JSON artifact",
+                {"artifact_path": artifact_path},
+            )
     summary = _read_benchmark_artifact(artifact_path)
     return _ok({
         "applied": True,
@@ -3173,22 +3246,24 @@ TOOLS: Dict[str, dict] = {
             "base_url": {"type": "string"},
             "model": {"type": "string"},
             "api_key_env": {"type": "string"},
-            "needle_ctx": _bounded_integer_schema(1, 262144, 128000),
-            "tool_batch": _bounded_integer_schema(1, 100, 20),
+            "needle_ctx": _bounded_integer_schema(1, 1000000, 128000),
+            "tool_batch": _bounded_integer_schema(1, 128, 20),
             "no_thinking": {"type": "boolean"},
             "checks": {"type": "string"},
             "thinking_mode": {"type": "string", "enum": ["default", "enabled", "disabled", "unsupported"]},
-            "reasoning_effort": {"type": "string"},
+            "reasoning_effort": {"type": "string", "enum": ["none", "minimal", "low", "medium", "high"]},
             "reasoning_evidence": {"type": "string", "enum": ["any", "required", "forbidden"]},
             "visible_answer_tokens": _bounded_integer_schema(1, 65536, 256),
             "reasoning_headroom_tokens": _bounded_integer_schema(0, 65536, 0),
+            "allowed_finish_reasons": {"type": "string"},
+            "dry_run": {"type": "boolean"},
             "confirm": {"type": "boolean"},
-            "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
+            "timeout_seconds": _bounded_integer_schema(1, 3600, 900),
         }, required=["base_url", "model"]),
         "handler": tool_preflight_probe,
     },
     "benchmark_probe": {
-        "description": "Preview or run an anvil-serving eval benchmark run command for a model endpoint.",
+        "description": "Preview or run a bounded eval benchmark capacity command for a model endpoint.",
         "inputSchema": _schema({
             "base_url": {"type": "string"},
             "model": {"type": "string"},
@@ -3199,12 +3274,12 @@ TOOLS: Dict[str, dict] = {
             "ctx_tokens": _bounded_integer_schema(0, 262144, 0),
             "no_thinking": {"type": "boolean"},
             "confirm": {"type": "boolean"},
-            "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
+            "timeout_seconds": _bounded_integer_schema(1, 1800, 900),
         }, required=["base_url", "model"]),
         "handler": tool_benchmark_probe,
     },
     "benchmark_artifact": {
-        "description": "Preview or run an anvil-serving eval benchmark run and write a validated local JSON artifact.",
+        "description": "Preview or run a bounded eval benchmark capacity command and atomically replace a validated local JSON artifact.",
         "inputSchema": _schema({
             "base_url": {"type": "string"},
             "model": {"type": "string"},
@@ -3218,7 +3293,7 @@ TOOLS: Dict[str, dict] = {
             "max_model_len": _bounded_integer_schema(0, 1048576, 0),
             "no_thinking": {"type": "boolean"},
             "confirm": {"type": "boolean"},
-            "timeout_seconds": _bounded_integer_schema(1, 7200, 1800),
+            "timeout_seconds": _bounded_integer_schema(1, 1800, 900),
         }, required=["base_url", "model", "artifact_path"]),
         "handler": tool_benchmark_artifact,
     },

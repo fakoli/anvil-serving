@@ -171,7 +171,9 @@ Use the durable CLI surfaces for repeatable operations:
 anvil-serving models pull OWNER/REPO --revision COMMIT_SHA --confirm
 anvil-serving serves up SERVICE --manifest examples/fakoli-dark/serves.toml --recreate --confirm
 anvil-serving eval preflight --base-url http://127.0.0.1:PORT/v1 --model SERVED_NAME --confirm
-anvil-serving eval benchmark run --base-url http://127.0.0.1:PORT/v1 --model SERVED_NAME --suite SUITE.json --confirm
+anvil-serving eval benchmark quality --base-url http://127.0.0.1:PORT/v1 \
+  --model SERVED_NAME --suite-file SUITE.json --candidate-id CANDIDATE \
+  --config-id CONFIG --output quality.json --confirm
 ```
 
 Then:

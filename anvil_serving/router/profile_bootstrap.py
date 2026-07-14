@@ -56,8 +56,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -363,13 +365,33 @@ def serialize_profile(profile: dict) -> str:
     return json.dumps(profile, indent=2, sort_keys=True) + "\n"
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    path = Path(path)
+    if not path.parent.is_dir():
+        raise OSError(f"output directory does not exist: {path.parent}")
+    temporary: Optional[str] = None
+    try:
+        with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", newline="\n", dir=path.parent,
+                prefix=f".{path.name}.", suffix=".tmp", delete=False) as handle:
+            temporary = handle.name
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            Path(temporary).unlink(missing_ok=True)
+
+
 def write_profile(eval_data_root: Path, out_path: Path) -> dict:
     """Build the profile from the fixtures and write it to ``out_path``.
 
     Returns the in-memory profile document (also written, byte-stable).
     """
     profile = build_profile(eval_data_root)
-    out_path.write_text(serialize_profile(profile), encoding="utf-8")
+    _atomic_write_text(out_path, serialize_profile(profile))
     return profile
 
 
@@ -658,6 +680,20 @@ def run_live(
             f"measured — list each measured tier's id in `endpoints` (its confirmed "
             f"serving URL) so the batch never dials a tier you did not confirm."
         )
+    mismatched = []
+    for tier in local_tiers:
+        tier_id = _tier_attr(tier, "id")
+        configured = _tier_attr(tier, "base_url")
+        confirmed = endpoints.get(tier_id) if tier_id is not None else None
+        if configured and confirmed and str(configured).rstrip("/") != str(confirmed).rstrip("/"):
+            mismatched.append(
+                f"{tier_id}: confirmed {confirmed!r}, configured {configured!r}"
+            )
+    if mismatched:
+        raise LiveBootstrapNotConfigured(
+            "run_live: confirmed endpoint does not match the backend that would be "
+            "dialed: " + "; ".join(mismatched)
+        )
 
     now_fn = now or _live_now
 
@@ -793,7 +829,7 @@ def run_live(
         "entries": [e.to_dict() for e in entries],
     }
     if out_path is not None:
-        Path(out_path).write_text(serialize_profile(profile), encoding="utf-8")
+        _atomic_write_text(Path(out_path), serialize_profile(profile))
 
     # Return the routable candidate store (measured rows MERGED OVER the seed, so an
     # unmeasured class keeps its seed verdict) — the same load shape as --replay.

@@ -223,8 +223,7 @@ The loaded-endpoint benchmark mode records one candidate/config run without star
 the serve:
 
 ```bash
-anvil-serving eval benchmark run \
-  --bakeoff \
+anvil-serving eval benchmark quality \
   --base-url http://127.0.0.1:39010/v1 \
   --model qwen36-35b-a3b-nvfp4 \
   --candidate-id qwen36-35b-a3b \
@@ -232,15 +231,16 @@ anvil-serving eval benchmark run \
   --context-targets 32768 \
   --suite chat,context,tool \
   --source-recipe configs/serve-recipes.toml#nvidia-qwen36-35b-a3b-nvfp4 \
-  --serve-command "anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b" \
-  --evidence-out .anvil/evidence/fast-qwen36-35b-a3b-vllm-32k.json
+  --serve-command "anvil-serving serves up fast-qwen36-35b-a3b --manifest examples/fakoli-dark/serves.toml" \
+  --output .anvil/evidence/fast-qwen36-35b-a3b-vllm-32k.json \
+  --confirm
 ```
 
 The evidence JSON includes identity, source recipe, timing, context targets, tool/voice sections,
 score inputs, and a `failures` list. Failed sub-checks stay in the same artifact as successful
 checks so the final scoring pass can compare partial candidates without rerunning a loaded model.
 
-For reasoning-capable cross-model evals, use the protocol-v2 controls rather
+For reasoning-capable cross-model evals, use the protocol-v3 controls rather
 than a shared undifferentiated completion cap. Select either `--thinking-mode`
 for chat-template-controlled families or `--reasoning-effort` for GPT-OSS and
 Mistral-style APIs, then specify an equal `--visible-answer-tokens` allocation
@@ -272,8 +272,7 @@ anvil-serving voice benchmark \
   --candidate qwen36-35b-a3b-vllm-nvfp4-32k \
   --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.voice.json
 
-anvil-serving eval benchmark run \
-  --bakeoff \
+anvil-serving eval benchmark quality \
   --base-url http://127.0.0.1:39010/v1 \
   --model qwen36-35b-a3b-nvfp4 \
   --candidate-id qwen36-35b-a3b \
@@ -284,12 +283,13 @@ anvil-serving eval benchmark run \
   --stt-latency-ms 68.65 \
   --tts-latency-ms 143.46 \
   --source-recipe configs/serve-recipes.toml#nvidia-qwen36-35b-a3b-nvfp4 \
-  --serve-command "anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast-qwen36-35b-a3b" \
-  --evidence-out docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json
+  --serve-command "anvil-serving serves up fast-qwen36-35b-a3b --manifest examples/fakoli-dark/serves.toml" \
+  --output docs/findings/fast-tier-bakeoff-evidence/qwen36-35b-a3b-vllm-nvfp4-32k.bakeoff.json \
+  --confirm
 
-anvil-serving serves --manifest examples/fakoli-dark/serves.toml down fast-qwen36-35b-a3b
-anvil-serving serves --manifest examples/fakoli-dark/serves.toml up fast
-anvil-serving serves --manifest examples/fakoli-dark/serves.toml status
+anvil-serving serves down fast-qwen36-35b-a3b --manifest examples/fakoli-dark/serves.toml --confirm
+anvil-serving serves up fast --manifest examples/fakoli-dark/serves.toml --confirm
+anvil-serving serves status --manifest examples/fakoli-dark/serves.toml
 ```
 
 Treat the voice benchmark artifact as stage-latency evidence unless its STT
@@ -299,11 +299,11 @@ Promotion remains a separate human-gated router/profile decision.
 ## `anvil-serving eval` — one entry point for the evals
 
 ```bash
-anvil-serving eval preflight --tier fast     # correctness gate vs the fast serve
-anvil-serving eval benchmark run --tier heavy --confirm    # throughput / request-replay
-anvil-serving eval planning                  # planning bake-off (offline re-grade)
-anvil-serving eval planning --live           # also re-generate against live serves
-anvil-serving eval bootstrap                 # replay eval fixtures -> quality profile
+anvil-serving eval preflight --tier fast --confirm
+anvil-serving eval benchmark capacity --tier heavy --output capacity.json --confirm
+anvil-serving eval benchmark quality --tier heavy --suite-file suite.json \
+  --candidate-id MODEL --config-id CONFIG --output quality.json --confirm
+anvil-serving eval bootstrap --eval-data ./eval-data --out ./profile.json --confirm
 ```
 
 - **`preflight` / `benchmark`** resolve `--base-url` and `--model` from the serves
@@ -311,11 +311,9 @@ anvil-serving eval bootstrap                 # replay eval fixtures -> quality p
   actionable hint (`start it: anvil-serving serves up fast`) instead of a
   connection error. Pass extra script flags after the options, or use
   `--base-url`/`--model` to target any endpoint.
-- **`planning`** drives the planning-capability bake-off. The default `--offline`
-  re-runs the deterministic structural grade + aggregate over the committed
-  eval-data (no serves needed, byte-reproducible). `--live` first runs
-  `eval_gen.py` against the heavy+fast serves (the frontier baseline and blind
-  judge panel remain human-agent steps — see the eval README).
+- **`benchmark quality`** runs repeated built-in or external suites and retains
+  full visible output, finish/reasoning evidence, budgets, pass rates, and provenance.
+  The removed `eval planning` path is replaced by `benchmark quality --suite-file`.
 - **`bootstrap`** replays the committed eval fixtures into a quality-profile table
   (`anvil_serving.router.profile_bootstrap --replay`) — the eval-grounded seed for
   the router's routing policy (planning → cloud `allow`; locals `deny`).
@@ -323,9 +321,10 @@ anvil-serving eval bootstrap                 # replay eval fixtures -> quality p
 ### Typical flow
 
 ```bash
-anvil-serving serves up                       # bring the models up
-anvil-serving eval preflight --tier fast      # is it correct?
-anvil-serving eval benchmark run --tier fast --confirm      # is it fast enough?
-anvil-serving serves down                     # free the GPUs when done
-anvil-serving eval planning                   # re-grade the bake-off offline anytime
+anvil-serving serves up --confirm
+anvil-serving eval preflight --tier fast --confirm
+anvil-serving eval benchmark capacity --tier fast --output fast-capacity.json --confirm
+anvil-serving eval benchmark quality --tier fast --suite-file suite.json \
+  --candidate-id MODEL --config-id CONFIG --output fast-quality.json --confirm
+anvil-serving serves down --confirm
 ```

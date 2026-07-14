@@ -635,7 +635,7 @@ the benchmark process. They do not promote the candidate, change the router's
 Fast preset, or make OpenClaw use the candidate outside this explicit run.
 
 For Fast-tier LLM bakeoffs, pair `voice benchmark` with
-`anvil-serving eval benchmark run --bakeoff` against the same loaded endpoint and record
+`anvil-serving eval benchmark quality` against the same loaded endpoint and record
 the final `anvil-serving serves --manifest examples/fakoli-dark/serves.toml
 status` after restoring production Fast. Voice benchmark JSON is stage-latency
 evidence unless the STT hypothesis and WER prove semantic transcription quality

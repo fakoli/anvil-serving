@@ -232,7 +232,7 @@ def test_removed_root_paths_emit_only_migration_guidance(argv, replacement, caps
         (["score"], "models score"),
         (["profile"], "eval usage"),
         (["preflight"], "eval preflight"),
-        (["benchmark"], "eval benchmark run"),
+        (["benchmark"], "eval benchmark capacity"),
         (["external-bench"], "eval benchmark external"),
         (["calibrate"], "eval calibrate"),
         (["gpus"], "host gpus"),
@@ -790,6 +790,7 @@ def test_cli_remote_eval_dispatches_confirmed_typed_probe(tmp_path, monkeypatch)
         "model": "served",
         "needle_ctx": 4096,
         "timeout_seconds": 60,
+        "dry_run": False,
         "confirm": True,
     }
     assert seen["key"].startswith("cli-")
@@ -799,6 +800,22 @@ def test_remote_transport_timeout_covers_declared_workload_deadline():
     assert cli._remote_transport_timeout({}) == 60.0
     assert cli._remote_transport_timeout({"timeout_seconds": 300}) == 305.0
     assert cli._remote_transport_timeout({"timeout_seconds": 7200}) == 7205.0
+    assert cli._remote_transport_timeout(
+        {"timeout_seconds": 30, "checks": "smoke,json"},
+        tool_name="preflight_probe",
+    ) == 65.0
+    assert cli._remote_transport_timeout(
+        {"timeout_seconds": 30}, tool_name="preflight_probe"
+    ) == 125.0
+    assert cli._remote_transport_timeout(
+        {"timeout_seconds": 3600, "checks": "smoke", "dry_run": True},
+        tool_name="preflight_probe",
+    ) == 60.0
+    with pytest.raises(cli.TransportError, match="remote workload deadline exceeds"):
+        cli._remote_transport_timeout(
+            {"timeout_seconds": 3600, "checks": "smoke,json,needle,tools"},
+            tool_name="preflight_probe",
+        )
 
 
 def test_cli_remote_eval_rejects_operator_manifest_before_transport(tmp_path, monkeypatch, capsys):
@@ -1317,16 +1334,16 @@ def test_focused_action_help_for_operational_verbs(capsys):
     assert "usage: anvil-serving harness restart openclaw" in out
     assert "--timeout-seconds" in out
 
-    with pytest.raises(SystemExit) as exc:
-        benchmark.main(["--help"])
-    assert exc.value.code == 0
-    out = capsys.readouterr().out
-    assert "usage: anvil-serving eval benchmark run" in out
-    assert "direct endpoint input" in out
-    assert "serves manifest input" in out
-    assert "--base-url" in out and "--manifest" in out and "--tier" in out
-    assert "--timeout-seconds" in out
-    assert "external" in out
+    for workload in ("capacity", "quality"):
+        with pytest.raises(SystemExit) as exc:
+            benchmark.main([workload, "--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        assert "usage: anvil-serving eval benchmark %s" % workload in out
+        assert "direct endpoint input" in out
+        assert "serves manifest input" in out
+        assert "--base-url" in out and "--manifest" in out and "--tier" in out
+        assert "--timeout-seconds" in out
 
 
 def test_serves_help_explains_each_action(capsys):
@@ -1415,6 +1432,57 @@ def test_cli_reference_indexes_the_live_canonical_surface():
             current = next(item for item in nodes if item.name == segment)
             nodes = current.children
         assert current.docs_anchor.startswith("docs/")
+
+
+def test_cli_reference_routes_recipes_and_eval_by_workflow():
+    landing = (_REPO_ROOT / "docs" / "CLI.md").read_text(encoding="utf-8")
+    assert "| Catalog, artifacts, and recipes | `models` |" in landing
+    assert "[Models & recipes: Recipes](cli/models.md#recipes)" in landing
+
+    eval_reference = (_REPO_ROOT / "docs" / "cli" / "eval.md").read_text(
+        encoding="utf-8"
+    )
+    for heading in (
+        "## Choose the workflow",
+        "## Target an endpoint",
+        "## Preflight",
+        "## Reasoning controls and budgets",
+        "## Benchmark",
+        "## Benchmark evidence",
+        "## Usage, bootstrap, and calibration",
+        "## External benchmarks",
+        "## Migration",
+    ):
+        assert heading in eval_reference
+    for command in (
+        "eval preflight",
+        "eval benchmark capacity",
+        "eval benchmark quality",
+        "eval benchmark evidence list",
+        "eval benchmark evidence show",
+        "eval benchmark evidence compare",
+        "eval usage",
+        "eval bootstrap",
+        "eval calibrate",
+    ):
+        assert command in eval_reference
+
+    external_reference = (_REPO_ROOT / "docs" / "EXTERNAL-BENCHMARKS.md").read_text(
+        encoding="utf-8"
+    )
+    for action in (
+        "init",
+        "sources",
+        "fetch",
+        "import",
+        "list",
+        "report",
+        "export",
+        "compare",
+    ):
+        assert f"eval benchmark external {action}" in external_reference
+    for action in ("add", "list", "render"):
+        assert f"eval benchmark external notebook {action}" in external_reference
 
 
 def test_active_cli_docs_do_not_advertise_tombstoned_mcp_forms():
@@ -1532,7 +1600,7 @@ def test_calibrate_help_documents_verb_and_flags(capsys):
         "--mode",
         "--out",
         "--endpoint",
-        "--i-understand-this-calls-real-tiers",
+        "--dry-run",
         "--eval-data",
     ):
         assert token in out, token
@@ -1547,7 +1615,10 @@ def test_calibrate_requires_a_config_selector(tmp_path, monkeypatch, capsys):
     _block_network(monkeypatch)
     called = []
     monkeypatch.setattr(calibrate_mod, "run_live", lambda **k: called.append(k))
-    rc = calibrate_mod.main(["--out", str(tmp_path / "c.json")])
+    rc = calibrate_mod.main([
+        "--out", str(tmp_path / "c.json"),
+        "--eval-data", calibrate_mod.DEFAULT_EVAL_DATA,
+    ])
     assert rc == 2
     assert called == []
     assert "no config selected" in capsys.readouterr().err
@@ -1563,6 +1634,8 @@ def test_calibrate_refuses_without_confirmation(tmp_path, monkeypatch, capsys):
         [
             "--config",
             _write_config(tmp_path),
+            "--eval-data",
+            calibrate_mod.DEFAULT_EVAL_DATA,
             "--out",
             str(out),
             "--endpoint",
@@ -1585,6 +1658,8 @@ def test_calibrate_refuses_without_endpoints(tmp_path, monkeypatch, capsys):
         [
             "--config",
             _write_config(tmp_path),
+            "--eval-data",
+            calibrate_mod.DEFAULT_EVAL_DATA,
             "--out",
             str(out),
             "--i-understand-this-calls-real-tiers",
@@ -1593,7 +1668,7 @@ def test_calibrate_refuses_without_endpoints(tmp_path, monkeypatch, capsys):
     )
     assert rc == 2
     assert not out.exists()
-    assert "not configured to run" in capsys.readouterr().err
+    assert "--endpoint must cover every local tier: fast-local" in capsys.readouterr().err
 
 
 def test_calibrate_malformed_endpoint_is_a_clean_error(tmp_path, monkeypatch, capsys):
@@ -1604,6 +1679,8 @@ def test_calibrate_malformed_endpoint_is_a_clean_error(tmp_path, monkeypatch, ca
         [
             "--config",
             _write_config(tmp_path),
+            "--eval-data",
+            calibrate_mod.DEFAULT_EVAL_DATA,
             "--out",
             str(tmp_path / "c.json"),
             "--endpoint",
@@ -1613,6 +1690,64 @@ def test_calibrate_malformed_endpoint_is_a_clean_error(tmp_path, monkeypatch, ca
     )
     assert rc == 2
     assert "TIER=URL" in capsys.readouterr().err
+
+
+def test_calibrate_rejects_invalid_endpoint_port(tmp_path, monkeypatch, capsys):
+    _clear_mode_env(monkeypatch)
+    _block_network(monkeypatch)
+    rc = calibrate_mod.main([
+        "--config", _write_config(tmp_path),
+        "--eval-data", calibrate_mod.DEFAULT_EVAL_DATA,
+        "--out", str(tmp_path / "candidate.json"),
+        "--endpoint", "fast-local=http://127.0.0.1:not-a-port/v1",
+        "--i-understand-this-calls-real-tiers",
+    ])
+    assert rc == 2
+    assert "invalid port" in capsys.readouterr().err
+
+
+def test_calibrate_rejects_endpoint_that_differs_from_config(
+    tmp_path, monkeypatch, capsys
+):
+    _clear_mode_env(monkeypatch)
+    _block_network(monkeypatch)
+    called = []
+    monkeypatch.setattr(calibrate_mod, "run_live", lambda **kwargs: called.append(kwargs))
+    rc = calibrate_mod.main([
+        "--config", _write_config(tmp_path),
+        "--eval-data", calibrate_mod.DEFAULT_EVAL_DATA,
+        "--out", str(tmp_path / "candidate.json"),
+        "--endpoint", "fast-local=http://127.0.0.1:39999/v1",
+        "--i-understand-this-calls-real-tiers",
+    ])
+    assert rc == 2
+    assert called == []
+    assert "does not match configured backend" in capsys.readouterr().err
+
+
+def test_calibrate_dry_run_never_calls_tiers_judge_or_writer(
+    tmp_path, monkeypatch, capsys
+):
+    _clear_mode_env(monkeypatch)
+    _block_network(monkeypatch)
+    monkeypatch.setattr(
+        calibrate_mod,
+        "run_live",
+        lambda **kwargs: pytest.fail("dry-run called run_live"),
+    )
+    out = tmp_path / "candidate.json"
+    rc = calibrate_mod.main([
+        "--config", _write_config(tmp_path),
+        "--eval-data", calibrate_mod.DEFAULT_EVAL_DATA,
+        "--out", str(out),
+        "--endpoint", "fast-local=http://127.0.0.1:30001/v1",
+        "--dry-run",
+    ])
+    assert rc == 0
+    assert not out.exists()
+    rendered = capsys.readouterr().out
+    assert "calibration plan" in rendered
+    assert "deferred: tier requests, independent judge calls, candidate write" in rendered
 
 
 def test_calibrate_wires_run_live_and_prints_promote(tmp_path, monkeypatch, capsys):
@@ -1649,6 +1784,8 @@ def test_calibrate_wires_run_live_and_prints_promote(tmp_path, monkeypatch, caps
         [
             "--config",
             cfg_path,
+            "--eval-data",
+            calibrate_mod.DEFAULT_EVAL_DATA,
             "--out",
             str(out),
             "--endpoint",
@@ -1688,6 +1825,8 @@ def test_calibrate_rejects_missing_out_dir_before_running_batch(tmp_path, monkey
         [
             "--config",
             _write_config(tmp_path),
+            "--eval-data",
+            calibrate_mod.DEFAULT_EVAL_DATA,
             "--out",
             str(tmp_path / "nope" / "candidate.json"),  # 'nope' dir does not exist
             "--endpoint",
@@ -1735,11 +1874,13 @@ def test_calibrate_dispatches_through_cli(tmp_path, monkeypatch):
             "calibrate",
             "--config",
             _write_config(tmp_path),
+            "--eval-data",
+            calibrate_mod.DEFAULT_EVAL_DATA,
             "--out",
             str(tmp_path / "c.json"),
             "--endpoint",
             "fast-local=http://127.0.0.1:30001/v1",
-            "--i-understand-this-calls-real-tiers",
+            "--confirm",
         ]
     )
     assert rc == 0
@@ -1756,6 +1897,8 @@ def test_calibrate_forwards_max_tokens_when_set(tmp_path, monkeypatch):
         [
             "--config",
             _write_config(tmp_path),
+            "--eval-data",
+            calibrate_mod.DEFAULT_EVAL_DATA,
             "--out",
             str(tmp_path / "c.json"),
             "--endpoint",
@@ -1772,6 +1915,8 @@ def test_calibrate_forwards_max_tokens_when_set(tmp_path, monkeypatch):
         [
             "--config",
             _write_config(tmp_path),
+            "--eval-data",
+            calibrate_mod.DEFAULT_EVAL_DATA,
             "--out",
             str(tmp_path / "c.json"),
             "--endpoint",

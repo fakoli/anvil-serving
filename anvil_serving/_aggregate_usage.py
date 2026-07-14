@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """aggregate_usage.py - roll up ALL Claude Code session logs into inference-sizing metrics.
 
 Mirrors session-retro/session_stats.py field definitions (output/input/cache tokens,
@@ -11,9 +11,13 @@ import json
 import os
 import re
 import sys
-import glob
 from collections import Counter, defaultdict
 from datetime import datetime
+
+try:
+    from .usage_logs import discover_jsonl_logs, iter_json_objects
+except ImportError:
+    from usage_logs import discover_jsonl_logs, iter_json_objects
 
 PROJECTS = os.environ.get("ANVIL_CLAUDE_LOGS") or os.path.expanduser("~/.claude/projects")
 
@@ -34,7 +38,7 @@ def main():
     out_path = None
     if "--out" in sys.argv:
         out_path = sys.argv[sys.argv.index("--out")+1]
-    files = glob.glob(os.path.join(PROJECTS, "**", "*.jsonl"), recursive=True)
+    files = discover_jsonl_logs(PROJECTS)
 
     # global accumulators
     tot = Counter()                      # output/input/cc/cr/asst_calls
@@ -64,15 +68,8 @@ def main():
         n_sessions += 1
         s_first=s_last=None; s_asst=0; s_out=0; sid=None
         try:
-            fh = open(f, encoding="utf-8", errors="replace")
-        except Exception:
-            continue
-        with fh:
-            for line in fh:
-                line=line.strip()
-                if not line: continue
-                try: d = json.loads(line)
-                except Exception: continue
+            records = iter_json_objects(f)
+            for d in records:
                 if sid is None: sid = d.get("sessionId")
                 ts = d.get("timestamp")
                 if ts:
@@ -113,6 +110,8 @@ def main():
                         ac = g(r"<agent_count>(\d+)", txt); st = g(r"<subagent_tokens>(\d+)", txt)
                         if ac: wf_agent_counts.append(int(ac))
                         if st: wf_subagent_tokens += int(st)
+        except (OSError, ValueError):
+            raise
         if s_asst:
             dur = 0.0
             if s_first and s_last:
