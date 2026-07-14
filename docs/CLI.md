@@ -154,26 +154,26 @@ required operands, choices, and defaults.
 | `eval benchmark external notebook render` | Render the bakeoff comparison. | `read` / `bounded` | `--db`<br>`--task`<br>`--hardware`<br>`--format`<br>`--baseline` |
 | `voice` | Manage audio and realtime proxy operations. | `read` / `bounded` | - |
 | `voice audio` | Manage Dark-owned STT/TTS lifecycle. | `read` / `bounded` | - |
-| `voice audio up` | Start audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `voice audio down` | Stop audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `voice audio status` | Show bounded audio serve status. | `read` / `bounded` | - |
-| `voice audio logs` | Show bounded audio serve logs. | `read` / `bounded` | - |
+| `voice audio up` | Start audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--timeout-seconds` |
+| `voice audio down` | Stop audio serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--timeout-seconds` |
+| `voice audio status` | Show bounded audio serve status. | `read` / `bounded` | `--config`<br>`--profile`<br>`--ready-timeout` |
+| `voice audio logs` | Show bounded audio serve logs. | `read` / `bounded` | `--config`<br>`--profile`<br>`--tail` |
 | `voice proxy` | Manage the realtime proxy process. | `read` / `bounded` | - |
-| `voice proxy run` | Run the realtime proxy. | `process` / `foreground` | - |
-| `voice proxy up` | Start the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `voice proxy down` | Stop the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `voice proxy restart` | Restart the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `voice proxy status` | Show realtime proxy status. | `read` / `bounded` | - |
-| `voice proxy logs` | Show bounded realtime proxy logs. | `read` / `bounded` | - |
-| `voice proxy bridge` | Run the Mini-to-Dark audio bridge. | `process` / `foreground` | - |
-| `voice benchmark` | Benchmark an end-to-end voice session. | `read` / `bounded` | - |
+| `voice proxy run` | Run the realtime proxy. | `process` / `foreground` | `--config`<br>`--profile`<br>`--candidate`<br>`--candidate-overlay` |
+| `voice proxy up` | Start the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--pid-file`<br>`--log-file` |
+| `voice proxy down` | Stop the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--pid-file`<br>`--log-file` |
+| `voice proxy restart` | Restart the realtime proxy. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--profile`<br>`--pid-file`<br>`--log-file` |
+| `voice proxy status` | Show realtime proxy status. | `read` / `bounded` | `--config`<br>`--profile`<br>`--pid-file`<br>`--log-file` |
+| `voice proxy logs` | Show bounded realtime proxy logs. | `read` / `bounded` | `--config`<br>`--profile`<br>`--pid-file`<br>`--log-file`<br>`--tail` |
+| `voice proxy bridge` | Run the Mini-to-Dark audio bridge. | `process` / `foreground` | `--config`<br>`--profile`<br>`--listen-host`<br>`--stt-listen-port`<br>`--stt-target-host`<br>`--stt-target-port`<br>`--tts-listen-port`<br>`--tts-target-host`<br>`--tts-target-port`<br>`--dry-run` |
+| `voice benchmark` | Benchmark an end-to-end voice session. | `read` / `bounded` | `--config`<br>`--profile`<br>`--candidate`<br>`--candidate-overlay`<br>`--candidate-base-url`<br>`--candidate-model`<br>`--candidate-api-key-env`<br>`--evidence-out` |
 | `voice profiles` | Inspect voice profiles. | `read` / `bounded` | - |
-| `voice profiles list` | List voice profiles. | `read` / `bounded` | - |
-| `voice profiles validate` | Validate the profile selected by --profile. | `read` / `bounded` | - |
+| `voice profiles list` | List voice profiles. | `read` / `bounded` | `--config` |
+| `voice profiles validate` | Validate the profile selected by --profile. | `read` / `bounded` | `--config`<br>`--profile` |
 | `voice sidecar` | Manage the speech-to-speech sidecar. | `read` / `bounded` | - |
-| `voice sidecar validate` | Validate a sidecar manifest. | `read` / `bounded` | - |
-| `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | - |
-| `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | - |
+| `voice sidecar validate` | Validate a sidecar manifest. | `read` / `bounded` | `--config` |
+| `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | `--config`<br>`--with-auth` |
+| `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | `--config`<br>`--service-name`<br>`--with-auth` |
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
 | `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--out`<br>`--base-url`<br>`--api-key-env`<br>`--gateway-host`<br>`--gateway-user`<br>`--gateway-path`<br>`--overwrite`<br>`--restart`<br>`--timeout-seconds`<br>`--skills`<br>`--skill-dir`<br>`--voice`<br>`--voice-realtime-url`<br>`--voice-model`<br>`--voice-consult-model`<br>`--voice-consult-thinking-level`<br>`--voice-consult-bootstrap-context-mode`<br>`--voice-api-key-env` |

@@ -1908,17 +1908,25 @@ def build_command_tree() -> CommandTree:
         },
     }
     eval_node = _with_review_metadata(eval_node, eval_review_metadata)
+    voice_config_options = (
+        _option("--config", summary="Voice manifest TOML.", value_name="PATH"),
+        _option("--profile", summary="Named voice profile overlay.", value_name="NAME"),
+    )
+    proxy_process_options = (
+        _option("--pid-file", summary="Owned proxy PID record.", value_name="PATH"),
+        _option("--log-file", summary="Bounded proxy process log.", value_name="PATH"),
+    )
     voice = _node(
         "voice", "Manage audio and realtime proxy operations.",
         children=(
             _node("audio", "Manage Dark-owned STT/TTS lifecycle.", children=(
-                _resource_node("up", "Start audio serves.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), mutation="mutate", options=confirm_options, argv_prefix=("audio", "up"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "up"),))),
-                _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), mutation="mutate", options=confirm_options, argv_prefix=("audio", "down"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "down"),))),
-                _resource_node("status", "Show bounded audio serve status.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), argv_prefix=("audio", "status"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "status"),), allowed=("config", "profile", "ready_timeout", "timeout_seconds"))),
-                _resource_node("logs", "Show bounded audio serve logs.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), argv_prefix=("audio", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "tail", "timeout_seconds"))),
+                _resource_node("up", "Start audio serves.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), mutation="mutate", options=confirm_options + voice_config_options + (_option("--timeout-seconds", summary="Overall lifecycle deadline.", value_name="SECONDS"),), argv_prefix=("audio", "up"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "up"),), allowed=("config", "profile", "dry_run", "timeout_seconds"))),
+                _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), mutation="mutate", options=confirm_options + voice_config_options + (_option("--timeout-seconds", summary="Overall lifecycle deadline.", value_name="SECONDS"),), argv_prefix=("audio", "down"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "down"),), allowed=("config", "profile", "dry_run", "timeout_seconds"))),
+                _resource_node("status", "Show bounded audio serve status.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), options=voice_config_options + (_option("--ready-timeout", summary="Per-serve readiness deadline.", value_name="SECONDS"),), argv_prefix=("audio", "status"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "status"),), allowed=("config", "profile", "ready_timeout", "timeout_seconds"))),
+                _resource_node("logs", "Show bounded audio serve logs.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), options=voice_config_options + (_option("--tail", summary="Maximum lines per audio serve.", value_name="LINES"),), argv_prefix=("audio", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "tail", "timeout_seconds"))),
             ), docs_anchor=f"{VOICE_CLI_DOC}#audio-lifecycle"),
             _node("proxy", "Manage the realtime proxy process.", children=(
-                _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "run"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
+                _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", options=voice_config_options + (_option("--candidate", summary="Candidate identity recorded in logs.", value_name="NAME"), _option("--candidate-overlay", summary="Candidate TOML overlay for this run.", value_name="PATH")), argv_prefix=("proxy", "run"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
                 *(
                     _resource_node(
                         action,
@@ -1927,7 +1935,7 @@ def build_command_tree() -> CommandTree:
                         role="realtime-proxy",
                         coowned_roles=("stt-proxy", "tts-proxy"),
                         mutation="mutate",
-                        options=confirm_options,
+                        options=confirm_options + voice_config_options + proxy_process_options,
                         argv_prefix=("proxy", action),
                         forward_resolution_options=True,
                         remote_operation=_remote(
@@ -1943,18 +1951,19 @@ def build_command_tree() -> CommandTree:
                         ("restart", "Restart the realtime proxy."),
                     )
                 ),
-                _resource_node("status", "Show realtime proxy status.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "status"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "status"),), allowed=("config", "profile", "pid_file", "log_file", "timeout_seconds")), execution_runtime_roles=("native",)),
-                _resource_node("logs", "Show bounded realtime proxy logs.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "pid_file", "log_file", "tail", "timeout_seconds")), execution_runtime_roles=("native",)),
-                _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "bridge"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
+                _resource_node("status", "Show realtime proxy status.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), options=voice_config_options + proxy_process_options, argv_prefix=("proxy", "status"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "status"),), allowed=("config", "profile", "pid_file", "log_file", "timeout_seconds")), execution_runtime_roles=("native",)),
+                _resource_node("logs", "Show bounded realtime proxy logs.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), options=voice_config_options + proxy_process_options + (_option("--tail", summary="Maximum proxy log lines.", value_name="LINES"),), argv_prefix=("proxy", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "pid_file", "log_file", "tail", "timeout_seconds")), execution_runtime_roles=("native",)),
+                _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", options=voice_config_options + (_option("--listen-host", summary="Mini-local listen address.", value_name="ADDRESS"), _option("--stt-listen-port", summary="Mini-local STT proxy port.", value_name="PORT"), _option("--stt-target-host", summary="Dark STT target host.", value_name="HOST"), _option("--stt-target-port", summary="Dark STT target port.", value_name="PORT"), _option("--tts-listen-port", summary="Mini-local TTS proxy port.", value_name="PORT"), _option("--tts-target-host", summary="Dark TTS target host.", value_name="HOST"), _option("--tts-target-port", summary="Dark TTS target port.", value_name="PORT"), _option("--dry-run", summary="Render bridge routes without binding sockets.")), argv_prefix=("proxy", "bridge"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
             ), docs_anchor=f"{VOICE_CLI_DOC}#realtime-proxy"),
-            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("benchmark",), execution_runtime_roles=("native",)),
+            _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), options=voice_config_options + (_option("--candidate", summary="Candidate identity recorded in evidence.", value_name="NAME"), _option("--candidate-overlay", summary="Candidate TOML overlay for this run.", value_name="PATH"), _option("--candidate-base-url", summary="Already-loaded candidate API URL.", value_name="URL"), _option("--candidate-model", summary="Model served at the candidate URL.", value_name="MODEL"), _option("--candidate-api-key-env", summary="Candidate bearer-token environment variable.", value_name="ENV"), _option("--evidence-out", summary="Structured evidence JSON destination.", value_name="PATH")), argv_prefix=("benchmark",), execution_runtime_roles=("native",), docs_anchor=f"{VOICE_CLI_DOC}#benchmark"),
             _node("profiles", "Inspect voice profiles.", children=(
-                _node("list", "List voice profiles.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_list", argv_prefix=())),
-                _node("validate", "Validate the profile selected by --profile.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_validate", argv_prefix=())),
+                _node("list", "List voice profiles.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_list", argv_prefix=()), options=(_option("--config", summary="Voice manifest TOML.", value_name="PATH"),)),
+                _node("validate", "Validate the profile selected by --profile.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_validate", argv_prefix=()), options=voice_config_options),
             ), docs_anchor=f"{VOICE_CLI_DOC}#profiles"),
-            _node("sidecar", "Manage the speech-to-speech sidecar.", children=tuple(
-                _node(action, summary, handler=_handler("anvil_serving.voice_sidecar", argv_prefix=(action,)))
-                for action, summary in (("validate", "Validate a sidecar manifest."), ("command", "Render a sidecar command."), ("compose", "Render sidecar compose configuration."))
+            _node("sidecar", "Manage the speech-to-speech sidecar.", children=(
+                _node("validate", "Validate a sidecar manifest.", handler=_handler("anvil_serving.voice_sidecar", argv_prefix=("validate",)), options=(_option("--config", summary="Sidecar manifest TOML.", value_name="PATH"),)),
+                _node("command", "Render a sidecar command.", handler=_handler("anvil_serving.voice_sidecar", argv_prefix=("command",)), options=(_option("--config", summary="Sidecar manifest TOML.", value_name="PATH"), _option("--with-auth", summary="Include the referenced router-token argument."))),
+                _node("compose", "Render sidecar compose configuration.", handler=_handler("anvil_serving.voice_sidecar", argv_prefix=("compose",)), options=(_option("--config", summary="Sidecar manifest TOML.", value_name="PATH"), _option("--service-name", summary="Rendered Compose service name.", value_name="NAME"), _option("--with-auth", summary="Include the referenced router-token argument."))),
             ), docs_anchor=f"{VOICE_CLI_DOC}#speech-to-speech-sidecar"),
             *(_node(name, "Removed voice command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("up", "voice audio up"), ("down", "voice audio down"),
@@ -1964,6 +1973,247 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor=VOICE_CLI_DOC,
     )
+    voice_review_metadata = {
+        "voice audio up": {
+            "examples": (
+                _example("anvil-serving voice audio up --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --dry-run", "Preview Dark-owned STT and TTS lifecycle actions."),
+                _example("anvil-serving voice audio up --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --timeout-seconds 300 --confirm", "Start the reviewed audio serves on their declared owner."),
+            ),
+            "configuration_notes": (
+                "--topology is required; --profile selects one manifest overlay such as dark-audio without changing the base manifest.",
+                "The overall lifecycle deadline defaults to 300 seconds and accepts values from 1 through 7200 seconds.",
+            ),
+            "behavior_notes": (
+                "Dry-run resolves both owners and renders each lifecycle action without starting a process or container.",
+                "Apply refuses split STT/TTS ownership, remote local execution, runtime mismatches, and model workloads on Mini unless topology explicitly permits an experiment.",
+            ),
+        },
+        "voice audio down": {
+            "examples": (
+                _example("anvil-serving voice audio down --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --dry-run", "Preview audio shutdown on the declared model owner."),
+                _example("anvil-serving voice audio down --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --confirm", "Stop only the reviewed STT and TTS serves."),
+            ),
+            "configuration_notes": (
+                "The selected topology and profile must resolve the same STT/TTS host and a runtime compatible with each lifecycle declaration.",
+                "The overall lifecycle deadline defaults to 300 seconds; external entries are reported and skipped because Anvil does not own them.",
+            ),
+            "behavior_notes": (
+                "Dry-run performs ownership and configuration validation but executes no stop command.",
+                "Apply stops only manifest-declared managed or native serves and reports each result independently.",
+            ),
+        },
+        "voice audio status": {
+            "examples": (
+                _example("anvil-serving voice audio status --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio", "Inspect Dark-owned STT and TTS readiness."),
+                _example("anvil-serving voice audio status --topology ~/.anvil-serving/operator-topology.toml --target host:dark --ready-timeout 5 --json", "Require bounded readiness from an explicit audio owner."),
+            ),
+            "configuration_notes": (
+                "--ready-timeout defaults to 3 seconds per managed serve and accepts values from 0.1 through 60 seconds.",
+                "Topology is required; target and transport selectors may narrow the declared co-owner without changing the manifest.",
+            ),
+            "behavior_notes": (
+                "Status reads native PID state or managed-container readiness and returns nonzero when a required serve is not ready.",
+                "External endpoints are described from configuration; the command never starts or stops an audio serve.",
+            ),
+        },
+        "voice audio logs": {
+            "examples": (
+                _example("anvil-serving voice audio logs --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio", "Read the latest bounded logs for both audio serves."),
+                _example("anvil-serving voice audio logs --topology ~/.anvil-serving/operator-topology.toml --profile dark-audio --tail 50", "Limit each owned audio log to 50 lines."),
+            ),
+            "configuration_notes": (
+                "--tail defaults to 200 lines per serve and accepts values from 1 through 5000.",
+                "Native file reads are capped at 1 MiB; managed logs use the selected manifest serve name.",
+            ),
+            "behavior_notes": (
+                "Logs are read-only and report external lifecycle entries as having no Anvil-owned log stream.",
+                "Missing, timed-out, or unconfigured owned logs are explicit failures rather than unbounded waits.",
+            ),
+        },
+        "voice proxy run": {
+            "examples": (
+                _example("anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy", "Run the Mini-owned realtime proxy in the foreground."),
+                _example("anvil-serving voice proxy run --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --candidate voice-candidate --candidate-overlay candidate.toml", "Run one labeled candidate overlay without changing the manifest."),
+            ),
+            "configuration_notes": (
+                "The topology must resolve the realtime proxy locally on a native runtime; Mini-local STT/TTS proxy endpoints must point onward to Dark.",
+                "--candidate-overlay applies after --profile for this process only, and --candidate records an explicit identity in startup output.",
+            ),
+            "behavior_notes": (
+                "Run probes the router, STT, and TTS endpoints before binding and refuses unreachable or unhealthy dependencies.",
+                "The authenticated WebSocket proxy stays in the foreground until interrupted, then closes the server and session pool cleanly.",
+            ),
+        },
+        "voice proxy up": {
+            "examples": (
+                _example("anvil-serving voice proxy up --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --dry-run", "Preview the owned background proxy launch."),
+                _example("anvil-serving voice proxy up --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --confirm", "Start the reviewed Mini proxy process."),
+            ),
+            "configuration_notes": (
+                "The default owned records are ~/.anvil-serving/run/voice-proxy.pid and voice-proxy.log; override both together when isolating an instance.",
+                "Topology must resolve the proxy to a local native runtime and the manifest listener must match the declared proxy endpoint.",
+            ),
+            "behavior_notes": (
+                "Dry-run prints the exact owned-process plan without spawning a child or writing PID state.",
+                "Apply starts one background proxy and refuses stale, foreign, or mismatched ownership state.",
+            ),
+        },
+        "voice proxy down": {
+            "examples": (
+                _example("anvil-serving voice proxy down --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --dry-run", "Preview shutdown of the owned proxy process."),
+                _example("anvil-serving voice proxy down --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --confirm", "Stop the reviewed Mini proxy process."),
+            ),
+            "configuration_notes": (
+                "--pid-file and --log-file must identify the same owned instance used by proxy up.",
+                "Topology and manifest listener identity are revalidated before process state is changed.",
+            ),
+            "behavior_notes": (
+                "Dry-run resolves ownership and process identity without sending a signal or deleting a PID record.",
+                "Apply refuses a foreign or reused PID and treats an already-stopped owned instance as an explicit no-op.",
+            ),
+        },
+        "voice proxy restart": {
+            "examples": (
+                _example("anvil-serving voice proxy restart --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --dry-run", "Preview the owned stop-and-start sequence."),
+                _example("anvil-serving voice proxy restart --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --confirm", "Restart the reviewed Mini proxy instance."),
+            ),
+            "configuration_notes": (
+                "Restart uses the same topology, profile, PID record, and bounded log path as proxy up and down.",
+                "Custom --pid-file and --log-file values isolate a named instance but do not weaken ownership validation.",
+            ),
+            "behavior_notes": (
+                "Dry-run renders both lifecycle phases without mutating process state.",
+                "Apply stops only a verified owned process, then launches the same resolved configuration and reports both outcomes.",
+            ),
+        },
+        "voice proxy status": {
+            "examples": (
+                _example("anvil-serving voice proxy status --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy", "Inspect the default owned proxy instance."),
+                _example("anvil-serving voice proxy status --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --pid-file ~/.anvil-serving/run/voice-proxy.pid --json", "Read one explicit PID record as structured output."),
+            ),
+            "configuration_notes": (
+                "Status resolves the proxy owner and defaults to the standard PID and log records under ~/.anvil-serving/run.",
+                "The selected manifest listener must match the topology endpoint before PID state is trusted.",
+            ),
+            "behavior_notes": (
+                "Status is read-only and distinguishes running, stopped, stale, and foreign process records.",
+                "It never starts the proxy, signals a PID, probes model endpoints, or tails the log file.",
+            ),
+        },
+        "voice proxy logs": {
+            "examples": (
+                _example("anvil-serving voice proxy logs --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy", "Read the latest bounded proxy log."),
+                _example("anvil-serving voice proxy logs --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --tail 50", "Limit proxy output to 50 lines."),
+            ),
+            "configuration_notes": (
+                "--tail defaults to 200 lines and accepts values from 1 through 5000.",
+                "--log-file selects an owned bounded log after topology and manifest identity are validated.",
+            ),
+            "behavior_notes": (
+                "Logs are read-only and return the requested tail rather than following an unbounded stream.",
+                "Missing or foreign owned-process state is reported explicitly without starting or stopping the proxy.",
+            ),
+        },
+        "voice proxy bridge": {
+            "examples": (
+                _example("anvil-serving voice proxy bridge --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy --dry-run", "Render Mini-local STT/TTS forwarding routes."),
+                _example("anvil-serving voice proxy bridge --topology ~/.anvil-serving/operator-topology.toml --profile mini-dark-audio-proxy", "Run the Mini-to-Dark TCP bridge in the foreground."),
+            ),
+            "configuration_notes": (
+                "Topology supplies Mini-local listen ports and Dark target addresses unless explicit STT/TTS host and port flags override them.",
+                "The listener is restricted to 127.0.0.1; localhost, wildcard targets, and public target IPs are rejected.",
+            ),
+            "behavior_notes": (
+                "Dry-run prints both exact routes without binding a socket or contacting Dark.",
+                "Apply forwards bytes in the foreground until interrupted; it never runs STT or TTS models on Mini.",
+            ),
+        },
+        "voice benchmark": {
+            "examples": (
+                _example("anvil-serving voice benchmark --profile mini-dark-audio-proxy --candidate current-fast", "Benchmark the resolved voice cascade with a labeled candidate."),
+                _example("anvil-serving voice benchmark --candidate-base-url http://127.0.0.1:30001/v1 --candidate-model MODEL --evidence-out artifacts/voice/candidate.json", "Measure one already-loaded candidate and retain structured evidence."),
+            ),
+            "configuration_notes": (
+                "Candidate overlay or loaded-candidate flags apply only to this run; --candidate-base-url and --candidate-model must be supplied together.",
+                "--evidence-out is restricted to the workspace or configured benchmark evidence root and never rewrites the voice manifest.",
+            ),
+            "behavior_notes": (
+                "Benchmark replays one end-to-end STT, router, and TTS session and prints latency, quality, and resolved identity.",
+                "Unreachable dependencies or missing structured evidence return nonzero and never create a successful measurement record.",
+            ),
+        },
+        "voice profiles list": {
+            "examples": (
+                _example("anvil-serving voice profiles list", "List profiles from the resolved default voice manifest."),
+                _example("anvil-serving voice profiles list --config ~/.anvil-serving/voice.toml", "List profiles from one explicit operator manifest."),
+            ),
+            "configuration_notes": (
+                "--config defaults to ~/.anvil-serving/voice.toml when present, then the packaged example.",
+                "Profiles are named overlays under [voice.profiles.<name>] and contain no secret values.",
+            ),
+            "behavior_notes": (
+                "List validates the base manifest and prints declared profile names without resolving topology or contacting endpoints.",
+                "An empty catalog is reported explicitly and does not create or modify a profile.",
+            ),
+        },
+        "voice profiles validate": {
+            "examples": (
+                _example("anvil-serving voice profiles validate --profile dark-audio", "Validate the Dark-owned audio profile."),
+                _example("anvil-serving voice profiles validate --config ~/.anvil-serving/voice.toml --profile mini-dark-audio-proxy", "Validate the reference Mini proxy overlay in an operator manifest."),
+            ),
+            "configuration_notes": (
+                "--profile is required and must name one overlay declared by the selected voice manifest.",
+                "The selected overlay is merged before validation; the base manifest on disk is never rewritten.",
+            ),
+            "behavior_notes": (
+                "Validation is offline and checks the fully resolved profile schema and endpoint declarations.",
+                "It does not resolve deployment ownership, start a service, probe a URL, or promote a profile.",
+            ),
+        },
+        "voice sidecar validate": {
+            "examples": (
+                _example("anvil-serving voice sidecar validate --config sidecar.toml", "Validate one explicit sidecar manifest offline."),
+                _example("anvil-serving voice sidecar validate --config sidecar.toml --json", "Return validation in the stable result envelope."),
+            ),
+            "configuration_notes": (
+                "--config defaults to the packaged example when available; installed environments without it must pass a path.",
+                "The manifest references credentials by environment-variable name and requires explicit /v1 and /v1/realtime URLs.",
+            ),
+            "behavior_notes": (
+                "Validation is offline and rejects inline secrets, credential-bearing URLs, unsafe container loopback, and malformed service values.",
+                "It does not contact Docker, Hugging Face, the router, a model endpoint, or the realtime proxy.",
+            ),
+        },
+        "voice sidecar command": {
+            "examples": (
+                _example("anvil-serving voice sidecar command --config sidecar.toml", "Render a shell-safe host command."),
+                _example("anvil-serving voice sidecar command --config sidecar.toml --with-auth --json", "Render argv with an environment-variable token reference."),
+            ),
+            "configuration_notes": (
+                "--with-auth adds a $ENV_VAR token reference from api_key_env; it never reads or prints the token value.",
+                "The host command uses the manifest's same-host router URL, model ids, and streaming declaration.",
+            ),
+            "behavior_notes": (
+                "Command validates first, then prints shell-quoted argv without launching a process.",
+                "Machine output preserves argv boundaries so operators do not need to parse a rendered shell string.",
+            ),
+        },
+        "voice sidecar compose": {
+            "examples": (
+                _example("anvil-serving voice sidecar compose --config sidecar.toml", "Render a loopback-bound Compose service skeleton."),
+                _example("anvil-serving voice sidecar compose --config sidecar.toml --service-name voice-sidecar --with-auth", "Render a named service with an environment reference."),
+            ),
+            "configuration_notes": (
+                "--service-name defaults to speech-to-speech and must be a valid Docker Compose service identifier.",
+                "Container routing uses container_base_url and rejects 127.0.0.1 because container loopback is not the host router.",
+            ),
+            "behavior_notes": (
+                "Compose prints a loopback-published service skeleton and never invokes Docker or writes a compose file.",
+                "--with-auth emits only ${ENV_VAR} expansion and a matching environment reference, never a credential literal.",
+            ),
+        },
+    }
+    voice = _with_review_metadata(voice, voice_review_metadata)
     harness_sync_options = confirm_options + (
         _option("--config", summary="Router configuration used to render presets.", value_name="PATH"),
         _option("--out", summary="Local OpenClaw configuration destination.", value_name="PATH"),
