@@ -487,7 +487,7 @@ def test_recipe_show_prints_reconstructed_command_and_stats(request, capsys):
     assert "183.2" in out  # measured throughput
     # the reconstructed, reproducible docker run (positional model after the image).
     assert "docker run -d --gpus device=GPU-d0f446cf" in out
-    assert "vllm/vllm-openai:nightly openai/gpt-oss-120b" in out
+    assert "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e openai/gpt-oss-120b" in out
     assert "-v vllm-hfcache:/root/.cache/huggingface" in out
     # intent + download surfaced.
     assert "flexibility" in out

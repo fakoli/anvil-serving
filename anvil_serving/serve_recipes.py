@@ -51,7 +51,23 @@ class RecipeError(ValueError):
 def load_registry(path) -> dict:
     """Parse a serve-recipe registry file (read-only, via `tomllib`)."""
     with open(path, "rb") as f:
-        return tomllib.load(f)
+        registry = tomllib.load(f)
+    validate_registry(registry)
+    return registry
+
+
+def validate_registry(registry: dict) -> None:
+    """Validate the bounded registry envelope before any selector walks it."""
+    if not isinstance(registry, dict):
+        raise RecipeError("serve-recipe registry must be a TOML document")
+    schema = registry.get("schema")
+    if schema is not None and (not isinstance(schema, str) or not schema.strip()):
+        raise RecipeError("serve-recipe registry schema must be a non-empty string")
+    recipes = registry.get("recipe", [])
+    if not isinstance(recipes, list) or not all(isinstance(item, dict) for item in recipes):
+        raise RecipeError("registry.recipe must be an array of recipe tables")
+    for recipe in recipes:
+        validate_recipe(recipe)
 
 
 def registry_digest(path) -> str | None:
@@ -271,9 +287,31 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
     model = recipe.get("model")
     if not isinstance(model, str) or not model.strip():
         raise RecipeError("recipe.model must be a non-empty string")
-    for key in ("serve", "hardware", "measured", "intent", "download", "sources", "bakeoff"):
+    for key in (
+        "serve", "hardware", "measured", "intent", "download", "sources",
+        "bakeoff", "activation",
+    ):
         if key in recipe and not isinstance(recipe[key], dict):
             raise RecipeError("recipe.%s must be a table" % key)
+    activation = recipe.get("activation") or {}
+    for role, config in activation.items():
+        if not isinstance(role, str) or not role.strip():
+            raise RecipeError("recipe.activation role names must be non-empty strings")
+        if not isinstance(config, dict):
+            raise RecipeError("recipe.activation.%s must be a table" % role)
+        plan = config.get("plan")
+        if not isinstance(plan, str) or not plan.strip():
+            raise RecipeError("recipe.activation.%s.plan must be a non-empty string" % role)
+        direction = config.get("direction")
+        if direction not in {"promote", "rollback"}:
+            raise RecipeError(
+                "recipe.activation.%s.direction must be 'promote' or 'rollback'" % role
+            )
+        compose_service = config.get("compose_service")
+        if not isinstance(compose_service, str) or not compose_service.strip():
+            raise RecipeError(
+                "recipe.activation.%s.compose_service must be a non-empty string" % role
+            )
     if not require_loadable:
         return
     serve = recipe.get("serve")
