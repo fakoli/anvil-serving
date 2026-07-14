@@ -775,6 +775,42 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor="docs/CLI.md#dashboard",
     )
+    edge_common_options = (
+        _option("--config", summary="Edge route TOML ([edge]/[edge.routes]).", value_name="PATH"),
+        _option("--https-port", summary="Node HTTPS listener port (default 443).", value_name="PORT"),
+        _option("--host", summary="Default target host for port-only routes.", value_name="ADDRESS"),
+        _option("--map", summary="Override/add a route (repeatable); MOUNT=off drops one.", value_name="MOUNT=TARGET"),
+    )
+    edge = _node(
+        "edge", "Own the Tailscale tailnet edge in front of the unchanged router.",
+        children=(
+            _resource_node(
+                "render", "Render the tailscale serve invocations without applying.",
+                "anvil_serving.edge", role="host", argv_prefix=("render",),
+                options=edge_common_options, execution_runtime_roles=("native",),
+                docs_anchor="docs/CLI.md#edge",
+            ),
+            _resource_node(
+                "status", "Show serve mappings, flagging which this tool manages.",
+                "anvil_serving.edge", role="host", argv_prefix=("status",),
+                options=edge_common_options, execution_runtime_roles=("native",),
+                docs_anchor="docs/CLI.md#edge",
+            ),
+            _resource_node(
+                "up", "Apply the managed route map (additive; idempotent).",
+                "anvil_serving.edge", role="host", mutation="mutate", argv_prefix=("up",),
+                options=edge_common_options + confirm_options, execution_runtime_roles=("native",),
+                docs_anchor="docs/CLI.md#edge",
+            ),
+            _resource_node(
+                "down", "Remove ONLY the mounts this tool manages.",
+                "anvil_serving.edge", role="host", mutation="mutate", argv_prefix=("down",),
+                options=edge_common_options + confirm_options, execution_runtime_roles=("native",),
+                docs_anchor="docs/CLI.md#edge",
+            ),
+        ),
+        docs_anchor="docs/CLI.md#edge",
+    )
 
     tree = CommandTree(
         nodes=(
@@ -792,6 +828,7 @@ def build_command_tree() -> CommandTree:
             _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Control plane & integrations"),
             _node("collectors", collectors.summary, handler=collectors.handler, docs_anchor=collectors.docs_anchor, group="Control plane & integrations"),
             _node("dashboard", dashboard.summary, children=dashboard.children, docs_anchor=dashboard.docs_anchor, group="Local serving tools"),
+            _node("edge", edge.summary, children=edge.children, docs_anchor=edge.docs_anchor, group="Control plane & integrations"),
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
                 ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),

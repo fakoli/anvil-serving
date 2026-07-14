@@ -45,10 +45,10 @@
         "voice-sidecar": 9
       },
       "files_by_category": {
-        "docs": 49,
+        "docs": 50,
         "tooling": 5
       },
-      "files_scanned": 54,
+      "files_scanned": 55,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -117,14 +117,14 @@
         "voice-sidecar": 30
       },
       "files_by_category": {
-        "docs": 49,
+        "docs": 50,
         "examples": 48,
-        "implementation": 149,
+        "implementation": 150,
         "skills": 4,
-        "tests": 155,
+        "tests": 156,
         "tooling": 26
       },
-      "files_scanned": 431,
+      "files_scanned": 434,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
