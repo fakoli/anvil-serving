@@ -6,7 +6,7 @@ help, and tombstones from one validated declaration.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import importlib
 import json
 from pathlib import Path
@@ -15,6 +15,14 @@ from typing import Callable, Iterable
 
 MANIFEST_SCHEMA_VERSION = 2
 MANIFEST_PATH = Path(__file__).resolve().parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
+CLI_DOC = "docs/CLI.md"
+ROUTER_DOC = "docs/cli/router.md"
+SERVES_DOC = "docs/cli/serves.md"
+MODELS_DOC = "docs/cli/models.md"
+EVAL_DOC = "docs/cli/eval.md"
+HOST_DOC = "docs/cli/host.md"
+CONTROL_PLANE_DOC = "docs/cli/control-plane.md"
+VOICE_CLI_DOC = "docs/cli/voice.md"
 _MUTATION_CLASSES = frozenset({"read", "mutate", "process"})
 _TRANSPORTS = frozenset({"local", "controller", "ssh"})
 _EXECUTION_POLICIES = frozenset({"offline", "resource-owner"})
@@ -227,7 +235,7 @@ def _node(
     gpu_role_required: bool = False,
     execution_policy: str = "offline",
     output_policy: str = "bounded",
-    docs_anchor: str = "docs/CLI.md",
+    docs_anchor: str = CLI_DOC,
     tombstone: Tombstone | None = None,
     visible: bool = True,
     group: str | None = None,
@@ -272,7 +280,7 @@ def _resource_node(
     handler_attribute: str = "main",
     forward_resolution_options: bool = False,
     output_policy: str = "bounded",
-    docs_anchor: str = "docs/CLI.md",
+    docs_anchor: str = CLI_DOC,
     remote_operation: RemoteOperation | None = None,
     execution_runtime_roles: tuple[str, ...] = ("native", "docker"),
     execution_host_os: tuple[str, ...] = (),
@@ -329,6 +337,16 @@ GLOBAL_OPTIONS = (
     _option("--verbose", summary="Include diagnostic human output."),
     _option("-h", "--help", summary="Show focused help and exit."),
 )
+
+
+def _inherit_docs_anchor(node: CommandNode, parent_anchor: str = CLI_DOC) -> CommandNode:
+    """Give descendants without a specific reference the family page of their parent."""
+    docs_anchor = parent_anchor if node.docs_anchor == CLI_DOC else node.docs_anchor
+    return replace(
+        node,
+        docs_anchor=docs_anchor,
+        children=tuple(_inherit_docs_anchor(child, docs_anchor) for child in node.children),
+    )
 
 
 def build_command_tree() -> CommandTree:
@@ -391,7 +409,11 @@ def build_command_tree() -> CommandTree:
                 "anvil_serving.router_manage",
                 role="router",
                 mutation="mutate",
-                options=confirm_options + (_option("--validate-only", summary="Validate without changing router state."),),
+                options=confirm_options + (
+                    _option("--profile", summary="Reviewed profile JSON to promote.", value_name="PATH"),
+                    _option("--config", summary="Optional router configuration to promote.", value_name="PATH"),
+                    _option("--validate-only", summary="Validate without changing router state."),
+                ),
                 remote_operation=_remote(
                     "router_promote",
                     confirmed=(("human_approved", True),),
@@ -415,7 +437,7 @@ def build_command_tree() -> CommandTree:
                     _option("--no-tailscale", summary="Skip Tailscale DNS discovery."),
                 ),
                 execution_runtime_roles=("native",),
-                docs_anchor="docs/CLI.md#router",
+                docs_anchor=ROUTER_DOC,
             ),
             _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router", remote_operation=_remote("router_status", allowed=("container",))),
             _resource_node(
@@ -452,7 +474,7 @@ def build_command_tree() -> CommandTree:
             _resource_node("logs", "Read bounded router logs.", "anvil_serving.router_manage", role="router", options=(_option("--follow", summary="Follow log output.", output_policy="follow"),), remote_operation=_remote("router_logs", allowed=("container", "tail", "since", "follow"))),
             _resource_node("token", "Inspect the router token state.", "anvil_serving.router_manage", role="router", options=(_option("--reveal", summary="Reveal the local token after confirmation.", requires_confirmation=True), _option("--confirm", summary="Confirm token reveal."))),
         ),
-        docs_anchor="docs/CLI.md#router",
+        docs_anchor=ROUTER_DOC,
     )
     serves_actions = (
         _resource_node("render", "Render a model serve definition.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=action_options),
@@ -466,7 +488,7 @@ def build_command_tree() -> CommandTree:
         _resource_node("logs", "Read bounded model serve logs.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, _option("--tail", summary="Number of trailing lines.", value_name="N|all"), _option("--since", summary="Only logs since a timestamp or duration.", value_name="TIME"), _option("--follow", summary="Follow log output.", output_policy="follow")), remote_operation=_remote("serves_logs", positionals=("names",))),
         _resource_node("multiplex", "Run the single-resident model multiplexer.", "anvil_serving.multiplexer", role="model-serve", mutation="process", gpu=True, argv_prefix=(), output_policy="foreground"),
     )
-    serves = _node("serves", "Manage local model serve lifecycle.", children=serves_actions, docs_anchor="docs/CLI.md#serves")
+    serves = _node("serves", "Manage local model serve lifecycle.", children=serves_actions, docs_anchor=SERVES_DOC)
     models = _node(
         "models", "Manage model catalog, artifacts, and recipes.",
         children=(
@@ -480,10 +502,24 @@ def build_command_tree() -> CommandTree:
                 _resource_node("update", "Update one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "update"), options=confirm_options + (recipe_registry_option, recipe_file_option)),
                 _resource_node("delete", "Delete one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "delete"), options=confirm_options + (recipe_registry_option,)),
                 _resource_node("load", "Load one recipe into a named local container.", "anvil_serving.models", role="model-serve", mutation="mutate", gpu=True, argv_prefix=("recipe", "load"), options=confirm_options + (recipe_registry_option, recipe_container_option)),
-            ), docs_anchor="docs/CLI.md#models-recipes"),
+            ), docs_anchor=f"{MODELS_DOC}#recipes"),
             _node("cache", "Manage model cache storage.", children=(
-                _resource_node("prune", "Plan or prune the model cache.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options + (_option("--execute", summary="Delete the planned cache candidates.", requires_confirmation=True),)),
-            ), docs_anchor="docs/CLI.md#models-cache-prune"),
+                _resource_node(
+                    "prune",
+                    "Plan or prune the model cache.",
+                    "anvil_serving.models",
+                    role="model-catalog",
+                    mutation="mutate",
+                    options=confirm_options + (
+                        _option("--execute", summary="Delete the planned cache candidates.", requires_confirmation=True),
+                        _option("--yes", summary="Acknowledge cache deletion."),
+                        _option("--mixture", summary="Comma-separated model ids to protect.", value_name="MODELS"),
+                        _option("--include-servable", summary="Also delete candidates servable elsewhere."),
+                        _option("--allow-empty-mixture", summary="Allow a broad wipe with no protected mixture."),
+                        _option("--self-check", summary="Run the non-destructive internal self-check."),
+                    ),
+                ),
+            ), docs_anchor=f"{MODELS_DOC}#cache-prune"),
             _node(
                 "recipe",
                 "Removed singular recipe spelling.",
@@ -495,7 +531,7 @@ def build_command_tree() -> CommandTree:
                 visible=False,
             ),
         ),
-        docs_anchor="docs/CLI.md#models",
+        docs_anchor=MODELS_DOC,
     )
     external_remote_tools = {
         "sources": "external_bench_sources",
@@ -526,7 +562,7 @@ def build_command_tree() -> CommandTree:
                 ("render", "Render the bakeoff comparison."),
             )
         ),
-        docs_anchor="docs/CLI.md#eval-benchmark-external",
+        docs_anchor=f"{EVAL_DOC}#external-benchmarks",
     )
     eval_node = _node(
         "eval", "Run quality evaluation workflows.",
@@ -565,7 +601,7 @@ def build_command_tree() -> CommandTree:
                                 "anvil_serving.benchmark_evidence",
                                 argv_prefix=(action,),
                             ),
-                            docs_anchor="docs/CLI.md#eval-benchmark-evidence",
+                            docs_anchor=f"{EVAL_DOC}#benchmark-evidence",
                         )
                         for action, summary in (
                             ("list", "List retained local benchmark artifacts."),
@@ -573,12 +609,12 @@ def build_command_tree() -> CommandTree:
                             ("compare", "Compare artifacts and flag workload mismatches."),
                         )
                     ),
-                    docs_anchor="docs/CLI.md#eval-benchmark-evidence",
+                    docs_anchor=f"{EVAL_DOC}#benchmark-evidence",
                 ),
-                _node("external", "Manage external benchmark evidence.", children=(*external_actions, notebook), docs_anchor="docs/CLI.md#eval-benchmark-external"),
-            ), docs_anchor="docs/CLI.md#eval-benchmark"),
+                _node("external", "Manage external benchmark evidence.", children=(*external_actions, notebook), docs_anchor=f"{EVAL_DOC}#external-benchmarks"),
+            ), docs_anchor=f"{EVAL_DOC}#benchmark"),
         ),
-        docs_anchor="docs/CLI.md#eval",
+        docs_anchor=EVAL_DOC,
     )
     voice = _node(
         "voice", "Manage audio and realtime proxy operations.",
@@ -588,7 +624,7 @@ def build_command_tree() -> CommandTree:
                 _resource_node("down", "Stop audio serves.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), mutation="mutate", options=confirm_options, argv_prefix=("audio", "down"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "down"),))),
                 _resource_node("status", "Show bounded audio serve status.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), argv_prefix=("audio", "status"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "status"),), allowed=("config", "profile", "ready_timeout", "timeout_seconds"))),
                 _resource_node("logs", "Show bounded audio serve logs.", "anvil_serving.voice.cli", role="stt-serve", coowned_roles=("tts-serve",), argv_prefix=("audio", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "tail", "timeout_seconds"))),
-            ), docs_anchor="docs/VOICE.md#audio-lifecycle"),
+            ), docs_anchor=f"{VOICE_CLI_DOC}#audio-lifecycle"),
             _node("proxy", "Manage the realtime proxy process.", children=(
                 _resource_node("run", "Run the realtime proxy.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "run"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
                 *(
@@ -618,23 +654,23 @@ def build_command_tree() -> CommandTree:
                 _resource_node("status", "Show realtime proxy status.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "status"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "status"),), allowed=("config", "profile", "pid_file", "log_file", "timeout_seconds")), execution_runtime_roles=("native",)),
                 _resource_node("logs", "Show bounded realtime proxy logs.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("proxy", "logs"), forward_resolution_options=True, remote_operation=_remote("voice_proxy_manage", fixed=(("action", "logs"),), allowed=("config", "profile", "pid_file", "log_file", "tail", "timeout_seconds")), execution_runtime_roles=("native",)),
                 _resource_node("bridge", "Run the Mini-to-Dark audio bridge.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), mutation="process", argv_prefix=("proxy", "bridge"), forward_resolution_options=True, output_policy="foreground", execution_runtime_roles=("native",)),
-            ), docs_anchor="docs/VOICE.md#realtime-proxy"),
+            ), docs_anchor=f"{VOICE_CLI_DOC}#realtime-proxy"),
             _resource_node("benchmark", "Benchmark an end-to-end voice session.", "anvil_serving.voice.cli", role="realtime-proxy", coowned_roles=("stt-proxy", "tts-proxy"), argv_prefix=("benchmark",), execution_runtime_roles=("native",)),
             _node("profiles", "Inspect voice profiles.", children=(
                 _node("list", "List voice profiles.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_list", argv_prefix=())),
                 _node("validate", "Validate the profile selected by --profile.", handler=_handler("anvil_serving.voice.cli", attribute="main_profiles_validate", argv_prefix=())),
-            ), docs_anchor="docs/VOICE.md#profiles"),
+            ), docs_anchor=f"{VOICE_CLI_DOC}#profiles"),
             _node("sidecar", "Manage the speech-to-speech sidecar.", children=tuple(
                 _node(action, summary, handler=_handler("anvil_serving.voice_sidecar", argv_prefix=(action,)))
                 for action, summary in (("validate", "Validate a sidecar manifest."), ("command", "Render a sidecar command."), ("compose", "Render sidecar compose configuration."))
-            ), docs_anchor="docs/VOICE.md#speech-to-speech-sidecar"),
+            ), docs_anchor=f"{VOICE_CLI_DOC}#speech-to-speech-sidecar"),
             *(_node(name, "Removed voice command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("up", "voice audio up"), ("down", "voice audio down"),
                 ("run", "voice proxy run"), ("bridge", "voice proxy bridge"),
                 ("start", "voice audio up"), ("stop", "voice audio down"),
             )),
         ),
-        docs_anchor="docs/VOICE.md",
+        docs_anchor=VOICE_CLI_DOC,
     )
     harness_operations = (
         ("sync", "Synchronize harness configuration", "mutate", False, _remote(
@@ -661,18 +697,18 @@ def build_command_tree() -> CommandTree:
             mutation=mutation, recovery=recovery,
             options=confirm_options if mutation == "mutate" else (),
             remote_operation=remote_operation,
-        ),), docs_anchor="docs/CLI.md#harness")
+        ),), docs_anchor=f"{CONTROL_PLANE_DOC}#harness")
         for action, summary, mutation, recovery, remote_operation in harness_operations
-    ), docs_anchor="docs/CLI.md#harness")
+    ), docs_anchor=f"{CONTROL_PLANE_DOC}#harness")
     mcp = _node("mcp", "Expose bounded MCP management tools.", children=(
         _resource_node("serve", "Run the MCP management server.", "anvil_serving.mcp", role="operator", argv_prefix=(), output_policy="protocol", remote_operation=_remote(mode="mcp-bridge")),
         _resource_node("tools", "List bounded MCP tools.", "anvil_serving.mcp", role="operator", argv_prefix=("list-tools",), remote_operation=_remote(mode="mcp-bridge")),
         _node("list-tools", "Removed MCP tool-listing command.", tombstone=removed("mcp tools"), visible=False),
-    ), options=(_removed_option("--list-tools", replacement="mcp tools"),), tombstone=removed("mcp serve"), docs_anchor="docs/CLI.md#mcp")
+    ), options=(_removed_option("--list-tools", replacement="mcp tools"),), tombstone=removed("mcp serve"), docs_anchor=f"{CONTROL_PLANE_DOC}#mcp")
     controller = _node("controller", "Manage the private controller service.", children=(
         _resource_node("serve", "Run the private controller.", "anvil_serving.controller", role="controller", mutation="process", options=(_removed_option("--allow-unauthenticated-loopback", replacement="Configure the token named by --auth-token-env"),), output_policy="foreground"),
         _resource_node("status", "Probe controller health.", "anvil_serving.controller", role="controller", remote_operation=_remote(mode="controller-status")),
-    ), docs_anchor="docs/CLI.md#controller")
+    ), docs_anchor=f"{CONTROL_PLANE_DOC}#controller")
     gpu_sharing = _node(
         "gpu-sharing",
         "Inspect and probe CUDA GPU-sharing capabilities.",
@@ -692,7 +728,7 @@ def build_command_tree() -> CommandTree:
                     ),
                 ),
                 execution_runtime_roles=("native",),
-                docs_anchor="docs/CLI.md#host-gpu-sharing-inspect",
+                docs_anchor=f"{HOST_DOC}#gpu-sharing",
             ),
             _resource_node(
                 "probe",
@@ -720,10 +756,10 @@ def build_command_tree() -> CommandTree:
                     ),
                 ),
                 execution_runtime_roles=("native",),
-                docs_anchor="docs/CLI.md#host-gpu-sharing-probe",
+                docs_anchor=f"{HOST_DOC}#gpu-sharing",
             ),
         ),
-        docs_anchor="docs/CLI.md#host-gpu-sharing",
+        docs_anchor=f"{HOST_DOC}#gpu-sharing",
     )
     host_read_actions = (
         _resource_node("status", "Show structured host status.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
@@ -756,20 +792,59 @@ def build_command_tree() -> CommandTree:
         mutation="mutate", execution_runtime_roles=("native",), execution_host_os=("windows",),
         options=confirm_options + (_option("--watch", summary="Foreground reclaim watchdog loop.", output_policy="follow"),),
     )
-    host = _node("host", "Inspect and repair declared host operations.", children=(*host_read_actions, *host_repairs, host_reclaim), docs_anchor="docs/CLI.md#host")
+    host = _node("host", "Inspect and repair declared host operations.", children=(*host_read_actions, *host_repairs, host_reclaim), docs_anchor=f"{HOST_DOC}#host")
     topology = _node("topology", "Inspect and resolve deployment topology.", children=tuple(
-        _node(action, summary, handler=_handler("anvil_serving.topology_cli", argv_prefix=(action,)), docs_anchor="docs/CLI.md#topology")
+        _node(action, summary, handler=_handler("anvil_serving.topology_cli", argv_prefix=(action,)), docs_anchor=f"{CONTROL_PLANE_DOC}#topology")
         for action, summary in (
             ("show", "Show a validated topology summary."),
             ("validate", "Validate a topology offline."),
             ("resolve", "Resolve one canonical command against a topology."),
         )
-    ), docs_anchor="docs/CLI.md#topology")
+    ), docs_anchor=f"{CONTROL_PLANE_DOC}#topology")
+    collector_input_options = (
+        _option("--config", summary="Collector configuration JSON.", value_name="PATH"),
+        _option("--name", summary="Inline collector name.", value_name="NAME"),
+        _option("--adapter", summary="Collector adapter identifier.", value_name="ADAPTER"),
+        _option("--endpoint", summary="Private or loopback collector URL.", value_name="URL"),
+        _option("--capability", summary="Required capability; repeatable.", value_name="NAME"),
+        _option("--auth-env", summary="Bearer-token environment variable.", value_name="ENV"),
+    )
     collectors = _node(
         "collectors",
         "Configure and inspect optional read-only collector adapters.",
-        handler=_handler("anvil_serving.collectors", argv_prefix=()),
-        docs_anchor="docs/CLI.md#collectors",
+        children=(
+            _node(
+                "configure",
+                "Validate and optionally write adapter configuration.",
+                handler=_handler("anvil_serving.collectors", argv_prefix=("configure",)),
+                mutation_class="mutate",
+                options=collector_input_options + (
+                    _option("--output", summary="Write validated configuration.", value_name="PATH", requires_confirmation=True),
+                    _option("--confirm", summary="Confirm writing collector configuration."),
+                ),
+            ),
+            _node(
+                "validate",
+                "Validate adapter configuration without network access.",
+                handler=_handler("anvil_serving.collectors", argv_prefix=("validate",)),
+                options=collector_input_options,
+            ),
+            _node(
+                "capabilities",
+                "Report configured adapter capabilities offline.",
+                handler=_handler("anvil_serving.collectors", argv_prefix=("capabilities",)),
+                options=collector_input_options,
+            ),
+            _node(
+                "inspect",
+                "Perform one bounded read-only adapter inspection.",
+                handler=_handler("anvil_serving.collectors", argv_prefix=("inspect",)),
+                options=collector_input_options + (
+                    _option("--timeout", summary="Bounded request timeout.", value_name="SECONDS"),
+                ),
+            ),
+        ),
+        docs_anchor=f"{CONTROL_PLANE_DOC}#collectors",
     )
     dashboard = _node(
         "dashboard",
@@ -795,7 +870,7 @@ def build_command_tree() -> CommandTree:
                 execution_runtime_roles=("native",),
             ),
         ),
-        docs_anchor="docs/CLI.md#dashboard",
+        docs_anchor=f"{HOST_DOC}#dashboard",
     )
     edge_common_options = (
         _option("--config", summary="Edge route TOML ([edge]/[edge.routes]).", value_name="PATH"),
@@ -810,33 +885,33 @@ def build_command_tree() -> CommandTree:
                 "render", "Render the tailscale serve invocations without applying.",
                 "anvil_serving.edge", role="host", argv_prefix=("render",),
                 options=edge_common_options, execution_runtime_roles=("native",),
-                docs_anchor="docs/CLI.md#edge",
+                docs_anchor=f"{CONTROL_PLANE_DOC}#edge",
             ),
             _resource_node(
                 "status", "Show serve mappings, flagging which this tool manages.",
                 "anvil_serving.edge", role="host", argv_prefix=("status",),
                 options=edge_common_options, execution_runtime_roles=("native",),
-                docs_anchor="docs/CLI.md#edge",
+                docs_anchor=f"{CONTROL_PLANE_DOC}#edge",
             ),
             _resource_node(
                 "up", "Apply the managed route map (additive; idempotent).",
                 "anvil_serving.edge", role="host", mutation="mutate", argv_prefix=("up",),
                 options=edge_common_options + confirm_options, execution_runtime_roles=("native",),
-                docs_anchor="docs/CLI.md#edge",
+                docs_anchor=f"{CONTROL_PLANE_DOC}#edge",
             ),
             _resource_node(
                 "down", "Remove ONLY the mounts this tool manages.",
                 "anvil_serving.edge", role="host", mutation="mutate", argv_prefix=("down",),
                 options=edge_common_options + confirm_options, execution_runtime_roles=("native",),
-                docs_anchor="docs/CLI.md#edge",
+                docs_anchor=f"{CONTROL_PLANE_DOC}#edge",
             ),
         ),
-        docs_anchor="docs/CLI.md#edge",
+        docs_anchor=f"{CONTROL_PLANE_DOC}#edge",
     )
 
     tree = CommandTree(
-        nodes=(
-            _node("init", "Scaffold the operational config home (or a single-model bring-up with --single-model).", handler=_handler("anvil_serving.init"), docs_anchor="docs/CLI.md#init", group="Local serving tools"),
+        nodes=tuple(_inherit_docs_anchor(node) for node in (
+            _node("init", "Scaffold the operational config home (or a single-model bring-up with --single-model).", handler=_handler("anvil_serving.init"), docs_anchor=f"{HOST_DOC}#init", group="Local serving tools"),
             _node("router", router.summary, children=router.children, docs_anchor=router.docs_anchor, group="Data plane"),
             _node("serves", serves.summary, children=serves.children, docs_anchor=serves.docs_anchor, group="Local serving tools"),
             _node("models", models.summary, children=models.children, docs_anchor=models.docs_anchor, group="Local serving tools"),
@@ -846,7 +921,7 @@ def build_command_tree() -> CommandTree:
             _node("mcp", mcp.summary, children=mcp.children, options=mcp.options, handler=mcp.handler, docs_anchor=mcp.docs_anchor, tombstone=mcp.tombstone, visible=mcp.visible, group="Control plane & integrations"),
             _node("controller", controller.summary, children=controller.children, docs_anchor=controller.docs_anchor, group="Control plane & integrations"),
             _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
-            _resource_node("doctor", "Check dependencies and configured health.", "anvil_serving.doctor", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("doctor_summary"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
+            _resource_node("doctor", "Check dependencies and configured health.", "anvil_serving.doctor", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("doctor_summary"), docs_anchor=f"{HOST_DOC}#doctor", group="Local serving tools"),
             _node(
                 "upgrade",
                 "Upgrade this CLI to the newest stable published release.",
@@ -856,11 +931,11 @@ def build_command_tree() -> CommandTree:
                     _option("--manager", summary="Package manager override.", value_name="auto|uv|pipx|pip"),
                     _option("--allow-editable", summary="Replace an editable source install."),
                 ),
-                docs_anchor="docs/CLI.md#upgrade",
+                docs_anchor=f"{HOST_DOC}#upgrade",
                 group="Local serving tools",
             ),
             _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Control plane & integrations"),
-            _node("collectors", collectors.summary, handler=collectors.handler, docs_anchor=collectors.docs_anchor, group="Control plane & integrations"),
+            _node("collectors", collectors.summary, children=collectors.children, docs_anchor=collectors.docs_anchor, group="Control plane & integrations"),
             _node("dashboard", dashboard.summary, children=dashboard.children, docs_anchor=dashboard.docs_anchor, group="Local serving tools"),
             _node("edge", edge.summary, children=edge.children, docs_anchor=edge.docs_anchor, group="Control plane & integrations"),
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
@@ -870,7 +945,7 @@ def build_command_tree() -> CommandTree:
                 ("external-bench", "eval benchmark external"), ("calibrate", "eval calibrate"),
                 ("gpus", "host gpus"), ("voice-sidecar", "voice sidecar"), ("onboard", "init"),
             )),
-        ),
+        )),
         global_options=GLOBAL_OPTIONS,
     )
     return tree

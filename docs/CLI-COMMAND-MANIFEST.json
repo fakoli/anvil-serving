@@ -2,7 +2,7 @@
   "commands": [
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#init",
+      "docs_anchor": "docs/cli/host.md#init",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -144,7 +144,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#router",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -286,7 +286,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -473,7 +473,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -655,7 +655,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -836,7 +836,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1017,7 +1017,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1198,7 +1198,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1352,6 +1352,26 @@
         },
         {
           "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Reviewed profile JSON to promote.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Optional router configuration to promote.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--validate-only"
           ],
           "output_policy": null,
@@ -1396,7 +1416,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#router",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1582,7 +1602,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1739,7 +1759,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -1919,7 +1939,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2121,7 +2141,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2313,7 +2333,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2515,7 +2535,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2685,7 +2705,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/router.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -2852,7 +2872,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#serves",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -2994,7 +3014,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3151,7 +3171,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3400,7 +3420,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3599,7 +3619,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3798,7 +3818,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -3997,7 +4017,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4211,7 +4231,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4388,7 +4408,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4545,7 +4565,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4742,7 +4762,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/serves.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -4889,7 +4909,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#models",
+      "docs_anchor": "docs/cli/models.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -5031,7 +5051,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5188,7 +5208,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5355,7 +5375,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5502,7 +5522,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#models-recipes",
+      "docs_anchor": "docs/cli/models.md#recipes",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -5644,7 +5664,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md#recipes",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5801,7 +5821,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md#recipes",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -5958,7 +5978,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md#recipes",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6145,7 +6165,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md#recipes",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6332,7 +6352,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md#recipes",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6509,7 +6529,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md#recipes",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6696,7 +6716,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#models-cache-prune",
+      "docs_anchor": "docs/cli/models.md#cache-prune",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -6838,7 +6858,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md#cache-prune",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -6999,6 +7019,56 @@
           "summary": "Delete the planned cache candidates.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--yes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Acknowledge cache deletion.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--mixture"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Comma-separated model ids to protect.",
+          "tombstone": null,
+          "value_name": "MODELS"
+        },
+        {
+          "flags": [
+            "--include-servable"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Also delete candidates servable elsewhere.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--allow-empty-mixture"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a broad wipe with no protected mixture.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--self-check"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Run the non-destructive internal self-check.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -7015,7 +7085,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7160,7 +7230,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7305,7 +7375,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/models.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7450,7 +7520,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#eval",
+      "docs_anchor": "docs/cli/eval.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -7592,7 +7662,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -7739,7 +7809,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -7920,7 +7990,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -8067,7 +8137,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -8214,7 +8284,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -8361,7 +8431,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#eval-benchmark",
+      "docs_anchor": "docs/cli/eval.md#benchmark",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -8503,7 +8573,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#benchmark",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -8684,7 +8754,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#eval-benchmark-evidence",
+      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -8826,7 +8896,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#eval-benchmark-evidence",
+      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -8968,7 +9038,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#eval-benchmark-evidence",
+      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -9110,7 +9180,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#eval-benchmark-evidence",
+      "docs_anchor": "docs/cli/eval.md#benchmark-evidence",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -9252,7 +9322,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#eval-benchmark-external",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -9394,7 +9464,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -9541,7 +9611,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -9696,7 +9766,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -9843,7 +9913,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -9990,7 +10060,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -10145,7 +10215,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -10300,7 +10370,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -10447,7 +10517,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -10602,7 +10672,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#eval-benchmark-external",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -10744,7 +10814,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -10891,7 +10961,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11038,7 +11108,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/eval.md#external-benchmarks",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11185,7 +11255,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/VOICE.md",
+      "docs_anchor": "docs/cli/voice.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -11327,7 +11397,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/VOICE.md#audio-lifecycle",
+      "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -11471,7 +11541,7 @@
       "coowned_resource_roles": [
         "tts-serve"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11650,7 +11720,7 @@
       "coowned_resource_roles": [
         "tts-serve"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11829,7 +11899,7 @@
       "coowned_resource_roles": [
         "tts-serve"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -11993,7 +12063,7 @@
       "coowned_resource_roles": [
         "tts-serve"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -12155,7 +12225,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/VOICE.md#realtime-proxy",
+      "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -12300,7 +12370,7 @@
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -12449,7 +12519,7 @@
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -12635,7 +12705,7 @@
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -12821,7 +12891,7 @@
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13007,7 +13077,7 @@
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13172,7 +13242,7 @@
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13338,7 +13408,7 @@
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13487,7 +13557,7 @@
         "stt-proxy",
         "tts-proxy"
       ],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -13633,7 +13703,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/VOICE.md#profiles",
+      "docs_anchor": "docs/cli/voice.md#profiles",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -13775,7 +13845,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#profiles",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -13917,7 +13987,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#profiles",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -14059,7 +14129,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/VOICE.md#speech-to-speech-sidecar",
+      "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -14201,7 +14271,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -14343,7 +14413,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -14485,7 +14555,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -14627,7 +14697,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -14772,7 +14842,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -14917,7 +14987,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15062,7 +15132,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15207,7 +15277,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15352,7 +15422,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/voice.md",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15497,7 +15567,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#harness",
+      "docs_anchor": "docs/cli/control-plane.md#harness",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15639,7 +15709,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#harness",
+      "docs_anchor": "docs/cli/control-plane.md#harness",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -15781,7 +15851,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/control-plane.md#harness",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -15976,7 +16046,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#harness",
+      "docs_anchor": "docs/cli/control-plane.md#harness",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16118,7 +16188,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/control-plane.md#harness",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -16299,7 +16369,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#harness",
+      "docs_anchor": "docs/cli/control-plane.md#harness",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16441,7 +16511,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/control-plane.md#harness",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -16599,7 +16669,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#mcp",
+      "docs_anchor": "docs/cli/control-plane.md#mcp",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -16757,7 +16827,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/control-plane.md#mcp",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -16925,7 +16995,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/control-plane.md#mcp",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -17093,7 +17163,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/control-plane.md#mcp",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17251,7 +17321,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#controller",
+      "docs_anchor": "docs/cli/control-plane.md#controller",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17393,7 +17463,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/control-plane.md#controller",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -17553,7 +17623,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/control-plane.md#controller",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -17708,7 +17778,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#host",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -17850,7 +17920,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -18004,7 +18074,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -18158,7 +18228,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#host-gpu-sharing",
+      "docs_anchor": "docs/cli/host.md#gpu-sharing",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -18300,7 +18370,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#host-gpu-sharing-inspect",
+      "docs_anchor": "docs/cli/host.md#gpu-sharing",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -18456,7 +18526,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#host-gpu-sharing-probe",
+      "docs_anchor": "docs/cli/host.md#gpu-sharing",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -18652,7 +18722,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -18806,7 +18876,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [
         "windows"
       ],
@@ -18954,7 +19024,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [
         "windows"
       ],
@@ -19140,7 +19210,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [
         "windows",
         "macos"
@@ -19324,7 +19394,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [
         "windows"
       ],
@@ -19507,7 +19577,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#host",
       "execution_host_os": [
         "windows"
       ],
@@ -19685,7 +19755,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#doctor",
+      "docs_anchor": "docs/cli/host.md#doctor",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -19839,7 +19909,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#upgrade",
+      "docs_anchor": "docs/cli/host.md#upgrade",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -20021,7 +20091,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#topology",
+      "docs_anchor": "docs/cli/control-plane.md#topology",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -20163,7 +20233,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#topology",
+      "docs_anchor": "docs/cli/control-plane.md#topology",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -20305,7 +20375,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#topology",
+      "docs_anchor": "docs/cli/control-plane.md#topology",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -20447,7 +20517,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#topology",
+      "docs_anchor": "docs/cli/control-plane.md#topology",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -20589,12 +20659,12 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#collectors",
+      "docs_anchor": "docs/cli/control-plane.md#collectors",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
       "gpu_role_required": false,
-      "handler": "anvil_serving.collectors:main",
+      "handler": null,
       "mutation_class": "read",
       "options": [
         {
@@ -20731,7 +20801,845 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#dashboard",
+      "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.collectors:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Collector configuration JSON.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--name"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inline collector name.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--adapter"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Collector adapter identifier.",
+          "tombstone": null,
+          "value_name": "ADAPTER"
+        },
+        {
+          "flags": [
+            "--endpoint"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Private or loopback collector URL.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--capability"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Required capability; repeatable.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bearer-token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--output"
+          ],
+          "output_policy": null,
+          "requires_confirmation": true,
+          "summary": "Write validated configuration.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm writing collector configuration.",
+          "tombstone": null,
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "collectors configure",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Validate and optionally write adapter configuration.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.collectors:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Collector configuration JSON.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--name"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inline collector name.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--adapter"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Collector adapter identifier.",
+          "tombstone": null,
+          "value_name": "ADAPTER"
+        },
+        {
+          "flags": [
+            "--endpoint"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Private or loopback collector URL.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--capability"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Required capability; repeatable.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bearer-token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "collectors validate",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Validate adapter configuration without network access.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.collectors:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Collector configuration JSON.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--name"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inline collector name.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--adapter"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Collector adapter identifier.",
+          "tombstone": null,
+          "value_name": "ADAPTER"
+        },
+        {
+          "flags": [
+            "--endpoint"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Private or loopback collector URL.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--capability"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Required capability; repeatable.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bearer-token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "collectors capabilities",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Report configured adapter capabilities offline.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/control-plane.md#collectors",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.collectors:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Collector configuration JSON.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--name"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inline collector name.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--adapter"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Collector adapter identifier.",
+          "tombstone": null,
+          "value_name": "ADAPTER"
+        },
+        {
+          "flags": [
+            "--endpoint"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Private or loopback collector URL.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--capability"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Required capability; repeatable.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--auth-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bearer-token environment variable.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--timeout"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded request timeout.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "collectors inspect",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Perform one bounded read-only adapter inspection.",
+      "tombstone": null,
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/host.md#dashboard",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -20873,7 +21781,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md",
+      "docs_anchor": "docs/cli/host.md#dashboard",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21049,7 +21957,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#edge",
+      "docs_anchor": "docs/cli/control-plane.md#edge",
       "execution_host_os": [],
       "execution_policy": "offline",
       "execution_runtime_roles": [],
@@ -21191,7 +22099,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#edge",
+      "docs_anchor": "docs/cli/control-plane.md#edge",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21377,7 +22285,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#edge",
+      "docs_anchor": "docs/cli/control-plane.md#edge",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21563,7 +22471,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#edge",
+      "docs_anchor": "docs/cli/control-plane.md#edge",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
@@ -21769,7 +22677,7 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/CLI.md#edge",
+      "docs_anchor": "docs/cli/control-plane.md#edge",
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
