@@ -1,18 +1,9 @@
-#!/usr/bin/env python3
-"""benchmark.py - replay the measured request-size distribution against a local endpoint.
+#!/usr/bin/env python
+"""Capacity and repeated-quality benchmark runners for local model endpoints.
 
-Reproduces the Claude Code SUBAGENT (specialist) profile and a fan-out burst, then
-reports TTFT, end-to-end latency, throughput, and prefix-cache hit signal.
-Default distribution = measured subagent percentiles (ctx p50 55K / p95 159K; gen tiny).
-
-Stdlib only (urllib + threading; streaming for TTFT).
-
-Usage:
-  # steady mixed load:
-  python3 benchmark.py --base-url http://127.0.0.1:30000/v1 --model coder-specialist \
-      --requests 60 --concurrency 20
-  # fan-out burst sharing ONE prefix (exercises prefix cache like a workflow wave):
-  python3 benchmark.py --base-url ... --model ... --burst 20 --shared-prefix-tokens 8000 --ctx-tokens 64000
+Use ``anvil-serving eval benchmark capacity`` for performance evidence and
+``anvil-serving eval benchmark quality`` for protocol-v3 correctness evidence.
+The runtime remains stdlib-only (urllib, threads, and atomic JSON writes).
 """
 import argparse
 import hashlib
@@ -24,10 +15,64 @@ import time
 import random
 import statistics
 import sys
+import tempfile
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+try:
+    from .model_controls import validate_reasoning_control
+except ImportError:  # direct ``python anvil_serving/benchmark.py`` compatibility
+    from model_controls import validate_reasoning_control
+
 FILLER = "def helper_%d():\n    return compute(%d)  # routine specialist context\n"
+
+
+def _atomic_write_json(path, value):
+    """Atomically replace a JSON artifact without leaving a truncated target."""
+    out = os.path.abspath(os.path.expanduser(path))
+    parent = os.path.dirname(out) or os.getcwd()
+    if not os.path.isdir(parent):
+        raise OSError("output directory does not exist: %s" % parent)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", newline="\n", dir=parent,
+                prefix=".%s." % os.path.basename(out), suffix=".tmp", delete=False) as handle:
+            temporary = handle.name
+            json.dump(value, handle, indent=2, sort_keys=True, ensure_ascii=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, out)
+        temporary = None
+    finally:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+
+
+def _validate_write_target(path, *, label="output"):
+    """Fail before live work when a requested artifact cannot be replaced safely."""
+    if not path or path == "-":
+        return None
+    out = os.path.abspath(os.path.expanduser(path))
+    parent = os.path.dirname(out) or os.getcwd()
+    if not os.path.isdir(parent):
+        raise OSError("%s directory does not exist: %s" % (label, parent))
+    if os.path.islink(out):
+        raise OSError("%s path cannot be a symbolic link: %s" % (label, out))
+    if os.path.exists(out) and not os.path.isfile(out):
+        raise OSError("%s path is not a regular file: %s" % (label, out))
+    if not os.access(parent, os.W_OK):
+        raise OSError("%s directory is not writable: %s" % (label, parent))
+    return out
+
+
+def _console_safe(value):
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    return str(value).encode(encoding, errors="backslashreplace").decode(encoding)
 
 # Conservative chars-per-token: real code tokenizes to ~3-4 chars/token, so dividing
 # char length by this OVER-estimates the token count -> a clamp built on it never lets
@@ -118,10 +163,24 @@ def parse_context_targets(value):
         if not item:
             continue
         target = int(item)
-        if target <= 0:
-            raise ValueError("context targets must be positive integers")
+        if not 0 < target <= _MAX_CONTEXT_TARGET_TOKENS:
+            raise ValueError(
+                "context targets must be positive integers no greater than %d"
+                % _MAX_CONTEXT_TARGET_TOKENS
+            )
         targets.append(target)
-    return targets or [32768]
+        if len(targets) > _MAX_CONTEXT_TARGETS:
+            raise ValueError(
+                "context targets cannot contain more than %d values"
+                % _MAX_CONTEXT_TARGETS
+            )
+    targets = targets or [32768]
+    if sum(targets) > _MAX_TOTAL_CONTEXT_TARGET_TOKENS:
+        raise ValueError(
+            "context targets cannot request more than %d aggregate prompt tokens"
+            % _MAX_TOTAL_CONTEXT_TARGET_TOKENS
+        )
+    return targets
 
 BAKEOFF_TOOL = {
     "type": "function",
@@ -283,6 +342,13 @@ _MAX_QUALITY_COMPLETION_TOKENS = 65536
 _MAX_SUITE_EVALS = 100
 _MAX_TOTAL_EVAL_ATTEMPTS = 500
 _MAX_TOTAL_QUALITY_TOKENS = 2000000
+_MIN_COMPARABLE_REPETITIONS = 3
+_MAX_SUITE_FILE_BYTES = 4 * 1024 * 1024
+_MAX_CONTROL_EVIDENCE_BYTES = 1024 * 1024
+_MAX_CONTEXT_TARGETS = 16
+_MAX_CONTEXT_TARGET_TOKENS = 1048576
+_MAX_TOTAL_CONTEXT_TARGET_TOKENS = 4194304
+_MAX_TOTAL_CAPACITY_PROMPT_TOKENS = 67108864
 
 def _compile_safe_check_regex(pattern):
     """Compile the bounded, linear-time-ish regex subset used by eval checks.
@@ -395,7 +461,9 @@ def load_suite_spec(path):
     would trip over (or worse, silently default-pass) is rejected here.
     """
     with open(os.path.expanduser(path), "rb") as f:
-        source_bytes = f.read()
+        source_bytes = f.read(_MAX_SUITE_FILE_BYTES + 1)
+    if len(source_bytes) > _MAX_SUITE_FILE_BYTES:
+        raise ValueError("suite file exceeds %d bytes" % _MAX_SUITE_FILE_BYTES)
     spec = json.loads(source_bytes.decode("utf-8"))
     if not isinstance(spec, dict):
         raise ValueError("suite file must be a JSON object")
@@ -407,6 +475,26 @@ def load_suite_spec(path):
         raise ValueError("suite file needs a non-empty 'evals' list")
     if len(evals) > _MAX_SUITE_EVALS:
         raise ValueError("suite file cannot contain more than %d evals" % _MAX_SUITE_EVALS)
+    evidence_use = spec.get("evidence_use", "diagnostic")
+    if evidence_use not in {"diagnostic", "ranking"}:
+        raise ValueError("suite file evidence_use must be 'diagnostic' or 'ranking'")
+    validator_strength = spec.get("validator_strength", "deterministic_marker")
+    if validator_strength not in {
+            "deterministic_marker", "exact_choice", "typed_structure", "independent_judge"}:
+        raise ValueError(
+            "suite file validator_strength must be deterministic_marker, exact_choice, "
+            "typed_structure, or independent_judge"
+        )
+    if evidence_use == "ranking" and validator_strength == "deterministic_marker":
+        raise ValueError(
+            "ranking suites need validator_strength exact_choice or typed_structure; "
+            "substring/regex markers are diagnostic only"
+        )
+    if validator_strength == "independent_judge":
+        raise ValueError(
+            "validator_strength independent_judge is not executable yet; use an "
+            "exact_choice or typed_structure validator, or keep the suite diagnostic-only"
+        )
     seen_ids = set()
     for i, item in enumerate(evals):
         if not isinstance(item, dict) or not item.get("id"):
@@ -415,6 +503,12 @@ def load_suite_spec(path):
         if item["id"] in seen_ids:
             raise ValueError("%s: duplicate eval id" % where)
         seen_ids.add(item["id"])
+        if item.get("context_bucket") is not None:
+            raise ValueError(
+                "%s: context_bucket cannot be executed faithfully yet; provide the "
+                "actual bounded context in messages or remove context_bucket and keep "
+                "this suite diagnostic-only" % where
+            )
         messages = item.get("messages")
         if messages is not None and (
                 not isinstance(messages, list) or not messages
@@ -485,8 +579,97 @@ def load_suite_spec(path):
         # an eval that asserts nothing proves nothing — reject it up front
         if not checks and not expect:
             raise ValueError("%s: needs 'checks' or 'expect_tool'" % where)
+        if validator_strength == "exact_choice":
+            if expect is not None or len(checks or []) != 1:
+                raise ValueError(
+                    "%s: exact_choice requires exactly one full-response matches_regex "
+                    "check and no expect_tool" % where
+                )
+            pattern = checks[0].get("matches_regex")
+            if not isinstance(pattern, str) or not (
+                    pattern.startswith("^") and pattern.endswith("$")):
+                raise ValueError(
+                    "%s: exact_choice requires a matches_regex anchored with ^ and $"
+                    % where
+                )
+            compiled = _compile_safe_check_regex(pattern)
+            if compiled.search("") is not None or compiled.search(" \t\n") is not None:
+                raise ValueError(
+                    "%s: exact_choice validator must not match empty or whitespace-only output"
+                    % where
+                )
+        elif validator_strength == "typed_structure":
+            if expect is None:
+                raise ValueError(
+                    "%s: typed_structure requires expect_tool so the response is checked "
+                    "against a declared function-call shape" % where
+                )
+            matching_tools = [
+                tool.get("function")
+                for tool in item.get("tools") or []
+                if isinstance(tool, dict)
+                and isinstance(tool.get("function"), dict)
+                and tool["function"].get("name") == expect["name"]
+            ]
+            if len(matching_tools) != 1:
+                raise ValueError(
+                    "%s: typed_structure expect_tool must match exactly one declared tool"
+                    % where
+                )
+            required_args = expect.get("required_args") or {}
+            if not required_args:
+                raise ValueError(
+                    "%s: typed_structure requires at least one exact required argument"
+                    % where
+                )
+            parameters = matching_tools[0].get("parameters") or {}
+            properties = parameters.get("properties") or {}
+            required_names = parameters.get("required") or []
+            if not isinstance(properties, dict) or not isinstance(required_names, list):
+                raise ValueError("%s: typed_structure tool schema is malformed" % where)
+            missing = sorted(
+                key for key in required_args
+                if key not in properties or key not in required_names
+            )
+            if missing:
+                raise ValueError(
+                    "%s: typed_structure required_args are not required by the tool schema: %s"
+                    % (where, ", ".join(missing))
+                )
     spec["_source_sha256"] = hashlib.sha256(source_bytes).hexdigest()
     return spec
+
+
+def load_control_evidence(path, *, status, mechanism):
+    """Load and bind a bounded, structured local control proof."""
+    resolved = os.path.abspath(os.path.expanduser(path))
+    try:
+        with open(resolved, "rb") as handle:
+            raw = handle.read(_MAX_CONTROL_EVIDENCE_BYTES + 1)
+    except OSError as exc:
+        raise ValueError("cannot read control evidence %s: %s" % (resolved, exc)) from exc
+    if len(raw) > _MAX_CONTROL_EVIDENCE_BYTES:
+        raise ValueError(
+            "control evidence exceeds %d bytes" % _MAX_CONTROL_EVIDENCE_BYTES
+        )
+    try:
+        evidence = json.loads(raw.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("control evidence must be a UTF-8 JSON object: %s" % exc) from exc
+    if not isinstance(evidence, dict):
+        raise ValueError("control evidence must be a JSON object")
+    required = {
+        "schema": "anvil-serving.control-evidence/v1",
+        "status": status,
+        "control_mechanism": mechanism,
+    }
+    for key, expected in required.items():
+        if evidence.get(key) != expected:
+            raise ValueError("control evidence %s must equal %r" % (key, expected))
+    for key in ("source", "observed_at"):
+        if not isinstance(evidence.get(key), str) or not evidence[key].strip():
+            raise ValueError("control evidence requires a non-empty %s" % key)
+    return resolved, hashlib.sha256(raw).hexdigest()
 
 def evaluate_text_checks(content, checks):
     """Deterministic text checks; this never asks the candidate to grade itself."""
@@ -533,15 +716,23 @@ def resolve_thinking_settings(args):
         mechanism = "none"
         requested = None
 
+    control_status = getattr(args, "control_status", None)
+    if requested is None:
+        control_status = mechanism
+    elif control_status is None:
+        control_status = "requested_unverified"
     return kwargs, reasoning_effort, {
         "mode": mode,
         "chat_template_kwargs": kwargs,
         "reasoning_effort": reasoning_effort,
         "control_mechanism": mechanism,
         "control_requested": requested,
-        "control_status": "requested_unverified" if requested is not None else mechanism,
+        "control_status": control_status,
+        "control_evidence": getattr(args, "control_evidence", None),
+        "control_evidence_sha256": getattr(args, "control_evidence_sha256", None),
         "unsupported": mode == "unsupported",
     }
+
 
 def _request_control_kwargs(chat_template_kwargs, reasoning_effort):
     """Build call kwargs without passing a new optional key to legacy fakes."""
@@ -558,24 +749,24 @@ def eval_budget(item, args, *, default_visible=256):
     headroom separately, then sends their sum. This is an allocation contract,
     not a claim that the engine hard-partitions the two channels.
     """
-    if item.get("max_tokens") is not None:
-        return {
-            "visible_answer_tokens": None,
-            "reasoning_headroom_tokens": None,
-            "max_completion_tokens": int(item["max_tokens"]),
-            "legacy_total_budget": True,
-        }
-    visible = item.get("visible_answer_tokens")
+    cli_visible = getattr(args, "visible_answer_tokens", None)
+    cli_headroom = getattr(args, "reasoning_headroom_tokens", None)
+    visible = cli_visible
     if visible is None:
-        visible = getattr(args, "visible_answer_tokens", default_visible)
-    headroom = item.get("reasoning_headroom_tokens")
+        visible = item.get("visible_answer_tokens")
+    legacy_budget = visible is None and item.get("max_tokens") is not None
+    if legacy_budget:
+        visible = item["max_tokens"]
+    if visible is None:
+        visible = default_visible
+    headroom = cli_headroom
     if headroom is None:
-        headroom = getattr(args, "reasoning_headroom_tokens", 0)
+        headroom = item.get("reasoning_headroom_tokens", 0)
     resolved = {
         "visible_answer_tokens": int(visible),
         "reasoning_headroom_tokens": int(headroom),
         "max_completion_tokens": int(visible) + int(headroom),
-        "legacy_total_budget": False,
+        "legacy_max_tokens_as_visible": bool(legacy_budget),
     }
     if not 0 < resolved["visible_answer_tokens"] <= _MAX_QUALITY_COMPLETION_TOKENS:
         raise ValueError("resolved visible-answer allocation is outside the safe range")
@@ -591,9 +782,26 @@ def eval_budget(item, args, *, default_visible=256):
 def validate_eval_work_plan(args, suite_spec):
     """Reject a quality plan whose aggregate requests or retained output can explode."""
     selected = parse_csv(args.suite, default=[] if suite_spec else ["chat"])
+    context_targets = parse_context_targets(args.context_targets)
+    for flag, value, maximum in (
+            ("--shared-prefix-tokens", args.shared_prefix_tokens, 262144),
+            ("--max-model-len", args.max_model_len, 1048576),
+            ("--margin", args.margin, 1048576)):
+        if not 0 <= value <= maximum:
+            raise ValueError("%s must be from 0 through %d" % (flag, maximum))
+    if ("chat" in selected or "context" in selected) and (
+            sum(context_targets) > _MAX_TOTAL_CONTEXT_TARGET_TOKENS):
+        raise ValueError(
+            "quality context plan exceeds %d aggregate prompt tokens"
+            % _MAX_TOTAL_CONTEXT_TARGET_TOKENS
+        )
     budgets = []
     if "intelligence" in selected:
         budgets.extend(eval_budget({}, args) for _ in INTELLIGENCE_PROMPTS)
+    if "tool" in selected:
+        budgets.append(eval_budget({}, args))
+    if "session" in selected:
+        budgets.append(eval_budget({}, args))
     if suite_spec:
         budgets.extend(eval_budget(item, args) for item in suite_spec["evals"])
     attempt_count = len(budgets) * args.eval_repetitions
@@ -610,8 +818,6 @@ def validate_eval_work_plan(args, suite_spec):
         )
 
 def _failure_class(observation, *, checks_passed):
-    if checks_passed:
-        return None
     has_visible_content = bool(observation["content"].strip())
     if (not has_visible_content and observation["finish_reason"] == "length"
             and (observation["reasoning_chars"] or observation["reasoning_tokens"])):
@@ -621,9 +827,19 @@ def _failure_class(observation, *, checks_passed):
         return "completion_budget_exhausted_after_visible_output"
     if has_visible_content and observation["finish_reason"] == "length":
         return "visible_answer_budget_exhausted"
+    if observation["finish_reason"] not in {"stop", "tool_calls"}:
+        return "unexpected_finish_reason"
+    if checks_passed:
+        return None
     if not has_visible_content:
         return "visible_answer_missing"
     return "deterministic_check_failed"
+
+def _attempt_passed(observation, checks_passed, *, allowed_finish_reasons=("stop",)):
+    """A deterministic match is not a pass when generation did not finish cleanly."""
+    return bool(
+        checks_passed and observation.get("finish_reason") in set(allowed_finish_reasons)
+    )
 
 def _aggregate_attempts(check, attempts, min_pass_rate):
     passed = sum(1 for attempt in attempts if attempt.get("status") == "passed")
@@ -636,6 +852,13 @@ def _aggregate_attempts(check, attempts, min_pass_rate):
         "required_pass_rate": min_pass_rate,
         "status": "passed" if pass_rate >= min_pass_rate else "failed",
     })
+    if check["status"] != "passed" and not check.get("error"):
+        errors = [
+            str(attempt["error"])
+            for attempt in attempts
+            if attempt.get("error")
+        ]
+        check["error"] = errors[0] if errors else "pass rate below threshold"
     if len(attempts) == 1:
         # Preserve the v1 convenience fields while the richer attempt record is
         # adopted by notebook/report consumers.
@@ -644,6 +867,8 @@ def _aggregate_attempts(check, attempts, min_pass_rate):
             "finish_reason", "reasoning_field", "reasoning_chars",
             "reasoning_excerpt", "reasoning_tokens", "usage", "budget",
             "failure_class", "tool_call", "error",
+            "tool_call_count", "valid_tool_call_count", "arguments",
+            "validation_errors", "expected",
         ):
             if key in attempts[0]:
                 check[key] = attempts[0][key]
@@ -711,7 +936,10 @@ def detect_max_model_len(base, model=None, key=None, timeout=15):
 def resolve_api_key(api_key_env=None):
     """Resolve auth for probes from an environment variable reference."""
     if api_key_env:
-        return os.environ.get(api_key_env)
+        value = os.environ.get(api_key_env)
+        if not value:
+            raise ValueError("environment variable %s is not set" % api_key_env)
+        return value
     return None
 
 def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
@@ -788,6 +1016,10 @@ def run_bakeoff(a, api_key):
     # probe must be opted into (--suite chat) so an unrelated probe failure can
     # never pollute external-suite evidence (or trip the notebook no_failures gate).
     suites = parse_csv(a.suite, default=[] if suite_spec else ["chat"])
+    known_suites = {"chat", "context", "tool", "session", "intelligence", "voice"}
+    unknown_suites = sorted(set(suites) - known_suites)
+    if unknown_suites:
+        raise ValueError("unknown quality suite(s): %s" % ", ".join(unknown_suites))
     context_targets = parse_context_targets(a.context_targets)
     max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, api_key)
     cap = ctx_cap(max_model_len, a.max_tokens, a.margin)
@@ -855,71 +1087,138 @@ def run_bakeoff(a, api_key):
             "expected_function": "record_weather_zip",
             "expected_arguments": {"zip": "98101"},
         }
-        try:
-            result = post_chat(
-                a.base_url,
-                a.model,
-                api_key,
-                [{"role": "user", "content": "Call record_weather_zip with zip 98101."}],
-                max_tokens=128,
-                timeout=a.timeout,
-                tools=[BAKEOFF_TOOL],
-                **control_kwargs,
-            )
-            messages = _choice_messages(result.get("response", {}))
-            validations = [
-                validate_function_tool_call(
-                    message, "record_weather_zip", {"zip": "98101"}
+        budget = eval_budget({}, a)
+        attempts = []
+        for attempt_index in range(a.eval_repetitions):
+            try:
+                result = post_chat(
+                    a.base_url,
+                    a.model,
+                    api_key,
+                    [{"role": "user", "content": "Call record_weather_zip with zip 98101."}],
+                    max_tokens=budget["max_completion_tokens"],
+                    timeout=a.timeout,
+                    tools=[BAKEOFF_TOOL],
+                    **control_kwargs,
                 )
-                for message in messages
-            ]
-            valid = [item for item in validations if item["valid"]]
-            check.update({
-                "status": "passed" if valid else "failed",
-                "latency_ms": result["latency_s"] * 1000.0,
-                "tool_call_count": sum(len(message.get("tool_calls") or []) for message in messages),
-                "valid_tool_call_count": len(valid),
-                "arguments": valid[0]["arguments"] if valid else None,
-                "validation_errors": [item["error"] for item in validations if item["error"]],
+                response = result.get("response", {})
+                messages = _choice_messages(response)
+                observation = response_observation(response)
+                validations = [
+                    validate_function_tool_call(
+                        message, "record_weather_zip", {"zip": "98101"}
+                    )
+                    for message in messages
+                ]
+                valid = [item for item in validations if item["valid"]]
+                passed = _attempt_passed(
+                    observation, bool(valid), allowed_finish_reasons=("tool_calls", "stop")
+                )
+                attempt = {
+                    "attempt": attempt_index + 1,
+                    "status": "passed" if passed else "failed",
+                    "latency_ms": result["latency_s"] * 1000.0,
+                    "tool_call_count": sum(
+                        len(message.get("tool_calls") or []) for message in messages
+                    ),
+                    "valid_tool_call_count": len(valid),
+                    "arguments": valid[0]["arguments"] if valid else None,
+                    "validation_errors": [
+                        item["error"] for item in validations if item["error"]
+                    ],
+                    "budget": budget,
+                    **observation,
+                }
+                attempt["failure_class"] = _failure_class(
+                    observation, checks_passed=bool(valid)
+                )
+                if not valid:
+                    attempt["error"] = (
+                        attempt["validation_errors"][0]
+                        if attempt["validation_errors"]
+                        else "response did not include valid tool_calls"
+                    )
+                elif not passed:
+                    attempt["error"] = "tool response did not finish cleanly"
+                attempts.append(attempt)
+            except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
+                attempts.append({
+                    "attempt": attempt_index + 1,
+                    "status": "failed",
+                    "error": str(exc),
+                    "failure_class": "request_error",
+                    "budget": budget,
+                })
+        _aggregate_attempts(check, attempts, a.eval_min_pass_rate)
+        if check["status"] != "passed":
+            check["error"] = check.get("error") or "pass rate below threshold"
+            failures.append({
+                "suite": "tool",
+                "error": check["error"],
+                "failure_classes": sorted({
+                    item.get("failure_class") for item in attempts
+                    if item.get("failure_class")
+                }),
+                "pass_rate": check["pass_rate"],
             })
-            if not valid:
-                check["error"] = check["validation_errors"][0] if check["validation_errors"] else (
-                    "response did not include valid tool_calls"
-                )
-                failures.append({"suite": "tool", "error": check["error"]})
-        except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
-            check.update({"status": "failed", "error": str(exc)})
-            failures.append({"suite": "tool", "error": str(exc)})
         tool_section = {"status": check["status"], "checks": [check]}
 
     session_section = {"status": "not_run", "checks": []}
     if "session" in suites:
         check = {"name": "single_request_multiturn_recall", "status": "pending"}
-        try:
-            result = post_chat(
-                a.base_url,
-                a.model,
-                api_key,
-                SESSION_RECALL_PROMPT,
-                max_tokens=64,
-                timeout=a.timeout,
-                **control_kwargs,
-            )
-            messages = _choice_messages(result.get("response", {}))
-            content = _message_text(messages[0]) if messages else ""
-            passed = "RIVER-918" in content.replace(" ", "")
-            check.update({
-                "status": "passed" if passed else "failed",
-                "latency_ms": result["latency_s"] * 1000.0,
-                "expected": "RIVER-918",
-                "content_excerpt": content[:160],
+        budget = eval_budget({}, a)
+        attempts = []
+        for attempt_index in range(a.eval_repetitions):
+            try:
+                result = post_chat(
+                    a.base_url,
+                    a.model,
+                    api_key,
+                    SESSION_RECALL_PROMPT,
+                    max_tokens=budget["max_completion_tokens"],
+                    timeout=a.timeout,
+                    **control_kwargs,
+                )
+                response = result.get("response", {})
+                observation = response_observation(response)
+                marker_passed = "RIVER-918" in observation["content"].replace(" ", "")
+                passed = _attempt_passed(observation, marker_passed)
+                attempt = {
+                    "attempt": attempt_index + 1,
+                    "status": "passed" if passed else "failed",
+                    "latency_ms": result["latency_s"] * 1000.0,
+                    "expected": "RIVER-918",
+                    "budget": budget,
+                    **observation,
+                }
+                attempt["failure_class"] = _failure_class(
+                    observation, checks_passed=marker_passed
+                )
+                if not marker_passed:
+                    attempt["error"] = "response did not recall session code"
+                elif not passed:
+                    attempt["error"] = "session response did not finish cleanly"
+                attempts.append(attempt)
+            except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
+                attempts.append({
+                    "attempt": attempt_index + 1,
+                    "status": "failed",
+                    "error": str(exc),
+                    "failure_class": "request_error",
+                    "budget": budget,
+                })
+        _aggregate_attempts(check, attempts, a.eval_min_pass_rate)
+        if check["status"] != "passed":
+            check["error"] = check.get("error") or "pass rate below threshold"
+            failures.append({
+                "suite": "session",
+                "error": check["error"],
+                "failure_classes": sorted({
+                    item.get("failure_class") for item in attempts
+                    if item.get("failure_class")
+                }),
+                "pass_rate": check["pass_rate"],
             })
-            if not passed:
-                check["error"] = "response did not recall session code"
-                failures.append({"suite": "session", "error": check["error"]})
-        except Exception as exc:  # noqa: BLE001 - failure is benchmark evidence
-            check.update({"status": "failed", "error": str(exc)})
-            failures.append({"suite": "session", "error": str(exc)})
         session_section = {"status": check["status"], "checks": [check]}
 
     intelligence_section = {"status": "not_run", "checks": []}
@@ -946,7 +1245,8 @@ def run_bakeoff(a, api_key):
                     )
                     observation = response_observation(result.get("response", {}))
                     text_checks = evaluate_text_checks(observation["content"], spec["checks"])
-                    passed = all(item["passed"] for item in text_checks)
+                    checks_passed = all(item["passed"] for item in text_checks)
+                    passed = _attempt_passed(observation, checks_passed)
                     attempts.append({
                         "attempt": attempt_index + 1,
                         "status": "passed" if passed else "failed",
@@ -954,7 +1254,7 @@ def run_bakeoff(a, api_key):
                         "text_checks": text_checks,
                         "budget": budget,
                         "failure_class": _failure_class(
-                            observation, checks_passed=passed
+                            observation, checks_passed=checks_passed
                         ),
                         **observation,
                     })
@@ -1058,9 +1358,16 @@ def run_bakeoff(a, api_key):
                                 attempt["tool_call"]["validation_errors"]
                                 or ["response did not include tool_calls"]
                             )
-                    passed = not errors
+                    checks_passed = not errors
+                    allowed_finishes = ("tool_calls", "stop") if expect else ("stop",)
+                    passed = _attempt_passed(
+                        observation, checks_passed,
+                        allowed_finish_reasons=allowed_finishes,
+                    )
                     attempt["status"] = "passed" if passed else "failed"
-                    failure_class = _failure_class(observation, checks_passed=passed)
+                    failure_class = _failure_class(
+                        observation, checks_passed=checks_passed
+                    )
                     if tool_failed and failure_class in {
                             "deterministic_check_failed", "visible_answer_missing"}:
                         failure_class = "tool_call_failed"
@@ -1098,6 +1405,10 @@ def run_bakeoff(a, api_key):
             "source_sha256": spec["_source_sha256"],
             "date": spec.get("date"),
             "work_class": spec.get("work_class"),
+            "evidence_use": spec.get("evidence_use", "diagnostic"),
+            "validator_strength": spec.get(
+                "validator_strength", "deterministic_marker"
+            ),
             "checks": checks,
         }
 
@@ -1135,6 +1446,8 @@ def run_bakeoff(a, api_key):
             "config_id": a.config_id,
             "model": a.model,
             "base_url": a.base_url,
+            "engine": a.engine,
+            "gpu": a.gpu,
             "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
         },
         "source_recipe": {
@@ -1148,11 +1461,15 @@ def run_bakeoff(a, api_key):
             "endpoint_already_loaded": True,
         },
         "evaluation_protocol": {
-            "version": 2,
+            "version": 3,
             "repetitions": a.eval_repetitions,
             "minimum_pass_rate": a.eval_min_pass_rate,
-            "visible_answer_tokens": a.visible_answer_tokens,
-            "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
+            "minimum_comparable_repetitions": _MIN_COMPARABLE_REPETITIONS,
+            "visible_answer_tokens": a.visible_answer_tokens or 256,
+            "reasoning_headroom_tokens": (
+                a.reasoning_headroom_tokens
+                if a.reasoning_headroom_tokens is not None else 0
+            ),
             "budget_semantics": (
                 "visible_answer_tokens plus reasoning_headroom_tokens are sent as one "
                 "max_tokens cap; the endpoint does not hard-partition the channels"
@@ -1191,10 +1508,11 @@ def run_bakeoff(a, api_key):
         },
         "failures": failures,
     }
+    evidence["identity"] = {
+        key: value for key, value in evidence["identity"].items() if value is not None
+    }
     if a.evidence_out:
-        with open(a.evidence_out, "w", encoding="utf-8") as f:
-            json.dump(evidence, f, indent=2, sort_keys=True)
-            f.write("\n")
+        _atomic_write_json(a.evidence_out, evidence)
         print("wrote bakeoff evidence: " + a.evidence_out)
     else:
         print(json.dumps(evidence, indent=2, sort_keys=True))
@@ -1216,7 +1534,7 @@ def run_bakeoff(a, api_key):
         )
         print("recorded bakeoff run %s into notebook %s (row %d)"
               % (evidence["run_id"], a.notebook, row_id))
-    return 0
+    return 1 if failures else 0
 
 def _serve_recipes():
     """Import the shared serve-recipe helpers for package or direct script execution."""
@@ -1306,47 +1624,110 @@ def emit_recipe(a, summary, *, capture=None, hardware=None, append=None):
         print("recorded serve recipe for %s -> %s" % (recipe["model"], a.recipe_out))
     return recipe
 
-def main(argv=None, *, prog="anvil-serving eval benchmark run"):
+def main(argv=None, *, prog=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    workload = argv.pop(0) if argv and argv[0] in {"capacity", "quality"} else None
+    if prog is None:
+        prog = "anvil-serving eval benchmark"
+        if workload is not None:
+            prog += " " + workload
+    if workload is not None:
+        prog = "anvil-serving eval benchmark %s" % workload
     if argv and argv[0] == "external":
         from .external_benchmarks import cli as external_bench
         return external_bench.main(
             argv[1:], prog="anvil-serving eval benchmark external"
         )
 
+    if workload == "capacity":
+        description = (
+            "Measure bounded endpoint latency, throughput, context, and prefix-cache behavior."
+        )
+        examples = (
+            "Examples:\n"
+            "  anvil-serving eval benchmark capacity --tier heavy --requests 10 "
+            "--concurrency 1 --output heavy-capacity.json --confirm\n"
+            "  anvil-serving eval benchmark capacity --base-url "
+            "http://127.0.0.1:30002/v1 --model MODEL --engine vllm "
+            "--gpu dark-heavy --output run.json --confirm"
+        )
+    elif workload == "quality":
+        description = (
+            "Run repeated, bounded quality suites and retain comparison-grade evidence."
+        )
+        examples = (
+            "Examples:\n"
+            "  anvil-serving eval benchmark quality --tier heavy --suite-file suite.json "
+            "--candidate-id MODEL --config-id heavy-v1 --control-status verified "
+            "--control-evidence evidence/control.json --output quality.json --confirm\n"
+            "  anvil-serving eval benchmark quality --base-url "
+            "http://127.0.0.1:30002/v1 --model MODEL --engine vllm --gpu dark-heavy "
+            "--suite intelligence --candidate-id MODEL --config-id direct "
+            "--output quality.json --confirm"
+        )
+    else:
+        description = "Benchmark a direct endpoint or a serves-manifest tier."
+        examples = (
+            "Compatibility parser: prefer `eval benchmark capacity` or "
+            "`eval benchmark quality`."
+        )
+
+    def visible_for(*workloads):
+        return workload is None or workload in workloads
+
+    def help_for(text, *workloads):
+        return text if visible_for(*workloads) else argparse.SUPPRESS
+
     ap = argparse.ArgumentParser(
         prog=prog,
-        description="Benchmark a direct endpoint or a serves-manifest tier.",
+        description=description + "\n\n" + examples,
         epilog=(
-            "Related command: anvil-serving eval benchmark external "
-            "(import, report, and compare external benchmark priors)."
+            "Configuration precedence: command flags, referenced serves manifest, then "
+            "the bundled reference manifest. Direct targets require both --base-url and --model."
         ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     endpoint = ap.add_argument_group("direct endpoint input")
     endpoint.add_argument("--base-url", help="OpenAI-compatible endpoint base URL")
     endpoint.add_argument("--model", help="served model id")
+    endpoint.add_argument(
+        "--engine",
+        help="engine identity recorded in evidence (inferred from --tier when available)",
+    )
+    endpoint.add_argument(
+        "--gpu",
+        help="stable GPU or hardware-role identity recorded in comparable evidence",
+    )
     manifest = ap.add_argument_group("serves manifest input")
     manifest.add_argument("--manifest", help="serves manifest TOML (used with --tier)")
     manifest.add_argument("--tier", help="serve name in the manifest; fills endpoint and model")
+    recipe = ap.add_argument_group("serve recipe input")
+    recipe.add_argument("--recipe", help="recorded recipe model selector")
+    recipe.add_argument("--registry", help="serve-recipe registry used with --recipe")
     ap.add_argument("--api-key-env", default=None,
                     help="read the bearer token from this environment variable")
-    ap.add_argument("--requests", type=int, default=60)
-    ap.add_argument("--concurrency", type=int, default=20)
-    ap.add_argument("--burst", type=int, default=0, help="if >0, fire N requests sharing ONE prefix concurrently")
-    ap.add_argument("--shared-prefix-tokens", type=int, default=8000)
-    ap.add_argument("--ctx-tokens", type=int, default=0, help="fixed ctx; 0 = sample measured subagent distribution")
-    ap.add_argument("--max-tokens", type=int, default=64, help="generation length (subagent median is tiny)")
+    ap.add_argument("--requests", type=int, default=60,
+                    help=help_for("number of requests (1..10000; default %(default)s)", "capacity"))
+    ap.add_argument("--concurrency", type=int, default=20,
+                    help=help_for("parallel requests (1..256; default %(default)s)", "capacity"))
+    ap.add_argument("--burst", type=int, default=0,
+                    help=help_for("shared-prefix burst size (0..256; 0 disables)", "capacity"))
+    ap.add_argument("--shared-prefix-tokens", type=int, default=8000,
+                    help=help_for("shared prefix size in estimated tokens", "capacity", "quality"))
+    ap.add_argument("--ctx-tokens", type=int, default=0,
+                    help=help_for("fixed context; 0 samples the measured distribution", "capacity"))
+    ap.add_argument("--max-tokens", type=int, default=64,
+                    help=help_for("capacity generation cap; quality context-probe cap", "capacity", "quality"))
     ap.add_argument("--max-model-len", type=int, default=0,
-                    help="serve's context window (max_model_len). Sampled/fixed ctx is clamped to "
-                         "stay under it (ctx <= max_model_len - max_tokens - margin) so a small-context "
-                         "serve (e.g. 16384) doesn't HTTP 400. 0 = auto-detect from /v1/models, else no clamp.")
+                    help=help_for("context window override; 0 discovers /v1/models. Requests are "
+                                  "clamped below the limit using --margin.",
+                                  "capacity", "quality"))
     ap.add_argument("--margin", type=int, default=DEFAULT_CTX_MARGIN,
-                    help="token headroom left below max_model_len when clamping (default %(default)s)")
+                    help=help_for("token headroom below max_model_len (default %(default)s)",
+                                  "capacity", "quality"))
     ap.add_argument("--no-thinking", action="store_true",
-                    help="inject chat_template_kwargs={'enable_thinking': False} so thinking-by-default "
-                         "models (Qwen3.x, GLM) emit CONTENT instead of spending the whole max_tokens "
-                         "budget on hidden reasoning and reporting a FALSE 0 tok/s (TTFT==E2E). NOTE: "
-                         "gpt-oss-style models IGNORE this kwarg (they gate reasoning via 'reasoning effort').")
+                    help="compatibility alias for --thinking-mode disabled; valid only for "
+                         "chat-template-controlled model families")
     ap.add_argument("--thinking-mode", choices=("default", "enabled", "disabled", "unsupported"),
                     default=None,
                     help="record/request thinking behavior for benchmark evidence. "
@@ -1358,98 +1739,158 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
                     help="send the OpenAI-compatible reasoning_effort field for model families "
                          "that do not use chat_template_kwargs (for example GPT-OSS or Mistral). "
                          "Cannot be combined with --no-thinking or an explicit thinking mode.")
-    ap.add_argument("--visible-answer-tokens", type=int, default=256,
-                    help="visible-answer allocation for repaired quality evals (default %(default)s)")
-    ap.add_argument("--reasoning-headroom-tokens", type=int, default=0,
-                    help="reasoning headroom added to the visible-answer allocation for repaired "
-                         "quality evals (default %(default)s)")
-    ap.add_argument("--eval-repetitions", type=int, default=1,
-                    help="repeat each intelligence/external eval this many times (default %(default)s)")
+    ap.add_argument("--visible-answer-tokens", type=int, default=None,
+                    help=help_for("override suite visible-answer allocation (default 256)", "quality"))
+    ap.add_argument("--reasoning-headroom-tokens", type=int, default=None,
+                    help=help_for("reasoning headroom added to visible output (default 0)", "quality"))
+    ap.add_argument("--eval-repetitions", type=int, default=3,
+                    help=help_for("attempts per quality check (1..20; default %(default)s)", "quality"))
     ap.add_argument("--eval-min-pass-rate", type=float, default=1.0,
-                    help="minimum repeated-attempt pass rate for an eval to pass (default %(default)s)")
-    ap.add_argument("--json-out", default=None,
-                    help="write a machine-readable JSON summary for benchmark external compare")
+                    help=help_for("minimum attempt pass rate (0..1; default %(default)s)", "quality"))
+    capacity_output_flags = ("--json-out", "--output") if workload == "capacity" else ("--json-out",)
+    ap.add_argument(*capacity_output_flags, dest="json_out", default=None,
+                    help=help_for("write the capacity artifact atomically", "capacity"))
     # --- GENERATE a serve recipe as a side effect of benchmarking a live serve ------
     # (READ them back with `anvil-serving models recipes list|show`.) All optional.
     ap.add_argument("--recipe-out", default=None,
-                    help="after the run, record a [[recipe]] block: PATH to append to the "
+                    help=help_for("after the run, record a [[recipe]] block: PATH to append to the "
                          "serve-recipe registry, or '-' for stdout. Captures the live serve's "
-                         "reproducible docker config + THIS run's measured numbers.")
+                         "reproducible docker config + THIS run's measured numbers.", "legacy"))
     ap.add_argument("--recipe-from-container", default=None, metavar="NAME",
-                    help="docker container NAME of the serve to capture (image/env/flags/port + "
-                         "gpu_uuid via `docker inspect`) for the recorded recipe")
+                    help=help_for("docker container to capture for legacy recipe output", "legacy"))
     ap.add_argument("--recipe-intent", default=None, metavar="CSV",
-                    help="comma-separated work-classes the serve is suited for (-> [recipe.intent].suited)")
+                    help=help_for("legacy recipe intent CSV", "legacy"))
     ap.add_argument("--recipe-mode", default=None,
-                    help="the mode this recipe belongs to (-> [recipe.intent].mode)")
+                    help=help_for("legacy recipe mode", "legacy"))
     ap.add_argument("--recipe-status", default="verified",
-                    help="recipe provenance status (default %(default)s = measured on-box)")
+                    help=help_for("legacy recipe provenance status", "legacy"))
     ap.add_argument("--recipe-model", default=None, metavar="NAME",
-                    help="model id recorded in the recipe (default: --model)")
+                    help=help_for("legacy recipe model", "legacy"))
     # --- Fast-tier bakeoff evidence mode: target an already-loaded endpoint -----
     ap.add_argument("--bakeoff", action="store_true",
-                    help="run selected Fast-tier bakeoff checks against an already-loaded "
-                         "OpenAI-compatible endpoint and emit structured evidence JSON")
+                    help=help_for("legacy quality-mode selector", "legacy"))
     ap.add_argument("--candidate-id", default=None,
-                    help="candidate identifier recorded in --bakeoff evidence")
+                    help=help_for("candidate identifier recorded in quality evidence", "quality"))
     ap.add_argument("--config-id", default=None,
-                    help="serve/config identifier recorded in --bakeoff evidence")
+                    help=help_for("serve/config identifier recorded in quality evidence", "quality"))
     ap.add_argument("--context-targets", default="32768",
-                    help="comma-separated context targets for --bakeoff (default %(default)s)")
+                    help=help_for("comma-separated quality context targets", "quality"))
     ap.add_argument("--suite", action="append",
-                    help="bakeoff suite(s) to run; repeatable or comma-separated. "
-                         "Known suites: chat, context, tool, session, intelligence, voice")
+                    help=help_for("repeatable/comma-separated: chat, context, tool, session, "
+                                  "intelligence, voice", "quality"))
     ap.add_argument("--suite-file", default=None, metavar="SPECS_JSON",
-                    help="run an externally-authored eval suite (e.g. a session-evals "
-                         "suite.json) through the bakeoff check engine; per-eval checks land "
-                         "in the evidence JSON under suites.<spec suite name>. Requires "
-                         "--bakeoff. Runs ONLY the external suite unless built-in suites "
-                         "are also selected with --suite.")
-    ap.add_argument("--evidence-out", default=None,
-                    help="write --bakeoff structured evidence JSON to this path")
+                    help=help_for("externally-authored quality suite; runs only that suite unless "
+                                  "--suite also selects built-in checks", "quality"))
+    quality_output_flags = ("--evidence-out", "--output") if workload == "quality" else ("--evidence-out",)
+    ap.add_argument(*quality_output_flags, dest="evidence_out", default=None,
+                    help=help_for("write the quality artifact atomically", "quality"))
     ap.add_argument("--notebook", default=None,
-                    help="also record this --bakeoff run into the bakeoff notebook "
-                         "SQLite DB at this path (append; keeps history)")
+                    help=help_for("also append the run to this bakeoff notebook", "quality"))
     ap.add_argument("--notebook-task", default=None,
-                    help="task key for the notebook row (required with --notebook)")
+                    help=help_for("notebook task key", "quality"))
     ap.add_argument("--notebook-hardware", default=None,
-                    help="hardware key for the notebook row (required with --notebook)")
+                    help=help_for("notebook hardware key", "quality"))
     ap.add_argument("--source-recipe", default=None,
-                    help="recipe/config source reference recorded in --bakeoff evidence")
+                    help=help_for("immutable recipe/config source reference", "quality"))
+    ap.add_argument(
+        "--control-status",
+        choices=("verified", "supported", "requested_unverified"),
+        help=help_for(
+            "verification state for an explicit thinking/reasoning control; verified or "
+            "supported requires --control-evidence", "quality"
+        ),
+    )
+    ap.add_argument(
+        "--control-evidence",
+        help=help_for("stable path or URL proving the declared thinking-control status",
+                      "quality"),
+    )
     ap.add_argument("--serve-command", default=None,
-                    help="command needed to reproduce the already-loaded serve")
+                    help=help_for("serve command recorded for reproduction", "quality"))
     ap.add_argument("--voice-latency-ms", type=float, default=None,
-                    help="optional externally measured STT->LLM->TTS total latency")
+                    help=help_for("external total voice latency in milliseconds", "quality"))
     ap.add_argument("--stt-latency-ms", type=float, default=None,
-                    help="optional externally measured STT stage latency")
+                    help=help_for("external STT latency in milliseconds", "quality"))
     ap.add_argument("--tts-latency-ms", type=float, default=None,
-                    help="optional externally measured TTS stage latency")
+                    help=help_for("external TTS latency in milliseconds", "quality"))
     ap.add_argument("--timeout", "--timeout-seconds", dest="timeout", type=float, default=900.0,
                     help="request timeout in seconds (default %(default)s)")
+    ap.add_argument(
+        "--dry-run", action="store_true",
+        help="validate and print the resolved workload without sending requests or writing",
+    )
     a = ap.parse_args(argv)
+    if workload == "quality":
+        a.bakeoff = True
+    elif workload == "capacity":
+        a.bakeoff = False
+    canonical_forbidden = {
+        "capacity": {
+            "--bakeoff", "--suite", "--suite-file", "--candidate-id", "--config-id",
+            "--evidence-out", "--notebook", "--voice-latency-ms", "--stt-latency-ms",
+            "--tts-latency-ms", "--control-status", "--control-evidence",
+        },
+        "quality": {
+            "--bakeoff", "--requests", "--concurrency", "--burst", "--ctx-tokens",
+            "--json-out", "--recipe-out", "--recipe-from-container", "--recipe-intent",
+            "--recipe-mode", "--recipe-status", "--recipe-model",
+        },
+    }
+    if workload is not None:
+        supplied_flags = {token.partition("=")[0] for token in argv if token.startswith("--")}
+        forbidden = sorted(supplied_flags & canonical_forbidden[workload])
+        if forbidden:
+            ap.error("%s does not accept %s" % (workload, ", ".join(forbidden)))
+    for label, target in (
+            ("JSON output", a.json_out),
+            ("evidence output", a.evidence_out),
+            ("recipe output", a.recipe_out),
+            ("notebook", a.notebook)):
+        try:
+            _validate_write_target(target, label=label)
+        except OSError as exc:
+            ap.error(str(exc))
     from .eval import resolve_endpoint_target
     try:
-        a.base_url, a.model, _selected = resolve_endpoint_target(
+        a.base_url, a.model, selected = resolve_endpoint_target(
             tier=a.tier,
             manifest=a.manifest,
             base_url=a.base_url,
             model=a.model,
+            recipe=a.recipe,
+            registry=a.registry,
         )
     except (OSError, ValueError) as exc:
         ap.error(str(exc))
-    api_key = resolve_api_key(a.api_key_env)
+    if selected:
+        a.engine = a.engine or selected.get("engine")
+        a.gpu = a.gpu or selected.get("gpu_role")
+        if a.source_recipe is None and a.tier:
+            a.source_recipe = "%s#%s" % (a.manifest or "resolved-manifest", a.tier)
+        elif a.source_recipe is None and a.recipe:
+            a.source_recipe = selected.get("source_recipe")
+    try:
+        api_key = resolve_api_key(a.api_key_env)
+    except ValueError as exc:
+        ap.error(str(exc))
 
-    if not 0 < a.visible_answer_tokens <= _MAX_QUALITY_COMPLETION_TOKENS:
+    visible_answer_tokens = (
+        a.visible_answer_tokens if a.visible_answer_tokens is not None else 256
+    )
+    reasoning_headroom_tokens = (
+        a.reasoning_headroom_tokens if a.reasoning_headroom_tokens is not None else 0
+    )
+    if not 0 < visible_answer_tokens <= _MAX_QUALITY_COMPLETION_TOKENS:
         ap.error(
             "--visible-answer-tokens must be from 1 through %d"
             % _MAX_QUALITY_COMPLETION_TOKENS
         )
-    if not 0 <= a.reasoning_headroom_tokens <= _MAX_QUALITY_COMPLETION_TOKENS:
+    if not 0 <= reasoning_headroom_tokens <= _MAX_QUALITY_COMPLETION_TOKENS:
         ap.error(
             "--reasoning-headroom-tokens must be from 0 through %d"
             % _MAX_QUALITY_COMPLETION_TOKENS
         )
-    if (a.visible_answer_tokens + a.reasoning_headroom_tokens
+    if (visible_answer_tokens + reasoning_headroom_tokens
             > _MAX_QUALITY_COMPLETION_TOKENS):
         ap.error(
             "visible-answer plus reasoning-headroom allocation cannot exceed %d"
@@ -1465,13 +1906,61 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
             "--reasoning-effort cannot be combined with --no-thinking or an explicit "
             "--thinking-mode"
         )
+    if a.control_status in {"verified", "supported"} and not a.control_evidence:
+        ap.error("--control-status verified/supported requires --control-evidence")
+    if a.control_status is not None and not (
+            explicit_thinking or a.reasoning_effort is not None):
+        ap.error("--control-status requires an explicit thinking or reasoning control")
+    if a.control_evidence and a.control_status not in {"verified", "supported"}:
+        ap.error("--control-evidence requires --control-status verified or supported")
+    try:
+        validate_reasoning_control(
+            a.model,
+            thinking_mode=a.thinking_mode,
+            no_thinking=a.no_thinking,
+            reasoning_effort=a.reasoning_effort,
+        )
+    except ValueError as exc:
+        ap.error(str(exc))
+    a.control_evidence_sha256 = None
+    if a.control_evidence:
+        mechanism = (
+            "reasoning_effort" if a.reasoning_effort is not None
+            else "chat_template_kwargs"
+        )
+        try:
+            a.control_evidence, a.control_evidence_sha256 = load_control_evidence(
+                a.control_evidence,
+                status=a.control_status,
+                mechanism=mechanism,
+            )
+        except ValueError as exc:
+            ap.error("--control-evidence: %s" % exc)
 
     if a.suite_file and not a.bakeoff:
         ap.error("--suite-file requires --bakeoff (it runs through the bakeoff evidence engine)")
+    if not math.isfinite(a.timeout) or not 0 < a.timeout <= 3600:
+        ap.error("--timeout must be greater than 0 and at most 3600 seconds")
 
     if a.bakeoff:
+        known_suites = {"chat", "context", "tool", "session", "intelligence", "voice"}
+        selected_suites = parse_csv(
+            a.suite,
+            default=[] if a.suite_file or workload == "quality" else ["chat"],
+        )
+        if workload == "quality" and not selected_suites and not a.suite_file:
+            ap.error("quality requires --suite-file or at least one explicit --suite")
+        unknown_suites = sorted(set(selected_suites) - known_suites)
+        if unknown_suites:
+            ap.error("--suite: unknown value(s): %s" % ", ".join(unknown_suites))
+        if "voice" in selected_suites and a.voice_latency_ms is None:
+            ap.error("--suite voice requires --voice-latency-ms")
         if not a.candidate_id or not a.config_id:
-            ap.error("--bakeoff requires --candidate-id and --config-id")
+            ap.error(
+                "quality requires --candidate-id and --config-id"
+                if workload == "quality"
+                else "--bakeoff requires --candidate-id and --config-id"
+            )
         a.suite_spec = None
         if a.suite_file:
             # validate BEFORE any request is sent: a malformed spec is an operator
@@ -1480,11 +1969,88 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
                 a.suite_spec = load_suite_spec(a.suite_file)
             except (OSError, ValueError) as exc:
                 ap.error("--suite-file: %s" % exc)
+        if a.notebook:
+            if not a.notebook_task or not a.notebook_hardware:
+                ap.error("--notebook requires --notebook-task and --notebook-hardware")
+            if not a.suite_spec:
+                ap.error(
+                    "--notebook requires an explicit ranking --suite-file with a "
+                    "strong validator"
+                )
+            if (a.suite_spec.get("evidence_use") != "ranking"
+                    or a.suite_spec.get("validator_strength") not in {
+                        "exact_choice", "typed_structure"
+                    }):
+                ap.error(
+                    "--notebook requires evidence_use=ranking and validator_strength "
+                    "exact_choice or typed_structure"
+                )
         try:
             validate_eval_work_plan(a, a.suite_spec)
         except ValueError as exc:
             ap.error(str(exc))
+        if a.dry_run:
+            print(json.dumps({
+                "schema": "anvil-serving.eval-plan/v1",
+                "workload": "quality",
+                "target": {
+                    "base_url": a.base_url,
+                    "model": a.model,
+                    "engine": a.engine,
+                    "gpu": a.gpu,
+                    "tier": a.tier,
+                    "manifest": a.manifest,
+                },
+                "quality": {
+                    "suites": selected_suites,
+                    "suite_file": a.suite_file,
+                    "repetitions": a.eval_repetitions,
+                    "minimum_pass_rate": a.eval_min_pass_rate,
+                    "visible_answer_tokens": visible_answer_tokens,
+                    "reasoning_headroom_tokens": reasoning_headroom_tokens,
+                },
+                "output": a.evidence_out,
+                "deferred": ["endpoint identity", "model requests", "artifact write"],
+            }, indent=2, sort_keys=True, ensure_ascii=True))
+            return 0
         return run_bakeoff(a, api_key)
+
+    bounds = (
+        ("--requests", a.requests, 1, 10000),
+        ("--concurrency", a.concurrency, 1, 256),
+        ("--burst", a.burst, 0, 256),
+        ("--shared-prefix-tokens", a.shared_prefix_tokens, 0, 262144),
+        ("--ctx-tokens", a.ctx_tokens, 0, 1048576),
+        ("--max-tokens", a.max_tokens, 1, 65536),
+        ("--max-model-len", a.max_model_len, 0, 1048576),
+        ("--margin", a.margin, 0, 1048576),
+    )
+    for flag, value, minimum, maximum in bounds:
+        if not minimum <= value <= maximum:
+            ap.error("%s must be from %d through %d" % (flag, minimum, maximum))
+    if a.dry_run:
+        print(json.dumps({
+            "schema": "anvil-serving.eval-plan/v1",
+            "workload": "capacity",
+            "target": {
+                "base_url": a.base_url,
+                "model": a.model,
+                "engine": a.engine,
+                "gpu": a.gpu,
+                "tier": a.tier,
+                "manifest": a.manifest,
+            },
+            "capacity": {
+                "requests": a.burst or a.requests,
+                "concurrency": a.burst or a.concurrency,
+                "context_tokens": a.ctx_tokens or "measured-distribution",
+                "max_tokens": a.max_tokens,
+                "timeout_seconds": a.timeout,
+            },
+            "output": a.json_out,
+            "deferred": ["endpoint identity", "context-window probe", "requests", "artifact write"],
+        }, indent=2, sort_keys=True, ensure_ascii=True))
+        return 0
 
     # Resolve the serve's context window: explicit flag wins; else best-effort probe /v1/models.
     max_model_len = a.max_model_len or detect_max_model_len(a.base_url, a.model, api_key)
@@ -1492,26 +2058,43 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
     ctk, reasoning_effort, thinking = resolve_thinking_settings(a)
     control_kwargs = _request_control_kwargs(ctk, reasoning_effort)
 
-    shared = (FILLER % (0, 0)) * max(1, int(a.shared_prefix_tokens * 0.75) // 6)
     n = a.burst if a.burst else a.requests
     conc = a.burst if a.burst else a.concurrency
-    jobs = []
-    for i in range(n):
+    planned_context = a.ctx_tokens or min(cap or 262144, 262144)
+    if n * planned_context > _MAX_TOTAL_CAPACITY_PROMPT_TOKENS:
+        ap.error(
+            "capacity workload exceeds %d aggregate prompt tokens; reduce "
+            "--requests/--burst or --ctx-tokens"
+            % _MAX_TOTAL_CAPACITY_PROMPT_TOKENS
+        )
+    shared = (FILLER % (0, 0)) * max(1, int(a.shared_prefix_tokens * 0.75) // 6)
+
+    def run_request(i):
         ctx = clamp_ctx(a.ctx_tokens or sample_ctx(), cap)
-        jobs.append(make_prompt(shared, ctx, i if not a.burst else 0, max_prompt_tokens=cap))  # burst: identical-ish prefix
+        prompt = make_prompt(
+            shared, ctx, i if not a.burst else 0, max_prompt_tokens=cap
+        )
+        return stream_chat(
+            a.base_url, a.model, prompt, api_key, a.max_tokens,
+            timeout=a.timeout, **control_kwargs,
+        )
 
     capnote = f" max_model_len={max_model_len}(ctx<={cap})" if cap is not None else ""
     thinknote = "" if thinking["mode"] == "default" else f" thinking={thinking['mode']}"
     if reasoning_effort is not None:
         thinknote += f" reasoning_effort={reasoning_effort}"
-    print(f"BENCH {a.base_url} model={a.model}  n={n} concurrency={conc} "
-          f"{'BURST(shared-prefix)' if a.burst else 'mixed'} max_tokens={a.max_tokens}{capnote}{thinknote}")
+    print(_console_safe(
+        f"BENCH {a.base_url} model={a.model}  n={n} concurrency={conc} "
+        f"{'BURST(shared-prefix)' if a.burst else 'mixed'} "
+        f"max_tokens={a.max_tokens}{capnote}{thinknote}"
+    ))
     started_at = time.time()
     t0 = time.perf_counter()
     results = []
     with ThreadPoolExecutor(max_workers=conc) as ex:
-        futs = [ex.submit(stream_chat, a.base_url, a.model, p, api_key, a.max_tokens,
-                          **control_kwargs) for p in jobs]
+        # Futures retain only integer indices; each worker builds at most one
+        # prompt, so memory scales with concurrency rather than request count.
+        futs = [ex.submit(run_request, i) for i in range(n)]
         for f in as_completed(futs):
             try: results.append(f.result())
             except Exception as e: print("  req error:", e)
@@ -1557,11 +2140,9 @@ def main(argv=None, *, prog="anvil-serving eval benchmark run"):
     else:
         print("prefix-cache hit: endpoint did not return prompt_tokens_details.cached_tokens")
     print("-"*60)
-    print("Tip: run once cold, then immediately again — TTFT should drop sharply on the 2nd run if prefix cache works.")
+    print("Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.")
     if a.json_out:
-        with open(a.json_out, "w", encoding="utf-8") as f:
-            json.dump(summary, f, indent=2, sort_keys=True)
-            f.write("\n")
+        _atomic_write_json(a.json_out, summary)
         print("wrote JSON summary: " + a.json_out)
     if len(results) != n:
         if a.recipe_out:

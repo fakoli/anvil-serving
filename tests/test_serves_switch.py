@@ -155,13 +155,13 @@ def test_recipe_validation_rejects_unsafe_activation_direction(direction):
         serve_recipes.validate_recipe(recipe)
 
 
-def test_switch_parser_requires_role_and_recipe():
+def test_switch_parser_accepts_positional_recipe():
     parser = serves._build_action_parser("switch")
     args = parser.parse_intermixed_args([
-        "heavy", "--recipe", "new-heavy", "--registry", "recipes.toml", "--dry-run",
+        "heavy", "new-heavy", "--registry", "recipes.toml", "--dry-run",
     ])
     assert args.names == ["heavy"]
-    assert args.recipe == "new-heavy"
+    assert args.recipe_selector == "new-heavy"
     assert args.registry == "recipes.toml"
     assert args.dry_run is True
 
@@ -189,7 +189,7 @@ def test_shipped_heavy_activation_metadata_matches_reference_promotion(monkeypat
 
 def test_switch_help_names_role_recipe_and_preview_options():
     help_text = serves._build_action_parser("switch").format_help()
-    assert "ROLE" in help_text
+    assert "ROLE [MODEL]" in help_text
     assert "--recipe MODEL" in help_text
     assert "--dry-run" in help_text
     assert "--resume" not in help_text
@@ -204,9 +204,9 @@ def test_switch_docs_show_preview_apply_and_both_reference_models():
     root = Path(__file__).resolve().parents[1]
     docs = (root / "docs" / "cli" / "serves.md").read_text(encoding="utf-8")
     assert "serves switch heavy\n" in docs
-    assert "serves switch heavy --recipe ThinkingCap-Qwen3.6-27B-FP8 --dry-run" in docs
-    assert "serves switch heavy --recipe ThinkingCap-Qwen3.6-27B-FP8 --confirm" in docs
-    assert "serves switch heavy --recipe gpt-oss-120b --confirm" in docs
+    assert "serves switch heavy ThinkingCap-Qwen3.6-27B-FP8 --dry-run" in docs
+    assert "serves switch heavy ThinkingCap-Qwen3.6-27B-FP8 --confirm" in docs
+    assert "serves switch heavy gpt-oss-120b --confirm" in docs
     assert "normal registry row is intentionally not enough" in docs
 
 
@@ -234,6 +234,12 @@ def test_switch_listing_is_confirmation_free_but_recipe_selection_is_guarded():
     assert cli._requires_confirmation(
         switch_node, ("heavy", "--recipe", "gpt-oss-120b")
     ) is True
+    assert cli._requires_confirmation(
+        switch_node, ("heavy", "gpt-oss-120b")
+    ) is True
+    assert cli._requires_confirmation(
+        switch_node, ("heavy", "--manifest", "serves.toml")
+    ) is False
 
 
 def test_direct_promotions_share_one_transaction_lock(monkeypatch):
@@ -815,3 +821,66 @@ def test_promotion_artifacts_are_snapshotted_into_operation_directory(tmp_path):
                for field, source in sources.items())
     for field in sources:
         Path(plan[field]).chmod(0o600)
+
+
+def test_switch_accepts_positional_recipe_selector(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(serves, "resolve_manifest_path", lambda _path: "serves.toml")
+    monkeypatch.setattr(serves, "load_manifest", lambda _path: ["serve"])
+    monkeypatch.setattr(serves, "load_promotions", lambda _path: ["promotion"])
+    monkeypatch.setattr(serves.serve_recipes, "load_registry", lambda _path: {"recipe": []})
+
+    def switch(managed, promotions, registry, role, selector, manifest, **kwargs):
+        seen.update(
+            managed=managed,
+            promotions=promotions,
+            registry=registry,
+            role=role,
+            selector=selector,
+            manifest=manifest,
+            dry_run=kwargs["dry_run"],
+        )
+        return 0
+
+    monkeypatch.setattr(serves, "cmd_switch", switch)
+    assert serves.main(["switch", "heavy", "thinking-cap", "--dry-run"]) == 0
+    assert seen["role"] == "heavy"
+    assert seen["selector"] == "thinking-cap"
+    assert seen["dry_run"] is True
+
+
+def test_switch_keeps_recipe_flag_compatibility(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(serves, "resolve_manifest_path", lambda _path: "serves.toml")
+    monkeypatch.setattr(serves, "load_manifest", lambda _path: [])
+    monkeypatch.setattr(serves, "load_promotions", lambda _path: [])
+    monkeypatch.setattr(serves.serve_recipes, "load_registry", lambda _path: {"recipe": []})
+    monkeypatch.setattr(
+        serves,
+        "cmd_switch",
+        lambda _serves, _promotions, _registry, role, selector, _manifest, **_kwargs:
+            seen.update(role=role, selector=selector) or 0,
+    )
+    assert serves.main([
+        "switch", "heavy", "--recipe", "thinking-cap", "--dry-run",
+    ]) == 0
+    assert seen == {"role": "heavy", "selector": "thinking-cap"}
+
+
+def test_switch_rejects_two_recipe_selectors(capsys):
+    assert serves.main([
+        "switch", "heavy", "thinking-cap", "--recipe", "other", "--dry-run",
+    ]) == 2
+    assert "either positional MODEL or --recipe MODEL" in capsys.readouterr().err
+
+
+def test_positional_switch_requires_dispatcher_confirmation(capsys):
+    assert cli.main(["serves", "switch", "heavy", "thinking-cap"]) == 3
+    assert "confirmation required" in capsys.readouterr().err
+
+
+def test_switch_help_leads_with_positional_workflow(capsys):
+    assert cli.main(["serves", "switch", "--help"]) == 0
+    output = capsys.readouterr().out
+    assert "serves switch heavy MODEL --dry-run" in output
+    assert "ROLE [MODEL]" in output

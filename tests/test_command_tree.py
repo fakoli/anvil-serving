@@ -79,8 +79,21 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["router endpoint"]["execution_runtime_roles"] == ["native"]
     assert records["router endpoint"]["remote_operation"] is None
     assert records["eval preflight"]["mutation_class"] == "mutate"
-    assert records["eval preflight"]["remote_operation"]["confirmed_arguments"] == {"confirm": True}
-    assert records["eval benchmark run"]["remote_operation"]["tool"] == "benchmark_probe"
+    assert records["eval preflight"]["remote_operation"]["tool"] == "preflight_probe"
+    assert records["eval preflight"]["remote_operation"]["confirmed_arguments"] == {
+        "confirm": True
+    }
+    assert {
+        "allowed_finish_reasons",
+        "dry_run",
+        "reasoning_effort",
+        "timeout_seconds",
+    } <= set(records["eval preflight"]["remote_operation"]["allowed_arguments"])
+    assert records["eval benchmark capacity"]["remote_operation"] is None
+    assert records["eval benchmark quality"]["remote_operation"] is None
+    assert records["eval benchmark run"]["tombstone"]["replacement"] == (
+        "eval benchmark capacity or eval benchmark quality"
+    )
     assert records["eval benchmark external export"]["mutation_class"] == "mutate"
     assert records["harness sync openclaw"]["remote_operation"]["tool"] == "openclaw_sync"
     assert records["harness restart openclaw"]["recovery_capable"] is True
@@ -116,10 +129,13 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
         "allowed_arguments": ["timeout_seconds", "max_output_bytes"],
         "positional_arguments": [],
     }
-    assert all(
-        "--dry-run" not in option["flags"]
-        for path in ("eval bootstrap", "eval calibrate", "eval benchmark external import")
-        for option in records[path]["options"]
+    for path in ("eval bootstrap", "eval calibrate"):
+        assert any(
+            "--dry-run" in option["flags"] for option in records[path]["options"]
+        )
+    assert any(
+        "--dry-run" in option["flags"]
+        for option in records["eval benchmark external import"]["options"]
     )
     assert records["router run"]["remote_operation"] is None
     assert records["controller status"]["remote_operation"]["mode"] == "controller-status"

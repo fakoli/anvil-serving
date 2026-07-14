@@ -1000,7 +1000,7 @@ def test_recipe_show_prints_reconstructed_command_and_stats(request, capsys):
     assert "activation:" in out
     assert "direction: rollback" in out
     assert "compose_service: heavy-gptoss-rollback" in out
-    assert "serves switch heavy --recipe openai/gpt-oss-120b --dry-run" in out
+    assert "serves switch heavy openai/gpt-oss-120b --dry-run" in out
 
 
 def test_recipe_show_unknown_model_is_clean_error(request, capsys):

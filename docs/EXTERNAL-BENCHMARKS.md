@@ -6,6 +6,25 @@ External inference benchmarks are performance priors for Anvil Serving. They hel
 
 They are not routing-quality truth. Anvil's local work-class evals and quality profiles still decide whether a model is `allow`, `allow-with-verify`, or `deny` for a workload.
 
+## Choose a workflow
+
+| Goal | Command |
+| --- | --- |
+| Create the local evidence store | `eval benchmark external init` |
+| See adapters and their latest snapshots | `eval benchmark external sources` |
+| Fetch and import a live snapshot | `eval benchmark external fetch` |
+| Import a retained snapshot without network access | `eval benchmark external import` |
+| Browse normalized rows | `eval benchmark external list` |
+| Render filtered Markdown or JSON | `eval benchmark external report` |
+| Export normalized rows | `eval benchmark external export` |
+| Compare a local capacity artifact with external priors | `eval benchmark external compare` |
+| Record a local quality artifact in the comparison notebook | `eval benchmark external notebook add` |
+| List retained notebook runs | `eval benchmark external notebook list` |
+| Render notebook scores and verdicts | `eval benchmark external notebook render` |
+
+Add `--help` after any command path for its complete operands, filters, and defaults. External
+rows are advisory priors; only local quality evidence can support a routing decision.
+
 ## Supported Sources
 
 Supported source adapters:
@@ -40,7 +59,8 @@ Every snapshot stores the raw file path, source URL or import path, fetch/import
 ## Initialize A Store
 
 ```bash
-anvil-serving eval benchmark external init --db .anvil/benchmarks.sqlite
+anvil-serving eval benchmark external init --db .anvil/benchmarks.sqlite --dry-run
+anvil-serving eval benchmark external init --db .anvil/benchmarks.sqlite --confirm
 ```
 
 This creates a local SQLite store with tables for sources, raw snapshots, normalized benchmark rows, serve fingerprints, and comparison records.
@@ -51,7 +71,8 @@ This creates a local SQLite store with tables for sources, raw snapshots, normal
 anvil-serving eval benchmark external import \
   --source millstone \
   --file tests/fixtures/external_benchmarks/millstone_sample.json \
-  --db .anvil/benchmarks.sqlite
+  --db .anvil/benchmarks.sqlite \
+  --confirm
 ```
 
 For `rtx6kpro`, save a raw JSON artifact first, then import that file:
@@ -60,7 +81,8 @@ For `rtx6kpro`, save a raw JSON artifact first, then import that file:
 anvil-serving eval benchmark external import \
   --source rtx6kpro \
   --file tests/fixtures/external_benchmarks/rtx6kpro_qwen_vllm_mtp.json \
-  --db .anvil/benchmarks.sqlite
+  --db .anvil/benchmarks.sqlite \
+  --confirm
 ```
 
 The raw snapshot is copied under `.anvil/external-benchmarks/raw/` when the DB lives under `.anvil/`. Parser failures are non-destructive: the raw snapshot stays stored, the snapshot row is marked `failed`, and the CLI prints the parse error.
@@ -71,7 +93,8 @@ The raw snapshot is copied under `.anvil/external-benchmarks/raw/` when the DB l
 anvil-serving eval benchmark external fetch \
   --source millstone \
   --url https://example.com/millstone-snapshot.html \
-  --db .anvil/benchmarks.sqlite
+  --db .anvil/benchmarks.sqlite \
+  --confirm
 ```
 
 For `rtx6kpro`, fetch individual raw GitHub JSON files rather than repository or wiki pages:
@@ -80,7 +103,8 @@ For `rtx6kpro`, fetch individual raw GitHub JSON files rather than repository or
 anvil-serving eval benchmark external fetch \
   --source rtx6kpro \
   --url https://raw.githubusercontent.com/local-inference-lab/rtx6kpro/master/benchmarks/inference-throughput/vllm_awq_mtp.json \
-  --db .anvil/benchmarks.sqlite
+  --db .anvil/benchmarks.sqlite \
+  --confirm
 ```
 
 For the llmrequirements recipe database, fetch the machine-readable data file,
@@ -90,7 +114,8 @@ not the dynamically rendered picker page:
 anvil-serving eval benchmark external fetch \
   --source llmrequirements \
   --url https://llmrequirements.com/data/db.json \
-  --db .anvil/benchmarks.sqlite
+  --db .anvil/benchmarks.sqlite \
+  --confirm
 ```
 
 Use fetch mode only when you explicitly want live network access. Tests and fixture-based workflows should use import mode.
@@ -152,8 +177,14 @@ from local measurement or an external advisory source.
 anvil-serving eval benchmark external export \
   --format json \
   --out external-benchmarks.json \
-  --db .anvil/benchmarks.sqlite
+  --db .anvil/benchmarks.sqlite \
+  --confirm
 ```
+
+Mutation commands support `--dry-run` and require the shared confirmation gate for apply.
+Fetch and import inputs are capped at 16 MiB, and fetches use a bounded 30-second request.
+Exports validate the destination before reading the store, replace atomically, and preserve an
+existing regular file as a numbered `.anvil.bak.N` backup.
 
 The export contains normalized benchmark rows with their source and snapshot metadata.
 
@@ -185,6 +216,45 @@ Important warning example:
 Local run used NEXTN speculative decoding; external baseline did not report speculative decoding. Throughput delta is not an apples-to-apples model/engine comparison.
 ```
 
+## Retain quality runs in the notebook
+
+The notebook stores local protocol evidence separately from imported performance priors. It
+accepts only protocol-v3 artifacts containing an explicit ranking suite, a strong
+`exact_choice` or `typed_structure` validator, and at least three attempts per check. Legacy or
+diagnostic-only artifacts cannot produce notebook wins. Record one completed quality artifact
+with its task and hardware identity:
+
+```bash
+anvil-serving eval benchmark external notebook add \
+  --evidence heavy-quality.json \
+  --task heavy-tier \
+  --hardware rtx-pro-6000 \
+  --db .anvil/benchmarks.sqlite \
+  --confirm
+```
+
+List the latest run per candidate, or add `--all` to inspect the append history:
+
+```bash
+anvil-serving eval benchmark external notebook list \
+  --task heavy-tier \
+  --hardware rtx-pro-6000 \
+  --db .anvil/benchmarks.sqlite
+```
+
+Render a comparison matrix and choose an explicit baseline when useful:
+
+```bash
+anvil-serving eval benchmark external notebook render \
+  --task heavy-tier \
+  --hardware rtx-pro-6000 \
+  --baseline current-heavy \
+  --db .anvil/benchmarks.sqlite
+```
+
+Notebook verdicts summarize retained evidence; they do not promote a model or change router
+configuration.
+
 ## Agent MCP Advisory Workflow
 
 Agents should prefer the MCP/controller wrappers when they need external
@@ -209,14 +279,16 @@ requires a human-approved `router_promote` result before any packet can claim
 
 ## Local Benchmark JSON
 
-`anvil-serving eval benchmark run` keeps its existing console output. For comparison workflows, pass `--json-out`:
+`anvil-serving eval benchmark capacity` keeps concise console output. For comparison workflows,
+write an artifact with `--output`:
 
 ```bash
-anvil-serving eval benchmark run \
+anvil-serving eval benchmark capacity \
   --base-url http://127.0.0.1:30000/v1 \
   --model local-specialist \
   --burst 20 \
-  --json-out local-benchmark.json
+  --output local-benchmark.json \
+  --confirm
 ```
 
 Add GPU, engine, quantization, and serve flags to the JSON when the benchmark command cannot infer them from the endpoint. The compare command accepts the fields used in `tests/fixtures/external_benchmarks/local_benchmark_sample.json`.

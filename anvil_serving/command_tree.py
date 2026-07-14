@@ -563,8 +563,57 @@ def build_command_tree() -> CommandTree:
         "report": "external_bench_report",
         "compare": "external_bench_compare",
     }
+    external_db_option = _option(
+        "--db", summary="SQLite benchmark store path.", value_name="PATH"
+    )
+    external_options = {
+        "init": confirm_options + (external_db_option,),
+        "sources": (external_db_option,),
+        "fetch": confirm_options + (
+            external_db_option,
+            _option("--source", summary="Registered external source adapter.", value_name="NAME"),
+            _option("--url", summary="Bounded HTTP(S) snapshot URL.", value_name="URL"),
+        ),
+        "import": confirm_options + (
+            external_db_option,
+            _option("--source", summary="Registered external source adapter.", value_name="NAME"),
+            _option("--file", summary="Bounded local snapshot path.", value_name="PATH"),
+        ),
+        "list": (
+            external_db_option,
+            _option("--gpu", summary="Filter by normalized GPU identity.", value_name="NAME"),
+            _option("--model", summary="Filter by normalized model identity.", value_name="MODEL"),
+            _option("--source", summary="Filter by source adapter.", value_name="NAME"),
+            _option("--top", summary="Maximum rows to return.", value_name="COUNT"),
+        ),
+        "report": (
+            external_db_option,
+            _option("--gpu", summary="Filter by normalized GPU identity.", value_name="NAME"),
+            _option("--model", summary="Filter by normalized model identity.", value_name="MODEL"),
+            _option("--source", summary="Filter by source adapter.", value_name="NAME"),
+            _option("--format", summary="Report output format.", value_name="FORMAT"),
+        ),
+        "export": confirm_options + (
+            external_db_option,
+            _option("--out", summary="Atomic JSON export target.", value_name="PATH"),
+            _option("--format", summary="Export format.", value_name="FORMAT"),
+        ),
+        "compare": (
+            external_db_option,
+            _option("--local", summary="Local benchmark artifact path.", value_name="PATH"),
+            _option("--gpu", summary="GPU identity fallback/filter.", value_name="NAME"),
+        ),
+    }
     external_actions = tuple(
-        _resource_node(action, summary, "anvil_serving.external_benchmarks.cli", role="evaluation", mutation=mutation, argv_prefix=(action,), remote_operation=(_remote(external_remote_tools[action]) if action in external_remote_tools else None))
+        _resource_node(
+            action, summary, "anvil_serving.external_benchmarks.cli",
+            role="evaluation", mutation=mutation, argv_prefix=(action,),
+            options=external_options[action],
+            remote_operation=(
+                _remote(external_remote_tools[action])
+                if action in external_remote_tools else None
+            ),
+        )
         for action, summary, mutation in (
             ("init", "Initialize benchmark evidence storage.", "mutate"), ("sources", "List benchmark sources.", "read"),
             ("fetch", "Fetch and import benchmark evidence.", "mutate"), ("import", "Import saved benchmark evidence.", "mutate"),
@@ -579,6 +628,26 @@ def build_command_tree() -> CommandTree:
                 action, summary, "anvil_serving.external_benchmarks.cli",
                 role="evaluation", mutation="mutate" if action == "add" else "read",
                 argv_prefix=("notebook", action),
+                options=(
+                    confirm_options + (
+                        external_db_option,
+                        _option("--evidence", summary="Protocol-v3 ranking evidence JSON.", value_name="PATH"),
+                        _option("--task", summary="Notebook task key.", value_name="NAME"),
+                        _option("--hardware", summary="Notebook hardware key.", value_name="NAME"),
+                    )
+                    if action == "add" else (
+                        external_db_option,
+                        _option("--task", summary="Filter by notebook task key.", value_name="NAME"),
+                        _option("--hardware", summary="Filter by hardware key.", value_name="NAME"),
+                        _option("--format", summary="Notebook output format.", value_name="FORMAT"),
+                        *(() if action == "render" else (
+                            _option("--all", summary="Include full append history."),
+                        )),
+                        *(() if action == "list" else (
+                            _option("--baseline", summary="Baseline candidate identifier.", value_name="ID"),
+                        )),
+                    )
+                ),
             )
             for action, summary in (
                 ("add", "Record a bakeoff evidence run."),
@@ -588,31 +657,120 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor=f"{EVAL_DOC}#external-benchmarks",
     )
+    eval_target_options = (
+        _option("--tier", summary="Serve name from the selected manifest.", value_name="NAME"),
+        _option("--manifest", summary="Serves manifest used with --tier.", value_name="PATH"),
+        _option("--recipe", summary="Recorded recipe model selector.", value_name="MODEL"),
+        _option("--registry", summary="Serve-recipe registry used with --recipe.", value_name="PATH"),
+        _option("--base-url", summary="Direct OpenAI-compatible endpoint.", value_name="URL"),
+        _option("--model", summary="Direct served-model identifier.", value_name="ID"),
+        _option("--api-key-env", summary="Environment variable containing the bearer token.", value_name="ENV"),
+        _option("--timeout-seconds", summary="Bounded per-request deadline.", value_name="SECONDS"),
+    )
+    eval_reasoning_options = (
+        _option("--thinking-mode", summary="Chat-template thinking mode.", value_name="MODE"),
+        _option("--reasoning-effort", summary="OpenAI reasoning effort.", value_name="LEVEL"),
+        _option("--visible-answer-tokens", summary="Visible-answer token allocation.", value_name="TOKENS"),
+        _option("--reasoning-headroom-tokens", summary="Additional reasoning allocation.", value_name="TOKENS"),
+    )
     eval_node = _node(
         "eval", "Run quality evaluation workflows.",
         children=(
-            _resource_node("usage", "Analyze recorded usage.", "anvil_serving.profile", role="evaluation", argv_prefix=()),
+            _resource_node(
+                "usage", "Write usage and role summaries from recorded sessions.",
+                "anvil_serving.profile", role="evaluation", mutation="mutate",
+                argv_prefix=(), options=confirm_options + (
+                    _option("--logs-dir", summary="Claude Code log root.", value_name="PATH"),
+                    _option("--out-dir", summary="Existing output directory.", value_name="PATH"),
+                    _option(
+                        "--analysis-timeout",
+                        summary="Deadline for each analysis child process.",
+                        value_name="SECONDS",
+                    ),
+                ),
+            ),
             _resource_node(
                 "preflight", "Preflight an endpoint.", "anvil_serving.preflight",
                 role="evaluation", mutation="mutate", argv_prefix=(),
-                options=(_option("--confirm", summary="Confirm the live evaluation workload."),),
+                options=confirm_options + eval_target_options + eval_reasoning_options + (
+                    _option("--checks", summary="Comma-separated correctness checks.", value_name="NAMES"),
+                    _option("--needle-ctx", summary="Needle-test context size.", value_name="TOKENS"),
+                    _option("--tool-batch", summary="Tool batch size.", value_name="COUNT"),
+                    _option("--reasoning-evidence", summary="Required reasoning-channel behavior.", value_name="POLICY"),
+                    _option("--allowed-finish-reasons", summary="Accepted finish reasons.", value_name="NAMES"),
+                    _option("--output", summary="Atomic gate-evidence path.", value_name="PATH"),
+                ),
                 remote_operation=_remote(
-                    "preflight_probe", confirmed=(("confirm", True),),
-                    allowed=("base_url", "model", "api_key_env", "needle_ctx", "tool_batch", "checks", "no_thinking", "thinking_mode", "reasoning_effort", "reasoning_evidence", "visible_answer_tokens", "reasoning_headroom_tokens", "timeout_seconds"),
+                    "preflight_probe",
+                    confirmed=(("confirm", True),),
+                    allowed=(
+                        "base_url", "model", "api_key_env", "needle_ctx", "tool_batch",
+                        "checks", "no_thinking", "thinking_mode", "reasoning_effort",
+                        "reasoning_evidence", "visible_answer_tokens",
+                        "reasoning_headroom_tokens", "allowed_finish_reasons",
+                        "timeout_seconds", "dry_run",
+                    ),
                 ),
             ),
-            _resource_node("planning", "Run planning evaluation.", "anvil_serving.eval", role="evaluation"),
-            _resource_node("bootstrap", "Bootstrap a quality profile.", "anvil_serving.eval", role="evaluation", mutation="mutate"),
-            _resource_node("calibrate", "Calibrate a reviewable quality profile.", "anvil_serving.calibrate", role="evaluation", mutation="mutate", argv_prefix=()),
+            _node(
+                "planning", "Removed source-checkout planning harness.",
+                tombstone=removed("eval benchmark quality --suite-file PATH"),
+                visible=False,
+            ),
+            _resource_node(
+                "bootstrap", "Build a candidate quality profile from retained fixtures.",
+                "anvil_serving.eval", role="evaluation", mutation="mutate",
+                options=confirm_options,
+            ),
+            _resource_node(
+                "calibrate", "Measure local tiers into a reviewable candidate profile.",
+                "anvil_serving.calibrate", role="evaluation", mutation="mutate",
+                argv_prefix=(), options=confirm_options + (
+                    _removed_option(
+                        "--i-understand-this-calls-real-tiers", replacement="--confirm"
+                    ),
+                ),
+            ),
             _node("benchmark", "Run or import benchmark evidence.", children=(
                 _resource_node(
-                    "run", "Run an endpoint benchmark.", "anvil_serving.benchmark",
-                    role="evaluation", mutation="mutate", argv_prefix=(),
-                    options=(_option("--confirm", summary="Confirm the live evaluation workload."),),
-                    remote_operation=_remote(
-                        "benchmark_probe", confirmed=(("confirm", True),),
-                        allowed=("base_url", "model", "api_key_env", "requests", "concurrency", "max_tokens", "ctx_tokens", "no_thinking", "thinking_mode", "reasoning_effort", "visible_answer_tokens", "reasoning_headroom_tokens", "timeout_seconds"),
+                    "capacity", "Measure endpoint latency, throughput, context, and cache behavior.",
+                    "anvil_serving.benchmark", role="evaluation", mutation="mutate",
+                    argv_prefix=("capacity",),
+                    options=confirm_options + eval_target_options + eval_reasoning_options + (
+                        _option("--requests", summary="Request count.", value_name="COUNT"),
+                        _option("--concurrency", summary="Maximum concurrent requests.", value_name="COUNT"),
+                        _option("--ctx-tokens", summary="Prompt context size; zero samples the measured distribution.", value_name="TOKENS"),
+                        _option("--max-tokens", summary="Completion cap per request.", value_name="TOKENS"),
+                        _option("--max-model-len", summary="Known endpoint context window.", value_name="TOKENS"),
+                        _option("--burst", summary="Shared-prefix burst size.", value_name="COUNT"),
+                        _option("--engine", summary="Engine identity retained in evidence.", value_name="NAME"),
+                        _option("--gpu", summary="Hardware identity retained in evidence.", value_name="NAME"),
+                        _option("--output", summary="Atomic capacity artifact path.", value_name="PATH"),
                     ),
+                ),
+                _resource_node(
+                    "quality", "Run repeated quality suites and retain comparison evidence.",
+                    "anvil_serving.benchmark", role="evaluation", mutation="mutate",
+                    argv_prefix=("quality",),
+                    options=confirm_options + eval_target_options + eval_reasoning_options + (
+                        _option("--suite", summary="Repeatable built-in suite selector.", value_name="NAME"),
+                        _option("--suite-file", summary="Protocol-v3 external suite JSON.", value_name="PATH"),
+                        _option("--candidate-id", summary="Stable candidate identifier.", value_name="ID"),
+                        _option("--config-id", summary="Stable serving-config identifier.", value_name="ID"),
+                        _option("--eval-repetitions", summary="Attempts per quality check.", value_name="COUNT"),
+                        _option("--eval-min-pass-rate", summary="Required attempt pass rate.", value_name="RATE"),
+                        _option("--engine", summary="Engine identity retained in evidence.", value_name="NAME"),
+                        _option("--gpu", summary="Hardware identity retained in evidence.", value_name="NAME"),
+                        _option("--source-recipe", summary="Immutable recipe/config reference.", value_name="REF"),
+                        _option("--control-status", summary="Reasoning-control proof status.", value_name="STATUS"),
+                        _option("--control-evidence", summary="Structured local reasoning-control proof.", value_name="PATH"),
+                        _option("--output", summary="Atomic quality artifact path.", value_name="PATH"),
+                    ),
+                ),
+                _node(
+                    "run", "Removed ambiguous benchmark path.",
+                    tombstone=removed("eval benchmark capacity or eval benchmark quality"),
+                    visible=False,
                 ),
                 _node(
                     "evidence",
@@ -965,7 +1123,7 @@ def build_command_tree() -> CommandTree:
             *(_node(name, "Removed command.", tombstone=removed(replacement), visible=False) for name, replacement in (
                 ("serve", "router run"), ("deploy", "serves render"), ("multiplexer", "serves multiplex"),
                 ("cache-prune", "models cache prune"), ("score", "models score"), ("profile", "eval usage"),
-                ("preflight", "eval preflight"), ("benchmark", "eval benchmark run"),
+                ("preflight", "eval preflight"), ("benchmark", "eval benchmark capacity"),
                 ("external-bench", "eval benchmark external"), ("calibrate", "eval calibrate"),
                 ("gpus", "host gpus"), ("voice-sidecar", "voice sidecar"), ("onboard", "init"),
             )),

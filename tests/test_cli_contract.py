@@ -329,7 +329,10 @@ def test_external_benchmark_notebook_actions_resolve(monkeypatch, action):
         lambda self: lambda argv: calls.append(argv) or 0,
     )
 
-    assert cli.main(["eval", "benchmark", "external", "notebook", action]) == 0
+    argv = ["eval", "benchmark", "external", "notebook", action]
+    if action == "add":
+        argv.append("--confirm")
+    assert cli.main(argv) == 0
     assert calls == [["notebook", action]]
 
 

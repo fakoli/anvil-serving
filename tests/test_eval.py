@@ -69,6 +69,17 @@ def test_resolve_endpoint_target_rejects_incomplete_modes():
         ev.resolve_endpoint_target(base_url="http://127.0.0.1:8000/v1")
 
 
+@pytest.mark.parametrize("url,match", [
+    ("http://user:secret@127.0.0.1:8000/v1", "userinfo"),
+    ("http://127.0.0.1:8000/v1?token=secret", "query string"),
+    ("http://127.0.0.1:not-a-port/v1", "invalid port"),
+    ("file:///tmp/model", "absolute http"),
+])
+def test_resolve_endpoint_target_rejects_unsafe_urls(url, match):
+    with pytest.raises(ValueError, match=match):
+        ev.resolve_endpoint_target(base_url=url, model="candidate")
+
+
 # ---- reachability (lenient) -------------------------------------------------
 
 def test_reachable_true_on_response():
@@ -199,11 +210,16 @@ def test_planning_relative_dir_made_absolute():
     assert paths and all(os.path.isabs(p) for p in paths)
 
 
-def test_bootstrap_builds_replay_command():
-    a = types.SimpleNamespace(eval_data="EVDIR", out="OUT.json")
+def test_bootstrap_builds_replay_command(tmp_path):
+    eval_data = tmp_path / "eval-data"
+    eval_data.mkdir()
+    out = tmp_path / "OUT.json"
+    a = types.SimpleNamespace(
+        eval_data=str(eval_data), out=str(out), overwrite=False, dry_run=False
+    )
     captured = {}
     ev._run_bootstrap(a, _call=_rec(captured))
     argv = captured["argv"]
     assert "anvil_serving.router.profile_bootstrap" in argv
-    assert "--replay" in argv and "EVDIR" in argv
-    assert "--out" in argv and "OUT.json" in argv
+    assert "--replay" in argv and str(eval_data) in argv
+    assert "--out" in argv and str(out) in argv

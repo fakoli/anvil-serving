@@ -39,11 +39,13 @@ import argparse
 import json
 import os
 import sys
+import urllib.parse
 from pathlib import Path
 from typing import List, Optional
 
 from .router.config import ConfigError, load
 from .router.modes import ENV_MODE, ENV_MODES_CONFIG, KNOWN_MODES, resolve_serve_config
+from .guard import backup_file, confirmation_authorized
 
 # Imported into this module's namespace (not called qualified) so a hermetic test
 # can inject a fake via ``monkeypatch.setattr(calibrate, "run_live", ...)`` — the
@@ -75,6 +77,18 @@ def _parse_endpoints(specs: List[str]) -> Optional[dict]:
         tier, sep, url = spec.partition("=")
         if not sep or not tier or not url:
             raise ValueError(f"--endpoint expects TIER=URL, got {spec!r}")
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError(f"--endpoint URL must be absolute http(s): {url!r}")
+        if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+            raise ValueError(
+                "--endpoint URL must not contain userinfo, query, or fragment; "
+                "use environment variables for credentials"
+            )
+        try:
+            parsed.port
+        except ValueError as exc:
+            raise ValueError("--endpoint URL has an invalid port: %s" % exc) from exc
         endpoints[tier] = url
     return endpoints or None
 
@@ -118,13 +132,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="anvil-serving eval calibrate",
         description=(
-            "Operator entry to the GUARDED write-back batch (ADR-0009). Measures "
-            "your configured LOCAL tiers through their real backends, grades each "
-            "output with the INDEPENDENT Agent-SDK judge, and writes a REVIEWABLE "
-            "candidate profile.json. It never auto-promotes and never calls a tier "
-            "without an explicit --endpoint + --i-understand-this-calls-real-tiers "
-            "confirmation. Offline, CI-safe alternative: `anvil-serving eval bootstrap`."
+            "Measure configured local tiers and write a reviewable candidate profile. "
+            "Nothing is auto-promoted.\n\n"
+            "Examples:\n"
+            "  anvil-serving eval calibrate --config router.toml --eval-data ./eval-data "
+            "--out ./candidate.json --endpoint fast-local=http://127.0.0.1:30001/v1 --dry-run\n"
+            "  anvil-serving eval calibrate --config router.toml --eval-data ./eval-data "
+            "--out ./candidate.json --endpoint fast-local=http://127.0.0.1:30001/v1 --confirm"
         ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     selector = p.add_mutually_exclusive_group()
     selector.add_argument(
@@ -161,23 +177,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--i-understand-this-calls-real-tiers",
-        dest="confirm_live",
-        action="store_true",
-        help=(
-            "explicit confirmation that this run hits REAL serving tiers and the "
-            "`claude` judge. Without it (or without --endpoint) the batch REFUSES "
-            "to run — it is never triggered by CI."
-        ),
+        "--eval-data",
+        required=True,
+        metavar="EVAL_DATA_DIR",
+        help="retained eval fixtures containing prompts/",
     )
     p.add_argument(
-        "--eval-data",
-        default=DEFAULT_EVAL_DATA,
-        metavar="EVAL_DATA_DIR",
-        help=(
-            "committed eval fixtures whose per-work-class prompts are measured "
-            "(reads <eval>/prompts/*.txt; default: %(default)s)."
-        ),
+        "--i-understand-this-calls-real-tiers", dest="legacy_confirm",
+        action="store_true", help=argparse.SUPPRESS,
     )
     p.add_argument(
         "--max-tokens",
@@ -190,6 +197,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "its whole budget reasoning — CLAUDE.md gotcha #6/#9)."
         ),
     )
+    p.add_argument("--overwrite", action="store_true",
+                   help="replace an existing candidate after a numbered backup")
+    p.add_argument("--dry-run", action="store_true",
+                   help="validate and print the plan; call no tiers or judge and write nothing")
     return p
 
 
@@ -252,6 +263,51 @@ def main(argv: Optional[List[str]] = None) -> int:
             file=sys.stderr,
         )
         return 2
+    if out_path.exists() and not args.overwrite:
+        print(
+            f"anvil-serving eval calibrate: output exists: {out_path}; choose another "
+            "--out or pass --overwrite (a numbered backup is created)",
+            file=sys.stderr,
+        )
+        return 2
+    if args.max_tokens is not None and not 1 <= args.max_tokens <= 65536:
+        print("anvil-serving eval calibrate: --max-tokens must be from 1 through 65536",
+              file=sys.stderr)
+        return 2
+    local_tiers = [tier for tier in config.tiers if tier.privacy != "cloud"]
+    missing_endpoints = [tier.id for tier in local_tiers if tier.id not in (endpoints or {})]
+    if missing_endpoints:
+        print(
+            "anvil-serving eval calibrate: --endpoint must cover every local tier: %s"
+            % ", ".join(missing_endpoints),
+            file=sys.stderr,
+        )
+        return 2
+    mismatched = [
+        "%s: confirmed %r, configured %r" % (tier.id, endpoints[tier.id], tier.base_url)
+        for tier in local_tiers
+        if endpoints[tier.id].rstrip("/") != tier.base_url.rstrip("/")
+    ]
+    if mismatched:
+        print(
+            "anvil-serving eval calibrate: confirmed endpoint does not match configured "
+            "backend: %s" % "; ".join(mismatched),
+            file=sys.stderr,
+        )
+        return 2
+    if args.dry_run:
+        print("calibration plan")
+        print(f"  config: {config_path}")
+        print(f"  eval data: {eval_data}")
+        print(f"  output: {out_path}")
+        print("  endpoints:")
+        for tier, endpoint in sorted((endpoints or {}).items()):
+            print(f"    {tier}: {endpoint}")
+        print("  deferred: tier requests, independent judge calls, candidate write")
+        return 0
+    if out_path.exists():
+        backup = backup_file(out_path)
+        print(f"backed up existing candidate -> {backup}")
     # Pass ALL configured tiers: run_live structurally filters out cloud/Claude
     # tiers (a Claude judge must never grade a Claude tier — no self-verification)
     # and measures only the LOCAL ones, requiring each to be covered by --endpoint.
@@ -262,7 +318,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         endpoints=endpoints,
         eval_data_root=eval_data,
         out_path=out_path,
-        confirm_calls_real_tiers=args.confirm_live,
+        confirm_calls_real_tiers=(confirmation_authorized() or args.legacy_confirm),
         mode=mode,
     )
     if args.max_tokens is not None:

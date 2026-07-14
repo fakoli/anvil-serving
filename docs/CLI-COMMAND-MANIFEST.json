@@ -7991,7 +7991,7 @@
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.profile:main",
-      "mutation_class": "read",
+      "mutation_class": "mutate",
       "options": [
         {
           "flags": [
@@ -8113,6 +8113,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--logs-dir"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Claude Code log root.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--out-dir"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Existing output directory.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--analysis-timeout"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deadline for each analysis child process.",
+          "tombstone": null,
+          "value_name": "SECONDS"
         }
       ],
       "output_policy": "bounded",
@@ -8120,7 +8170,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "evaluation",
-      "summary": "Analyze recorded usage.",
+      "summary": "Write usage and role summaries from recorded sessions.",
       "tombstone": null,
       "transports": [
         "local"
@@ -8263,13 +8313,203 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--confirm"
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Confirm the live evaluation workload.",
+          "summary": "Confirm the guarded mutation.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--tier"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serve name from the selected manifest.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serves manifest used with --tier.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--recipe"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Recorded recipe model selector.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--registry"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serve-recipe registry used with --recipe.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--base-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Direct OpenAI-compatible endpoint.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Direct served-model identifier.",
+          "tombstone": null,
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--api-key-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Environment variable containing the bearer token.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded per-request deadline.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--thinking-mode"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Chat-template thinking mode.",
+          "tombstone": null,
+          "value_name": "MODE"
+        },
+        {
+          "flags": [
+            "--reasoning-effort"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "OpenAI reasoning effort.",
+          "tombstone": null,
+          "value_name": "LEVEL"
+        },
+        {
+          "flags": [
+            "--visible-answer-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Visible-answer token allocation.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--reasoning-headroom-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Additional reasoning allocation.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--checks"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Comma-separated correctness checks.",
+          "tombstone": null,
+          "value_name": "NAMES"
+        },
+        {
+          "flags": [
+            "--needle-ctx"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Needle-test context size.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--tool-batch"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Tool batch size.",
+          "tombstone": null,
+          "value_name": "COUNT"
+        },
+        {
+          "flags": [
+            "--reasoning-evidence"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Required reasoning-channel behavior.",
+          "tombstone": null,
+          "value_name": "POLICY"
+        },
+        {
+          "flags": [
+            "--allowed-finish-reasons"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Accepted finish reasons.",
+          "tombstone": null,
+          "value_name": "NAMES"
+        },
+        {
+          "flags": [
+            "--output"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Atomic gate-evidence path.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -8289,7 +8529,9 @@
           "reasoning_evidence",
           "visible_answer_tokens",
           "reasoning_headroom_tokens",
-          "timeout_seconds"
+          "allowed_finish_reasons",
+          "timeout_seconds",
+          "dry_run"
         ],
         "confirmed_arguments": {
           "confirm": true
@@ -8312,13 +8554,10 @@
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md",
       "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
       "gpu_role_required": false,
-      "handler": "anvil_serving.eval:main",
+      "handler": null,
       "mutation_class": "read",
       "options": [
         {
@@ -8447,13 +8686,14 @@
       "path": "eval planning",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "evaluation",
-      "summary": "Run planning evaluation.",
-      "tombstone": null,
-      "transports": [
-        "local"
-      ],
-      "visible": true
+      "resource_role": null,
+      "summary": "Removed source-checkout planning harness.",
+      "tombstone": {
+        "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+        "replacement": "eval benchmark quality --suite-file PATH"
+      },
+      "transports": [],
+      "visible": false
     },
     {
       "coowned_resource_roles": [],
@@ -8588,6 +8828,26 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -8595,7 +8855,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "evaluation",
-      "summary": "Bootstrap a quality profile.",
+      "summary": "Build a candidate quality profile from retained fixtures.",
       "tombstone": null,
       "transports": [
         "local"
@@ -8735,6 +8995,39 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--i-understand-this-calls-real-tiers"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Removed option.",
+          "tombstone": {
+            "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+            "replacement": "--confirm"
+          },
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -8742,7 +9035,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "evaluation",
-      "summary": "Calibrate a reviewable quality profile.",
+      "summary": "Measure local tiers into a reviewable candidate profile.",
       "tombstone": null,
       "transports": [
         "local"
@@ -9027,11 +9320,782 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
             "--confirm"
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Confirm the live evaluation workload.",
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--tier"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serve name from the selected manifest.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serves manifest used with --tier.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--recipe"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Recorded recipe model selector.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--registry"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serve-recipe registry used with --recipe.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--base-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Direct OpenAI-compatible endpoint.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Direct served-model identifier.",
+          "tombstone": null,
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--api-key-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Environment variable containing the bearer token.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded per-request deadline.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--thinking-mode"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Chat-template thinking mode.",
+          "tombstone": null,
+          "value_name": "MODE"
+        },
+        {
+          "flags": [
+            "--reasoning-effort"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "OpenAI reasoning effort.",
+          "tombstone": null,
+          "value_name": "LEVEL"
+        },
+        {
+          "flags": [
+            "--visible-answer-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Visible-answer token allocation.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--reasoning-headroom-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Additional reasoning allocation.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--requests"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Request count.",
+          "tombstone": null,
+          "value_name": "COUNT"
+        },
+        {
+          "flags": [
+            "--concurrency"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum concurrent requests.",
+          "tombstone": null,
+          "value_name": "COUNT"
+        },
+        {
+          "flags": [
+            "--ctx-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Prompt context size; zero samples the measured distribution.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--max-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Completion cap per request.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--max-model-len"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Known endpoint context window.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--burst"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Shared-prefix burst size.",
+          "tombstone": null,
+          "value_name": "COUNT"
+        },
+        {
+          "flags": [
+            "--engine"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Engine identity retained in evidence.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--gpu"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Hardware identity retained in evidence.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--output"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Atomic capacity artifact path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark capacity",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "evaluation",
+      "summary": "Measure endpoint latency, throughput, context, and cache behavior.",
+      "tombstone": null,
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmark:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--tier"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serve name from the selected manifest.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--manifest"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serves manifest used with --tier.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--recipe"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Recorded recipe model selector.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--registry"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Serve-recipe registry used with --recipe.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--base-url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Direct OpenAI-compatible endpoint.",
+          "tombstone": null,
+          "value_name": "URL"
+        },
+        {
+          "flags": [
+            "--model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Direct served-model identifier.",
+          "tombstone": null,
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--api-key-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Environment variable containing the bearer token.",
+          "tombstone": null,
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--timeout-seconds"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded per-request deadline.",
+          "tombstone": null,
+          "value_name": "SECONDS"
+        },
+        {
+          "flags": [
+            "--thinking-mode"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Chat-template thinking mode.",
+          "tombstone": null,
+          "value_name": "MODE"
+        },
+        {
+          "flags": [
+            "--reasoning-effort"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "OpenAI reasoning effort.",
+          "tombstone": null,
+          "value_name": "LEVEL"
+        },
+        {
+          "flags": [
+            "--visible-answer-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Visible-answer token allocation.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--reasoning-headroom-tokens"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Additional reasoning allocation.",
+          "tombstone": null,
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--suite"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Repeatable built-in suite selector.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--suite-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Protocol-v3 external suite JSON.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--candidate-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Stable candidate identifier.",
+          "tombstone": null,
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--config-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Stable serving-config identifier.",
+          "tombstone": null,
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--eval-repetitions"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Attempts per quality check.",
+          "tombstone": null,
+          "value_name": "COUNT"
+        },
+        {
+          "flags": [
+            "--eval-min-pass-rate"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Required attempt pass rate.",
+          "tombstone": null,
+          "value_name": "RATE"
+        },
+        {
+          "flags": [
+            "--engine"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Engine identity retained in evidence.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--gpu"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Hardware identity retained in evidence.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--source-recipe"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Immutable recipe/config reference.",
+          "tombstone": null,
+          "value_name": "REF"
+        },
+        {
+          "flags": [
+            "--control-status"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Reasoning-control proof status.",
+          "tombstone": null,
+          "value_name": "STATUS"
+        },
+        {
+          "flags": [
+            "--control-evidence"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Structured local reasoning-control proof.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--output"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Atomic quality artifact path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark quality",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": "evaluation",
+      "summary": "Run repeated quality suites and retain comparison evidence.",
+      "tombstone": null,
+      "transports": [
+        "local"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": null,
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "tombstone": null,
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "tombstone": null,
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "tombstone": null,
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "tombstone": null,
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
         }
@@ -9039,38 +10103,15 @@
       "output_policy": "bounded",
       "path": "eval benchmark run",
       "recovery_capable": false,
-      "remote_operation": {
-        "allowed_arguments": [
-          "base_url",
-          "model",
-          "api_key_env",
-          "requests",
-          "concurrency",
-          "max_tokens",
-          "ctx_tokens",
-          "no_thinking",
-          "thinking_mode",
-          "reasoning_effort",
-          "visible_answer_tokens",
-          "reasoning_headroom_tokens",
-          "timeout_seconds"
-        ],
-        "confirmed_arguments": {
-          "confirm": true
-        },
-        "fixed_arguments": {},
-        "mode": "tool",
-        "positional_arguments": [],
-        "tool": "benchmark_probe"
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Removed ambiguous benchmark path.",
+      "tombstone": {
+        "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
+        "replacement": "eval benchmark capacity or eval benchmark quality"
       },
-      "resource_role": "evaluation",
-      "summary": "Run an endpoint benchmark.",
-      "tombstone": null,
-      "transports": [
-        "local",
-        "controller"
-      ],
-      "visible": true
+      "transports": [],
+      "visible": false
     },
     {
       "coowned_resource_roles": [],
@@ -9915,6 +10956,36 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -10062,6 +11133,16 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -10217,6 +11298,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--source"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Registered external source adapter.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--url"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded HTTP(S) snapshot URL.",
+          "tombstone": null,
+          "value_name": "URL"
         }
       ],
       "output_policy": "bounded",
@@ -10364,6 +11495,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--source"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Registered external source adapter.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Bounded local snapshot path.",
+          "tombstone": null,
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -10511,6 +11692,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--gpu"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by normalized GPU identity.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by normalized model identity.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--source"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by source adapter.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--top"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum rows to return.",
+          "tombstone": null,
+          "value_name": "COUNT"
         }
       ],
       "output_policy": "bounded",
@@ -10666,6 +11897,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--gpu"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by normalized GPU identity.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--model"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by normalized model identity.",
+          "tombstone": null,
+          "value_name": "MODEL"
+        },
+        {
+          "flags": [
+            "--source"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by source adapter.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--format"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Report output format.",
+          "tombstone": null,
+          "value_name": "FORMAT"
         }
       ],
       "output_policy": "bounded",
@@ -10821,6 +12102,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--out"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Atomic JSON export target.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--format"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Export format.",
+          "tombstone": null,
+          "value_name": "FORMAT"
         }
       ],
       "output_policy": "bounded",
@@ -10968,6 +12299,36 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--local"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Local benchmark artifact path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--gpu"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "GPU identity fallback/filter.",
+          "tombstone": null,
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -11265,6 +12626,66 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Preview without mutating state.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--evidence"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Protocol-v3 ranking evidence JSON.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--task"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Notebook task key.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--hardware"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Notebook hardware key.",
+          "tombstone": null,
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -11410,6 +12831,56 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "tombstone": null,
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--task"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by notebook task key.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--hardware"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by hardware key.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--format"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Notebook output format.",
+          "tombstone": null,
+          "value_name": "FORMAT"
+        },
+        {
+          "flags": [
+            "--all"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include full append history.",
           "tombstone": null,
           "value_name": null
         }
@@ -11559,6 +13030,56 @@
           "summary": "Show focused help and exit.",
           "tombstone": null,
           "value_name": null
+        },
+        {
+          "flags": [
+            "--db"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "SQLite benchmark store path.",
+          "tombstone": null,
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--task"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by notebook task key.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--hardware"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Filter by hardware key.",
+          "tombstone": null,
+          "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--format"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Notebook output format.",
+          "tombstone": null,
+          "value_name": "FORMAT"
+        },
+        {
+          "flags": [
+            "--baseline"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Baseline candidate identifier.",
+          "tombstone": null,
+          "value_name": "ID"
         }
       ],
       "output_policy": "bounded",
@@ -24356,7 +25877,7 @@
       "summary": "Removed command.",
       "tombstone": {
         "docs_anchor": "docs/CLI.md#migration-from-legacy-commands",
-        "replacement": "eval benchmark run"
+        "replacement": "eval benchmark capacity"
       },
       "transports": [],
       "visible": false

@@ -31,6 +31,17 @@ def _evidence(candidate, *, run_id, voice=800.0, ipr=1.0, tool=True,
             "model": "m", "base_url": "http://x", "started_at": "2026-07-09T00:00:00Z",
         },
         "source_recipe": {"ref": "r", "serve_command": "serve"},
+        "evaluation_protocol": {"version": 3, "repetitions": 3},
+        "suites": {
+            "ranking": {
+                "status": "passed",
+                "evidence_use": "ranking",
+                "validator_strength": "exact_choice",
+                "checks": [
+                    {"status": "passed", "attempt_count": 3, "pass_count": 3}
+                ],
+            }
+        },
         "score_inputs": {
             "voice_latency_ms": voice, "intelligence_pass_rate": ipr,
             "tool_call_passed": tool, "session_recall_passed": session,
@@ -83,6 +94,23 @@ def test_record_rejects_evidence_without_identity():
     bad["identity"].pop("candidate_id")
     with pytest.raises(ValueError, match="candidate_id"):
         store.record_bakeoff_run(db, bad, task="fast", hardware="4090")
+
+
+@pytest.mark.parametrize("mutation", ["legacy", "diagnostic", "weak", "single"])
+def test_record_rejects_non_ranking_protocol_evidence(mutation):
+    db = _scratch("protocol-" + mutation) / "nb.sqlite"
+    evidence = _evidence("x", run_id="r1")
+    if mutation == "legacy":
+        evidence.pop("evaluation_protocol")
+    elif mutation == "diagnostic":
+        evidence["suites"]["ranking"]["evidence_use"] = "diagnostic"
+    elif mutation == "weak":
+        evidence["suites"]["ranking"]["validator_strength"] = "deterministic_marker"
+    else:
+        evidence["suites"]["ranking"]["checks"][0]["attempt_count"] = 1
+        evidence["suites"]["ranking"]["checks"][0]["pass_count"] = 1
+    with pytest.raises(ValueError):
+        store.record_bakeoff_run(db, evidence, task="fast", hardware="4090")
 
 
 # --- notebook: rubric + verdict (also covered by _selfcheck) --------------------

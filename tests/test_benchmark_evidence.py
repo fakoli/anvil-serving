@@ -337,7 +337,7 @@ def test_compact_render_preserves_explicit_zero() -> None:
     })
 
     assert row[2:5] == ["0", "0", "0"]
-    assert row[6:8] == ["0", "0"]
+    assert row[7:9] == ["0", "0"]
 
 
 def test_summary_text_is_single_line_and_bounded(tmp_path: Path) -> None:
@@ -364,16 +364,21 @@ def test_compare_detects_quality_suite_identity_difference(tmp_path: Path) -> No
                 "mode": "enabled",
                 "control_mechanism": "chat_template_kwargs",
                 "control_status": "verified",
+                "control_evidence": "docs/control-proof.json",
+                "control_evidence_sha256": "c" * 64,
             },
             "evaluation_protocol": {
-                "version": 2,
+                "version": 3,
                 "repetitions": 3,
                 "visible_answer_tokens": 256,
                 "reasoning_headroom_tokens": 1024,
+                "minimum_pass_rate": 1.0,
             },
             "suites": {
                 "quality": {
                     "source_sha256": source_hash,
+                    "evidence_use": "ranking",
+                    "validator_strength": "exact_choice",
                     "checks": [{"status": "passed", "attempt_count": 3, "pass_count": 3}],
                 }
             },
@@ -399,16 +404,20 @@ def test_quality_compare_requires_immutable_suite_hash(tmp_path: Path) -> None:
                 "mode": "enabled",
                 "control_mechanism": "chat_template_kwargs",
                 "control_status": "verified",
+                "control_evidence": "docs/control-proof.json",
             },
             "evaluation_protocol": {
                 "version": 2,
                 "repetitions": 3,
                 "visible_answer_tokens": 256,
                 "reasoning_headroom_tokens": 1024,
+                "minimum_pass_rate": 1.0,
             },
             "suites": {
                 "quality": {
                     "source": "mutable/path.json",
+                    "evidence_use": "ranking",
+                    "validator_strength": "exact_choice",
                     "checks": [{"status": "passed", "attempt_count": 3, "pass_count": 3}],
                 }
             },
