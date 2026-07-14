@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **A single CLI interaction contract is the adopted migration target.** ADR-0021 codifies resource-first
+  grammar, contextual help, configuration precedence, complete dry-run plans, shared confirmation,
+  transactional recovery, stable JSON, actionable errors, and cross-platform behavior. A versioned
+  per-verb audit and CI completeness gate are required before the migration is considered complete.
 - **CLI documentation is organized by operator workflow.** A concise reference landing page now
   maps every public verb into focused router, serve, model-and-recipe, evaluation, host,
   control-plane, and voice pages. Full recipe CRUD and loading are directly discoverable, focused
