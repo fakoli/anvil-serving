@@ -9,6 +9,7 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-13 | [2026-07-13-q36-pro6000-container-recipe.md](2026-07-13-q36-pro6000-container-recipe.md) | First physical RTX PRO 6000 build and characterization of the q36 engine: pinned container recipe, context matrix, MTP A/B, smoke and reasoning evidence |
 | 2026-07-13 | [2026-07-13-e4b-fast-router-promotion.md](2026-07-13-e4b-fast-router-promotion.md) | Gemma 4 E4B fast-tier router promotion, profile reseed (calibration pending), and OpenClaw harness lockstep (gpu-reservations:T007) |
 | 2026-07-12 | [2026-07-12-thinkingcap-heavy-promotion.md](2026-07-12-thinkingcap-heavy-promotion.md) | ThinkingCap FP8 model-aware functional/quality gates and guarded Heavy promotion with GPT-OSS rollback |
 | 2026-07-12 | [2026-07-12-green-context-mps-capability.md](2026-07-12-green-context-mps-capability.md) | Read-only Green Context/MPS inspector, successful Docker Desktop prerequisite probe on the RTX 5090, and unexecuted creation plan |

@@ -1,0 +1,13 @@
+# q36 is an opt-in experiment on the RTX PRO 6000, not a production tier.
+# It intentionally stays outside the reservation ledger, matching the existing
+# single-tenant dark-heavy convention. Stop `heavy` before starting this serve.
+
+[[serve]]
+name = "q36-pro6000"
+container = "q36-pro6000"
+port = 39040
+model = "qwen3.6-35b-a3b"
+engine = "q36"
+health = "/health"
+groups = ["q36-experiment"]
+up = "docker compose -f {dir}/docker-compose.q36.yml up -d --build q36-pro6000"
