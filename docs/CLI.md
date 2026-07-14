@@ -45,7 +45,8 @@ anvil-serving models recipes load --help
 ## Global options
 
 Global options describe where a command runs and how its result is rendered.
-Use them before the command path.
+They may appear before or after the command path, but must precede a literal `--`
+separator.
 
 | Option | Purpose |
 | --- | --- |
@@ -66,8 +67,8 @@ Use them before the command path.
 
 - Read commands are bounded by default. Long-running commands such as `router run`
   and `mcp serve` remain in the foreground until stopped.
-- Mutating commands expose `--dry-run` where a preview is meaningful and require
-  an explicit `--confirm` or `--yes` at the irreversible leaf.
+- Mutating commands expose `--dry-run` where a preview is meaningful and use one
+  consent spelling: `--confirm`. Removed consent aliases fail with the replacement.
 - `--json` is the stable automation surface. Human-readable output may improve over
   time without changing the result envelope.
 - Resource-owner commands resolve through the declared topology. SSH is a recovery
@@ -102,11 +103,11 @@ required operands, choices, and defaults.
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
-| `serves render` | Render a model serve definition. | `mutate` / `bounded` | `--dry-run` |
+| `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
 | `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--group`<br>`--compose`<br>`--recreate`<br>`--evict`<br>`--drain-timeout`<br>`--router-url` |
 | `serves down` | Stop manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--group` |
-| `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
-| `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--yes` |
+| `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest` |
+| `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest` |
 | `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |
 | `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--rollback`<br>`--resume` |
 | `serves status` | Show model serve status. | `read` / `bounded` | `--manifest`<br>`--group` |
@@ -243,6 +244,8 @@ shown by focused help. Common moves include:
 <!-- BEGIN GENERATED CLI TOMBSTONES -->
 | Removed path | Replacement |
 |---|---|
+| `serves rm --yes` | `--confirm` |
+| `serves adopt --yes` | `--confirm` |
 | `models cache prune --yes` | `--confirm` |
 | `models recipe` | `models recipes` |
 | `models recipe list` | `models recipes list` |
