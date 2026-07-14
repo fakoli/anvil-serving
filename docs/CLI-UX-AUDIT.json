@@ -1,20 +1,20 @@
 {
   "enforcement": "ratchet",
-  "manifest_schema_version": 2,
+  "manifest_schema_version": 3,
   "maximum_failures": {
     "boundedness": 103,
-    "configuration": 101,
+    "configuration": 91,
     "confirmation": 96,
-    "docs": 73,
+    "docs": 63,
     "drift_protection": 102,
     "errors": 95,
-    "grammar": 73,
-    "help": 73,
+    "grammar": 63,
+    "help": 63,
     "journaling": 103,
     "linux": 102,
     "macos": 102,
     "output": 100,
-    "parser_tests": 73,
+    "parser_tests": 63,
     "preview": 96,
     "remote_parity": 102,
     "rollback": 102,
@@ -24,7 +24,7 @@
   "records": [
     {
       "attestations": {
-        "journaling": "sha256:4a8b0b4b67083e03488bab39c87abd5474cb35fcd5ca213af637b913cd6b6b73"
+        "journaling": "sha256:74a85fb02d135c3715468ec22a9b730c3acfcf75d13c6670efcb3263d58f2981"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -51,7 +51,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#collectors",
       "evidence": {},
-      "manifest_fingerprint": "sha256:0cc9ec08abd60b5045bcc4fa9e26561652d08f39a2d612c983b8df79d059f955",
+      "manifest_fingerprint": "sha256:36754b219f932c066c2ad0fedaa1ec3bb78e19f2fd749b9535015e1e62537ff3",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "collectors capabilities"
@@ -80,7 +80,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#collectors",
       "evidence": {},
-      "manifest_fingerprint": "sha256:680c62082f6f167940b67d323b442e77e747c76788ddd28584affd58fc8fb7b0",
+      "manifest_fingerprint": "sha256:c550e2d26c94489ab854b029815275db42f52f0b2f2352e39c78f3d0843ff84d",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "collectors configure"
@@ -109,7 +109,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#collectors",
       "evidence": {},
-      "manifest_fingerprint": "sha256:b3b219bb6a68090c2cef30e5469eb6fa005bebdea0f2e58d614c1dc8c0d9929e",
+      "manifest_fingerprint": "sha256:913f6ae05e15dfb09d17f0ef85b29d2117d54b453b78ab571781115d26dc2898",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "collectors inspect"
@@ -138,7 +138,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#collectors",
       "evidence": {},
-      "manifest_fingerprint": "sha256:af762fa0ce58a364f3586a4e0a37d43f5058d44b42307f7efacdf39523a8b25b",
+      "manifest_fingerprint": "sha256:a3bd2df17beb985e7eef2eb82bfa68999c98abdc045e20468b76d43a7220048b",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "collectors validate"
@@ -167,7 +167,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#controller",
       "evidence": {},
-      "manifest_fingerprint": "sha256:e73458779addb13833d46455e969705b2207c341f5abf0db578718766c2c6651",
+      "manifest_fingerprint": "sha256:34ddb3e8eb28e148dbb1137e6ea2e9228d1827fbea761b6a08808d3c58dd167d",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "controller serve"
@@ -196,7 +196,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#controller",
       "evidence": {},
-      "manifest_fingerprint": "sha256:81cdc2b1e9c088258f0f47a63d5d9235021343d7c5ea57acc21a71c1d5155dbb",
+      "manifest_fingerprint": "sha256:a49f93c001ad86e970739539c767f4601cab72df9511d6d76ee871ad35949632",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "controller status"
@@ -225,7 +225,7 @@
       },
       "docs_anchor": "docs/cli/host.md#dashboard",
       "evidence": {},
-      "manifest_fingerprint": "sha256:62cc6bb9aafad476ade7a29c2d95ba2e911a7a96f2c2374f31d85eda84f15010",
+      "manifest_fingerprint": "sha256:3bcf00fb20d31f4ad8e173830e6dbc79797d49aea13c7eace9fb9c504d641774",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "dashboard serve"
@@ -254,7 +254,7 @@
       },
       "docs_anchor": "docs/cli/host.md#doctor",
       "evidence": {},
-      "manifest_fingerprint": "sha256:4a96c8929ba57920c211016d46e9454ae482da7734d75aa6febc742746ab1bee",
+      "manifest_fingerprint": "sha256:793e1c64f662f23937a71d922c09bb817816830ba2ffda8dc89b59f036e67b99",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "doctor"
@@ -283,7 +283,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#edge",
       "evidence": {},
-      "manifest_fingerprint": "sha256:c51e13eae21fd13c06a43d03be1000102b0c5ff2d2278f9679988c6fd6d8f4d3",
+      "manifest_fingerprint": "sha256:4dcc93751e1d9d13e7fe51bd420fef5d01193eb4a50b0fbf47a5705340a4f26a",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "edge down"
@@ -312,7 +312,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#edge",
       "evidence": {},
-      "manifest_fingerprint": "sha256:8e349355d0aa62e23dab63b4bc4874ab3fddd4d17b3c1a6843c4fd99702480bf",
+      "manifest_fingerprint": "sha256:354b117d21ccbc52d4f26e0f66e8f185a2b178d00155043ca93bf26cc2a1fff8",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "edge render"
@@ -341,7 +341,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#edge",
       "evidence": {},
-      "manifest_fingerprint": "sha256:f942a0ff426a3dc20e21f7c21f2d8a9c3f129b3e095baa990e48d8199b8b51f8",
+      "manifest_fingerprint": "sha256:e022467523b9a656c572d44ef7720686499f00c96e80c68a4e32d00a350714aa",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "edge status"
@@ -370,17 +370,17 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#edge",
       "evidence": {},
-      "manifest_fingerprint": "sha256:e9647875144e60473325cd00614ff547ae03d71672ef016cf1c017261e0f003f",
+      "manifest_fingerprint": "sha256:34bac390a96ff9f36eab21fe5efe5ad768cfe271f5d1d97db5d471f116fd70ab",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "edge up"
     },
     {
       "attestations": {
-        "docs": "sha256:a295227e807c6008ab87d75faed53afdc1e87662541b386eb37ae7e27be61d3f",
-        "grammar": "sha256:69c5b35f242880f3715b9608a7048dd8f0be9f2f31406ec7c7970be5a24e4e17",
-        "help": "sha256:2e87866d5265338d27383f2d73dc050bc716aa1fd225100290b537419316d061",
-        "parser_tests": "sha256:cb96fec86c1b505cd148698c155fe0411b2848383713bc2dde888f71b18b137f"
+        "docs": "sha256:d41a24b8f348f574739a85354649ea4a2f83dafcd86fc5c5b3dae09f95c8fc08",
+        "grammar": "sha256:0f7ff018aa3ce77f189dbb3c447a7a65e423ed2ccbb92643abc0baddba5cecb6",
+        "help": "sha256:9ac099b66b8b568bdd49cb3e13a4f2272772b6d30ad7d8421b3e89cda7b00093",
+        "parser_tests": "sha256:fee2c5eded71c7e4b1bafa671c6b0bc8031c45fefabb8ffdaa52bcd6c53c85f5"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -418,17 +418,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:f70c0bf3dd443edb42bc19ec4d2652c76361fd32cd45c0ee6ad215f09a263b36",
+      "manifest_fingerprint": "sha256:540550f4b8a7c2c63ee219c5576a38c62af63dcbcb349a577223692dcf18abeb",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark capacity"
     },
     {
       "attestations": {
-        "docs": "sha256:6daa08711da6095d28c0b7e609c61a240770b1816f1a8d70c0488b7fb8b9a369",
-        "grammar": "sha256:8710c3742a95248a42b8281615358be77d20c5ba705ac46a7320bbf7f86d8c9a",
-        "help": "sha256:262300c90109cf36741a8998d5e2574a268580690bffda9c0415759794014078",
-        "parser_tests": "sha256:f37acf37b804e4784168b3faf1b678a4072be33cf03e16b145dd2b1e61022435"
+        "docs": "sha256:1564ca116f0c9a4da4e82babbd1bae08e85d3b8d0ce893a16929075527af350b",
+        "grammar": "sha256:c11bc6600f1147efaeff8c77422d324c65ee7e854c88aa6558335f123c3fb8f0",
+        "help": "sha256:ff08d4540652f149c58de8c92f6bc4f6059734db1a6ab3c23418bdc13dda3d36",
+        "parser_tests": "sha256:b3021369330d59822269aeceb3f80889cb75ff2d379b257d7bed4c92ba6cbf21"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -466,17 +466,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:17d340364c234131a60992d65981c17dda8f6cd011bbbdd86928cb2174ab06f8",
+      "manifest_fingerprint": "sha256:8b7a935c1b70c953d49374a56faf727d57bd32f85bdd40609ff3817e2075f6a7",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark evidence compare"
     },
     {
       "attestations": {
-        "docs": "sha256:97c722ed19bc4a41ce70e98209f6a85f8c73ddde3bdb2a86bfa19561e784f596",
-        "grammar": "sha256:0ce917511c2dadfbed46f912ad26f33dba93da0a313eb3d8a661ab5220eca199",
-        "help": "sha256:653263c84acd131771807f8c2fe17842c9bd5d6b515a86264d1170c0b0e5f23a",
-        "parser_tests": "sha256:6625abcab4a57f1dbec39e855e6976905e951caf6daec8afb3ce978faa8cee6c"
+        "docs": "sha256:897a6e880fb7976e99350db8f9f263049711659e3a008c5a504ba02c9b8a3b0e",
+        "grammar": "sha256:6dbc0ef81b4fcf39e0c9c1f9ff7999f837cd899641c9f906510f75251e089a86",
+        "help": "sha256:d2fe6f7f3f2990b219bdc4b14c6400ca8c807046db475647d6acf570d3f1ec81",
+        "parser_tests": "sha256:772ca1acd261473d9cf37e1a488d67c8ab3eebabe1f6d2a2ed9506b785979058"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -514,17 +514,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:92f058bcb42c3a05fef489cfc183dfbba66025d7cca108f12a087746e798cd61",
+      "manifest_fingerprint": "sha256:92f1050f324653e0733a1350d25758eeae4d170f2e2a371b04480b92b5d5a00e",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark evidence list"
     },
     {
       "attestations": {
-        "docs": "sha256:1f8d838eaa5df9c493bcd24d6ea4f0ee270a32bef1d9e4399790229844dd2d5e",
-        "grammar": "sha256:030fc03b9a576f0a1a40cb2190dba6d9571e5de56017638674160826d8cbc588",
-        "help": "sha256:ba86c9d6a506ca6bfb4359c8339c74b4dd21f5aa0595b0e7d357b7f408416383",
-        "parser_tests": "sha256:cea4f52b5dc9a22dc0e683c48f1fce0bb811ef4b521715b3bcacee51ad07d019"
+        "docs": "sha256:2fed762c5eebdfb6a8558e4904f5f26d1f901277fb11f3232dbd3fc79404f3e7",
+        "grammar": "sha256:8b97672a0a6e403a40871aada80c512adb2d401945780fc32bbfd4bce647d353",
+        "help": "sha256:8d6f9ea2caab9490f9384306790e0df8a47b51158712542a69de976ba5397e35",
+        "parser_tests": "sha256:9819767d516c91c6f94cbfbe86320db8164d4cbcf09664ca419e793d1247e99e"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -562,17 +562,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:adbc5c33bdcecda33b2e8efed3e0e40390e581275b8b430993a61c3e6a974cb7",
+      "manifest_fingerprint": "sha256:4fbe80683cfc17e54f351fff7ed0aa98678231808a677129b16577baf5be542e",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark evidence show"
     },
     {
       "attestations": {
-        "docs": "sha256:ec00ceb7420c3b5e9203a388056ec575895936d29da2570b99fe39fad3231a5c",
-        "grammar": "sha256:b53549a5e0a28d934e0e1300453b34164ccdb95937e412d130715925ff92392b",
-        "help": "sha256:979ace38bf183efae7699c7ca3c96a8c89a9e9c5b47a32bfa4c3e1258d59cfbb",
-        "parser_tests": "sha256:af318d6b45f2a7857fbe9e1394b4738ae87e6f15bafe123836a04859749c3f20"
+        "docs": "sha256:39eac28c42028f0024b301aa64a0bf4d1bdb932fe9bd695c8b5c73bd98f05f77",
+        "grammar": "sha256:489269b74903ea60eef74d94234ae25a6849dc4356d71501d55bc559bc9cec78",
+        "help": "sha256:7ba9448a462a5f6eff6fd589a5194da5fa0877e2e3a7c867c42ae28f01addd12",
+        "parser_tests": "sha256:3f29cb2279ffa2a222be43658531059b0b46dbdedb89625a430590c96d303381"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -610,17 +610,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:0bd59ab935f3d25a51e8a07e4e796267aae85cb7bbf90f02817c53580f8c10db",
+      "manifest_fingerprint": "sha256:63255a2ac35b469c026da892111368d6092e8797002ea21e66878b1aa9f79a3d",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external compare"
     },
     {
       "attestations": {
-        "docs": "sha256:5bc4d4a817c5a9d2ad57471210e9135d7290c2801143d5dc0c0a89faeecf0807",
-        "grammar": "sha256:a0711b456f3454982d23da2e80cd0df7d667a6a81d4fe407f27cd097dd2d2efd",
-        "help": "sha256:e95a7dca4c17dfe91c5594e5f9a3c5508f186ce2d2699476a60944969f681631",
-        "parser_tests": "sha256:81e19c9934bafba95bcb2d0db65bf2b1827c43ec34d3167cbcb04d8e4b1d8759"
+        "docs": "sha256:44956c50882252fcc8bf894d6645bb619ba6ff499b55d1b168eee2abf1907ea6",
+        "grammar": "sha256:9a1fd17614333538b96996286334a65cc48d08a4900c083c18f2fecb1c26285d",
+        "help": "sha256:fcb8dfacba3e73151bda81388dcef0a433de9947da91dcbeb4d1581438ff44b7",
+        "parser_tests": "sha256:fa2f0e1c8f91f9262cd71293d7808bdaf4bfee06baee0c8d764558b31f58abb0"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -658,17 +658,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:2f20ca7faeba21422182715b1b21d0c26f098396fc8a8cad1e324ee009b0630a",
+      "manifest_fingerprint": "sha256:638a7085886576a2cbb8d23b93599ed8cd5ea45495af287269dde01fdcc5841e",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external export"
     },
     {
       "attestations": {
-        "docs": "sha256:b1644818cae264106b36f0a1ba57999c6f6a3adfdd2a5b5247209941869248d5",
-        "grammar": "sha256:4a7e9b2c6c4d2ff342a3817a346bc978bec513f95336a3f76a0c0ce0bc4940c9",
-        "help": "sha256:fb63a72f70a679b9495c6f96ebd3d23bb0dfd678a51e9a9f601428435ce8be4f",
-        "parser_tests": "sha256:647a439c3082534bc5a4b2cdf8dbb431061c41f26906659d0fc3fb250de0c772"
+        "docs": "sha256:fddfe2f2ddd202a90c7129b8f0ff38ab7fe443a53137dcf4d19f6b08ce836d51",
+        "grammar": "sha256:eb355f0bb6e0be03dadd22a2fac13294e1bb375657351f857a63491daf3fad29",
+        "help": "sha256:3aeac9d4518428ccd7647972abf8f4d3a655c732841ee51cb41c018bd95f9bb0",
+        "parser_tests": "sha256:f15dd063836a4340acac5b80abdd9efa914608024970042cce36141c5dd3267f"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -706,17 +706,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:b72afff6be3d7d892acabbd2ad6f08dfd15d6f4478b559f9b1c7de646ba01185",
+      "manifest_fingerprint": "sha256:8002cb1bca8346303ad87f86968141c7517471e033bac8a47531611c937cbfde",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external fetch"
     },
     {
       "attestations": {
-        "docs": "sha256:4f8a3db4c32cf404b2b4d88aba7e1172c3f5cd2494efd3a22a23813ccfc21afb",
-        "grammar": "sha256:fd1e2108dad631e0873cab0e145111167dfd1d8e046a2cc0c4bc96198e16ee61",
-        "help": "sha256:ce3e837335cceb6daecf47218285f0dd42167fdc10ba92a37b133888b777c199",
-        "parser_tests": "sha256:c0ced7636c78217a639e5f4f872975da8d257f3c981ffc544ccec9ac6652931d"
+        "docs": "sha256:7110c33b553edcf0fe904e6682f0ecb554d8a854a4e515f3b697139686eedc22",
+        "grammar": "sha256:2f8c446bfbab196663ead1b70385510cd40b07502875357bceb38139fadad970",
+        "help": "sha256:8edbc3c9d72b408e8e127bc717804dacaba55d8448a9915c942d4757df5bc6d2",
+        "parser_tests": "sha256:92155eb1db7a6a6ced369c5fe97551ba0835e9eda3bbd703cc9293c7cf8c1ebb"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -754,17 +754,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:e101858433d6a1f9cbe2683f7c946722d993e7ac0cf239b99689efb32d3b50fb",
+      "manifest_fingerprint": "sha256:88f3af77e8906fdbf6054df737e9e200175b88d765ed72bccddbff1aabdf3236",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external import"
     },
     {
       "attestations": {
-        "docs": "sha256:441b09b409a0c14667b3c4df05f65f888e7293822285ac3d72ca682f229ac0a7",
-        "grammar": "sha256:eb2e9196d27425a1a9300f8dc14b0eb4bf60b59ab1504767b6d04650f8630091",
-        "help": "sha256:08a24e4fadf8a7542a1636338e7f5eb9c856b2c50aa4c63f4742d00e85a11b43",
-        "parser_tests": "sha256:84de74bbc3edc9daadbb86d3efec46ee4ddced4e3f7022dd19f1e17128c1092a"
+        "docs": "sha256:7e25148e64f912256b3b742e7a349dc463cc74f93679cd6396f4df86bf1899f6",
+        "grammar": "sha256:e69b97e853fe08dbdd61f10e3aeaff2743f773f23c2ac2fbd750d1b19460e27a",
+        "help": "sha256:ee487d7bb60b39474f5c28414ee7f8ddd55d5fe9715002696b91dc52a565f5d3",
+        "parser_tests": "sha256:f1386ce664f86a0d1e5cceddce515ddee2af2382fbe19a18a50cc489da74b281"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -802,17 +802,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:2f69a73a474cd3f9ef3f605ffc74c722e0f6e6f57f1c0da3f77b91df1d1a501a",
+      "manifest_fingerprint": "sha256:ddbbcae405843d09c34189d9eb573541c0808dc52411d68f1974f8b643fb3bd2",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external init"
     },
     {
       "attestations": {
-        "docs": "sha256:d1dce338d92e53dbdd8fbcaeae4ed21d8f01e52aaadaf0cc1c45002777f2ba48",
-        "grammar": "sha256:00bc54e1ed1e04536f6520e3a4aa19cb1bac8d87ce5bf07f1bba1b9a0b3597cb",
-        "help": "sha256:2aa4decc0087ff4f5b5923fb7d9cd6614c4f8d20fc7da260e28201639bca65e8",
-        "parser_tests": "sha256:5fa989572acabe3fc9cf77ba053c4455acae984a800be70ddca8129b54005043"
+        "docs": "sha256:ed4bf65e084880b1712ab675c3b4b8c805d16eb29af2fcc23bd679437cb1e5f1",
+        "grammar": "sha256:352daeef2c0a9834a84b526c5e3f1ee064ba68145e5b1cfc81b7532c286d0dd0",
+        "help": "sha256:5286f20c320a833c192b2f6db66a03f967f53090bf8feb0819c431748d886f55",
+        "parser_tests": "sha256:60146899b4e02aeefce96a697a02a1c0f785e68f40f6de2f6cb00555092d14c6"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -850,17 +850,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:1fd616c738b3e62949e7e69fc33f5383d002595e12d0747066e0649d1332acba",
+      "manifest_fingerprint": "sha256:99f538b8337a9b8e797142fbbaedc356b391fdd98ad62cc72fb32461a414633c",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external list"
     },
     {
       "attestations": {
-        "docs": "sha256:5815a5896ec287ea8977a5b7afad0d720fd14857f83f299581cc9d11da7e63e3",
-        "grammar": "sha256:24f3e6110df185b6982b257fb42bc3bf84fd136ddbdc51753eb5d084587a30d7",
-        "help": "sha256:a7b5f7774235cc018b66caeb57aea946201dc920344c4db38f58c51656fbd2bf",
-        "parser_tests": "sha256:a85c16adf86b2d3d2cfc870e218579b3c3c55e7c9fae39bcddedda356e3cad84"
+        "docs": "sha256:76c6ba8e6d90082bf4e301206972094b2464637dcf7f929390f56e11aefbae1d",
+        "grammar": "sha256:0522543b4af4cabc6eb8abe15a37a713bfee350b03ca20acba53bac3716c1753",
+        "help": "sha256:a35b4672ec6482b735a7ddb88fe499ec19ffb64b7a9135f60340307ebaf65b69",
+        "parser_tests": "sha256:0549c77a1846272264a523c047afaed4b7ca09c9971aa9bdc8a48335794e632c"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -898,17 +898,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:cf6e71a6f7a662f741c66d9a6ef0a325d372bb9155263e46eb5f04cb73f7a0ea",
+      "manifest_fingerprint": "sha256:7493fc3c294c1d58865471ce0bb029a576bbada860b8545498c0a73d451d7c28",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark external notebook add"
     },
     {
       "attestations": {
-        "docs": "sha256:ec935494ee26d8e5d7b47e19da05ec03b0216a5475496348fb0d121d210eee09",
-        "grammar": "sha256:6c438bbb668002e9799e4616e6d7ee72c1fe6d32ad5630ed101695b47cc0e17e",
-        "help": "sha256:a8e9e89a4135588c359537fdcc36f6d703868e12533a317f1b26dde04f9466ca",
-        "parser_tests": "sha256:a0473c0f7a2d23701adf8203d820b525648f2d6d6ee636e4d3f96530e4e372b0"
+        "docs": "sha256:b665ec85b20165145c817c8ac6ab76577ad7dcf236dc59a9467cad2500c9a600",
+        "grammar": "sha256:99a78ac8483f80aa03a2d3b4c79e7848e7d2dd1a60e6bf580241f066b18f49a8",
+        "help": "sha256:52ef03fdb660f0fe4096477e14dc5e5c1190a85b319dd582140742067522a7a3",
+        "parser_tests": "sha256:f7b9f204f72e15161e2576bb1e2796283fa74bb1f12e95d0969fe097ff40ccef"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -946,17 +946,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:5f5deca07be9330bef1a080aede39e7a8277b2d2edd527f0a938aac364f030ba",
+      "manifest_fingerprint": "sha256:2c52da554b9ec5ab25cc2a4853c1fc40788940e4c4dab9894a7f02d11dc19a8a",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external notebook list"
     },
     {
       "attestations": {
-        "docs": "sha256:b82a504554405c733f44dd6a5d41e63376518baca22bab0255058f2ea04a37dc",
-        "grammar": "sha256:56798470f7f38110e1b0681d65506fcacc5b53b51919872ee37226e41f2bc380",
-        "help": "sha256:7be00c6982a56b6fd5f4811e3b97eb2bedf00d1f7d5018ccfd2addab7b174e5a",
-        "parser_tests": "sha256:247197c3f73bbedda8d237faa1a7b5763798d104a5fd074092ee87be3a9c1319"
+        "docs": "sha256:5cbe3825cc5a17ee734f06e5f49dac6de9162599c84eb41f17f6bde6be3cb011",
+        "grammar": "sha256:8424aaa2b8bc4702c21a07da56fdef114794ed2a42c3b715ab68dc209f48da91",
+        "help": "sha256:f6c3deffa7a31eee7edf981b56e52dac970e4c2daf1ce55398250c2f67439c54",
+        "parser_tests": "sha256:6b89c1bd54f5d6fa44f3d0b04cf2daacc8594e07daf59ab5f3df3205506adabf"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -994,17 +994,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:944980aeda1832f1ddc220919b084a81b0eaea4fb9fe4dcd456a6dc99f3565c8",
+      "manifest_fingerprint": "sha256:c8d108c43abaa78f6515b75ca63f9928be7b31f838127dab8d29ad4f5a4a24d4",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external notebook render"
     },
     {
       "attestations": {
-        "docs": "sha256:712ac486a0831a95fd9f72f3e6e0e96f490a31f3a6963914e13e22572861061d",
-        "grammar": "sha256:f9ddfe673b1102459e48498ba6d3b4c08250efa30bd03debf6f626535575c3b6",
-        "help": "sha256:6c06a5ee89b27826887e4dd384db75a4cdf709dcd272be7e766ad601630b5c67",
-        "parser_tests": "sha256:74b7aed2defcd2561d4317651f1f17e5bfcf066fe8e5665653f03e09a14bc434"
+        "docs": "sha256:56e844248974f3bd9d89cf675d3b1a8e4a28318cc6f38c22db89d560d7b86c97",
+        "grammar": "sha256:79bc78b52316b59c8fb16cee3ad4fa7a8c8cb0d0ed6d2907386cf655006fbd17",
+        "help": "sha256:0e911901ba5f12fc3494f1e1726752be4937e80c429f5bf6dea0bbb71c79f627",
+        "parser_tests": "sha256:46f6ef29d447196abdee28e2892d4496bb82d2286f1a9a71fbc8019d08ca4678"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1042,17 +1042,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:8c74f49e071a044308d228e95824cbeff8493a30e4fba7cefebab3be3f5436f8",
+      "manifest_fingerprint": "sha256:8ae97b0326615041ce54bc714dfde65081eb55217e01e6890fafb7583c8de13c",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external report"
     },
     {
       "attestations": {
-        "docs": "sha256:9da217632e5e6f49d1f91faa2be41644da90e48f85ad8c993bc0cb3890d43280",
-        "grammar": "sha256:ec04cceb878ad3e5c55773f4cc536184158a3e775cc87e6bb8955ee0b55a87b8",
-        "help": "sha256:d4e4bc0aed0f28b612b1129458dbf2bfb1a20c97e98b287186e38ae0b83069f1",
-        "parser_tests": "sha256:daf9a90836b8971f84ab37cd927d85e6b53dba0cc8f29bae11e211d7992a7e25"
+        "docs": "sha256:8babf5bac61c63c13786836cff1a58411a1d873e6895eecf1341e5b1b6155adb",
+        "grammar": "sha256:36c4a21691db6acc6bfebbfce5835b5f8ece56ce0ab23e25b1d8f17bc4e41a14",
+        "help": "sha256:bb6333acdd4f6c27d0011ece9928567f28f30bc2005899887b5b06ad0dbc46f9",
+        "parser_tests": "sha256:9c4c52c8515ca7e159d9285aad95401ac1564030c110806410d343704db1716b"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1090,17 +1090,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:c789952a04dd6c2e0ad459f2ae5c230cf07d84df2353f3781e89aedecc9f215b",
+      "manifest_fingerprint": "sha256:e181bed8e7aec028a4ff4ed0c5631fa2efa925b4c846cb6bb0a19bf1d35a40df",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "eval benchmark external sources"
     },
     {
       "attestations": {
-        "docs": "sha256:b4fa984da4862b5c342c71cd66ef42833bced462cf5b9677e24a0d0ad12eced1",
-        "grammar": "sha256:fa2cdb69eb5227d727ef5ff214d91f1e436725e2e0f819f9727cd3b5ad41f289",
-        "help": "sha256:c5da71a9d98267ae37b88f56e0fb20a2262a3325e8ab2ca8f23211c6d0b59c51",
-        "parser_tests": "sha256:4ceaf38fefe7a04d74d49210f8bcf51ff33add1c2655e0f2ee3aa45683cf9fc2"
+        "docs": "sha256:15c55c94f6064413ea555a76b5ddaac0f2e8d43b8136ae3ea99a96e9ea725b63",
+        "grammar": "sha256:fc44fd59dd196b9221bd52dd4290d4f9cff4d73304aab7c30f84cacd9b48aca9",
+        "help": "sha256:e070fba69d0a2f4ab83a0cbc9098fdc3f7b298a79914a2b407c37ce627da34a5",
+        "parser_tests": "sha256:9dd0347294aab139f500923f34687ca23038f2a662ec0ce8b3f2665c9b54a434"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1138,17 +1138,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:c29ab9e09f1d8bfe41e745b07ee5aa8f13363cab879f8eb83a7fb8d07f781110",
+      "manifest_fingerprint": "sha256:8611d5c72a63cbc0d8155a908ddb5d879484db65e58e226f61847676dea3b3b9",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval benchmark quality"
     },
     {
       "attestations": {
-        "docs": "sha256:bfe1b44086427cd5a68427bcb61fdf4693e9eecade6e6d0d31eb5a41090ca2ac",
-        "grammar": "sha256:0bd1d7cf06bfbb335f8c6e3d643189aa5f9556efc410b89ddcdf0dc89e1769ce",
-        "help": "sha256:ded6f87a1b9cfbb6ce57a03f0c8f0852fd230a36d43e82248f4fb0596999c230",
-        "parser_tests": "sha256:3be4b5167791105a35184211c3e6dbf6120e3e89b574f7ea47391e3334837dbc"
+        "docs": "sha256:fea4359281e1fb41a05ce44418de0e989de0a4e3c6a5bdb5c752004045fd494b",
+        "grammar": "sha256:2db3b273ae4d9414099c7cd545e97a3532dcdb28916bc2081b32eb85210455d6",
+        "help": "sha256:c59a4b19d2f4114d0bc2bfddb4accc1144732f8e0ea6676248838ad3974e2635",
+        "parser_tests": "sha256:a48160686ec8b9c35995724490bde96da1cd3ba1e8036cbecbea81454a005537"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1186,17 +1186,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:c88dbbf1959f3c9b54deaf52b84c23a18486fb4fcf33787e817718a1a8d4bd35",
+      "manifest_fingerprint": "sha256:6b39fe4708760c869d34796972b42b4c1ea7ca5ee4a15b6f85adfafd4fcf97b4",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval bootstrap"
     },
     {
       "attestations": {
-        "docs": "sha256:8e3a4e4cf8b38d9d03f79565df66001317f419fec293cf46670f1b7b96ccd6b3",
-        "grammar": "sha256:765a8e2dc49864239d6395669de0e4b226785ce44829da034cf56dec3e61153f",
-        "help": "sha256:d22f5168842b6912f430c3f3f9059d2f35ad804996e558eab0032fd621a7b587",
-        "parser_tests": "sha256:9a591d46b605691d2aba10847a11efae4f35ac9033988003fbdf4aebb0b233af"
+        "docs": "sha256:569780a0cccad2dc27cd84b092bb22a5ba8a1b33cff69754eb0c408f17fe2913",
+        "grammar": "sha256:3623a9ab5b392250e2beb56cb9aabe3949acb5eb5f1aac8bc2a61ab539c62608",
+        "help": "sha256:5e9c5f1b905a7d982cb7533ac3ebae76630c1fe5e50158efb967c2b95fb1ab35",
+        "parser_tests": "sha256:37c6ae02280a7906ee547bb06461293aa12224a917e92af98a6ae5a1d626bc3f"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1234,17 +1234,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:e673cba7c9f9aeb246811dbd61e993bd967a3c5d44110d66d441d2062d2caa94",
+      "manifest_fingerprint": "sha256:a7652170a326fa9969081fd7372f2faa5e99fccd65ef7b811106e8b904bf7ee7",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval calibrate"
     },
     {
       "attestations": {
-        "docs": "sha256:edae8aa08cb98e0c2ab219f485b3d5cca68665644a1cff9ff59d488aed9060ef",
-        "grammar": "sha256:f74d294ac958f8dfac98e17661200bad251cf3ec723f1a702969c9611e1e25c4",
-        "help": "sha256:faa9858ee54a87149b4b0159f1746683f0b624080c365d9a3a1853e13088fbd2",
-        "parser_tests": "sha256:511824cd0edaccc13c44f87d441b5044aaa6eff5f9059189b158d8218b7c6e4c"
+        "docs": "sha256:d2069cf4b2c6f8f4e9003525991eb97808e28b722aa7181192e61904c0709bb8",
+        "grammar": "sha256:0b63fad2cbf15481284abc6051c41f30a5acb94f460aa78770533a099f943c4d",
+        "help": "sha256:8588341cc94f9152174b8d09e58127284bcaa93e6c6ab6b3f5b0d722d82d43bd",
+        "parser_tests": "sha256:45bf0cfba058821019919a176a0322fcd46a28446af078f7a64b6ae20e62e433"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1282,17 +1282,17 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:c1359fd68e59fbe964d9745aa10bd96910d62f1c22182facc55b221564496524",
+      "manifest_fingerprint": "sha256:75f4d37687e574f249bda383f63d03f2a3dfd67fbdb986d767c21e7e318e7907",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval preflight"
     },
     {
       "attestations": {
-        "docs": "sha256:79cdd3fb1d8915f5437576a936904e7bdd53c5ea7146e400bbd9231bece7f12f",
-        "grammar": "sha256:4b1ab18c891b604f186cd505d6a45964c219120a46454ef82308672312b38922",
-        "help": "sha256:bcda75dd7cb6c28c3aaf446a7a2f17dd85751bc2a453210a1b6c359dbb5e424b",
-        "parser_tests": "sha256:ac720f57dc2eb44aed3b622e988afe0ff2cf1f8153967ccd43f955ba0c01b070"
+        "docs": "sha256:2d006100257baab46e0896c37be0204eaf7f6adc2ed9f273284d4c8a4c0b7cda",
+        "grammar": "sha256:1130ecb7d899a71949d812c5256f203f6bbbdb050b95bfefb4b7ae6736caf24d",
+        "help": "sha256:cb430520aa1d9d427d269c9d5761aba6e9ed3532ee531ea2ba79d72ccb4f2d98",
+        "parser_tests": "sha256:16a9afcb7d893038893eb4834cd01046049bb7c23f7e7a8a5f3e7c1129251e55"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1330,7 +1330,7 @@
           "tests/test_cli.py::test_every_visible_command_path_exposes_help"
         ]
       },
-      "manifest_fingerprint": "sha256:898ebef81a1e946cb49c2f29079e4b5c42c2dc585d8550bb26d3eccd3afed5ad",
+      "manifest_fingerprint": "sha256:233e0bf12aebef5100ae08ffa86672f63bb72a14b944d28f86daffc67bfa8d00",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "eval usage"
@@ -1359,7 +1359,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#harness",
       "evidence": {},
-      "manifest_fingerprint": "sha256:56e0eaa7de2351d501aff29f07099a9858512523d8ca005288f49c145820d522",
+      "manifest_fingerprint": "sha256:07bab74dc2e3be6fb918d08f0f0decddb7adf99d1ec1c5b0fdbeb597b2fa168b",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "harness restart openclaw"
@@ -1388,7 +1388,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#harness",
       "evidence": {},
-      "manifest_fingerprint": "sha256:753d4e5faf300a7395194e8aca65de0600bf4f84f2a94bd63f076b7afbb8be49",
+      "manifest_fingerprint": "sha256:81c55a076636bbfce312eac130c20048d01315c4d68fa79bd4ca93053156b226",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "harness status openclaw"
@@ -1417,7 +1417,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#harness",
       "evidence": {},
-      "manifest_fingerprint": "sha256:fd337a0aaf5ffe3a94ad4086a33e5ceb9310df792dab363975bd705ace74b3fc",
+      "manifest_fingerprint": "sha256:86f6671ca7023726578b3e64a6bec01e5933851fbf5996e6733b4e50b234fbd2",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "harness sync openclaw"
@@ -1446,7 +1446,7 @@
       },
       "docs_anchor": "docs/cli/host.md#host",
       "evidence": {},
-      "manifest_fingerprint": "sha256:57b468552ce3504bdc60b2163cf1d93113e93b1619af54ddac1ca33d02b6551e",
+      "manifest_fingerprint": "sha256:1c5c2a32fe8637911c8c38f4b7266eff72ddb614a6931bc654196087ae411eb8",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host doctor"
@@ -1475,7 +1475,7 @@
       },
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
       "evidence": {},
-      "manifest_fingerprint": "sha256:0fbbfb9ec133a3a8097a1b4f18d7a4195ae8949b1435a736a33b51fa29d30d9e",
+      "manifest_fingerprint": "sha256:bb96cea904af0b8fd22863e8b88c03dcd6dbae5aaeb44f5ec5af2657b66f6fd5",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host gpu-sharing inspect"
@@ -1504,7 +1504,7 @@
       },
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
       "evidence": {},
-      "manifest_fingerprint": "sha256:31d89d7a486b1872c24956dcdad861b18fc57529d555f63ac861142430f1c73a",
+      "manifest_fingerprint": "sha256:131b8e8fb6c4835cd87c0122ef407811dec279a7359fa39f9862fd1b67b7f887",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host gpu-sharing probe"
@@ -1533,7 +1533,7 @@
       },
       "docs_anchor": "docs/cli/host.md#host",
       "evidence": {},
-      "manifest_fingerprint": "sha256:ae77ae8e9a1accae6544352a5b3c773da3d5e1c5f215b5233aecfcd57c3ca7d0",
+      "manifest_fingerprint": "sha256:952a5b0b413195b2c7cfa76477099a44c8fba441939273e7488c75be8a556b39",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host gpus"
@@ -1562,7 +1562,7 @@
       },
       "docs_anchor": "docs/cli/host.md#host",
       "evidence": {},
-      "manifest_fingerprint": "sha256:e9633ef5bb513dc1e922fb3efb7e98c947626cd42162468ea0b1b922207c3f2c",
+      "manifest_fingerprint": "sha256:201d12e64b2b59bbc4b35f63ba6ccf3803ce32226bb91b6cdfb4358e9f29f359",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host memory"
@@ -1591,7 +1591,7 @@
       },
       "docs_anchor": "docs/cli/host.md#host",
       "evidence": {},
-      "manifest_fingerprint": "sha256:87cf0eed159bd66b25ed21809c6466e5fa77dcbd51cf07b12b5ece091406ff71",
+      "manifest_fingerprint": "sha256:1320264ca9af8aa1232d46ad9286608248e20b9a609e2611e052b119c4e33fe2",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host reclaim"
@@ -1620,7 +1620,7 @@
       },
       "docs_anchor": "docs/cli/host.md#host",
       "evidence": {},
-      "manifest_fingerprint": "sha256:125a4645cbba09f25e72a9ea607d551acdee1b27cc6385ed20c376f96a2c9718",
+      "manifest_fingerprint": "sha256:98a9325145cebf3e5ee9582d24f89e2b425ccf941b8ec7ab1f16fbbc4acfbf89",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host reset-wsl"
@@ -1649,7 +1649,7 @@
       },
       "docs_anchor": "docs/cli/host.md#host",
       "evidence": {},
-      "manifest_fingerprint": "sha256:8f3699968f0f0e387712f6c8621116e96158032c72f2340e928f43c012c0d5be",
+      "manifest_fingerprint": "sha256:1ec997c2fe35e36e3e1ce0953543b6ebc89c0ecf6436401ae334de97defa4d48",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host restart-docker"
@@ -1678,7 +1678,7 @@
       },
       "docs_anchor": "docs/cli/host.md#host",
       "evidence": {},
-      "manifest_fingerprint": "sha256:84daaa878e4ba73402f88de3e81fe5f99686b85d33b2b1f60363d732364fe214",
+      "manifest_fingerprint": "sha256:91cd545c7ce927b963ad2e01d58aa1da060760f6455546fa8bdfd82c1ab27ff4",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host status"
@@ -1707,7 +1707,7 @@
       },
       "docs_anchor": "docs/cli/host.md#host",
       "evidence": {},
-      "manifest_fingerprint": "sha256:47ea58168354c728065e7d02e6c83b6f17f2605eb270bc451db8c3a23510356c",
+      "manifest_fingerprint": "sha256:4fec19b35b2b9646ea008b69f3a592b09e9a250839e2bd136c6bfa1269c16068",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host wsl-config"
@@ -1736,7 +1736,7 @@
       },
       "docs_anchor": "docs/cli/host.md#init",
       "evidence": {},
-      "manifest_fingerprint": "sha256:77b0a401d4940e918c57bf2cf133288be1f16fdddfe1b30222be1ebfdec61254",
+      "manifest_fingerprint": "sha256:79e4cd8e0628c04ea679b0d656c321a0847d747f8952e5da17958d8ecf52c03c",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "init"
@@ -1765,7 +1765,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#mcp",
       "evidence": {},
-      "manifest_fingerprint": "sha256:2e635503432f880290dc77c9b79269dae7e10ac1f433f100ba0a32c138fba047",
+      "manifest_fingerprint": "sha256:5c6ae3340dd1fb2cc4673fab06a9ed8f4cfa983a7d3ca0f5c951d6f426dfa338",
       "mutation_class": "read",
       "output_policy": "protocol",
       "path": "mcp serve"
@@ -1794,21 +1794,21 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#mcp",
       "evidence": {},
-      "manifest_fingerprint": "sha256:42ef9ee6b5fcd1e66d04bf0eb30fbd523c102f436af39656de7a5318816d1c01",
+      "manifest_fingerprint": "sha256:15b41375100d4564901d92402ec226f0f79fbf8f4dda4eb269bf85ca1a68d248",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "mcp tools"
     },
     {
       "attestations": {
-        "confirmation": "sha256:d96702e276902d51a75df9bec6892048b6e3ca69746fece5573a6e4309a6600f",
-        "docs": "sha256:b2ab97173bb9bb3e9322d1f90347e69d91fdc8b2ec15fa91b33aaa369d5ea7ed",
-        "errors": "sha256:83f4c5e54700603c6af767e20ba457b953b9530271125ce8649993f09895aa32",
-        "grammar": "sha256:9d9b928328d3c0cb116bdd7fccd6d433fa44cc9e5211b5998045f1520cbdfff6",
-        "help": "sha256:23acbe3619a098ae0da370abf3f90f207be7123a63d234eaaa3d001a35e07636",
-        "output": "sha256:598b49e02f856fc8bb972176830f7804824e78815a5e56545f4302a362933b60",
-        "parser_tests": "sha256:478a2f22782b97ab81ea29d7a49a60ef1f10d88c92306a13a063d427f621fea5",
-        "preview": "sha256:486eebfa97d1caa6457f401e25cd2f7af611ec5ea77aebd9dcf979aa9680e11b"
+        "confirmation": "sha256:dd45bd700cbdd66bdd6a7e9cc888d45cf8cb9531942b557908699443697b60a0",
+        "docs": "sha256:3e8a4c17e122d9731422b312290398a745fb0f5971112a619ce030c12a8b4b3f",
+        "errors": "sha256:41c908b0e39b5128520602a128687362e4501f9dfd5570af9029f521c6dc2bb6",
+        "grammar": "sha256:7049b6e5d13d69497bfd12e69111dd1ab71b99d52583bf369e1c5d1082b35f1a",
+        "help": "sha256:4a1f787c1606e43fa76805fa50536c1a444e508f8ef737b172612843b3d0b7c7",
+        "output": "sha256:55f41dfd26a8fa7e18892dfc6a52fd39e46c36c0e0e57f2e6e35f9244331f0a3",
+        "parser_tests": "sha256:decb14a298cf82d159ce5bc0153645cb59f76150bd77d175470656afcd395b9d",
+        "preview": "sha256:9d87eff427c084cbd538568655b716e1052394e14a394c4c801bafaa689a1bd2"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1860,21 +1860,21 @@
           "tests/test_models.py::test_cache_prune_default_dry_run_does_not_create_catalog_directory"
         ]
       },
-      "manifest_fingerprint": "sha256:db7daede38fc223bd6b1181d301889c92c19a566d7afcc3a9d04714f7678a817",
+      "manifest_fingerprint": "sha256:dd1a8a605f15af3bfc8d7d80daa44e75433d34a7455eede08fef890bfbdd248b",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models cache prune"
     },
     {
       "attestations": {
-        "configuration": "sha256:4fb6b0d9b0d3905ce1a8a98245f5559c2f5f22f8d117bf655c11d7c47188e976",
-        "confirmation": "sha256:c9b2b353bef86ca740af10909a44299bfa1634b93187b00ba9ba1330aa7876d9",
-        "docs": "sha256:51b69aa083798da8e638c2582eacbafe64f35fa90d9d81226fbd98a40aa9e7ee",
-        "errors": "sha256:57a61aa97f37a0b668e50be55e32fa02d9821ddff42fd7fd7f92cd4e8270f636",
-        "grammar": "sha256:febde1ff99e43558db5a5f1b8a1fc463487e4d0e19c80a1295e3b4696ceaf5ca",
-        "help": "sha256:955c79df48762cd82fbcfe208dfadbbb804716c672ea331e38c3cc6574e001ae",
-        "parser_tests": "sha256:171ef7137d2799adf05ecc0168a11db3d870ffe652a477abaf2215ab1cd08baf",
-        "preview": "sha256:10e440248529e5797c1bd99e15741250f0bc9064efbcb9016a00c387db999fc3"
+        "configuration": "sha256:316a300d1cc130db01236e9c075427fe2b8231601d60773a739429edb542eee2",
+        "confirmation": "sha256:07035fceafcdc2a7171f00c08d006e29b970e21f8079a94cb472d0ac28838575",
+        "docs": "sha256:e2faeb7c203559d3415c92c8012b088678a0e55497671c7825ef6e8312837e54",
+        "errors": "sha256:a8dc3ed0905eeeb3e96fd864edcf76966b956a69e54f03a9365db385fe059e4a",
+        "grammar": "sha256:4b27ae8be3c18e5e2d072b23f09d14101deb8d588372ba28d742cbfc044e213a",
+        "help": "sha256:34b3375e48e3b142397c20f64c181bf1b0c4eb9e9c31ce55921b124a958a025f",
+        "parser_tests": "sha256:11f9e1b0ff5685afa0be440d9ffe6e1c60b1f9f21d27a78b161d80329fc08528",
+        "preview": "sha256:7b192494d252030f28d02909a09f9c04be15d07ba575197c0b73d23b4a33b8cf"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1925,20 +1925,20 @@
           "tests/test_models.py::test_pull_dry_run_prints_command_and_runs_nothing"
         ]
       },
-      "manifest_fingerprint": "sha256:97300087bb262158127a034ec03d17cd734f957059e7a17ba34037d40ba592c6",
+      "manifest_fingerprint": "sha256:d95d17f250e624a0bfdeca1d18c396bd97f758fcb563dc8a57949ae14c7ab2e7",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models pull"
     },
     {
       "attestations": {
-        "confirmation": "sha256:7f5c7b6df171c0a303b931504c4c3e3c0a6c175ff2fbeef24afaaab948dfb46c",
-        "docs": "sha256:ac7b8fcc405be3bd62b8065a7176d7b18c7e78c93b8204382ce0ebf4ad2b5b0a",
-        "errors": "sha256:aa54cd85b0b8cad0915bf7f20bb81503655393c8113b0a4d2df33bd98c28a9fc",
-        "grammar": "sha256:82b4d0b4e35819ba8a1107c9dfdf8089aec809ea90a1e2382780b453982570fe",
-        "help": "sha256:bf9ca3c228b6f29cbca32a731e75fabd3ef2a9b255d8e1fb6e0cfd4e0f2131d4",
-        "parser_tests": "sha256:2639c5aa51203c45a33af7f761eb9a1b2f890cd85dbb0466fd8a911317198495",
-        "preview": "sha256:2120202d9b5c9c4f1c5a4c4dd54a7cbaa8e88d94ec73fed58e9abb8a13002642"
+        "confirmation": "sha256:328e05dc00ed02e964e127851fc9650deef0332b1efd9188c46bc7ad5f363a56",
+        "docs": "sha256:ef9912541d0cc163cefe3a76566802b30749155e655a257ff5727294f9be3c53",
+        "errors": "sha256:7e2e72573eb84114f071339fa97b17fccebeb7d09e8dc54af40aba286dd1b79c",
+        "grammar": "sha256:6d248e5b9acb5f5ebdd0e0493762550da8f39ed31fe2d960939d9159d61bcc24",
+        "help": "sha256:4acffc380926dbbc8fc44ef7deebcac5706748e0d0b3177eef5aadf9670fe48f",
+        "parser_tests": "sha256:e167837aee76e1d2857f4ceb878264b0659cb4798b27784b9b36734d390f95d1",
+        "preview": "sha256:fed920b4a134bb1846b4b25ba988ead16248da6327091270e182acb01f1c073d"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -1984,20 +1984,20 @@
           "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
         ]
       },
-      "manifest_fingerprint": "sha256:96ea55e1a3ca877001442a50a0b54b4e0451adab1f6a7fd6d2d6d3e8a306085b",
+      "manifest_fingerprint": "sha256:81d92aef66a0c6a7872487e01b3b19301600e297a0ece91992c78e80c41cf722",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes create"
     },
     {
       "attestations": {
-        "confirmation": "sha256:2b534432374f4f0a7894c4d54b356389b1d41b23af29bbb2e23340a1c9c31fda",
-        "docs": "sha256:9bb654f4ddd380ec72329d0785c213c5693890e3817b0fc41f98567609773864",
-        "errors": "sha256:f0d02a166eba97c11cdad88bc186dcf076dc44635796c4f92ecf37c94973580a",
-        "grammar": "sha256:98658219c7d214fac15cce7738c49a282ab49531136e1f703e1a49ab4155d550",
-        "help": "sha256:f70a5a2ceffb789a09dd25a46df6ba721e6382d103060fe6858e6f44528d8feb",
-        "parser_tests": "sha256:cd6330d1b68fac604173cdee38917c31adb74e92559ab8af53a45cf714a3b721",
-        "preview": "sha256:be7333e8f1c52d646ed6e5cbd46f960470e35976b0ac121ee4565771e50b4ed9"
+        "confirmation": "sha256:03b7f5d6e75ffe06a05e4b0bf58a2109ebe730799fdfabd535f084c0c8122b58",
+        "docs": "sha256:018a269f05e6af89fe552fb686a61fbaac2a3aadb7d38218daf157e46af15d5b",
+        "errors": "sha256:41ef4055a4d6bf9a0887c83a633694b5841457568a7b69e911e34d698eb96ef0",
+        "grammar": "sha256:407dbe418a7dd3a39be90dd09022da7a0cdc62759a5e1cfbc59e5afd122e2c5c",
+        "help": "sha256:0dc720779b902b519aa738af26b78eb0de1ef5dfc7f1ada2e9fac518f807b37a",
+        "parser_tests": "sha256:dfc5bbbffc844e468e6bcee7812245d3c0bee8491ec32efaaa12ea06867be51a",
+        "preview": "sha256:006142c77eecd0ad4996a10fa9e6d5f1b715ace50b3683d9fa6c5dcf3cdbeed1"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2043,19 +2043,19 @@
           "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
         ]
       },
-      "manifest_fingerprint": "sha256:4acbc6b5d60cfe56e498100135daf743fc8ccc08ece2d7a06c10e3da4c85fc55",
+      "manifest_fingerprint": "sha256:4c2388d84732a1a70ab7d6f22195da22e0ea0fc504f0001ad64436c4e6ac56e9",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes delete"
     },
     {
       "attestations": {
-        "configuration": "sha256:b0dc60bc13e91ad5217e64f5fede1029c83e050ac18921baf96fa2e8c25fb215",
-        "docs": "sha256:a9c79ca3b1c64b69b26577efda17dc5bfa2225f2e672bbef3571e8a2012ed138",
-        "errors": "sha256:e100b91aafba566853d4b83e44360639ba01e4d04e2a5039de04bec2eba14de0",
-        "grammar": "sha256:8e9b7f9a437d118aa0b9e8b97d28df763c33e57708081ae6452b81ef7d4a952a",
-        "help": "sha256:236c8583bdb4ce406e156c56ea3d6fe46d1e03774b1c7b4e1aa016ad311fa4f2",
-        "parser_tests": "sha256:122306e9bb05694fc3081e130316bf23e6c5ce854f87324a38b8b1b301040b77"
+        "configuration": "sha256:1896582f034cd85de4ab164163c401c0d9b95ccc4453936fc049e57a607a2396",
+        "docs": "sha256:916501a07541b964dfda58a4939a326488f92dd7252ff89be11a387f9bf09881",
+        "errors": "sha256:8dd9e6d1b3cc4b3b91e9b582a6f9e99d4dc83f31418a09b95d8f4fc6c9d09965",
+        "grammar": "sha256:abac97bcd67d4482253060d2be83f76d063553d5db3ef4d0c29ff74c39fccacc",
+        "help": "sha256:66375062997765708ce02ddeba29f101db02f61482656239db8aaed3371aaf92",
+        "parser_tests": "sha256:34aac0463333c8ab44d89b1879a05aae2cba6d7bf3b5e281a6770d55460aa68d"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2098,19 +2098,19 @@
           "tests/test_models.py::test_recipe_list_tables_recorded_recipes"
         ]
       },
-      "manifest_fingerprint": "sha256:29bc8721a4c6827185f10fdda474b7b04576cffdff7fc7b942a319a1134b0480",
+      "manifest_fingerprint": "sha256:d3a2ecfc5f2847466ec9b81e8b7b9a669da83142b15fbe205f3a7bc242e88ff8",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models recipes list"
     },
     {
       "attestations": {
-        "confirmation": "sha256:fc7392d87c077d5f0b58b50bc7a0358f2814edbcad05184682226fab46e45e31",
-        "docs": "sha256:ca15b570540a6da0fe66e19a34970b880222970fb39bb3efe204662a11f7c2fe",
-        "grammar": "sha256:770d0bdc9c303a6545d9c5bb3d569625188654539f7fd43495cb024d1e37bd94",
-        "help": "sha256:87ea4189299e8df6fac9b453717475853301401680398ade3759151baae80af5",
-        "parser_tests": "sha256:feaf03384f46f764f5851f5cbab9d39186f18206eeb8842b5600c8c5af2bf62c",
-        "preview": "sha256:4bb1b8ed91ddd8aaa08ac46655b928703549ffc5ad1f574c734646071a1f4364"
+        "confirmation": "sha256:6056174296f16ec4e1f760422df7795b23fcf53c3dba813b2a6735460aea0f04",
+        "docs": "sha256:723c1e78b86a688eaf65b387d12dcf26d062f4d1b52aad2d3e8f71340e20d0ee",
+        "grammar": "sha256:21fd76990831d3bd30b20e8237d225bd5ebeb28705fdab3b3d82a178c21a9297",
+        "help": "sha256:dbce492df699cbdb6a2d14e98620c178fdfbb715af561699d7721e17af057334",
+        "parser_tests": "sha256:63d0f12f5268c514b3584239d1d8c1ef7589bb634a45803520892dfd3dc69b29",
+        "preview": "sha256:1f495783de8850c8dd2b76c9e9eadcad74aa3f97260be6dabd08faee9226f3f5"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2153,18 +2153,18 @@
           "tests/test_models.py::test_recipe_load_dry_run_selects_recipe_without_docker"
         ]
       },
-      "manifest_fingerprint": "sha256:807f9eb50c5c3d89f082df4d393c0b848ca48a637add4a28fe0e01bf28e1ace7",
+      "manifest_fingerprint": "sha256:de0511a9bf46944ceb12a85397c86106952bd4bcca807fce471ac933d9835320",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes load"
     },
     {
       "attestations": {
-        "docs": "sha256:6305edc5787ea2b7a11119ad8d6830691e91ab1e8011afd94599ba4988442c0d",
-        "errors": "sha256:8b0024f836c9d1a0cc0fd0b0cb40918187e3151997cfce223f82a8ebd0b64cdc",
-        "grammar": "sha256:a1f9d14e7669474cbcf9dc0f17991c4285a8d9f5d8eacd59d95c46099bc5282a",
-        "help": "sha256:89f2f5f0fad936051b3c21cb3da4563879ddf1bd2e85d358bac942761b5b4c7b",
-        "parser_tests": "sha256:696c1c13e8df0b2564240de429f8efc6a9e50e14bbd87d64e76199be586ab06e"
+        "docs": "sha256:35956c119ee45af17ea796b05b78dae239aa2ac9a037c251856acc250447a299",
+        "errors": "sha256:700b881e840c0e28496b4882962496c6c1a839def8a6268407ddb93ec37a463f",
+        "grammar": "sha256:cc636848ff9171ba16d06ad28da33cd1accc12631af893e7263e39cee3b9a429",
+        "help": "sha256:ebb6a42daa3cf18869a2101eb2595e83a8d36e1ce54eef249c9a8ef8064d37e3",
+        "parser_tests": "sha256:b02388f1994a72cca2c3c50d98b6300a0890c167a80b4b41dac8d957fa5e716d"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2204,20 +2204,20 @@
           "tests/test_models.py::test_recipe_dispatches_through_cli"
         ]
       },
-      "manifest_fingerprint": "sha256:c07eaad6342bbbbe8da38676970c7c7961e34bdb61e78fd2809e527eadb70643",
+      "manifest_fingerprint": "sha256:896206a65e406344c41ea65c40d84e87a5ec87987f946b6947ab57b24b397429",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models recipes show"
     },
     {
       "attestations": {
-        "confirmation": "sha256:064f755bc56c8e7de4aa74c6bf1371ffc608225416304d0ffdc00a3f6af8faf4",
-        "docs": "sha256:fee120eed82e5124628ffb54ababfc77a4c758f079cda3de60ed7d1133a28d82",
-        "errors": "sha256:6cfc246c14187efb84bee5c9f547d8e7502411914e5f00f27b24bc9da8e0bf94",
-        "grammar": "sha256:bf2c2fed33e4e061305e3c5b97ce0e908d828ea59e7b386b39e60e490f5b0a60",
-        "help": "sha256:8235e38cccb2f0003336e3fd0c4c771dc86f1b27e273a90586fa52ccc0f2193a",
-        "parser_tests": "sha256:cf30680a565ea3dd25886327ba9e1298d014855480cf9b5a4e9e8a87fb00e039",
-        "preview": "sha256:eca592d1415144e24a2e78efbc5a1e6091232fd8ea7f5374a9904608a2cf28eb"
+        "confirmation": "sha256:91f79e70e8db7e4db4ce00ab9439528a2e78a261e56b0438c6af19f16f267706",
+        "docs": "sha256:7cec974d17db92799f2a53149b28baf3ff1cfddaa5aa2f125fbc12e093dc447d",
+        "errors": "sha256:87e1271b80b03a118b0da796369337e57a084a2c8713ece3e50d748bd1552816",
+        "grammar": "sha256:f4d348ec3a8e35d5d3dd19f0b726e7d45f33bae1920b8105b06c7609472bc2e7",
+        "help": "sha256:ad07a84f865b6973bc90e136e92ee2eb26c668f872fe37e75a74818762df7539",
+        "parser_tests": "sha256:4565721a7a727da17c0d35c5b0e9f16afb76c00c3af8121b449a4f28edb24f8a",
+        "preview": "sha256:77ef0b008286959e27c2b4d82839fe2369d187d01b5a4f0216558e380867b954"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2263,18 +2263,18 @@
           "tests/test_models.py::test_recipe_crud_dry_run_never_writes"
         ]
       },
-      "manifest_fingerprint": "sha256:d74d5e36b837fc9988c735d125032595d318716de39de429e34b1f28c1d417af",
+      "manifest_fingerprint": "sha256:8806da272e11f1fa070024a39de60f57591385bd7cda9df1ed7cf1543f8e1dae",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models recipes update"
     },
     {
       "attestations": {
-        "docs": "sha256:1b959f258658d05d3e9f8cdd89962c38bc2cfe98ebfa982c6c09eca79aa9fece",
-        "grammar": "sha256:29a3a854e612953f09a698d43e0c7516ef919aca03c00be6d1e957887deaa73d",
-        "help": "sha256:d7dbe5e67a66a4d0678fcba206b7ca74f096dc06ceefe11d7951f6ef2e017ef6",
-        "output": "sha256:de1ff8a50cc72d4ed6a2aabc2e93e9a04c6ff7377d4b46cd1c6987c5602a4319",
-        "parser_tests": "sha256:a0307200f6bd456fe9591c07827e59dc7345f413597e695e6d4bf70836582f65"
+        "docs": "sha256:8f5c0f265366f7016035ab6192bec5ef7780e35a678365384aa84197ead8f2c0",
+        "grammar": "sha256:38d0fea27e520ed2f20f27dd503c5535cd4fa8e61ea4a9d3bc1bd60be49b5e80",
+        "help": "sha256:8a73294d94db5a65da722e40a97c206a8d879f7a56c68046aea41c5b0382bccb",
+        "output": "sha256:34cbd7d0d631002218fb93c3e22c083dd435ec37126ba0ca2b5263b19abcbcaf",
+        "parser_tests": "sha256:83e54a59fdaf138c2e7342bb6ab60dcf859eb47abec561cc87cfe9aabb347a73"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2314,28 +2314,28 @@
           "tests/test_models.py::test_models_score_dispatches_canonically_and_root_score_refuses"
         ]
       },
-      "manifest_fingerprint": "sha256:ef7dc54b8b40872626cfa465710ecb2b7fd4bfd590241134a58131aaa30f0efe",
+      "manifest_fingerprint": "sha256:d8ad5a017d99468fa56b640455af7b968500015d00f75c2b098e388badc78927",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "models score"
     },
     {
       "attestations": {
-        "configuration": "sha256:c8bab2814b2632c3ef7e0546c0cb655f50f2ce1cf217dca5ce81c65a113eb617",
-        "confirmation": "sha256:bb3910b950a7ba40ed1023e4deb1c457105623bdf8fd38c4a9054e1854cee028",
-        "docs": "sha256:2fda041baffd7a199a2d5c1a001ed534866eb56cb6dd44e4483ab0f3e4b140f4",
-        "drift_protection": "sha256:84b38635dc71169f3c4116657b906d74129ff933c770677a3c21bfa0a94e1051",
-        "errors": "sha256:8e9c9af32230973a4a2d617c941dde504f1b47cc66f97feb3b1157baff8d1b48",
-        "grammar": "sha256:1c8883322a843c7d7e43fa3263ff59003247c319cdad54bf1093a9dabd22cfc0",
-        "help": "sha256:e421480cfc0301e0bbf848c04ab4b775e4f4e00423048736d5e37c1ddc5dbb4b",
-        "linux": "sha256:06a059d7b8870991ddf6619de0f627e088f172b305a923c55cfdd8ad616fd5ff",
-        "macos": "sha256:32ff3a5289a56a557a26ba5c6d80a35d59b8550f0e725a2d2a0c2b0d0137a5dd",
-        "output": "sha256:280722605a018461db1c34751c12ec09a5c3b0c7283b10a0933d0a4ba88fde95",
-        "parser_tests": "sha256:2b6aaf95cdf2b7c00cc726b3dcb64cad38c1edd5860d5bede05f16fc6e7906ff",
-        "preview": "sha256:26e0a6353c01dc769e46575c650ce678db1bfb198bc6ec9ed759bb9e1d499ea6",
-        "remote_parity": "sha256:3f60f3d61541007b47536a1eb5b1984da233e69c4d7c458f664964849615c4b1",
-        "rollback": "sha256:aa1aace71ee6331a578bdaba112ce3b7940f3ddd40ee0bc0371480136afce731",
-        "windows": "sha256:37503b4c5d53239e8d7fd3d09422bdbf86d9f49fd1715f340f784dba90cfec8e"
+        "configuration": "sha256:6afaf5d98f0c5db84919ad9362aaa50324a1c2505efe8e3c5f5a8c8e5879a42d",
+        "confirmation": "sha256:b1022941594798d7637f04ad1688dfea3f412c920e263e3ef7f5c980bdc01eb5",
+        "docs": "sha256:c34895a8be1fc80fc5d0481eae848b3b414e4be6a3ce11dc079ca70bd977c581",
+        "drift_protection": "sha256:171512294d6377663b184253b5037b5096c6ab096c65bac9a9e3e5c889e40f67",
+        "errors": "sha256:4a7ccf443658513ae3ef3a06ca80d9c4e2ada8f78136e937c746964c695063f6",
+        "grammar": "sha256:6713e24d7b3ff1509f78f38402b20e523129dca38033f877d4e3466c909de470",
+        "help": "sha256:7da1bed468c7671599129cc2b19ef262b2646a01d53c07b2139bebad30af8cc9",
+        "linux": "sha256:dc02557f688cc659683ccafb57caad19206e08b02bea422eec7ba8c797d03338",
+        "macos": "sha256:535cfa4965a23074eb270ee6f8f55cfbaa8eea759b7a6b4f5cf4204bbc82a2bd",
+        "output": "sha256:b7f82d88d764143a2efea65cf917f3e0ea212c62b04b5015dc96d222c6922a7c",
+        "parser_tests": "sha256:a4ec0b3307273b09053e7aa30aab54c35ad6a607b0e1bd28d52f129cd5f6cd3b",
+        "preview": "sha256:afd6eaacc02b65daad9490cda4ba442e441b84c6cdf4d3578a878ad07efa8168",
+        "remote_parity": "sha256:6932c4e80421e4d61cf21fe5256b0cf1fdc37d1424135206c3d428d9cdfaff33",
+        "rollback": "sha256:9d005c4e580781c75c236cbe025c45c47fe4b5636f924f086d7f8600099f4c79",
+        "windows": "sha256:5e214e12174d2db4e0effb4fa9aca388eed2286f454f2af89d3d696d84d40084"
       },
       "dimensions": {
         "boundedness": "fail",
@@ -2412,7 +2412,7 @@
           "tests/test_models.py::test_sync_source_platform_labels_native_hosts"
         ]
       },
-      "manifest_fingerprint": "sha256:e3224bad414f2d1ab09fde1918fdf6fc360b6d8cacd5721a4fd981acf847111c",
+      "manifest_fingerprint": "sha256:6214f6ccc35a86cbc7624c2613b4a7aeee6905eb2f4a2513535cc8c3203fbc06",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "models sync"
@@ -2441,7 +2441,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:c409be016730bf9db8d926134e64813f234fede89e28218ceba7d63d731cf6cb",
+      "manifest_fingerprint": "sha256:b3d4cd9a43922ce1256f2caadf7e17a6b9e249e7e20fd1d1a6068b421ba91447",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router down"
@@ -2470,7 +2470,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:03c30592fe997bcc2cc03559601aceb5c090670a2d0f6c0fce5def0716b57cb8",
+      "manifest_fingerprint": "sha256:f39910e2bbf65b1efaeb525808947d28713cf11767e74c0d3c5b7f1d088d6760",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router drain"
@@ -2499,7 +2499,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:5ef004118931a17f518561e14b60bce02182a3ff5ad241c39fc87be8246eaaf1",
+      "manifest_fingerprint": "sha256:1a6345f0503aa6e72a7e815ea5539862aba4c4ee5bfd1c5e275e2571e9bc1b31",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router endpoint"
@@ -2528,7 +2528,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:a7f3c1acccf846a5c3e6e423d2c895a143d2cd883f90e0e38456bfbeb346c50c",
+      "manifest_fingerprint": "sha256:185dd17ac0ed0f571ad2ac79a09ef1cc2f2fa6b7c19f20ff97db8864a1f201db",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router logs"
@@ -2557,7 +2557,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:41efcc1ea5d8e41847ee561be34ac962a9c4b64690bde9d0118f9e522477460c",
+      "manifest_fingerprint": "sha256:a1fc17b1d7f24a4153e82e288fce65ec4592a383de593548fe35212269b8bd79",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router promote"
@@ -2586,7 +2586,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:b11900c20e0af266629ff38c4bf98ed2e2bb8dc2befcd6e0429b56c6b891ee1e",
+      "manifest_fingerprint": "sha256:ab1071b7cd888c23dd91fbb80aaf0461febe4978407942bc95e98f6e6ef95836",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router quiesce"
@@ -2615,7 +2615,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:8916a879e54294d20058fbb82c4461b82929133f207479308aa57e37280f5dcf",
+      "manifest_fingerprint": "sha256:8e0d7b0a3c8a0f2b6f1376d6258c11f1d5268f0f312c3b35c32ed1a562458168",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router readmit"
@@ -2644,7 +2644,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:c7c83e4a3c368948f8b9dfe0980c19f18f277f59f229a2803e2cae468de50862",
+      "manifest_fingerprint": "sha256:14b5b33c5c4ff8fe264df2f30d5b583ca7f16b98e4017484d4390918c9ca1df9",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router reload"
@@ -2673,7 +2673,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:0203bf8e0896bc85e495c1ee2070fa2edb7f34c89fed878387e5716cf1f7507f",
+      "manifest_fingerprint": "sha256:bd702c98f7d595e8c261bf8b64bd07d6299298f8067d8b5a95889ae727ca34ee",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router restart"
@@ -2702,7 +2702,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:4177e77b9ebfcce01496200bc23fde323822fb53d4269df26c37d32cefd1945c",
+      "manifest_fingerprint": "sha256:fba8734ebe8899f0e7d6dc70ae97354fe30ccae9a61b3309c1de8a7723f2b87d",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "router run"
@@ -2731,7 +2731,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:a14eba6167f3cebfdd840a33a644fc3205fd64fada08d0fca8f124282520ef45",
+      "manifest_fingerprint": "sha256:81b63ab84190b54f8e2ca3310ef5c2cac7711ffa9b329a99fe6370f7bb4df66f",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router status"
@@ -2760,7 +2760,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:e9920931891f9f80c468a1caf7bfb5cf80b77bc79a94e45b605f82381c53b061",
+      "manifest_fingerprint": "sha256:3db5bb4746422ec6792488cf24668c340936923d1380b0b57feafbaa6c49b734",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router token"
@@ -2789,7 +2789,7 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:64e1f0d2d2455227265150d5d1086081f606dd579b8c63ae49a06bb1035636af",
+      "manifest_fingerprint": "sha256:dd3b5856e3d8ee740564b273c101c41d427b0eead0679a593cb3cbbcfeaaab02",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "router transition-status"
@@ -2818,27 +2818,33 @@
       },
       "docs_anchor": "docs/cli/router.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:386fa49949e59555b8f1946f9c43beb1482911b0fc2de74e9f33fd02d744f7ee",
+      "manifest_fingerprint": "sha256:78002d9028d4668fa3acb079fdcc98a81cbdba1d84417738e9352b9580900952",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "router up"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:36e7d980c5dbf752996447642ad6e1cb705390c79c6ddbd81ed7d24da06f2b91",
+        "docs": "sha256:c17be3017a703e4bb763bfcdf573936c5c70271f73f3ab139b0bbc40514e3d88",
+        "grammar": "sha256:2ee286775a90d6c51d0917f82fe4f03f94c56fb240386e8f6a5754f0114a4666",
+        "help": "sha256:c0554b2904ef30f4ed6569edd1d11861f2fea99e7212de8156b01f489b9a72d9",
+        "parser_tests": "sha256:874c75af263cdcddf489877e12db699c77f6e7ce882a0fb8b0a2dc369dc473ab"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -2846,28 +2852,51 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:e13d1f4aa122c1de45bb88baf76fb7b8eff10addd2c3442c19b5d1a894e9b1d0",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
+        ]
+      },
+      "manifest_fingerprint": "sha256:25bdf4c9ef6329e417284e20546d23698b8a86b0ed8dcdc5896cc4d00ebf490f",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "serves adopt"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:94cde6f64429536181564f51ade2d6cd0b3793be2761bdd3b9377e1adeb87fd7",
+        "docs": "sha256:f4204fcbe3c3c93f9a432ecfda8f3cf89b30dd2de5d61959ff9f5d5e1ce08430",
+        "grammar": "sha256:d76bf1ba2f6be1b8a9741843162817408daae6df5e2693e16924fdf3166ad9ff",
+        "help": "sha256:f102b3973945c4fbcbe3c081a596e919e164c9862cf5c0729a676e57ad527c0e",
+        "parser_tests": "sha256:979178eb6e68c17f60c3c51b631378cbad5c58bb7199433e955d5457c087ad89"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -2875,28 +2904,51 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:0ce7d028280eee158f64c2618f6c2706bb5df63ea96fbe92b7b32f30cb6374e5",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
+        ]
+      },
+      "manifest_fingerprint": "sha256:870bdcb366ba02549f6f3aa27ee36542931ec99210105c6018f56165979f7c58",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "serves down"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:d216e25f38f346ee765577ec1106737edeeb060e1d457b95217397251856562e",
+        "docs": "sha256:1f8a4502b836e851e54bb40683b26d2690937ca357dd3d4a16e3d3943eaf7bde",
+        "grammar": "sha256:c2cfef94d8a1f4346f1faacb32c63a8798f55ee0da9dde3f6c2abb7221126fc2",
+        "help": "sha256:77373c7eee07e6ac0f48e7ab1a66a4c4da08cd306cac13d879219c9bfcab02ef",
+        "parser_tests": "sha256:e7449e8173f0412512da9b77be97cf72d2ab7db4ec98bc5caee0cd9edf746535"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -2904,28 +2956,51 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:8d9f6d47ea0e2e1df44ac79fb756b6883b22f471ae0934027bcd4a9544b029e5",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
+        ]
+      },
+      "manifest_fingerprint": "sha256:a152acbabffd4261768a7ed735228296f905a8a824ba723037cc6772ecdda6cd",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "serves groups"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:92eb6e174f4e73a4393b50d9910e68aae55eaded6d0424a55697564672a542f4",
+        "docs": "sha256:cab5474367900bbe52bff42d4451b100a0465f45d675b4d2775edd44f9b2c4d4",
+        "grammar": "sha256:b34c6a05da475e9674ffd42864726dcdd40450069c8649ee839c6212bb54b5a2",
+        "help": "sha256:549fe302c9a4e5761dd8f043508d7c65297972188192650c00cea61545591e2a",
+        "parser_tests": "sha256:b3a0e1a21d9d526ae44032df9d2316b1a7d525bf7d9be137cfc19ccc4a01c9c4"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -2933,28 +3008,50 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:123dd445e75a580df8626d4069f4c95d7412b1d657e9ee3a84560808ef7e2687",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
+        ]
+      },
+      "manifest_fingerprint": "sha256:a8c5537e268b20a54824716f1a8c506b451df266079b75538c2b996ea4ec2c11",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "serves logs"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "docs": "sha256:081b55fe5c5c31070f735271e6d61693da1e056a06f5b1a0917e47acb4bcbdf6",
+        "grammar": "sha256:c85ae08bcd5bb33b0c485dbbfde6ab46dfbb00651952a7ed58e7872dde904903",
+        "help": "sha256:77f0151559f6d58223b44e5a7d9e642ebbbd42dc9a62a48711c7bd5f76b4e1ad",
+        "parser_tests": "sha256:ffe275e426607a86e318522a5eb0eb94aa72d55c36ca651ddc7cda10d8fa225d"
+      },
       "dimensions": {
         "boundedness": "fail",
         "configuration": "fail",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -2962,31 +3059,50 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:a32aa665208a4036e6fd105ca13d38dddcb74c5b36f213b5a79d770d430bb0cd",
+      "evidence": {
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_multiplex_self_check_example_reaches_the_real_parser"
+        ]
+      },
+      "manifest_fingerprint": "sha256:463595a4daf57fb4e13577aca6a5bfe4e25a7bf695fcb9e76407e06a8c77d98f",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "serves multiplex"
     },
     {
       "attestations": {
-        "preview": "sha256:7d930cb5ff1828ae7b3139f05594d965024a85a9f6d8370334e1d607efffb52d",
-        "remote_parity": "sha256:23925df8644bd88664fbb7e6ce19871cb6f47f250d31b5cf0c17719f0b5a5d1f"
+        "configuration": "sha256:378d04312f82f3c81bc1509021cc667405cba5f2c15052d8ad3f6537d1614114",
+        "docs": "sha256:139ec7eeb51ca4ff9160166789f75415ce853b7f65f8b9be2f0d4e4f67291355",
+        "grammar": "sha256:be1e347043c136e6341376d85fdf50f059932e73bf8e42fa037523ba6c04c805",
+        "help": "sha256:1d5549773b3f3e30151891a991f60b7f7921994a44a7b7eb0b3285389c7abc7a",
+        "parser_tests": "sha256:ae8e05204eced7c380c777957714fcc299f7e3469b38f70efa881deb3cb8c3e6",
+        "preview": "sha256:dd16ed975d76108a4cf66d3c9b74ade09e5d48e8446eedbecb38a59a64da0963",
+        "remote_parity": "sha256:cc2ecafabd9dd2d57ccde005ca26afd16bcf6a259ffc98ffe1928db53158fd71"
       },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "pass",
         "remote_parity": "pass",
         "rollback": "fail",
@@ -2995,6 +3111,22 @@
       },
       "docs_anchor": "docs/cli/serves.md",
       "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
+        ],
         "preview": [
           "tests/test_serves.py::test_cmd_promote_dry_run_prints_complete_transaction"
         ],
@@ -3002,27 +3134,33 @@
           "tests/test_serves_switch.py::test_existing_promote_leaf_retains_controller_tool_parity"
         ]
       },
-      "manifest_fingerprint": "sha256:6e13f6425bdef2d9241c44226629210301f5b61aebd3289bbf10a851382ab882",
+      "manifest_fingerprint": "sha256:f8b17bb238afe4d70de3549f731779bbbad8db1cfa0ef66c5df0d0d6a3c1370c",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "serves promote"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:390d3b8aba609376e93bc1a3f29dcf9cf91afc1b9c14417923f8ff94447c6cb7",
+        "docs": "sha256:a28fce537a4de74296701d1535da6dde3cbbfa9c9698bd812721c89a323d0f3f",
+        "grammar": "sha256:d88e7024084a18e860ad1d551023e7e5a2043646d690f18e57a709b03d5cad01",
+        "help": "sha256:78991478426d1552ffbbee3624749d548f51830081e5d071ff2f86257dbb38e7",
+        "parser_tests": "sha256:9426b072dc2f385333ed476ae179d6961f1de04ebb5e49bd337c5c450ef31660"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -3030,28 +3168,52 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:25d2eea1efaa9c6ee404bb5eb493ac317bddce92d431869d85cc763ca213ad77",
+      "evidence": {
+        "configuration": [
+          "tests/test_deploy.py::test_deploy_cli_writes_compose",
+          "tests/test_deploy.py::test_deploy_loopback_default_publishes_127_0_0_1"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_deploy.py::test_serves_render_matches_deploy_cli_output"
+        ]
+      },
+      "manifest_fingerprint": "sha256:85e0bc373a43085af1ce09bbbb59281587229a273020584f77f21a1bf3107a6f",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "serves render"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:3825f0a31bf28d1eb39add9169f24f4f213770297d4db7023135be9a98cc2201",
+        "docs": "sha256:990c8be131317a0b9a08cee468642b30bd601795e9ac0c73725e08bd6e8b9ca2",
+        "grammar": "sha256:75092499ceb4cd613f6865e712ea317baa9bbf45dd2cac1953e26b91cd4c3e80",
+        "help": "sha256:d704e24eeb62a7d3cb0eadd44ca2328ca79d0f677ca4994985cc0a0e430c469f",
+        "parser_tests": "sha256:824336a6d56af3fe3fbd8c04a1314d625141db3f54cbef3dc658ba6e9850efe9"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -3059,28 +3221,51 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:e8bb66e23b06f772c1840b0bdd6c514d1616c7f0ad78c7a8dacd92351bcc68c3",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e3bf0ff1651562f4b4c055854040ec8bc5c42e9d8a950ab350588b6ce5776498",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "serves rm"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:b26b2ca035d24876967f01bb07b92b7ccdd2b0bf4d5068f4c887471570584c31",
+        "docs": "sha256:56671c4d7dbf38c3f21e2dded5a92212848f62e1de48e53d1bf8c5f8d815f832",
+        "grammar": "sha256:ec5eb4daba224e12c1d903c615d97c84d74d1213ff559541b30ec28f036fb6c8",
+        "help": "sha256:800bb16cb6760eb74df34049b0d0a191db083a9de7e6fe4aa81a24e26a642a48",
+        "parser_tests": "sha256:fdc963781a892cc385683657003fc3931543aa31614fa76729c864b24f593d58"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -3088,32 +3273,50 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:2b8fba035035f8818c4e147e7c6ea6b8f6220673642dc665505c45e9c903badb",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
+        ]
+      },
+      "manifest_fingerprint": "sha256:43f55bd717102aa8b3d334752b81cf76741e243405dcbaef1ec79907847712a9",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "serves status"
     },
     {
       "attestations": {
-        "boundedness": "sha256:84a0050dd07ad8c9cf481f3e070a7147cd4e4939b8f6404af6a1fa103460c7ff",
-        "confirmation": "sha256:a9d8f2ea62f8208dd020f216cf695b4950483fb2321cdb59e4df0fe201c79387",
-        "docs": "sha256:405395b0bbcfd1231ff1caf54a1a29cbe9ea3f5c6d98ce5bb89484288cfb0699",
-        "drift_protection": "sha256:c341c99dc5f84f761e1e19f50be042b3328bb1d02a27dfb12784310ba85cec07",
-        "errors": "sha256:347992565622b400058029d6d409b34a1e2040921be9ef5dd8d8d769d8e65a2c",
-        "grammar": "sha256:b84f246bcbd4ed3af66a1bb51668091c387890cc07cc0d357b09e3ce9307fd10",
-        "help": "sha256:cdf16e45ed76e4314aaddc5d50e0db4e446b1678909b0574dccf0ccaa0d81d31",
-        "linux": "sha256:2611a028650e31998182c7579ceedc4984fba8df8ca20c2e687d802b0469da91",
-        "macos": "sha256:6df847321bebb2cdfe8ba60aacbeaa6fbf234e7bf0c954c5be3dfff89a53c3e6",
-        "output": "sha256:71d3af9b05eaf8d3545e8699e60575291776e6df26a19f798eb6836a78ff4663",
-        "parser_tests": "sha256:e8be459c1bcc83417cf9c28d90a5557b1c8e1d4eb2e5d09aafb734e058e3d013",
-        "rollback": "sha256:5d236542016fab026f6593b932815706e6bed49eed52a2b5664b4788bf540b96",
-        "timeout": "sha256:707c2ccd68178e8cd838d20f61b53f7ec38a559672c7871e4894bf27853fc659",
-        "windows": "sha256:81fc786caaf83ed03086bcc9ebc389b6c90cebf1f16a443bc8cb49d4ccda60e8"
+        "boundedness": "sha256:97eb6afdcfc241504c259a9129d8915d6a5af3fdb0434f3f88c9253ee58b6e6e",
+        "configuration": "sha256:3fc93a49e44899f5d9ae78072de09f2abe06fb168dd67320ba2227f00509f392",
+        "confirmation": "sha256:590701e06e797f27bcd7f7e2b74fc3d880ec30a0aa095b5ebb97fd29fd503456",
+        "docs": "sha256:7b2114e74b56ad2117f7fa8f05e3fbec9988cae268845d1da04eee4cc8f2aae0",
+        "drift_protection": "sha256:e6d9d2b2c6a79405d4ab5ae10625c72b6059180f085680393d180155d78b84f5",
+        "errors": "sha256:fed70e3e61dba31b985caad501693346cd76d833c8cb920d108422060b5e252b",
+        "grammar": "sha256:46be9f5b42ebdcdc32b848e0def1d11325c4bc4795f0b57079250df7c2b9a5f0",
+        "help": "sha256:e7596eae1db15388b936e201e1dbd219b486884d482fa6d028e16c1cc93dac4d",
+        "linux": "sha256:38acc5394523027513da0c9c90988f9ac9708829de726a3f433ad7533ea4c675",
+        "macos": "sha256:30ad67ec22b576b4e6b98ca3ca47c30819e38a7bb157b789240c5b1bde4c1a50",
+        "output": "sha256:5cfb576c2cbbe44ed64031c8596539a5148e85be39b450fdcaeb3f33cf7c22c3",
+        "parser_tests": "sha256:a23c018f6bcf05b7c0dc17466a63dffb350a1949a948c5d759bd515c9c65d061",
+        "rollback": "sha256:9b700cc0830f5f2fa104ae65814551f2c58d3c8f5d8ef85bfbdac325f03f585c",
+        "timeout": "sha256:0d9c3b152cfb0b8af00f8db78f0c5f57fb9f0c18750b6097b1a4c14335d0555e",
+        "windows": "sha256:19ab8ce41339671349478024206232898e486b0cc2b6f4831c4ddaf7e8168bde"
       },
       "dimensions": {
         "boundedness": "pass",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "pass",
         "docs": "pass",
         "drift_protection": "pass",
@@ -3136,12 +3339,16 @@
         "boundedness": [
           "tests/test_serves_switch.py::test_switch_manifest_declares_bounded_confirmed_interface"
         ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
         "confirmation": [
           "tests/test_serves_switch.py::test_switch_listing_is_confirmation_free_but_recipe_selection_is_guarded",
           "tests/test_serves_switch.py::test_switch_manifest_declares_bounded_confirmed_interface"
         ],
         "docs": [
-          "tests/test_serves_switch.py::test_switch_docs_show_preview_apply_and_both_reference_models"
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
         ],
         "drift_protection": [
           "tests/test_serves_switch.py::test_compose_activation_binds_effective_image_command_env_gpu_and_port",
@@ -3165,10 +3372,10 @@
           "tests/test_serves_switch.py::test_switch_refuses_unsafe_role_name"
         ],
         "grammar": [
-          "tests/test_serves_switch.py::test_switch_parser_accepts_positional_recipe"
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
         ],
         "help": [
-          "tests/test_serves_switch.py::test_switch_help_names_role_recipe_and_preview_options"
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
         ],
         "linux": [
           "tests/test_serves_switch.py::test_switch_lock_uses_posix_flock_for_linux_and_macos",
@@ -3183,7 +3390,7 @@
           "tests/test_serves_switch.py::test_switch_resolves_recipe_and_reuses_guarded_promotion"
         ],
         "parser_tests": [
-          "tests/test_serves_switch.py::test_switch_parser_accepts_positional_recipe"
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
         ],
         "rollback": [
           "tests/test_serves_switch.py::test_router_cas_advances_so_post_promote_failure_can_rollback",
@@ -3199,27 +3406,33 @@
           "tests/test_serves_switch.py::test_switch_paths_and_dispatch_are_platform_neutral"
         ]
       },
-      "manifest_fingerprint": "sha256:1b78ade1fc8e3e037e198336276e45f9dbbd39046a1f1d1c23fa0aa20f5e0106",
+      "manifest_fingerprint": "sha256:e10730d587a4da52027012e3cdf21be2db51ba073dbb473dd5a3922f6a213820",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "serves switch"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:3d8676f4003b786a53ffd2756f17a51eb17a7c8b33675e575d70b74e1e481f26",
+        "docs": "sha256:b322d505bc5f0f4dd005e2b909d238671eaae7bf2d1ee36dc22e470c610b64f3",
+        "grammar": "sha256:e40ec6ad8d54da22d47deabaf22f47361d91fd0ab5b87f42c196d3e683df6968",
+        "help": "sha256:9d8235d89d2d2e819405f3ba8a5c4f740e4af470694613488a1c0885e4e58c6f",
+        "parser_tests": "sha256:9cc4995599fae1568ce4e0d62bcaca2a5185b4f88a50343aa6108e2e14ca9161"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
+        "docs": "pass",
         "drift_protection": "fail",
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
+        "parser_tests": "pass",
         "preview": "fail",
         "remote_parity": "fail",
         "rollback": "fail",
@@ -3227,8 +3440,25 @@
         "windows": "fail"
       },
       "docs_anchor": "docs/cli/serves.md",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:eb02da457aca868160580c6adfaa71e267c04a815e666590ef673e6bf7ce6bf3",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_serves_configuration_notes_match_runtime_precedence"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract",
+          "tests/test_command_tree.py::test_visible_commands_link_to_existing_reference_pages_and_headings"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_resolve_to_the_documented_leaf"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_serves_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_serves_reviewed_examples_reach_the_real_action_parser"
+        ]
+      },
+      "manifest_fingerprint": "sha256:a68e4b682243cae13205435c51d3c9e8a7cbe2a5e7593e69af03d647ab0aad2e",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "serves up"
@@ -3257,7 +3487,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#topology",
       "evidence": {},
-      "manifest_fingerprint": "sha256:60bd8fa55832f184f8f9745bd550c396a50d43c1ed399a57893ca3ac349ae6be",
+      "manifest_fingerprint": "sha256:61c5377ea1a5a826d6e511876dad0ed7c786350319541d27bc7acaba29dd5881",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "topology resolve"
@@ -3286,7 +3516,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#topology",
       "evidence": {},
-      "manifest_fingerprint": "sha256:1da8cae2961c5a93be2f6f96a95f9eebac54deb1d354b98fbec0624e07036867",
+      "manifest_fingerprint": "sha256:04a832e852a6962e01a5103700cc63acb04d64e24a3a7c6d50f4c6226c22443f",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "topology show"
@@ -3315,7 +3545,7 @@
       },
       "docs_anchor": "docs/cli/control-plane.md#topology",
       "evidence": {},
-      "manifest_fingerprint": "sha256:c9ea496936ffa081f2a06eee909c177283f852a89af4744fbef2425a14a33a01",
+      "manifest_fingerprint": "sha256:ab5197bca271c86e0a3f8720d7165998ce514b16e46af08992a1b0b770cd4004",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "topology validate"
@@ -3344,7 +3574,7 @@
       },
       "docs_anchor": "docs/cli/host.md#upgrade",
       "evidence": {},
-      "manifest_fingerprint": "sha256:9d39323d7c6014456e4928193e222ea7ac3cff4b8532670cc4daf359b62e56cf",
+      "manifest_fingerprint": "sha256:d5049fb27fe19767dd2f80489cafdb1cc3157a98537c748e62f89d359d5772f8",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "upgrade"
@@ -3373,7 +3603,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "evidence": {},
-      "manifest_fingerprint": "sha256:ae427924e53146c81579adf3d3c35347824ed2c578f4461d9e041a20c222ca7e",
+      "manifest_fingerprint": "sha256:8565ed496c4b117a0793c4f0134b46a62670f37f7d2df08e76c28cc085c868c1",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice audio down"
@@ -3402,7 +3632,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "evidence": {},
-      "manifest_fingerprint": "sha256:05c6256c0f4cea13de82bea6827765a3472aa2441ede9a5fa239d6a30521adb6",
+      "manifest_fingerprint": "sha256:dbff00555342d0ba26fc59fb6ac4564e2c8c8358a2f4b13c9c80cba635ad425f",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice audio logs"
@@ -3431,7 +3661,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "evidence": {},
-      "manifest_fingerprint": "sha256:b3a625dadd420cb3dd73ae16c3475659c5c88a558a06c1afc8dc2adca742c731",
+      "manifest_fingerprint": "sha256:48bd1b935c364857870b7c644764eb09c8fcd8bcfaad2ce8c2cd3fe237dbc4de",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice audio status"
@@ -3460,7 +3690,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#audio-lifecycle",
       "evidence": {},
-      "manifest_fingerprint": "sha256:104e4693864caf6e5aa05e898255ebb477aa47998a6bc3bed9806bae459d4d4e",
+      "manifest_fingerprint": "sha256:3aee3c66a25bcdc92fb05af4d757bf2c174122d335df2b94b0917016582af09d",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice audio up"
@@ -3489,7 +3719,7 @@
       },
       "docs_anchor": "docs/cli/voice.md",
       "evidence": {},
-      "manifest_fingerprint": "sha256:586dcdacc84135e6e7ea9e898b74400cfd10cfd89ab5c1fa5a153840f6255461",
+      "manifest_fingerprint": "sha256:1becf7f5b63a485b795df3d3b61e0aeccfd7475c23874ac66fe96d6542728a13",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice benchmark"
@@ -3518,7 +3748,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#profiles",
       "evidence": {},
-      "manifest_fingerprint": "sha256:d0818add87226b7c4a98b813231b46a66bb57cb1e94231c15d8c0b253b9fd80f",
+      "manifest_fingerprint": "sha256:3b2f20408f1e6f0e80abb5579f91cc86bba5ab8900603b68bf0c6449d9f0b992",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice profiles list"
@@ -3547,7 +3777,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#profiles",
       "evidence": {},
-      "manifest_fingerprint": "sha256:d341b91115ce41063429f1f4b7d5e7a9fbbebbb10863eb58dbeceb6cee00203f",
+      "manifest_fingerprint": "sha256:60db3bbb1b9c1a037a98e4396dca3cfbbe2f626342fafd7289f6f8ed0b0c34ec",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice profiles validate"
@@ -3576,7 +3806,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "evidence": {},
-      "manifest_fingerprint": "sha256:bad21472452d041839cbb963873b89bdd7ce7c3c5f9b0e10915c240bcea92771",
+      "manifest_fingerprint": "sha256:d9443d045300bc560c636d599e7894260ecd73a56fe38e1f1a53b5ff47175f11",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "voice proxy bridge"
@@ -3605,7 +3835,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "evidence": {},
-      "manifest_fingerprint": "sha256:d99ae68249ea63c856f10461ac2726a57ccb8b5b86a05db5d38b58336ae612db",
+      "manifest_fingerprint": "sha256:b09c5b65acf86c2b38e1071c1a69005d8b341f1e416e1ef2d88f204d2f0e22ef",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice proxy down"
@@ -3634,7 +3864,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "evidence": {},
-      "manifest_fingerprint": "sha256:0763d1a8449a84fd836180d499457b51b7f882f167b145550b0968925ef1fefb",
+      "manifest_fingerprint": "sha256:a06fd06bc06f7b27c2094deea3a0f103853bc4ff1ed594198e2ce3a0d7991b84",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice proxy logs"
@@ -3663,7 +3893,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "evidence": {},
-      "manifest_fingerprint": "sha256:1bb701c82227cd0533a153da07fba791d187ef420a2ad67a0a3d1fead1e001f5",
+      "manifest_fingerprint": "sha256:e8018e39951e2579a924d36dd5f7b84e5727ed83ed2409184b9ff4e9de8d7df2",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice proxy restart"
@@ -3692,7 +3922,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "evidence": {},
-      "manifest_fingerprint": "sha256:f0329a48c71043d4924a59c9768cee4010ac80c7443baaedff3c02a7f2a7767e",
+      "manifest_fingerprint": "sha256:3f539e551a2809a45f699e2f59cc855342c3b690be890531b36a3f08349d3eb2",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "voice proxy run"
@@ -3721,7 +3951,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "evidence": {},
-      "manifest_fingerprint": "sha256:e586503b2566eccc7ae5894c3a514612499258a76e506667e1d02e4aef29788c",
+      "manifest_fingerprint": "sha256:360ece448cedc19bed5b2594ab973e790e0d4e74d85294fff30af37283d7b835",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice proxy status"
@@ -3750,7 +3980,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#realtime-proxy",
       "evidence": {},
-      "manifest_fingerprint": "sha256:b942438b5d8734460ddad8f28e9ea6944baed2149ad21475773f801d65d0e836",
+      "manifest_fingerprint": "sha256:ea407ed9c7cb8bb6aa9c527959837ff9c98fa48c895c4068fd4b909219e55256",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "voice proxy up"
@@ -3779,7 +4009,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
       "evidence": {},
-      "manifest_fingerprint": "sha256:4a47915b387e7f0a1fb15ea2ed05489afad4e9b1cde973c7caaa6746453b5606",
+      "manifest_fingerprint": "sha256:6bbc82b1265a5ca958c3ecc066a63db73f175737b23b766d8f83ba4316cf97b9",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice sidecar command"
@@ -3808,7 +4038,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
       "evidence": {},
-      "manifest_fingerprint": "sha256:2806ff0f06550afdf52d1ac733292c18088b1ff472c57e8da5f13fd827ce75e0",
+      "manifest_fingerprint": "sha256:76eddce5cd860e042096ac5b252446361fdbf3414b8dd48352a9613034d447f9",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice sidecar compose"
@@ -3837,7 +4067,7 @@
       },
       "docs_anchor": "docs/cli/voice.md#speech-to-speech-sidecar",
       "evidence": {},
-      "manifest_fingerprint": "sha256:94925358604e20fccea12acbe40a811c5c0da15a846825b6e07c29e6afa58d93",
+      "manifest_fingerprint": "sha256:d624b7e5f26a805706320c0bc5ef9af53b3840cd26764aa2e51dee05248af4d9",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "voice sidecar validate"

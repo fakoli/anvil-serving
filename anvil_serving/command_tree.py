@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-MANIFEST_SCHEMA_VERSION = 2
+MANIFEST_SCHEMA_VERSION = 3
 MANIFEST_PATH = Path(__file__).resolve().parent.parent / "docs" / "CLI-COMMAND-MANIFEST.json"
 CLI_DOC = "docs/CLI.md"
 ROUTER_DOC = "docs/cli/router.md"
@@ -88,6 +88,14 @@ class CommandOption:
 
 
 @dataclass(frozen=True)
+class CommandExample:
+    """One reviewed, copyable example shown in focused command help."""
+
+    invocation: str
+    summary: str
+
+
+@dataclass(frozen=True)
 class RemoteOperation:
     """Typed controller behavior for one canonical command leaf."""
 
@@ -112,6 +120,9 @@ class CommandNode:
     name: str
     summary: str
     children: tuple["CommandNode", ...] = field(default_factory=tuple)
+    examples: tuple[CommandExample, ...] = field(default_factory=tuple)
+    configuration_notes: tuple[str, ...] = field(default_factory=tuple)
+    behavior_notes: tuple[str, ...] = field(default_factory=tuple)
     options: tuple[CommandOption, ...] = field(default_factory=tuple)
     handler: HandlerRef | None = None
     resource_role: str | None = None
@@ -132,6 +143,9 @@ class CommandNode:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "children", tuple(self.children))
+        object.__setattr__(self, "examples", tuple(self.examples))
+        object.__setattr__(self, "configuration_notes", tuple(self.configuration_notes))
+        object.__setattr__(self, "behavior_notes", tuple(self.behavior_notes))
         object.__setattr__(self, "options", tuple(self.options))
         object.__setattr__(self, "coowned_resource_roles", tuple(self.coowned_resource_roles))
         object.__setattr__(self, "transports", tuple(self.transports))
@@ -180,6 +194,10 @@ def _removed_option(*flags: str, replacement: str) -> CommandOption:
     )
 
 
+def _example(invocation: str, summary: str) -> CommandExample:
+    return CommandExample(invocation=invocation, summary=summary)
+
+
 def _handler(
     module: str,
     *,
@@ -223,6 +241,9 @@ def _node(
     summary: str,
     *,
     children: Iterable[CommandNode] = (),
+    examples: Iterable[CommandExample] = (),
+    configuration_notes: Iterable[str] = (),
+    behavior_notes: Iterable[str] = (),
     options: Iterable[CommandOption] = (),
     handler: HandlerRef | None = None,
     resource_role: str | None = None,
@@ -245,6 +266,9 @@ def _node(
         name=name,
         summary=summary,
         children=tuple(children),
+        examples=tuple(examples),
+        configuration_notes=tuple(configuration_notes),
+        behavior_notes=tuple(behavior_notes),
         options=tuple(options),
         handler=handler,
         resource_role=resource_role,
@@ -275,6 +299,9 @@ def _resource_node(
     mutation: str = "read",
     recovery: bool = False,
     gpu: bool = False,
+    examples: Iterable[CommandExample] = (),
+    configuration_notes: Iterable[str] = (),
+    behavior_notes: Iterable[str] = (),
     options: Iterable[CommandOption] = (),
     argv_prefix: Iterable[str] | None = None,
     handler_attribute: str = "main",
@@ -313,6 +340,9 @@ def _resource_node(
         gpu_role_required=gpu,
         execution_policy="resource-owner",
         output_policy=output_policy,
+        examples=examples,
+        configuration_notes=configuration_notes,
+        behavior_notes=behavior_notes,
         options=options,
         docs_anchor=docs_anchor,
         remote_operation=remote_operation,
@@ -362,7 +392,7 @@ def build_command_tree() -> CommandTree:
     recipe_registry_option = _option("--registry", summary="Serve-recipe registry TOML.", value_name="PATH")
     recipe_file_option = _option("--recipe-file", summary="TOML file containing one recipe.", value_name="PATH")
     recipe_container_option = _option("--container", summary="New Docker container name.", value_name="NAME")
-    assume_yes_option = _option("--yes", summary="Confirm a direct irreversible leaf operation.")
+    removed_yes_option = _removed_option("--yes", replacement="--confirm")
     group_option = _option(
         "--group",
         summary="Act on every serve tagged NAME across the manifest set (repeatable; 'all' selects every serve).",
@@ -476,18 +506,354 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor=ROUTER_DOC,
     )
+    serves_manifest_configuration = (
+        "Manifest precedence: --manifest, ./serves.toml, then "
+        "$ANVIL_SERVING_HOME/serves.toml (default ~/.anvil-serving/serves.toml).",
+        "Relative command-line paths resolve from the invocation directory.",
+    )
     serves_actions = (
-        _resource_node("render", "Render a model serve definition.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=action_options),
-        _resource_node("up", "Start manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, group_option, _option("--compose", summary="Use an ad-hoc compose file.", value_name="PATH"), _option("--recreate", summary="Recreate an existing container."), _option("--evict", summary="Stop evictable reservations via a drained ADR-0018 transition."), _option("--drain-timeout", summary="Bounded drain wait before an evicted serve is stopped.", value_name="SECONDS"), _option("--router-url", summary="Deployed router base URL for eviction quiesce/drain.", value_name="URL")), remote_operation=_remote("serves_manage", fixed=(("action", "up"),), positionals=("names",))),
-        _resource_node("down", "Stop manifest-owned model serves.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, group_option), remote_operation=_remote("serves_manage", fixed=(("action", "down"),), positionals=("names",))),
-        _resource_node("rm", "Remove a model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "rm"),), positionals=("names",))),
-        _resource_node("adopt", "Adopt an existing model serve.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, assume_yes_option), remote_operation=_remote("serves_manage", fixed=(("action", "adopt"),), positionals=("names",))),
-        _resource_node("switch", "Switch a deployment role to an activation-ready recipe.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, recipe_registry_option, _option("--recipe", summary="Recipe model id or unique basename.", value_name="MODEL", requires_confirmation=True))),
-        _resource_node("promote", "Promote a staged model recipe with preflight and full rollback.", "anvil_serving.serves", role="model-serve", mutation="mutate", gpu=True, options=confirm_options + (manifest_option, _option("--rollback", summary="Restore the plan's rollback serve and router state."), _option("--resume", summary="Resume an interrupted promotion.")), remote_operation=_remote("serves_promote", positionals=("plan",), allowed=("manifest", "rollback", "resume", "dry_run"), confirmed=(("human_approved", True),))),
-        _resource_node("status", "Show model serve status.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, group_option), remote_operation=_remote("serves_status", positionals=("names",))),
-        _resource_node("groups", "List serve groups across the manifest set and their members.", "anvil_serving.serves", role="model-serve", options=(manifest_option,)),
-        _resource_node("logs", "Read bounded model serve logs.", "anvil_serving.serves", role="model-serve", gpu=True, options=(manifest_option, _option("--tail", summary="Number of trailing lines.", value_name="N|all"), _option("--since", summary="Only logs since a timestamp or duration.", value_name="TIME"), _option("--follow", summary="Follow log output.", output_policy="follow")), remote_operation=_remote("serves_logs", positionals=("names",))),
-        _resource_node("multiplex", "Run the single-resident model multiplexer.", "anvil_serving.multiplexer", role="model-serve", mutation="process", gpu=True, argv_prefix=(), output_policy="foreground"),
+        _resource_node(
+            "render",
+            "Render a model serve definition.",
+            "anvil_serving.serves",
+            role="model-serve",
+            mutation="mutate",
+            gpu=True,
+            examples=(
+                _example(
+                    "anvil-serving serves render --model /models/qwen --gpu 0 "
+                    "--served-name heavy --out docker-compose.heavy.yml",
+                    "Render a Heavy serve and write its Compose definition.",
+                ),
+                _example(
+                    "anvil-serving serves render --model /models/qwen --gpu 0 "
+                    "--served-name heavy --no-manifest --out -",
+                    "Inspect the generated Compose definition without changing a manifest.",
+                ),
+            ),
+            configuration_notes=(
+                "--out and --manifest-out resolve from the invocation directory.",
+                "The default bind is 127.0.0.1; public exposure must be explicit.",
+            ),
+            behavior_notes=(
+                "Rendering never starts a container or changes router trust.",
+                "Use --no-manifest --out - for a non-persistent preview.",
+            ),
+        ),
+        _resource_node(
+            "up",
+            "Start manifest-owned model serves.",
+            "anvil_serving.serves",
+            role="model-serve",
+            mutation="mutate",
+            gpu=True,
+            examples=(
+                _example(
+                    "anvil-serving serves up heavy --dry-run",
+                    "Preview the exact Heavy serve start plan.",
+                ),
+                _example(
+                    "anvil-serving serves up heavy --confirm",
+                    "Apply the reviewed Heavy serve start plan.",
+                ),
+                _example(
+                    "anvil-serving serves up --group ocr --dry-run",
+                    "Preview every serve in the OCR group.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration,
+            behavior_notes=(
+                "Preview is offline and does not start, recreate, or evict a container.",
+                "Apply requires --confirm; eviction uses a bounded router drain.",
+            ),
+            options=confirm_options + (
+                manifest_option,
+                group_option,
+                _option("--compose", summary="Use an ad-hoc compose file.", value_name="PATH"),
+                _option("--recreate", summary="Recreate an existing container."),
+                _option(
+                    "--evict",
+                    summary="Stop evictable reservations via a drained ADR-0018 transition.",
+                ),
+                _option(
+                    "--drain-timeout",
+                    summary="Bounded drain wait before an evicted serve is stopped.",
+                    value_name="SECONDS",
+                ),
+                _option(
+                    "--router-url",
+                    summary="Deployed router base URL for eviction quiesce/drain.",
+                    value_name="URL",
+                ),
+            ),
+            remote_operation=_remote(
+                "serves_manage", fixed=(("action", "up"),), positionals=("names",)
+            ),
+        ),
+        _resource_node(
+            "down",
+            "Stop manifest-owned model serves.",
+            "anvil_serving.serves",
+            role="model-serve",
+            mutation="mutate",
+            gpu=True,
+            examples=(
+                _example(
+                    "anvil-serving serves down heavy --dry-run",
+                    "Preview stopping the Heavy serve.",
+                ),
+                _example(
+                    "anvil-serving serves down heavy --confirm",
+                    "Stop Heavy and verify that it remains stopped.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration,
+            behavior_notes=(
+                "Preview does not stop a container.",
+                "Apply requires --confirm and verifies the stopped state.",
+            ),
+            options=confirm_options + (manifest_option, group_option),
+            remote_operation=_remote(
+                "serves_manage", fixed=(("action", "down"),), positionals=("names",)
+            ),
+        ),
+        _resource_node(
+            "rm",
+            "Remove a model serve.",
+            "anvil_serving.serves",
+            role="model-serve",
+            mutation="mutate",
+            gpu=True,
+            examples=(
+                _example(
+                    "anvil-serving serves rm experiment --dry-run",
+                    "Preview removing one experiment container.",
+                ),
+                _example(
+                    "anvil-serving serves rm experiment --confirm",
+                    "Remove the reviewed container without a second consent spelling.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration,
+            behavior_notes=(
+                "Preview resolves names without removing a container.",
+                "Apply requires --confirm; the removed --yes spelling is refused with guidance.",
+            ),
+            options=confirm_options + (manifest_option, removed_yes_option),
+            remote_operation=_remote(
+                "serves_manage", fixed=(("action", "rm"),), positionals=("names",)
+            ),
+        ),
+        _resource_node(
+            "adopt",
+            "Adopt an existing model serve.",
+            "anvil_serving.serves",
+            role="model-serve",
+            mutation="mutate",
+            gpu=True,
+            examples=(
+                _example(
+                    "anvil-serving serves adopt heavy --dry-run",
+                    "Preview recreating Heavy under manifest ownership.",
+                ),
+                _example(
+                    "anvil-serving serves adopt heavy --confirm",
+                    "Adopt the reviewed Heavy container.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration,
+            behavior_notes=(
+                "Preview validates the manifest-owned replacement without recreating it.",
+                "Apply requires --confirm and verifies the adopted serve.",
+            ),
+            options=confirm_options + (manifest_option, removed_yes_option),
+            remote_operation=_remote(
+                "serves_manage", fixed=(("action", "adopt"),), positionals=("names",)
+            ),
+        ),
+        _resource_node(
+            "switch",
+            "Switch a deployment role to an activation-ready recipe.",
+            "anvil_serving.serves",
+            role="model-serve",
+            mutation="mutate",
+            gpu=True,
+            examples=(
+                _example(
+                    "anvil-serving serves switch heavy",
+                    "List activation-ready recipes for the Heavy role.",
+                ),
+                _example(
+                    "anvil-serving serves switch heavy gpt-oss-120b --dry-run",
+                    "Preview switching Heavy to the GPT-OSS recipe.",
+                ),
+                _example(
+                    "anvil-serving serves switch heavy gpt-oss-120b --confirm",
+                    "Apply the reviewed Heavy switch.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration + (
+                "Recipe registry precedence: --registry, ./serve-recipes.toml, "
+                "./configs/serve-recipes.toml, then the operator config home.",
+            ),
+            behavior_notes=(
+                "Omitting MODEL is read-only and lists ready or blocked choices.",
+                "Apply requires --confirm, journals the transaction, and automatically rolls back on failure.",
+                "Switching runtime wiring does not promote quality evidence or router trust.",
+            ),
+            options=confirm_options + (
+                manifest_option,
+                recipe_registry_option,
+                _option(
+                    "--recipe",
+                    summary="Compatibility spelling for the positional MODEL selector.",
+                    value_name="MODEL",
+                    requires_confirmation=True,
+                ),
+            ),
+        ),
+        _resource_node(
+            "promote",
+            "Promote a staged model recipe with preflight and full rollback.",
+            "anvil_serving.serves",
+            role="model-serve",
+            mutation="mutate",
+            gpu=True,
+            examples=(
+                _example(
+                    "anvil-serving serves promote heavy-v2 --dry-run",
+                    "Preview the complete promotion transaction.",
+                ),
+                _example(
+                    "anvil-serving serves promote heavy-v2 --confirm",
+                    "Apply a reviewed promotion plan.",
+                ),
+                _example(
+                    "anvil-serving serves promote heavy-v2 --rollback --confirm",
+                    "Restore the plan's declared rollback serve and router state.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration,
+            behavior_notes=(
+                "Preview resolves the full transaction without changing containers or router state.",
+                "Apply requires --confirm, runs bounded preflight, and automatically compensates failures.",
+            ),
+            options=confirm_options + (
+                manifest_option,
+                _option(
+                    "--rollback",
+                    summary="Restore the plan's rollback serve and router state.",
+                ),
+                _option("--resume", summary="Resume an interrupted promotion."),
+            ),
+            remote_operation=_remote(
+                "serves_promote",
+                positionals=("plan",),
+                allowed=("manifest", "rollback", "resume", "dry_run"),
+                confirmed=(("human_approved", True),),
+            ),
+        ),
+        _resource_node(
+            "status",
+            "Show model serve status.",
+            "anvil_serving.serves",
+            role="model-serve",
+            gpu=True,
+            examples=(
+                _example("anvil-serving serves status", "Show every manifest-owned serve."),
+                _example(
+                    "anvil-serving serves status heavy --json",
+                    "Return one serve status in the stable JSON envelope.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration,
+            behavior_notes=("Read-only and bounded; it never starts or stops a serve.",),
+            options=(manifest_option, group_option),
+            remote_operation=_remote("serves_status", positionals=("names",)),
+        ),
+        _resource_node(
+            "groups",
+            "List serve groups across the manifest set and their members.",
+            "anvil_serving.serves",
+            role="model-serve",
+            examples=(
+                _example("anvil-serving serves groups", "List every group and its members."),
+                _example(
+                    "anvil-serving serves groups --json",
+                    "Return the group catalog in the stable JSON envelope.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration,
+            behavior_notes=("Read-only and bounded; the implicit all group is included.",),
+            options=(manifest_option,),
+        ),
+        _resource_node(
+            "logs",
+            "Read bounded model serve logs.",
+            "anvil_serving.serves",
+            role="model-serve",
+            gpu=True,
+            examples=(
+                _example(
+                    "anvil-serving serves logs heavy",
+                    "Read the last 200 Heavy serve log lines.",
+                ),
+                _example(
+                    "anvil-serving serves logs heavy --tail 100 --since 10m",
+                    "Read a smaller recent window.",
+                ),
+                _example(
+                    "anvil-serving serves logs heavy --follow",
+                    "Follow new log output until interrupted.",
+                ),
+            ),
+            configuration_notes=serves_manifest_configuration,
+            behavior_notes=(
+                "Bounded by default; --follow deliberately switches to an unbounded stream.",
+                "JSON is available only for bounded output, not --follow.",
+            ),
+            options=(
+                manifest_option,
+                _option("--tail", summary="Number of trailing lines.", value_name="N|all"),
+                _option(
+                    "--since",
+                    summary="Only logs since a timestamp or duration.",
+                    value_name="TIME",
+                ),
+                _option(
+                    "--follow", summary="Follow log output.", output_policy="follow"
+                ),
+            ),
+            remote_operation=_remote("serves_logs", positionals=("names",)),
+        ),
+        _resource_node(
+            "multiplex",
+            "Run the single-resident model multiplexer.",
+            "anvil_serving.multiplexer",
+            role="model-serve",
+            mutation="process",
+            gpu=True,
+            argv_prefix=(),
+            output_policy="foreground",
+            examples=(
+                _example(
+                    "anvil-serving serves multiplex --self-check",
+                    "Validate the multiplexer contract without starting a server.",
+                ),
+                _example(
+                    "anvil-serving serves multiplex --host 127.0.0.1 --port 30000",
+                    "Run the loopback-only multiplexer in the foreground.",
+                ),
+            ),
+            configuration_notes=(
+                "--registry selects an explicit model registry; otherwise the packaged registry is used.",
+                "The default bind is 127.0.0.1.",
+            ),
+            behavior_notes=(
+                "Runs in the foreground until interrupted.",
+                "Foreground protocol output does not support --json.",
+            ),
+        ),
     )
     serves = _node("serves", "Manage local model serve lifecycle.", children=serves_actions, docs_anchor=SERVES_DOC)
     models = _node(
@@ -1165,6 +1531,49 @@ def _validate_nodes(
         names.add(node.name)
         if not node.summary:
             raise CommandTreeError(f"command {label!r} requires a summary")
+        for index, example in enumerate(node.examples):
+            if not isinstance(example, CommandExample):
+                raise CommandTreeError(
+                    f"command {label!r} example {index} must be a CommandExample"
+                )
+            if not example.invocation.strip() or not example.summary.strip():
+                raise CommandTreeError(
+                    f"command {label!r} example {index} requires an invocation and summary"
+                )
+            canonical = f"anvil-serving {label}"
+            if not (
+                example.invocation == canonical
+                or example.invocation.startswith(canonical + " ")
+            ):
+                raise CommandTreeError(
+                    f"command {label!r} example {index} must start with {canonical!r}"
+                )
+            if any(character in example.invocation for character in "\r\n"):
+                raise CommandTreeError(
+                    f"command {label!r} example {index} must be one line"
+                )
+            if any(character in example.summary for character in "\r\n"):
+                raise CommandTreeError(
+                    f"command {label!r} example {index} summary must be one line"
+                )
+        if any(
+            not isinstance(note, str)
+            or not note.strip()
+            or any(character in note for character in "\r\n")
+            for note in node.configuration_notes
+        ):
+            raise CommandTreeError(
+                f"command {label!r} configuration notes must be non-empty one-line text"
+            )
+        if any(
+            not isinstance(note, str)
+            or not note.strip()
+            or any(character in note for character in "\r\n")
+            for note in node.behavior_notes
+        ):
+            raise CommandTreeError(
+                f"command {label!r} behavior notes must be non-empty one-line text"
+            )
         if not node.docs_anchor:
             raise CommandTreeError(f"command {label!r} requires a documentation anchor")
         if node.mutation_class not in _MUTATION_CLASSES:
@@ -1279,6 +1688,12 @@ def _manifest_records(nodes: tuple[CommandNode, ...], parent: tuple[str, ...], i
             "path": " ".join(path),
             "summary": node.summary,
             "visible": node.visible,
+            "examples": [
+                {"invocation": example.invocation, "summary": example.summary}
+                for example in node.examples
+            ],
+            "configuration_notes": list(node.configuration_notes),
+            "behavior_notes": list(node.behavior_notes),
             "options": [_option_data(option) for option in options],
             "mutation_class": node.mutation_class,
             "execution_policy": node.execution_policy,

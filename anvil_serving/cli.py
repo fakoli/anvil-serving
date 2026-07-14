@@ -5,7 +5,10 @@ import contextlib
 import difflib
 import io
 import os
+import re
+import shutil
 import sys
+import textwrap
 import uuid
 from dataclasses import dataclass, replace
 from importlib import metadata as importlib_metadata
@@ -265,6 +268,206 @@ def _handler_argv(path: Sequence[CommandNode]) -> tuple[str, ...]:
     return tuple(item.name for item in path[1:])
 
 
+def _hidden_leaf_help_flags(path: Sequence[CommandNode]) -> frozenset[str]:
+    """Options owned by the dispatcher or removed from the public interface."""
+    flags = {
+        flag
+        for option in COMMAND_TREE.global_options
+        for flag in option.flags
+    }
+    flags.update(
+        flag
+        for item in path
+        for option in item.options
+        if option.tombstone is not None
+        for flag in option.flags
+    )
+    return frozenset(flags)
+
+
+def _strip_optional_usage_flag(line: str, flag: str) -> str:
+    """Remove one dispatcher-owned optional from an argparse usage line."""
+    optional_group = re.compile(r"\[([^\[\]]*)\]")
+
+    def strip_alternative(match: re.Match[str]) -> str:
+        alternatives = re.split(r"\s+\|\s+", match.group(1))
+        retained = [
+            alternative
+            for alternative in alternatives
+            if not re.match(
+                r"^" + re.escape(flag) + r"(?:\s|$)", alternative.strip()
+            )
+        ]
+        if len(retained) == len(alternatives):
+            return match.group(0)
+        if not retained:
+            return ""
+        return "[" + " | ".join(retained) + "]"
+
+    return re.sub(r"\s+", " ", optional_group.sub(strip_alternative, line)).rstrip()
+
+
+def _normalized_leaf_sections(
+    rendered: str, *, hidden_flags: frozenset[str]
+) -> tuple[list[str], list[str]]:
+    """Split argparse help into canonical usage and local argument sections."""
+    lines = rendered.splitlines()
+    if not lines or not lines[0].casefold().startswith("usage:"):
+        return [], lines
+
+    usage = [lines[0].split(":", 1)[1].strip()]
+    index = 1
+    while index < len(lines) and lines[index].strip():
+        usage.append(lines[index].strip())
+        index += 1
+    for flag in sorted(hidden_flags, key=len, reverse=True):
+        usage = [_strip_optional_usage_flag(line, flag).strip() for line in usage]
+    usage = [line for line in usage if line]
+    if usage:
+        usage[-1] = usage[-1] + " [global options]"
+
+    body = lines[index:]
+    while body and not body[0].strip():
+        body.pop(0)
+
+    section_names = {
+        "options:",
+        "optional arguments:",
+        "positional arguments:",
+    }
+    section_start = next(
+        (
+            offset
+            for offset, line in enumerate(body)
+            if line.strip().casefold() in section_names
+        ),
+        len(body),
+    )
+    body = body[section_start:]
+    examples_start = next(
+        (
+            offset
+            for offset, line in enumerate(body)
+            if line.strip().casefold() == "examples:"
+        ),
+        len(body),
+    )
+    body = body[:examples_start]
+
+    filtered: list[str] = []
+    skipping = False
+    for line in body:
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        option_line = indent <= 2 and stripped.startswith("-")
+        if option_line:
+            skipping = any(
+                re.match(r"^" + re.escape(flag) + r"(?:[ ,]|$)", stripped)
+                for flag in hidden_flags
+            )
+        elif skipping and (not stripped or indent <= 2):
+            skipping = False
+        if not skipping:
+            normalized = {
+                "positional arguments:": "Arguments:",
+                "optional arguments:": "Options:",
+                "options:": "Options:",
+            }.get(stripped.casefold())
+            filtered.append(normalized if normalized is not None else line)
+    while filtered and not filtered[-1].strip():
+        filtered.pop()
+    return usage, filtered
+
+
+def _print_reviewed_leaf_help(path: Sequence[CommandNode], rendered: str) -> None:
+    """Render a reviewed leaf with stable navigation and human-first sections."""
+    node = path[-1]
+    command = _command_name(path)
+    help_width = min(
+        100,
+        max(60, shutil.get_terminal_size(fallback=(100, 24)).columns),
+    )
+    usage, local_sections = _normalized_leaf_sections(
+        rendered,
+        hidden_flags=_hidden_leaf_help_flags(path),
+    )
+
+    print("anvil-serving %s" % command)
+    print(node.summary)
+    if usage:
+        print("\nUsage:")
+        for line in usage:
+            print("  %s" % line)
+    print("\nExamples:")
+    for example in node.examples:
+        print("  %s" % example.invocation)
+        print("    %s" % example.summary)
+    if node.configuration_notes:
+        print("\nConfiguration:")
+        for note in node.configuration_notes:
+            print(
+                textwrap.fill(
+                    note,
+                    width=help_width,
+                    initial_indent="  ",
+                    subsequent_indent="  ",
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+            )
+    if node.behavior_notes:
+        print("\nBehavior:")
+        for note in node.behavior_notes:
+            print(
+                textwrap.fill(
+                    note,
+                    width=help_width,
+                    initial_indent="  ",
+                    subsequent_indent="  ",
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+            )
+    if local_sections:
+        print()
+        print("\n".join(local_sections))
+
+    global_options = COMMAND_TREE.global_options
+    if node.execution_policy != "resource-owner":
+        resolution_flags = {
+            *_RESOLUTION_VALUE_OPTIONS,
+            "--experimental-model-workload",
+            "--allow-ssh-fallback",
+        }
+        global_options = tuple(
+            option
+            for option in global_options
+            if not resolution_flags.intersection(option.flags)
+        )
+    dispatcher_options = tuple(
+        option
+        for option in node.options
+        if "--confirm" in option.flags and option.tombstone is None
+    )
+    print("\nGlobal options:")
+    for option in (*global_options, *dispatcher_options):
+        label = ", ".join(option.flags)
+        if option.value_name:
+            label += " " + option.value_name
+        prefix = "  %-40s " % label
+        print(
+            textwrap.fill(
+                option.summary,
+                width=help_width,
+                initial_indent=prefix,
+                subsequent_indent=" " * len(prefix),
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+        )
+    print("\nDocs: %s" % node.docs_anchor)
+
+
 def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
     """Render the real leaf parser help under the canonical command path."""
     node = path[-1]
@@ -290,6 +493,9 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
     old_command = " ".join((base_prog, *prefix))
     canonical = "anvil-serving " + _command_name(path)
     rendered = rendered.replace(old_command, canonical)
+    if node.examples:
+        _print_reviewed_leaf_help(path, rendered)
+        return True
     print(rendered, end="" if rendered.endswith("\n") else "\n")
     dispatcher_options = [
         option
