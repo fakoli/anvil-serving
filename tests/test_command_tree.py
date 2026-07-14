@@ -48,6 +48,9 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
     assert records["mcp"]["tombstone"]["replacement"] == "mcp serve"
     assert records["mcp serve"]["handler"] == "anvil_serving.mcp:main"
     assert records["router status"]["remote_operation"]["tool"] == "router_status"
+    assert records["router endpoint"]["handler"] == "anvil_serving.router_endpoint:main"
+    assert records["router endpoint"]["execution_runtime_roles"] == ["native"]
+    assert records["router endpoint"]["remote_operation"] is None
     assert records["eval preflight"]["mutation_class"] == "mutate"
     assert records["eval preflight"]["remote_operation"]["confirmed_arguments"] == {"confirm": True}
     assert records["eval benchmark run"]["remote_operation"]["tool"] == "benchmark_probe"
@@ -69,6 +72,14 @@ def test_manifest_records_recursive_paths_metadata_and_tombstones():
         "--gpu-uuid",
     }
     assert records["doctor"]["remote_operation"]["tool"] == "doctor_summary"
+    assert records["upgrade"]["handler"] == "anvil_serving.upgrade:main"
+    assert records["upgrade"]["mutation_class"] == "mutate"
+    assert {flag for option in records["upgrade"]["options"] for flag in option["flags"]} >= {
+        "--allow-editable",
+        "--confirm",
+        "--dry-run",
+        "--manager",
+    }
     assert {"topology show", "topology validate", "topology resolve"} <= records.keys()
     assert records["harness status openclaw"]["remote_operation"] == {
         "mode": "tool",

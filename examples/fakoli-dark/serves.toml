@@ -178,7 +178,7 @@ health = "/health"
 gpu_role = "dark-fast"
 vram_mib = 5120
 residency = "resident"
-groups = ["llm-stack"]  # serve groups (serves up/down/status --group)
+groups = ["ocr", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d ocr"
 
 # ── Vision serve (gpu-reservations:T013) ──

@@ -8,7 +8,7 @@ stay on --dry-run). No real docker, no network.
 import pytest
 import json
 
-from anvil_serving import cache_prune, cli, guard, models
+from anvil_serving import cache_prune, cli, guard, models, serve_recipes
 
 
 # --------------------------------------------------------------------------- #
@@ -561,3 +561,117 @@ def test_recipe_malformed_registry_is_clean_error(tmp_path, capsys):
     rc = models.main(["recipe", "list", "--registry", str(reg)])
     assert rc == 1
     assert "cannot read serve-recipe registry" in capsys.readouterr().err
+
+
+def _recipe_input(path, model, *, status="unverified"):
+    path.write_text(
+        '[[recipe]]\nmodel = "%s"\nstatus = "%s"\n\n[recipe.serve]\nimage = "example/image"\nport = 30123\n' % (model, status),
+        encoding="utf-8",
+    )
+
+
+def test_recipe_create_update_delete_crud_with_backups(tmp_path, capsys):
+    registry = tmp_path / "operator-recipes.toml"
+    recipe = tmp_path / "new.toml"
+    _recipe_input(recipe, "org/model")
+
+    assert cli.main(["models", "recipes", "create", "--registry", str(registry),
+                     "--recipe-file", str(recipe), "--confirm"]) == 0
+    assert "created recipe" in capsys.readouterr().out
+    assert serve_recipes.find_recipe(serve_recipes.load_registry(registry), "org/model")
+
+    _recipe_input(recipe, "org/model-v2", status="verified")
+    assert models.main(["recipe", "update", "org/model", "--registry", str(registry),
+                        "--recipe-file", str(recipe), "--confirm"]) == 0
+    assert registry.with_name(registry.name + ".anvil.bak.1").exists()
+    assert serve_recipes.find_recipe(serve_recipes.load_registry(registry), "org/model-v2")
+
+    assert models.main(["recipe", "delete", "org/model-v2", "--registry", str(registry),
+                        "--confirm"]) == 0
+    assert registry.with_name(registry.name + ".anvil.bak.2").exists()
+    assert serve_recipes.load_registry(registry).get("recipe", []) == []
+
+
+def test_recipe_crud_dry_run_never_writes(tmp_path, capsys):
+    registry = tmp_path / "operator-recipes.toml"
+    recipe = tmp_path / "new.toml"
+    _recipe_input(recipe, "org/model")
+    assert models.main(["recipe", "create", "--registry", str(registry),
+                        "--recipe-file", str(recipe), "--dry-run"]) == 0
+    assert not registry.exists()
+    assert "would create recipe" in capsys.readouterr().out
+
+
+def test_recipe_write_refuses_state_drift_without_backup(tmp_path):
+    registry = tmp_path / "operator-recipes.toml"
+    registry.write_text(
+        'schema = "x"\n[[recipe]]\nmodel = "org/one"\n', encoding="utf-8"
+    )
+    before = serve_recipes.registry_digest(registry)
+    updated = {"schema": "x", "recipe": [{"model": "org/two"}]}
+    registry.write_text(
+        'schema = "x"\n[[recipe]]\nmodel = "org/concurrent"\n', encoding="utf-8"
+    )
+
+    with pytest.raises(serve_recipes.RecipeError, match="changed after it was read"):
+        models._write_recipe_registry(registry, updated, expected_digest=before)
+
+    assert serve_recipes.load_registry(registry)["recipe"][0]["model"] == "org/concurrent"
+    assert not registry.with_name(registry.name + ".anvil.bak.1").exists()
+
+
+def test_recipe_write_rejects_unsupported_value_before_backup(tmp_path):
+    registry = tmp_path / "operator-recipes.toml"
+    registry.write_text(
+        'schema = "x"\n[[recipe]]\nmodel = "org/one"\n', encoding="utf-8"
+    )
+    updated = {
+        "schema": "x",
+        "recipe": [{"model": "org/two", "unsupported": object()}],
+    }
+
+    with pytest.raises(serve_recipes.RecipeError, match="unsupported TOML scalar type"):
+        models._write_recipe_registry(
+            registry,
+            updated,
+            expected_digest=serve_recipes.registry_digest(registry),
+        )
+
+    assert not registry.with_name(registry.name + ".anvil.bak.1").exists()
+
+
+def test_recipe_load_dry_run_selects_recipe_without_docker(request, capsys):
+    rc = models.main(["recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
+                      "--registry", _registry(request), "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "would load recipe" in out
+    assert "--name recipe-heavy" in out
+    assert "127.0.0.1:30002:30002" in out
+
+
+def test_recipe_load_dispatches_through_canonical_cli(request, capsys):
+    rc = cli.main([
+        "models", "recipes", "load", "gpt-oss-120b", "--container", "recipe-heavy",
+        "--registry", _registry(request), "--dry-run",
+    ])
+    assert rc == 0
+    assert "would load recipe" in capsys.readouterr().out
+
+
+def test_recipe_load_confirmed_invokes_loader_once(request, monkeypatch, capsys):
+    seen = {}
+
+    def fake_load(recipe, container):
+        seen["model"] = recipe["model"]
+        seen["container"] = container
+        return ["docker", "run"], 0
+
+    monkeypatch.setattr(models.serve_recipes, "load_recipe", fake_load)
+    rc = models.main([
+        "recipe", "load", "gpt-oss-120b", "--container", "recipe-heavy",
+        "--registry", _registry(request), "--confirm",
+    ])
+    assert rc == 0
+    assert seen == {"model": "openai/gpt-oss-120b", "container": "recipe-heavy"}
+    assert "preflight before trusting" in capsys.readouterr().out

@@ -341,6 +341,9 @@ def build_command_tree() -> CommandTree:
     action_options = (_option("--dry-run", summary="Preview without mutating state."),)
     confirm_options = action_options + (_option("--confirm", summary="Confirm the guarded mutation."),)
     manifest_option = _option("--manifest", summary="Serve manifest TOML.", value_name="PATH")
+    recipe_registry_option = _option("--registry", summary="Serve-recipe registry TOML.", value_name="PATH")
+    recipe_file_option = _option("--recipe-file", summary="TOML file containing one recipe.", value_name="PATH")
+    recipe_container_option = _option("--container", summary="New Docker container name.", value_name="NAME")
     assume_yes_option = _option("--yes", summary="Confirm a direct irreversible leaf operation.")
     group_option = _option(
         "--group",
@@ -399,6 +402,21 @@ def build_command_tree() -> CommandTree:
                     ),
                 ),
             ),
+            _resource_node(
+                "endpoint",
+                "Show the router listen address and this node's Tailscale DNS name.",
+                "anvil_serving.router_endpoint",
+                role="router",
+                argv_prefix=(),
+                options=(
+                    _option("--container", summary="Deployed router container.", value_name="NAME"),
+                    _option("--host", summary="Explicit listen host override.", value_name="ADDRESS"),
+                    _option("--port", summary="Explicit listen port override.", value_name="PORT"),
+                    _option("--no-tailscale", summary="Skip Tailscale DNS discovery."),
+                ),
+                execution_runtime_roles=("native",),
+                docs_anchor="docs/CLI.md#router",
+            ),
             _resource_node("status", "Show router status.", "anvil_serving.router_manage", role="router", remote_operation=_remote("router_status", allowed=("container",))),
             _resource_node(
                 "transition-status", "Show router tier transition state.",
@@ -455,9 +473,13 @@ def build_command_tree() -> CommandTree:
             _resource_node("sync", "Sync the model catalog.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=action_options),
             _resource_node("pull", "Pull a model artifact.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options),
             _resource_node("score", "Rank models from benchmark evidence.", "anvil_serving.models", role="model-catalog"),
-            _node("recipes", "Inspect recorded serve recipes.", children=(
-                _resource_node("list", "List recorded serve recipes.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "list")),
-                _resource_node("show", "Show one recorded serve recipe.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "show")),
+            _node("recipes", "Manage recorded serve recipes.", children=(
+                _resource_node("list", "List recorded serve recipes.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "list"), options=(recipe_registry_option,)),
+                _resource_node("show", "Show one recorded serve recipe.", "anvil_serving.models", role="model-catalog", argv_prefix=("recipe", "show"), options=(recipe_registry_option,)),
+                _resource_node("create", "Create one recipe in an operator registry.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "create"), options=confirm_options + (recipe_registry_option, recipe_file_option)),
+                _resource_node("update", "Update one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "update"), options=confirm_options + (recipe_registry_option, recipe_file_option)),
+                _resource_node("delete", "Delete one selected recipe.", "anvil_serving.models", role="model-catalog", mutation="mutate", argv_prefix=("recipe", "delete"), options=confirm_options + (recipe_registry_option,)),
+                _resource_node("load", "Load one recipe into a named local container.", "anvil_serving.models", role="model-serve", mutation="mutate", gpu=True, argv_prefix=("recipe", "load"), options=confirm_options + (recipe_registry_option, recipe_container_option)),
             ), docs_anchor="docs/CLI.md#models-recipes"),
             _node("cache", "Manage model cache storage.", children=(
                 _resource_node("prune", "Plan or prune the model cache.", "anvil_serving.models", role="model-catalog", mutation="mutate", options=confirm_options + (_option("--execute", summary="Delete the planned cache candidates.", requires_confirmation=True),)),
@@ -825,6 +847,18 @@ def build_command_tree() -> CommandTree:
             _node("controller", controller.summary, children=controller.children, docs_anchor=controller.docs_anchor, group="Control plane & integrations"),
             _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
             _resource_node("doctor", "Check dependencies and configured health.", "anvil_serving.doctor", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("doctor_summary"), docs_anchor="docs/CLI.md#doctor", group="Local serving tools"),
+            _node(
+                "upgrade",
+                "Upgrade this CLI to the newest stable published release.",
+                handler=_handler("anvil_serving.upgrade"),
+                mutation_class="mutate",
+                options=confirm_options + (
+                    _option("--manager", summary="Package manager override.", value_name="auto|uv|pipx|pip"),
+                    _option("--allow-editable", summary="Replace an editable source install."),
+                ),
+                docs_anchor="docs/CLI.md#upgrade",
+                group="Local serving tools",
+            ),
             _node("topology", topology.summary, children=topology.children, docs_anchor=topology.docs_anchor, group="Control plane & integrations"),
             _node("collectors", collectors.summary, handler=collectors.handler, docs_anchor=collectors.docs_anchor, group="Control plane & integrations"),
             _node("dashboard", dashboard.summary, children=dashboard.children, docs_anchor=dashboard.docs_anchor, group="Local serving tools"),
