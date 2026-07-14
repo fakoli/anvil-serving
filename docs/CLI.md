@@ -59,6 +59,7 @@ confirmation or acknowledgement flags in focused `--help`.
 | `serves multiplex` | Single-resident model swap server on one GPU (RAM-guarded). | Local serving tools |
 | `init` | Scaffold the operational config home (or a single-model bring-up with `--single-model`). | Local serving tools |
 | `doctor` | Environment preflight for a router deploy (Python, docker, GPU, tier health). | Local serving tools |
+| `upgrade` | Upgrade this CLI to the newest stable published release. | Local serving tools |
 | `host` | Own the WSL / Docker Desktop host config (inspect, cap, restart, reset). | Local serving tools |
 | `eval` | Unified eval harness: preflight / benchmark / planning / bootstrap. | Quality loop |
 | `eval calibrate` | Guarded write-back batch: measure local tiers, judge, write a candidate profile. | Quality loop |
@@ -90,6 +91,7 @@ focused `--help`.
 | `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `router promote` | Promote a reviewed router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--validate-only` |
+| `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | `--container`<br>`--host`<br>`--port`<br>`--no-tailscale` |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--router-url` |
 | `router quiesce` | Quiesce one router tier. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--router-url` |
@@ -112,9 +114,13 @@ focused `--help`.
 | `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run` |
 | `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
-| `models recipes` | Inspect recorded serve recipes. | `read` / `bounded` | - |
-| `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
-| `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | - |
+| `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
+| `models recipes list` | List recorded serve recipes. | `read` / `bounded` | `--registry` |
+| `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | `--registry` |
+| `models recipes create` | Create one recipe in an operator registry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--recipe-file` |
+| `models recipes update` | Update one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--recipe-file` |
+| `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry` |
+| `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--container` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
 | `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
@@ -190,6 +196,7 @@ focused `--help`.
 | `host reset-wsl` | Reset WSL. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host reclaim` | Drop the WSL VM page cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--watch` |
 | `doctor` | Check dependencies and configured health. | `read` / `bounded` | - |
+| `upgrade` | Upgrade this CLI to the newest stable published release. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manager`<br>`--allow-editable` |
 | `topology` | Inspect and resolve deployment topology. | `read` / `bounded` | - |
 | `topology show` | Show a validated topology summary. | `read` / `bounded` | - |
 | `topology validate` | Validate a topology offline. | `read` / `bounded` | - |
@@ -234,7 +241,7 @@ anvil-serving router run --config configs/example.toml
 ### `router`
 
 ```
-anvil-serving router {up|down|restart|reload|status|transition-status|quiesce|drain|readmit|logs|token|promote} [flags]
+anvil-serving router {up|down|restart|reload|status|endpoint|transition-status|quiesce|drain|readmit|logs|token|promote} [flags]
 ```
 
 Manages the deployed, containerized router (ADR-0004): lifecycle, bearer token, logs, and the
@@ -247,6 +254,7 @@ then legacy `~/.anvil_env`, then `~/.env` unless `--env-file` is provided.
 |--------|--------------|
 | `up` / `down` | `docker compose` bring-up/tear-down (`--compose`, `--service`, `--env-file`). |
 | `restart` / `reload` / `status` | Restart the container / restart to reload startup-read config / show container + health status. `restart`/`reload` verify the router STAYS up (~11s settle + consecutive samples, the same crash-loop check `promote` uses); `--no-verify` skips it for rapid iteration. |
+| `endpoint` | Show the deployed container's actual published listen address/port, a connectable local URL, whether the router is running, and this node's Tailscale MagicDNS name. Falls back visibly to `127.0.0.1:8000` when Docker state is unavailable; `--host`/`--port` override that resolution and `--no-tailscale` skips DNS discovery. |
 | `logs` / `token` | `docker logs` (`--tail`, `--since`, `--follow`) / inspect whether auth is configured. Token values require `--reveal --confirm`. |
 | `promote` | Validate + write a new profile (and optionally config) into the router's config volume; requires `--profile`; `--no-reload` skips the restart. |
 | `transition-status` | Read router-owned per-tier admission state, active count, readiness reason, and expected/observed model. |
@@ -260,6 +268,7 @@ promote-only: `--profile`, `--config`, `--cfg-volume`, `--image`, `--profile-des
 
 ```bash
 anvil-serving router promote --profile ./candidate-profile.json --dry-run
+anvil-serving router endpoint
 anvil-serving router quiesce --tier heavy-local --router-url http://127.0.0.1:8000 --confirm
 anvil-serving router drain --tier heavy-local --timeout 120 --router-url http://127.0.0.1:8000
 anvil-serving router readmit --tier heavy-local --router-url http://127.0.0.1:8000 --confirm
@@ -316,8 +325,8 @@ ADR-0017 admission path**: an over-budget member is refused with the ledger and
 no container command runs, exactly like a single-serve `up`.
 
 The shipped fakoli-dark example authors: `voice` → stt, tts; `fast-only` →
-fast; `heavy-only` → heavy; `embedding` → embeddings, reranker; `llm-stack` →
-heavy, fast, embeddings, reranker, ocr, vision; `comfy` → comfyui. Experiment
+fast; `heavy-only` → heavy; `embedding` → embeddings, reranker; `ocr` → ocr;
+`llm-stack` → heavy, fast, embeddings, reranker, ocr, vision; `comfy` → comfyui. Experiment
 and candidate serves are intentionally left untagged.
 
 ```bash
@@ -429,7 +438,12 @@ anvil-serving models sync [--out DIR] [--hf-roots ROOTS] [--model-dirs DIRS]
 anvil-serving models pull REPO_ID [--volume VOL] [--image IMG] [--revision R]
                                   [--include GLOB] [--exclude GLOB] [--token-env ENV]
                                   [--token-file PATH | --no-token] [--dry-run]
-anvil-serving models recipes {list|show MODEL} [--registry TOML]
+anvil-serving models recipes list [--registry TOML]
+anvil-serving models recipes show MODEL [--registry TOML]
+anvil-serving models recipes create --registry TOML --recipe-file RECIPE.toml [--dry-run] --confirm
+anvil-serving models recipes update MODEL --registry TOML --recipe-file RECIPE.toml [--dry-run] --confirm
+anvil-serving models recipes delete MODEL --registry TOML [--dry-run] --confirm
+anvil-serving models recipes load MODEL --container NAME [--registry TOML] [--dry-run] --confirm
 anvil-serving models cache prune [flags]
 anvil-serving models score [flags]
 ```
@@ -440,12 +454,18 @@ downloads a HF repo into a **named docker volume** (default `vllm-hfcache`) via 
 inside a container, avoiding the 9P bind-mount tax. Pulls forward `HF_TOKEN` by name by default:
 an exported value wins, otherwise the command reads it from `~/.env` (override with
 `--token-env` and `--token-file`). The token value is never placed on argv. Use `--no-token`
-only for an explicitly anonymous pull. `recipes list`/`recipes show` read the recorded serve-recipe registry (default
-`configs/serve-recipes.toml`) written by `eval benchmark run --recipe-out`. Cache pruning and model scoring
-are documented in their focused sections below.
+only for an explicitly anonymous pull. `recipes list`/`recipes show` select recorded serve recipes from the default
+`configs/serve-recipes.toml` registry, which is written by `eval benchmark run --recipe-out`. Full CRUD requires an
+explicit operator-owned `--registry`: `create` and `update` read exactly one `[[recipe]]` TOML block from
+`--recipe-file`, while `delete` removes the selected exact id or unambiguous basename. Rewrites make a numbered
+`.anvil.bak.N` backup before atomically replacing the registry. `load` starts the selected recipe as a required named
+Docker container with loopback-only port publishing; use `--dry-run` to inspect the exact command first, then run
+preflight before trusting or routing to the serve. Loading a recipe never changes router policy or promotes a model.
+Cache pruning and model scoring are documented in their focused sections below.
 
 ```bash
 anvil-serving models pull openai/gpt-oss-120b --volume vllm-hfcache --dry-run
+anvil-serving models recipes load gpt-oss-120b --container heavy-candidate --dry-run
 ```
 
 ### `models cache prune`
@@ -729,6 +749,25 @@ anvil-serving doctor --config configs/example.toml
 >   sizing a new Windows/WSL2 box (CLAUDE.md gotcha #3).
 >
 > Rule of thumb: `doctor` before every deploy; `host doctor` when the machine itself misbehaves.
+
+### `upgrade`
+
+```
+anvil-serving upgrade --dry-run [--manager auto|uv|pipx|pip]
+anvil-serving upgrade --confirm [--manager auto|uv|pipx|pip]
+anvil-serving upgrade --confirm --allow-editable
+```
+
+Queries PyPI for the newest stable `anvil-serving` release, detects whether the installed command
+is owned by `uv tool`, `pipx`, or `pip`, and performs one manager-owned upgrade followed by an
+`anvil-serving --version` verification. The command refuses a published version older than the
+installed version and never retries a failed package-manager mutation.
+
+Use `--dry-run` to inspect the installed version, latest release, detected manager, and exact
+command without changing the environment. Live execution requires `--confirm`. An editable source
+checkout is shown in dry-run output but is refused by default because replacing it would detach the
+CLI from local edits; update that checkout with `git pull` and `pip install -e .`, or explicitly
+pass `--allow-editable` to replace it with the published package.
 
 ### `host`
 
