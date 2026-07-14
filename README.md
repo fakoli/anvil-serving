@@ -127,7 +127,8 @@ Full walkthrough: [Getting started](docs/GETTING-STARTED.md).
 ## Command Surface
 
 One CLI covers the router, the local serving tools, the measurement loop that feeds the quality
-profile, and the control plane. Full flags and examples: [CLI reference](docs/CLI.md).
+profile, and the control plane. Navigation and examples: [CLI reference](docs/CLI.md);
+focused `--help` is the authoritative full flag reference.
 Run `anvil-serving --help` for the grouped command surface, `anvil-serving <command> --help` for
 focused action flags, and `anvil-serving --version` to verify the installed build.
 
