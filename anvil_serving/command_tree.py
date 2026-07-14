@@ -2054,27 +2054,86 @@ def build_command_tree() -> CommandTree:
         docs_anchor=f"{HOST_DOC}#gpu-sharing",
     )
     host_read_actions = (
-        _resource_node("status", "Show structured host status.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
-        _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("gpu_inventory")),
+        _resource_node("status", "Show structured host status.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary"), docs_anchor=f"{HOST_DOC}#inspect-the-host"),
+        _resource_node("gpus", "Show GPU inventory.", "anvil_serving.gpus", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("gpu_inventory"), docs_anchor=f"{HOST_DOC}#inspect-the-host"),
         gpu_sharing,
-        _resource_node("doctor", "Diagnose host configuration.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary")),
-        _resource_node("memory", "Show host RAM and WSL VM memory usage.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), execution_host_os=("windows",)),
-    )
-    host_repairs = tuple(
+        _resource_node("doctor", "Diagnose host configuration.", "anvil_serving.host", role="host", execution_runtime_roles=("native",), remote_operation=_remote("host_summary"), docs_anchor=f"{HOST_DOC}#inspect-the-host"),
         _resource_node(
-            action, summary, "anvil_serving.host", role="host", mutation="mutate",
-            recovery=action in {"restart-docker", "reset-wsl"}, options=confirm_options,
-            execution_runtime_roles=("native",), execution_host_os=host_os,
-            remote_operation=_remote(
-                "host_manage", fixed=(("action", action),), confirmed=(("confirm", True),),
-                allowed=allowed,
+            "memory",
+            "Show host RAM and WSL VM memory usage.",
+            "anvil_serving.host",
+            role="host",
+            options=(
+                _option("--distro", summary="WSL distro to inspect.", value_name="NAME"),
             ),
-        )
-        for action, summary, host_os, allowed in (
-            ("wsl-config", "Render or update WSL configuration.", ("windows",), ("memory", "swap", "revert", "force", "dry_run")),
-            ("restart-docker", "Restart Docker Desktop.", ("windows", "macos"), ("dry_run",)),
-            ("reset-wsl", "Reset WSL.", ("windows",), ("dry_run",)),
-        )
+            execution_runtime_roles=("native",),
+            execution_host_os=("windows",),
+            docs_anchor=f"{HOST_DOC}#inspect-the-host",
+        ),
+    )
+    host_repairs = (
+        _resource_node(
+            "wsl-config",
+            "Render or update WSL configuration.",
+            "anvil_serving.host",
+            role="host",
+            mutation="mutate",
+            options=confirm_options + (
+                _option("--memory", summary="WSL memory cap in GB.", value_name="GB"),
+                _option("--swap", summary="WSL swap size in GB.", value_name="GB"),
+                _option("--revert", summary="Restore the newest numbered backup."),
+                _option("--force", summary="Override the Windows memory-reserve refusal."),
+            ),
+            execution_runtime_roles=("native",),
+            execution_host_os=("windows",),
+            docs_anchor=f"{HOST_DOC}#repair-the-host",
+            remote_operation=_remote(
+                "host_manage",
+                fixed=(("action", "wsl-config"),),
+                confirmed=(("confirm", True),),
+                allowed=("memory", "swap", "revert", "force", "dry_run"),
+            ),
+        ),
+        _resource_node(
+            "restart-docker",
+            "Restart Docker Desktop.",
+            "anvil_serving.host",
+            role="host",
+            mutation="mutate",
+            recovery=True,
+            options=confirm_options + (
+                _removed_option("--force", replacement="--confirm"),
+            ),
+            execution_runtime_roles=("native",),
+            execution_host_os=("windows", "macos"),
+            docs_anchor=f"{HOST_DOC}#repair-the-host",
+            remote_operation=_remote(
+                "host_manage",
+                fixed=(("action", "restart-docker"),),
+                confirmed=(("confirm", True),),
+                allowed=("dry_run",),
+            ),
+        ),
+        _resource_node(
+            "reset-wsl",
+            "Reset WSL.",
+            "anvil_serving.host",
+            role="host",
+            mutation="mutate",
+            recovery=True,
+            options=confirm_options + (
+                _removed_option("--force", replacement="--confirm"),
+            ),
+            execution_runtime_roles=("native",),
+            execution_host_os=("windows",),
+            docs_anchor=f"{HOST_DOC}#repair-the-host",
+            remote_operation=_remote(
+                "host_manage",
+                fixed=(("action", "reset-wsl"),),
+                confirmed=(("confirm", True),),
+                allowed=("dry_run",),
+            ),
+        ),
     )
     # reclaim's --watch is a foreground loop: option-level "follow" policy makes --json refuse
     # it up front instead of buffering an infinite watchdog into the JSON envelope. Local-only
@@ -2082,9 +2141,22 @@ def build_command_tree() -> CommandTree:
     host_reclaim = _resource_node(
         "reclaim", "Drop the WSL VM page cache.", "anvil_serving.host", role="host",
         mutation="mutate", execution_runtime_roles=("native",), execution_host_os=("windows",),
-        options=confirm_options + (_option("--watch", summary="Foreground reclaim watchdog loop.", output_policy="follow"),),
+        options=confirm_options + (
+            _option("--force", summary="Override the active model-load refusal."),
+            _removed_option("--yes", replacement="--confirm"),
+            _option("--watch", summary="Foreground reclaim watchdog loop.", output_policy="follow"),
+            _option("--threshold-gb", summary="Watch-mode cache threshold.", value_name="GB"),
+            _option("--interval", summary="Watch-mode polling interval.", value_name="SECONDS"),
+            _option("--distro", summary="WSL distro in which to reclaim cache.", value_name="NAME"),
+        ),
+        docs_anchor=f"{HOST_DOC}#repair-the-host",
     )
-    host = _node("host", "Inspect and repair declared host operations.", children=(*host_read_actions, *host_repairs, host_reclaim), docs_anchor=f"{HOST_DOC}#host")
+    host = _node(
+        "host",
+        "Inspect and repair declared host operations.",
+        children=(*host_read_actions, *host_repairs, host_reclaim),
+        docs_anchor=f"{HOST_DOC}#command-map",
+    )
     topology = _node("topology", "Inspect and resolve deployment topology.", children=tuple(
         _node(action, summary, handler=_handler("anvil_serving.topology_cli", argv_prefix=(action,)), docs_anchor=f"{CONTROL_PLANE_DOC}#topology")
         for action, summary in (
@@ -2164,6 +2236,288 @@ def build_command_tree() -> CommandTree:
         ),
         docs_anchor=f"{HOST_DOC}#dashboard",
     )
+    setup_host_review_metadata = {
+        "init": {
+            "examples": (
+                _example(
+                    "anvil-serving init --out-dir ./anvil-config",
+                    "Scaffold the complete operator configuration into one explicit directory.",
+                ),
+                _example(
+                    "anvil-serving init --single-model --model ./models/qwen --gpu 0 --engine vllm --out-dir ./single-model",
+                    "Create a self-consistent one-model bring-up without starting it.",
+                ),
+            ),
+            "configuration_notes": (
+                "Full setup writes to --out-dir, ANVIL_SERVING_HOME, or the platform config home in that order.",
+                "Single-model setup uses --model or the largest loadable entry from --catalog-dir and binds 127.0.0.1 by default.",
+            ),
+            "behavior_notes": (
+                "Packaged templates are validated before writing; existing operator files receive numbered backups before replacement.",
+                "Initialization writes configuration only and never starts a model serve or router.",
+            ),
+        },
+        "doctor": {
+            "examples": (
+                _example(
+                    "anvil-serving doctor --no-config",
+                    "Check Python, Docker, Compose, NVIDIA runtime, and GPU discovery only.",
+                ),
+                _example(
+                    "anvil-serving doctor --config ./router.toml --json",
+                    "Check one explicit router configuration and emit structured results.",
+                ),
+            ),
+            "configuration_notes": (
+                "Without --config, ./router.toml is checked only when it exists; --no-config disables tier health probes.",
+                "An explicit missing or invalid --config is a required failure rather than a skipped optional check.",
+            ),
+            "behavior_notes": (
+                "Required Python, Docker, and Compose failures return nonzero; GPU, runtime, and unavailable tier health are advisory warnings.",
+                "Doctor is read-only and never starts Docker, a model serve, or the router.",
+            ),
+        },
+        "upgrade": {
+            "examples": (
+                _example(
+                    "anvil-serving upgrade --dry-run",
+                    "Resolve the installed package owner and latest stable PyPI version.",
+                ),
+                _example(
+                    "anvil-serving upgrade --manager auto --confirm",
+                    "Apply the reviewed upgrade through the owning package manager.",
+                ),
+            ),
+            "configuration_notes": (
+                "--manager auto detects uv tool, pipx, or pip ownership; an explicit manager overrides detection.",
+                "Editable installs are refused unless --allow-editable deliberately replaces the source checkout with a published package.",
+            ),
+            "behavior_notes": (
+                "Dry-run performs discovery only and never invokes a package-manager mutation.",
+                "Apply runs one upgrade attempt and verifies that anvil-serving --version exactly matches the selected release.",
+            ),
+        },
+        "host status": {
+            "examples": (
+                _example(
+                    "anvil-serving host status",
+                    "Show the local host summary as bounded JSON.",
+                ),
+                _example(
+                    "anvil-serving host status --topology operator-topology.toml --target host:dark --json",
+                    "Read a topology-declared host through the stable result envelope.",
+                ),
+            ),
+            "configuration_notes": (
+                "Global topology and target options select the declared host resource owner; local execution is the default.",
+                "The summary combines physical RAM, Docker or WSL memory, GPU inventory, and the recommended Windows reserve.",
+            ),
+            "behavior_notes": (
+                "Status is read-only, bounded, and does not repair host configuration.",
+                "Unavailable probes remain explicit structured checks instead of causing a mutation or traceback.",
+            ),
+        },
+        "host gpus": {
+            "examples": (
+                _example(
+                    "anvil-serving host gpus",
+                    "List locally visible NVIDIA GPU indexes, stable UUIDs, and names.",
+                ),
+                _example(
+                    "anvil-serving host gpus --topology operator-topology.toml --target host:dark --json",
+                    "Read bounded GPU inventory from a declared remote owner.",
+                ),
+            ),
+            "configuration_notes": (
+                "GPU discovery uses nvidia-smi on the selected host and has a fixed 15-second query deadline.",
+                "Global topology and target options resolve which host owns the inventory request.",
+            ),
+            "behavior_notes": (
+                "Inventory is read-only and never changes device mode, visibility, or allocation.",
+                "A host without nvidia-smi or visible NVIDIA devices returns an empty inventory cleanly.",
+            ),
+        },
+        "host gpu-sharing inspect": {
+            "examples": (
+                _example(
+                    "anvil-serving host gpu-sharing inspect --timeout 10",
+                    "Inspect local Green Context and MPS capability evidence.",
+                ),
+                _example(
+                    "anvil-serving host gpu-sharing inspect --topology operator-topology.toml --target host:dark --json",
+                    "Attach declared GPU roles to runtime observations by UUID.",
+                ),
+            ),
+            "configuration_notes": (
+                "--timeout defaults to 10 seconds per subprocess and must not exceed 60 seconds.",
+                "When topology is supplied, role ownership follows stable GPU UUIDs rather than transient runtime indexes.",
+            ),
+            "behavior_notes": (
+                "Inspection never creates a CUDA context, starts MPS, launches a workload, or changes GPU state.",
+                "Missing or ambiguous capability evidence is reported as unavailable or unknown, never inferred as supported.",
+            ),
+        },
+        "host gpu-sharing probe": {
+            "examples": (
+                _example(
+                    "anvil-serving host gpu-sharing probe --gpu-uuid GPU-00000000-0000-0000-0000-000000000000 --dry-run",
+                    "Audit the pinned one-shot Compose probe without starting a container.",
+                ),
+                _example(
+                    "anvil-serving host gpu-sharing probe --gpu-uuid GPU-00000000-0000-0000-0000-000000000000 --confirm",
+                    "Run the reviewed prerequisite probe in one temporary container.",
+                ),
+            ),
+            "configuration_notes": (
+                "--compose-file defaults to the reviewed experiment Compose file and --gpu-uuid requires the full NVIDIA UUID form.",
+                "The live timeout defaults to 180 seconds and must not exceed 300 seconds.",
+            ),
+            "behavior_notes": (
+                "Dry-run renders and audits the exact service, image digest, source hash, isolation, and UUID pin without execution.",
+                "Confirmed execution may populate the image cache but must not create a CUDA context, launch a workload, or alter GPU state.",
+            ),
+        },
+        "host doctor": {
+            "examples": (
+                _example(
+                    "anvil-serving host doctor",
+                    "Inspect local host memory, Docker or WSL capacity, and GPUs.",
+                ),
+                _example(
+                    "anvil-serving host doctor --topology operator-topology.toml --target host:dark --json",
+                    "Diagnose a topology-declared host through its controller.",
+                ),
+            ),
+            "configuration_notes": (
+                "Global topology and target options select the host owner; native local execution is the default.",
+                "The WSL recommendation keeps a 14 GB target Windows reserve and never exceeds the 10 GB safety floor.",
+            ),
+            "behavior_notes": (
+                "Host doctor is read-only and prints a recommendation rather than changing .wslconfig.",
+                "Unavailable host, Docker, or GPU probes remain visible in the diagnosis.",
+            ),
+        },
+        "host memory": {
+            "examples": (
+                _example(
+                    "anvil-serving host memory",
+                    "Show Windows, WSL VM, page-cache, and GPU memory usage.",
+                ),
+                _example(
+                    "anvil-serving host memory --distro Ubuntu",
+                    "Read VM-wide WSL memory through one explicit distro.",
+                ),
+            ),
+            "configuration_notes": (
+                "This command runs locally on Windows; --distro selects the WSL distribution used to read /proc/meminfo.",
+                "All WSL distributions share the same VM memory, so the default distribution is normally sufficient.",
+            ),
+            "behavior_notes": (
+                "Memory inspection is read-only and never reclaims cache or restarts WSL.",
+                "Unsupported hosts return a capability error with the native /proc alternative.",
+            ),
+        },
+        "host wsl-config": {
+            "examples": (
+                _example(
+                    "anvil-serving host wsl-config --memory 64 --swap 8 --dry-run",
+                    "Preview only the .wslconfig keys that would change.",
+                ),
+                _example(
+                    "anvil-serving host wsl-config --memory 64 --swap 8 --confirm",
+                    "Back up and apply the reviewed WSL memory settings.",
+                ),
+            ),
+            "configuration_notes": (
+                "Windows only; provide --memory and/or --swap, or use --revert to restore the newest numbered backup.",
+                "--force overrides only the 10 GB Windows reserve check; --confirm remains the public mutation gate.",
+            ),
+            "behavior_notes": (
+                "Dry-run preserves the file; apply changes only memory and swap while retaining custom sections and comments.",
+                "Apply creates a numbered backup and requires a separate Docker Desktop restart before the WSL cap becomes live.",
+            ),
+        },
+        "host restart-docker": {
+            "examples": (
+                _example(
+                    "anvil-serving host restart-docker --dry-run",
+                    "Preview the platform-specific Docker Desktop restart.",
+                ),
+                _example(
+                    "anvil-serving host restart-docker --confirm",
+                    "Cycle Docker Desktop once after reviewing the disruption.",
+                ),
+            ),
+            "configuration_notes": (
+                "This operation targets Docker Desktop on Windows or macOS; Linux operators use their service manager.",
+                "Global topology and target options can select a declared host owner; --confirm is the only public consent spelling.",
+            ),
+            "behavior_notes": (
+                "Dry-run launches nothing; apply briefly stops the engine and every running container.",
+                "The restart is attempted once and the command prints explicit router and serve verification steps.",
+            ),
+        },
+        "host reset-wsl": {
+            "examples": (
+                _example(
+                    "anvil-serving host reset-wsl --dry-run",
+                    "Preview the bounded Windows WSL recovery sequence.",
+                ),
+                _example(
+                    "anvil-serving host reset-wsl --confirm",
+                    "Reset a wedged WSL VM and restart Docker Desktop once.",
+                ),
+            ),
+            "configuration_notes": (
+                "Windows only; use this recovery after WSL commands hang and Docker Desktop cannot rebuild its backend.",
+                "Global topology and target options can select a declared host owner; --confirm is the only public consent spelling.",
+            ),
+            "behavior_notes": (
+                "Dry-run kills no processes; apply terminates vmmemWSL and hung wsl front ends, then restarts Docker Desktop once.",
+                "Permission failures return nonzero and print the elevated WSLService recovery command instead of retrying.",
+            ),
+        },
+        "host reclaim": {
+            "examples": (
+                _example(
+                    "anvil-serving host reclaim --dry-run",
+                    "Preview the one-shot WSL page-cache reclaim command.",
+                ),
+                _example(
+                    "anvil-serving host reclaim --watch --threshold-gb 60 --interval 30 --confirm",
+                    "Run a foreground reclaim watchdog during a reviewed bakeoff.",
+                ),
+            ),
+            "configuration_notes": (
+                "Windows only; --distro selects the WSL target, while --watch requires a positive --threshold-gb and --interval.",
+                "--force overrides only the active model-load refusal; --confirm remains the public mutation gate.",
+            ),
+            "behavior_notes": (
+                "One-shot reclaim syncs first, refuses a growing checkpoint cache by default, and drops only clean page-cache data.",
+                "Watch mode is an explicit foreground loop until interrupted and cannot be combined with structured JSON output.",
+            ),
+        },
+        "dashboard serve": {
+            "examples": (
+                _example(
+                    "anvil-serving dashboard serve --host 127.0.0.1 --port 8766",
+                    "Run the read-only dashboard on its loopback default.",
+                ),
+                _example(
+                    "anvil-serving dashboard serve --host 100.64.0.10 --auth-env ANVIL_DASHBOARD_TOKEN",
+                    "Bind to one private address with bearer-token protection.",
+                ),
+            ),
+            "configuration_notes": (
+                "The default bind is 127.0.0.1:8766; any non-loopback bind requires the token named by --auth-env.",
+                "The dashboard builds its packaged telemetry registry and retains only bounded in-process history.",
+            ),
+            "behavior_notes": (
+                "The server runs in the foreground until interrupted and does not support structured JSON output.",
+                "Dashboard routes are read-only observability endpoints and never become a second management control plane.",
+            ),
+        },
+    }
     edge_common_options = (
         _option("--config", summary="Edge route TOML ([edge]/[edge.routes]).", value_name="PATH"),
         _option("--https-port", summary="Node HTTPS listener port (default 443).", value_name="PORT"),
@@ -2201,9 +2555,30 @@ def build_command_tree() -> CommandTree:
         docs_anchor=f"{CONTROL_PLANE_DOC}#edge",
     )
 
-    tree = CommandTree(
-        nodes=tuple(_inherit_docs_anchor(node) for node in (
-            _node("init", "Scaffold the operational config home (or a single-model bring-up with --single-model).", handler=_handler("anvil_serving.init"), docs_anchor=f"{HOST_DOC}#init", group="Local serving tools"),
+    top_level_nodes = (
+            _node(
+                "init",
+                "Scaffold the operational config home (or a single-model bring-up with --single-model).",
+                handler=_handler("anvil_serving.init"),
+                mutation_class="mutate",
+                options=(
+                    _option("--out-dir", summary="Configuration output directory.", value_name="PATH"),
+                    _option("--single-model", summary="Create a one-model bring-up instead of the full config set."),
+                    _option("--model", summary="Explicit local model path for single-model setup.", value_name="PATH"),
+                    _option("--catalog-dir", summary="Model catalog used for automatic selection.", value_name="PATH"),
+                    _option("--gpu", summary="GPU index or stable NVIDIA UUID.", value_name="DEVICE"),
+                    _option("--served-name", summary="Served-model identity override.", value_name="NAME"),
+                    _option("--tier-id", summary="Router tier identity override.", value_name="ID"),
+                    _option("--port", summary="Loopback model endpoint port.", value_name="PORT"),
+                    _option("--context", summary="Model context window.", value_name="TOKENS"),
+                    _option("--engine", summary="Serving engine override.", value_name="sglang|vllm"),
+                    _option("--disable-thinking", summary="Disable thinking in the generated tier."),
+                    _option("--bind", summary="Published model-server address.", value_name="ADDRESS"),
+                    _option("--expose-lan", summary="Publish the model server on 0.0.0.0."),
+                ),
+                docs_anchor=f"{HOST_DOC}#init",
+                group="Local serving tools",
+            ),
             _node("router", router.summary, children=router.children, docs_anchor=router.docs_anchor, group="Data plane"),
             _node("serves", serves.summary, children=serves.children, docs_anchor=serves.docs_anchor, group="Local serving tools"),
             _node("models", models.summary, children=models.children, docs_anchor=models.docs_anchor, group="Local serving tools"),
@@ -2213,7 +2588,21 @@ def build_command_tree() -> CommandTree:
             _node("mcp", mcp.summary, children=mcp.children, options=mcp.options, handler=mcp.handler, docs_anchor=mcp.docs_anchor, tombstone=mcp.tombstone, visible=mcp.visible, group="Control plane & integrations"),
             _node("controller", controller.summary, children=controller.children, docs_anchor=controller.docs_anchor, group="Control plane & integrations"),
             _node("host", host.summary, children=host.children, docs_anchor=host.docs_anchor, group="Local serving tools"),
-            _resource_node("doctor", "Check dependencies and configured health.", "anvil_serving.doctor", role="host", argv_prefix=(), execution_runtime_roles=("native",), remote_operation=_remote("doctor_summary"), docs_anchor=f"{HOST_DOC}#doctor", group="Local serving tools"),
+            _resource_node(
+                "doctor",
+                "Check dependencies and configured health.",
+                "anvil_serving.doctor",
+                role="host",
+                argv_prefix=(),
+                options=(
+                    _option("--config", summary="Router config used for tier health probes.", value_name="PATH"),
+                    _option("--no-config", summary="Skip tier health probes."),
+                ),
+                execution_runtime_roles=("native",),
+                remote_operation=_remote("doctor_summary"),
+                docs_anchor=f"{HOST_DOC}#doctor",
+                group="Local serving tools",
+            ),
             _node(
                 "upgrade",
                 "Upgrade this CLI to the newest stable published release.",
@@ -2237,7 +2626,12 @@ def build_command_tree() -> CommandTree:
                 ("external-bench", "eval benchmark external"), ("calibrate", "eval calibrate"),
                 ("gpus", "host gpus"), ("voice-sidecar", "voice sidecar"), ("onboard", "init"),
             )),
-        )),
+        )
+    tree = CommandTree(
+        nodes=tuple(
+            _with_review_metadata(_inherit_docs_anchor(node), setup_host_review_metadata)
+            for node in top_level_nodes
+        ),
         global_options=GLOBAL_OPTIONS,
     )
     return tree

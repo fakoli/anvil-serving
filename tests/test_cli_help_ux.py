@@ -1,4 +1,4 @@
-"""Reviewed navigation contract for model-serving and recipe command families."""
+"""Reviewed navigation contracts for the migrated operator CLI families."""
 
 from __future__ import annotations
 
@@ -10,14 +10,17 @@ import pytest
 from anvil_serving import (
     benchmark_evidence,
     cli,
+    gpu_sharing,
+    host,
     models,
     multiplexer,
     router_endpoint,
     router_manage,
     serves,
 )
-from anvil_serving.command_tree import COMMAND_TREE, CommandNode
+from anvil_serving.command_tree import COMMAND_TREE, CommandNode, HandlerRef
 from anvil_serving.external_benchmarks import store as external_benchmark_store
+from anvil_serving.observability.dashboard import app as dashboard_app
 from anvil_serving.router import serve as router_serve
 
 
@@ -90,6 +93,32 @@ EVAL_LEAVES = (
     ("benchmark", "external", "notebook", "add"),
     ("benchmark", "external", "notebook", "list"),
     ("benchmark", "external", "notebook", "render"),
+)
+
+SETUP_HOST_LEAVES = (
+    ("init",),
+    ("doctor",),
+    ("upgrade",),
+    ("host", "status"),
+    ("host", "gpus"),
+    ("host", "gpu-sharing", "inspect"),
+    ("host", "gpu-sharing", "probe"),
+    ("host", "doctor"),
+    ("host", "memory"),
+    ("host", "wsl-config"),
+    ("host", "restart-docker"),
+    ("host", "reset-wsl"),
+    ("host", "reclaim"),
+    ("dashboard", "serve"),
+)
+
+SETUP_HOST_GUARDED_MUTATIONS = (
+    ("upgrade",),
+    ("host", "gpu-sharing", "probe"),
+    ("host", "wsl-config"),
+    ("host", "restart-docker"),
+    ("host", "reset-wsl"),
+    ("host", "reclaim"),
 )
 
 
@@ -179,6 +208,19 @@ def test_eval_leaf_help_has_reviewed_navigation_contract(parts, capsys):
     assert len(node.behavior_notes) == 2
 
 
+@pytest.mark.parametrize("parts", SETUP_HOST_LEAVES)
+def test_setup_host_leaf_help_has_reviewed_navigation_contract(parts, capsys):
+    node = _leaf(*parts)
+
+    assert cli.main([*parts, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    _assert_reviewed_help(parts, node, text)
+    assert len(node.examples) == 2
+    assert len(node.configuration_notes) == 2
+    assert len(node.behavior_notes) == 2
+
+
 @pytest.mark.parametrize("action", SERVES_LEAVES)
 def test_serves_reviewed_examples_resolve_to_the_documented_leaf(action):
     node = _serves_leaf(action)
@@ -231,6 +273,29 @@ def test_eval_reviewed_examples_resolve_and_use_real_parser_flags(parts, capsys)
         assert unknown is None
         assert tuple(item.name for item in path) == expected_path
         assert cli._tombstone(path, rest) is None
+        for token in rest:
+            if token.startswith("--"):
+                assert token.split("=", 1)[0] in help_text
+
+
+@pytest.mark.parametrize("parts", SETUP_HOST_LEAVES)
+def test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags(
+    parts, capsys
+):
+    node = _leaf(*parts)
+
+    assert cli.main([*parts, "--help"]) == 0
+    help_text = capsys.readouterr().out
+
+    for example in node.examples:
+        tokens = shlex.split(example.invocation, posix=True)
+        assert tokens[0] == "anvil-serving"
+        path, rest, unknown, _siblings = cli._resolve(tokens[1:])
+        assert unknown is None
+        assert tuple(item.name for item in path) == parts
+        assert cli._tombstone(path, rest) is None
+        if "--target" in rest:
+            assert "--topology" in rest
         for token in rest:
             if token.startswith("--"):
                 assert token.split("=", 1)[0] in help_text
@@ -342,6 +407,19 @@ def test_eval_reviewed_help_is_windows_console_safe(parts, monkeypatch, capsys):
     assert all(len(line) <= 60 for line in text.splitlines())
 
 
+@pytest.mark.parametrize("parts", SETUP_HOST_LEAVES)
+def test_setup_host_reviewed_help_is_windows_console_safe(
+    parts, monkeypatch, capsys
+):
+    monkeypatch.setenv("COLUMNS", "60")
+
+    assert cli.main([*parts, "--help"]) == 0
+    text = capsys.readouterr().out
+
+    text.encode("cp1252")
+    assert all(len(line) <= 60 for line in text.splitlines())
+
+
 def test_recipe_configuration_notes_match_runtime_precedence(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     config_home = tmp_path / "operator-home"
@@ -388,6 +466,98 @@ def test_eval_docs_group_every_operator_task():
         assert heading in text
     for parts in EVAL_LEAVES:
         assert "`eval %s`" % " ".join(parts) in text
+
+
+def test_setup_host_docs_group_every_operator_task():
+    text = (Path(__file__).parents[1] / "docs" / "cli" / "host.md").read_text(
+        encoding="utf-8"
+    )
+    for heading in (
+        "### Configure and maintain the installation",
+        "### Inspect the host",
+        "### Plan and apply host repair",
+        "### Inspect GPU-sharing prerequisites",
+        "### Observe the host",
+    ):
+        assert heading in text
+    for parts in SETUP_HOST_LEAVES:
+        assert "`%s`" % " ".join(parts) in text
+    assert "`--confirm`" in text
+    assert "one consent spelling" in text
+
+
+def test_setup_host_configuration_notes_match_runtime_contract():
+    inspect = gpu_sharing.build_parser().parse_args([])
+    probe = gpu_sharing.build_probe_parser().parse_args(
+        ["--gpu-uuid", "GPU-00000000-0000-0000-0000-000000000000"]
+    )
+    dashboard = dashboard_app.build_parser().parse_args([])
+
+    assert inspect.timeout == gpu_sharing.DEFAULT_TIMEOUT_SECONDS
+    assert probe.timeout == gpu_sharing.DEFAULT_PROBE_TIMEOUT_SECONDS
+    assert probe.compose_file == str(gpu_sharing.DEFAULT_PROBE_COMPOSE_FILE)
+    assert dashboard.host == "127.0.0.1"
+    assert dashboard.port == 8766
+    assert host.MIN_WINDOWS_RESERVE_GB == 10
+    assert host.RECOMMENDED_WINDOWS_RESERVE_GB == 14
+
+    assert "controller" in _leaf("doctor").transports
+    assert "controller" in _leaf("host", "status").transports
+    assert "controller" in _leaf("host", "gpus").transports
+    assert "controller" in _leaf("host", "doctor").transports
+    assert _leaf("host", "memory").transports == ("local",)
+    assert _leaf("host", "reclaim").transports == ("local",)
+    assert _leaf("host", "memory").execution_host_os == ("windows",)
+    assert _leaf("host", "restart-docker").execution_host_os == (
+        "windows",
+        "macos",
+    )
+
+
+@pytest.mark.parametrize(
+    ("parts", "removed"),
+    (
+        (("host", "restart-docker"), "--force"),
+        (("host", "reset-wsl"), "--force"),
+        (("host", "reclaim"), "--yes"),
+    ),
+)
+def test_host_alternate_consent_flags_are_hidden_and_refused(
+    parts, removed, capsys
+):
+    assert cli.main([*parts, "--help"]) == 0
+    help_text = capsys.readouterr().out
+    assert not any(
+        line.lstrip().startswith(removed) for line in help_text.splitlines()
+    )
+
+    assert cli.main([*parts, removed]) == 2
+    error = capsys.readouterr().err
+    assert "was removed" in error
+    assert "use `--confirm` instead" in error
+
+
+@pytest.mark.parametrize("parts", SETUP_HOST_GUARDED_MUTATIONS)
+def test_setup_host_mutations_preview_or_use_shared_confirmation(
+    parts, monkeypatch, capsys
+):
+    calls = []
+    monkeypatch.setattr(
+        HandlerRef,
+        "resolve",
+        lambda self: lambda argv: calls.append(tuple(argv)) or 0,
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+
+    assert cli.main(list(parts)) == 3
+    assert not calls
+    assert "confirmation required" in capsys.readouterr().err
+
+    assert cli.main([*parts, "--dry-run"]) == 0
+    assert calls[-1][-1] == "--dry-run"
+
+    assert cli.main([*parts, "--confirm"]) == 0
+    assert "--confirm" not in calls[-1]
 
 
 def test_eval_configuration_notes_match_runtime_defaults():

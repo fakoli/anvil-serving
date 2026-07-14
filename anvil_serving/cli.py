@@ -69,6 +69,7 @@ _HANDLER_PROGS = {
     "anvil_serving.calibrate": "anvil-serving eval calibrate",
     "anvil_serving.controller": "anvil-serving controller",
     "anvil_serving.collectors": "anvil-serving collectors",
+    "anvil_serving.observability.dashboard.app": "anvil-serving dashboard serve",
     "anvil_serving.doctor": "anvil-serving doctor",
     "anvil_serving.edge": "anvil-serving edge",
     "anvil_serving.eval": "anvil-serving eval",
@@ -88,6 +89,7 @@ _HANDLER_PROGS = {
     "anvil_serving.router_manage": "anvil-serving router",
     "anvil_serving.serves": "anvil-serving serves",
     "anvil_serving.topology_cli": "anvil-serving topology",
+    "anvil_serving.upgrade": "anvil-serving upgrade",
     "anvil_serving.voice.cli": "anvil-serving voice",
     "anvil_serving.voice_sidecar": "anvil-serving voice-sidecar",
 }

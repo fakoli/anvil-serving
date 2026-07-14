@@ -2,24 +2,24 @@
   "enforcement": "ratchet",
   "manifest_schema_version": 3,
   "maximum_failures": {
-    "boundedness": 95,
-    "configuration": 57,
-    "confirmation": 93,
-    "docs": 49,
-    "drift_protection": 102,
-    "errors": 83,
-    "grammar": 49,
-    "help": 49,
-    "journaling": 103,
+    "boundedness": 89,
+    "configuration": 43,
+    "confirmation": 80,
+    "docs": 35,
+    "drift_protection": 91,
+    "errors": 71,
+    "grammar": 35,
+    "help": 35,
+    "journaling": 96,
     "linux": 102,
     "macos": 102,
-    "output": 81,
-    "parser_tests": 49,
-    "preview": 90,
-    "remote_parity": 101,
-    "rollback": 99,
-    "timeout": 101,
-    "windows": 68
+    "output": 69,
+    "parser_tests": 35,
+    "preview": 77,
+    "remote_parity": 90,
+    "rollback": 90,
+    "timeout": 99,
+    "windows": 54
   },
   "records": [
     {
@@ -202,59 +202,186 @@
       "path": "controller status"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:5664c59ca4e5f8fd6bcb610b38d322b2d3955a273b52d3d12c351c2dc6f78437",
+        "configuration": "sha256:b416cb4457ab25d459434479c6cdd87786c369aedf8d84e4b303b1c77ef722c3",
+        "confirmation": "sha256:c6490cc3c0a2e3ce88674c9733c93f71fcd04bab5b06610daa5dc4f283b7c30e",
+        "docs": "sha256:d00338920467c2adaaa6da3c74b55450c809fce21d1ffdae76bf1e341e1b8112",
+        "drift_protection": "sha256:3dc911489a0d26d25f6748730367b70294a43773f02f8aa91a532f6bd3347397",
+        "errors": "sha256:4b3fe3751b046da5b8a95d7384786d50b5b61739eb3285c3cd732f137dbf46f9",
+        "grammar": "sha256:a8e9fee2da05ac0e5aa2ac3bc17544f391b31efd989c7b7b9e42a2814e775de5",
+        "help": "sha256:c5bca204225da575f7a1264643b4bee5f7505cb8a5075ef6447a6fe69e8895d8",
+        "journaling": "sha256:293fc9d56541e466203cf4e6091387a5713e74a34b698827d854607bff23520f",
+        "output": "sha256:7c4b9f2b0e82eb718de2eca7623541dddeec5e7732f74cc60b8adc4a9e3ae48f",
+        "parser_tests": "sha256:9b4da8987437e806a56c6cef3f23522f1c167b13b81975f64e1a0232581a4ccd",
+        "preview": "sha256:f64c5b740b863b59eddb6872d6358e4fb65a342570e579b25bc9936166016b35",
+        "remote_parity": "sha256:6fed3e58ef025f4035aec8d1cdb15397ad841207c3b0cf92a06eb0f9c8d27703",
+        "rollback": "sha256:2e3dc4086edd8648abe97f8ac1620b0820f9b2e5a17afe90f4e8d67812b46a7b",
+        "windows": "sha256:466c162149a107e76ffe9272573940a29299ea5887585344945336fe2611f751"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "The dashboard is a read-only foreground process and performs no management mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "The dashboard is a read-only foreground process and performs no management mutation.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "The dashboard is a read-only foreground process and performs no management mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "The dashboard is a read-only foreground process and performs no management mutation.",
+          "status": "not-applicable"
+        },
+        "remote_parity": {
+          "reason": "This command is intentionally local or offline and declares no remote transport contract.",
+          "status": "not-applicable"
+        },
+        "rollback": {
+          "reason": "The dashboard is a read-only foreground process and performs no management mutation.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/host.md#dashboard",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:3bcf00fb20d31f4ad8e173830e6dbc79797d49aea13c7eace9fb9c504d641774",
+      "evidence": {
+        "boundedness": [
+          "tests/observability/test_dashboard.py::test_dashboard_is_read_only_and_binds_loopback_by_default"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/observability/test_dashboard.py::test_authenticated_dashboard_shell_loads_then_token_unlocks_apis"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "output": [
+          "tests/observability/test_dashboard.py::test_dashboard_serves_packaged_single_page_and_metrics"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [],
+        "remote_parity": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:be2a396c6ab2beb98ee661af228c78d829db279e60c39456be6fa33e172c6b52",
       "mutation_class": "process",
       "output_policy": "foreground",
       "path": "dashboard serve"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:8f8d0b45d976a9b5ec6d1092b3e2e8dc51c5a9a54635a92ead84274e94465446",
+        "confirmation": "sha256:535e66b8d0b65554951db92c8c23465ffce35f862a7e9fb25dac4c288c3cb141",
+        "docs": "sha256:d9268c4133ed59d4d8c98a21bb77c1de3210e0902ec7b8cb018b9ab3f590f784",
+        "drift_protection": "sha256:2868887c08be367f0585de97c160b00a74cbc6ec9e4a18101d68c2f300d9ffe1",
+        "errors": "sha256:0802bbc54d113fc4cbde611ee92efc43b8f52f5f17c3ce250fd5a513d24e2632",
+        "grammar": "sha256:d5ebef496ed0cb0e44567f6083e83c696010569f6aa14fd8b3e39eb2e4c476c6",
+        "help": "sha256:406b0cd154d2b4ee8dc8461fb37778b46116af2ffaf0bf2232ca56282d2a0bde",
+        "journaling": "sha256:98ca5eb56bf71047a093a36662e7d63e03ed2e9d38ee8264d29c6c972d009108",
+        "output": "sha256:aa3ceafe46538afdfc8b5fb078c8926d933c51eb4c6426a172db29a530f23dfd",
+        "parser_tests": "sha256:3ac10799ac1e6ec087e77117a221a040fd80e81c8783b08cbd37fef6142c7f5e",
+        "preview": "sha256:42ce133a9d1ee57cbd7d805ff423c4a7ac66ec0f615961435c74f238727ef92d",
+        "rollback": "sha256:3714de12d9db63a08bd46a937e1defd678e7985b94046958a14e645d26185a0e",
+        "windows": "sha256:24360ab9f0e33efbf4099c632181b811ae41a1e4a4c99c1221f41d3fcea6d3e2"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/host.md#doctor",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:793e1c64f662f23937a71d922c09bb817816830ba2ffda8dc89b59f036e67b99",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/test_doctor.py::test_doctor_cli_required_failure_exits_nonzero"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "output": [
+          "tests/test_doctor.py::test_doctor_cli_all_pass_exits_zero"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:d27db2f894c8e487d52516924af4aeef1a853a8b0da4534e0d5e126845a83d15",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "doctor"
@@ -1794,321 +1921,943 @@
       "path": "harness sync openclaw"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:be2bfa552946b80397e6c5ebcd4f93a0eb05ce489e64c812d9e6a4f4311705f1",
+        "configuration": "sha256:269ce2b52c9c3463063777156a4922fed5020b105fac2212bb8216564a1dab7f",
+        "confirmation": "sha256:83989b3163febd23e9a3468e78ad23f36a0dc47b8fb4c2b657406809297293e3",
+        "docs": "sha256:bbf3d6c622bb9d584510730bd111892dd2dd0e14cee370d5907390e147f44c12",
+        "drift_protection": "sha256:dff036404b719b28e54aa0e7a80c4bf13d90ae83447010bb93a71408102ccb35",
+        "grammar": "sha256:0e253cfb0dd8edd27d04ad21ff03a21302b16942d9e6925ceceb59b07ec5a421",
+        "help": "sha256:5215720179c46e0af6243d00400901de1c1a3ecf5aa3b6a62242411a80fbc1e7",
+        "journaling": "sha256:27360dc84dc73fd024f57c0817159811486cc921973993b2c289e1ba9a594ecd",
+        "output": "sha256:a60f6e6e46326b6543b755dcd091f7de9361483b5d4d75ff3621ce248359c1e7",
+        "parser_tests": "sha256:fc08170c4cb3be6ff4bb067d023225d6c3d33666e8b4cd5112e04d3c4345ae40",
+        "preview": "sha256:f0aa2a24a903e1568dcd1a79677da2807d6e2e8115d98151ada7e1f581d8d993",
+        "remote_parity": "sha256:b90fe1aee0b773de146e2aebb709f7318d81fc395843bcc9ac9a0c237d8267a1",
+        "rollback": "sha256:e46f4416cdddd23fb2c54f59ac99d6517773fb501afe92b9daacf1b2e219312d",
+        "windows": "sha256:ef0f289787068e0ae167517031d39dadb88a4313e5598b57b527dd488a73f64c"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "remote_parity": "pass",
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/host.md#host",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:1c5c2a32fe8637911c8c38f4b7266eff72ddb614a6931bc654196087ae411eb8",
+      "docs_anchor": "docs/cli/host.md#inspect-the-host",
+      "evidence": {
+        "boundedness": [
+          "tests/test_host.py::test_host_status_probes_are_time_bounded"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "output": [
+          "tests/test_host.py::test_doctor_reports_and_recommends"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [],
+        "remote_parity": [
+          "tests/test_mcp.py::test_host_summary_tool_is_structured_and_read_only"
+        ],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:8c16b8f3786106e56068e06dc2dd7ecd270803ffcdc3db442e0ec7007af2af25",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host doctor"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:77c030e63c7b23ad9304a287f915976593cac035d0bb610a112c44adfc2c422a",
+        "configuration": "sha256:dff33dfb5e56a66a49a34b6a46317411459878f7567cc9ca1f87a50e356dd956",
+        "confirmation": "sha256:5d4a433bbedf4803d060defec416a5ea8f2c1fe559ace074635bb6a2495885c7",
+        "docs": "sha256:f7c4b7cb1e1ad776ecace1b45b9b52f3d85eae4c1ba76e0b6d64aeab593642fb",
+        "drift_protection": "sha256:9690c665782510c712401011af73b99a3664a72d333ae1e550b2f5f9c37b8965",
+        "errors": "sha256:06b2b34de6341d1f69d868ddce1b04742898b6db5faad091421b71925be7a3a8",
+        "grammar": "sha256:9802892efc38f7d64a7ff9f27f032aa87412aa7c979af280472929ffdef3f73f",
+        "help": "sha256:1519bfd7fef34ede9376fbd33552defc0da2aa997b8a8e3b9aa5986af309a726",
+        "journaling": "sha256:1951224ade4947698048ccf76f83f77aa3ae56353ab5dbbbf77d392399172205",
+        "output": "sha256:d3e2bedf561006657e2fa979a13b564f7945b9619403406a3bee97b660121489",
+        "parser_tests": "sha256:d1f3b5211c5bdfe35f68ba917f69479f79ecfa3aaacce5be352f95411100ef3c",
+        "preview": "sha256:84ae04e31d68aa3f2dde87c2af8074b7c140e04f2dce8ed4e04b058070eb68a2",
+        "remote_parity": "sha256:37564af76dabd88cec549b087b168c35d9bf92b19d33018d08bba6fc88a406d1",
+        "rollback": "sha256:3c58d9dfe28b2c8b4cc90317e4056f90458dbb284a9475475ab342742126f5d6",
+        "timeout": "sha256:70e03eff38c85c33c8acce94184893b3fd66c5938442ac83c0ea29fb97c5d0f5",
+        "windows": "sha256:9d9741eb2477b8b05532d3b9bf268251c586c8028385863d7cf55b1973a1ebf1"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "remote_parity": {
+          "reason": "This command is intentionally local or offline and declares no remote transport contract.",
+          "status": "not-applicable"
+        },
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "timeout": "pass",
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:bb96cea904af0b8fd22863e8b88c03dcd6dbae5aaeb44f5ec5af2657b66f6fd5",
+      "evidence": {
+        "boundedness": [
+          "tests/test_gpu_sharing.py::test_only_bounded_non_mutating_commands_are_invoked_and_json_is_stable"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/test_gpu_sharing.py::test_malformed_and_timed_out_gpu_details_degrade_without_traceback"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "output": [
+          "tests/test_gpu_sharing.py::test_only_bounded_non_mutating_commands_are_invoked_and_json_is_stable"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [],
+        "remote_parity": [],
+        "rollback": [],
+        "timeout": [
+          "tests/test_gpu_sharing.py::test_timeout_bounds_and_cli_help_contract"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:b7cc2fc060754d89820141f44dc5db16a11f7df1e5ecd9ed721acf3682086d32",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host gpu-sharing inspect"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:ce5b724442e6fee5750a9016e9257c594d270689366eef4eff0e7693e0259955",
+        "configuration": "sha256:4f686bce1d7221936c40aaa3ba5724469c725a660bb7ccf43cc964d263b5302c",
+        "confirmation": "sha256:95940f76c61d3f6bcd2896e68a4e5c0eceb159047973bce91c6b7deef37cb983",
+        "docs": "sha256:31890839a31a07b22ad721971b96e3032e128e79958eced816f507a34817927c",
+        "drift_protection": "sha256:70c52c1b0ad4aeb2dea9ee19840d63b36a4294fe0cd568286dd98ce9ee987690",
+        "errors": "sha256:785bb8c27aa0efbe661585539e334bf0dd482d167200af6df858f9f6e23c83ec",
+        "grammar": "sha256:b2e8f7fe0767bdc1a3e380594cde38edeab86741cd840ed9b44e388e96dcddbd",
+        "help": "sha256:d6ce01f4c55b38735cf5536c0ff4a39e10a6569e8a0b5d4f3ce8db1033fb2410",
+        "output": "sha256:9fe0239c3e64570bbed4b8961ba2e9f1c9e8aeaee51e1b8cf1ba545aff6970c9",
+        "parser_tests": "sha256:93169b8fec542f20ea98edaa15a3513cd951f91c1cb3086e77abd905ab3d3dc0",
+        "preview": "sha256:43dd01094d1519de1c52ef5d289f5d360632933b425aaacd0ed00031fcedee1b",
+        "remote_parity": "sha256:ff97a8bfe65480447b5945da2ff8e3a94c132eff6a28a1ba4a49c56df08f5f30",
+        "timeout": "sha256:c52b9f1e3b14e19625d7b528e7b6ec2420f243995d58f3e2e3d371128a53c143",
+        "windows": "sha256:8f54c8f0dc5f6cf067dc8581d2f63d2dde1340a695038a34c5bd81698f67d9d4"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
+        "drift_protection": "pass",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "pass",
+        "remote_parity": {
+          "reason": "This command is intentionally local or offline and declares no remote transport contract.",
+          "status": "not-applicable"
+        },
         "rollback": "fail",
-        "timeout": "fail",
-        "windows": "fail"
+        "timeout": "pass",
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/host.md#gpu-sharing",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:131b8e8fb6c4835cd87c0122ef407811dec279a7359fa39f9862fd1b67b7f887",
+      "evidence": {
+        "boundedness": [
+          "tests/test_gpu_sharing.py::test_timeout_bounds_and_cli_help_contract"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [
+          "tests/test_gpu_sharing.py::test_product_probe_refuses_unreviewed_image_or_command"
+        ],
+        "errors": [
+          "tests/test_gpu_sharing.py::test_product_probe_refuses_uuid_drift_or_weakened_container_safety"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_gpu_sharing.py::test_product_probe_previews_then_runs_reviewed_compose_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_gpu_sharing.py::test_product_probe_previews_then_runs_reviewed_compose_contract"
+        ],
+        "remote_parity": [],
+        "timeout": [
+          "tests/test_gpu_sharing.py::test_timeout_bounds_and_cli_help_contract"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:35571b1484cd6ed3a9c3470fdb4f621a8bcff70e2a967b104be151eafd5188ae",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host gpu-sharing probe"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:c220a91a53fc342348554d874d352051ba3d3a90bd73417edc77d5cac2c8054d",
+        "configuration": "sha256:018543b272d841faf94c14180517a84de3cc386b2695f7525405b2a4aa98ac8f",
+        "confirmation": "sha256:efadac372cef311293943a513db8844e26c7865592f8e40c67449df087ad5ae5",
+        "docs": "sha256:6fe537c2d8ec674e2ceaabc18a3cfdab3ba13ff2d17ff711883edc14a4a9abe5",
+        "drift_protection": "sha256:b3423a9c7f2a091d96d5bbc1f992b89c15480fc64b063920a1ce73b6a492c789",
+        "errors": "sha256:7ef8825f6f33134f76ed68656145504a2e8a00ba9a6346f89f6493865dc7a830",
+        "grammar": "sha256:dc0d3592bf69d90003325a0e30cbd0a3619c1da67c6486aafca044522e0c0136",
+        "help": "sha256:8638c29e44d101f52643fb7a8241d59b2acd21f921b57b39430a809bded90ae6",
+        "journaling": "sha256:9e67c5b36eadbc3d7679190f0289861c8b8b1d9a5a8abcaf41c1964cb5683409",
+        "output": "sha256:d923652f43e1a69b2347fdc276b197b6c5a146601a708d842d9fd7f4be91eef3",
+        "parser_tests": "sha256:fff74f2340a8c93f2d200211a004dc795b523fb8fc6047c86fffe48e782d1439",
+        "preview": "sha256:4b9340a9f332816abf36e3e96d19ce66359311d71010fc86c06d59f9ef6a127b",
+        "rollback": "sha256:a4ed644ff55d4d7ab9c8bedb69cea226b8ebe6cf0ed3d368b488c6ed881a1686",
+        "windows": "sha256:a30f91a3b070cfdc8928a134b559d0141ff0d42a74ae766bdf98c6692a38f303"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "remote_parity": "fail",
-        "rollback": "fail",
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/host.md#host",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:952a5b0b413195b2c7cfa76477099a44c8fba441939273e7488c75be8a556b39",
+      "docs_anchor": "docs/cli/host.md#inspect-the-host",
+      "evidence": {
+        "boundedness": [
+          "tests/test_gpus.py::test_list_gpus_query_is_time_bounded"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/test_gpus.py::test_list_gpus_empty_when_nvidia_smi_missing"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "output": [
+          "tests/test_gpus.py::test_list_gpus_parses_csv"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:47ad8f6ae17985516791f29b13cdde85431b069e8d13236f068b2cf432dac3cc",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host gpus"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:0b4b1e9854ce11e7e12a47edd850b7a91c027b325271bbb2c76752afccf2c87f",
+        "confirmation": "sha256:88a27b075aee9acad62361ac08738a9ca5261d9802d58438177dba8b82508243",
+        "docs": "sha256:5832c8eb2ffdf0e12c0ce929132b0e4638a4ae79f927c4a02419565bb6476117",
+        "drift_protection": "sha256:5324d8be980d14e1fe914d3bfe057faff4c9f97738a6ecc77cf58a344ebfebaf",
+        "errors": "sha256:81dc6dd712cb5389e1b21595986c2a7e60ac6f9cf93dde6a81507e59c3f23120",
+        "grammar": "sha256:f8024a0d6bd787c9012a6f8181122b8d56c2cd43f85ff3ad95d01b167103ed23",
+        "help": "sha256:76e4dc4aa8a12442762e5b1b0681f012c4b5389c78145bb853d894b6249146a1",
+        "journaling": "sha256:c84fc19ec1e95ed269fed55fe02deec916e75ccbb510ee03536f25217516f983",
+        "output": "sha256:a67525c9462b6335cf8cf10e9a8b6d1d1e9b560cb204a6baa5f385032a66880d",
+        "parser_tests": "sha256:e59b9c7662b4f0f8adf1de8be10e2febdccd73a3ae81e489acb76eebf6907a80",
+        "preview": "sha256:2e8dd8c987b20ec994905524ddb798fb4d74a1a6d6db29259d303cecace58452",
+        "remote_parity": "sha256:7e0c3d96eb39967ff61ff528aef33708ecb0b751738c78da2ac01c3deabc5918",
+        "rollback": "sha256:c3bc2f6e0c45fc5be121e3916367b812c11b1b1758259ad5ced0f369c5098420",
+        "windows": "sha256:4a6342dda9b66fc89bf52d0efbadf9363bd42f1dfddf303b6921a7bc09a1e449"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "remote_parity": {
+          "reason": "This command is intentionally local or offline and declares no remote transport contract.",
+          "status": "not-applicable"
+        },
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/host.md#host",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:201d12e64b2b59bbc4b35f63ba6ccf3803ce32226bb91b6cdfb4358e9f29f359",
+      "docs_anchor": "docs/cli/host.md#inspect-the-host",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "errors": [
+          "tests/test_host.py::test_memory_rejected_off_windows"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "output": [
+          "tests/test_host.py::test_memory_reports_wsl_and_page_cache"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [],
+        "remote_parity": [],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:65c90a18001ca5d22ad4effe252125613a5f237136b36feb021b3b078cdd8c35",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host memory"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:c4af3f6457c5d77299951e631ea2567400f6063ec632f3ff4266eea08420477d",
+        "confirmation": "sha256:e192cde9f04bf3036cd3a91e5d2411dafff464419207962f10781e9504a78bbd",
+        "docs": "sha256:9cf729b6b4b6412c7cb588d68c8c1c97319d2ff5b47b1df9c447718df777073f",
+        "errors": "sha256:7b0e2ca7df6ebc5f2265748df5d57963bafef59be6786b3f90fbb0c30546a70d",
+        "grammar": "sha256:0bb898a9bedb146e55826aa372fafd39e47c25604f569c9eba7962f29950cbd2",
+        "help": "sha256:18543c074b451827a861c95d89fb32b544d3afb55b24737fb65a4f8ab86ab851",
+        "output": "sha256:6976c190afbd661354219791bace952eabfd81225dcfb0d89731db8f3f4fce68",
+        "parser_tests": "sha256:b860062c42162dfef426e559b3aede68744e0f6decbe20b47f5ba1ab496aa5ee",
+        "preview": "sha256:d30c5fd4e53ea0b0cf35e9bf2633af1df8f2eb585d78930c7b90431e477f7edb",
+        "remote_parity": "sha256:2d9fefb8a9bb9109bb51a47d9680cb1e75a51810b8c249326e93bc78e7a14ca8",
+        "windows": "sha256:3aeb9863b75a73ce822800320af9d2523565b6a50d0f989ab18a7a27f0cfc8d5"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "pass",
+        "remote_parity": {
+          "reason": "This command is intentionally local or offline and declares no remote transport contract.",
+          "status": "not-applicable"
+        },
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/host.md#host",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:1320264ca9af8aa1232d46ad9286608248e20b9a609e2611e052b119c4e33fe2",
+      "docs_anchor": "docs/cli/host.md#repair-the-host",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_host.py::test_reclaim_declined_without_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_host.py::test_reclaim_refuses_while_a_load_is_streaming"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_host.py::test_reclaim_reports_before_and_after_cache"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_host.py::test_reclaim_dry_run_runs_nothing"
+        ],
+        "remote_parity": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:f6bb51d48875d768fb76700d2d7454c58fff0d2fc01d353554ea9846436f5a36",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host reclaim"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:debbcdf1d0d0d9ff56cd73ed91b16b82a9f0461577a8b4870fd57b3727634f4c",
+        "confirmation": "sha256:413887d5b8ac8c7b4199b54fa2d1b437ca6e2479c5699bb3773b8100af2672d8",
+        "docs": "sha256:f4d7a0609b8c0879679ca290b0500e94153a75bda64adc5700d307ff3acdaf10",
+        "errors": "sha256:716f2602af160da3cf64e1d74585ca98738f43b2b9bd054e549a830295b2dc39",
+        "grammar": "sha256:392f921fc443005ac5f9ae1d24c75a060eafd132236e7ace634781efa32c9cac",
+        "help": "sha256:6d320e029963e38874a9ab071d9482fd3539ee421fb07be1cdb25d35b0b2ff09",
+        "parser_tests": "sha256:b5d37af03d2264555a4fd84e5e994e2bbbc1a33a98cfac42d19aa22e593f71ba",
+        "preview": "sha256:fac67663e51af470a37700dcbb8296e95d5b2586d28109397a0570fddd884a4b",
+        "windows": "sha256:cb5c035e9285fb41b86c3fc903325d9f8a9e01a11b824f046ccbfc704aa9bc3b"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
         "remote_parity": "fail",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/host.md#host",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:98a9325145cebf3e5ee9582d24f89e2b425ccf941b8ec7ab1f16fbbc4acfbf89",
+      "docs_anchor": "docs/cli/host.md#repair-the-host",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_host.py::test_reset_wsl_declined_without_force"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_host.py::test_reset_wsl_access_denied_returns_nonzero_and_prints_fallback"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_host.py::test_disruptive_host_dry_run_never_launches"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:a4f4d4aba2f108abd0c1881b974519c262950a73995cec44d11d529297bc8c1c",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host reset-wsl"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:22f7b5fa1a052d7b22113b61d7c6eaf02cdbca8b8bbdb2a328a6ac228ed46379",
+        "confirmation": "sha256:4caf9d4bb1d6635d5891e5fe4023a00cd0577ec5316c49e9f0df8ed5343f0c1f",
+        "docs": "sha256:d4c6277fcf2b591035dfd6c4792e861913ee61ffc94984ea4bae3fce1f143cd5",
+        "errors": "sha256:cee0a55a1a5f7128e54a08157233d1514db3263f6f1568a5a036eeb4cffb3224",
+        "grammar": "sha256:25897e940b34411850ff23797c2a70d4c0d5d33ac5f2670abfe0c05287a30360",
+        "help": "sha256:10a41ed6f0b8991f73e58ec624daa4140bffa2fb11c647d5a5ce2e9a96d59942",
+        "parser_tests": "sha256:b6512f86acd15f40e752721aab3a71bd9b848f3ea90560c1f7c7edf06c1a36cd",
+        "preview": "sha256:6f327dc2cede5401b16dcf9b135799946cfe2c830c83f578aca0b058518ed48e",
+        "remote_parity": "sha256:71a00f7f079941e89cf960f2818e8ac8a0d5fcdbe7c7d4b339158f18373b86ae",
+        "windows": "sha256:4a62af3d418128ff767a5b677a41f694797602e06d0255e78c136f13c5997999"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
         "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
         "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
+        "parser_tests": "pass",
+        "preview": "pass",
+        "remote_parity": "pass",
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/host.md#host",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:1ec997c2fe35e36e3e1ce0953543b6ebc89c0ecf6436401ae334de97defa4d48",
+      "docs_anchor": "docs/cli/host.md#repair-the-host",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_mcp.py::test_host_manage_confirmed_restart_uses_noninteractive_gate"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "errors": [
+          "tests/test_host.py::test_restart_docker_macos_timeout_returns_failure"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_host.py::test_disruptive_host_dry_run_never_launches"
+        ],
+        "remote_parity": [
+          "tests/test_mcp.py::test_host_manage_confirmed_restart_uses_noninteractive_gate"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:4c76acb299d67ca044e4dfbe584015aad3b281ad379b33f9e133ebc6c4fae13b",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host restart-docker"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "boundedness": "sha256:bacf1a7c3b34d5004a22eb0ed772a4f45c72da634d3b1cbfae6a66a19c2afa4e",
+        "configuration": "sha256:e9dedbee41cd41234fb93f68c289ea6f5c33fafb274d112a723240ab417a9b71",
+        "confirmation": "sha256:d49ed3a3cdc0f18240daddc4caf0e3951ed585797676f59862aee7ec7890fdea",
+        "docs": "sha256:e57d25d5094e6e84a228056a9d3c3d9cd757a2bd190fba6f3c2c1ce7a2fb63be",
+        "drift_protection": "sha256:0149fe67d4cbad217796b62504ae226e66f624675bc4007b68b15fa46df03ded",
+        "grammar": "sha256:0d126b6ff903021857bfdc43c3d37df8be9e11655ce7d2fac952756bb07342d2",
+        "help": "sha256:a1f3b0656152697ff0ccbf02cada737dd448a373922d147385546648a10e25fd",
+        "journaling": "sha256:95d0c9b7f5e2f07fd2cc19f942892a96695dee909b0e7ce21667c997a8b0db09",
+        "output": "sha256:96d5a7bcb9102bd2f585f4d00b5b6d5d257d25ac49c673753d2f5311c39421db",
+        "parser_tests": "sha256:f2fa45976c2ea1d08fe81f35fc39ff61f867fb2e72c37789b2db0d974dde2fa2",
+        "preview": "sha256:9c26cb0479cb8e4fca02ed8ddec3e455af949bdebab59912cacef9aacb626233",
+        "remote_parity": "sha256:cf2fb7aa13d7cf7487ead8f3afb920adb2cbe0aeca8661a29f9abc2f8e54aa3a",
+        "rollback": "sha256:face7642e30090a4abfcf6780b01cf645fe95694a698a99629acc0c6e5e86b8d",
+        "windows": "sha256:c7dbeffd1ec317bfd4972c2f4b8b86c650752727ace16fb0c8f39fbfa67637ff"
+      },
       "dimensions": {
-        "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
+        "boundedness": "pass",
+        "configuration": "pass",
+        "confirmation": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "docs": "pass",
+        "drift_protection": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
-        "journaling": "fail",
+        "grammar": "pass",
+        "help": "pass",
+        "journaling": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
+        "remote_parity": "pass",
+        "rollback": {
+          "reason": "This command is read-only and performs no state mutation.",
+          "status": "not-applicable"
+        },
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/host.md#host",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:91cd545c7ce927b963ad2e01d58aa1da060760f6455546fa8bdfd82c1ab27ff4",
+      "docs_anchor": "docs/cli/host.md#inspect-the-host",
+      "evidence": {
+        "boundedness": [
+          "tests/test_host.py::test_host_status_probes_are_time_bounded"
+        ],
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "journaling": [],
+        "output": [
+          "tests/test_host.py::test_host_status_prints_structured_summary"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [],
+        "remote_parity": [
+          "tests/test_mcp.py::test_host_summary_tool_is_structured_and_read_only"
+        ],
+        "rollback": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:e3a232ffe189fc1fb5fe8c0f043a06f0b6d1400e652d744132b90c19c03a7768",
       "mutation_class": "read",
       "output_policy": "bounded",
       "path": "host status"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:d40287663e2322f97aa77b6e3df90e94152744c699f44680a8f8544974e8bbba",
+        "confirmation": "sha256:e007782af2c3b5939ac0ecb7f1f80e6388d793ead0e9da7b08335d32b3f2aad0",
+        "docs": "sha256:8570735115947c749c9b45f5a3013b6beb49dd19511cc2cb2234d6c156afa7a2",
+        "drift_protection": "sha256:22de1c3d4c61b1f13919bc882666c69ae3e3fa39615f3974073097d119a80164",
+        "errors": "sha256:4878e60a432d2df004568140ae3ca8041fc0c5f353d84f9d414cd208613c83a5",
+        "grammar": "sha256:3ee25701fb34bebdb212d7d89da29e94deb5180303a348682cd1899d5b485831",
+        "help": "sha256:4223f75bfd939ea12dba8e8f548f13151e69ed5f5423979795ad45a584da32f4",
+        "output": "sha256:5568a8a3b74a2f0444aa6e05579e94bf8e8b7fb24f6b7582d627f3f89e916df0",
+        "parser_tests": "sha256:75c5e6a6aefd8c67bbb9fb7b727262669ffd5f15c7caf5ea2f2b6861cdee57bf",
+        "preview": "sha256:575cc99e8d57079f201c143cfa7dc672d9f8969861fc74c518d89f45f9d781ad",
+        "remote_parity": "sha256:abe463983676baeb6fc3c04e9c8f962ec43e60c6425ff0fa72b48a854388cf73",
+        "rollback": "sha256:c9c73aeb1a8c955a53dd1c9fbc94d4050945571e2582365f7f1b97f70928361d",
+        "windows": "sha256:303feb058df47190cc561018a2de3c29007009315b2dea7524f3362238c95ee6"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
+        "drift_protection": "pass",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "pass",
+        "remote_parity": "pass",
+        "rollback": "pass",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
-      "docs_anchor": "docs/cli/host.md#host",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:4fec19b35b2b9646ea008b69f3a592b09e9a250839e2bd136c6bfa1269c16068",
+      "docs_anchor": "docs/cli/host.md#repair-the-host",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_cli.py::test_cli_remote_host_repair_is_typed_and_os_checked"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [
+          "tests/test_host.py::test_safe_value_backs_up_then_writes"
+        ],
+        "errors": [
+          "tests/test_host.py::test_refuses_memory_that_starves_windows"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_host.py::test_safe_value_backs_up_then_writes"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_host.py::test_dry_run_writes_nothing"
+        ],
+        "remote_parity": [
+          "tests/test_cli.py::test_cli_remote_host_repair_is_typed_and_os_checked",
+          "tests/test_mcp.py::test_host_manage_previews_without_calling_host"
+        ],
+        "rollback": [
+          "tests/test_host.py::test_revert_restores_the_newest_backup"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:680b493c730e5c60da019e78c6db242e191159f80ad18b9bb2ce355886039654",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "host wsl-config"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:3d2e946526d342ea2a500f8e63fa1e760de284447f8e3fbe565db8f03ad7008e",
+        "docs": "sha256:774aa9f9fd62d8b87f8941ab49aa8e723afc906b9c4f2b01f34cbe1abf8a66f0",
+        "drift_protection": "sha256:74d71b5a83d86ff8945ccd0459895c85f0ff109854f1069e13c337ee2bee9429",
+        "errors": "sha256:3b43e4eb5a3292bc417667e5271e4488dd3699b345e0d7f896b6863944dcd3dc",
+        "grammar": "sha256:de9d49b7477cc422d5c283406fcd0564f67ba6efc89337a176cc523d85b82705",
+        "help": "sha256:5566f9fef686119596852c0fe0dec9177a9ebb80fd91e7ef045f34583fcbf4c2",
+        "output": "sha256:96ff86ec8e71ee84f56e299494cb84f46969234417bf68d834cb1490e3319382",
+        "parser_tests": "sha256:d5cea81bee9c6ebfcc0f9c8b5ff49d2eb84b35f058eb724b4323e1fa6035d271",
+        "remote_parity": "sha256:c6b184ff248e8e02a54c768a34405f31f1a6b601b2b8118b8d75cf4d6fdefe42",
+        "rollback": "sha256:64b399ebe06c5a6c403cb72ee349ea3609e82ff34ba25850e8044027687041c9",
+        "windows": "sha256:0da94698ef7a8b4c19b3c641284f5250ba4817b6dfb57746bf7f73cabdeff128"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
+        "configuration": "pass",
         "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "docs": "pass",
+        "drift_protection": "pass",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
         "preview": "fail",
-        "remote_parity": "fail",
-        "rollback": "fail",
+        "remote_parity": {
+          "reason": "This command is intentionally local or offline and declares no remote transport contract.",
+          "status": "not-applicable"
+        },
+        "rollback": "pass",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/host.md#init",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:79e4cd8e0628c04ea679b0d656c321a0847d747f8952e5da17958d8ecf52c03c",
-      "mutation_class": "read",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [
+          "tests/test_init.py::test_scaffold_home_backs_up_before_overwrite"
+        ],
+        "errors": [
+          "tests/test_init.py::test_init_home_missing_templates_fails_loud"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_init.py::test_scaffold_home_writes_the_full_set"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "remote_parity": [],
+        "rollback": [
+          "tests/test_init.py::test_scaffold_home_backs_up_before_overwrite"
+        ],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:f5871afb021088e7294cfbbffdd292710c2d3893fc7c9ad63b476f0e6b553ca6",
+      "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "init"
     },
@@ -4390,30 +5139,84 @@
       "path": "topology validate"
     },
     {
-      "attestations": {},
+      "attestations": {
+        "configuration": "sha256:513d2fc3bfd37db87124d90c7b80feb6571bf79276c54005e529ee2ccdc62f21",
+        "confirmation": "sha256:677963c2bf267a313f050f4b7799135d1fd4438bfbe0478d1155939d549898d9",
+        "docs": "sha256:2959f934fa0c1a1b3c89b42205f17097598aa87677bdebea47425bbe1019ebd2",
+        "drift_protection": "sha256:eabcf6a43ed5c39511a6cf00256cd1910378f08a467d5461cf71b945e14e1bf3",
+        "errors": "sha256:9a91f9b26c8915a6df9c787dd1ea0231714e1c184d3448cae4a41b9cca88259d",
+        "grammar": "sha256:d7fe8ebe1ea8e071d3fa8a5f16c280632a37283d08f0781616b0cf2ab99203c8",
+        "help": "sha256:343dc67015888b2759cd86054aef1678d7775b615c86c3401b8cc75c248f8698",
+        "output": "sha256:040b8601c2b2642666d9a655a8ea5c16b7c908242bc457cf4183bced3bd08bcb",
+        "parser_tests": "sha256:c186a11d28796634257d13602c378dc98f43e817866c478abbbb688d66b242d6",
+        "preview": "sha256:a11158f4f721fb4e2ff12802e99d66a387895484f5f2946a523ad097b16ca977",
+        "remote_parity": "sha256:ac9b3158a21fb5bcc1bfa2046dbd9cd3884d24923865917d6f0556add249b02a",
+        "windows": "sha256:05efde10e98335839625c636d694cbee497218eec75d6bba984bb3d9f5ef6e64"
+      },
       "dimensions": {
         "boundedness": "fail",
-        "configuration": "fail",
-        "confirmation": "fail",
-        "docs": "fail",
-        "drift_protection": "fail",
-        "errors": "fail",
-        "grammar": "fail",
-        "help": "fail",
+        "configuration": "pass",
+        "confirmation": "pass",
+        "docs": "pass",
+        "drift_protection": "pass",
+        "errors": "pass",
+        "grammar": "pass",
+        "help": "pass",
         "journaling": "fail",
         "linux": "fail",
         "macos": "fail",
-        "output": "fail",
-        "parser_tests": "fail",
-        "preview": "fail",
-        "remote_parity": "fail",
+        "output": "pass",
+        "parser_tests": "pass",
+        "preview": "pass",
+        "remote_parity": {
+          "reason": "This command is intentionally local or offline and declares no remote transport contract.",
+          "status": "not-applicable"
+        },
         "rollback": "fail",
         "timeout": "fail",
-        "windows": "fail"
+        "windows": "pass"
       },
       "docs_anchor": "docs/cli/host.md#upgrade",
-      "evidence": {},
-      "manifest_fingerprint": "sha256:d5049fb27fe19767dd2f80489cafdb1cc3157a98537c748e62f89d359d5772f8",
+      "evidence": {
+        "configuration": [
+          "tests/test_cli_help_ux.py::test_setup_host_configuration_notes_match_runtime_contract"
+        ],
+        "confirmation": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_upgrade.py::test_main_requires_dispatcher_confirmation"
+        ],
+        "docs": [
+          "tests/test_cli_help_ux.py::test_setup_host_docs_group_every_operator_task"
+        ],
+        "drift_protection": [
+          "tests/test_upgrade.py::test_apply_upgrade_requires_exact_reported_version"
+        ],
+        "errors": [
+          "tests/test_upgrade.py::test_apply_upgrade_does_not_retry_failed_mutation",
+          "tests/test_upgrade.py::test_apply_upgrade_requires_exact_reported_version"
+        ],
+        "grammar": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "help": [
+          "tests/test_cli_help_ux.py::test_setup_host_leaf_help_has_reviewed_navigation_contract"
+        ],
+        "output": [
+          "tests/test_upgrade.py::test_apply_upgrade_runs_once_and_verifies"
+        ],
+        "parser_tests": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_examples_resolve_and_use_real_parser_flags"
+        ],
+        "preview": [
+          "tests/test_cli_help_ux.py::test_setup_host_mutations_preview_or_use_shared_confirmation",
+          "tests/test_upgrade.py::test_main_dry_run_allows_inspecting_editable_install"
+        ],
+        "remote_parity": [],
+        "windows": [
+          "tests/test_cli_help_ux.py::test_setup_host_reviewed_help_is_windows_console_safe"
+        ]
+      },
+      "manifest_fingerprint": "sha256:b1e471b58bf9ae68bdc828da843a947a38d73192b63d552dda02e2a0073786ba",
       "mutation_class": "mutate",
       "output_policy": "bounded",
       "path": "upgrade"
