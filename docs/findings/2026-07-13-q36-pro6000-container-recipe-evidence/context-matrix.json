@@ -1,0 +1,69 @@
+{
+  "observed_date": "2026-07-13",
+  "engine": "q36",
+  "engine_revision": "458eb018997565445f0ce0a4887ed7cdfeab756b",
+  "model": "Qwen3.6-35B-A3B-MXFP4_MOE.gguf",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "controls": {
+    "temperature": 0,
+    "mtp": false,
+    "kv": "fp16",
+    "state_cache": false,
+    "request": "What is 17 * 23? Respond with only the numeric answer."
+  },
+  "rows": [
+    {
+      "context_tokens": 8192,
+      "managed_wall_seconds": 19.11,
+      "engine_ready_seconds": 13.0,
+      "gpu_memory_mib": 27060,
+      "health_status": 200,
+      "response": "<think>\n\n</think>\n\n391",
+      "finish_reason": "stop",
+      "prompt_tokens": 24,
+      "completion_tokens": 7,
+      "prompt_tokens_per_second": 436.1,
+      "decode_tokens_per_second": 162.7
+    },
+    {
+      "context_tokens": 32768,
+      "managed_wall_seconds": 16.30,
+      "engine_ready_seconds": 9.0,
+      "gpu_memory_mib": 27604,
+      "health_status": 200,
+      "response": "<think>\n\n</think>\n\n391",
+      "finish_reason": "stop",
+      "prompt_tokens": 24,
+      "completion_tokens": 7,
+      "prompt_tokens_per_second": 150.9,
+      "decode_tokens_per_second": 230.7
+    },
+    {
+      "context_tokens": 90112,
+      "managed_wall_seconds": 18.34,
+      "engine_ready_seconds": 9.9,
+      "gpu_memory_mib": 28906,
+      "health_status": 200,
+      "response": "<think>\n\n</think>\n\n391",
+      "finish_reason": "stop",
+      "prompt_tokens": 24,
+      "completion_tokens": 7,
+      "prompt_tokens_per_second": 84.7,
+      "decode_tokens_per_second": 236.3
+    },
+    {
+      "context_tokens": 262144,
+      "managed_wall_seconds": 17.21,
+      "engine_ready_seconds": 10.0,
+      "gpu_memory_mib": 32710,
+      "health_status": 200,
+      "response": "<think>\n\n</think>\n\n391",
+      "finish_reason": "stop",
+      "prompt_tokens": 24,
+      "completion_tokens": 7,
+      "prompt_tokens_per_second": 102.8,
+      "decode_tokens_per_second": 230.3
+    }
+  ],
+  "interpretation": "Startup, allocation, health, and arithmetic passed at every context. Seven-token request timings are recorded but are not a controlled throughput comparison."
+}

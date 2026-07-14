@@ -1,0 +1,75 @@
+{
+  "observed_date": "2026-07-13",
+  "host_label": "Fakoli Dark",
+  "privacy": "Machine hostname, user identity, serial numbers, and process IDs omitted.",
+  "cpu": {
+    "name": "AMD Ryzen 7 9800X3D 8-Core Processor",
+    "physical_cores": 8,
+    "logical_processors": 16
+  },
+  "physical_memory_gib": 93.7,
+  "gpus": [
+    {
+      "index": 0,
+      "name": "NVIDIA GeForce RTX 5090",
+      "uuid": "GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1",
+      "pci_bus_id": "00000000:01:00.0",
+      "memory_total_mib": 32607,
+      "compute_capability": "12.0",
+      "power_limit_watts": 575,
+      "post_test_memory_used_mib": 31644,
+      "role": "pre-existing workload; not used by q36"
+    },
+    {
+      "index": 1,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+      "pci_bus_id": "00000000:03:00.0",
+      "memory_total_mib": 97887,
+      "compute_capability": "12.0",
+      "power_limit_watts": 300,
+      "post_test_q36_memory_used_mib": 27604,
+      "role": "q36 experiment"
+    }
+  ],
+  "nvidia_driver": "610.62",
+  "docker": {
+    "client_version": "29.5.3",
+    "server_version": "29.5.3",
+    "server_os": "linux",
+    "architecture": "x86_64",
+    "kernel": "5.15.167.4-microsoft-standard-WSL2-penguins-rule",
+    "default_runtime": "runc"
+  },
+  "source": {
+    "repository": "https://github.com/ambud/q36",
+    "revision": "458eb018997565445f0ce0a4887ed7cdfeab756b",
+    "archive_sha256": "875f52c5ac52680f212e1fa4b9a232cf722f6eea1d1bdf8af15fedf07785e7dd"
+  },
+  "model": {
+    "repository": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+    "revision": "5bc3e238d916f48a861bac2f8a1990a0e9b7e98d",
+    "filename": "Qwen3.6-35B-A3B-MXFP4_MOE.gguf",
+    "sha256": "e1a4925d2ea132576daa9cb980b1102b970d919d896936b7b6e681ef5bc3d3f6"
+  },
+  "container": {
+    "image_tag": "q36-engine:458eb018-cuda13.1.2",
+    "image_id": "sha256:4a8015b27898dcba56f8ddb29c488a6b5246fb62b0ed2e6c6180d87f6ab3d191",
+    "image_size_bytes": 1464753572,
+    "cuda_version": "13.1.2",
+    "host_binding": "127.0.0.1:39040 -> 8080/tcp",
+    "model_volume": "vllm-hfcache:/root/.cache/huggingface:ro",
+    "gpu_device_uuid": "GPU-d0f446cf-1771-414c-e116-a39138798a8c",
+    "cuda_visible_devices": "1",
+    "final_arguments": ["--ctx", "32768", "--temp", "0", "--no-state-cache"],
+    "final_mtp": false,
+    "final_endpoint_health": 200
+  },
+  "neighbor_health_after_test": {
+    "30003": 200,
+    "30005": 200,
+    "30006": 200,
+    "30007": 200
+  },
+  "heavy_container_final_state": "exited"
+}
