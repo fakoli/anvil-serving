@@ -176,17 +176,17 @@ required operands, choices, and defaults.
 | `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | - |
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
-| `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--out`<br>`--base-url`<br>`--api-key-env`<br>`--gateway-host`<br>`--gateway-user`<br>`--gateway-path`<br>`--overwrite`<br>`--restart`<br>`--timeout-seconds`<br>`--skills`<br>`--skill-dir`<br>`--voice`<br>`--voice-realtime-url`<br>`--voice-model`<br>`--voice-consult-model`<br>`--voice-consult-thinking-level`<br>`--voice-consult-bootstrap-context-mode`<br>`--voice-api-key-env` |
 | `harness restart` | Restart the harness | `read` / `bounded` | - |
-| `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `harness restart openclaw` | Restart the harness for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--gateway-host`<br>`--gateway-user`<br>`--timeout-seconds` |
 | `harness status` | Show harness status | `read` / `bounded` | - |
-| `harness status openclaw` | Show harness status for OpenClaw. | `read` / `bounded` | - |
+| `harness status openclaw` | Show harness status for OpenClaw. | `read` / `bounded` | `--timeout-seconds`<br>`--max-output-bytes` |
 | `mcp` | Expose bounded MCP management tools. | `read` / `bounded` | - |
-| `mcp serve` | Run the MCP management server. | `read` / `protocol` | - |
+| `mcp serve` | Run the MCP management server. | `read` / `protocol` | `--controller-url`<br>`--auth-env` |
 | `mcp tools` | List bounded MCP tools. | `read` / `bounded` | - |
 | `controller` | Manage the private controller service. | `read` / `bounded` | - |
-| `controller serve` | Run the private controller. | `process` / `foreground` | - |
-| `controller status` | Probe controller health. | `read` / `bounded` | - |
+| `controller serve` | Run the private controller. | `process` / `foreground` | `--host`<br>`--port`<br>`--auth-token-env`<br>`--allow-public-bind`<br>`--allow-operation` |
+| `controller status` | Probe controller health. | `read` / `bounded` | `--url`<br>`--auth-token-env`<br>`--timeout`<br>`--max-response-bytes`<br>`--require-operation` |
 | `host` | Inspect and repair declared host operations. | `read` / `bounded` | - |
 | `host status` | Show structured host status. | `read` / `bounded` | - |
 | `host gpus` | Show GPU inventory. | `read` / `bounded` | - |
@@ -204,7 +204,7 @@ required operands, choices, and defaults.
 | `topology` | Inspect and resolve deployment topology. | `read` / `bounded` | - |
 | `topology show` | Show a validated topology summary. | `read` / `bounded` | - |
 | `topology validate` | Validate a topology offline. | `read` / `bounded` | - |
-| `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | - |
+| `topology resolve` | Resolve one canonical command against a topology. | `read` / `bounded` | `--command` |
 | `collectors` | Configure and inspect optional read-only collector adapters. | `read` / `bounded` | - |
 | `collectors configure` | Validate and optionally write adapter configuration. | `mutate` / `bounded` | `--config`<br>`--name`<br>`--adapter`<br>`--endpoint`<br>`--capability`<br>`--auth-env`<br>`--output`<br>`--confirm` |
 | `collectors validate` | Validate adapter configuration without network access. | `read` / `bounded` | `--config`<br>`--name`<br>`--adapter`<br>`--endpoint`<br>`--capability`<br>`--auth-env` |

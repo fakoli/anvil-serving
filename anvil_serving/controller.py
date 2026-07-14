@@ -1985,7 +1985,7 @@ def _build_parser() -> argparse.ArgumentParser:
     status_parser.add_argument(
         "--require-operation",
         action="append",
-        default=(),
+        default=[],
         help="require a declared controller capability (repeatable)",
     )
     return parser
