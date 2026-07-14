@@ -229,10 +229,11 @@ def test_init_catalog_thinking_default_disables_at_generation(tmp_path):
 
 # ---- CLI -------------------------------------------------------------------------
 
-def test_init_cli_writes_files(tmp_path, monkeypatch):
+def test_init_cli_single_model_writes_files(tmp_path, monkeypatch):
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     out_dir = tmp_path / "onboard"
-    rc = init.main(["--model", "/w/model", "--served-name", "local", "--out-dir", str(out_dir)])
+    rc = init.main(["--single-model", "--model", "/w/model", "--served-name", "local",
+                    "--out-dir", str(out_dir)])
     assert rc == 0
     assert os.path.isfile(out_dir / "docker-compose.yml")
     assert os.path.isfile(out_dir / "serves.toml")
@@ -240,8 +241,9 @@ def test_init_cli_writes_files(tmp_path, monkeypatch):
     assert os.path.isfile(out_dir / "operator-topology.toml")
 
 
-def test_init_cli_no_model_no_catalog_errors(tmp_path, capsys):
-    rc = init.main(["--catalog-dir", str(tmp_path / "nope"), "--out-dir", str(tmp_path / "onboard")])
+def test_init_cli_single_model_no_model_no_catalog_errors(tmp_path, capsys):
+    rc = init.main(["--single-model", "--catalog-dir", str(tmp_path / "nope"),
+                    "--out-dir", str(tmp_path / "onboard")])
     assert rc == 2
     err = capsys.readouterr().err
     assert "models sync" in err or "--model" in err
@@ -257,9 +259,10 @@ def test_cli_dispatches_init_and_refuses_removed_onboard(tmp_path, monkeypatch, 
     from anvil_serving import cli
     monkeypatch.setattr(deploy._gpus, "resolve_gpu", lambda spec, _run=None: (None, None))
     out1 = tmp_path / "a"
-    assert cli.main(["init", "--model", "/w/model", "--out-dir", str(out1)]) == 0
+    assert cli.main(["init", "--single-model", "--model", "/w/model",
+                     "--out-dir", str(out1)]) == 0
     assert os.path.isfile(out1 / "router.toml")
-    assert cli.main(["onboard", "--model", "/w/model"]) == 2
+    assert cli.main(["onboard", "--single-model", "--model", "/w/model"]) == 2
     assert "was removed; use `init`" in capsys.readouterr().err
 
 
@@ -351,20 +354,81 @@ def test_scaffold_home_is_idempotent_no_backup_on_first_run(tmp_path):
     assert result["backed_up"] == []  # clean target: nothing to back up
 
 
-def test_init_cli_home_writes_set(tmp_path):
+def test_init_cli_no_flags_defaults_to_home_scaffold(tmp_path):
+    # DEFAULT (no flags): scaffold the full operational config home.
+    rc = init.main(["--out-dir", str(tmp_path)])
+    assert rc == 0
+    written = {p.name for p in tmp_path.iterdir()}
+    assert _EXPECTED_HOME_FILES <= written
+    # It must NOT emit the single-model router.toml — that is behind --single-model.
+    assert not os.path.isfile(tmp_path / "router.toml")
+
+
+def test_init_cli_home_alias_still_writes_set_with_deprecation_note(tmp_path, capsys):
+    # `--home` is a deprecated alias for the new default; still works, warns.
     rc = init.main(["--home", "--out-dir", str(tmp_path)])
     assert rc == 0
     assert os.path.isfile(tmp_path / "serves.toml")
     assert os.path.isfile(tmp_path / "edge.toml")
+    assert "deprecated" in capsys.readouterr().err
 
 
-def test_init_home_missing_examples_fails_loud(tmp_path, monkeypatch):
-    # A wheel-style install without the shipped examples tree must fail loud,
+def test_init_home_missing_templates_fails_loud(tmp_path, monkeypatch):
+    # A broken install whose packaged templates are absent must fail loud,
     # never write a partial set.
-    monkeypatch.setattr(
-        init, "_HOME_SET",
-        (("serves.toml", str(tmp_path / "absent" / "serves.toml")),))
+    monkeypatch.setattr(init, "_templates_root", lambda: tmp_path / "absent")
     with pytest.raises(init.InitError) as exc:
         init.scaffold_home(out_dir=str(tmp_path / "out"))
-    assert "reference examples" in str(exc.value)
+    assert "packaged reference templates" in str(exc.value)
     assert not os.path.exists(tmp_path / "out")
+
+
+# ---- packaging: the set ships as package data and resolves like an installed tool ----
+
+def test_scaffold_templates_resolve_from_installed_package_not_examples():
+    """CRITICAL #252 regression guard: resolve templates the way an INSTALLED
+    tool does — importlib.resources against the `anvil_serving` package — not a
+    path relative to the repo's `examples/` checkout. Proves the set is packaged."""
+    import importlib.resources as resources
+
+    root = resources.files("anvil_serving._scaffold_templates")
+    pkg_dir = os.path.dirname(os.path.abspath(init.__file__))
+    # Every template `init` needs is present as a readable package resource, and
+    # each resolves to a real file INSIDE the installed package dir (not examples/).
+    for _dest, template_name, _src in init._SCAFFOLD_TEMPLATES:
+        res = root.joinpath(template_name)
+        assert res.is_file(), f"packaged template missing: {template_name}"
+        assert res.read_text(encoding="utf-8")  # non-empty
+        with resources.as_file(res) as fs_path:
+            resolved = os.path.abspath(str(fs_path))
+        assert resolved.startswith(pkg_dir), resolved
+        assert os.sep + "examples" + os.sep not in resolved
+
+
+def test_scaffold_home_works_without_examples_tree(tmp_path, monkeypatch):
+    """The home scaffold must NOT depend on the source `examples/` tree — an
+    installed wheel has no examples/. Point the (unused-at-runtime) source paths
+    at a nonexistent tree and confirm scaffolding still produces the full set
+    from package data."""
+    monkeypatch.setattr(
+        init, "_SCAFFOLD_TEMPLATES",
+        tuple((dest, tmpl, "/nonexistent/examples/" + src.split("/")[-1])
+              for dest, tmpl, src in init._SCAFFOLD_TEMPLATES))
+    result = init.scaffold_home(out_dir=str(tmp_path))
+    assert {os.path.basename(p) for p in result["written"]} == _EXPECTED_HOME_FILES
+
+
+def test_scaffold_templates_match_examples():
+    """Drift guard: the packaged `_scaffold_templates/` mirror must stay
+    byte-identical to its canonical source under `examples/`. Run
+    `python scripts/sync_scaffold_templates.py` if this fails."""
+    from pathlib import Path
+
+    repo_root = Path(init.__file__).resolve().parent.parent
+    templates_dir = repo_root / "anvil_serving" / "_scaffold_templates"
+    for _dest, template_name, source_rel in init._SCAFFOLD_TEMPLATES:
+        source = (repo_root / source_rel).read_bytes()
+        mirror = (templates_dir / template_name).read_bytes()
+        assert mirror == source, (
+            f"{template_name} is stale vs {source_rel} — "
+            f"run scripts/sync_scaffold_templates.py")

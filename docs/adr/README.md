@@ -39,3 +39,4 @@ people and the chat logs.
 | [0017](0017-gpu-residency-reservations.md) | GPU residency reservations: declarative VRAM ledger enforced by serve lifecycle verbs | Accepted |
 | [0018](0018-router-transition-safety.md) | Router transition safety for slow single-workstation model swaps | Accepted |
 | [0019](0019-anvil-serving-owns-the-tailnet-edge.md) | anvil-serving owns the tailnet edge: a `tailscale serve` path-router (`/v1` → router, `/comfyui`) in front of the unchanged router | Accepted |
+| [0020](0020-init-defaults-to-home-scaffold-shipped-as-package-data.md) | `init` defaults to the home scaffold, shipped as package data (installed-tool fix) | Accepted |

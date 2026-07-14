@@ -814,7 +814,7 @@ def build_command_tree() -> CommandTree:
 
     tree = CommandTree(
         nodes=(
-            _node("init", "Generate a local bring-up from detected facts.", handler=_handler("anvil_serving.init"), docs_anchor="docs/CLI.md#init", group="Local serving tools"),
+            _node("init", "Scaffold the operational config home (or a single-model bring-up with --single-model).", handler=_handler("anvil_serving.init"), docs_anchor="docs/CLI.md#init", group="Local serving tools"),
             _node("router", router.summary, children=router.children, docs_anchor=router.docs_anchor, group="Data plane"),
             _node("serves", serves.summary, children=serves.children, docs_anchor=serves.docs_anchor, group="Local serving tools"),
             _node("models", models.summary, children=models.children, docs_anchor=models.docs_anchor, group="Local serving tools"),

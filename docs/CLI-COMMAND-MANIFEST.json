@@ -137,7 +137,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": null,
-      "summary": "Generate a local bring-up from detected facts.",
+      "summary": "Scaffold the operational config home (or a single-model bring-up with --single-model).",
       "tombstone": null,
       "transports": [],
       "visible": true

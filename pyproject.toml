@@ -72,7 +72,12 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
 # Ship the canonical Tier-0 keyword taxonomy (tier0_keywords.json) inside the
 # wheel so classify.py can load it at runtime from an installed package.
 "anvil_serving.router" = ["*.json"]
-"anvil_serving" = ["py.typed"]
+# Ship the canonical reference config templates (mirrored from examples/ by
+# scripts/sync_scaffold_templates.py) INSIDE the wheel so `anvil-serving init`
+# resolves them via importlib.resources from any install location — not just a
+# source checkout. Without this the installed `init` (default home scaffold)
+# cannot find its templates (the #252 packaging regression).
+"anvil_serving" = ["py.typed", "_scaffold_templates/*"]
 "anvil_serving.observability.dashboard.static" = ["*.html"]
 
 [tool.pytest.ini_options]

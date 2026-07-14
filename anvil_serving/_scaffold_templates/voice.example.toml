@@ -1,0 +1,57 @@
+# anvil-serving voice manifest (reference example)
+#
+# Describes the anvil-style stdlib VAD -> STT -> LLM -> TTS orchestrator + its
+# OpenAI Realtime-compatible server. See
+# docs/findings/2026-07-04-hf-speech-to-speech-review.md for the design.
+#
+# Hygiene (enforced by anvil_serving.voice.config.validate_manifest):
+#   - 127.0.0.1, never localhost (Windows IPv6 stall -- CLAUDE.md gotcha #1).
+#   - Secrets are referenced by ENV-VAR NAME only (the `*_env` keys below);
+#     never paste a literal key/token/secret/password into this file.
+#   - No URL-embedded credentials (https://user:pass@host/...).
+#
+# STT and TTS are OUT-OF-PROCESS serves speaking the OpenAI audio
+# sub-protocols (/v1/audio/transcriptions, /v1/audio/speech). By default they
+# are managed through `anvil-serving serves` (`lifecycle = "managed"`).
+# Set `lifecycle = "external"` for a manually managed endpoint, or
+# `lifecycle = "native"` plus start_command/pid_file/log_file for same-host
+# native processes on a host that intentionally owns audio models.
+
+[voice]
+name = "anvil-voice"
+realtime_host = "127.0.0.1"   # the Realtime WebSocket server binds here (never localhost)
+realtime_port = 8765
+# pool_size = 4                        # concurrent Realtime sessions (anvil_serving.voice.realtime.pool)
+# realtime_token_env = "ANVIL_VOICE_REALTIME_TOKEN"  # required if realtime_host is non-loopback (LAN/tailnet)
+
+# The brain: OpenAI Chat Completions ONLY (never the Responses API), pointed
+# at the anvil router by default so every voice turn inherits anvil's
+# work-class routing + structural verify + cloud fallback with zero glue.
+[voice.llm]
+base_url = "http://127.0.0.1:8000/v1"
+model = "chat-fast"            # an anvil intent preset (see anvil_serving/router/intent.py) --
+                                # low-latency, routed fast-tier-first (flexibility:T018)
+stream = true
+api_key_env = "ANVIL_ROUTER_TOKEN"   # env var holding the router's bearer token; optional
+# history_max_turns = 8               # completed user/assistant turns remembered inside one Realtime session; 0 disables
+# history_max_message_chars = 1200    # per remembered message prompt-cost cap
+# tool_result_max_chars = 12000       # per realtime tool-output prompt-cost cap
+
+# Out-of-process STT serve (e.g. parakeet.cpp or a vLLM /v1/audio/transcriptions
+# endpoint -- see the sm_120 guidance in the review doc).
+[voice.stt]
+base_url = "http://127.0.0.1:8090/v1"
+model = "parakeet-tdt-0.6b-v3"
+api_key_env = "ANVIL_VOICE_STT_TOKEN"   # optional; omit if the serve is unauthenticated
+# lifecycle = "native"
+# workdir = "~/code/mlx-audio"
+# start_command = ".venv/bin/python -m mlx_audio.server --host 127.0.0.1 --port 8090 --log-dir /tmp/anvil-voice"
+# pid_file = "/tmp/anvil-voice/stt.pid"
+# log_file = "/tmp/anvil-voice/stt.log"
+# ready_timeout = 60.0
+
+# Out-of-process TTS serve (e.g. Kokoro-FastAPI /v1/audio/speech).
+[voice.tts]
+base_url = "http://127.0.0.1:8091/v1"
+model = "kokoro-82m"
+api_key_env = "ANVIL_VOICE_TTS_TOKEN"   # optional; omit if the serve is unauthenticated
