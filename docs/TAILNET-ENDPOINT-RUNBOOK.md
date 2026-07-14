@@ -5,12 +5,22 @@ serving surface — chat, embeddings, rerank, and the routed OCR/vision presets 
 **single HTTP front door** bound to the host's Tailscale interface and reached through the
 host's **MagicDNS name**. There is no separate router, embeddings, or OCR endpoint to
 resolve, no per-surface hostname, and no second port. This runbook records that decision,
-the exact MagicDNS form, the live verification, and the *documented-only* options for
-TLS via `tailscale serve` and ComfyUI UI path routing.
+the exact MagicDNS form, the live verification, and the TLS-via-`tailscale serve` and
+ComfyUI UI path-routing options.
 
-> Scope: **docs + tests only.** This runbook does not mutate Tailscale, firewall, or serve
-> state. The `tailscale serve` and ComfyUI sections are configuration you *may* apply
-> later; they are written as reference, not executed here.
+> Update (ADR-0019): the `tailscale serve` + ComfyUI path-routing sections below are **no
+> longer document-only**. anvil-serving now **owns the tailnet edge** through the
+> `anvil-serving edge {render,status,up,down}` verb group — a stdlib-only manager that
+> renders and applies exactly this `tailscale serve` config (`/v1` → the unchanged router,
+> `/comfyui` → ComfyUI). Prefer the verb over hand-run `tailscale serve` commands: it is
+> idempotent, dry-runnable, and removes only the mappings it manages. The commands below
+> remain accurate as the underlying mechanism the verb renders. See
+> [ADR-0019](adr/0019-anvil-serving-owns-the-tailnet-edge.md) and
+> [`edge` in the CLI reference](CLI.md#edge).
+>
+> Binding the front door to the tailnet (the section immediately below) is still a
+> `router run --host` choice; it is orthogonal to the `edge` verb, which fronts loopback
+> services under the one name.
 
 ---
 
@@ -175,7 +185,7 @@ proof — one server + one token serving discovery, embeddings, and the OCR pres
 
 ---
 
-## Optional: HTTPS via `tailscale serve` (DOCUMENT ONLY — not applied)
+## HTTPS via `tailscale serve` (managed by `anvil-serving edge`)
 
 Plain HTTP over the tailnet is already encrypted by WireGuard, so TLS is optional. When a
 caller *requires* `https://` (a client that refuses plaintext, or a browser surface),
@@ -194,29 +204,39 @@ tailscale serve reset           # tear down ALL serve config for this node
 ```
 
 Trade-off: `tailscale serve` binds one HTTPS port per node, so HTTPS + ComfyUI path
-routing (below) must share the same `tailscale serve` config. Token auth is unchanged —
+routing (below) share the same `tailscale serve` config. Token auth is unchanged —
 Tailscale terminates TLS but forwards the `Authorization` header untouched.
 
-> Not executed here (T014 is docs+tests only). Applying it mutates tailnet serve state and
-> requires HTTPS to be enabled in the tailnet's ACL/DNS settings.
+> Prefer `anvil-serving edge` over hand-run commands (ADR-0019): `edge up` renders and
+> applies exactly this config idempotently, and `edge down` removes **only** the mappings it
+> manages (per-path `… off`), never `tailscale serve reset`, so an operator-set mapping is
+> never clobbered. Applying still mutates tailnet serve state and requires HTTPS enabled in
+> the tailnet's ACL/DNS settings.
 
 ---
 
-## Optional: ComfyUI UI under the same name (DOCUMENT ONLY — not applied)
+## ComfyUI UI under the same name (managed by `anvil-serving edge`)
 
 The ComfyUI tenant (gpu-reservations:T012) serves its web UI on `127.0.0.1:8188`
 (loopback-only; `COMFYUI_PUBLISH` is the tailnet opt-in). To reach both the router API and
-the ComfyUI UI under the **one** MagicDNS name, use `tailscale serve` **path routing** so
-each path proxies to its own loopback service:
+the ComfyUI UI under the **one** MagicDNS name, `anvil-serving edge` uses `tailscale serve`
+**path routing** so each path proxies to its own loopback service. The verb renders exactly
+these commands (the default route map is `/v1` → router, `/comfyui` → ComfyUI):
 
 ```bash
-# API at the root, ComfyUI UI under /comfyui — one HTTPS listener, one MagicDNS name.
-tailscale serve --bg --https=443 --set-path=/       http://127.0.0.1:8000
-tailscale serve --bg --https=443 --set-path=/comfyui http://127.0.0.1:8188
+anvil-serving edge render
+# $ tailscale serve --bg --https=443 --set-path=/v1      http://127.0.0.1:8000
+# $ tailscale serve --bg --https=443 --set-path=/comfyui http://127.0.0.1:8188
 
-# -> https://fakoli-dark.tail4378d.ts.net/v1/models       (router front door)
+anvil-serving edge up --confirm   # additive; only the mounts this tool manages
+
+# -> https://fakoli-dark.tail4378d.ts.net/v1/models       (router front door, path unchanged)
 # -> https://fakoli-dark.tail4378d.ts.net/comfyui/        (ComfyUI UI)
 ```
+
+The `/v1` mount forwards its path to the router verbatim, so the OpenAI/Anthropic contract is
+untouched. Add further paths (e.g. the dashboard on `:8766`) via `[edge.routes]` config or
+`--map /dashboard=8766`.
 
 Caveats to validate before adopting:
 
@@ -232,14 +252,15 @@ Caveats to validate before adopting:
   accordingly, or keep ComfyUI loopback-only and reach it via `tailscale serve` from a
   trusted peer.
 
-> Not executed here. This is the reference for a later, explicitly-approved change to
-> tailnet serve state.
+> A clean `502`/connection-refused on `/comfyui` when the ComfyUI tenant is down is expected
+> passthrough, not an edge failure.
 
 ---
 
 ## Rollback / teardown
 
-Nothing in this runbook is applied automatically. If the optional pieces are later adopted:
+`anvil-serving edge down --confirm` removes only the mappings the verb manages. To tear down
+the managed edge, or if the pieces were applied by hand:
 
 ```bash
 tailscale serve reset   # remove all serve config (HTTPS + path mappings) for this node
