@@ -1,0 +1,62 @@
+{
+  "schema": "anvil-serving.benchmark-sources/v1",
+  "observed_at": "2026-07-16",
+  "sources": [
+    {
+      "url": "https://ai.google.dev/gemma/docs/core/model_card_4",
+      "published_or_observed_date": "2026-07-16",
+      "age_class": "current-official",
+      "evidence_type": "official model card",
+      "hardware_engine_relevance": "Defines the Gemma 4 family, native context windows, tool use, and supported deployment shapes; local engine compatibility was verified separately on vLLM 0.25.1.",
+      "decision_impact": "Set the E2B/E4B 128K and 12B/26B/31B 256K context targets and required tool/template coverage."
+    },
+    {
+      "url": "https://github.com/vllm-project/recipes/blob/main/Google/Gemma4.md",
+      "published_or_observed_date": "2026-07-16",
+      "age_class": "current-upstream",
+      "evidence_type": "official vLLM serving recipe",
+      "hardware_engine_relevance": "Primary engine guidance for Gemma 4; the local matrix pinned vLLM 0.25.1 and exercised the gemma4 reasoning and tool parsers on Blackwell GPUs.",
+      "decision_impact": "Established the upstream-compatible serve shape and justified testing the tokenizer-provided template instead of the repository's legacy template override."
+    },
+    {
+      "url": "https://huggingface.co/google/gemma-4-E2B-it-qat-w4a16-ct",
+      "published_or_observed_date": "2026-07-15",
+      "age_class": "new-template-revision",
+      "evidence_type": "official checkpoint repository",
+      "hardware_engine_relevance": "Revision 93c069399e6574553f7b59cec1d1ddf1c332a916; paired tokenizer revision 179516f0c449474fdc46f08f30ead5b11e178497.",
+      "decision_impact": "Fast/Heavy low-latency candidate; rejected for strict intelligence quality."
+    },
+    {
+      "url": "https://huggingface.co/google/gemma-4-E4B-it-qat-w4a16-ct",
+      "published_or_observed_date": "2026-07-15",
+      "age_class": "new-template-revision",
+      "evidence_type": "official checkpoint repository",
+      "hardware_engine_relevance": "Revision 29eacc1fb21041c5168e898028cf1653d5c10dfe; paired tokenizer revision fa62d88df2e6df5efa9d26ad6b3beaea2765f0cd.",
+      "decision_impact": "Direct Fast control replacement candidate; rejected because it did not match the control's strict quality result."
+    },
+    {
+      "url": "https://huggingface.co/google/gemma-4-12B-it-qat-w4a16-ct",
+      "published_or_observed_date": "2026-07-15",
+      "age_class": "new-template-revision",
+      "evidence_type": "official checkpoint repository",
+      "hardware_engine_relevance": "Revision 5d8bb23cdbff01e89d2a1a47f3b3d29b877bca76; paired tokenizer revision 12ace6d648d72bd41519e140f1185f34d38c7e3d; validated on RTX 5090 and RTX PRO 6000.",
+      "decision_impact": "Promoted to Heavy after repeated quality, 240K context, 20-tool, and live router identity gates."
+    },
+    {
+      "url": "https://huggingface.co/google/gemma-4-26B-A4B-it",
+      "published_or_observed_date": "2026-07-15",
+      "age_class": "new-template-revision",
+      "evidence_type": "official checkpoint repository",
+      "hardware_engine_relevance": "BF16 revision 01e5b3ee840d3a9e0b0b493c593e85398a30ef75; no official W4A16 checkpoint was available in the tested set.",
+      "decision_impact": "Fast startup failed on 32 GB; Heavy was fast but rejected by the strict intelligence gate."
+    },
+    {
+      "url": "https://huggingface.co/google/gemma-4-31B-A4B-it-qat-w4a16-ct",
+      "published_or_observed_date": "2026-07-15",
+      "age_class": "new-template-revision",
+      "evidence_type": "official checkpoint repository",
+      "hardware_engine_relevance": "Revision a766e9afa44931dfa9ff5de90af9494ca193e74c; paired tokenizer revision b9ea41a2887d8607f594846523f94c6cc75ac8a4.",
+      "decision_impact": "Passed Heavy quality but was much slower; Fast usable context topped out below 128K."
+    }
+  ]
+}

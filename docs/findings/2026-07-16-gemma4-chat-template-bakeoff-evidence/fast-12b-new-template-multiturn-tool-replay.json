@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.chat-template-replay/v1",
+  "observed_at": "2026-07-16T17:07:00.2054699Z",
+  "endpoint": "http://127.0.0.1:39037/v1",
+  "served_model": "gemma4-fast-lab",
+  "model": "google/gemma-4-12B-it-qat-w4a16-ct",
+  "model_revision": "5d8bb23cdbff01e89d2a1a47f3b3d29b877bca76",
+  "tokenizer": "google/gemma-4-12B-it",
+  "tokenizer_revision": "12ace6d648d72bd41519e140f1185f34d38c7e3d",
+  "chat_template_sha256": "ae53464bd0a29f614ec73e107cc67716f67738b75df51d37fa6744e300b4c6d4",
+  "chat_template_kwargs": {
+    "enable_thinking": true,
+    "preserve_thinking": true
+  },
+  "first_turn": {
+    "finish_reason": "tool_calls",
+    "tool_name": "get_weather",
+    "tool_arguments": "{\"city\": \"Seattle\"}",
+    "prompt_tokens": 67,
+    "completion_tokens": 61
+  },
+  "replay_turn": {
+    "finish_reason": "stop",
+    "content": "The weather in Seattle is currently 68°F and clear.",
+    "prompt_tokens": 160,
+    "completion_tokens": 43
+  },
+  "passed": true,
+  "note": "The OpenAI assistant tool call, JSON-string arguments, matching tool_call_id, and tool result were replayed verbatim into the second request. The July 15 template completed the tool round trip without a render error or duplicate tool call."
+}
