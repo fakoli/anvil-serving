@@ -1,0 +1,36 @@
+{
+  "observed_at": "2026-07-16",
+  "source_post": "https://www.reddit.com/r/unsloth/comments/1uwe2qm/15x_faster_gemma_4_nvfp4_unsloth_quants/",
+  "collection": "https://huggingface.co/collections/unsloth/nvfp4",
+  "engine": "vllm/vllm-openai:v0.25.1",
+  "chat_template": {
+    "path": "chat_template.jinja",
+    "bytes": 18922,
+    "sha256": "845f1ee48e39fc942fe190da9df6a1c5db229e17a96ea08966ad1c9274e73d1b",
+    "supports_enable_thinking": true,
+    "supports_tools": true
+  },
+  "checkpoints": [
+    {
+      "repo": "unsloth/gemma-4-12b-it-NVFP4",
+      "revision": "b1f649734b34aa5575b03d186abd1b9be3d0d5c4",
+      "weights_gib": 8.67,
+      "model_type": "gemma4_unified",
+      "quantization": "compressed-tensors mixed-precision NVFP4"
+    },
+    {
+      "repo": "unsloth/gemma-4-26B-A4B-it-NVFP4",
+      "revision": "20df0542b1a86ce19f495ac2eca2c7c12bce82f9",
+      "weights_gib": 15.75,
+      "model_type": "gemma4",
+      "quantization": "compressed-tensors mixed-precision NVFP4"
+    },
+    {
+      "repo": "unsloth/gemma-4-31B-it-NVFP4",
+      "revision": "373c00b5ecb0a8ee43942b5ca08b93805de8eee4",
+      "weights_gib": 23.06,
+      "model_type": "gemma4",
+      "quantization": "compressed-tensors mixed-precision NVFP4"
+    }
+  ]
+}
