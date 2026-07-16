@@ -1,0 +1,611 @@
+{
+  "context": {
+    "cap_tokens": 261056,
+    "max_model_len": 262144,
+    "targets": [
+      {
+        "attempted_context_tokens": 32768,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 32768,
+        "e2e_ms": 5353.043556213379,
+        "estimated_prompt_tokens": 32768,
+        "output_tokens": 52,
+        "status": "passed",
+        "target_tokens": 32768,
+        "ttft_ms": 4804.813623428345,
+        "usage": {
+          "completion_tokens": 53,
+          "prompt_tokens": 27771,
+          "total_tokens": 27824
+        }
+      },
+      {
+        "attempted_context_tokens": 131072,
+        "chars_per_token": 3.54,
+        "clamped_tokens": 131072,
+        "e2e_ms": 35644.11735534668,
+        "estimated_prompt_tokens": 131071,
+        "output_tokens": 46,
+        "status": "passed",
+        "target_tokens": 131072,
+        "ttft_ms": 35018.670082092285,
+        "usage": {
+          "completion_tokens": 51,
+          "prompt_tokens": 152746,
+          "total_tokens": 152797
+        }
+      },
+      {
+        "attempted_context_tokens": 240000,
+        "chars_per_token": 3.038,
+        "clamped_tokens": 240000,
+        "e2e_ms": 79336.8673324585,
+        "estimated_prompt_tokens": 239999,
+        "output_tokens": 41,
+        "status": "passed",
+        "target_tokens": 240000,
+        "ttft_ms": 78664.37888145447,
+        "usage": {
+          "completion_tokens": 48,
+          "prompt_tokens": 243420,
+          "total_tokens": 243468
+        }
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 512
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "prompt_id": "parallel_timeout_triage",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39037/v1",
+    "candidate_id": "google-gemma4-12b-w4a16-ct",
+    "config_id": "fast-new-template-256k",
+    "engine": "vllm-0.25.1",
+    "gpu": "dark-fast-rtx5090",
+    "model": "gemma4-fast-lab",
+    "started_at": "2026-07-16T17:02:44Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_excerpt": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 424.40295219421387,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 46,
+              "prompt_tokens": 54,
+              "prompt_tokens_details": null,
+              "total_tokens": 100
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_excerpt": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 427.0172119140625,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 46,
+              "prompt_tokens": 54,
+              "prompt_tokens_details": null,
+              "total_tokens": 100
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_excerpt": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 423.0761528015137,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 46,
+              "prompt_tokens": 54,
+              "prompt_tokens_details": null,
+              "total_tokens": 100
+            }
+          }
+        ],
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "The total processing time (3000 ms) exceeds the 2500 ms timeout; implement LLM streaming to begin TTS playback before the full response is generated.",
+            "content_excerpt": "The total processing time (3000 ms) exceeds the 2500 ms timeout; implement LLM streaming to begin TTS playback before the full response is generated.",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 365.5538558959961,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 37,
+              "prompt_tokens": 78,
+              "prompt_tokens_details": null,
+              "total_tokens": 115
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "The total processing time (3000 ms) exceeds the 2500 ms timeout; implement LLM streaming to begin TTS playback before the full response is generated.",
+            "content_excerpt": "The total processing time (3000 ms) exceeds the 2500 ms timeout; implement LLM streaming to begin TTS playback before the full response is generated.",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 350.5587577819824,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 37,
+              "prompt_tokens": 78,
+              "prompt_tokens_details": null,
+              "total_tokens": 115
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "The total processing time (3000 ms) exceeds the 2500 ms timeout; implement LLM streaming to begin TTS playback before the full response is generated.",
+            "content_excerpt": "The total processing time (3000 ms) exceeds the 2500 ms timeout; implement LLM streaming to begin TTS playback before the full response is generated.",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 344.9711799621582,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 37,
+              "prompt_tokens": 78,
+              "prompt_tokens_details": null,
+              "total_tokens": 115
+            }
+          }
+        ],
+        "error": "pass rate below threshold",
+        "id": "parallel_timeout_triage",
+        "pass_count": 0,
+        "pass_rate": 0.0,
+        "required_pass_rate": 1.0,
+        "status": "failed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260716T170244Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 35644.11735534668,
+    "intelligence_pass_rate": 0.5,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "disabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 35018.670082092285,
+    "usable_context_tokens": 240000,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768,
+      131072,
+      240000
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 95.5805778503418,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 7,
+              "prompt_tokens": 52,
+              "prompt_tokens_details": null,
+              "total_tokens": 59
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 92.34380722045898,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 7,
+              "prompt_tokens": 52,
+              "prompt_tokens_details": null,
+              "total_tokens": 59
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 81.06231689453125,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 7,
+              "prompt_tokens": 52,
+              "prompt_tokens_details": null,
+              "total_tokens": 59
+            }
+          }
+        ],
+        "name": "single_request_multiturn_recall",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": "examples/fakoli-dark/docker-compose.experiment.yml#gemma4-fast-lab",
+    "serve_command": "GEMMA4_FAST_MODEL=google/gemma-4-12B-it-qat-w4a16-ct anvil-serving serves up gemma4-fast-lab --manifest examples/fakoli-dark/serves.toml --recreate --confirm"
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving\\docs\\findings\\2026-07-16-gemma4-chat-template-bakeoff-evidence\\fast-12b-thinking-control.json",
+    "control_evidence_sha256": "d2148075b4f9d9578dbdd94efcf73bd6e1eb5c79d9a7575f8170f26558d29817",
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": false
+    },
+    "control_status": "verified",
+    "mode": "disabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 35644.11735534668,
+      "e2e_p95_ms": 79336.8673324585,
+      "output_tokens": 139,
+      "ttft_p50_ms": 35018.670082092285,
+      "ttft_p95_ms": 78664.37888145447
+    },
+    "wall_ms": 123617.06328392029
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 224.5333194732666,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 21,
+              "prompt_tokens": 83,
+              "prompt_tokens_details": null,
+              "total_tokens": 104
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 216.07327461242676,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 21,
+              "prompt_tokens": 83,
+              "prompt_tokens_details": null,
+              "total_tokens": 104
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 512,
+              "reasoning_headroom_tokens": 0,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 208.7574005126953,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 21,
+              "prompt_tokens": 83,
+              "prompt_tokens_details": null,
+              "total_tokens": 104
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          }
+        ],
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

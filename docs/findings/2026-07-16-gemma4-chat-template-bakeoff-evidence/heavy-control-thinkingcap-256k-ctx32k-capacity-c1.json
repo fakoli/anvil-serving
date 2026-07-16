@@ -1,0 +1,27 @@
+{
+  "base_url": "http://127.0.0.1:30002/v1",
+  "completed": 6,
+  "concurrency": 1,
+  "context_tokens": 32768,
+  "max_context_tokens": 262144,
+  "max_tokens": 256,
+  "metrics": {
+    "e2e_p50_ms": 5313.689470291138,
+    "e2e_p95_ms": 5569.68092918396,
+    "output_tokens": 91,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 2.8255757993297164,
+    "ttft_p50_ms": 4838.652849197388,
+    "ttft_p95_ms": 5057.688474655151
+  },
+  "model": "thinkingcap-qwen36-27b-fp8",
+  "requests": 6,
+  "run_id": "benchmark-20260716T152709Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": null,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  }
+}

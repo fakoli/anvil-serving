@@ -4,7 +4,9 @@
 # "which model containers exist, on which ports". Manage the serves ONLY through
 # `anvil-serving serves` (which delegates to docker-compose.yml), never raw `docker`.
 #
-# 2026-07-12 reconcile: heavy = ThinkingCap Qwen3.6-27B FP8 (promoted heavy tier, :30002, PRO 6000).
+# 2026-07-16 reconcile: heavy = official Gemma 4 12B IT QAT W4A16 with the
+# July 15 tokenizer chat template (:30002, PRO 6000). ThinkingCap is the immediate
+# opt-in rollback; GPT-OSS remains the second-line rollback.
 # 2026-07-13 fast swap (gpu-reservations:T006): fast = Gemma 4 E4B IT (:30003, RTX 5090) with a
 # declared ADR-0017 resident reservation; the previous Qwen3.6-35B-A3B-NVFP4 recipe stays as the
 # opt-in `fast-qwen36-rollback` serve. These back the router tiers in the live
@@ -53,17 +55,26 @@ vram_mib = 32607
 reserve_mib = 4608
 
 [[serve]]
-name = "heavy"                 # heavy quality tier — ThinkingCap Qwen3.6-27B FP8
-container = "vllm-thinkingcap-heavy"
+name = "heavy"                 # heavy quality tier — Gemma 4 12B IT QAT W4A16
+container = "vllm-gemma4-12b-heavy"
 port = 30002
-model = "thinkingcap-qwen36-27b-fp8" # served-model-name (used by `anvil-serving eval`)
+model = "gemma4-12b-it-w4a16-ct" # served-model-name (used by `anvil-serving eval`)
 engine = "vllm"
 health = "/health"
 groups = ["heavy-only", "llm-stack"]  # serve groups (serves up/down/status --group)
 up = "docker compose -f {dir}/docker-compose.yml up -d heavy"
 
 [[serve]]
-name = "heavy-gptoss-rollback" # opt-in rollback; stop `heavy` first because both own :30002
+name = "heavy-thinkingcap-rollback" # immediate rollback; stop `heavy` first because both own :30002
+container = "vllm-thinkingcap-heavy-rollback"
+port = 30002
+model = "thinkingcap-qwen36-27b-fp8"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.yml --profile rollback up -d heavy-thinkingcap-rollback"
+
+[[serve]]
+name = "heavy-gptoss-rollback" # second-line rollback; stop `heavy` first because both own :30002
 container = "vllm-gptoss120"
 port = 30002
 model = "gpt-oss-120b"
@@ -219,19 +230,19 @@ up = "docker compose -f {dir}/docker-compose.yml up -d vision"
 # and complete model+router rollback. This single-GPU plan validates the newly
 # started target in-transaction; a separately resident candidate cannot coexist.
 [[promotion]]
-name = "thinkingcap-heavy"
+name = "gemma4-12b-heavy"
 target = "heavy"
-rollback = "heavy-gptoss-rollback"
+rollback = "heavy-thinkingcap-rollback"
 router_config = "{dir}/anvil-router.live.toml"
-router_profile = "{dir}/../../docs/findings/2026-07-13-e4b-fast-router-promotion-evidence/promotion-profile.json"
-rollback_router_config = "{dir}/anvil-router.gptoss-rollback.toml"
-rollback_router_profile = "{dir}/../../docs/findings/2026-07-13-e4b-fast-router-promotion-evidence/gptoss-heavy-rollback-profile.json"
+router_profile = "{dir}/../../docs/findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/promotion-profile.json"
+rollback_router_config = "{dir}/anvil-router.thinkingcap-rollback.toml"
+rollback_router_profile = "{dir}/../../docs/findings/2026-07-13-e4b-fast-router-promotion-evidence/promotion-profile.json"
 affected_tiers = ["heavy-local"]
 drain_timeout = 120
-needle_ctx = 131072
+needle_ctx = 240000
 tool_batch = 20
 startup_timeout = 600
-rollback_startup_timeout = 1200
+rollback_startup_timeout = 600
 poll_interval = 5
 router_health_url = "http://100.87.34.66:8000/healthz"
 
@@ -239,10 +250,10 @@ router_health_url = "http://100.87.34.66:8000/healthz"
 name = "functional-thinking-disabled"
 checks = "smoke,json,needle,tools"
 thinking_mode = "disabled"
-visible_answer_tokens = 256
+visible_answer_tokens = 512
 reasoning_headroom_tokens = 0
 reasoning_evidence = "forbidden"
-json_out = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/functional-preflight.json"
+json_out = "{dir}/../../docs/findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/promotion-functional-preflight.json"
 
 [[promotion.gate]]
 name = "quality-thinking-enabled-4k"
@@ -251,13 +262,12 @@ thinking_mode = "enabled"
 visible_answer_tokens = 256
 reasoning_headroom_tokens = 4096
 reasoning_evidence = "required"
-json_out = "{dir}/../../docs/findings/2026-07-12-thinkingcap-heavy-promotion-evidence/thinking-preflight-4k.json"
+json_out = "{dir}/../../docs/findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/promotion-thinking-preflight-4k.json"
 
 [[promotion.rollback_gate]]
-name = "gptoss-functional"
+name = "thinkingcap-functional"
 checks = "smoke,json,needle,tools"
-thinking_mode = "default"
-reasoning_effort = "high"
+thinking_mode = "enabled"
 visible_answer_tokens = 256
 reasoning_headroom_tokens = 4096
 reasoning_evidence = "required"
@@ -298,6 +308,30 @@ model = "gemma4-e4b-it"
 engine = "vllm"
 health = "/health"
 up = "docker compose -f {dir}/docker-compose.experiment.yml up -d voice-gemma4-e4b"
+
+# July 15 canonical-chat-template bakeoff lanes. Model, revision, tokenizer,
+# tokenizer revision, context, and memory budget are supplied through the
+# GEMMA4_FAST_* / GEMMA4_HEAVY_* environment variables documented in the
+# experiment Compose file. The served names stay stable so preflight and
+# capacity artifacts can target the lane while separately recording the exact
+# checkpoint/template provenance. Neither lane is wired into router policy.
+[[serve]]
+name = "gemma4-fast-lab"
+container = "vllm-gemma4-fast-lab"
+port = 39037
+model = "gemma4-fast-lab"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d gemma4-fast-lab"
+
+[[serve]]
+name = "gemma4-heavy-lab"
+container = "vllm-gemma4-heavy-lab"
+port = 39038
+model = "gemma4-heavy-lab"
+engine = "vllm"
+health = "/health"
+up = "docker compose -f {dir}/docker-compose.experiment.yml up -d gemma4-heavy-lab"
 
 # Experimental Fast voice TTS candidate. Gepard exposes a Cartesia-compatible
 # streaming TTS API, not OpenAI `/v1/audio/speech`; select it through the

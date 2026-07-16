@@ -1,0 +1,221 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39037/v1",
+  "model": "gemma4-fast-lab",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 256
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "needle",
+    "tools"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "1.0s got='Depending on whether you want to define the list w' finish='stop' visible=300 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "needle @ ~60000 ctx",
+      "passed": true,
+      "detail": "6.1s ctx~60000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "shared-prefix tool batch x5",
+      "passed": true,
+      "detail": "5/5 clean (sample: 0.2s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None)"
+    }
+  ],
+  "observations": [
+    {
+      "content": "Depending on whether you want to define the list within the line or assume it already exists, here are the two ways to do it:\n\n**If the list `xs` is already defined:**\n```python\ntotal = sum(xs)\n```\n\n**If you want to define the list and sum it in one line:**\n```python\ntotal = sum([1, 2, 3, 4, 5])\n```",
+      "finish_reason": "stop",
+      "content_chars": 300,
+      "content_excerpt": "Depending on whether you want to define the list within the line or assume it already exists, here are the two ways to do it:\n\n**If the list `xs` is already defined:**\n```python\ntotal = sum(xs)\n```\n\n*",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 29,
+        "total_tokens": 121,
+        "completion_tokens": 92,
+        "prompt_tokens_details": null
+      },
+      "test": "smoke",
+      "seconds": 1.048,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 31,
+        "total_tokens": 41,
+        "completion_tokens": 10,
+        "prompt_tokens_details": null
+      },
+      "test": "json",
+      "seconds": 0.122,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 49552,
+        "total_tokens": 49565,
+        "completion_tokens": 13,
+        "prompt_tokens_details": null
+      },
+      "test": "needle",
+      "seconds": 6.063,
+      "passed": true,
+      "validation_detail": "needle present"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5273,
+        "total_tokens": 5289,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.204,
+      "request_index": 0,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5273,
+        "total_tokens": 5289,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.229,
+      "request_index": 1,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5273,
+        "total_tokens": 5289,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.388,
+      "request_index": 3,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5273,
+        "total_tokens": 5289,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.407,
+      "request_index": 2,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5273,
+        "total_tokens": 5289,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.556,
+      "request_index": 4,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "forbidden",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}
