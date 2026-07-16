@@ -1,0 +1,23 @@
+{
+  "captured": "2026-07-16",
+  "engine_image": "vllm/vllm-openai:v0.25.1",
+  "engine_image_digest": "sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089",
+  "runner": {
+    "environment": "VLLM_USE_V2_MODEL_RUNNER=0",
+    "engine_log_identity": "V1 LLM engine",
+    "reason": "existing WSL2 compatibility recipe"
+  },
+  "nvfp4_kernel": "FlashInferCutlassNvFp4LinearKernel",
+  "attention_backend": "TRITON_ATTN",
+  "kv_cache_dtype": "fp8",
+  "startup": {
+    "heavy_31b_256k_approx_seconds_to_supported_tasks": 250,
+    "heavy_31b_kv_cache_tokens": 1262607,
+    "heavy_31b_max_256k_concurrency_reported": 4.82
+  },
+  "operational_caveats": [
+    "The first 31B start exceeded the five-minute polling workflow only because health became available at the deadline after compile and FlashInfer autotune; the endpoint then reported HTTP 200.",
+    "Bounded Docker log capture can hit a Windows cp1252 UnicodeDecodeError on the vLLM banner unless PYTHONIOENCODING=utf-8 is set.",
+    "The deployed router is bound to 100.87.34.66:8000 rather than 127.0.0.1:8000; an unauthenticated restoration probe correctly returned HTTP 401."
+  ]
+}

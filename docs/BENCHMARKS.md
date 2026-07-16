@@ -105,6 +105,32 @@ removing any check. The Fast tier did not change. Full matrix, pinned revisions,
 template hashes, failed starts, two-turn tool replay, cache cleanup, and raw
 artifacts: [Gemma 4 chat-template bakeoff](findings/2026-07-16-gemma4-chat-template-bakeoff.md).
 
+### Unsloth Gemma 4 NVFP4 follow-up (2026-07-16)
+
+The same-day Unsloth 12B, 26B-A4B, and 31B NVFP4 release was tested through
+the existing vLLM 0.25.1 WSL2 recipe on both Blackwell GPUs. **No production
+tier changed.** The publisher's approximately 1.5x 12B speed claim was not
+reproduced locally: in matched three-attempt, 1,024-token diagnostics, NVFP4
+was 7.4% slower than official QAT on the RTX 5090 and 9.3% slower on the RTX
+PRO 6000.
+
+| Candidate / tested configuration | Hardware and window | Repeated quality | Loaded capacity c1 / c2 | Equal-length diagnostic | Outcome |
+|---|---|---|---:|---:|---|
+| Unsloth Gemma 4 12B NVFP4 | RTX 5090, 32K | fail: timeout triage 1/3, thinking disabled | 55 / 144 tok/s at 8K fixed context | 103.82 tok/s | No Fast quality or decode-rate win |
+| Unsloth Gemma 4 12B NVFP4 | RTX PRO 6000, 256K | fail: repeated tool 1/3 | 21 / 76 tok/s | 98.86 tok/s | Tool argument regression; keep official QAT Heavy |
+| Unsloth Gemma 4 26B-A4B NVFP4 | RTX 5090, 32K | fail: timeout triage 1/3, thinking disabled | **121 / 233 tok/s at 8K fixed context** | **218.09 tok/s** | Fastest local Gemma variation; promotion blocked |
+| Unsloth Gemma 4 26B-A4B NVFP4 | RTX PRO 6000, 256K | fail: timeout triage 1/3 | **45 / 122 tok/s** | **191.46 tok/s** | Full-window speed candidate; promotion blocked |
+| Unsloth Gemma 4 31B NVFP4 | RTX PRO 6000, 256K | **pass** | 7 / 30 tok/s | 51.49 tok/s | Quality pass, materially too slow |
+
+The 26B-A4B checkpoint is the best future speed candidate, while 31B is the
+only larger checkpoint that cleared the full repeated Heavy gate. At 240K,
+quality-context TTFT was 48.27 seconds for 26B-A4B and 223.32 seconds for 31B.
+The Unsloth template is not byte-identical to Google's canonical July 15
+template and tolerates pre-serialized string tool arguments; this is recorded
+alongside the 12B tool failure. Full revisions, context matrix, functional
+preflights, diagnostic caveats, runtime/kernel evidence, and raw artifacts:
+[Gemma 4 Unsloth NVFP4 follow-up](findings/2026-07-16-gemma4-unsloth-nvfp4-follow-up.md).
+
 ## Blackwell candidate bakeoff (2026-07-10)
 
 Six community-shortlisted candidates measured against the production baselines on Fakoli Dark
