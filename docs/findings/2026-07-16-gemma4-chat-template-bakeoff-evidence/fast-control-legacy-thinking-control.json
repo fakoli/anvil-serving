@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "legacy-e4b-fp8-32k-preflight-r3.json: disabled-thinking preflight passed smoke, JSON, 30000-token needle, and 5/5 tool calls with zero reasoning evidence",
+  "observed_at": "2026-07-16T10:05:30.3126067Z"
+}

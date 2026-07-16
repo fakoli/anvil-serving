@@ -33,14 +33,42 @@ Unless a model section says otherwise, the July 2026 Heavy experiments used FP8
 KV cache, text-only mode, prefix caching disabled for independent-prompt
 comparisons, and a maximum of five admitted sequences.
 
+## Gemma 4 12B IT QAT W4A16
+
+| Setting | Tested value |
+|---|---|
+| Checkpoint | [`google/gemma-4-12B-it-qat-w4a16-ct`](https://huggingface.co/google/gemma-4-12B-it-qat-w4a16-ct), revision `5d8bb23cdbff01e89d2a1a47f3b3d29b877bca76` |
+| Tokenizer/template | [`google/gemma-4-12B-it`](https://huggingface.co/google/gemma-4-12B-it), revision `12ace6d648d72bd41519e140f1185f34d38c7e3d`; July 15 template SHA-256 `ae53464b…4c6d4` |
+| Managed service / endpoint | `heavy` / `http://127.0.0.1:30002/v1` |
+| Served name | `gemma4-12b-it-w4a16-ct` |
+| Engine path | vLLM 0.25.1; compressed-tensors W4A16; FP8 KV; `gemma4` reasoning/tool parsers |
+| Context / admission | 262,144 served; 240K promotion needle passed; 5 sequences |
+| Router reasoning control | `chat_template_kwargs.enable_thinking=true`; 4,096 reasoning-headroom tokens in the promotion evidence gate |
+
+**Why choose it.** It matched ThinkingCap's perfect repeated built-in quality
+result and improved quality-context TTFT from 7.83/57.60/124.70 seconds to
+6.96/44.61/97.33 seconds at 32K/128K/240K. The guarded promotion also passed
+disabled-thinking smoke/JSON, a 240K needle, 20/20 tools, enabled-thinking
+reasoning evidence, router reload, and exact model identity.
+
+**Gotchas.** Pin the model and tokenizer revisions independently; using only a
+model revision does not pin the July 15 chat template. Do not reintroduce the old
+explicit repository template override. FP8 KV is part of the measured recipe.
+Cold startup includes several minutes of graph compilation on this WSL2 sm_120
+host. A 256-visible-token functional gate produced a semantically correct but
+truncated smoke answer and failed closed; the benchmarked 512-visible-token gate
+is the production setting.
+
+Evidence: [Gemma 4 template bakeoff and promotion](../findings/2026-07-16-gemma4-chat-template-bakeoff.md).
+
 ## ThinkingCap Qwen3.6-27B FP8
 
 | Setting | Tested value |
 |---|---|
 | Checkpoint | [`bottlecapai/ThinkingCap-Qwen3.6-27B-FP8`](https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.6-27B-FP8), revision `e48255afd77b403446332be0f595868337b36591` |
-| Managed service / endpoint | `cand-thinkingcap-qwen36-fp8` / `http://127.0.0.1:39031/v1` |
+| Managed service / endpoint | `heavy-thinkingcap-rollback` / `http://127.0.0.1:30002/v1` when selected; experiment `cand-thinkingcap-qwen36-fp8` / `http://127.0.0.1:39031/v1` |
 | Served name | `thinkingcap-qwen36-27b-fp8` |
-| Engine path | vLLM nightly observed as `0.23.1rc1.dev531+ga65f93fb2`; compressed-tensors FP8; MTP 3 |
+| Engine path | vLLM nightly observed as `0.23.1rc1.dev531+ga65f93fb2`; compressed-tensors FP8; production rollback disables MTP |
 | Context / admission | 262,144 served; 131K preflight retained; 5 sequences |
 | Recommended eval budget | 4,096 reasoning-headroom tokens for the tested MMLU-Pro slice |
 
@@ -49,9 +77,11 @@ comparisons, and a maximum of five admitted sequences.
 was already 5/5 stable at 1K.
 
 **Gotchas.** This FP8 path required `VLLM_USE_DEEP_GEMM=0` with the tested
-nightly. At five independent sessions, TTFT rose from 1.01 s to 4.66 s. It is a
-quality-first choice, not the lowest-latency one. The engine tag is mutable;
-preserve the observed version and image digest with every rerun.
+nightly. The current vLLM speculative-config validator rejects the pinned
+checkpoint's compressed-tensors main model plus FP8 MTP head, so the validated
+rollback omits MTP. At five independent sessions, TTFT rose from 1.01 s to
+4.66 s. It is a quality-first rollback, not the lowest-latency choice. Preserve
+the observed engine version and image digest with every rerun.
 
 Evidence: [Qwen protocol-v2 comparison](../findings/2026-07-12-qwen36-protocol-v2-comparison.md).
 
@@ -194,12 +224,12 @@ exactly reproducible.
 | Setting | Tested value |
 |---|---|
 | Checkpoint | [`openai/gpt-oss-120b`](https://huggingface.co/openai/gpt-oss-120b), observed revision `b5c939de8f754692c1647ca79fbf85e8c1e70f8a` |
-| Managed service / endpoint | `heavy` / `http://127.0.0.1:30002/v1` |
+| Managed service / endpoint | `heavy-gptoss-rollback` / `http://127.0.0.1:30002/v1` when explicitly selected |
 | Served name | `gpt-oss-120b` |
 | Engine path | vLLM nightly; native MXFP4 weights; FP8 KV; CUDA graphs enabled; OpenAI tool parser |
 | Context / admission | 131,072 served and validated; engine-default sequence cap was not retained as benchmark evidence |
 
-The production Heavy control passed functional preflight at 131K and 20/20 tool
+The former production Heavy control passed functional preflight at 131K and 20/20 tool
 calls. Its established controlled long-generation result is 183.2 tok/s. Use the
 model's `reasoning_effort` control rather than Qwen's `enable_thinking` field.
 
