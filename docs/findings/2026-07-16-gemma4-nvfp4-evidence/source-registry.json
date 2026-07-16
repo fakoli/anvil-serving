@@ -1,0 +1,45 @@
+{
+  "captured": "2026-07-16",
+  "sources": [
+    {
+      "url": "https://www.reddit.com/r/unsloth/comments/1uwe2qm/15x_faster_gemma_4_nvfp4_unsloth_quants/",
+      "published_or_observed_date": "2026-07-16",
+      "age_class": "same-day community announcement",
+      "evidence_type": "vendor-authored Reddit announcement and advisory performance claim",
+      "hardware_engine_relevance": "Claims approximately 1.5x speed versus QAT and cites B200 results; not a local RTX 5090 or RTX PRO 6000 measurement.",
+      "decision_impact": "Triggered the local same-engine QAT-versus-NVFP4 A/B; the 1.5x claim was not reproduced by the controlled 12B run."
+    },
+    {
+      "url": "https://huggingface.co/collections/unsloth/nvfp4",
+      "published_or_observed_date": "2026-07-16",
+      "age_class": "current collection",
+      "evidence_type": "publisher checkpoint collection",
+      "hardware_engine_relevance": "Lists the Gemma 4 12B, 26B-A4B, and 31B compressed-tensors NVFP4 repositories tested locally.",
+      "decision_impact": "Defined the larger-model follow-up matrix."
+    },
+    {
+      "url": "https://huggingface.co/unsloth/gemma-4-12b-it-NVFP4",
+      "published_or_observed_date": "2026-07-15",
+      "age_class": "new checkpoint",
+      "evidence_type": "publisher model card and immutable repository",
+      "hardware_engine_relevance": "Revision b1f649734b34aa5575b03d186abd1b9be3d0d5c4; 8.67 GiB weights; vLLM 0.25+ native NVFP4 recipe.",
+      "decision_impact": "Direct RTX 5090 A/B against the current official 12B W4A16 checkpoint."
+    },
+    {
+      "url": "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-NVFP4",
+      "published_or_observed_date": "2026-07-15",
+      "age_class": "new checkpoint",
+      "evidence_type": "publisher model card and immutable repository",
+      "hardware_engine_relevance": "Revision 20df0542b1a86ce19f495ac2eca2c7c12bce82f9; 15.75 GiB weights; tested on both local Blackwell GPUs.",
+      "decision_impact": "Established the fastest locally tested Gemma 4 variation, but it did not clear the strict repeated quality gate."
+    },
+    {
+      "url": "https://huggingface.co/unsloth/gemma-4-31B-it-NVFP4",
+      "published_or_observed_date": "2026-07-15",
+      "age_class": "new checkpoint",
+      "evidence_type": "publisher model card and immutable repository",
+      "hardware_engine_relevance": "Revision 373c00b5ecb0a8ee43942b5ca08b93805de8eee4; 23.06 GiB weights; full 256K Heavy serve.",
+      "decision_impact": "Passed the strict Heavy quality gate but was materially slower than both 26B-A4B and the current 12B Heavy serve."
+    }
+  ]
+}
