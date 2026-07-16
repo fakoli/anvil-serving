@@ -308,6 +308,93 @@ services:
       --gpu-memory-utilization 0.85
       --host 0.0.0.0 --port 39002
 
+  # Gemma 4 chat-template bakeoff lanes (2026-07-16). These services pin the
+  # model and tokenizer revisions independently so the July 15 canonical
+  # template can be tested with unchanged weights as well as the new official
+  # checkpoints. Deliberately DO NOT add --chat-template here: vLLM's bundled
+  # examples/tool_chat_template_gemma4.jinja predates the canonical repair and
+  # would bypass the template under test. Both endpoints remain loopback-only,
+  # evaluation-only, and outside router policy.
+  gemma4-fast-lab:
+    image: ${GEMMA4_VLLM_IMAGE:-vllm/vllm-openai:v0.25.1}
+    container_name: vllm-gemma4-fast-lab
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39037:39037"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${GEMMA4_FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${GEMMA4_FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve ${GEMMA4_FAST_MODEL:-google/gemma-4-E4B-it-qat-w4a16-ct}
+      --revision ${GEMMA4_FAST_REVISION:-29eacc1fb21041c5168e898028cf1653d5c10dfe}
+      --tokenizer ${GEMMA4_FAST_TOKENIZER:-google/gemma-4-E4B-it}
+      --tokenizer-revision ${GEMMA4_FAST_TOKENIZER_REVISION:-fa62d88df2e6df5efa9d26ad6b3beaea2765f0cd}
+      --served-model-name gemma4-fast-lab
+      --kv-cache-dtype fp8
+      --enable-auto-tool-choice
+      --reasoning-parser gemma4
+      --tool-call-parser gemma4
+      --limit-mm-per-prompt '{"image":0,"audio":0}'
+      --max-model-len ${GEMMA4_FAST_MAX_MODEL_LEN:-32768}
+      --max-num-seqs ${GEMMA4_FAST_MAX_NUM_SEQS:-2}
+      --gpu-memory-utilization ${GEMMA4_FAST_GPU_MEMORY_UTILIZATION:-0.78}
+      --host 0.0.0.0 --port 39037
+      ${GEMMA4_FAST_EXTRA_ARGS:-}
+
+  gemma4-heavy-lab:
+    image: ${GEMMA4_VLLM_IMAGE:-vllm/vllm-openai:v0.25.1}
+    container_name: vllm-gemma4-heavy-lab
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39038:39038"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: ${GEMMA4_HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${GEMMA4_HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve ${GEMMA4_HEAVY_MODEL:-google/gemma-4-26B-A4B-it}
+      --revision ${GEMMA4_HEAVY_REVISION:-01e5b3ee840d3a9e0b0b493c593e85398a30ef75}
+      --tokenizer ${GEMMA4_HEAVY_TOKENIZER:-google/gemma-4-26B-A4B-it}
+      --tokenizer-revision ${GEMMA4_HEAVY_TOKENIZER_REVISION:-01e5b3ee840d3a9e0b0b493c593e85398a30ef75}
+      --served-model-name gemma4-heavy-lab
+      --kv-cache-dtype fp8
+      --enable-auto-tool-choice
+      --reasoning-parser gemma4
+      --tool-call-parser gemma4
+      --limit-mm-per-prompt '{"image":0,"audio":0}'
+      --max-model-len ${GEMMA4_HEAVY_MAX_MODEL_LEN:-32768}
+      --max-num-seqs ${GEMMA4_HEAVY_MAX_NUM_SEQS:-2}
+      --gpu-memory-utilization ${GEMMA4_HEAVY_GPU_MEMORY_UTILIZATION:-0.95}
+      --host 0.0.0.0 --port 39038
+      ${GEMMA4_HEAVY_EXTRA_ARGS:-}
+
   # Experimental Fast voice TTS candidate. Gepard exposes Cartesia-compatible
   # `/tts/websocket` streaming TTS on container port 8000. It needs HF_TOKEN
   # for first-run model access and Postgres for cloned voice prefixes. The

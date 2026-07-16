@@ -1,0 +1,84 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:30002/v1",
+  "model": "gemma4-12b-it-w4a16-ct",
+  "thinking": {
+    "mode": "enabled",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 4096,
+    "max_completion_tokens": 4352
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "2.7s got='The most idiomatic and efficient way to do this in' finish='stop' visible=212 reasoning_chars=699 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=595 reasoning_tokens=None"
+    }
+  ],
+  "observations": [
+    {
+      "content": "The most idiomatic and efficient way to do this in Python is using the built-in `sum()` function:\n\n```python\ntotal = sum(xs)\n```\n\n### Example usage:\n```python\nxs = [1, 2, 3, 4, 5]\nprint(sum(xs))  # Output: 15\n```",
+      "finish_reason": "stop",
+      "content_chars": 212,
+      "content_excerpt": "The most idiomatic and efficient way to do this in Python is using the built-in `sum()` function:\n\n```python\ntotal = sum(xs)\n```\n\n### Example usage:\n```python\nxs = [1, 2, 3, 4, 5]\nprint(sum(xs))  # Ou",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 699,
+      "reasoning_excerpt": "*   Input: A list `xs`.\n    *   Output: The sum of the elements in `xs`.\n    *   Constraint: Must be a Python one-liner.\n\n    *   The standard way to sum a list in Python is using the built-in `sum()`",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 32,
+        "total_tokens": 323,
+        "completion_tokens": 291,
+        "prompt_tokens_details": null
+      },
+      "test": "smoke",
+      "seconds": 2.655,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": "reasoning",
+      "reasoning_chars": 595,
+      "reasoning_excerpt": "*   Input: \"Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\"\n    *   Constraint 1: Return ONLY a JSON object.\n    *   Constraint 2: The JSON object must be `{\"language\":\"python\",",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 34,
+        "total_tokens": 214,
+        "completion_tokens": 180,
+        "prompt_tokens_details": null
+      },
+      "test": "json",
+      "seconds": 1.641,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "required",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}

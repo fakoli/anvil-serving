@@ -1,0 +1,611 @@
+{
+  "context": {
+    "cap_tokens": 260864,
+    "max_model_len": 262144,
+    "targets": [
+      {
+        "attempted_context_tokens": 32768,
+        "chars_per_token": 3.0,
+        "clamped_tokens": 32768,
+        "e2e_ms": 4121.553182601929,
+        "estimated_prompt_tokens": 32768,
+        "output_tokens": 0,
+        "status": "passed",
+        "target_tokens": 32768,
+        "ttft_ms": 4121.552228927612,
+        "usage": {
+          "completion_tokens": 256,
+          "prompt_tokens": 27774,
+          "total_tokens": 28030
+        }
+      },
+      {
+        "attempted_context_tokens": 131072,
+        "chars_per_token": 3.539,
+        "clamped_tokens": 131072,
+        "e2e_ms": 24868.23797225952,
+        "estimated_prompt_tokens": 131071,
+        "output_tokens": 0,
+        "status": "passed",
+        "target_tokens": 131072,
+        "ttft_ms": 24868.237495422363,
+        "usage": {
+          "completion_tokens": 256,
+          "prompt_tokens": 152736,
+          "total_tokens": 152992
+        }
+      },
+      {
+        "attempted_context_tokens": 240000,
+        "chars_per_token": 3.037,
+        "clamped_tokens": 240000,
+        "e2e_ms": 55764.29343223572,
+        "estimated_prompt_tokens": 239999,
+        "output_tokens": 0,
+        "status": "passed",
+        "target_tokens": 240000,
+        "ttft_ms": 55764.29319381714,
+        "usage": {
+          "completion_tokens": 256,
+          "prompt_tokens": 243409,
+          "total_tokens": 243665
+        }
+      }
+    ]
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 2048,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 512
+  },
+  "failures": [
+    {
+      "error": "pass rate below threshold",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "prompt_id": "parallel_timeout_triage",
+      "suite": "intelligence"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39038/v1",
+    "candidate_id": "google/gemma-4-26B-A4B-it@01e5b3ee840d3a9e0b0b493c593e85398a30ef75",
+    "config_id": "heavy-26b-bf16-256k-thinking",
+    "engine": "vllm-0.25.1",
+    "gpu": "RTX-PRO-6000-GPU-d0f446cf",
+    "model": "gemma4-heavy-lab",
+    "started_at": "2026-07-16T16:06:22Z"
+  },
+  "intelligence": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_excerpt": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1926.496982574463,
+            "reasoning_chars": 591,
+            "reasoning_excerpt": "*   Target file: `app.py`\n    *   Original content:\n        ```python\n        timeout = 30\n        retries = 2\n        ```\n    *   Goal: Change `timeout` to `45`, leave `retries` unchanged.\n    *   Ou",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 265,
+              "prompt_tokens": 57,
+              "prompt_tokens_details": null,
+              "total_tokens": 322
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_excerpt": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1934.0159893035889,
+            "reasoning_chars": 591,
+            "reasoning_excerpt": "*   Target file: `app.py`\n    *   Original content:\n        ```python\n        timeout = 30\n        retries = 2\n        ```\n    *   Goal: Change `timeout` to `45`, leave `retries` unchanged.\n    *   Ou",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 265,
+              "prompt_tokens": 57,
+              "prompt_tokens_details": null,
+              "total_tokens": 322
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "content_excerpt": "```diff\n--- app.py\n+++ app.py\n@@ -1,2 +1,2 @@\n-timeout = 30\n+timeout = 45\n retries = 2\n```",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 1933.1200122833252,
+            "reasoning_chars": 591,
+            "reasoning_excerpt": "*   Target file: `app.py`\n    *   Original content:\n        ```python\n        timeout = 30\n        retries = 2\n        ```\n    *   Goal: Change `timeout` to `45`, leave `retries` unchanged.\n    *   Ou",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "text_checks": [
+              {
+                "name": "diff_shape",
+                "passed": true
+              },
+              {
+                "name": "removes_old_timeout",
+                "passed": true
+              },
+              {
+                "name": "adds_new_timeout",
+                "passed": true
+              }
+            ],
+            "usage": {
+              "completion_tokens": 265,
+              "prompt_tokens": 57,
+              "prompt_tokens_details": null,
+              "total_tokens": 322
+            }
+          }
+        ],
+        "id": "unified_diff_timeout_edit",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed",
+        "validator": "deterministic_text_checks"
+      },
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "The total latency (3000 ms) exceeds the 2500 ms timeout due to the LLM bottleneck, which can be mitigated by implementing LLM streaming to the TTS engine.",
+            "content_excerpt": "The total latency (3000 ms) exceeds the 2500 ms timeout due to the LLM bottleneck, which can be mitigated by implementing LLM streaming to the TTS engine.",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 4527.6124477386475,
+            "reasoning_chars": 2045,
+            "reasoning_excerpt": "\n*   Components: STT (Speech-to-Text), LLM (Large Language Model), TTS (Text-to-Speech).\n*   Constraint: Total turn timeout = 2500 ms.\n*   Actual Latency: STT (550 ms) + LLM (1800 ms) + TTS (650 ms) =",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 627,
+              "prompt_tokens": 81,
+              "prompt_tokens_details": null,
+              "total_tokens": 708
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "The total latency exceeds the 2500ms timeout due to the LLM bottleneck, which can be mitigated by implementing LLM token streaming to the TTS engine.",
+            "content_excerpt": "The total latency exceeds the 2500ms timeout due to the LLM bottleneck, which can be mitigated by implementing LLM token streaming to the TTS engine.",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 4130.256175994873,
+            "reasoning_chars": 1904,
+            "reasoning_excerpt": "\n*   Components: STT (Speech-to-Text), LLM (Large Language Model), TTS (Text-to-Speech).\n*   Total Turn Timeout: 2500 ms.\n*   Actual Latency: 550 (STT) + 1800 (LLM) + 650 (TTS) = 3000 ms.\n*   Constrai",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 572,
+              "prompt_tokens": 81,
+              "prompt_tokens_details": null,
+              "total_tokens": 653
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "The total latency exceeds the 2500ms timeout due to the LLM bottleneck, which can be mitigated by implementing LLM token streaming to the TTS engine.",
+            "content_excerpt": "The total latency exceeds the 2500ms timeout due to the LLM bottleneck, which can be mitigated by implementing LLM token streaming to the TTS engine.",
+            "failure_class": "deterministic_check_failed",
+            "finish_reason": "stop",
+            "latency_ms": 4140.666246414185,
+            "reasoning_chars": 1904,
+            "reasoning_excerpt": "\n*   Components: STT (Speech-to-Text), LLM (Large Language Model), TTS (Text-to-Speech).\n*   Total Turn Timeout: 2500 ms.\n*   Actual Latency: 550 (STT) + 1800 (LLM) + 650 (TTS) = 3000 ms.\n*   Constrai",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "failed",
+            "text_checks": [
+              {
+                "name": "identifies_budget_overrun",
+                "passed": true
+              },
+              {
+                "name": "offers_latency_fix",
+                "passed": false
+              }
+            ],
+            "usage": {
+              "completion_tokens": 572,
+              "prompt_tokens": 81,
+              "prompt_tokens_details": null,
+              "total_tokens": 653
+            }
+          }
+        ],
+        "error": "pass rate below threshold",
+        "id": "parallel_timeout_triage",
+        "pass_count": 0,
+        "pass_rate": 0.0,
+        "required_pass_rate": 1.0,
+        "status": "failed",
+        "validator": "deterministic_text_checks"
+      }
+    ],
+    "status": "failed"
+  },
+  "run_id": "fast-bakeoff-20260716T160622Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": 24868.23797225952,
+    "intelligence_pass_rate": 0.5,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": true,
+    "thinking_mode": "enabled",
+    "tool_call_passed": true,
+    "ttft_p50_ms": 24868.237495422363,
+    "usable_context_tokens": 240000,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768,
+      131072,
+      240000
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": [
+      "chat",
+      "context",
+      "tool",
+      "session",
+      "intelligence"
+    ]
+  },
+  "session": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 793.0104732513428,
+            "reasoning_chars": 365,
+            "reasoning_excerpt": "The user is asking for the session code that was previously provided.\nThe previous message was: \"Remember this session code: RIVER-918. Reply with ok.\"\nThe user's current instruction is: \"What session",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 107,
+              "prompt_tokens": 55,
+              "prompt_tokens_details": null,
+              "total_tokens": 162
+            }
+          },
+          {
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 793.6651706695557,
+            "reasoning_chars": 365,
+            "reasoning_excerpt": "The user is asking for the session code that was previously provided.\nThe previous message was: \"Remember this session code: RIVER-918. Reply with ok.\"\nThe user's current instruction is: \"What session",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 107,
+              "prompt_tokens": 55,
+              "prompt_tokens_details": null,
+              "total_tokens": 162
+            }
+          },
+          {
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "RIVER-918",
+            "content_excerpt": "RIVER-918",
+            "expected": "RIVER-918",
+            "failure_class": null,
+            "finish_reason": "stop",
+            "latency_ms": 790.8487319946289,
+            "reasoning_chars": 365,
+            "reasoning_excerpt": "The user is asking for the session code that was previously provided.\nThe previous message was: \"Remember this session code: RIVER-918. Reply with ok.\"\nThe user's current instruction is: \"What session",
+            "reasoning_field": "reasoning",
+            "reasoning_tokens": null,
+            "status": "passed",
+            "usage": {
+              "completion_tokens": 107,
+              "prompt_tokens": 55,
+              "prompt_tokens_details": null,
+              "total_tokens": 162
+            }
+          }
+        ],
+        "name": "single_request_multiturn_recall",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": "vllm serve google/gemma-4-26B-A4B-it --revision 01e5b3ee840d3a9e0b0b493c593e85398a30ef75 --max-model-len 262144 --kv-cache-dtype fp8"
+  },
+  "suites": {},
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_evidence": "C:\\Users\\sdoum\\ai-code\\anvil-serving\\docs\\findings\\2026-07-16-gemma4-chat-template-bakeoff-evidence\\heavy-26b-thinking-control.json",
+    "control_evidence_sha256": "7206426785261e7f2da653d02afe3ae76fd8b0ce4aa0f413ea859e1e4feab643",
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "verified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "e2e_p50_ms": 24868.23797225952,
+      "e2e_p95_ms": 55764.29343223572,
+      "output_tokens": 0,
+      "ttft_p50_ms": 24868.237495422363,
+      "ttft_p95_ms": 55764.29319381714
+    },
+    "wall_ms": 106373.70586395264
+  },
+  "tool": {
+    "checks": [
+      {
+        "attempt_count": 3,
+        "attempts": [
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 1,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 226.668119430542,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 25,
+              "prompt_tokens": 81,
+              "prompt_tokens_details": null,
+              "total_tokens": 106
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 2,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 208.74738693237305,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 25,
+              "prompt_tokens": 81,
+              "prompt_tokens_details": null,
+              "total_tokens": 106
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          },
+          {
+            "arguments": {
+              "zip": "98101"
+            },
+            "attempt": 3,
+            "budget": {
+              "legacy_max_tokens_as_visible": false,
+              "max_completion_tokens": 2560,
+              "reasoning_headroom_tokens": 2048,
+              "visible_answer_tokens": 512
+            },
+            "content": "",
+            "content_excerpt": "",
+            "failure_class": null,
+            "finish_reason": "tool_calls",
+            "latency_ms": 207.31759071350098,
+            "reasoning_chars": 0,
+            "reasoning_excerpt": "",
+            "reasoning_field": null,
+            "reasoning_tokens": null,
+            "status": "passed",
+            "tool_call_count": 1,
+            "usage": {
+              "completion_tokens": 25,
+              "prompt_tokens": 81,
+              "prompt_tokens_details": null,
+              "total_tokens": 106
+            },
+            "valid_tool_call_count": 1,
+            "validation_errors": []
+          }
+        ],
+        "expected_arguments": {
+          "zip": "98101"
+        },
+        "expected_function": "record_weather_zip",
+        "name": "openai_tool_call_smoke",
+        "pass_count": 3,
+        "pass_rate": 1.0,
+        "required_pass_rate": 1.0,
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "voice": {
+    "llm_latency_ms": null,
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

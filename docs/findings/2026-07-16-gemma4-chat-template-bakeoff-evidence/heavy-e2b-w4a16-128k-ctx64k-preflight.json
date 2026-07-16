@@ -1,0 +1,221 @@
+{
+  "schema_version": "preflight/v2",
+  "base_url": "http://127.0.0.1:39038/v1",
+  "model": "gemma4-heavy-lab",
+  "thinking": {
+    "mode": "disabled",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": null
+  },
+  "budget": {
+    "visible_answer_tokens": 256,
+    "reasoning_headroom_tokens": 0,
+    "max_completion_tokens": 256
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "needle",
+    "tools"
+  ],
+  "results": [
+    {
+      "name": "smoke (short coding)",
+      "passed": true,
+      "detail": "1.0s got='Here are a few ways to write a Python one-liner th' finish='stop' visible=820 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "structured JSON",
+      "passed": true,
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "needle @ ~60000 ctx",
+      "passed": true,
+      "detail": "2.0s ctx~60000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=0 reasoning_tokens=None"
+    },
+    {
+      "name": "shared-prefix tool batch x5",
+      "passed": true,
+      "detail": "5/5 clean (sample: 0.1s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=0 reasoning_tokens=None)"
+    }
+  ],
+  "observations": [
+    {
+      "content": "Here are a few ways to write a Python one-liner that returns the sum of a list `xs`, depending on your preference and what you consider a \"one-liner\":\n\n**1. Using the built-in `sum()` function (The most Pythonic and recommended way):**\n\n```python\nsum_of_xs = sum(xs)\n```\n\n**2. Using a List Comprehension and `sum()` (More complex, but demonstrates list comprehension):**\n\nIf you wanted to sum the *squares* of the elements, for example:\n\n```python\nsum_of_squares = sum([x**2 for x in xs])\n```\n\n**3. Using `functools.reduce` (Functional approach):**\n\nThis is generally overkill for a simple sum, but it's a valid functional one-liner:\n\n```python\nfrom functools import reduce\nsum_of_xs = reduce(lambda x, y: x + y, xs, 0)\n```\n\n---\n\n**The best answer for simply returning the sum of a list `xs` is:**\n\n```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "content_chars": 820,
+      "content_excerpt": "Here are a few ways to write a Python one-liner that returns the sum of a list `xs`, depending on your preference and what you consider a \"one-liner\":\n\n**1. Using the built-in `sum()` function (The mo",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 25,
+        "total_tokens": 264,
+        "completion_tokens": 239,
+        "prompt_tokens_details": null
+      },
+      "test": "smoke",
+      "seconds": 1.036,
+      "passed": true,
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 27,
+        "total_tokens": 37,
+        "completion_tokens": 10,
+        "prompt_tokens_details": null
+      },
+      "test": "json",
+      "seconds": 0.069,
+      "passed": true,
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 49548,
+        "total_tokens": 49561,
+        "completion_tokens": 13,
+        "prompt_tokens_details": null
+      },
+      "test": "needle",
+      "seconds": 2.005,
+      "passed": true,
+      "validation_detail": "needle present"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5269,
+        "total_tokens": 5285,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.123,
+      "request_index": 0,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5269,
+        "total_tokens": 5285,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.138,
+      "request_index": 2,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5269,
+        "total_tokens": 5285,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.214,
+      "request_index": 1,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5269,
+        "total_tokens": 5285,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.229,
+      "request_index": 3,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "finish_reason": "tool_calls",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "reasoning_field": null,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "",
+      "reasoning_tokens": null,
+      "usage": {
+        "prompt_tokens": 5269,
+        "total_tokens": 5285,
+        "completion_tokens": 16,
+        "prompt_tokens_details": null
+      },
+      "test": "tools",
+      "seconds": 0.292,
+      "request_index": 4,
+      "passed": true,
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "evidence_policy": {
+    "reasoning": "forbidden",
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": []
+  },
+  "passed": true
+}
