@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "supported",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "checkpoint-metadata.json: pinned Unsloth chat_template.jinja exposes enable_thinking",
+  "observed_at": "2026-07-16T00:00:00Z"
+}

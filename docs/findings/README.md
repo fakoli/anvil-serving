@@ -9,6 +9,7 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-16 | [2026-07-16-gemma4-unsloth-nvfp4-follow-up.md](2026-07-16-gemma4-unsloth-nvfp4-follow-up.md) | Unsloth Gemma 4 NVFP4 12B/26B-A4B/31B Fast/Heavy matrix, direct QAT speed A/B, template/tool regression, and no-promotion result |
 | 2026-07-16 | [2026-07-16-gemma4-chat-template-bakeoff.md](2026-07-16-gemma4-chat-template-bakeoff.md) | July 15 Gemma 4 template matrix on RTX 5090 and PRO 6000, Fast hold, Heavy 12B W4A16 promotion, rollback proof, and raw evidence |
 | 2026-07-13 | [2026-07-13-q36-pro6000-container-recipe.md](2026-07-13-q36-pro6000-container-recipe.md) | First physical RTX PRO 6000 build and characterization of the q36 engine: pinned container recipe, context matrix, MTP A/B, smoke, reasoning, and repeated MMLU-Pro evidence |
 | 2026-07-13 | [2026-07-13-e4b-fast-router-promotion.md](2026-07-13-e4b-fast-router-promotion.md) | Gemma 4 E4B fast-tier router promotion, profile reseed (calibration pending), and OpenClaw harness lockstep (gpu-reservations:T007) |
