@@ -1,0 +1,15 @@
+{
+  "schema": "anvil-serving.startup-evidence/v1",
+  "observed_at": "2026-07-16",
+  "tier": "fast",
+  "hardware": "NVIDIA GeForce RTX 5090 32 GB",
+  "model": "google/gemma-4-31B-A4B-it-qat-w4a16-ct",
+  "revision": "a766e9afa44931dfa9ff5de90af9494ca193e74c",
+  "max_model_len": 131072,
+  "model_gpu_allocation_gib": 19.82,
+  "available_kv_cache_gib": 4.28,
+  "required_kv_cache_gib": 6.35,
+  "estimated_max_model_len": 76736,
+  "result": "startup_failed",
+  "decision": "Usable at 32K, 48K, and 64K, but not at the official 128K window on Fast; not promoted."
+}

@@ -1058,9 +1058,9 @@ def test_fakoli_agentic_config_loads():
     assert fast.context_limit == 32768
     assert dict(fast.extra_body or {}) == {"chat_template_kwargs": {"enable_thinking": False}}
     assert fast.extra_body_defaults is None
-    assert heavy.model == "thinkingcap-qwen36-27b-fp8"
+    assert heavy.model == "gemma4-12b-it-w4a16-ct"
     assert heavy.base_url == "http://host.docker.internal:30002/v1"
-    assert heavy.context_limit == 131072
+    assert heavy.context_limit == 262144
     assert heavy.extra_body is None
     assert dict(heavy.extra_body_defaults or {}) == {
         "chat_template_kwargs": {"enable_thinking": True}

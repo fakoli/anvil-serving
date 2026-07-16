@@ -8,7 +8,7 @@
 
 This page is the public, searchable summary of the model and end-to-end benchmarks that currently inform anvil-serving's reference deployment. It is deliberately a summary, not a generic model leaderboard: every number depends on the recorded model revision, engine, quantization, context limit, hardware, workload, and topology.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-12**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-07-16**.
 
 ## Read these results correctly
 
@@ -19,11 +19,13 @@ The dated [findings](findings/README.md) contain the full commands, raw artifact
 
 ## Current Fast-tier result
 
-The reference Fast tier on Fakoli Dark's RTX 5090 is **`nvidia/Qwen3.6-35B-A3B-NVFP4`**, served as `qwen36-35b-a3b-nvfp4` through vLLM nightly with `modelopt_fp4`, FP8 KV cache, a 32K context limit, and two sequences. It was promoted after a human gate, direct-endpoint preflight, route proof, and OpenClaw sync; it is eligible for low-latency chat and bounded edits, not newly recalibrated planning or review work.
+The reference Fast tier on Fakoli Dark's RTX 5090 is **`leon-se/gemma-4-E4B-it-FP8-Dynamic`**, served as `gemma4-e4b-it` with FP8 KV cache and a 32K context limit. The July 16 official-checkpoint/template rerun retained this control: it passed all repeated quality gates, while the new-template E2B, E4B, and 12B Fast candidates each failed the strict timeout-triage check with thinking disabled.
 
 | Candidate / tested configuration | Measured voice total / LLM stage | Loaded-endpoint TTFT / end-to-end | Approx. decode rate | Outcome |
 |---|---:|---:|---:|---|
-| Qwen3.6-35B-A3B, vLLM NVFP4, 32K | 377.52 ms / 165.40 ms | 1489.36 ms / 2302.37 ms | 236.16 tok/s | **Current Fast tier**; all bakeoff hard gates passed. |
+| Gemma 4 E4B FP8-Dynamic control, legacy embedded template, 32K | — | 460 ms TTFT p50 at 30K, c1; 580 ms at c2 | 49 tok/s c1; 79 tok/s c2 aggregate | **Current Fast tier**; repeated chat/context/tool/session/intelligence gates passed. |
+| Official Gemma 4 E2B/E4B/12B W4A16, July 15 template | — | 430 / 630 / 1430 ms TTFT p50 at 32K, c1 | 96 / 41 / 22 tok/s aggregate | Protocol and long-context gates passed; all three rejected for Fast by the strict thinking-disabled quality gate. |
+| Qwen3.6-35B-A3B, vLLM NVFP4, 32K | 377.52 ms / 165.40 ms | 1489.36 ms / 2302.37 ms | 236.16 tok/s | Former Fast tier; all historical bakeoff hard gates passed. |
 | Qwen3.6-27B control, vLLM NVFP4, 32K | 1130.21 ms / 814.83 ms | 6203.94 ms / 9041.91 ms | 67.65 tok/s | Former Fast-tier control. |
 | Devstral Small 2, vLLM FP8, 8K | 923.98 ms / 433.12 ms | 742.46 ms / 3755.56 ms | 57.75 tok/s | Promising coding/agent fallback, but the successful run required an 8K context limit. |
 | GLM-4.7-Flash, llama.cpp `UD-Q4_K_XL`, 32K | 2376.21 ms / 961.49 ms | 6196.05 ms / 7417.46 ms | 157.20 tok/s | Tool and session checks passed, but it was not competitive for the Fast voice role. |
@@ -78,6 +80,30 @@ answer. The API still enforces one combined completion cap; the allocations are
 recorded intent rather than a claim of hard server-side partitioning.
 
 These rows are from the [Fast-tier LLM bakeoff](findings/2026-07-08-fast-tier-llm-bakeoff.md) and its [human-gated promotion record](findings/2026-07-08-fast-tier-promotion.md). The voice artifacts in that bakeoff measure STT, LLM, and TTS stage timing, but their STT hypothesis is empty with WER `1.0`; they are **not** semantic speech-recognition accuracy results. The displayed decode rate is derived from the recorded evidence as `output_tokens * 1000 / (e2e_ms - ttft_ms)`.
+
+## Gemma 4 July 15 template matrix (2026-07-16)
+
+The current Heavy tier is **official Gemma 4 12B IT QAT W4A16**, served as
+`gemma4-12b-it-w4a16-ct` through vLLM 0.25.1 on the RTX PRO 6000 with FP8 KV,
+a 256K context limit, five admitted sequences, and thinking enabled by router
+default. It replaced ThinkingCap after a human-approved guarded promotion;
+ThinkingCap remains the immediate managed rollback.
+
+| Heavy configuration | Repeated quality | 32K TTFT p50 / aggregate output | Quality context TTFT (32K / 128K / 240K) | Outcome |
+|---|---|---:|---:|---|
+| ThinkingCap Qwen3.6 27B FP8 control | pass | 4.84 s / 3 tok/s | 7.83 / 57.60 / 124.70 s | Valid rollback |
+| Gemma 4 12B W4A16, July 15 template | **pass** | **1.52 s / 21 tok/s** | **6.96 / 44.61 / 97.33 s** | **Current Heavy tier** |
+| Gemma 4 26B BF16 | fail timeout triage 0/3 | 0.73 s / 36 tok/s | capacity TTFT 11.93 s at 120K, 34.07 s at 240K | Faster, strict-quality failure |
+| Gemma 4 31B W4A16 | pass | 4.02 s / 7 tok/s | 15.44 / 112.30 / 248.57 s | Quality pass, materially slower |
+
+The 12B promotion gate passed disabled-thinking smoke/JSON, a 240K needle,
+20/20 tools, a separate enabled-thinking reasoning-evidence gate, router reload,
+and exact post-reload identity. The first live attempt failed closed on a
+256-visible-token `finish_reason=length` and automatically restored the validated
+ThinkingCap rollback; the corrected 512-visible-token gate then passed without
+removing any check. The Fast tier did not change. Full matrix, pinned revisions,
+template hashes, failed starts, two-turn tool replay, cache cleanup, and raw
+artifacts: [Gemma 4 chat-template bakeoff](findings/2026-07-16-gemma4-chat-template-bakeoff.md).
 
 ## Blackwell candidate bakeoff (2026-07-10)
 
@@ -202,8 +228,8 @@ on the ARC sanity slice, but failed both built-in intelligence checks on the
 final no-prefix-cache recipe. Nemotron 3 Super 120B completed 5/5, passed every
 built-in Heavy check, and scored 5/5 on the thinking-enabled ARC tie-break.
 
-Nemotron 3 Super is therefore the **best currently validated Heavy experiment**
-and the selected resident direct endpoint, superseding both Nemotron Puzzle's
+Nemotron 3 Super was therefore the **best validated Heavy experiment in that round**
+and the selected resident direct endpoint at capture time, superseding both Nemotron Puzzle's
 capacity-only recommendation and ThinkingCap's Qwen-only selection. It is not
 promoted into the production router. The short ARC slices remain sanity checks,
 not general-quality or promotion evidence, and the served 131K window does not
@@ -236,12 +262,13 @@ Its three-repetition confirmation reached **9/10 stable MMLU-Pro items and
 27/30 passing attempts**, while retaining its 15/15 ARC result at 1,024. This
 is the highest stable quality-slice score in the current Heavy round, ahead of
 Nemotron 3 Super's 8/10, but it costs materially more reasoning budget and wall
-time. Nemotron remains the better matched-budget/latency result. ThinkingCap is
-now the routed **Heavy default** when Heavy intelligence is prioritized: it
+time. Nemotron remained the better matched-budget/latency result. ThinkingCap was
+promoted as the routed **Heavy default** on 2026-07-12, then superseded by
+Gemma 4 12B on 2026-07-16. ThinkingCap
 passed a thinking-disabled functional gate (coding, JSON, 131K needle, 20/20
 tools) and a separate thinking-enabled gate with 256 visible tokens plus 4,096
 reasoning-headroom tokens. Both gates retained finish/reasoning evidence before
-the guarded router promotion; GPT-OSS-120B remains the complete rollback state.
+the guarded router promotion; GPT-OSS-120B was its complete rollback state.
 See the [promotion finding and raw evidence](findings/2026-07-12-thinkingcap-heavy-promotion.md).
 
 The Unsloth checkpoint used its required vLLM 0.25.0 / FlashInfer 0.6.13 /

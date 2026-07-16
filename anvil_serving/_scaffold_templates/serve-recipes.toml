@@ -24,12 +24,12 @@
 schema = "anvil-serving.serve-recipes/v1"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# VERIFIED — ThinkingCap Qwen3.6-27B FP8 : current standard Heavy tier
+# VERIFIED — ThinkingCap Qwen3.6-27B FP8 : immediate Heavy rollback
 # ─────────────────────────────────────────────────────────────────────────────
 [[recipe]]
 model = "bottlecapai/ThinkingCap-Qwen3.6-27B-FP8"
 status = "verified"
-source = "promoted on fakoli-dark, 2026-07-12 — guarded preflight and router promotion"
+source = "promoted on fakoli-dark 2026-07-12; validated as the Gemma 4 rollback on 2026-07-16"
 family = "qwen3.6"
 total_params_b = 27
 
@@ -45,7 +45,7 @@ total_params_b = 27
   quantization = "fp8"
   context_tokens = 262144
   port = 30002
-  managed_serve = "heavy"
+  managed_serve = "heavy-thinkingcap-rollback"
   served_model_name = "thinkingcap-qwen36-27b-fp8"
   env = [
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
@@ -61,7 +61,6 @@ total_params_b = 27
     "--reasoning-parser qwen3",
     "--enable-auto-tool-choice",
     "--tool-call-parser qwen3_coder",
-    "--speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":3}'",
     "--no-enable-prefix-caching",
     "--kv-cache-dtype fp8",
     "--max-model-len 262144",
@@ -78,12 +77,12 @@ total_params_b = 27
   [recipe.intent]
   suited = ["heavy", "agentic", "long-context", "planning", "review"]
   mode = "agentic-heavy"
-  rationale = "Current standard Heavy model: stronger agentic behavior than the GPT-OSS rollback while preserving tool use and thinking support."
+  rationale = "Immediate validated rollback for Gemma 4 Heavy; preserves tool use and thinking support without the currently incompatible MTP path."
 
   [recipe.activation.heavy]
-  plan = "thinkingcap-heavy"
-  direction = "promote"
-  compose_service = "heavy"
+  plan = "gemma4-12b-heavy"
+  direction = "rollback"
+  compose_service = "heavy-thinkingcap-rollback"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # VERIFIED — Qwen3.6-27B-NVFP4 : previous OpenClaw Talk fast-tier control
@@ -215,7 +214,7 @@ active_params_b = 5.1        # MoE: 128 experts, top-4 routing; MXFP4 MoE + bf16
   command = "anvil-serving models pull openai/gpt-oss-120b --token-env HF_TOKEN   # then hf --exclude 'metal/*' --exclude 'original/*'"
 
   [recipe.activation.heavy]
-  plan = "thinkingcap-heavy"
+  plan = "gemma4-12b-heavy"
   direction = "rollback"
   compose_service = "heavy-gptoss-rollback"
 
@@ -555,12 +554,12 @@ active_params_b = 3
   ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# UNVERIFIED — Gemma 4 12B IT : dense Gemma voice-latency scout
+# VERIFIED — Gemma 4 12B IT QAT W4A16 : current standard Heavy tier
 # ─────────────────────────────────────────────────────────────────────────────
 [[recipe]]
-model = "google/gemma-4-12B-it"
-status = "unverified"
-source = "voice-latency-model-ab:T002 shortlist; Google/vLLM docs only, not measured on fakoli-dark"
+model = "google/gemma-4-12B-it-qat-w4a16-ct"
+status = "verified"
+source = "measured and promoted on fakoli-dark, 2026-07-16 — July 15 template matrix and guarded router promotion"
 family = "gemma4"
 total_params_b = 12
 
@@ -568,35 +567,52 @@ total_params_b = 12
   gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
   arch = "sm_120"
   vram_total_gb = 96
-  vram_note = "First serve should target the 96 GB card to avoid conflating model behavior with 5090 memory pressure; 5090 use requires a separate reduced-context or quantized plan."
+  vram_note = "8.32 GiB measured model allocation; the remaining production budget is FP8 KV capacity for the 256K window and five admitted sequences."
 
   [recipe.serve]
   engine = "vllm"
-  managed_serve = "voice-gemma4-12b"
-  served_model_name = "gemma4-12b-it"
-  image = "vllm/vllm-openai:gemma4-unified"
-  quantization = "bf16"
-  context_tokens = 32768
-  port = 39001
-  note = "Requires Gemma 4-capable vLLM image/nightly and Gemma 4 chat template/parser validation before tool-call testing."
+  image = "vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089"
+  quantization = "w4a16-ct"
+  context_tokens = 262144
+  port = 30002
+  managed_serve = "heavy"
+  served_model_name = "gemma4-12b-it-w4a16-ct"
+  note = "Pin model and tokenizer revisions independently; do not add the pre-July-15 explicit repository chat-template override."
   env = [
     "CUDA_DEVICE_ORDER=PCI_BUS_ID",
     "VLLM_USE_V2_MODEL_RUNNER=0",
     "FLASHINFER_CUDA_ARCH_LIST=12.0f",
   ]
   flags = [
-    "--served-model-name gemma4-12b-it",
-    "--enable-auto-tool-choice",
+    "--revision 5d8bb23cdbff01e89d2a1a47f3b3d29b877bca76",
+    "--tokenizer google/gemma-4-12B-it",
+    "--tokenizer-revision 12ace6d648d72bd41519e140f1185f34d38c7e3d",
+    "--served-model-name gemma4-12b-it-w4a16-ct",
     "--reasoning-parser gemma4",
+    "--enable-auto-tool-choice",
     "--tool-call-parser gemma4",
-    "--chat-template examples/tool_chat_template_gemma4.jinja",
-    "--max-model-len 32768",
+    "--limit-mm-per-prompt '{\"image\":0,\"audio\":0}'",
+    "--kv-cache-dtype fp8",
+    "--max-model-len 262144",
+    "--max-num-seqs 5",
+    "--gpu-memory-utilization 0.92",
+    "--host 0.0.0.0",
+    "--port 30002",
   ]
 
+  [recipe.measured]
+  preflight = "Promotion passed disabled-thinking smoke/JSON, 240K needle, 20/20 tools, and separate enabled-thinking reasoning evidence."
+  promotion_evidence = "docs/findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/"
+
   [recipe.intent]
-  suited = ["voice-candidate", "gemma-scout", "low-latency"]
-  mode = "experiment"
-  rationale = "Dense 12B Gemma-class candidate with expected first-audio upside from smaller dense size and MTP; tool protocol and quality are the main risks."
+  suited = ["heavy", "agentic", "long-context", "planning", "review"]
+  mode = "agentic-heavy"
+  rationale = "Current standard Heavy model: matched the control's repeated quality while improving 32K, 128K, and 240K context latency."
+
+  [recipe.activation.heavy]
+  plan = "gemma4-12b-heavy"
+  direction = "promote"
+  compose_service = "heavy"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UNVERIFIED — Gemma 4 E4B IT : ultra-fast Gemma lower-bound scout

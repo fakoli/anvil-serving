@@ -1,0 +1,14 @@
+{
+  "schema": "anvil-serving.startup-evidence/v1",
+  "observed_at": "2026-07-16",
+  "tier": "fast",
+  "hardware": "NVIDIA GeForce RTX 5090 32 GB",
+  "model": "google/gemma-4-26B-A4B-it",
+  "revision": "01e5b3ee840d3a9e0b0b493c593e85398a30ef75",
+  "max_model_len": 32768,
+  "checkpoint_size_gib": 48.07,
+  "model_gpu_allocation_gib": 48.57,
+  "available_kv_cache_gib": -5.74,
+  "result": "startup_failed",
+  "decision": "Not a Fast candidate; BF16 weights exceed physical VRAM before a usable KV cache can be allocated."
+}

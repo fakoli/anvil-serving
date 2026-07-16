@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.cache-cleanup/v1",
+  "observed_at": "2026-07-16",
+  "scope": "vllm-hfcache Docker volume",
+  "approval": "User explicitly approved deleting the six reviewed stale model caches.",
+  "running_container_references": 0,
+  "deleted": [
+    {"repo": "nvidia/DeepSeek-V4-Flash-NVFP4", "observed_size_gib": 176.8},
+    {"repo": "dervig/MiniMax-M2.7-REAP", "observed_size_gib": 74.6},
+    {"repo": "nvidia/Nemotron-Super-120B", "observed_size_gib": 74.8},
+    {"repo": "mistralai/Mistral-Small-4", "observed_size_gib": 66.0},
+    {"repo": "nvidia/Nemotron-Puzzle-75B", "observed_size_gib": 49.9},
+    {"repo": "deepreinforce/Ornith-35B", "observed_size_gib": 47.5}
+  ],
+  "volume_free_before_gib": 0.0,
+  "volume_free_after_cleanup_gib": 483.4,
+  "volume_free_after_gemma_downloads_gib": 370.8
+}
