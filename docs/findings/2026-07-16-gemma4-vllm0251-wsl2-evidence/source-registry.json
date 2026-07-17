@@ -1,0 +1,45 @@
+{
+  "captured": "2026-07-16",
+  "sources": [
+    {
+      "url": "https://github.com/vllm-project/vllm/releases/tag/v0.25.1",
+      "published_or_observed_date": "2026-07-14",
+      "age_class": "current stable release",
+      "evidence_type": "official vLLM release",
+      "hardware_engine_relevance": "Pinned engine used for every local run.",
+      "decision_impact": "Upgraded production Fast to the same v0.25.1 digest already used by Heavy."
+    },
+    {
+      "url": "https://github.com/vllm-project/vllm/pull/41496",
+      "published_or_observed_date": "2026-07-13",
+      "age_class": "merged current feature",
+      "evidence_type": "official upstream implementation and review",
+      "hardware_engine_relevance": "Adds VLLM_WSL2_ENABLE_PIN_MEMORY and WSL2 pinned-memory support.",
+      "decision_impact": "Enabled the opt-in on lab and production Gemma services."
+    },
+    {
+      "url": "https://unsloth.ai/docs/basics/nvfp4.md",
+      "published_or_observed_date": "2026-07-16",
+      "age_class": "current publisher guide",
+      "evidence_type": "publisher format and benchmark methodology",
+      "hardware_engine_relevance": "Reports Gemma NVFP4 versus BF16 on one B200 at concurrency 128 and describes dynamic NVFP4 layer formats.",
+      "decision_impact": "Triggered the matched concurrency-128 local retest and corrected the earlier c1-only interpretation."
+    },
+    {
+      "url": "https://github.com/vllm-project/vllm/pull/40082",
+      "published_or_observed_date": "2026-07-16",
+      "age_class": "merged engine integration",
+      "evidence_type": "official FlashInfer B12x integration benchmark",
+      "hardware_engine_relevance": "Shows B12x gains grow with concurrency but are smaller than the full Unsloth headline.",
+      "decision_impact": "Treated B12x as one possible component rather than the whole explanation."
+    },
+    {
+      "url": "https://github.com/vllm-project/vllm/pull/48735",
+      "published_or_observed_date": "2026-07-16",
+      "age_class": "open upstream change",
+      "evidence_type": "official upstream work in progress",
+      "hardware_engine_relevance": "Fixes dense flashinfer_b12x linear-backend selection after v0.25.1.",
+      "decision_impact": "Did not attribute stable v0.25.1 CUTLASS measurements to B12x."
+    }
+  ]
+}

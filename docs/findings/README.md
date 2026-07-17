@@ -9,6 +9,7 @@ configurations, start with [Benchmark results](../BENCHMARKS.md). Newest first.
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-07-16 | [2026-07-16-gemma4-vllm0251-wsl2-c128.md](2026-07-16-gemma4-vllm0251-wsl2-c128.md) | vLLM 0.25.1 WSL2 pinned-memory upgrade, V1/V2 Gemma 4 c1/c8/c128 retest, larger-model sweep, and corrected high-concurrency NVFP4 conclusion |
 | 2026-07-16 | [2026-07-16-gemma4-unsloth-nvfp4-follow-up.md](2026-07-16-gemma4-unsloth-nvfp4-follow-up.md) | Unsloth Gemma 4 NVFP4 12B/26B-A4B/31B Fast/Heavy matrix, direct QAT speed A/B, template/tool regression, and no-promotion result |
 | 2026-07-16 | [2026-07-16-gemma4-chat-template-bakeoff.md](2026-07-16-gemma4-chat-template-bakeoff.md) | July 15 Gemma 4 template matrix on RTX 5090 and PRO 6000, Fast hold, Heavy 12B W4A16 promotion, rollback proof, and raw evidence |
 | 2026-07-13 | [2026-07-13-q36-pro6000-container-recipe.md](2026-07-13-q36-pro6000-container-recipe.md) | First physical RTX PRO 6000 build and characterization of the q36 engine: pinned container recipe, context matrix, MTP A/B, smoke, reasoning, and repeated MMLU-Pro evidence |

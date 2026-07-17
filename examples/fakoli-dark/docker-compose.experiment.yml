@@ -21,8 +21,9 @@
 # Hard-won defaults baked in (docs/findings/blackwell-sm120-lab-notebook.md + CLAUDE.md gotchas):
 #   - image vllm/vllm-openai:latest       stable; the lab's known-good engine (:nightly only when a
 #                                         needed fix hasn't reached stable).
-#   - VLLM_USE_V2_MODEL_RUNNER=0          mandatory: WSL2 exposes no UVA -> the v2 runner's UvaBuffer
-#                                         dies with "RuntimeError: UVA is not available" (gotcha #14).
+#   - VLLM_WSL2_ENABLE_PIN_MEMORY=1       vLLM 0.25.1+ opt-in: restore pinned host memory on WSL2.
+#   - VLLM_USE_V2_MODEL_RUNNER=0          conservative default for hybrid models; Gemma 4 V1/V2
+#                                         experiments override this per lane after a live startup gate.
 #   - vllm-hfcache docker volume          D:-backed ext4 -> ~15s native reloads vs 20-90min over a
 #                                         C:/ 9P bind-mount; pass the HF repo-id as MODEL and vLLM
 #                                         resolves it from (or downloads it once into) the cache (#15).
@@ -328,7 +329,11 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${GEMMA4_FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}
-      VLLM_USE_V2_MODEL_RUNNER: "0"
+      # vLLM 0.25.1's WSL2 pinned-memory path is opt-in. V2 remains an explicit
+      # experiment for Gemma 4 because hybrid attention is excluded from the
+      # engine's automatic V2 default.
+      VLLM_WSL2_ENABLE_PIN_MEMORY: ${GEMMA4_WSL2_ENABLE_PIN_MEMORY:-1}
+      VLLM_USE_V2_MODEL_RUNNER: ${GEMMA4_FAST_USE_V2_MODEL_RUNNER:-0}
       HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
@@ -368,7 +373,8 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${GEMMA4_HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}
-      VLLM_USE_V2_MODEL_RUNNER: "0"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: ${GEMMA4_WSL2_ENABLE_PIN_MEMORY:-1}
+      VLLM_USE_V2_MODEL_RUNNER: ${GEMMA4_HEAVY_USE_V2_MODEL_RUNNER:-0}
       HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:

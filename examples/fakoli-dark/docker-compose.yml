@@ -54,7 +54,9 @@ services:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       # Pin the PRO 6000 by UUID (WSL2 ignores compose device_ids isolation — gotcha #13).
       CUDA_VISIBLE_DEVICES: ${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}   # RTX PRO 6000 96GB
-      # Mandatory on this WSL2 box: no UVA -> vLLM v2 runner's UvaBuffer dies (gotcha #14).
+      # vLLM 0.25.1 restores opt-in pinned host memory on WSL2. Keep V2 off for
+      # production Gemma 4 until its thinking_token_budget support lands.
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       # MAKE-OR-BREAK on sm_120: the `f` suffix; plain 12.0 -> `cvt.e2m1x2.f32 not supported`.
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
@@ -204,7 +206,9 @@ services:
   # GPU pin: UUID (gotcha #13) — the standard image parses UUID pins fine; the old INDEX
   # pin was a gemma4-unified-image workaround (gotcha #21) and left with that image.
   fast:
-    image: ${FAST_VLLM_IMAGE:-vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e}
+    # Same pinned vLLM 0.25.1 image as Heavy. This release contains the WSL2
+    # pinned-memory opt-in and the Gemma 4 fixes used by the July 16 lab matrix.
+    image: ${FAST_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
     container_name: vllm-gemma4-e4b-fast
     restart: unless-stopped
     ipc: host
@@ -215,6 +219,7 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       CUDA_VISIBLE_DEVICES: ${FAST_GPU_UUID:-GPU-04d3b6e7-5691-3e86-1d34-c37999440cf1}   # RTX 5090
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
       VLLM_USE_V2_MODEL_RUNNER: "0"
       FLASHINFER_CUDA_ARCH_LIST: "12.0f"
       # Authenticate the startup HF-hub metadata check (weights are already cached). Empty if unset.
