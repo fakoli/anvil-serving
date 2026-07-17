@@ -15,6 +15,11 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 COMPOSE_PATH = REPO_ROOT / "examples" / "fakoli-dark" / "docker-compose.yml"
 EXPERIMENT_COMPOSE_PATH = REPO_ROOT / "examples" / "fakoli-dark" / "docker-compose.experiment.yml"
 DOCKER_CONFIG_PATH = REPO_ROOT / "configs" / "example-docker.toml"
+FLEXIBILITY_COMPOSE_PATH = REPO_ROOT / "examples" / "fakoli-dark" / "docker-compose.flexibility.yml"
+VLLM_STABLE_IMAGE = (
+    "vllm/vllm-openai@sha256:"
+    "e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089"
+)
 
 
 def _compose_text() -> str:
@@ -77,6 +82,20 @@ def test_experiment_compose_optional_candidates_do_not_block_file_parse():
     text = EXPERIMENT_COMPOSE_PATH.read_text(encoding="utf-8")
     assert "${HF_TOKEN:?" not in text
     assert "${GEPARD_DATABASE_URL:?" not in text
+
+
+def test_upstream_stable_vllm_compose_recipes_pin_0251_and_wsl2_memory():
+    for path in (COMPOSE_PATH, EXPERIMENT_COMPOSE_PATH, FLEXIBILITY_COMPOSE_PATH):
+        text = path.read_text(encoding="utf-8")
+        assert "vllm/vllm-openai:latest" not in text, path
+        assert "sha256:907377dddef392f6" not in text, path
+        for name, block in _service_blocks(text).items():
+            if VLLM_STABLE_IMAGE in block:
+                assert re.search(
+                    r'^\s*VLLM_WSL2_ENABLE_PIN_MEMORY:\s*(?:"1"|\$\{[^}]+:-1\})\s*$',
+                    block,
+                    re.MULTILINE,
+                ), (path, name)
 
 
 def test_experiment_gepard_uses_internal_postgres_by_default():
