@@ -1,0 +1,150 @@
+2026-07-17T13:30:29.184777160Z (APIServer pid=1) INFO 07-17 13:30:29 [api_utils.py:345] 
+2026-07-17T13:30:29.184872147Z (APIServer pid=1) INFO 07-17 13:30:29 [api_utils.py:345]        █     █     █▄   ▄█
+2026-07-17T13:30:29.184881818Z (APIServer pid=1) INFO 07-17 13:30:29 [api_utils.py:345]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.23.1rc1.dev1229+g1bf3b12d5
+2026-07-17T13:30:29.184885418Z (APIServer pid=1) INFO 07-17 13:30:29 [api_utils.py:345]   █▄█▀ █     █     █     █  model   nvidia/gpt-oss-puzzle-88B
+2026-07-17T13:30:29.184888159Z (APIServer pid=1) INFO 07-17 13:30:29 [api_utils.py:345]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+2026-07-17T13:30:29.184890659Z (APIServer pid=1) INFO 07-17 13:30:29 [api_utils.py:345] 
+2026-07-17T13:30:29.589412970Z (APIServer pid=1) Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-07-17T13:30:29.189159253Z (APIServer pid=1) INFO 07-17 13:30:29 [api_utils.py:273] non-default args: {'model_tag': 'nvidia/gpt-oss-puzzle-88B', 'enable_auto_tool_choice': True, 'tool_call_parser': 'openai', 'host': '0.0.0.0', 'port': 39039, 'model': 'nvidia/gpt-oss-puzzle-88B', 'trust_remote_code': True, 'revision': '9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2', 'max_model_len': 131072, 'served_model_name': ['gpt-oss-puzzle-88b'], 'gpu_memory_utilization': 0.95, 'kv_cache_dtype': 'fp8', 'enable_prefix_caching': True, 'max_num_batched_tokens': 8192, 'max_num_seqs': 8, 'stream_interval': 20, 'max_cudagraph_capture_size': 8, 'moe_backend': 'marlin'}
+2026-07-17T13:30:35.697959434Z (APIServer pid=1) INFO 07-17 13:30:35 [model.py:621] Resolved architecture: GptOssPuzzleForCausalLM
+2026-07-17T13:30:35.698148268Z (APIServer pid=1) INFO 07-17 13:30:35 [model.py:1786] Using max model len 131072
+2026-07-17T13:30:36.257851627Z (APIServer pid=1) INFO 07-17 13:30:36 [cache.py:285] Using fp8 data type to store kv cache. It reduces the GPU memory footprint and boosts the performance. Meanwhile, it may cause accuracy drop without a proper scaling factor
+2026-07-17T13:30:36.258661256Z (APIServer pid=1) INFO 07-17 13:30:36 [scheduler.py:252] Chunked prefill is enabled with max_num_batched_tokens=8192.
+2026-07-17T13:30:36.259224200Z (APIServer pid=1) INFO 07-17 13:30:36 [vllm.py:1109] Asynchronous scheduling is enabled.
+2026-07-17T13:30:36.259581169Z (APIServer pid=1) INFO 07-17 13:30:36 [kernel.py:295] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+2026-07-17T13:30:50.104251900Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:   0% Completed | 0/11 [00:00<?, ?it/s]
+2026-07-17T13:30:58.347000804Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:   9% Completed | 1/11 [00:08<01:22,  8.24s/it]
+2026-07-17T13:31:11.975992348Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  18% Completed | 2/11 [00:21<01:42, 11.41s/it]
+2026-07-17T13:31:24.384610287Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  27% Completed | 3/11 [00:34<01:34, 11.87s/it]
+2026-07-17T13:31:37.434496656Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  36% Completed | 4/11 [00:47<01:26, 12.33s/it]
+2026-07-17T13:31:48.830584308Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  45% Completed | 5/11 [00:58<01:11, 12.00s/it]
+2026-07-17T13:32:00.051441417Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  55% Completed | 6/11 [01:09<00:58, 11.73s/it]
+2026-07-17T13:32:11.906614901Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  64% Completed | 7/11 [01:21<00:47, 11.77s/it]
+2026-07-17T13:30:44.577027304Z (EngineCore pid=133) INFO 07-17 13:30:44 [core.py:116] Initializing a V1 LLM engine (v0.23.1rc1.dev1229+g1bf3b12d5) with config: model='nvidia/gpt-oss-puzzle-88B', speculative_config=None, tokenizer='nvidia/gpt-oss-puzzle-88B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2, tokenizer_revision=9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=131072, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=gpt_oss_mxfp4, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=fp8, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='openai_gptoss', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=gpt-oss-puzzle-88b, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::qwen_gdn_attention_core', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'size_asserts': False, 'alignment_asserts': False, 'scalar_asserts': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 8, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_bf16x3_router_gemm=False, moe_backend='marlin', linear_backend='auto')
+2026-07-17T13:30:44.987049248Z (EngineCore pid=133) INFO 07-17 13:30:44 [parallel_state.py:1615] world_size=1 rank=0 local_rank=0 distributed_init_method=tcp://172.22.0.2:39469 backend=nccl
+2026-07-17T13:30:45.268266626Z (EngineCore pid=133) INFO 07-17 13:30:45 [parallel_state.py:1950] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A
+2026-07-17T13:30:47.728926514Z (EngineCore pid=133) INFO 07-17 13:30:47 [topk_topp_sampler.py:55] Using FlashInfer for top-p & top-k sampling.
+2026-07-17T13:30:47.816986612Z (EngineCore pid=133) INFO 07-17 13:30:47 [gpu_model_runner.py:5239] Starting to load model nvidia/gpt-oss-puzzle-88B...
+2026-07-17T13:30:48.238320787Z (EngineCore pid=133) INFO 07-17 13:30:48 [cuda.py:481] Using TRITON_ATTN attention backend out of potential backends: ['TRITON_ATTN'].
+2026-07-17T13:32:18.791394152Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  73% Completed | 8/11 [01:28<00:30, 10.22s/it]
+2026-07-17T13:32:25.212193169Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  82% Completed | 9/11 [01:35<00:18,  9.03s/it]
+2026-07-17T13:32:31.183054708Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards:  91% Completed | 10/11 [01:41<00:08,  8.09s/it]
+2026-07-17T13:32:35.236369960Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards: 100% Completed | 11/11 [01:45<00:00,  6.85s/it]
+2026-07-17T13:32:35.236408862Z (EngineCore pid=133) 
+Loading safetensors checkpoint shards: 100% Completed | 11/11 [01:45<00:00,  9.56s/it]
+2026-07-17T13:32:35.236413733Z (EngineCore pid=133) 
+2026-07-17T13:30:48.262328821Z (EngineCore pid=133) INFO 07-17 13:30:48 [deep_gemm.py:175] deep_gemm not found in site-packages, trying vendored vllm.third_party.deep_gemm
+2026-07-17T13:30:48.265405653Z (EngineCore pid=133) INFO 07-17 13:30:48 [deep_gemm.py:202] DeepGEMM PDL enabled on vllm.third_party.deep_gemm.
+2026-07-17T13:30:48.265420664Z (EngineCore pid=133) INFO 07-17 13:30:48 [deep_gemm.py:120] DeepGEMM E8M0 enabled on current platform.
+2026-07-17T13:30:48.266778218Z (EngineCore pid=133) INFO 07-17 13:30:48 [mxfp4.py:416] Using 'MARLIN' Mxfp4 MoE backend.
+2026-07-17T13:30:50.103888084Z (EngineCore pid=133) INFO 07-17 13:30:50 [weight_utils.py:869] Filesystem type for checkpoints: EXT4. Checkpoint size: 46.56 GiB. Available RAM: 57.60 GiB.
+2026-07-17T13:30:50.103910516Z (EngineCore pid=133) INFO 07-17 13:30:50 [weight_utils.py:892] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+2026-07-17T13:32:35.390213228Z (EngineCore pid=133) INFO 07-17 13:32:35 [default_loader.py:471] Loading weights took 105.29 seconds
+2026-07-17T13:32:36.843710644Z (EngineCore pid=133) INFO 07-17 13:32:36 [mxfp4.py:1709] Using MoEPrepareAndFinalizeNoDPEPModular
+2026-07-17T13:32:36.843742396Z (EngineCore pid=133) INFO 07-17 13:32:36 [mxfp4.py:1710] Using MarlinExperts
+2026-07-17T13:32:39.073334704Z (EngineCore pid=133) INFO 07-17 13:32:39 [gpu_model_runner.py:5336] Model loading took 50.71 GiB memory and 110.411015 seconds
+2026-07-17T13:32:44.863141336Z (EngineCore pid=133) INFO 07-17 13:32:44 [backends.py:1094] Using cache directory: /root/.cache/vllm/torch_compile_cache/7728297e17/rank_0_0/backbone for vLLM's torch.compile
+2026-07-17T13:32:44.863491808Z (EngineCore pid=133) INFO 07-17 13:32:44 [backends.py:1155] Dynamo bytecode transform time: 5.53 s
+2026-07-17T13:32:48.040344995Z (EngineCore pid=133) INFO 07-17 13:32:48 [backends.py:378] Cache the graph of compile range (1, 8192) for later use
+2026-07-17T13:33:05.625215076Z (EngineCore pid=133) 2026-07-17 13:33:05,625 - INFO - autotuner.py:651 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+2026-07-17T13:32:52.561657572Z (EngineCore pid=133) INFO 07-17 13:32:52 [backends.py:393] Compiling a graph for compile range (1, 8192) takes 7.50 s
+2026-07-17T13:32:55.357187955Z (EngineCore pid=133) INFO 07-17 13:32:55 [decorators.py:708] saved AOT compiled function to /root/.cache/vllm/torch_compile_cache/torch_aot_compile/69218ad2d0e20994d2ffbb062d6691825770caf90bd89084a4f62bac9b805c9a/rank_0_0/model
+2026-07-17T13:32:55.357215136Z (EngineCore pid=133) INFO 07-17 13:32:55 [monitor.py:53] torch.compile took 16.03 s in total
+2026-07-17T13:32:56.584126364Z (EngineCore pid=133) INFO 07-17 13:32:56 [monitor.py:81] Initial profiling/warmup run took 1.23 s
+2026-07-17T13:33:01.728545100Z (EngineCore pid=133) WARNING 07-17 13:33:01 [kv_cache_utils.py:1277] Add 2 padding layers, may waste at most 11.11% KV cache memory
+2026-07-17T13:33:01.728586383Z (EngineCore pid=133) WARNING 07-17 13:33:01 [kv_cache_utils.py:1277] Add 2 padding layers, may waste at most 25.00% KV cache memory
+2026-07-17T13:33:01.731960975Z (EngineCore pid=133) INFO 07-17 13:33:01 [gpu_model_runner.py:6596] Profiling CUDA graph memory: PIECEWISE=4 (largest=8), FULL=4 (largest=8)
+2026-07-17T13:33:04.578177862Z (EngineCore pid=133) INFO 07-17 13:33:04 [gpu_model_runner.py:6721] Estimated CUDA graph memory: 0.06 GiB total
+2026-07-17T13:33:04.862768532Z (EngineCore pid=133) INFO 07-17 13:33:04 [gpu_worker.py:560] Available KV cache memory: 38.72 GiB
+2026-07-17T13:33:04.862798044Z (EngineCore pid=133) INFO 07-17 13:33:04 [gpu_worker.py:575] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9500 is equivalent to --gpu-memory-utilization=0.9494 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9506. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+2026-07-17T13:33:04.863164368Z (EngineCore pid=133) WARNING 07-17 13:33:04 [kv_cache_utils.py:1277] Add 2 padding layers, may waste at most 11.11% KV cache memory
+2026-07-17T13:33:05.648461878Z (EngineCore pid=133) 2026-07-17 13:33:05,648 - INFO - autotuner.py:674 - flashinfer.jit: [Autotuner]: Autotuning process ends
+2026-07-17T13:33:12.568111102Z (EngineCore pid=133) 
+Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   0%|          | 0/4 [00:00<?, ?it/s]
+Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  25%|██▌       | 1/4 [00:00<00:00,  9.80it/s]
+Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  75%|███████▌  | 3/4 [00:00<00:00, 12.77it/s]
+Capturing CUDA graphs (mixed prefill-decode, PIECEWISE): 100%|██████████| 4/4 [00:00<00:00, 13.29it/s]
+2026-07-17T13:33:13.663409035Z (EngineCore pid=133) 
+Capturing CUDA graphs (decode, FULL):   0%|          | 0/4 [00:00<?, ?it/s]
+Capturing CUDA graphs (decode, FULL):  75%|███████▌  | 3/4 [00:00<00:00, 23.61it/s]
+2026-07-17T13:33:04.863188540Z (EngineCore pid=133) WARNING 07-17 13:33:04 [kv_cache_utils.py:1277] Add 2 padding layers, may waste at most 25.00% KV cache memory
+2026-07-17T13:33:04.863489011Z (EngineCore pid=133) INFO 07-17 13:33:04 [kv_cache_utils.py:2397] GPU KV cache size: 2,819,653 tokens
+Capturing CUDA graphs (decode, FULL): 100%|██████████| 4/4 [00:01<00:00,  3.65it/s]
+2026-07-17T13:33:04.863498241Z (EngineCore pid=133) INFO 07-17 13:33:04 [kv_cache_utils.py:2398] Maximum concurrency for 131,072 tokens per request: 21.51x
+2026-07-17T13:33:05.625178111Z (EngineCore pid=133) INFO 07-17 13:33:05 [kernel_warmup.py:227] Using FlashInfer autotune cache file: /root/.cache/vllm/flashinfer_autotune_cache/0.6.14/120f/e778aebcaa9dfd3749e8828d2fe850382faf0b6dbcc0e7ab433194132866aa84/autotune_configs.json
+2026-07-17T13:33:05.648542526Z (EngineCore pid=133) WARNING 07-17 13:33:05 [kernel_warmup.py:258] No FlashInfer autotune cache entries found.Falling back to default tactics.
+2026-07-17T13:33:05.651877700Z (EngineCore pid=133) INFO 07-17 13:33:05 [kernel_warmup.py:65] Warming up ll_bf16 router GEMM kernels.
+2026-07-17T13:33:11.948217410Z (EngineCore pid=133) INFO 07-17 13:33:11 [cutedsl_warmup.py:101] Skipping CuTeDSL warmup because no compile units were requested.
+2026-07-17T13:33:13.965478170Z (EngineCore pid=133) INFO 07-17 13:33:13 [gpu_model_runner.py:6789] Graph capturing finished in 2 secs, took 0.05 GiB
+2026-07-17T13:33:13.965523883Z (EngineCore pid=133) INFO 07-17 13:33:13 [gpu_worker.py:793] CUDA graph pool memory: 0.05 GiB (actual), 0.06 GiB (estimated), difference: 0.01 GiB (19.2%).
+2026-07-17T13:33:13.965662538Z (EngineCore pid=133) INFO 07-17 13:33:13 [gpu_worker.py:857] Free memory on device (93.87/95.59 GiB) on startup. Desired GPU memory utilization is (0.95, 90.81 GiB). Actual usage is 50.71 GiB for weight, 1.17 GiB for peak activation, 0.15 GiB for non-torch memory, and 0.05 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=41425510400` (38.58 GiB) to fit into requested memory, or `--kv-cache-memory=44711501824` (41.64 GiB) to fully utilize gpu memory. Current kv cache memory in use is 38.72 GiB.
+2026-07-17T13:33:14.653076445Z (EngineCore pid=133) INFO 07-17 13:33:14 [jit_monitor.py:79] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+2026-07-17T13:33:14.966954152Z (EngineCore pid=133) INFO 07-17 13:33:14 [core.py:340] init engine (profile, create kv cache, warmup model) took 35.89 s (compilation: 16.03 s)
+2026-07-17T13:33:17.424558324Z (EngineCore pid=133) INFO 07-17 13:33:17 [vllm.py:1109] Asynchronous scheduling is enabled.
+2026-07-17T13:33:17.425267312Z (EngineCore pid=133) INFO 07-17 13:33:17 [kernel.py:295] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+2026-07-17T13:33:17.431743603Z (APIServer pid=1) INFO 07-17 13:33:17 [api_server.py:673] Supported tasks: ['generate']
+2026-07-17T13:33:17.877761618Z (APIServer pid=1) INFO 07-17 13:33:17 [parser_manager.py:37] "auto" tool choice has been enabled.
+2026-07-17T13:33:17.882884603Z (APIServer pid=1) WARNING 07-17 13:33:17 [serving.py:219] For gpt-oss, we ignore --enable-auto-tool-choice and always enable tool use.
+2026-07-17T13:33:20.773009019Z (APIServer pid=1) INFO 07-17 13:33:20 [hf.py:540] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+2026-07-17T13:33:20.806405802Z (APIServer pid=1) INFO 07-17 13:33:20 [api_server.py:677] Starting vLLM server on http://0.0.0.0:39039
+2026-07-17T13:33:20.806429253Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:37] Available routes are:
+2026-07-17T13:33:20.806432803Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /openapi.json, Methods: GET, HEAD
+2026-07-17T13:33:20.806435574Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /docs, Methods: GET, HEAD
+2026-07-17T13:33:20.806437834Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /docs/oauth2-redirect, Methods: GET, HEAD
+2026-07-17T13:33:20.806446654Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /redoc, Methods: GET, HEAD
+2026-07-17T13:33:20.806573083Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /load, Methods: GET
+2026-07-17T13:33:20.806587154Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /version, Methods: GET
+2026-07-17T13:33:20.806590544Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /health, Methods: GET
+2026-07-17T13:33:20.806593044Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /metrics, Methods: GET
+2026-07-17T13:33:20.806663659Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /tokenize, Methods: POST
+2026-07-17T13:33:20.806680510Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /detokenize, Methods: POST
+2026-07-17T13:33:20.806684351Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/models, Methods: GET
+2026-07-17T13:33:20.806784437Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /ping, Methods: GET
+2026-07-17T13:33:20.806794068Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /ping, Methods: POST
+2026-07-17T13:33:20.839139441Z (APIServer pid=1) INFO:     Started server process [1]
+2026-07-17T13:33:20.839163912Z (APIServer pid=1) INFO:     Waiting for application startup.
+2026-07-17T13:33:21.071744245Z (APIServer pid=1) INFO:     Application startup complete.
+2026-07-17T13:33:20.806795908Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /invocations, Methods: POST
+2026-07-17T13:33:20.806866393Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/chat/completions, Methods: POST
+2026-07-17T13:33:20.806873673Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/chat/completions/batch, Methods: POST
+2026-07-17T13:33:20.806875443Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/responses, Methods: POST
+2026-07-17T13:33:20.806876773Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/responses/{response_id}, Methods: GET
+2026-07-17T13:33:20.806877863Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/responses/{response_id}/cancel, Methods: POST
+2026-07-17T13:33:20.806879273Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/completions, Methods: POST
+2026-07-17T13:33:20.806928227Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/messages, Methods: POST
+2026-07-17T13:33:20.806941628Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/messages/count_tokens, Methods: POST
+2026-07-17T13:33:20.807124270Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /generative_scoring, Methods: POST
+2026-07-17T13:33:20.807139101Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /scale_elastic_ep, Methods: POST
+2026-07-17T13:33:20.807142461Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /is_scaling_elastic_ep, Methods: POST
+2026-07-17T13:33:20.807145031Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/chat/completions/render, Methods: POST
+2026-07-17T13:33:20.807147221Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/completions/render, Methods: POST
+2026-07-17T13:33:20.807149372Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/chat/completions/derender, Methods: POST
+2026-07-17T13:33:20.807151522Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /v1/completions/derender, Methods: POST
+2026-07-17T13:33:20.807153782Z (APIServer pid=1) INFO 07-17 13:33:20 [launcher.py:46] Route: /inference/v1/generate, Methods: POST
+2026-07-17T13:40:32.107023522Z (APIServer pid=1) INFO:     172.22.0.1:38300 - "GET /health HTTP/1.1" 200 OK
+2026-07-17T13:40:32.125519718Z (APIServer pid=1) INFO:     172.22.0.1:38302 - "POST /tokenize HTTP/1.1" 200 OK
+2026-07-17T13:40:57.916450235Z (APIServer pid=1) INFO:     172.22.0.1:54516 - "POST /tokenize HTTP/1.1" 200 OK
+2026-07-17T13:40:59.362892373Z (EngineCore pid=133) WARNING 07-17 13:40:59 [jit_monitor.py:135] Triton kernel JIT compilation during inference: kernel_unified_attention. This causes a latency spike; consider extending warmup to cover this shape/config.
+2026-07-17T13:41:28.219162188Z (APIServer pid=1) INFO:     172.22.0.1:57450 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+2026-07-17T13:41:31.060167683Z (APIServer pid=1) INFO 07-17 13:41:31 [loggers.py:310] Engine 000: Avg prompt throughput: 12988.7 tokens/s, Avg generation throughput: 12.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-07-17T13:41:41.060165910Z (APIServer pid=1) INFO 07-17 13:41:41 [loggers.py:310] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+2026-07-17T13:41:41.765915850Z (APIServer pid=1) INFO:     172.22.0.1:60602 - "POST /tokenize HTTP/1.1" 200 OK
+2026-07-17T13:42:01.059205323Z (APIServer pid=1) INFO 07-17 13:42:01 [loggers.py:310] Engine 000: Avg prompt throughput: 6593.7 tokens/s, Avg generation throughput: 3.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 3.4%, Prefix cache hit rate: 24.9%
+2026-07-17T13:42:01.963785476Z (APIServer pid=1) INFO:     172.22.0.1:60614 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+2026-07-17T13:42:11.059465727Z (APIServer pid=1) INFO 07-17 13:42:11 [loggers.py:310] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 9.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 24.9%
+2026-07-17T13:42:18.805830634Z (APIServer pid=1) INFO:     172.22.0.1:32790 - "POST /tokenize HTTP/1.1" 200 OK
+2026-07-17T13:42:21.058159771Z (APIServer pid=1) INFO 07-17 13:42:21 [loggers.py:310] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 3.4%, Prefix cache hit rate: 33.3%
+2026-07-17T13:42:38.676573979Z (APIServer pid=1) INFO:     172.22.0.1:32806 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+2026-07-17T13:42:41.060071395Z (APIServer pid=1) INFO 07-17 13:42:41 [loggers.py:310] Engine 000: Avg prompt throughput: 6532.9 tokens/s, Avg generation throughput: 10.7 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 33.3%
