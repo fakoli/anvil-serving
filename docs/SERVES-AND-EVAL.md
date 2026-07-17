@@ -116,8 +116,10 @@ Trying a new model (e.g. for the Blackwell lab notebook) does **not** need a han
 `docker run`. The parametrized
 `examples/fakoli-dark/docker-compose.experiment.yml`
 is one vLLM service driven by env vars, with the hard-won sm_120/WSL2 defaults baked in
-(stable image, `VLLM_USE_V2_MODEL_RUNNER=0`, the D:-backed `vllm-hfcache` volume for ~15s
-native loads, `CUDA_DEVICE_ORDER=PCI_BUS_ID`):
+(stable image, `VLLM_WSL2_ENABLE_PIN_MEMORY=1`, conservative
+`VLLM_USE_V2_MODEL_RUNNER=0`, the D:-backed `vllm-hfcache` volume for ~15s native loads,
+`CUDA_DEVICE_ORDER=PCI_BUS_ID`). Gemma 4 V2 trials opt in per lane because vLLM 0.25.1's V2
+runner does not yet support `thinking_token_budget`:
 
 ```bash
 MODEL=RedHatAI/Qwen3-32B-NVFP4 \
