@@ -107,6 +107,14 @@ artifacts: [Gemma 4 chat-template bakeoff](findings/2026-07-16-gemma4-chat-templ
 
 ### Unsloth Gemma 4 NVFP4 follow-up (2026-07-16)
 
+> **Concurrency-128 correction:** a later same-day vLLM 0.25.1 retest reproduced a large NVFP4
+> continuous-batching gain. On the PRO 6000, 12B NVFP4 beat official QAT by 35.7% at c128/1K and
+> 45.0% at c128/8K; on the 5090 with Model Runner V2 it beat QAT by 35.2% at c128/8K. The c1
+> decode conclusion below remains true, but it does not describe high-concurrency serving. The
+> production engine was upgraded to vLLM 0.25.1 with WSL2 pinned memory enabled; NVFP4 and V2
+> remain unpromoted because the prior quality failures and V2 thinking-budget limitation remain.
+> See [the c128 and WSL2 retest](findings/2026-07-16-gemma4-vllm0251-wsl2-c128.md).
+
 The same-day Unsloth 12B, 26B-A4B, and 31B NVFP4 release was tested through
 the existing vLLM 0.25.1 WSL2 recipe on both Blackwell GPUs. **No production
 tier changed.** The publisher's approximately 1.5x 12B speed claim was not

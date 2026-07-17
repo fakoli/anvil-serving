@@ -1,0 +1,27 @@
+{
+  "base_url": "http://127.0.0.1:39037/v1",
+  "completed": 8,
+  "concurrency": 1,
+  "context_tokens": 1024,
+  "max_context_tokens": 32768,
+  "max_tokens": 128,
+  "metrics": {
+    "e2e_p50_ms": 236.85526847839355,
+    "e2e_p95_ms": 1348.0253219604492,
+    "output_tokens": 283,
+    "prefix_cache_hit_avg": null,
+    "throughput_tok_s": 94.73557426560731,
+    "ttft_p50_ms": 26.03459358215332,
+    "ttft_p95_ms": 1146.2194919586182
+  },
+  "model": "gemma4-fast-lab",
+  "requests": 8,
+  "run_id": "benchmark-20260717T005525Z",
+  "schema": "anvil-serving.benchmark/v1",
+  "serve_flags": {
+    "no_thinking": false,
+    "reasoning_effort": null,
+    "shared_prefix_burst": false,
+    "thinking_mode": "disabled"
+  }
+}
