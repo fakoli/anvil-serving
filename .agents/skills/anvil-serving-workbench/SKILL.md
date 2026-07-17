@@ -14,17 +14,10 @@ narration.
 
 1. Read `README.md`, `CLAUDE.md`, and `docs/OPERATOR-SKILLS-AND-SUBAGENTS.md`
    before changing behavior or running operational commands.
-2. List or inspect available MCP tools first. Prefer `router_status`,
-   `router_logs`, `router_manage`, `decision_summary`, `router_promote`,
-   `serves_status`, `serves_manage`, `serves_logs`, `voice_manage`,
-   `voice_proxy_manage`,
-   `doctor_summary`, `host_summary`, `models_inventory`, `cache_prune_plan`,
-   `route_decision`, `openclaw_sync`, `openclaw_gateway_restart`,
-   `preflight_probe`, `benchmark_probe`, and
-   `benchmark_artifact`, `external_bench_sources`, `external_bench_list`,
-   `external_bench_report`, and `external_bench_compare` when they cover the
-   request. Use
-   `workflow_packet_validate` before treating a packet as promotion evidence.
+2. List or inspect available MCP tools first. Use `operation_contracts` before
+   topology-aware or controller-backed work so the selected CLI operation,
+   target context, transport, and MCP wrapper agree. Use the grouped catalog
+   below rather than relying on a memorized subset.
 3. Use documented `anvil-serving` CLI verbs only when an MCP wrapper is missing.
    Safe fallbacks are read-only or preview-first verbs such as `eval usage`,
    `models sync`, `models recipes`, `models score`,
@@ -47,6 +40,30 @@ narration.
 6. Pass credentials by environment variable name only. Never place literal keys
    in configs, fixtures, packets, logs, or prompts.
 
+## MCP Tool Map
+
+- Router: `router_status`, `router_logs`, `router_manage`,
+  `router_transition`, `decision_summary`, `route_decision`, and
+  `router_promote`.
+- Serves and residency: `serves_status`, `reservation_status`,
+  `serves_manage`, `serves_logs`, and `serves_promote`.
+- Voice: `voice_manage` and `voice_proxy_manage`.
+- Host, models, and telemetry: `doctor_summary`, `host_summary`,
+  `gpu_inventory`, `observability_collect`, `host_manage`,
+  `models_inventory`, and `cache_prune_plan`.
+- Harness: `openclaw_sync`, `openclaw_gateway_status`, and
+  `openclaw_gateway_restart`.
+- Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
+  `benchmark_artifact`, `workflow_packet_validate`,
+  `external_bench_sources`, `external_bench_list`, `external_bench_report`,
+  and `external_bench_compare`.
+- Transport discovery: `operation_contracts`.
+
+`benchmark_probe` and `benchmark_artifact` are bounded capacity tools, not
+quality graders. Repeated quality evaluation remains the explicit
+`anvil-serving eval benchmark quality` workflow until a dedicated MCP wrapper
+exists.
+
 ## Gates
 
 Stop for a human gate before profile promotion, router policy changes, metered
@@ -58,6 +75,11 @@ trust decision.
 live apply requires `confirm=true` and `human_approved=true`. Skill packets must
 keep `promoted=false` unless that human-approved promotion result is present.
 
+`serves_promote` has the same three-part live gate: `confirm=true`,
+`dry_run=false`, and `human_approved=true`. `host_manage` and mutating
+`router_transition` actions remain human-gated even though their MCP schemas
+support preview and confirmation.
+
 Never self-verify. The model that generated a candidate output cannot be the
 critic or judge that validates it.
 
@@ -66,15 +88,22 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
 
 ## Playbook Selection
 
-- Readiness: inspect `router_status`, `serves_status`, `doctor_summary`,
-  `models_inventory`, and configured endpoint status.
+- Readiness: inspect `operation_contracts`, `router_status`, `serves_status`,
+  `reservation_status`, `doctor_summary`, `host_summary`, `gpu_inventory`,
+  `models_inventory`, and configured endpoint status. Use
+  `observability_collect` only for bounded declared capabilities.
 - Model catalog: read or sync model inventory and use `external_bench_sources`,
   `external_bench_list`, `external_bench_report`, or `external_bench_compare`
   for benchmark priors. Apply the model benchmark source-freshness rules below.
-  Keep those priors advisory-only.
-- Serve swap: preview with `serves_manage`, inspect `serves_logs`, require exact
-  target plus `confirm=true` and `dry_run=false`, then run preflight before
-  benchmark.
+  Keep those priors advisory-only. Use `models recipes list/show` to inspect
+  recorded configurations and `models pull` only after an explicit network,
+  disk, and target-volume gate.
+- Serve swap: inspect `reservation_status`, then preview lifecycle work with
+  `serves_manage` or a named transaction with `serves_promote`. The newer
+  role-based recipe flow is `anvil-serving serves switch ROLE [MODEL]`; it is
+  CLI-only, so return its preview and name the missing MCP wrapper. Require an
+  exact target and the documented confirmation gate before apply, then run
+  preflight before either capacity or quality benchmarks.
 - Voice lifecycle: preview audio with `voice_manage` and the persistent
   Realtime proxy with `voice_proxy_manage`; live lifecycle changes on the
   owning host require `confirm=true` plus `dry_run=false`.
@@ -86,8 +115,17 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `openclaw_sync`; apply only to an explicit `out`/`gateway_host` target and
   preserve operator-owned keys.
 - Router operations: use `router_status`, bounded `router_logs`,
-  `router_manage`, and `decision_summary`; lifecycle mutation is preview-first
-  and live only with `confirm=true` plus `dry_run=false`.
+  `router_manage`, `router_transition`, and `decision_summary`; lifecycle and
+  tier-transition mutation is preview-first and live only with `confirm=true`
+  plus `dry_run=false`.
+- Evaluation: use `preflight_probe` with the model family's declared thinking
+  mode, reasoning effort/evidence expectation, visible-answer budget,
+  reasoning headroom, and allowed finish reasons. Use `benchmark_probe` or
+  `benchmark_artifact` for capacity only. For quality, run
+  `anvil-serving eval benchmark quality` with repeated attempts and preserve
+  visible output, reasoning-channel evidence, finish reasons, separate visible
+  and reasoning budgets, provenance, and per-attempt failure classification.
+  Do not rank or promote from an older one-shot score that lacks that evidence.
 - Promotion evidence: assemble status, decision summary, route probes,
   preflight, benchmark artifacts, calibration, profile/config diffs, and
   reviewer recommendation with `promoted=false`.
@@ -98,10 +136,11 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   generation caps, exact/stream benchmark caps, benchmark reasoning effort, and
   per-intent overrides as router tier `params` owned by the model recipe, not
   as skill or plugin constants.
-- Host/cache work: use `host_summary` and `cache_prune_plan` for read-only
-  checks and plans. Report host repair, Docker/WSL restart, WSL config edits,
-  and cache deletion as `blocked` or `human_required` unless the human approves
-  the existing CLI gate; MCP cache pruning is plan-only.
+- Host/cache work: use `host_summary`, `gpu_inventory`, and `cache_prune_plan`
+  for read-only checks and plans. Use `host_manage` only for an exact reviewed
+  repair after its human gate. Report Docker/WSL restart, WSL config edits, and
+  cache deletion as `blocked` or `human_required` unless the human approves the
+  existing gate; MCP cache pruning is plan-only.
 
 ## Model Benchmark Source Freshness
 

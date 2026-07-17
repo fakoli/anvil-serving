@@ -38,6 +38,10 @@ promoted=false unless a separate human-approved promotion command actually ran.
 Each tools_used entry must include source_class, ok, dry_run, confirmed, target,
 and error. Use 127.0.0.1 in URLs, never localhost.
 
+This compatibility role may run MCP capacity probes only. Repeated quality
+evaluation remains `anvil-serving eval benchmark quality` and should be handed
+to the dedicated benchmark runner with the model-aware evidence contract.
+
 For OpenClaw voice probes, 127.0.0.1 is valid only on the host that owns the
 endpoint. In reference OpenClaw Talk, Fakoli Mini hosts Gateway and Anvil Voice
 Realtime/proxy, not STT/TTS/LLM model serves. Use Dark private/tailnet

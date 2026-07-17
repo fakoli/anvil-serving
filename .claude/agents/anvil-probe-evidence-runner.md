@@ -38,6 +38,10 @@ actually ran. Use `127.0.0.1` in URLs, never `localhost`. If the harness has not
 exposed the needed MCP/controller probe tools to this agent, report
 `gate_state: "blocked"` instead of falling back to shell commands.
 
+This compatibility role may run MCP capacity probes only. Repeated quality
+evaluation remains `anvil-serving eval benchmark quality` and should be handed
+to the dedicated benchmark runner with the model-aware evidence contract.
+
 For OpenClaw voice probes, `127.0.0.1` is valid only on the host that owns the
 endpoint. In reference OpenClaw Talk, Fakoli Mini hosts Gateway and Anvil Voice
 Realtime/proxy, not STT/TTS/LLM model serves. Use Dark private/tailnet

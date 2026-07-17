@@ -17,6 +17,13 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **Repo-scoped Workbench guidance now matches the current CLI and MCP control plane.** The Codex,
+  Claude Code, and OpenClaw workbench skills catalog all structured tools, distinguish capacity
+  probes from repeated quality evaluation, cover reservations/transitions/promotion/telemetry/host
+  gates, and document the CLI-only role-based recipe switch. The specialized voice skill now uses
+  the lifecycle MCP tools when available and keeps audio profiles separate from candidate LLM
+  overlays. Contract tests prevent future command-tree, MCP, and checked-in skill drift.
+
 - **Model-serve commands now share one reviewed, task-oriented help system.** Every
   `serves` leaf presents exact usage, concrete examples, configuration precedence,
   behavior and safety notes, local arguments, global options, and its owning reference

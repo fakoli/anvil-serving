@@ -1,7 +1,7 @@
 interface:
   display_name: "Anvil Serving Workbench"
   short_description: "MCP playbooks and benchmark evidence."
-  default_prompt: "Use $anvil-serving-workbench to inspect status, choose a safe playbook, run bounded evidence checks when needed, and produce an operator packet. For OpenClaw voice work, name the command host before interpreting loopback: Fakoli Mini runs gateway/realtime/proxy only in the reference topology; STT/TTS/LLM model serves live off Mini unless the operator explicitly selects optional mini-audio."
+  default_prompt: "Use $anvil-serving-workbench to inspect the current MCP catalog and operation contracts, choose a safe playbook, distinguish capacity probes from repeated model-aware quality evidence, and produce an operator packet. For OpenClaw voice work, name the command host before interpreting loopback: Fakoli Mini runs gateway/realtime/proxy only in the reference topology; STT/TTS/LLM model serves live off Mini unless the operator explicitly selects optional mini-audio."
 
 dependencies:
   tools:
