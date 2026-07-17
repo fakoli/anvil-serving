@@ -1,0 +1,111 @@
+[
+    {
+        "Id": "sha256:2191e2740c6aac83489e2e4de597f1cafdabc2ca21cf8e412d6430b8239ad362",
+        "RepoTags": [
+            "anvil-vllm:gpt-oss-puzzle-1bf3b12d5bbeb09136e8478e37133ab0ffad3e51"
+        ],
+        "RepoDigests": [
+            "anvil-vllm@sha256:2191e2740c6aac83489e2e4de597f1cafdabc2ca21cf8e412d6430b8239ad362"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-07-17T12:28:51.931274088Z",
+        "Config": {
+            "Env": [
+                "PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NVARCH=x86_64",
+                "NVIDIA_REQUIRE_CUDA=cuda>=13.0 brand=unknown,driver>=535,driver<536 brand=grid,driver>=535,driver<536 brand=tesla,driver>=535,driver<536 brand=nvidia,driver>=535,driver<536 brand=quadro,driver>=535,driver<536 brand=quadrortx,driver>=535,driver<536 brand=nvidiartx,driver>=535,driver<536 brand=vapps,driver>=535,driver<536 brand=vpc,driver>=535,driver<536 brand=vcs,driver>=535,driver<536 brand=vws,driver>=535,driver<536 brand=cloudgaming,driver>=535,driver<536 brand=unknown,driver>=550,driver<551 brand=grid,driver>=550,driver<551 brand=tesla,driver>=550,driver<551 brand=nvidia,driver>=550,driver<551 brand=quadro,driver>=550,driver<551 brand=quadrortx,driver>=550,driver<551 brand=nvidiartx,driver>=550,driver<551 brand=vapps,driver>=550,driver<551 brand=vpc,driver>=550,driver<551 brand=vcs,driver>=550,driver<551 brand=vws,driver>=550,driver<551 brand=cloudgaming,driver>=550,driver<551 brand=unknown,driver>=565,driver<566 brand=grid,driver>=565,driver<566 brand=tesla,driver>=565,driver<566 brand=nvidia,driver>=565,driver<566 brand=quadro,driver>=565,driver<566 brand=quadrortx,driver>=565,driver<566 brand=nvidiartx,driver>=565,driver<566 brand=vapps,driver>=565,driver<566 brand=vpc,driver>=565,driver<566 brand=vcs,driver>=565,driver<566 brand=vws,driver>=565,driver<566 brand=cloudgaming,driver>=565,driver<566 brand=unknown,driver>=570,driver<571 brand=grid,driver>=570,driver<571 brand=tesla,driver>=570,driver<571 brand=nvidia,driver>=570,driver<571 brand=quadro,driver>=570,driver<571 brand=quadrortx,driver>=570,driver<571 brand=nvidiartx,driver>=570,driver<571 brand=vapps,driver>=570,driver<571 brand=vpc,driver>=570,driver<571 brand=vcs,driver>=570,driver<571 brand=vws,driver>=570,driver<571 brand=cloudgaming,driver>=570,driver<571 brand=unknown,driver>=575,driver<576 brand=grid,driver>=575,driver<576 brand=tesla,driver>=575,driver<576 brand=nvidia,driver>=575,driver<576 brand=quadro,driver>=575,driver<576 brand=quadrortx,driver>=575,driver<576 brand=nvidiartx,driver>=575,driver<576 brand=vapps,driver>=575,driver<576 brand=vpc,driver>=575,driver<576 brand=vcs,driver>=575,driver<576 brand=vws,driver>=575,driver<576 brand=cloudgaming,driver>=575,driver<576",
+                "NV_CUDA_CUDART_VERSION=13.0.96-1",
+                "CUDA_VERSION=13.0.2",
+                "LD_LIBRARY_PATH=/usr/local/nvidia/lib64:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64",
+                "NVIDIA_VISIBLE_DEVICES=all",
+                "NVIDIA_DRIVER_CAPABILITIES=compute,utility",
+                "DEBIAN_FRONTEND=noninteractive",
+                "UV_HTTP_TIMEOUT=500",
+                "UV_INDEX_STRATEGY=unsafe-best-match",
+                "UV_LINK_MODE=copy",
+                "UV_PYTHON_INSTALL_DIR=/opt/uv/python",
+                "UV_CACHE_DIR=/opt/uv/cache",
+                "VLLM_ENABLE_CUDA_COMPATIBILITY=0",
+                "TORCH_CUDA_ARCH_LIST=12.0",
+                "VLLM_USAGE_SOURCE=production-docker-image",
+                "VLLM_BUILD_COMMIT=unknown",
+                "VLLM_BUILD_PIPELINE=local",
+                "VLLM_BUILD_URL=",
+                "VLLM_IMAGE_TAG=local/vllm-openai:dev"
+            ],
+            "Entrypoint": [
+                "vllm",
+                "serve"
+            ],
+            "WorkingDir": "/vllm-workspace",
+            "Labels": {
+                "ai.vllm.build.commit": "unknown",
+                "ai.vllm.build.pipeline": "local",
+                "ai.vllm.build.url": "",
+                "ai.vllm.image.tag": "local/vllm-openai:dev",
+                "maintainer": "NVIDIA CORPORATION <cudatools@nvidia.com>",
+                "org.opencontainers.image.ref.name": "ubuntu",
+                "org.opencontainers.image.revision": "unknown",
+                "org.opencontainers.image.source": "https://github.com/vllm-project/vllm",
+                "org.opencontainers.image.url": "",
+                "org.opencontainers.image.version": "local/vllm-openai:dev"
+            }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 8368433266,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:767e56ba346ae714b6e6b816baa839051145ed78cfa0e4524a86cc287b0c4b00",
+                "sha256:a34bd8b26cb282b40938915d45732d898d4d09459cd3be508617c2b02e5f9b39",
+                "sha256:0f09a2d797f7f8a8a702ccc542c861cf6bc25831172c34974865c8387e1d9a20",
+                "sha256:50a43a0352744fd68e68cb9fafee74db9b087024b86ebbc29ba287f40672c319",
+                "sha256:b7ec8fd7c485bbedbe64cbc5a7a810ceabb9156e95c83ba60596ddb9b4955d48",
+                "sha256:64d6884cae03518ee799991570f6fe5adc95fd8aec7b54d80a97a8ce700f63b8",
+                "sha256:242a247248088f22d3254c5054a350d3cb1eb8f755ea061d3b1a493ed42c232e",
+                "sha256:2e1622feb8a1621f6d9f749dcee3e9dc59f447eb1fe3d5e3c0da11c62d0f1261",
+                "sha256:8f3b91d32b31d1942c4b3ca48248d7364c520a0f85833c0fad30865cd87dd486",
+                "sha256:4eeb976bf5774020a7c26d18a4af1db0073bfe931f069f182b16815f12eeebbf",
+                "sha256:7c3deaaf1da084c07c61bd0f3fbb2819e1be405329acc05c4985179f44ab3f9e",
+                "sha256:130654827d7b5684b2f7bc2d7ac3385d211acf1bbea3f292796089c604af8969",
+                "sha256:35fdec8a80a163a442643fcda70a1791373130cab3e3f1eaf23e398bac88d1a4",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:91bb85a0975cf77fc3cc624c8d25108e1460efccd4f84e86c645fd78c69762b3",
+                "sha256:d4611555f9f17ee9f2d1a9ccfc2953934e7f8a91be6445a04b934678caf81ad9",
+                "sha256:15ccdd709b0bb396556a4f2a1657ca13a49174fc7bb210dc8b1095333ad14a3c",
+                "sha256:d09d15355d94ba64c9d55185430d790dcd94032d0f7795fa7e2e501f8724d1d1",
+                "sha256:69e0b0fae29efa68b65a1d835809019c958c18a622be71b62d8a9d680f5a2823",
+                "sha256:0b431a67c71821befd16f9c64aef847ae0fc2cbfe05bb802fed0dbb054775ecc",
+                "sha256:955f7ebd383e69089041bc1bbfbed39b25c4732c5cd8c7fc6f9189ecc6be8616",
+                "sha256:2b5768dddb291e45e647193da81f7e894ba45adcb3157cb84974a94dc6d560cb",
+                "sha256:813b32e0906eb52cf7bff86430dbae639e6ba58b75e12160e47d49f213690393",
+                "sha256:706206351309d077005fc80a57a31ddd53edac2fe6c9c1dd4d8bfcb4e2d34b8e",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:1b905f995078bc03f2d1847adbd05f1fd78663e96fc0a8556d2076d50cc90e28",
+                "sha256:6b564caa52d61e89a258424aad8003c09e3be16a3211898f7c282ede0de9af97",
+                "sha256:aa537196905c438ee029e1e1940c39bcc0c5b6b9bbdcd07185f6c324a9c8de80",
+                "sha256:e84e3f69d2187e2a06f86d797c2c893afc133cca4fb02c9490552b5512954907",
+                "sha256:8782e785aa3f0a2c6c2284d87d2b2908983b343f26c76f8e1847a88009f26fd3",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-07-17T12:32:33.173091628Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:2191e2740c6aac83489e2e4de597f1cafdabc2ca21cf8e412d6430b8239ad362",
+            "size": 856
+        },
+        "Identity": {
+            "Build": [
+                {
+                    "Ref": "xt72uvlee8ym1jsboty34lep2",
+                    "CreatedAt": "2026-07-17T12:33:39.248495155Z"
+                }
+            ]
+        }
+    }
+]

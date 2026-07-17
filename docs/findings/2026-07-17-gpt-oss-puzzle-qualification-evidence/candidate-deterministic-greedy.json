@@ -1,0 +1,95 @@
+{
+  "request": {
+    "seed": 123,
+    "temperature": 0,
+    "messages": [
+      {
+        "content": "Return exactly the single word PUZZLE.",
+        "role": "user"
+      }
+    ],
+    "max_tokens": 256,
+    "model": "gpt-oss-puzzle-88b",
+    "reasoning_effort": "low"
+  },
+  "response_2": {
+    "id": "chatcmpl-8656815e7c5105fb",
+    "object": "chat.completion",
+    "created": 1784292521,
+    "model": "gpt-oss-puzzle-88b",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "PUZZLE",
+          "refusal": null,
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "reasoning": "User wants exactly the single word PUZZLE. So respond with PUZZLE."
+        },
+        "logprobs": null,
+        "finish_reason": "stop",
+        "stop_reason": null,
+        "token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "service_tier": null,
+    "system_fingerprint": "vllm-0.23.1rc1.dev1229+g1bf3b12d5-781242de",
+    "usage": {
+      "prompt_tokens": 76,
+      "total_tokens": 106,
+      "completion_tokens": 30,
+      "prompt_tokens_details": null
+    },
+    "prompt_logprobs": null,
+    "prompt_token_ids": null,
+    "prompt_text": null,
+    "kv_transfer_params": null,
+    "ec_transfer_params": null,
+    "metrics": null
+  },
+  "same_reasoning": true,
+  "response_1": {
+    "id": "chatcmpl-99016ca5d0d92eea",
+    "object": "chat.completion",
+    "created": 1784292519,
+    "model": "gpt-oss-puzzle-88b",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "PUZZLE",
+          "refusal": null,
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "reasoning": "User wants exactly the single word PUZZLE. So respond with PUZZLE."
+        },
+        "logprobs": null,
+        "finish_reason": "stop",
+        "stop_reason": null,
+        "token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "service_tier": null,
+    "system_fingerprint": "vllm-0.23.1rc1.dev1229+g1bf3b12d5-781242de",
+    "usage": {
+      "prompt_tokens": 76,
+      "total_tokens": 106,
+      "completion_tokens": 30,
+      "prompt_tokens_details": null
+    },
+    "prompt_logprobs": null,
+    "prompt_token_ids": null,
+    "prompt_text": null,
+    "kv_transfer_params": null,
+    "ec_transfer_params": null,
+    "metrics": null
+  },
+  "same_content": true
+}
