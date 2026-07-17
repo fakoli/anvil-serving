@@ -1350,6 +1350,54 @@ services:
       --host 0.0.0.0 --port 39036
       ${CAND_UNSLOTH_QWEN36_EXTRA_ARGS:-}
 
+  # Native GPT-OSS Puzzle 88B candidate built from the Anvil vLLM fork. Keep
+  # the checkpoint's native Harmony template. FlashInfer's MXFP4/MXFP8 MoE
+  # paths remain disabled for this compatibility baseline by forcing Marlin.
+  cand-gptoss-puzzle-88b:
+    image: ${CAND_GPTOSS_PUZZLE_VLLM_IMAGE:-anvil-vllm:gpt-oss-puzzle-1bf3b12d5bbeb09136e8478e37133ab0ffad3e51}
+    container_name: vllm-cand-gptoss-puzzle-88b
+    restart: "no"
+    ipc: host
+    shm_size: "16gb"
+    ports:
+      - "127.0.0.1:39039:39039"
+    volumes:
+      - "vllm-hfcache:/root/.cache/huggingface"
+    environment:
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "1"
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"
+      VLLM_USE_V2_MODEL_RUNNER: "0"
+      FLASHINFER_CUDA_ARCH_LIST: "12.0f"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${HEAVY_GPU_UUID:-GPU-d0f446cf-1771-414c-e116-a39138798a8c}"]
+              capabilities: [gpu]
+    entrypoint: ["vllm"]
+    command: >
+      serve nvidia/gpt-oss-puzzle-88B
+      --revision ${CAND_GPTOSS_PUZZLE_REVISION:-9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2}
+      --served-model-name gpt-oss-puzzle-88b
+      --trust-remote-code
+      --tensor-parallel-size 1
+      --moe-backend marlin
+      --kv-cache-dtype fp8
+      --tool-call-parser openai
+      --enable-auto-tool-choice
+      --enable-prefix-caching
+      --max-num-batched-tokens ${CAND_GPTOSS_PUZZLE_MAX_BATCHED_TOKENS:-8192}
+      --stream-interval 20
+      --gpu-memory-utilization ${CAND_GPTOSS_PUZZLE_GPU_MEMORY_UTILIZATION:-0.95}
+      --max-num-seqs ${CAND_GPTOSS_PUZZLE_MAX_NUM_SEQS:-8}
+      --max-cudagraph-capture-size 8
+      --max-model-len ${CAND_GPTOSS_PUZZLE_MAX_MODEL_LEN:-131072}
+      --host 0.0.0.0 --port 39039
+      ${CAND_GPTOSS_PUZZLE_EXTRA_ARGS:-}
+
 # The weights cache is a pre-created, D:-backed external volume (native ext4, ~15s loads).
 # Create it once if it does not exist:  docker volume create vllm-hfcache
 volumes:

@@ -1207,3 +1207,60 @@ total_params_b = 8
   suited = ["voice", "low-latency", "chat-fast"]
   mode = "flexibility"
   rationale = "Low-latency small-model specialist (61 ms TTFT). NOT promoted; check PLE issue status before any quality-sensitive role."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNVERIFIED — GPT-OSS Puzzle 88B native Anvil vLLM candidate
+# ─────────────────────────────────────────────────────────────────────────────
+[[recipe]]
+model = "nvidia/gpt-oss-puzzle-88B"
+status = "unverified"
+source = "local Anvil vLLM port of vllm-project/vllm#38135 at fork commit 1bf3b12d5bbeb09136e8478e37133ab0ffad3e51; qualification pending"
+family = "gpt-oss-puzzle"
+total_params_b = 88
+
+  [recipe.hardware]
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  gpu_uuid = "GPU-d0f446cf-1771-414c-e116-a39138798a8c"
+  vram_total_gb = 96
+
+  [recipe.serve]
+  engine = "vllm"
+  image = "anvil-vllm:gpt-oss-puzzle-1bf3b12d5bbeb09136e8478e37133ab0ffad3e51"
+  managed_serve = "cand-gptoss-puzzle-88b"
+  served_model_name = "gpt-oss-puzzle-88b"
+  quantization = "gpt_oss_mxfp4 (auto-detected); Marlin compatibility baseline"
+  port = 39039
+  context_tokens = 131072
+  env = [
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "CUDA_VISIBLE_DEVICES=1",
+    "VLLM_WSL2_ENABLE_PIN_MEMORY=1",
+    "VLLM_USE_V2_MODEL_RUNNER=0",
+    "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  ]
+  flags = [
+    "--revision 9c0e0746a0d2218b28cc7b2cb3ce4e1a2f50fdb2",
+    "--served-model-name gpt-oss-puzzle-88b",
+    "--trust-remote-code",
+    "--tensor-parallel-size 1",
+    "--moe-backend marlin",
+    "--kv-cache-dtype fp8",
+    "--tool-call-parser openai",
+    "--enable-auto-tool-choice",
+    "--enable-prefix-caching",
+    "--max-num-batched-tokens 8192",
+    "--stream-interval 20",
+    "--gpu-memory-utilization 0.95",
+    "--max-num-seqs 8",
+    "--max-cudagraph-capture-size 8",
+    "--max-model-len 131072",
+    "--host 0.0.0.0",
+    "--port 39039",
+  ]
+  note = "Native Harmony template; no chat-template override. FlashInfer MXFP4/MXFP8 MoE is disabled for the baseline through --moe-backend marlin. This recipe records an existing immutable local image and never builds or publishes it."
+
+  [recipe.intent]
+  suited = ["experimental", "quality", "long-context", "planning", "review"]
+  mode = "candidate"
+  rationale = "Qualification candidate only. Keep unverified until the real 88B checkpoint passes functional, long-context, quality, and regression gates on the RTX PRO 6000."
