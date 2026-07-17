@@ -213,9 +213,11 @@ reds the global `test_repository_scope_inventories_match` at the review gate.
     (`-e CUDA_VISIBLE_DEVICES=<GPU-uuid> -e CUDA_DEVICE_ORDER=PCI_BUS_ID`) or the model loads on
     the wrong card. fakoli-dark: 5090/fast `GPU-04d3b6e7…`, RTX PRO 6000 96 GB/heavy `GPU-d0f446cf…`.
     Large model pulls go to **`D:`** (empty 4 TB Samsung NVMe), not the OS drive.
-14. **`-e VLLM_USE_V2_MODEL_RUNNER=0` is mandatory on this WSL2/Docker box.** vLLM's GPU model
-    runner uses a `UvaBuffer` needing Unified Virtual Addressing, which WSL2 passthrough doesn't
-    expose → `RuntimeError: UVA is not available` at engine init, on BOTH `:latest` and `:nightly`.
+14. **vLLM 0.25.1+ needs `VLLM_WSL2_ENABLE_PIN_MEMORY=1` on this WSL2/Docker box.** Older images
+    failed Model Runner V2 initialization because WSL2 disabled pinned host memory/UVA. The 0.25.1
+    opt-in reached healthy Gemma 4 V2 serves on both local Blackwell cards. Production Gemma still
+    sets `VLLM_USE_V2_MODEL_RUNNER=0`: V2 currently warns that `thinking_token_budget` is unsupported,
+    so use it only in explicit lab lanes until that behavior gate closes.
 15. **Serve from a named docker volume, not a `C:/…` bind-mount.** Windows bind-mounts read over 9P
     (~15 MB/s → 18–90 min loads); a `vllm-hfcache` volume on D:-backed ext4 (pass the HF repo-id as
     `--model`) loads natively (~15 s). The 9P mount is the real cold-load tax.
