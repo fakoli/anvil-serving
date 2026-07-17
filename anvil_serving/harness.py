@@ -92,11 +92,13 @@ _OPENCLAW_AGENT_ROLES = (
     ("anvil-preflight-runner", ("chat-fast", "chat"), "chat", True),
     ("anvil-benchmark-runner", ("chat-fast", "chat"), "chat", True),
     ("anvil-evidence-reporter", ("chat-fast", "chat"), "chat", True),
-    ("anvil-quality-critic", ("review", "planning", "chat"), "review", False),
-    ("anvil-adversarial-reviewer", ("review", "planning", "chat"), "review", False),
 )
 _OPENCLAW_LEGACY_AGENT_NAMES = frozenset({
     "anvil-probe-evidence-runner",
+})
+_OPENCLAW_UNSAFE_REVIEWER_NAMES = frozenset({
+    "anvil-quality-critic",
+    "anvil-adversarial-reviewer",
 })
 
 
@@ -347,6 +349,10 @@ def render_openclaw_skills(config, *, skill_dir=None):
     ``skill_dir`` enables checkout-loaded skills through ``skills.load.extraDirs``. When omitted,
     the payload assumes the workbench skill was installed into OpenClaw's workspace skill directory
     with ``openclaw skills install ... --as anvil-serving-workbench``.
+
+    Independent critic/reviewer roles are intentionally not generated: binding
+    them to an ``anvil/*`` preset can route review back to the candidate model.
+    Configure those roles through a separate provider or external harness.
     """
     roles = []
     for role_name, preferred_presets, fallback, allow_first_fallback in _OPENCLAW_AGENT_ROLES:
@@ -380,6 +386,21 @@ def _merge_unique_strings(existing, additions):
         if isinstance(value, str) and value not in out:
             out.append(value)
     return out
+
+
+def _is_stale_openclaw_agent(role):
+    """Match only Anvil-owned legacy roles, preserving independent rebinds."""
+    if not isinstance(role, dict):
+        return False
+    name = role.get("name")
+    if name in _OPENCLAW_LEGACY_AGENT_NAMES:
+        return True
+    model = role.get("model")
+    return (
+        name in _OPENCLAW_UNSAFE_REVIEWER_NAMES
+        and isinstance(model, str)
+        and model.startswith("anvil/")
+    )
 
 
 def _merge_openclaw_skill_config(out, rendered):
@@ -433,7 +454,7 @@ def _merge_openclaw_skill_config(out, rendered):
                     isinstance(role, dict)
                     and (
                         role.get("name") in rendered_by_name
-                        or role.get("name") in _OPENCLAW_LEGACY_AGENT_NAMES
+                        or _is_stale_openclaw_agent(role)
                     )
                 )
             ]

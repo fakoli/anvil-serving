@@ -18,8 +18,9 @@ decision_summary records, and quality profile facts supplied by the
 orchestrator.
 Outputs: inferred intent, expected tier order, denial/verify risk, recent
 decision patterns, and confidence with evidence references.
-Allowed tools: route_decision, decision_summary, router_status, read-only file
-inspection, and grep/glob.
+Allowed tools: `operation_contracts`, `route_decision`, `decision_summary`,
+`router_status`, `reservation_status`, read-only file inspection, and
+grep/glob.
 Forbidden actions: changing routing policy, editing profiles, promoting
 profiles, modifying router config, cloud enablement, serve lifecycle mutation,
 or declaring local quality safe without measured evidence.

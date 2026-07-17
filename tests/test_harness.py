@@ -190,8 +190,8 @@ def test_openclaw_skills_sync_render_adds_workbench_roles():
     assert roles["anvil-preflight-runner"]["model"] == "anvil/chat-fast"
     assert roles["anvil-benchmark-runner"]["model"] == "anvil/chat-fast"
     assert roles["anvil-evidence-reporter"]["model"] == "anvil/chat-fast"
-    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
-    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
+    assert "anvil-quality-critic" not in roles
+    assert "anvil-adversarial-reviewer" not in roles
     assert all(r["skills"] == ["anvil-serving-workbench"] for r in roles.values())
     assert "skills" not in rendered
 
@@ -205,8 +205,8 @@ def test_openclaw_strong_roles_do_not_fallback_to_small_only_preset():
     roles = {r["name"]: r for r in rendered["agents"]["list"]}
     assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
     assert roles["anvil-orchestrator"]["model"] == "anvil/planning"
-    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
-    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
+    assert "anvil-quality-critic" not in roles
+    assert "anvil-adversarial-reviewer" not in roles
 
 
 def test_openclaw_skills_sync_render_can_add_checkout_skill_dir():
@@ -222,8 +222,8 @@ def test_openclaw_sync_skills_emits_provider_and_agent_config(capsys):
     roles = {r["name"]: r for r in payload["agents"]["list"]}
     assert payload["agents"]["defaults"]["skills"] == ["anvil-serving-workbench"]
     assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
-    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
-    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
+    assert "anvil-quality-critic" not in roles
+    assert "anvil-adversarial-reviewer" not in roles
     assert payload["models"]["providers"]["anvil"]["apiKey"] == "${T}"
 
 
@@ -391,6 +391,9 @@ def test_openclaw_skills_sync_scp_merge_preserves_operator_owned_config():
             "list": [
                 {"name": "operator-agent", "model": "openai/gpt", "skills": ["operator-skill"]},
                 {"name": "anvil-probe-evidence-runner", "model": "anvil/chat", "skills": ["old"]},
+                {"name": "anvil-quality-critic", "model": "anvil/review", "skills": ["old"]},
+                {"name": "anvil-adversarial-reviewer", "model": "anvil/review", "skills": ["old"]},
+                {"name": "anvil-quality-critic-independent", "model": "openai/gpt-5.4"},
                 {"name": "anvil-inventory-scout", "model": "anvil/chat", "skills": ["old"]},
             ],
         },
@@ -413,10 +416,34 @@ def test_openclaw_skills_sync_scp_merge_preserves_operator_owned_config():
     roles = {r["name"]: r for r in merged["agents"]["list"]}
     assert roles["operator-agent"]["skills"] == ["operator-skill"]
     assert "anvil-probe-evidence-runner" not in roles
+    assert "anvil-quality-critic" not in roles
+    assert "anvil-adversarial-reviewer" not in roles
+    assert roles["anvil-quality-critic-independent"]["model"] == "openai/gpt-5.4"
     assert roles["anvil-inventory-scout"]["model"] == "anvil/chat-fast"
-    assert roles["anvil-quality-critic"]["model"] == "anvil/review"
-    assert roles["anvil-adversarial-reviewer"]["model"] == "anvil/review"
     assert "operator-plugin" in merged["plugins"]["entries"]
+
+
+def test_openclaw_skills_sync_preserves_same_name_independent_reviewers():
+    remote = json.dumps({
+        "agents": {"list": [
+            {"name": "anvil-quality-critic", "model": "openai/gpt-5.4"},
+            {"name": "anvil-adversarial-reviewer", "model": "anthropic/claude"},
+        ]},
+    })
+    scp = _FakeSCP(remote=remote)
+    rc = harness.cmd_sync_openclaw(
+        "r.toml",
+        base_url="http://h/v1",
+        api_key_env="T",
+        gateway_host="mini",
+        skills=True,
+        _load=lambda p: _cfg(),
+        _run=scp,
+    )
+    assert rc == 0
+    roles = {r["name"]: r for r in json.loads(scp.written)["agents"]["list"]}
+    assert roles["anvil-quality-critic"]["model"] == "openai/gpt-5.4"
+    assert roles["anvil-adversarial-reviewer"]["model"] == "anthropic/claude"
 
 
 def test_openclaw_skills_sync_local_out_merges_and_backs_up(tmp_path):

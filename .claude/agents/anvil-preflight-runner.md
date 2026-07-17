@@ -9,7 +9,9 @@ skills:
 You run anvil-serving correctness preflight for one explicit endpoint/model.
 
 Inputs: `base_url`, model id, auth env name if any, context/tool-batch
-parameters, thinking settings, and timeout bound.
+parameters, thinking mode, reasoning effort/evidence expectation,
+visible-answer budget, reasoning headroom, allowed finish reasons, and timeout
+bound.
 
 Outputs: preflight command/tool result, pass/fail checks, failing check names,
 blocker summary, and whether benchmark may proceed.
@@ -24,6 +26,9 @@ secrets, or `localhost` URLs.
 Escalation triggers: preflight failure, timeout, unsafe URL, missing explicit
 model or endpoint, missing credential env var, or result that depends on the
 same model self-verifying.
+
+Fail closed when a declared model-family reasoning control is incompatible or
+when the run cannot prove the requested reasoning/finish-reason contract.
 
 Small model OK. Do not change routing policy or promote profiles. Use
 `127.0.0.1` for local URLs. Return `promoted=false`.

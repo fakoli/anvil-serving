@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Repo-local agent controller registration and voice discovery.** Trusted Codex and Claude Code
+  checkouts now start the checkout's `anvil-serving mcp serve` entry point instead of depending on a
+  potentially stale global registration, and thin harness-specific wrappers expose the canonical
+  voice operations skill without copying its body.
+
 - **Guarded recipe-based model switching.** `anvil-serving serves switch ROLE` lists validated
   activation-ready recipes without prompting; `serves switch ROLE MODEL --confirm` performs the reviewed
   Compose/container/router transition with exact loopback bindings, cross-platform locks,
@@ -16,6 +21,17 @@ All notable changes to this project are documented here. The format is based on
   The earlier `--recipe MODEL` spelling remains available as a compatibility alias.
 
 ### Changed
+
+- **Repo-scoped Workbench guidance now matches the current CLI and MCP control plane.** The Codex,
+  Claude Code, and OpenClaw workbench skills catalog all structured tools, distinguish capacity
+  probes from repeated quality evaluation, cover reservations/transitions/promotion/telemetry/host
+  gates, and document the CLI-only role-based recipe switch. The specialized voice skill now uses
+  the lifecycle MCP tools when available and keeps audio profiles separate from candidate LLM
+  overlays. Contract tests prevent future command-tree, MCP, and checked-in skill drift.
+  Adversarial hardening adds source-freshness and recipe CRUD/load playbooks, exact three-part
+  promotion gates, `router_promote` validate-only parity, LF-safe repo gate routing, and
+  spec-independent reviewer probes. OpenClaw no longer auto-generates critic roles through the
+  candidate-routed Anvil provider.
 
 - **Model-serve commands now share one reviewed, task-oriented help system.** Every
   `serves` leaf presents exact usage, concrete examples, configuration precedence,
